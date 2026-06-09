@@ -3,13 +3,12 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option
-import gleam/result
 import gleam/string
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
 import scrumbringer_server/seed_db
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -23,24 +22,22 @@ pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test(
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
 
-  create_milestone(handler, session, project_id) |> should.equal(200)
-  let milestone_id =
+  create_milestone(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(milestone_id) =
     fixtures.query_int(
       db,
       "select id from milestones where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   create_card_in_milestone(handler, session, project_id, milestone_id)
-  |> should.equal(200)
-  let card_id =
+  |> expect.equal(200)
+  let assert Ok(card_id) =
     fixtures.query_int(
       db,
       "select id from cards where project_id = $1 and title = 'Card in milestone'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
@@ -62,9 +59,9 @@ pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test(
       )
       |> fixtures.with_auth(session),
     )
-  milestone_res.status |> should.equal(200)
+  expect.expect_status(milestone_res, 200)
   string.contains(simulate.read_body(milestone_res), "\"metrics\"")
-  |> should.be_true
+  |> expect.is_true
 
   let card_res =
     handler(
@@ -74,9 +71,9 @@ pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test(
       )
       |> fixtures.with_auth(session),
     )
-  card_res.status |> should.equal(200)
+  expect.expect_status(card_res, 200)
   string.contains(simulate.read_body(card_res), "\"metrics\"")
-  |> should.be_true
+  |> expect.is_true
 
   let task_res =
     handler(
@@ -86,9 +83,9 @@ pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test(
       )
       |> fixtures.with_auth(session),
     )
-  task_res.status |> should.equal(200)
+  expect.expect_status(task_res, 200)
   string.contains(simulate.read_body(task_res), "\"metrics\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_forbidden_uses_typed_error_code_test() {
@@ -112,9 +109,9 @@ pub fn include_metrics_forbidden_uses_typed_error_code_test() {
       |> fixtures.with_auth(member_session),
     )
 
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "\"code\":\"forbidden\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_milestone_forbidden_uses_typed_error_code_test() {
@@ -122,14 +119,13 @@ pub fn include_metrics_milestone_forbidden_uses_typed_error_code_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
-  create_milestone(handler, session, project_id) |> should.equal(200)
-  let milestone_id =
+  create_milestone(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(milestone_id) =
     fixtures.query_int(
       db,
       "select id from milestones where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   let assert Ok(_) =
     fixtures.create_member_user(
@@ -152,9 +148,9 @@ pub fn include_metrics_milestone_forbidden_uses_typed_error_code_test() {
       |> fixtures.with_auth(member_session),
     )
 
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "\"code\":\"forbidden\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() {
@@ -191,9 +187,9 @@ pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() 
       |> fixtures.with_auth(member_session),
     )
 
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_task_returns_expected_counts_test() {
@@ -211,16 +207,14 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       "Task metrics exact",
     )
 
-  let org_id =
+  let assert Ok(org_id) =
     fixtures.query_int(db, "select id from organizations limit 1", [])
-    |> result.unwrap(1)
-  let admin_id =
+  let assert Ok(admin_id) =
     fixtures.query_int(
       db,
       "select id from users where email = 'admin@example.com'",
       [],
     )
-    |> result.unwrap(1)
 
   let assert Ok(_) =
     fixtures.create_member_user(
@@ -229,13 +223,12 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       "member4@example.com",
       "inv_member",
     )
-  let member_id =
+  let assert Ok(member_id) =
     fixtures.query_int(
       db,
       "select id from users where email = 'member4@example.com'",
       [],
     )
-    |> result.unwrap(2)
 
   let _ =
     fixtures.insert_task_event_db(
@@ -267,9 +260,10 @@ pub fn include_metrics_task_returns_expected_counts_test() {
 
   let _ =
     pog.query(
-      "update tasks set status = 'claimed', pool_lifetime_s = 5400 where id = $1",
+      "update tasks set status = 'claimed', claimed_by = $2, claimed_at = now(), pool_lifetime_s = 5400 where id = $1",
     )
     |> pog.parameter(pog.int(task_id))
+    |> pog.parameter(pog.int(admin_id))
     |> pog.execute(db)
 
   let _ = fixtures.insert_work_session_db(db, admin_id, task_id, 120)
@@ -310,63 +304,58 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   let body = simulate.read_body(res)
 
-  let claim_count =
+  let assert Ok(claim_count) =
     fixtures.query_int(
       db,
       "select count(*)::int from task_events where task_id = $1 and event_type = 'task_claimed'",
       [pog.int(task_id)],
     )
-    |> result.unwrap(0)
-  let release_count =
+  let assert Ok(release_count) =
     fixtures.query_int(
       db,
       "select count(*)::int from task_events where task_id = $1 and event_type = 'task_released'",
       [pog.int(task_id)],
     )
-    |> result.unwrap(0)
-  let unique_executors =
+  let assert Ok(unique_executors) =
     fixtures.query_int(
       db,
       "select count(distinct actor_user_id)::int from task_events where task_id = $1 and event_type = 'task_claimed'",
       [pog.int(task_id)],
     )
-    |> result.unwrap(0)
-  let session_count =
+  let assert Ok(session_count) =
     fixtures.query_int(
       db,
       "select count(*)::int from user_task_work_session where task_id = $1",
       [pog.int(task_id)],
     )
-    |> result.unwrap(0)
-  let total_work_time_s =
+  let assert Ok(total_work_time_s) =
     fixtures.query_int(
       db,
       "select coalesce(sum(accumulated_s), 0)::int from user_task_work_total where task_id = $1",
       [pog.int(task_id)],
     )
-    |> result.unwrap(0)
 
   string.contains(body, "\"claim_count\":" <> int.to_string(claim_count))
-  |> should.be_true
+  |> expect.is_true
   string.contains(body, "\"release_count\":" <> int.to_string(release_count))
-  |> should.be_true
+  |> expect.is_true
   string.contains(
     body,
     "\"unique_executors\":" <> int.to_string(unique_executors),
   )
-  |> should.be_true
-  string.contains(body, "\"pool_lifetime_s\":5400") |> should.be_true
+  |> expect.is_true
+  string.contains(body, "\"pool_lifetime_s\":5400") |> expect.is_true
   string.contains(body, "\"session_count\":" <> int.to_string(session_count))
-  |> should.be_true
+  |> expect.is_true
   string.contains(
     body,
     "\"total_work_time_s\":" <> int.to_string(total_work_time_s),
   )
-  |> should.be_true
-  string.contains(body, "\"first_claim_at\":") |> should.be_true
+  |> expect.is_true
+  string.contains(body, "\"first_claim_at\":") |> expect.is_true
 }
 
 pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
@@ -376,24 +365,22 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
 
-  create_milestone(handler, session, project_id) |> should.equal(200)
-  let milestone_id =
+  create_milestone(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(milestone_id) =
     fixtures.query_int(
       db,
       "select id from milestones where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   create_card_in_milestone(handler, session, project_id, milestone_id)
-  |> should.equal(200)
-  let card_id =
+  |> expect.equal(200)
+  let assert Ok(card_id) =
     fixtures.query_int(
       db,
       "select id from cards where project_id = $1 and title = 'Card in milestone'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
@@ -418,11 +405,11 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
       )
       |> fixtures.with_auth(session),
     )
-  card_res.status |> should.equal(200)
+  expect.expect_status(card_res, 200)
   let card_body = simulate.read_body(card_res)
-  string.contains(card_body, "\"tasks_total\":1") |> should.be_true
-  string.contains(card_body, "\"tasks_completed\":1") |> should.be_true
-  string.contains(card_body, "\"tasks_percent\":100") |> should.be_true
+  string.contains(card_body, "\"tasks_total\":1") |> expect.is_true
+  string.contains(card_body, "\"tasks_completed\":1") |> expect.is_true
+  string.contains(card_body, "\"tasks_percent\":100") |> expect.is_true
 
   let milestone_res =
     handler(
@@ -434,12 +421,12 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
       )
       |> fixtures.with_auth(session),
     )
-  milestone_res.status |> should.equal(200)
+  expect.expect_status(milestone_res, 200)
   let milestone_body = simulate.read_body(milestone_res)
-  string.contains(milestone_body, "\"cards_total\":1") |> should.be_true
-  string.contains(milestone_body, "\"tasks_total\":1") |> should.be_true
-  string.contains(milestone_body, "\"tasks_completed\":1") |> should.be_true
-  string.contains(milestone_body, "\"tasks_percent\":100") |> should.be_true
+  string.contains(milestone_body, "\"cards_total\":1") |> expect.is_true
+  string.contains(milestone_body, "\"tasks_total\":1") |> expect.is_true
+  string.contains(milestone_body, "\"tasks_completed\":1") |> expect.is_true
+  string.contains(milestone_body, "\"tasks_percent\":100") |> expect.is_true
 }
 
 pub fn include_metrics_not_found_uses_typed_error_code_test() {
@@ -451,9 +438,9 @@ pub fn include_metrics_not_found_uses_typed_error_code_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_card_not_found_uses_typed_error_code_test() {
@@ -465,9 +452,9 @@ pub fn include_metrics_card_not_found_uses_typed_error_code_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_milestone_not_found_uses_typed_error_code_test() {
@@ -479,9 +466,9 @@ pub fn include_metrics_milestone_not_found_uses_typed_error_code_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_task_unavailable_returns_typed_409_test() {
@@ -510,9 +497,9 @@ pub fn include_metrics_task_unavailable_returns_typed_409_test() {
     )
   drop_shadow_tasks_table(db)
 
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "\"code\":\"metrics_unavailable\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_card_unavailable_returns_typed_409_test() {
@@ -533,9 +520,9 @@ pub fn include_metrics_card_unavailable_returns_typed_409_test() {
     )
   drop_shadow_tasks_table(db)
 
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "\"code\":\"metrics_unavailable\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
@@ -543,14 +530,13 @@ pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
-  create_milestone(handler, session, project_id) |> should.equal(200)
-  let milestone_id =
+  create_milestone(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(milestone_id) =
     fixtures.query_int(
       db,
       "select id from milestones where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   create_shadow_tasks_table(db)
   let res =
@@ -565,9 +551,9 @@ pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
     )
   drop_shadow_tasks_table(db)
 
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "\"code\":\"metrics_unavailable\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 fn create_milestone(

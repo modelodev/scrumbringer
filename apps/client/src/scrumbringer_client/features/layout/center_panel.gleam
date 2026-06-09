@@ -12,6 +12,8 @@
 //// - Individual view implementations (delegated to view modules)
 //// - State management (handled by parent)
 
+import gleam/int
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
@@ -29,6 +31,7 @@ import scrumbringer_client/capability_scope.{
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/event_decoders
 
 // =============================================================================
@@ -142,10 +145,10 @@ fn view_work_filters_variant(
           i18n.t(config.locale, i18n_text.AllOption),
         ),
       ],
-      list_map(config.task_types, fn(tt) {
+      list.map(config.task_types, fn(tt) {
         option(
           [
-            attribute.value(int_to_string(tt.id)),
+            attribute.value(int.to_string(tt.id)),
             attribute.selected(Some(tt.id) == config.type_filter),
           ],
           tt.name,
@@ -160,10 +163,10 @@ fn view_work_filters_variant(
           i18n.t(config.locale, i18n_text.AllOption),
         ),
       ],
-      list_map(config.capabilities, fn(cap) {
+      list.map(config.capabilities, fn(cap) {
         option(
           [
-            attribute.value(int_to_string(cap.id)),
+            attribute.value(int.to_string(cap.id)),
             attribute.selected(Some(cap.id) == config.capability_filter),
           ],
           cap.name,
@@ -244,10 +247,7 @@ fn view_scope_button(
         "data-testid",
         "filter-capability-scope-" <> capability_scope.to_string(scope),
       ),
-      attribute.attribute("aria-pressed", case is_active {
-        True -> "true"
-        False -> "false"
-      }),
+      attribute.attribute("aria-pressed", attribute_value.boolean(is_active)),
       event.on_click(
         config.on_capability_scope_change(capability_scope.to_string(scope)),
       ),
@@ -322,22 +322,11 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
 // Helpers
 // =============================================================================
 
-import gleam/int
-import gleam/list
-
-fn int_to_string(i: Int) -> String {
-  int.to_string(i)
-}
-
 fn option_int_to_string(opt: Option(Int)) -> String {
   case opt {
     Some(i) -> int.to_string(i)
     None -> ""
   }
-}
-
-fn list_map(items: List(a), f: fn(a) -> b) -> List(b) {
-  list.map(items, f)
 }
 
 fn optional_testid(testid: Option(String)) -> List(attribute.Attribute(msg)) {

@@ -23,23 +23,23 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
-import gleam/result
 
 import lustre
 import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, form, input, option as html_option, p, select, span, text,
-}
+import lustre/element/html.{form, input, option as html_option, p, select, text}
 import lustre/event
 
-import domain/api_error.{type ApiError}
-import domain/task_type.{type TaskType, TaskType}
-import domain/workflow.{type Rule, Rule}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/task/codec as task_codec
+import domain/task_type.{type TaskType}
+import domain/workflow.{
+  type Rule, rule_resource_type, rule_task_type_id, rule_to_state_string,
+}
+import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
@@ -54,11 +54,8 @@ import scrumbringer_client/ui/modal_header
 // =============================================================================
 
 /// Dialog mode determines which view to show.
-pub type DialogMode {
-  ModeCreate
-  ModeEdit(Rule)
-  ModeDelete(Rule)
-}
+pub type DialogMode =
+  crud_dialog_base.DialogLifecycle(Rule)
 
 /// Internal component model - encapsulates all 21 rule CRUD fields.
 pub type Model {
@@ -66,7 +63,7 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     workflow_id: Option(Int),
-    mode: Option(DialogMode),
+    mode: DialogMode,
     task_types: List(TaskType),
     // Create dialog fields
     create_name: String,
@@ -159,57 +156,28 @@ fn decode_workflow_id(value: String) -> Result(Msg, Nil) {
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
   // edit and delete modes need rule data from property
-  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
+  crud_dialog_base.decode_create_mode(
+    value,
+    crud_dialog_base.Creating,
+    ModeReceived,
+  )
 }
 
-/// Story 4.10: Added templates field (defaults to empty list for dialog).
 fn rule_property_decoder() -> Decoder(Msg) {
-  use id <- decode.field("id", decode.int)
-  use workflow_id <- decode.field("workflow_id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use goal <- decode.field("goal", decode.optional(decode.string))
-  use resource_type <- decode.field("resource_type", decode.string)
-  use task_type_id <- decode.field("task_type_id", decode.optional(decode.int))
-  use to_state <- decode.field("to_state", decode.string)
-  use active <- decode.field("active", decode.bool)
-  use created_at <- decode.field("created_at", decode.string)
+  use rule <- decode.then(workflow_codec.rule_decoder())
   use mode <- decode.field("_mode", decode.string)
-  let rule =
-    Rule(
-      id: id,
-      workflow_id: workflow_id,
-      name: name,
-      goal: goal,
-      resource_type: resource_type,
-      task_type_id: task_type_id,
-      to_state: to_state,
-      active: active,
-      created_at: created_at,
-      templates: [],
-    )
-  case mode {
-    "edit" -> decode.success(ModeReceived(ModeEdit(rule)))
-    "delete" -> decode.success(ModeReceived(ModeDelete(rule)))
-    _ -> decode.success(ModeReceived(ModeEdit(rule)))
-  }
+  crud_dialog_base.decode_entity_mode(
+    mode,
+    rule,
+    crud_dialog_base.Editing,
+    crud_dialog_base.Deleting,
+    ModeReceived,
+  )
 }
 
 fn task_types_property_decoder() -> Decoder(Msg) {
-  use types <- decode.then(decode.list(task_type_decoder()))
+  use types <- decode.then(decode.list(task_codec.task_type_decoder()))
   decode.success(TaskTypesReceived(types))
-}
-
-fn task_type_decoder() -> Decoder(TaskType) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  decode.success(TaskType(
-    id: id,
-    name: name,
-    icon: icon,
-    capability_id: option.None,
-    tasks_count: 0,
-  ))
 }
 
 // =============================================================================
@@ -224,7 +192,7 @@ fn default_model() -> Model {
   Model(
     locale: En,
     workflow_id: option.None,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     task_types: [],
     create_name: "",
     create_goal: "",
@@ -251,7 +219,6 @@ fn default_model() -> Model {
 // Update
 // =============================================================================
 
-// Justification: large function kept intact to preserve cohesive UI logic.
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
@@ -280,7 +247,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       handle_create_resource_type_changed(model, resource_type)
 
     CreateTaskTypeIdChanged(type_id_str) -> #(
-      Model(..model, create_task_type_id: parse_optional_int(type_id_str)),
+      Model(
+        ..model,
+        create_task_type_id: crud_dialog_base.optional_int_or_none(type_id_str),
+      ),
       effect.none(),
     )
 
@@ -316,7 +286,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       handle_edit_resource_type_changed(model, resource_type)
 
     EditTaskTypeIdChanged(type_id_str) -> #(
-      Model(..model, edit_task_type_id: parse_optional_int(type_id_str)),
+      Model(
+        ..model,
+        edit_task_type_id: crud_dialog_base.optional_int_or_none(type_id_str),
+      ),
       effect.none(),
     )
 
@@ -358,22 +331,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn parse_optional_int(value: String) -> Option(Int) {
-  case value {
-    "" | "null" | "undefined" -> option.None
-    _ ->
-      int.parse(value)
-      |> result.map(option.Some)
-      |> result.unwrap(option.None)
-  }
-}
-
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate -> #(
+    crud_dialog_base.Closed -> #(
+      Model(..model, mode: crud_dialog_base.Closed),
+      effect.none(),
+    )
+
+    crud_dialog_base.Creating -> #(
       Model(
         ..model,
-        mode: option.Some(ModeCreate),
+        mode: crud_dialog_base.Creating,
         create_name: "",
         create_goal: "",
         create_resource_type: "task",
@@ -386,15 +354,15 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeEdit(rule) -> #(
+    crud_dialog_base.Editing(rule) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeEdit(rule)),
+        mode: crud_dialog_base.Editing(rule),
         edit_name: rule.name,
-        edit_goal: option.unwrap(rule.goal, ""),
-        edit_resource_type: rule.resource_type,
-        edit_task_type_id: rule.task_type_id,
-        edit_to_state: rule.to_state,
+        edit_goal: crud_dialog_base.optional_text_input_value(rule.goal),
+        edit_resource_type: rule_resource_type(rule),
+        edit_task_type_id: rule_task_type_id(rule),
+        edit_to_state: rule_to_state_string(rule),
         edit_active: rule.active,
         edit_in_flight: False,
         edit_error: option.None,
@@ -402,10 +370,10 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeDelete(rule) -> #(
+    crud_dialog_base.Deleting(rule) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeDelete(rule)),
+        mode: crud_dialog_base.Deleting(rule),
         delete_in_flight: False,
         delete_error: option.None,
       ),
@@ -466,32 +434,42 @@ fn default_state_for_resource_type(resource_type: String) -> String {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.create_in_flight {
-    True -> #(model, effect.none())
-    False ->
-      case model.workflow_id, model.create_name {
-        option.None, _ -> #(model, effect.none())
-        _, "" -> #(
-          Model(
-            ..model,
-            create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
+  crud_dialog_base.submit_if_idle(model, model.create_in_flight, submit_create)
+}
+
+fn submit_create(model: Model) -> #(Model, Effect(Msg)) {
+  case model.workflow_id, crud_dialog_base.required_text(model.create_name) {
+    option.None, _ -> #(model, effect.none())
+    _, Error(_) -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    option.Some(workflow_id), Ok(name) ->
+      case
+        parse_form_target(
+          model.create_resource_type,
+          model.create_task_type_id,
+          model.create_to_state,
         )
-        option.Some(workflow_id), name -> #(
+      {
+        Ok(target) -> #(
           Model(..model, create_in_flight: True, create_error: option.None),
           api_workflows.create_rule(
             workflow_id,
             name,
             model.create_goal,
-            model.create_resource_type,
-            model.create_task_type_id,
-            model.create_to_state,
+            target,
             model.create_active,
             CreateResult,
           ),
+        )
+        Error(message) -> #(
+          Model(..model, create_error: option.Some(message)),
+          effect.none(),
         )
       }
   }
@@ -501,7 +479,7 @@ fn handle_create_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
-      mode: option.None,
+      mode: crud_dialog_base.Closed,
       create_name: "",
       create_goal: "",
       create_resource_type: "task",
@@ -516,41 +494,60 @@ fn handle_create_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
 }
 
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_in_flight {
-    True -> #(model, effect.none())
-    False -> submit_edit_name(model)
-  }
+  crud_dialog_base.submit_if_idle(model, model.edit_in_flight, submit_edit_name)
 }
 
 fn submit_edit_name(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_name {
-    "" -> #(
+  case crud_dialog_base.required_text(model.edit_name) {
+    Error(_) -> #(
       Model(
         ..model,
         edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
       ),
       effect.none(),
     )
-    name -> submit_edit_with_name(model, name)
+    Ok(name) -> submit_edit_with_name(model, name)
   }
 }
 
 fn submit_edit_with_name(model: Model, name: String) -> #(Model, Effect(Msg)) {
   case model.mode {
-    option.Some(ModeEdit(rule)) -> #(
-      Model(..model, edit_in_flight: True, edit_error: option.None),
-      api_workflows.update_rule(
-        rule.id,
-        name,
-        model.edit_goal,
-        model.edit_resource_type,
-        model.edit_task_type_id,
-        model.edit_to_state,
-        model.edit_active,
-        EditResult,
-      ),
-    )
+    crud_dialog_base.Editing(rule) ->
+      case
+        parse_form_target(
+          model.edit_resource_type,
+          model.edit_task_type_id,
+          model.edit_to_state,
+        )
+      {
+        Ok(target) -> #(
+          Model(..model, edit_in_flight: True, edit_error: option.None),
+          api_workflows.update_rule(
+            rule.id,
+            name,
+            model.edit_goal,
+            target,
+            model.edit_active,
+            EditResult,
+          ),
+        )
+        Error(message) -> #(
+          Model(..model, edit_error: option.Some(message)),
+          effect.none(),
+        )
+      }
     _ -> #(model, effect.none())
+  }
+}
+
+fn parse_form_target(
+  resource_type: String,
+  task_type_id: Option(Int),
+  to_state: String,
+) -> Result(workflow.RuleTarget, String) {
+  case workflow.parse_rule_target(resource_type, task_type_id, to_state) {
+    Ok(target) -> Ok(target)
+    Error(_) -> Error("Invalid rule target")
   }
 }
 
@@ -558,24 +555,23 @@ fn handle_edit_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
   #(reset_edit_fields(model), emit_rule_updated(rule))
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.delete_in_flight {
-    True -> #(model, effect.none())
-    False ->
-      case model.mode {
-        option.Some(ModeDelete(rule)) -> #(
-          Model(..model, delete_in_flight: True, delete_error: option.None),
-          api_workflows.delete_rule(rule.id, DeleteResult),
-        )
-        _ -> #(model, effect.none())
-      }
+  crud_dialog_base.submit_if_idle(model, model.delete_in_flight, submit_delete)
+}
+
+fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    crud_dialog_base.Deleting(rule) -> #(
+      Model(..model, delete_in_flight: True, delete_error: option.None),
+      api_workflows.delete_rule(rule.id, DeleteResult),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
 fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
   let rule_id = case model.mode {
-    option.Some(ModeDelete(rule)) -> rule.id
+    crud_dialog_base.Deleting(rule) -> rule.id
     _ -> 0
   }
   #(reset_delete_fields(model), emit_rule_deleted(rule_id))
@@ -595,7 +591,7 @@ fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
 fn reset_edit_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     edit_name: "",
     edit_goal: "",
     edit_resource_type: "task",
@@ -610,7 +606,7 @@ fn reset_edit_fields(model: Model) -> Model {
 fn reset_delete_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     delete_in_flight: False,
     delete_error: option.None,
   )
@@ -650,11 +646,12 @@ fn emit_custom_event(_name: String, _detail: json.Json) -> Nil {
 }
 
 fn rule_to_json(rule: Rule) -> json.Json {
+  let task_type_id = rule_task_type_id(rule)
   let goal_field = case rule.goal {
     option.Some(g) -> [#("goal", json.string(g))]
     option.None -> [#("goal", json.null())]
   }
-  let task_type_field = case rule.task_type_id {
+  let task_type_field = case task_type_id {
     option.Some(id) -> [#("task_type_id", json.int(id))]
     option.None -> [#("task_type_id", json.null())]
   }
@@ -663,8 +660,8 @@ fn rule_to_json(rule: Rule) -> json.Json {
       #("id", json.int(rule.id)),
       #("workflow_id", json.int(rule.workflow_id)),
       #("name", json.string(rule.name)),
-      #("resource_type", json.string(rule.resource_type)),
-      #("to_state", json.string(rule.to_state)),
+      #("resource_type", json.string(rule_resource_type(rule))),
+      #("to_state", json.string(rule_to_state_string(rule))),
       #("active", json.bool(rule.active)),
       #("created_at", json.string(rule.created_at)),
     ]
@@ -689,293 +686,249 @@ fn append_fields(
 
 fn view(model: Model) -> Element(Msg) {
   case model.mode {
-    option.None -> element.none()
-    option.Some(ModeCreate) -> view_create_dialog(model)
-    option.Some(ModeEdit(_rule)) -> view_edit_dialog(model)
-    option.Some(ModeDelete(rule)) -> view_delete_dialog(model, rule)
+    crud_dialog_base.Closed -> element.none()
+    crud_dialog_base.Creating -> view_create_dialog(model)
+    crud_dialog_base.Editing(_rule) -> view_edit_dialog(model)
+    crud_dialog_base.Deleting(rule) -> view_delete_dialog(model, rule)
   }
 }
 
-// Justification: large function kept intact to preserve cohesive UI logic.
-fn view_create_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-lg"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.CreateRule),
-          text("\u{1F4DC}"),
-          CloseRequested,
-        ),
-        // Error
-        view_error(model.create_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { CreateSubmitted }),
-              attribute.id("rule-create-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.RuleName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_name),
-                  event.on_input(CreateNameChanged),
-                  attribute.required(True),
-                  attribute.attribute("aria-label", "Rule name"),
-                ]),
-              ),
-              // Goal field
-              form_field.view(
-                t(model.locale, i18n_text.RuleGoal),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_goal),
-                  event.on_input(CreateGoalChanged),
-                  attribute.attribute("aria-label", "Rule goal"),
-                ]),
-              ),
-              // Resource type selector
-              form_field.view(
-                t(model.locale, i18n_text.RuleResourceType),
-                view_resource_type_selector(
-                  model.locale,
-                  model.create_resource_type,
-                  CreateResourceTypeChanged,
-                ),
-              ),
-              // Task type selector (conditional - only when resource_type == "task")
-              view_conditional_task_type_field(
-                model,
-                model.create_resource_type,
-                model.create_task_type_id,
-                CreateTaskTypeIdChanged,
-              ),
-              // To state selector (dynamic options based on resource_type)
-              form_field.view(
-                t(model.locale, i18n_text.RuleToState),
-                view_state_selector(
-                  model.locale,
-                  model.create_resource_type,
-                  model.create_to_state,
-                  CreateToStateChanged,
-                ),
-              ),
-              // Active checkbox
-              form_field.view_checkbox(
-                t(model.locale, i18n_text.RuleActive),
-                input([
-                  attribute.type_("checkbox"),
-                  attribute.checked(model.create_active),
-                  event.on_check(CreateActiveChanged),
-                ]),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, CloseRequested),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("rule-create-form"),
-              attribute.disabled(model.create_in_flight),
-              attribute.class(case model.create_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.create_in_flight {
-                True -> t(model.locale, i18n_text.Creating)
-                False -> t(model.locale, i18n_text.Create)
-              }),
-            ],
-          ),
-        ]),
-      ],
+fn view_rule_fields(
+  model: Model,
+  name: String,
+  goal: String,
+  resource_type: String,
+  task_type_id: Option(Int),
+  to_state: String,
+  active: Bool,
+  on_name_changed: fn(String) -> Msg,
+  on_goal_changed: fn(String) -> Msg,
+  on_resource_type_changed: fn(String) -> Msg,
+  on_task_type_changed: fn(String) -> Msg,
+  on_to_state_changed: fn(String) -> Msg,
+  on_active_changed: fn(Bool) -> Msg,
+  name_aria_label: Option(String),
+  goal_aria_label: Option(String),
+) -> List(Element(Msg)) {
+  [
+    form_field.view(
+      t(model.locale, i18n_text.RuleName),
+      input(
+        [
+          attribute.type_("text"),
+          attribute.value(name),
+          event.on_input(on_name_changed),
+          attribute.required(True),
+        ]
+        |> maybe_add_aria_label(name_aria_label),
+      ),
     ),
-  ])
+    form_field.view(
+      t(model.locale, i18n_text.RuleGoal),
+      input(
+        [
+          attribute.type_("text"),
+          attribute.value(goal),
+          event.on_input(on_goal_changed),
+        ]
+        |> maybe_add_aria_label(goal_aria_label),
+      ),
+    ),
+    form_field.view(
+      t(model.locale, i18n_text.RuleResourceType),
+      view_resource_type_selector(
+        model.locale,
+        resource_type,
+        on_resource_type_changed,
+      ),
+    ),
+    view_conditional_task_type_field(
+      model,
+      resource_type,
+      task_type_id,
+      on_task_type_changed,
+    ),
+    form_field.view(
+      t(model.locale, i18n_text.RuleToState),
+      view_state_selector(
+        model.locale,
+        resource_type,
+        to_state,
+        on_to_state_changed,
+      ),
+    ),
+    form_field.view_checkbox(
+      t(model.locale, i18n_text.RuleActive),
+      input([
+        attribute.type_("checkbox"),
+        attribute.checked(active),
+        event.on_check(on_active_changed),
+      ]),
+    ),
+  ]
 }
 
-// Justification: large function kept intact to preserve cohesive UI logic.
-fn view_edit_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-lg"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.EditRule),
-          text("\u{270F}"),
-          EditCancelled,
-        ),
-        // Error
-        view_error(model.edit_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { EditSubmitted }),
-              attribute.id("rule-edit-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.RuleName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_name),
-                  event.on_input(EditNameChanged),
-                  attribute.required(True),
-                ]),
-              ),
-              // Goal field
-              form_field.view(
-                t(model.locale, i18n_text.RuleGoal),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_goal),
-                  event.on_input(EditGoalChanged),
-                ]),
-              ),
-              // Resource type selector
-              form_field.view(
-                t(model.locale, i18n_text.RuleResourceType),
-                view_resource_type_selector(
-                  model.locale,
-                  model.edit_resource_type,
-                  EditResourceTypeChanged,
-                ),
-              ),
-              // Task type selector (conditional)
-              view_conditional_task_type_field(
-                model,
-                model.edit_resource_type,
-                model.edit_task_type_id,
-                EditTaskTypeIdChanged,
-              ),
-              // To state selector (dynamic options)
-              form_field.view(
-                t(model.locale, i18n_text.RuleToState),
-                view_state_selector(
-                  model.locale,
-                  model.edit_resource_type,
-                  model.edit_to_state,
-                  EditToStateChanged,
-                ),
-              ),
-              // Active checkbox
-              form_field.view_checkbox(
-                t(model.locale, i18n_text.RuleActive),
-                input([
-                  attribute.type_("checkbox"),
-                  attribute.checked(model.edit_active),
-                  event.on_check(EditActiveChanged),
-                ]),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, EditCancelled),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("rule-edit-form"),
-              attribute.disabled(model.edit_in_flight),
-              attribute.class(case model.edit_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.edit_in_flight {
-                True -> t(model.locale, i18n_text.Working)
-                False -> t(model.locale, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ],
+fn maybe_add_aria_label(
+  attrs: List(attribute.Attribute(Msg)),
+  label: Option(String),
+) -> List(attribute.Attribute(Msg)) {
+  case label {
+    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
+    option.None -> attrs
+  }
+}
+
+fn view_create_dialog(model: Model) -> Element(Msg) {
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-lg",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.CreateRule),
+      text("\u{1F4DC}"),
+      CloseRequested,
     ),
-  ])
+    model.create_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { CreateSubmitted }),
+          attribute.id("rule-create-form"),
+        ],
+        view_rule_fields(
+          model,
+          model.create_name,
+          model.create_goal,
+          model.create_resource_type,
+          model.create_task_type_id,
+          model.create_to_state,
+          model.create_active,
+          CreateNameChanged,
+          CreateGoalChanged,
+          CreateResourceTypeChanged,
+          CreateTaskTypeIdChanged,
+          CreateToStateChanged,
+          CreateActiveChanged,
+          option.Some("Rule name"),
+          option.Some("Rule goal"),
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, CloseRequested),
+      crud_dialog_base.view_submit_button(
+        "rule-create-form",
+        model.create_in_flight,
+        t(model.locale, i18n_text.Create),
+        t(model.locale, i18n_text.Creating),
+      ),
+    ],
+  )
+}
+
+fn view_edit_dialog(model: Model) -> Element(Msg) {
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-lg",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.EditRule),
+      text("\u{270F}"),
+      EditCancelled,
+    ),
+    model.edit_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { EditSubmitted }),
+          attribute.id("rule-edit-form"),
+        ],
+        view_rule_fields(
+          model,
+          model.edit_name,
+          model.edit_goal,
+          model.edit_resource_type,
+          model.edit_task_type_id,
+          model.edit_to_state,
+          model.edit_active,
+          EditNameChanged,
+          EditGoalChanged,
+          EditResourceTypeChanged,
+          EditTaskTypeIdChanged,
+          EditToStateChanged,
+          EditActiveChanged,
+          option.None,
+          option.None,
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, EditCancelled),
+      crud_dialog_base.view_submit_button(
+        "rule-edit-form",
+        model.edit_in_flight,
+        t(model.locale, i18n_text.Save),
+        t(model.locale, i18n_text.Working),
+      ),
+    ],
+  )
 }
 
 fn view_delete_dialog(model: Model, rule: Rule) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-sm"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.DeleteRule),
-          text("\u{1F5D1}"),
-          DeleteCancelled,
-        ),
-        // Error
-        view_error(model.delete_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          p([], [
-            text(t(model.locale, i18n_text.RuleDeleteConfirm(rule.name))),
-          ]),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, DeleteCancelled),
-          button(
-            [
-              event.on_click(DeleteConfirmed),
-              attribute.disabled(model.delete_in_flight),
-              attribute.class("btn-danger"),
-            ],
-            [
-              text(case model.delete_in_flight {
-                True -> t(model.locale, i18n_text.Removing)
-                False -> t(model.locale, i18n_text.DeleteRule)
-              }),
-            ],
-          ),
-        ]),
-      ],
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-sm",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.DeleteRule),
+      text("\u{1F5D1}"),
+      DeleteCancelled,
     ),
-  ])
+    model.delete_error,
+    [
+      p([], [
+        text(t(model.locale, i18n_text.RuleDeleteConfirm(rule.name))),
+      ]),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
+      crud_dialog_base.view_danger_button(
+        DeleteConfirmed,
+        model.delete_in_flight,
+        t(model.locale, i18n_text.DeleteRule),
+        t(model.locale, i18n_text.Removing),
+      ),
+    ],
+  )
 }
 
-fn view_error(error: Option(String)) -> Element(Msg) {
-  case error {
-    option.Some(msg) ->
-      div([attribute.class("dialog-error")], [
-        span([], [text("\u{26A0}")]),
-        text(" " <> msg),
-      ])
-    option.None -> element.none()
-  }
+pub fn view_create_dialog_for_test(
+  locale: Locale,
+  task_types: List(TaskType),
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Creating,
+      task_types: task_types,
+    )
+  view_create_dialog(model)
 }
 
-fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button([attribute.type_("button"), event.on_click(on_click_msg)], [
-    text(t(locale, i18n_text.Cancel)),
-  ])
+pub fn view_edit_dialog_for_test(
+  locale: Locale,
+  rule: Rule,
+  task_types: List(TaskType),
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Editing(rule),
+      task_types: task_types,
+      edit_name: rule.name,
+      edit_goal: crud_dialog_base.optional_text_input_value(rule.goal),
+      edit_resource_type: rule_resource_type(rule),
+      edit_task_type_id: rule_task_type_id(rule),
+      edit_to_state: rule_to_state_string(rule),
+      edit_active: rule.active,
+    )
+  view_edit_dialog(model)
 }
 
 /// Resource type selector (task or card).

@@ -50,71 +50,117 @@ pub type TaskTemplate {
 // Helpers
 // =============================================================================
 
+fn text_update_value(value: Option(String)) -> String {
+  option_helpers.option_to_value(value, "__unset__")
+}
+
+fn type_id_update_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
+fn priority_update_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
 /// Story 4.9 AC20: Includes rules_count from SQL.
 fn from_list_project_row(
   row: sql.TaskTemplatesListForProjectRow,
-) -> TaskTemplate {
-  TaskTemplate(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    type_id: row.type_id,
-    type_name: row.type_name,
-    priority: row.priority,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    rules_count: row.rules_count,
+) -> Result(TaskTemplate, ServiceError) {
+  from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.type_id,
+    row.type_name,
+    row.priority,
+    row.created_by,
+    row.created_at,
+    row.rules_count,
   )
 }
 
-fn from_get_row(row: sql.TaskTemplatesGetRow) -> TaskTemplate {
-  TaskTemplate(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    type_id: row.type_id,
-    type_name: row.type_name,
-    priority: row.priority,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    rules_count: 0,
+fn from_get_row(
+  row: sql.TaskTemplatesGetRow,
+) -> Result(TaskTemplate, ServiceError) {
+  from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.type_id,
+    row.type_name,
+    row.priority,
+    row.created_by,
+    row.created_at,
+    0,
   )
 }
 
-fn from_create_row(row: sql.TaskTemplatesCreateRow) -> TaskTemplate {
-  TaskTemplate(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    type_id: row.type_id,
-    type_name: row.type_name,
-    priority: row.priority,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    rules_count: 0,
+fn from_create_row(
+  row: sql.TaskTemplatesCreateRow,
+) -> Result(TaskTemplate, ServiceError) {
+  from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.type_id,
+    row.type_name,
+    row.priority,
+    row.created_by,
+    row.created_at,
+    0,
   )
 }
 
-fn from_update_row(row: sql.TaskTemplatesUpdateRow) -> TaskTemplate {
-  TaskTemplate(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    type_id: row.type_id,
-    type_name: row.type_name,
-    priority: row.priority,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    rules_count: 0,
+fn from_update_row(
+  row: sql.TaskTemplatesUpdateRow,
+) -> Result(TaskTemplate, ServiceError) {
+  from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.type_id,
+    row.type_name,
+    row.priority,
+    row.created_by,
+    row.created_at,
+    0,
   )
+}
+
+fn from_fields(
+  id: Int,
+  org_id: Int,
+  project_id: Int,
+  name: String,
+  description: String,
+  type_id: Int,
+  type_name: String,
+  priority: Int,
+  created_by: Int,
+  created_at: String,
+  rules_count: Int,
+) -> Result(TaskTemplate, ServiceError) {
+  Ok(TaskTemplate(
+    id: id,
+    org_id: org_id,
+    project_id: project_id,
+    name: name,
+    description: option_helpers.string_to_option(description),
+    type_id: type_id,
+    type_name: type_name,
+    priority: priority,
+    created_by: created_by,
+    created_at: created_at,
+    rules_count: rules_count,
+  ))
 }
 
 // =============================================================================
@@ -128,12 +174,14 @@ fn from_update_row(row: sql.TaskTemplatesUpdateRow) -> TaskTemplate {
 pub fn list_project_templates(
   db: pog.Connection,
   project_id: Int,
-) -> Result(List(TaskTemplate), pog.QueryError) {
-  use returned <- result.try(sql.task_templates_list_for_project(db, project_id))
+) -> Result(List(TaskTemplate), ServiceError) {
+  use returned <- result.try(
+    sql.task_templates_list_for_project(db, project_id)
+    |> result.map_error(DbError),
+  )
 
   returned.rows
-  |> list.map(from_list_project_row)
-  |> Ok
+  |> list.try_map(from_list_project_row)
 }
 
 /// Fetches a template by id.
@@ -145,7 +193,7 @@ pub fn get_template(
   template_id: Int,
 ) -> Result(TaskTemplate, ServiceError) {
   case sql.task_templates_get(db, template_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_get_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_get_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(e) -> Error(DbError(e))
   }
@@ -177,7 +225,7 @@ pub fn create_template(
       created_by,
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_create_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_create_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(InvalidReference("type_id"))
     Error(e) -> Error(DbError(e))
   }
@@ -203,13 +251,13 @@ pub fn update_template(
       template_id,
       project_id,
       org_id,
-      option_helpers.option_to_value(name, "__unset__"),
-      option_helpers.option_to_value(description, "__unset__"),
-      option_helpers.option_to_value(type_id, 0),
-      option_helpers.option_to_value(priority, 0),
+      text_update_value(name),
+      text_update_value(description),
+      type_id_update_value(type_id),
+      priority_update_value(priority),
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_update_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_update_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(e) -> Error(DbError(e))
   }
@@ -231,7 +279,6 @@ pub fn delete_template(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Maps constraint violations into domain errors.
 ///
 /// Example:

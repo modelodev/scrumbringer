@@ -1,31 +1,29 @@
 import gleam/list
-import gleeunit/should
 
 import scrumbringer_client/theme
 
 pub fn serialize_default_test() {
-  theme.serialize(theme.Default)
-  |> should.equal("default")
+  let assert "default" = theme.serialize(theme.Default)
 }
 
 pub fn serialize_dark_test() {
-  theme.serialize(theme.Dark)
-  |> should.equal("dark")
+  let assert "dark" = theme.serialize(theme.Dark)
 }
 
-pub fn deserialize_default_test() {
-  theme.deserialize("default")
-  |> should.equal(theme.Default)
+pub fn parse_default_test() {
+  let assert Ok(theme.Default) = theme.parse("default")
 }
 
-pub fn deserialize_dark_test() {
-  theme.deserialize("dark")
-  |> should.equal(theme.Dark)
+pub fn parse_dark_test() {
+  let assert Ok(theme.Dark) = theme.parse("dark")
 }
 
-pub fn deserialize_invalid_falls_back_to_default_test() {
-  theme.deserialize("nope")
-  |> should.equal(theme.Default)
+pub fn parse_invalid_returns_error_test() {
+  let assert Error(theme.InvalidTheme("nope")) = theme.parse("nope")
+}
+
+pub fn decode_storage_invalid_preserves_value_test() {
+  let assert theme.ThemeInvalid("nope") = theme.decode_storage("nope")
 }
 
 pub fn tokens_default_complete_test() {
@@ -74,11 +72,9 @@ pub fn tokens_default_complete_test() {
 
   let tokens = theme.tokens(theme.Default)
 
-  list.length(tokens)
-  |> should.equal(39)
+  let assert 39 = list.length(tokens)
 
-  tokens
-  |> should.equal(expected)
+  let assert True = tokens == expected
 }
 
 pub fn tokens_dark_complete_test() {
@@ -127,9 +123,7 @@ pub fn tokens_dark_complete_test() {
 
   let tokens = theme.tokens(theme.Dark)
 
-  list.length(tokens)
-  |> should.equal(39)
+  let assert 39 = list.length(tokens)
 
-  tokens
-  |> should.equal(expected)
+  let assert True = tokens == expected
 }

@@ -1,133 +1,126 @@
-import gleeunit/should
-
+import gleam/option.{None, Some}
 import scrumbringer_client/pool_prefs
 
-pub fn deserialize_bool_defaults_when_empty_test() {
-  pool_prefs.deserialize_bool("", True)
-  |> should.equal(True)
-
-  pool_prefs.deserialize_bool("", False)
-  |> should.equal(False)
+pub fn decode_filters_visibility_rejects_empty_test() {
+  let assert None = pool_prefs.decode_filters_visibility("")
 }
 
-pub fn deserialize_bool_parses_true_false_test() {
-  pool_prefs.deserialize_bool("true", False)
-  |> should.equal(True)
-
-  pool_prefs.deserialize_bool("false", True)
-  |> should.equal(False)
+pub fn decode_filters_visibility_parses_true_false_test() {
+  let assert Some(pool_prefs.FiltersVisible) =
+    pool_prefs.decode_filters_visibility("true")
+  let assert Some(pool_prefs.FiltersHidden) =
+    pool_prefs.decode_filters_visibility("false")
 }
 
-pub fn view_mode_roundtrip_test() {
-  pool_prefs.deserialize_view_mode(pool_prefs.serialize_view_mode(
-    pool_prefs.Canvas,
-  ))
-  |> should.equal(pool_prefs.Canvas)
+pub fn view_mode_storage_roundtrip_test() {
+  let assert pool_prefs.ViewModeStored(pool_prefs.Canvas) =
+    pool_prefs.decode_view_mode_storage(pool_prefs.encode_view_mode_storage(
+      pool_prefs.Canvas,
+    ))
 
-  pool_prefs.deserialize_view_mode(pool_prefs.serialize_view_mode(
-    pool_prefs.List,
-  ))
-  |> should.equal(pool_prefs.List)
+  let assert pool_prefs.ViewModeStored(pool_prefs.List) =
+    pool_prefs.decode_view_mode_storage(pool_prefs.encode_view_mode_storage(
+      pool_prefs.List,
+    ))
+}
+
+pub fn decode_view_mode_storage_rejects_unknown_test() {
+  let assert pool_prefs.ViewModeInvalid("unknown") =
+    pool_prefs.decode_view_mode_storage("unknown")
 }
 
 pub fn shortcut_action_ignores_when_editing_or_modal_test() {
-  // f should be ignored when editing
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "f",
-    False,
-    False,
-    False,
-    True,
-    False,
-  ))
-  |> should.equal(pool_prefs.NoAction)
+  let assert pool_prefs.NoAction =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "f",
+      False,
+      False,
+      False,
+      True,
+      False,
+    ))
 
-  // n should be ignored when modal is open
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "n",
-    False,
-    False,
-    False,
-    False,
-    True,
-  ))
-  |> should.equal(pool_prefs.NoAction)
+  let assert pool_prefs.NoAction =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "n",
+      False,
+      False,
+      False,
+      False,
+      True,
+    ))
 }
 
 pub fn shortcut_action_maps_core_shortcuts_test() {
-  // f -> ToggleFilters (AC40)
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "f",
-    False,
-    False,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.ToggleFilters)
+  let assert pool_prefs.ToggleFilters =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "f",
+      False,
+      False,
+      False,
+      False,
+      False,
+    ))
 
-  // / -> FocusSearch (AC40)
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "/",
-    False,
-    False,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.FocusSearch)
+  let assert pool_prefs.FocusSearch =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "/",
+      False,
+      False,
+      False,
+      False,
+      False,
+    ))
 
-  // n -> OpenCreate (AC40)
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "n",
-    False,
-    False,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.OpenCreate)
+  let assert pool_prefs.OpenCreate =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "n",
+      False,
+      False,
+      False,
+      False,
+      False,
+    ))
 
-  // Escape -> CloseDialog (AC40)
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "Escape",
-    False,
-    False,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.CloseDialog)
+  let assert pool_prefs.CloseDialog =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "Escape",
+      False,
+      False,
+      False,
+      False,
+      False,
+    ))
 }
 
 pub fn shortcut_action_ignores_keys_with_modifiers_test() {
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "n",
-    True,
-    False,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.NoAction)
+  let assert pool_prefs.NoAction =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "n",
+      True,
+      False,
+      False,
+      False,
+      False,
+    ))
 
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "f",
-    False,
-    True,
-    False,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.NoAction)
+  let assert pool_prefs.NoAction =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "f",
+      False,
+      True,
+      False,
+      False,
+      False,
+    ))
 
-  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "/",
-    False,
-    False,
-    True,
-    False,
-    False,
-  ))
-  |> should.equal(pool_prefs.NoAction)
+  let assert pool_prefs.NoAction =
+    pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+      "/",
+      False,
+      False,
+      True,
+      False,
+      False,
+    ))
 }

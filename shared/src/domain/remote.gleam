@@ -92,6 +92,16 @@ pub fn is_failed(remote: Remote(a)) -> Bool {
   }
 }
 
+/// Check if a fetch should be started for this state.
+pub fn should_fetch(remote: Remote(a)) -> Bool {
+  case remote {
+    NotAsked -> True
+    Failed(_) -> True
+    Loading -> False
+    Loaded(_) -> False
+  }
+}
+
 /// Convert to Option, discarding error info.
 pub fn to_option(remote: Remote(a)) -> Result(a, Nil) {
   case remote {

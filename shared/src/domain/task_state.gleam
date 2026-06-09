@@ -18,6 +18,7 @@ pub type TaskStateError {
   CompletedMissingAt
   CompletedWithClaim
   AvailableWithClaim
+  UnknownStatus(String)
 }
 
 pub fn to_status(state: TaskState) -> status.TaskStatus {
@@ -86,14 +87,13 @@ pub fn from_db(
       }
 
     "completed" ->
-      case completed_at {
-        Some(at) -> Ok(Completed(completed_at: at))
-        None -> Error(CompletedMissingAt)
+      case claimed_by, completed_at {
+        Some(_), _ -> Error(CompletedWithClaim)
+        None, Some(at) -> Ok(Completed(completed_at: at))
+        None, None -> Error(CompletedMissingAt)
       }
 
-    _ ->
-      // Defensive fallback to available on unknown statuses.
-      Ok(Available)
+    other -> Error(UnknownStatus(other))
   }
 }
 

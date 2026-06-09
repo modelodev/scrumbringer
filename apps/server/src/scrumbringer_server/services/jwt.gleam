@@ -33,6 +33,10 @@ pub type JwtError {
   Expired
 }
 
+type RawClaims {
+  RawClaims(user_id: Int, org_id: Int, role_string: String, iat: Int, exp: Int)
+}
+
 /// Signs claims into a JWT string using HS256.
 pub fn sign(claims: Claims, secret: BitArray) -> String {
   let header =
@@ -69,7 +73,6 @@ pub fn sign(claims: Claims, secret: BitArray) -> String {
   signing_input <> "." <> signature_b64
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Verifies a JWT and returns its claims if valid.
 pub fn verify(token: String, secret: BitArray) -> Result(Claims, JwtError) {
   case string.split(token, ".") {
@@ -105,38 +108,36 @@ fn decode_claims(payload_b64: String) -> Result(Claims, JwtError) {
     |> result.replace_error(InvalidJson),
   )
 
-  let decoder = {
-    use user_id <- decode.field("sub", decode.int)
-    use org_id <- decode.field("org_id", decode.int)
-    use role_string <- decode.field("org_role", decode.string)
-    use iat <- decode.field("iat", decode.int)
-    use exp <- decode.field("exp", decode.int)
-    decode.success(#(user_id, org_id, role_string, iat, exp))
-  }
-
-  use fields <- result.try(
-    decode.run(dynamic, decoder)
+  use raw <- result.try(
+    decode.run(dynamic, raw_claims_decoder())
     |> result.replace_error(MissingClaim),
   )
 
-  let #(user_id, org_id, role_string, iat, exp) = fields
-
   use role <- result.try(
-    org_role.parse(role_string)
+    org_role.parse(raw.role_string)
     |> result.replace_error(UnsupportedRole),
   )
 
-  case exp <= time.now_unix_seconds() {
+  case raw.exp <= time.now_unix_seconds() {
     True -> Error(Expired)
     False ->
       Ok(Claims(
-        user_id: user_id,
-        org_id: org_id,
+        user_id: raw.user_id,
+        org_id: raw.org_id,
         org_role: role,
-        iat: iat,
-        exp: exp,
+        iat: raw.iat,
+        exp: raw.exp,
       ))
   }
+}
+
+fn raw_claims_decoder() -> decode.Decoder(RawClaims) {
+  use user_id <- decode.field("sub", decode.int)
+  use org_id <- decode.field("org_id", decode.int)
+  use role_string <- decode.field("org_role", decode.string)
+  use iat <- decode.field("iat", decode.int)
+  use exp <- decode.field("exp", decode.int)
+  decode.success(RawClaims(user_id:, org_id:, role_string:, iat:, exp:))
 }
 
 /// Creates new claims with 24-hour expiration.

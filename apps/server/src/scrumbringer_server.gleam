@@ -94,7 +94,6 @@ fn start_db_pool(database_url: String) -> Result(pog.Connection, StartupError) {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn wait_for_db(
   db: pog.Connection,
   attempts: Int,

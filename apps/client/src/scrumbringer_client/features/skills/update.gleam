@@ -13,34 +13,90 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - API request construction (see `api/tasks.gleam`)
+//// - API request construction (see `api/tasks/capabilities.gleam`)
 //// - View rendering (see `features/skills/view.gleam`)
 ////
 //// ## Relations
 ////
-//// - **client_state.gleam**: Provides Model, Msg types
-//// - **client_update.gleam**: Delegates skills messages here
-//// - **api/tasks.gleam**: Provides capability API functions
+//// - **features/pool/update.gleam**: Applies local transitions to the root model
+//// - **api/tasks/capabilities.gleam**: Provides capability API functions
 
 import gleam/dict
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
-import domain/api_error.{type ApiError}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/capability.{type Capability}
 import domain/remote.{Failed, Loaded}
-import scrumbringer_client/api/tasks as api_tasks
-import scrumbringer_client/client_state.{
-  type Model, type Msg, PoolMsg, update_member,
-}
-import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/api/tasks/capabilities as capabilities_api
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/auth as helpers_auth
 import scrumbringer_client/helpers/dicts as helpers_dicts
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/toast as helpers_toast
-import scrumbringer_client/i18n/text as i18n_text
+
+pub type Context(parent_msg) {
+  Context(
+    selected_project_id: opt.Option(Int),
+    user_id: opt.Option(Int),
+    on_my_capability_ids_fetched: fn(ApiResult(List(Int))) -> parent_msg,
+    on_my_capability_ids_saved: fn(ApiResult(List(Int))) -> parent_msg,
+    skills_saved: String,
+    on_success_toast: fn(String) -> Effect(parent_msg),
+    on_error_toast: fn(String) -> Effect(parent_msg),
+  )
+}
+
+pub type AuthPolicy {
+  NoAuthCheck
+  CheckAuth(ApiError)
+}
+
+pub type Update(parent_msg) {
+  Update(member_skills.Model, Effect(parent_msg), AuthPolicy)
+}
+
+pub fn try_update(
+  model: member_skills.Model,
+  inner: pool_messages.Msg,
+  context: Context(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  case inner {
+    pool_messages.MemberMyCapabilityIdsFetched(Ok(ids)) -> {
+      let #(next, fx) = handle_my_capability_ids_fetched_ok(model, ids)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberMyCapabilityIdsFetched(Error(err)) -> {
+      let #(next, fx) = handle_my_capability_ids_fetched_error(model, err)
+      opt.Some(Update(next, fx, CheckAuth(err)))
+    }
+    pool_messages.MemberProjectCapabilitiesFetched(Ok(capabilities)) -> {
+      let #(next, fx) =
+        handle_project_capabilities_fetched_ok(model, capabilities)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberProjectCapabilitiesFetched(Error(err)) -> {
+      let #(next, fx) = handle_project_capabilities_fetched_error(model, err)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberToggleCapability(id) -> {
+      let #(next, fx) = handle_toggle_capability(model, id)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberSaveCapabilitiesClicked -> {
+      let #(next, fx) = handle_save_capabilities_clicked(model, context)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberMyCapabilityIdsSaved(Ok(ids)) -> {
+      let #(next, fx) = handle_save_capabilities_ok(model, ids, context)
+      opt.Some(Update(next, fx, NoAuthCheck))
+    }
+    pool_messages.MemberMyCapabilityIdsSaved(Error(err)) -> {
+      let #(next, fx) = handle_save_capabilities_error(model, err, context)
+      opt.Some(Update(next, fx, CheckAuth(err)))
+    }
+    _ -> opt.None
+  }
+}
 
 // =============================================================================
 // Fetch Handlers
@@ -48,34 +104,50 @@ import scrumbringer_client/i18n/text as i18n_text
 
 /// Handle successful my capability IDs fetch.
 pub fn handle_my_capability_ids_fetched_ok(
-  model: Model,
+  model: member_skills.Model,
   ids: List(Int),
-) -> #(Model, Effect(Msg)) {
+) -> #(member_skills.Model, Effect(parent_msg)) {
   #(
-    update_member_skills(model, fn(skills) {
-      member_skills.Model(
-        ..skills,
-        member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: helpers_dicts.ids_to_bool_dict(ids),
-      )
-    }),
+    member_skills.Model(
+      ..model,
+      member_my_capability_ids: Loaded(ids),
+      member_my_capability_ids_edit: helpers_dicts.ids_to_bool_dict(ids),
+    ),
     effect.none(),
   )
 }
 
 /// Handle failed my capability IDs fetch.
 pub fn handle_my_capability_ids_fetched_error(
-  model: Model,
+  model: member_skills.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_member_skills(model, fn(skills) {
-        member_skills.Model(..skills, member_my_capability_ids: Failed(err))
-      }),
-      effect.none(),
-    )
-  })
+) -> #(member_skills.Model, Effect(parent_msg)) {
+  #(
+    member_skills.Model(..model, member_my_capability_ids: Failed(err)),
+    effect.none(),
+  )
+}
+
+/// Handle successful project capabilities fetch.
+pub fn handle_project_capabilities_fetched_ok(
+  model: member_skills.Model,
+  capabilities: List(Capability),
+) -> #(member_skills.Model, Effect(parent_msg)) {
+  #(
+    member_skills.Model(..model, member_capabilities: Loaded(capabilities)),
+    effect.none(),
+  )
+}
+
+/// Handle failed project capabilities fetch.
+pub fn handle_project_capabilities_fetched_error(
+  model: member_skills.Model,
+  err: ApiError,
+) -> #(member_skills.Model, Effect(parent_msg)) {
+  #(
+    member_skills.Model(..model, member_capabilities: Failed(err)),
+    effect.none(),
+  )
 }
 
 // =============================================================================
@@ -83,25 +155,24 @@ pub fn handle_my_capability_ids_fetched_error(
 // =============================================================================
 
 /// Toggle a capability checkbox in the edit state.
-pub fn handle_toggle_capability(model: Model, id: Int) -> #(Model, Effect(Msg)) {
-  let next = case
-    dict.get(model.member.skills.member_my_capability_ids_edit, id)
-  {
+pub fn handle_toggle_capability(
+  model: member_skills.Model,
+  id: Int,
+) -> #(member_skills.Model, Effect(parent_msg)) {
+  let next = case dict.get(model.member_my_capability_ids_edit, id) {
     Ok(v) -> !v
     Error(_) -> True
   }
 
   #(
-    update_member_skills(model, fn(skills) {
-      member_skills.Model(
-        ..skills,
-        member_my_capability_ids_edit: dict.insert(
-          model.member.skills.member_my_capability_ids_edit,
-          id,
-          next,
-        ),
-      )
-    }),
+    member_skills.Model(
+      ..model,
+      member_my_capability_ids_edit: dict.insert(
+        model.member_my_capability_ids_edit,
+        id,
+        next,
+      ),
+    ),
     effect.none(),
   )
 }
@@ -111,37 +182,34 @@ pub fn handle_toggle_capability(model: Model, id: Int) -> #(Model, Effect(Msg)) 
 // =============================================================================
 
 /// Handle save capabilities button click.
-pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_save_capabilities_clicked(
+  model: member_skills.Model,
+  context: Context(parent_msg),
+) -> #(member_skills.Model, Effect(parent_msg)) {
   case
-    model.member.skills.member_my_capabilities_in_flight,
-    model.core.selected_project_id,
-    model.core.user
+    model.member_my_capabilities_in_flight,
+    context.selected_project_id,
+    context.user_id
   {
     True, _, _ -> #(model, effect.none())
     _, opt.None, _ -> #(model, effect.none())
     _, _, opt.None -> #(model, effect.none())
-    False, opt.Some(project_id), opt.Some(user) -> {
+    False, opt.Some(project_id), opt.Some(user_id) -> {
       let ids =
-        helpers_dicts.bool_dict_to_ids(
-          model.member.skills.member_my_capability_ids_edit,
-        )
+        helpers_dicts.bool_dict_to_ids(model.member_my_capability_ids_edit)
       let model =
-        update_member_skills(model, fn(skills) {
-          member_skills.Model(
-            ..skills,
-            member_my_capabilities_in_flight: True,
-            member_my_capabilities_error: opt.None,
-          )
-        })
+        member_skills.Model(
+          ..model,
+          member_my_capabilities_in_flight: True,
+          member_my_capabilities_error: opt.None,
+        )
       #(
         model,
-        api_tasks.put_member_capability_ids(
+        capabilities_api.put_member_capability_ids(
           project_id,
-          user.id,
+          user_id,
           ids,
-          fn(result) -> Msg {
-            PoolMsg(pool_messages.MemberMyCapabilityIdsSaved(result))
-          },
+          context.on_my_capability_ids_saved,
         ),
       )
     }
@@ -150,62 +218,49 @@ pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle successful save capabilities response.
 pub fn handle_save_capabilities_ok(
-  model: Model,
+  model: member_skills.Model,
   ids: List(Int),
-) -> #(Model, Effect(Msg)) {
+  context: Context(parent_msg),
+) -> #(member_skills.Model, Effect(parent_msg)) {
   let model =
-    update_member_skills(model, fn(skills) {
-      member_skills.Model(
-        ..skills,
-        member_my_capabilities_in_flight: False,
-        member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: helpers_dicts.ids_to_bool_dict(ids),
-      )
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.SkillsSaved,
-    ))
-  #(model, toast_fx)
+    member_skills.Model(
+      ..model,
+      member_my_capabilities_in_flight: False,
+      member_my_capability_ids: Loaded(ids),
+      member_my_capability_ids_edit: helpers_dicts.ids_to_bool_dict(ids),
+    )
+  #(model, context.on_success_toast(context.skills_saved))
 }
 
 /// Handle failed save capabilities response.
 pub fn handle_save_capabilities_error(
-  model: Model,
+  model: member_skills.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    let refetch_effect = case model.core.selected_project_id, model.core.user {
-      opt.Some(project_id), opt.Some(user) ->
-        api_tasks.get_member_capability_ids(
-          project_id,
-          user.id,
-          fn(result) -> Msg {
-            PoolMsg(pool_messages.MemberMyCapabilityIdsFetched(result))
-          },
-        )
-      _, _ -> effect.none()
-    }
-    let model =
-      update_member_skills(model, fn(skills) {
-        member_skills.Model(
-          ..skills,
-          member_my_capabilities_in_flight: False,
-          member_my_capabilities_error: opt.Some(err.message),
-        )
-      })
-    let toast_fx = helpers_toast.toast_error(err.message)
-    #(model, effect.batch([refetch_effect, toast_fx]))
-  })
+  context: Context(parent_msg),
+) -> #(member_skills.Model, Effect(parent_msg)) {
+  #(
+    member_skills.Model(
+      ..model,
+      member_my_capabilities_in_flight: False,
+      member_my_capabilities_error: opt.Some(err.message),
+    ),
+    effect.batch([
+      refetch_member_capability_ids_effect(context),
+      context.on_error_toast(err.message),
+    ]),
+  )
 }
 
-fn update_member_skills(
-  model: Model,
-  f: fn(member_skills.Model) -> member_skills.Model,
-) -> Model {
-  update_member(model, fn(member) {
-    let skills = member.skills
-    MemberModel(..member, skills: f(skills))
-  })
+fn refetch_member_capability_ids_effect(
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  case context.selected_project_id, context.user_id {
+    opt.Some(project_id), opt.Some(user_id) ->
+      capabilities_api.get_member_capability_ids(
+        project_id,
+        user_id,
+        context.on_my_capability_ids_fetched,
+      )
+    _, _ -> effect.none()
+  }
 }

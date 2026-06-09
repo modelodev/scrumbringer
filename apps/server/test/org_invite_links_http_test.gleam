@@ -4,11 +4,10 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -22,7 +21,7 @@ pub fn non_admin_forbidden_for_invite_links_test() {
   create_member_user(handler, db)
 
   let login_res = login_as(handler, "member@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -35,14 +34,14 @@ pub fn non_admin_forbidden_for_invite_links_test() {
     |> simulate.json_body(json.object([#("email", json.string("a@b.com"))]))
 
   let create_res = handler(create_req)
-  create_res.status |> should.equal(403)
+  expect.expect_status(create_res, 403)
 
   let list_req =
     simulate.request(http.Get, "/api/v1/org/invite-links")
     |> request.set_cookie("sb_session", session)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(403)
+  expect.expect_status(list_res, 403)
 }
 
 pub fn missing_csrf_is_rejected_for_create_and_regenerate_test() {
@@ -50,7 +49,7 @@ pub fn missing_csrf_is_rejected_for_create_and_regenerate_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -62,7 +61,7 @@ pub fn missing_csrf_is_rejected_for_create_and_regenerate_test() {
     |> simulate.json_body(json.object([#("email", json.string("a@b.com"))]))
 
   let create_res = handler(create_req)
-  create_res.status |> should.equal(403)
+  expect.expect_status(create_res, 403)
 
   let regen_req =
     simulate.request(http.Post, "/api/v1/org/invite-links/regenerate")
@@ -71,7 +70,7 @@ pub fn missing_csrf_is_rejected_for_create_and_regenerate_test() {
     |> simulate.json_body(json.object([#("email", json.string("a@b.com"))]))
 
   let regen_res = handler(regen_req)
-  regen_res.status |> should.equal(403)
+  expect.expect_status(regen_res, 403)
 }
 
 pub fn create_invalidates_previous_active_token_for_email_test() {
@@ -80,7 +79,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -95,7 +94,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
     |> simulate.json_body(json.object([#("email", json.string(email))]))
 
   let res1 = handler(req1)
-  res1.status |> should.equal(200)
+  expect.expect_status(res1, 200)
 
   let token1 =
     single_text(
@@ -112,7 +111,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
     |> simulate.json_body(json.object([#("email", json.string(email))]))
 
   let res2 = handler(req2)
-  res2.status |> should.equal(200)
+  expect.expect_status(res2, 200)
 
   let token2 =
     single_text(
@@ -122,7 +121,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
     )
 
   let same = token1 == token2
-  same |> should.be_false
+  same |> expect.is_false
 
   let invalidated =
     single_int(
@@ -131,7 +130,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
       [pog.text(token1)],
     )
 
-  invalidated |> should.equal(1)
+  invalidated |> expect.equal(1)
 }
 
 pub fn list_sorted_by_email_asc_test() {
@@ -140,7 +139,7 @@ pub fn list_sorted_by_email_asc_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -154,15 +153,15 @@ pub fn list_sorted_by_email_asc_test() {
     |> handler
   }
 
-  create("b@example.com").status |> should.equal(200)
-  create("a@example.com").status |> should.equal(200)
+  expect.expect_status(create("b@example.com"), 200)
+  expect.expect_status(create("a@example.com"), 200)
 
   let list_req =
     simulate.request(http.Get, "/api/v1/org/invite-links")
     |> request.set_cookie("sb_session", session)
 
   let res = handler(list_req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
 
@@ -179,7 +178,7 @@ pub fn list_sorted_by_email_asc_test() {
 
   let assert Ok(emails) = parsed
 
-  emails |> should.equal(["a@example.com", "b@example.com"])
+  emails |> expect.equal(["a@example.com", "b@example.com"])
 }
 
 pub fn no_time_expiry_links_stay_active_test() {
@@ -188,7 +187,7 @@ pub fn no_time_expiry_links_stay_active_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -203,7 +202,7 @@ pub fn no_time_expiry_links_stay_active_test() {
     |> simulate.json_body(json.object([#("email", json.string(email))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let token =
     single_text(
@@ -225,10 +224,10 @@ pub fn no_time_expiry_links_stay_active_test() {
     |> request.set_cookie("sb_session", session)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
 
   string.contains(simulate.read_body(list_res), "\"state\":\"active\"")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
@@ -237,7 +236,7 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -251,7 +250,7 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
     |> request.set_header("X-CSRF", csrf)
     |> simulate.json_body(json.object([#("email", json.string(email))]))
 
-  handler(create_req).status |> should.equal(200)
+  expect.expect_status(handler(create_req), 200)
 
   let token1 =
     single_text(
@@ -267,7 +266,7 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
     |> request.set_header("X-CSRF", csrf)
     |> simulate.json_body(json.object([#("email", json.string(email))]))
 
-  handler(regen_req).status |> should.equal(200)
+  expect.expect_status(handler(regen_req), 200)
 
   let token2 =
     single_text(
@@ -277,14 +276,14 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
     )
 
   let same = token1 == token2
-  same |> should.be_false
+  same |> expect.is_false
 
   single_int(
     db,
     "select (invalidated_at is not null)::int from org_invite_links where token = $1",
     [pog.text(token1)],
   )
-  |> should.equal(1)
+  |> expect.equal(1)
 }
 
 pub fn invalid_email_returns_422_test() {
@@ -292,7 +291,7 @@ pub fn invalid_email_returns_422_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -307,8 +306,8 @@ pub fn invalid_email_returns_422_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(422)
-  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
+  expect.expect_status(res, 422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> expect.is_true
 }
 
 pub fn list_includes_invalidated_links_test() {
@@ -316,7 +315,7 @@ pub fn list_includes_invalidated_links_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -332,15 +331,15 @@ pub fn list_includes_invalidated_links_test() {
     |> handler
   }
 
-  create().status |> should.equal(200)
-  create().status |> should.equal(200)
+  expect.expect_status(create(), 200)
+  expect.expect_status(create(), 200)
 
   let list_req =
     simulate.request(http.Get, "/api/v1/org/invite-links")
     |> request.set_cookie("sb_session", session)
 
   let res = handler(list_req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
 
@@ -362,7 +361,7 @@ pub fn list_includes_invalidated_links_test() {
     |> list.length
 
   let has_invalidated = invalidated_count > 0
-  has_invalidated |> should.be_true
+  has_invalidated |> expect.is_true
 }
 
 fn invite_email_decoder() -> decode.Decoder(String) {
@@ -394,7 +393,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -426,7 +425,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -463,11 +462,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -475,7 +473,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

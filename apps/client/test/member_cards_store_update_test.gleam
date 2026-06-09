@@ -2,13 +2,20 @@ import domain/api_error.{type ApiError, ApiError}
 import domain/card.{type Card, Card, Pendiente}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
-import gleeunit/should
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/state/normalized_store
+
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
+
+fn assert_not_equal(actual: a, unexpected: a) {
+  let assert False = actual == unexpected
+}
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -72,9 +79,9 @@ pub fn member_project_cards_ok_updates_store_and_pending_test() {
     )
 
   normalized_store.get_by_project(next.member.pool.member_cards_store, 10)
-  |> should.equal([card_a])
+  |> assert_equal([card_a])
   normalized_store.pending(next.member.pool.member_cards_store)
-  |> should.equal(0)
+  |> assert_equal(0)
 }
 
 pub fn member_project_cards_error_preserves_store_test() {
@@ -96,8 +103,8 @@ pub fn member_project_cards_error_preserves_store_test() {
     )
 
   normalized_store.get_by_project(next.member.pool.member_cards_store, 10)
-  |> should.equal([card_a])
-  next.member.pool.member_cards |> should.equal(Failed(api_error()))
+  |> assert_equal([card_a])
+  next.member.pool.member_cards |> assert_equal(Failed(api_error()))
 }
 
 pub fn pending_never_below_zero_test() {
@@ -115,7 +122,7 @@ pub fn pending_never_below_zero_test() {
     )
 
   normalized_store.pending(next.member.pool.member_cards_store)
-  |> should.equal(0)
+  |> assert_equal(0)
 }
 
 pub fn late_project_response_keeps_other_project_index_test() {
@@ -144,7 +151,7 @@ pub fn late_project_response_keeps_other_project_index_test() {
     )
 
   normalized_store.get_by_project(next_a.member.pool.member_cards_store, 20)
-  |> should.equal([card_b])
+  |> assert_equal([card_b])
 }
 
 pub fn partial_error_keeps_global_loaded_test() {
@@ -174,7 +181,7 @@ pub fn partial_error_keeps_global_loaded_test() {
       )),
     )
 
-  next.member.pool.member_cards |> should.equal(Loaded([card_a]))
+  next.member.pool.member_cards |> assert_equal(Loaded([card_a]))
 }
 
 pub fn pending_counts_across_multi_project_refresh_test() {
@@ -192,7 +199,7 @@ pub fn pending_counts_across_multi_project_refresh_test() {
     )
 
   normalized_store.pending(next_a.member.pool.member_cards_store)
-  |> should.equal(1)
+  |> assert_equal(1)
 
   let #(next_b, _fx_b) =
     client_update.update(
@@ -204,6 +211,6 @@ pub fn pending_counts_across_multi_project_refresh_test() {
     )
 
   normalized_store.pending(next_b.member.pool.member_cards_store)
-  |> should.equal(0)
-  next_b.member.pool.member_cards |> should.not_equal(Loading)
+  |> assert_equal(0)
+  next_b.member.pool.member_cards |> assert_not_equal(Loading)
 }

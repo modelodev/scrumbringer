@@ -4,11 +4,10 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -32,7 +31,7 @@ fn create_user_via_invite(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn promote_user_to_org_admin(db: pog.Connection, email: String) {
@@ -53,7 +52,7 @@ pub fn non_org_admin_cannot_create_project_test() {
 
   let member_login_res =
     login_as(handler, "member@example.com", "passwordpassword")
-  member_login_res.status |> should.equal(200)
+  expect.expect_status(member_login_res, 200)
 
   let session = find_cookie_value(member_login_res.headers, "sb_session")
   let csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
@@ -66,8 +65,8 @@ pub fn non_org_admin_cannot_create_project_test() {
     |> simulate.json_body(json.object([#("name", json.string("Nope"))]))
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
@@ -124,7 +123,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
 
@@ -149,7 +148,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   let assert Ok(projects) = decode.run(dynamic, response_decoder)
 
   projects
-  |> should.equal([#("Alpha", "manager"), #("Zulu", "member")])
+  |> expect.equal([#("Alpha", "manager"), #("Zulu", "member")])
 }
 
 pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
@@ -197,7 +196,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(403)
+  expect.expect_status(list_res, 403)
 
   let add_req =
     simulate.request(
@@ -212,7 +211,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
     )
 
   let add_res = handler(add_req)
-  add_res.status |> should.equal(403)
+  expect.expect_status(add_res, 403)
 
   let del_req =
     simulate.request(
@@ -227,7 +226,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
     |> request.set_header("X-CSRF", member_csrf)
 
   let del_res = handler(del_req)
-  del_res.status |> should.equal(403)
+  expect.expect_status(del_res, 403)
 }
 
 pub fn org_admin_non_project_manager_can_list_members_test() {
@@ -262,7 +261,7 @@ pub fn org_admin_non_project_manager_can_list_members_test() {
     |> request.set_cookie("sb_csrf", org_admin_csrf)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
 }
 
 pub fn org_admin_non_project_manager_can_add_member_test() {
@@ -312,7 +311,7 @@ pub fn org_admin_non_project_manager_can_add_member_test() {
     )
 
   let add_res = handler(add_req)
-  add_res.status |> should.equal(200)
+  expect.expect_status(add_res, 200)
 
   let count =
     single_int(
@@ -320,7 +319,7 @@ pub fn org_admin_non_project_manager_can_add_member_test() {
       "select count(*) from project_members where project_id = $1 and user_id = $2",
       [pog.int(project_id), pog.int(candidate_id)],
     )
-  count |> should.equal(1)
+  count |> expect.equal(1)
 }
 
 pub fn org_admin_non_project_manager_can_remove_member_test() {
@@ -376,7 +375,7 @@ pub fn org_admin_non_project_manager_can_remove_member_test() {
     |> request.set_header("X-CSRF", org_admin_csrf)
 
   let del_res = handler(del_req)
-  del_res.status |> should.equal(204)
+  expect.expect_status(del_res, 204)
 
   let count =
     single_int(
@@ -384,7 +383,7 @@ pub fn org_admin_non_project_manager_can_remove_member_test() {
       "select count(*) from project_members where project_id = $1 and user_id = $2",
       [pog.int(project_id), pog.int(candidate_id)],
     )
-  count |> should.equal(0)
+  count |> expect.equal(0)
 }
 
 pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
@@ -441,9 +440,9 @@ pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
     |> request.set_header("X-CSRF", org_admin_csrf)
 
   let release_res = handler(release_req)
-  release_res.status |> should.equal(200)
+  expect.expect_status(release_res, 200)
   string.contains(simulate.read_body(release_res), "released_count")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn project_manager_can_still_add_member_test() {
@@ -494,7 +493,7 @@ pub fn project_manager_can_still_add_member_test() {
     )
 
   let add_res = handler(add_req)
-  add_res.status |> should.equal(200)
+  expect.expect_status(add_res, 200)
 }
 
 pub fn adding_member_from_different_org_is_rejected_test() {
@@ -529,7 +528,7 @@ pub fn adding_member_from_different_org_is_rejected_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
 
   let count =
     single_int(
@@ -537,7 +536,7 @@ pub fn adding_member_from_different_org_is_rejected_test() {
       "select count(*) from project_members where project_id = $1 and user_id = 200",
       [pog.int(project_id)],
     )
-  count |> should.equal(0)
+  count |> expect.equal(0)
 }
 
 pub fn cannot_remove_last_project_manager_test() {
@@ -564,7 +563,7 @@ pub fn cannot_remove_last_project_manager_test() {
     |> request.set_header("X-CSRF", admin_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
 
   let admin_count =
     single_int(
@@ -572,7 +571,7 @@ pub fn cannot_remove_last_project_manager_test() {
       "select count(*) from project_members where project_id = $1 and role = 'manager'",
       [pog.int(project_id)],
     )
-  admin_count |> should.equal(1)
+  admin_count |> expect.equal(1)
 }
 
 // =============================================================================
@@ -625,11 +624,11 @@ pub fn org_admin_can_change_member_to_manager_test() {
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"manager\"") |> should.be_true
-  string.contains(body, "\"previous_role\":\"member\"") |> should.be_true
+  string.contains(body, "\"role\":\"manager\"") |> expect.is_true
+  string.contains(body, "\"previous_role\":\"member\"") |> expect.is_true
 
   // Verify in database
   let role =
@@ -638,7 +637,7 @@ pub fn org_admin_can_change_member_to_manager_test() {
       "select role from project_members where project_id = $1 and user_id = $2",
       [pog.int(project_id), pog.int(member_id)],
     )
-  role |> should.equal("manager")
+  role |> expect.equal("manager")
 }
 
 pub fn org_admin_can_change_manager_to_member_test() {
@@ -688,11 +687,11 @@ pub fn org_admin_can_change_manager_to_member_test() {
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"member\"") |> should.be_true
-  string.contains(body, "\"previous_role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"role\":\"member\"") |> expect.is_true
+  string.contains(body, "\"previous_role\":\"manager\"") |> expect.is_true
 }
 
 pub fn cannot_demote_last_project_manager_test() {
@@ -721,11 +720,11 @@ pub fn cannot_demote_last_project_manager_test() {
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
 
   let body = simulate.read_body(res)
-  string.contains(body, "VALIDATION_ERROR") |> should.be_true
-  string.contains(body, "last") |> should.be_true
+  string.contains(body, "VALIDATION_ERROR") |> expect.is_true
+  string.contains(body, "last") |> expect.is_true
 
   // Verify role unchanged in database
   let role =
@@ -734,7 +733,7 @@ pub fn cannot_demote_last_project_manager_test() {
       "select role from project_members where project_id = $1 and user_id = 1",
       [pog.int(project_id)],
     )
-  role |> should.equal("manager")
+  role |> expect.equal("manager")
 }
 
 pub fn project_manager_cannot_change_roles_test() {
@@ -786,7 +785,7 @@ pub fn project_manager_cannot_change_roles_test() {
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
   let res = handler(req)
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
 }
 
 pub fn change_role_user_not_member_returns_404_test() {
@@ -826,7 +825,7 @@ pub fn change_role_user_not_member_returns_404_test() {
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
 }
 
 pub fn change_role_idempotent_test() {
@@ -855,11 +854,11 @@ pub fn change_role_idempotent_test() {
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"manager\"") |> should.be_true
-  string.contains(body, "\"previous_role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"role\":\"manager\"") |> expect.is_true
+  string.contains(body, "\"previous_role\":\"manager\"") |> expect.is_true
 }
 
 pub fn change_role_invalid_value_returns_400_test() {
@@ -887,7 +886,7 @@ pub fn change_role_invalid_value_returns_400_test() {
     |> simulate.json_body(json.object([#("role", json.string("admin"))]))
 
   let res = handler(req)
-  res.status |> should.equal(400)
+  expect.expect_status(res, 400)
 }
 
 fn create_project(
@@ -904,7 +903,7 @@ fn create_project(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn add_member(
@@ -931,7 +930,7 @@ fn add_member(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn insert_other_org_user(db: pog.Connection, org_id: Int, user_id: Int) {
@@ -967,7 +966,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -999,7 +998,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -1036,11 +1035,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -1048,7 +1046,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

@@ -15,40 +15,65 @@ import lustre/element/html.{
 import lustre/event
 
 import domain/metrics.{
-  type OrgMetricsProjectOverview, OrgMetricsOverview, OrgMetricsProjectOverview,
+  type OrgMetricsOverview, type OrgMetricsProjectOverview, OrgMetricsOverview,
+  OrgMetricsProjectOverview,
 }
+import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
-import domain/project_role.{Manager, Member, to_string}
+import domain/project_role.{type ProjectRole, Manager, Member, to_string}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
-import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/features/admin/member_role as project_member_role
 import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
-import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    assignments: state_types.AssignmentsModel,
+    current_user_id: opt.Option(Int),
+    org_users: Remote(List(OrgUser)),
+    metrics: Remote(OrgMetricsOverview),
+    on_project_toggled: fn(Int) -> msg,
+    on_inline_add_started: fn(state_types.AssignmentsAddContext) -> msg,
+    on_role_changed: fn(Int, Int, ProjectRole) -> msg,
+    on_remove_confirmed: msg,
+    on_remove_cancelled: msg,
+    on_remove_clicked: fn(Int, Int) -> msg,
+    on_inline_add_search_changed: fn(String) -> msg,
+    on_inline_add_selection_changed: fn(String) -> msg,
+    on_inline_add_role_changed: fn(ProjectRole) -> msg,
+    on_inline_add_cancelled: msg,
+    on_inline_add_submitted: msg,
+    noop: msg,
+  )
+}
+
 pub fn view_rows(
-  model: client_state.Model,
+  config: Config(msg),
   project: Project,
   members_state: Remote(List(ProjectMember)),
   expanded: Bool,
-) -> List(element.Element(client_state.Msg)) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let assignments = model.admin.assignments
+) -> List(element.Element(msg)) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  let assignments = config.assignments
 
   let no_members = case members_state {
     Loaded(members_list) ->
-      case model.core.user {
-        opt.Some(user) ->
+      case config.current_user_id {
+        opt.Some(user_id) ->
           members_list == []
-          || list.all(members_list, fn(member) { member.user_id == user.id })
+          || list.all(members_list, fn(member) { member.user_id == user_id })
         opt.None -> members_list == []
       }
     _ -> project.members_count == 0
@@ -66,7 +91,7 @@ pub fn view_rows(
     _ -> project.members_count
   }
   let users_label = t(i18n_text.AssignmentsUsersCount(users_count))
-  let metrics_summary = view_project_metrics_summary(model, project.id)
+  let metrics_summary = view_project_metrics_summary(config, project.id)
 
   let is_inline_add = case assignments.inline_add_context {
     opt.Some(state_types.AddUserToProject(id)) -> id == project.id
@@ -106,24 +131,22 @@ pub fn view_rows(
             False ->
               div([attribute.class("assignments-rows")], [
                 list.map(members_list, fn(member) {
-                  view_member_row(model, project.id, member, inline_confirm)
+                  view_member_row(config, project.id, member, inline_confirm)
                 })
                 |> element.fragment,
               ])
           }
       },
       case is_inline_add {
-        True -> view_inline_add(model)
+        True -> view_inline_add(config)
         False ->
           button(
             [
               attribute.class("btn-sm btn-secondary"),
               event.on_click(
-                client_state.admin_msg(
-                  admin_messages.AssignmentsInlineAddStarted(
-                    state_types.AddUserToProject(project.id),
-                  ),
-                ),
+                config.on_inline_add_started(state_types.AddUserToProject(
+                  project.id,
+                )),
               ),
             ],
             [text(t(i18n_text.AddMember))],
@@ -139,12 +162,11 @@ pub fn view_rows(
             [
               attribute.class("btn-expand"),
               attribute.attribute("aria-label", toggle_label),
-              attribute.attribute("aria-expanded", bool_to_string(is_expanded)),
-              event.on_click(
-                client_state.admin_msg(admin_messages.AssignmentsProjectToggled(
-                  project.id,
-                )),
+              attribute.attribute(
+                "aria-expanded",
+                attribute_value.boolean(is_expanded),
               ),
+              event.on_click(config.on_project_toggled(project.id)),
             ],
             [expand_toggle.view(is_expanded)],
           ),
@@ -174,21 +196,14 @@ pub fn view_rows(
   [summary_row, ..expansion_rows]
 }
 
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
-}
-
 fn view_project_metrics_summary(
-  model: client_state.Model,
+  config: Config(msg),
   project_id: Int,
-) -> opt.Option(element.Element(client_state.Msg)) {
-  case model.admin.metrics.admin_metrics_overview {
+) -> opt.Option(element.Element(msg)) {
+  case config.metrics {
     Loaded(OrgMetricsOverview(by_project: projects, ..)) ->
       case list.find(projects, fn(p) { p.project_id == project_id }) {
-        Ok(metrics) -> opt.Some(project_metrics_view(model, metrics))
+        Ok(metrics) -> opt.Some(project_metrics_view(config.locale, metrics))
         Error(_) -> opt.None
       }
     _ -> opt.None
@@ -196,10 +211,10 @@ fn view_project_metrics_summary(
 }
 
 fn project_metrics_view(
-  model: client_state.Model,
+  locale: Locale,
   metrics: OrgMetricsProjectOverview,
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(locale, key) }
   let OrgMetricsProjectOverview(
     available_count: available_count,
     claimed_count: claimed_count,
@@ -242,17 +257,14 @@ fn option_percent_label(value: opt.Option(Int)) -> String {
 }
 
 fn view_member_row(
-  model: client_state.Model,
+  config: Config(msg),
   project_id: Int,
   member: ProjectMember,
   inline_confirm: opt.Option(#(Int, Int)),
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   let email = case
-    helpers_lookup.resolve_org_user(
-      model.admin.members.org_users_cache,
-      member.user_id,
-    )
+    helpers_lookup.resolve_org_user(config.org_users, member.user_id)
   {
     opt.Some(user) -> user.email
     opt.None -> t(i18n_text.UserNumber(member.user_id))
@@ -263,7 +275,7 @@ fn view_member_row(
     _ -> False
   }
 
-  let is_role_in_flight = case model.admin.assignments.role_change_in_flight {
+  let is_role_in_flight = case config.assignments.role_change_in_flight {
     opt.Some(#(pid, uid)) -> pid == project_id && uid == member.user_id
     _ -> False
   }
@@ -277,15 +289,11 @@ fn view_member_row(
         attribute.value(to_string(member.role)),
         attribute.disabled(is_role_in_flight),
         event.on_input(fn(value) {
-          let new_role = case value {
-            "manager" -> Manager
-            _ -> Member
+          case project_member_role.changed_input_value(value, member.role) {
+            Ok(new_role) ->
+              config.on_role_changed(project_id, member.user_id, new_role)
+            Error(_) -> config.noop
           }
-          client_state.admin_msg(admin_messages.AssignmentsRoleChanged(
-            project_id,
-            member.user_id,
-            new_role,
-          ))
         }),
       ],
       [
@@ -313,44 +321,35 @@ fn view_member_row(
               attribute.class("btn-xs btn-danger"),
               attribute.attribute("title", remove_label),
               attribute.attribute("aria-label", remove_label),
-              event.on_click(client_state.admin_msg(
-                admin_messages.AssignmentsRemoveConfirmed,
-              )),
+              event.on_click(config.on_remove_confirmed),
             ],
             [text(t(i18n_text.Remove))],
           ),
           button(
             [
               attribute.class("btn-xs btn-secondary"),
-              event.on_click(client_state.admin_msg(
-                admin_messages.AssignmentsRemoveCancelled,
-              )),
+              event.on_click(config.on_remove_cancelled),
             ],
             [text(t(i18n_text.Cancel))],
           ),
         ])
       False ->
-        icon_actions.delete(
+        action_buttons.delete_button(
           remove_label,
-          client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
-            project_id,
-            member.user_id,
-          )),
+          config.on_remove_clicked(project_id, member.user_id),
         )
     },
   ])
 }
 
-fn view_inline_add(
-  model: client_state.Model,
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let assignments = model.admin.assignments
+fn view_inline_add(config: Config(msg)) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  let assignments = config.assignments
   let search = assignments.inline_add_search
   let selected = assignments.inline_add_selection
   let is_disabled = assignments.inline_add_in_flight
 
-  let options = case model.admin.members.org_users_cache {
+  let options = case config.org_users {
     Loaded(users) ->
       users
       |> list.filter(fn(user) {
@@ -375,11 +374,7 @@ fn view_inline_add(
         attribute.type_("text"),
         attribute.value(search),
         attribute.placeholder(t(i18n_text.SearchByEmail)),
-        event.on_input(fn(value) {
-          client_state.admin_msg(
-            admin_messages.AssignmentsInlineAddSearchChanged(value),
-          )
-        }),
+        event.on_input(fn(value) { config.on_inline_add_search_changed(value) }),
       ]),
       select(
         [
@@ -388,9 +383,7 @@ fn view_inline_add(
             opt.None -> ""
           }),
           event.on_input(fn(value) {
-            client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddSelectionChanged(value),
-            )
+            config.on_inline_add_selection_changed(value)
           }),
         ],
         [
@@ -405,9 +398,10 @@ fn view_inline_add(
         [
           attribute.value(to_string(assignments.inline_add_role)),
           event.on_input(fn(value) {
-            client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddRoleChanged(value),
-            )
+            case project_member_role.input_value(value) {
+              Ok(role) -> config.on_inline_add_role_changed(role)
+              Error(_) -> config.noop
+            }
           }),
         ],
         [
@@ -420,9 +414,7 @@ fn view_inline_add(
           [
             attribute.class("btn-xs btn-secondary"),
             attribute.disabled(is_disabled),
-            event.on_click(client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddCancelled,
-            )),
+            event.on_click(config.on_inline_add_cancelled),
           ],
           [text(t(i18n_text.Cancel))],
         ),
@@ -430,9 +422,7 @@ fn view_inline_add(
           [
             attribute.class("btn-xs btn-primary"),
             attribute.disabled(is_disabled || selected == opt.None),
-            event.on_click(client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddSubmitted,
-            )),
+            event.on_click(config.on_inline_add_submitted),
           ],
           [
             text(case is_disabled {

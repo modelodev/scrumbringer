@@ -24,6 +24,8 @@ import domain/project_role.{type ProjectRole}
 import gleam/list
 import gleam/result
 import pog
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/persisted_role
 import scrumbringer_server/sql
 
 /// Project with user-specific role and member count.
@@ -62,20 +64,77 @@ pub type AddMemberError {
   TargetUserNotFound
   TargetUserWrongOrg
   AlreadyMember
-  InvalidRole
   DbError(pog.QueryError)
 }
 
-fn parse_project_role(value: String) -> Result(ProjectRole, pog.QueryError) {
-  case project_role.parse(value) {
-    Ok(role) -> Ok(role)
-    Error(_) ->
-      Error(pog.PostgresqlError(
-        code: "INVALID_ROLE",
-        name: "invalid_role",
-        message: "Invalid project role: " <> value,
-      ))
-  }
+fn project_from_fields(
+  id: Int,
+  org_id: Int,
+  name: String,
+  created_at: String,
+  my_role: ProjectRole,
+  members_count: Int,
+) -> Project {
+  Project(
+    id: id,
+    org_id: org_id,
+    name: name,
+    created_at: created_at,
+    my_role: my_role,
+    members_count: members_count,
+  )
+}
+
+fn project_from_db_fields(
+  id: Int,
+  org_id: Int,
+  name: String,
+  created_at: String,
+  my_role: String,
+  members_count: Int,
+) -> Result(Project, pog.QueryError) {
+  use parsed_role <- result.try(persisted_role.project_role(my_role))
+  Ok(project_from_fields(
+    id,
+    org_id,
+    name,
+    created_at,
+    parsed_role,
+    members_count,
+  ))
+}
+
+fn project_member_from_fields(
+  project_id: Int,
+  user_id: Int,
+  role: ProjectRole,
+  created_at: String,
+  claimed_count: Int,
+) -> ProjectMember {
+  ProjectMember(
+    project_id: project_id,
+    user_id: user_id,
+    role: role,
+    created_at: created_at,
+    claimed_count: claimed_count,
+  )
+}
+
+fn project_member_from_db_fields(
+  project_id: Int,
+  user_id: Int,
+  role: String,
+  created_at: String,
+  claimed_count: Int,
+) -> Result(ProjectMember, pog.QueryError) {
+  use parsed_role <- result.try(persisted_role.project_role(role))
+  Ok(project_member_from_fields(
+    project_id,
+    user_id,
+    parsed_role,
+    created_at,
+    claimed_count,
+  ))
 }
 
 /// Creates a new project and adds the creator as manager.
@@ -90,27 +149,15 @@ pub fn create_project(
 ) -> Result(Project, pog.QueryError) {
   use returned <- result.try(sql.projects_create(db, org_id, name, created_by))
 
-  case returned.rows {
-    [row, ..] -> {
-      use my_role <- result.try(parse_project_role(row.my_role))
-      Ok(Project(
-        id: row.id,
-        org_id: row.org_id,
-        name: row.name,
-        created_at: row.created_at,
-        my_role: my_role,
-        members_count: 1,
-        // Creator is the first member
-      ))
-    }
-
-    [] ->
-      Error(pog.PostgresqlError(
-        code: "NO_ROWS",
-        name: "no_rows",
-        message: "No rows returned",
-      ))
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  project_from_db_fields(
+    row.id,
+    row.org_id,
+    row.name,
+    row.created_at,
+    row.my_role,
+    1,
+  )
 }
 
 /// Lists projects that the user can access.
@@ -125,15 +172,14 @@ pub fn list_projects_for_user(
 
   returned.rows
   |> list.try_map(fn(row) {
-    use my_role <- result.try(parse_project_role(row.my_role))
-    Ok(Project(
-      id: row.id,
-      org_id: row.org_id,
-      name: row.name,
-      created_at: row.created_at,
-      my_role: my_role,
-      members_count: row.members_count,
-    ))
+    project_from_db_fields(
+      row.id,
+      row.org_id,
+      row.name,
+      row.created_at,
+      row.my_role,
+      row.members_count,
+    )
   })
 }
 
@@ -152,10 +198,8 @@ pub fn is_project_manager(
     user_id,
   ))
 
-  case returned.rows {
-    [row, ..] -> Ok(row.is_manager)
-    [] -> Ok(False)
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.is_manager)
 }
 
 /// Checks whether a user is a member of a project.
@@ -173,10 +217,8 @@ pub fn is_project_member(
     user_id,
   ))
 
-  case returned.rows {
-    [row, ..] -> Ok(row.is_member)
-    [] -> Ok(False)
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.is_member)
 }
 
 /// Checks whether a project exists.
@@ -224,10 +266,8 @@ pub fn is_any_project_manager_in_org(
     org_id,
   ))
 
-  case returned.rows {
-    [row, ..] -> Ok(row.is_manager)
-    [] -> Ok(False)
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.is_manager)
 }
 
 /// Lists all members for a project.
@@ -242,14 +282,13 @@ pub fn list_members(
 
   returned.rows
   |> list.try_map(fn(row) {
-    use role <- result.try(parse_project_role(row.role))
-    Ok(ProjectMember(
-      project_id: row.project_id,
-      user_id: row.user_id,
-      role: role,
-      created_at: row.created_at,
-      claimed_count: row.claimed_count,
-    ))
+    project_member_from_db_fields(
+      row.project_id,
+      row.user_id,
+      row.role,
+      row.created_at,
+      row.claimed_count,
+    )
   })
 }
 
@@ -301,7 +340,6 @@ fn fetch_user_org_id(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn insert_member(
   db: pog.Connection,
   project_id: Int,
@@ -310,28 +348,20 @@ fn insert_member(
 ) -> Result(ProjectMember, AddMemberError) {
   let role_value = project_role.to_string(role)
   case sql.project_members_insert(db, project_id, user_id, role_value) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      // Justification: nested case validates role mapping from database row.
-      case parse_project_role(row.role) {
-        Ok(parsed_role) ->
-          Ok(ProjectMember(
-            project_id: row.project_id,
-            user_id: row.user_id,
-            role: parsed_role,
-            created_at: row.created_at,
-            claimed_count: 0,
-          ))
-        Error(e) -> Error(DbError(e))
-      }
-
-    Ok(pog.Returned(rows: [], ..)) ->
-      Error(
-        DbError(pog.PostgresqlError(
-          code: "NO_ROWS",
-          name: "no_rows",
-          message: "No rows returned",
-        )),
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(
+        persisted_field.query_row(rows)
+        |> result.map_error(DbError),
       )
+      project_member_from_db_fields(
+        row.project_id,
+        row.user_id,
+        row.role,
+        row.created_at,
+        0,
+      )
+      |> result.map_error(DbError)
+    }
 
     Error(e) ->
       case e {
@@ -393,8 +423,13 @@ pub type UpdateMemberRoleResult {
 pub type UpdateMemberRoleError {
   UpdateMemberNotFound
   UpdateLastManager
-  UpdateInvalidRole
   UpdateDbError(pog.QueryError)
+}
+
+type ProjectRoleUpdateStatus {
+  ProjectRoleUpdateAllowed
+  ProjectRoleUpdateNoChange
+  ProjectRoleUpdateLastManager
 }
 
 /// Updates a member role within a project.
@@ -429,15 +464,28 @@ fn do_update_member_role(
 fn parse_update_role_row(
   row: sql.ProjectMembersUpdateRoleRow,
 ) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
-  case row.status {
-    "last_manager" -> Error(UpdateLastManager)
-    "allowed" | "no_change" -> parse_role_update_result(row)
+  use status <- result.try(parse_role_update_status(row.status))
+
+  case status {
+    ProjectRoleUpdateLastManager -> Error(UpdateLastManager)
+    ProjectRoleUpdateAllowed | ProjectRoleUpdateNoChange ->
+      parse_role_update_result(row)
+  }
+}
+
+fn parse_role_update_status(
+  value: String,
+) -> Result(ProjectRoleUpdateStatus, UpdateMemberRoleError) {
+  case value {
+    "last_manager" -> Ok(ProjectRoleUpdateLastManager)
+    "allowed" -> Ok(ProjectRoleUpdateAllowed)
+    "no_change" -> Ok(ProjectRoleUpdateNoChange)
     _ ->
       Error(
         UpdateDbError(pog.PostgresqlError(
           code: "UNEXPECTED_STATUS",
           name: "unexpected_status",
-          message: "Unexpected status: " <> row.status,
+          message: "Unexpected status: " <> value,
         )),
       )
   }
@@ -447,11 +495,11 @@ fn parse_role_update_result(
   row: sql.ProjectMembersUpdateRoleRow,
 ) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
   use role <- result.try(
-    parse_project_role(row.role)
+    persisted_role.project_role(row.role)
     |> result.map_error(UpdateDbError),
   )
   use previous_role <- result.try(
-    parse_project_role(row.previous_role)
+    persisted_role.project_role(row.previous_role)
     |> result.map_error(UpdateDbError),
   )
 
@@ -490,15 +538,13 @@ pub fn update_project(
 ) -> Result(Project, UpdateProjectError) {
   case sql.project_update(db, project_id, name) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(Project(
-        id: row.id,
-        org_id: row.org_id,
-        name: row.name,
-        created_at: row.created_at,
-        my_role: project_role.Manager,
-        // Only managers can update
-        members_count: 0,
-        // Not returned by update query
+      Ok(project_from_fields(
+        row.id,
+        row.org_id,
+        row.name,
+        row.created_at,
+        project_role.Manager,
+        0,
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateProjectNotFound)

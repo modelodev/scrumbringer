@@ -12,8 +12,10 @@
 //// - Derive card state from task counts
 
 import domain/card.{
-  type CardState, Pendiente, derive_state as shared_derive_state,
-  state_to_string as shared_state_to_string,
+  type CardColor, type CardState, Pendiente, UnknownCardColor,
+  derive_state as shared_derive_state,
+  optional_color_to_string as shared_optional_color_to_string,
+  parse_optional_color as shared_parse_optional_color,
 }
 import domain/milestone
 import gleam/list
@@ -21,6 +23,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import helpers/option as option_helpers
 import pog
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/sql
 
 // =============================================================================
@@ -35,7 +38,7 @@ pub type Card {
     milestone_id: Option(Int),
     title: String,
     description: String,
-    color: String,
+    color: Option(CardColor),
     state: CardState,
     task_count: Int,
     completed_count: Int,
@@ -50,6 +53,8 @@ pub type CardError {
   CardNotFound
   CardHasTasks(task_count: Int)
   InvalidMilestone
+  InvalidMilestoneState(String)
+  InvalidColor(String)
   InvalidMovePoolToMilestone
   DbError(pog.QueryError)
 }
@@ -63,12 +68,40 @@ pub fn list_cards(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-) -> Result(List(Card), pog.QueryError) {
-  use returned <- result.try(sql.cards_list(db, project_id, user_id))
+) -> Result(List(Card), CardError) {
+  use returned <- result.try(
+    sql.cards_list(db, project_id, user_id)
+    |> result.map_error(DbError),
+  )
 
-  let cards =
-    returned.rows
-    |> list.map(fn(row) {
+  list.try_map(returned.rows, fn(row) {
+    card_from_counts(
+      row.id,
+      row.project_id,
+      row.milestone_id,
+      row.title,
+      row.description,
+      row.color,
+      row.created_by,
+      row.created_at,
+      row.task_count,
+      row.completed_count,
+      row.available_count,
+      row.has_new_notes,
+    )
+  })
+}
+
+/// Get a single card by ID with derived state.
+pub fn get_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(Card, CardError) {
+  case sql.cards_get(db, card_id, user_id) {
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
       card_from_counts(
         row.id,
         row.project_id,
@@ -83,35 +116,6 @@ pub fn list_cards(
         row.available_count,
         row.has_new_notes,
       )
-    })
-
-  Ok(cards)
-}
-
-/// Get a single card by ID with derived state.
-pub fn get_card(
-  db: pog.Connection,
-  card_id: Int,
-  user_id: Int,
-) -> Result(Card, CardError) {
-  case sql.cards_get(db, card_id, user_id) {
-    Error(e) -> Error(DbError(e))
-    Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(card_from_counts(
-        row.id,
-        row.project_id,
-        row.milestone_id,
-        row.title,
-        row.description,
-        row.color,
-        row.created_by,
-        row.created_at,
-        row.task_count,
-        row.completed_count,
-        row.available_count,
-        row.has_new_notes,
-      ))
   }
 }
 
@@ -128,23 +132,53 @@ fn card_from_counts(
   completed_count: Int,
   available_count: Int,
   has_new_notes: Bool,
-) -> Card {
-  let state = derive_card_state(task_count, completed_count, available_count)
+) -> Result(Card, CardError) {
+  let state = shared_derive_state(task_count, completed_count, available_count)
+  card_from_fields(
+    id,
+    project_id,
+    milestone_id,
+    title,
+    description,
+    color,
+    state,
+    task_count,
+    completed_count,
+    created_by,
+    created_at,
+    has_new_notes,
+  )
+}
 
-  Card(
+fn card_from_fields(
+  id: Int,
+  project_id: Int,
+  milestone_id: Int,
+  title: String,
+  description: String,
+  color: String,
+  state: CardState,
+  task_count: Int,
+  completed_count: Int,
+  created_by: Int,
+  created_at: String,
+  has_new_notes: Bool,
+) -> Result(Card, CardError) {
+  use parsed_color <- result.try(parse_optional_color(color))
+  Ok(Card(
     id: id,
     project_id: project_id,
     milestone_id: option_helpers.int_to_option(milestone_id),
     title: title,
     description: description,
-    color: color,
+    color: parsed_color,
     state: state,
     task_count: task_count,
     completed_count: completed_count,
     created_by: created_by,
     created_at: created_at,
     has_new_notes: has_new_notes,
-  )
+  ))
 }
 
 /// Create a new card.
@@ -154,7 +188,7 @@ pub fn create_card(
   milestone_id: Option(Int),
   title: String,
   description: Option(String),
-  color: Option(String),
+  color: Option(CardColor),
   created_by: Int,
 ) -> Result(Card, CardError) {
   case validate_milestone_for_create(db, project_id, milestone_id) {
@@ -178,11 +212,11 @@ fn create_card_row(
   milestone_id: Option(Int),
   title: String,
   description: Option(String),
-  color: Option(String),
+  color: Option(CardColor),
   created_by: Int,
 ) -> Result(Card, CardError) {
-  let desc = option.unwrap(description, "")
-  let col = option.unwrap(color, "")
+  let desc = description_text(description)
+  let col = shared_optional_color_to_string(color)
 
   case
     sql.cards_create(
@@ -192,37 +226,33 @@ fn create_card_row(
       desc,
       col,
       created_by,
-      option_helpers.option_to_value(milestone_id, 0),
+      milestone_id_create_value(milestone_id),
     )
   {
     Error(e) -> Error(DbError(e))
-    Ok(returned) ->
-      case returned.rows {
-        [row, ..] -> {
-          Ok(Card(
-            id: row.id,
-            project_id: row.project_id,
-            milestone_id: option_helpers.int_to_option(row.milestone_id),
-            title: row.title,
-            description: row.description,
-            color: row.color,
-            state: Pendiente,
-            task_count: 0,
-            completed_count: 0,
-            created_by: row.created_by,
-            created_at: row.created_at,
-            has_new_notes: False,
-          ))
-        }
-        _ -> {
-          // Should not happen, but handle gracefully
-          Error(DbError(pog.UnexpectedArgumentCount(5, 0)))
-        }
-      }
+    Ok(returned) -> {
+      use row <- result.try(
+        persisted_field.query_row(returned.rows)
+        |> result.map_error(DbError),
+      )
+      card_from_fields(
+        row.id,
+        row.project_id,
+        row.milestone_id,
+        row.title,
+        row.description,
+        row.color,
+        Pendiente,
+        0,
+        0,
+        row.created_by,
+        row.created_at,
+        False,
+      )
+    }
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Update a card's title, description, and color.
 pub fn update_card(
   db: pog.Connection,
@@ -230,7 +260,7 @@ pub fn update_card(
   milestone_id: Option(Int),
   title: String,
   description: Option(String),
-  color: Option(String),
+  color: Option(CardColor),
   user_id: Int,
 ) -> Result(Card, CardError) {
   use current <- result.try(get_card(db, card_id, user_id))
@@ -241,8 +271,8 @@ pub fn update_card(
     milestone_id,
   ))
 
-  let desc = option.unwrap(description, "")
-  let col = option.unwrap(color, "")
+  let desc = description_text(description)
+  let col = shared_optional_color_to_string(color)
 
   case
     sql.cards_update(db, card_id, title, desc, col, case milestone_id {
@@ -259,25 +289,25 @@ pub fn update_card(
         Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
         Ok(pog.Returned(rows: [full_row, ..], ..)) -> {
           let state =
-            derive_card_state(
+            shared_derive_state(
               full_row.task_count,
               full_row.completed_count,
               full_row.available_count,
             )
-          Ok(Card(
-            id: row.id,
-            project_id: row.project_id,
-            milestone_id: option_helpers.int_to_option(row.milestone_id),
-            title: row.title,
-            description: row.description,
-            color: row.color,
-            state: state,
-            task_count: full_row.task_count,
-            completed_count: full_row.completed_count,
-            created_by: row.created_by,
-            created_at: row.created_at,
-            has_new_notes: full_row.has_new_notes,
-          ))
+          card_from_fields(
+            row.id,
+            row.project_id,
+            row.milestone_id,
+            row.title,
+            row.description,
+            row.color,
+            state,
+            full_row.task_count,
+            full_row.completed_count,
+            row.created_by,
+            row.created_at,
+            full_row.has_new_notes,
+          )
         }
       }
     }
@@ -306,11 +336,20 @@ pub fn delete_card(db: pog.Connection, card_id: Int) -> Result(Nil, CardError) {
 // State Derivation (delegated to shared module)
 // =============================================================================
 
-/// Derive card state from task counts.
-pub const derive_card_state = shared_derive_state
+fn parse_optional_color(color: String) -> Result(Option(CardColor), CardError) {
+  case shared_parse_optional_color(color) {
+    Ok(parsed) -> Ok(parsed)
+    Error(UnknownCardColor(value)) -> Error(InvalidColor(value))
+  }
+}
 
-/// Convert CardState to string for API responses.
-pub const state_to_string = shared_state_to_string
+fn description_text(description: Option(String)) -> String {
+  option_helpers.option_to_value(description, "")
+}
+
+fn milestone_id_create_value(milestone_id: Option(Int)) -> Int {
+  option_helpers.option_to_value(milestone_id, 0)
+}
 
 fn validate_milestone_for_create(
   db: pog.Connection,
@@ -374,7 +413,12 @@ fn get_milestone_state(
     Ok(pog.Returned(rows: [], ..)) -> Error(InvalidMilestone)
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       case row.project_id == project_id {
-        True -> Ok(milestone.state_from_string(row.state))
+        True ->
+          case milestone.state_from_string(row.state) {
+            Ok(state) -> Ok(state)
+            Error(milestone.UnknownMilestoneState(state)) ->
+              Error(InvalidMilestoneState(state))
+          }
         False -> Error(InvalidMilestone)
       }
   }

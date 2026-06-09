@@ -10,23 +10,21 @@ import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam/option
-import gleam/result
 import scrumbringer_server/http/csrf
 import wisp
 
 /// Cookie name for session JWT.
 pub const cookie_session_name = "sb_session"
 
-/// Cookie name for CSRF token. Re-exported from csrf module.
-pub const cookie_csrf_name = csrf.cookie_csrf_name
-
-/// Header name for CSRF token in requests. Re-exported from csrf module.
-pub const csrf_header_name = csrf.csrf_header_name
-
 /// Returns a 200 OK response with data wrapped in an envelope.
 pub fn ok(data: json.Json) -> wisp.Response {
   envelope(data)
   |> wisp.json_response(200)
+}
+
+/// Returns a 200 OK health check response.
+pub fn health_ok() -> wisp.Response {
+  ok(json.object([#("ok", json.bool(True))]))
 }
 
 /// Returns a 204 No Content response.
@@ -66,14 +64,14 @@ pub fn set_auth_cookies(
 ) -> wisp.Response {
   response
   |> response.set_cookie(cookie_session_name, jwt, session_cookie_attributes())
-  |> response.set_cookie(cookie_csrf_name, csrf, csrf_cookie_attributes())
+  |> response.set_cookie(csrf.cookie_csrf_name, csrf, csrf_cookie_attributes())
 }
 
 /// Clears session and CSRF cookies (for logout).
 pub fn clear_auth_cookies(response: wisp.Response) -> wisp.Response {
   response
   |> response.expire_cookie(cookie_session_name, session_cookie_attributes())
-  |> response.expire_cookie(cookie_csrf_name, csrf_cookie_attributes())
+  |> response.expire_cookie(csrf.cookie_csrf_name, csrf_cookie_attributes())
 }
 
 /// Returns True for HTTP methods that modify state.
@@ -87,9 +85,17 @@ pub fn is_mutating_method(method: http.Method) -> Bool {
 /// Check if we should use secure cookies (default: True).
 /// Set SB_COOKIE_SECURE=false to disable for HTTP development.
 fn is_cookie_secure() -> Bool {
-  envoy.get("SB_COOKIE_SECURE")
-  |> result.map(fn(v) { v != "false" && v != "0" })
-  |> result.unwrap(True)
+  case envoy.get("SB_COOKIE_SECURE") {
+    Ok(value) -> parse_cookie_secure_value(value)
+    Error(_) -> True
+  }
+}
+
+pub fn parse_cookie_secure_value(value: String) -> Bool {
+  case value {
+    "false" | "0" -> False
+    _ -> True
+  }
 }
 
 /// Cookie attributes for the session cookie (HttpOnly, Secure, Strict).

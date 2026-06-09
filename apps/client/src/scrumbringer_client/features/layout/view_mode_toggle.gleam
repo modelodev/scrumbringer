@@ -25,6 +25,7 @@ import lustre/event
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 
 // =============================================================================
 // Types
@@ -88,7 +89,7 @@ fn view_mode_button(
       attribute.class(class),
       attribute.attribute("data-testid", testid),
       attribute.attribute("role", "tab"),
-      attribute.attribute("aria-selected", bool_to_string(is_active)),
+      attribute.attribute("aria-selected", attribute_value.boolean(is_active)),
       attribute.attribute("tabindex", case is_active {
         True -> "0"
         False -> "-1"
@@ -111,12 +112,5 @@ fn mode_icon(mode: ViewMode) -> String {
     Capabilities -> "🧩"
     People -> "👥"
     Milestones -> "🏁"
-  }
-}
-
-fn bool_to_string(b: Bool) -> String {
-  case b {
-    True -> "true"
-    False -> "false"
   }
 }

@@ -20,17 +20,15 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/task_notes_db.gleam` for persistence
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
-import scrumbringer_server/http/csrf
+import scrumbringer_server/http/notes/mutations as note_mutations
+import scrumbringer_server/http/service_error_response
+import scrumbringer_server/http/task_notes/presenters as note_presenters
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_notes_db
 import wisp
@@ -58,8 +56,8 @@ fn handle_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> list_notes_for_user(ctx, user, task_id)
   }
 }
@@ -71,8 +69,8 @@ fn handle_create(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> create_note_for_user(req, ctx, user, task_id)
   }
 }
@@ -82,26 +80,31 @@ fn list_notes_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case parse_task_id(task_id) {
+  case api.parse_id(task_id) {
     Error(resp) -> resp
     Ok(task_id) -> list_notes(ctx, user.id, task_id)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn list_notes(ctx: auth.Ctx, user_id: Int, task_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case require_task_access(db, task_id, user_id) {
+  case list_notes_payload(db, user_id, task_id) {
+    Ok(resp) -> resp
     Error(resp) -> resp
+  }
+}
 
-    Ok(Nil) ->
-      case task_notes_db.list_notes_for_task(db, task_id) {
-        Ok(notes) ->
-          api.ok(json.object([#("notes", json.array(notes, of: note_json))]))
+fn list_notes_payload(
+  db: pog.Connection,
+  user_id: Int,
+  task_id: Int,
+) -> Result(wisp.Response, wisp.Response) {
+  use _ <- result.try(require_task_access(db, task_id, user_id))
 
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
+  case task_notes_db.list_notes_for_task(db, task_id) {
+    Ok(notes) -> Ok(api.ok(note_presenters.notes_response(notes)))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
 
@@ -111,34 +114,11 @@ fn create_note_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> create_note_with_csrf(req, ctx, user, task_id)
-  }
+  note_mutations.with_note_payload(req, task_id, fn(task_id, payload) {
+    create_note(ctx, user, task_id, payload.content)
+  })
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn create_note_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: String,
-) -> wisp.Response {
-  case parse_task_id(task_id) {
-    Error(resp) -> resp
-
-    Ok(task_id) -> {
-      use data <- wisp.require_json(req)
-
-      case decode_note_payload(data) {
-        Error(resp) -> resp
-        Ok(content) -> create_note(ctx, user, task_id, content)
-      }
-    }
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
 fn create_note(
   ctx: auth.Ctx,
   user: StoredUser,
@@ -147,46 +127,23 @@ fn create_note(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case require_task_access(db, task_id, user.id) {
+  case create_note_payload(db, user, task_id, content) {
+    Ok(resp) -> resp
     Error(resp) -> resp
-
-    Ok(Nil) ->
-      case task_notes_db.create_note(db, task_id, user.id, content) {
-        Ok(note) -> api.ok(json.object([#("note", note_json(note))]))
-        Error(service_error.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.Unexpected(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.NotFound) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(service_error.ValidationError(msg)) ->
-          api.error(422, "VALIDATION_ERROR", msg)
-        Error(service_error.InvalidReference(_)) ->
-          api.error(422, "VALIDATION_ERROR", "Invalid reference")
-        Error(service_error.Conflict(_)) ->
-          api.error(409, "CONFLICT", "Conflict")
-        Error(service_error.AlreadyExists) ->
-          api.error(409, "CONFLICT", "Conflict")
-      }
   }
 }
 
-fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
-  let decoder = {
-    use content <- decode.field("content", decode.string)
-    decode.success(content)
-  }
+fn create_note_payload(
+  db: pog.Connection,
+  user: StoredUser,
+  task_id: Int,
+  content: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use _ <- result.try(require_task_access(db, task_id, user.id))
 
-  case decode.run(data, decoder) {
-    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
-    Ok(content) -> Ok(content)
-  }
-}
-
-fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(task_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  case task_notes_db.create_note(db, task_id, user.id, content) {
+    Ok(note) -> Ok(api.ok(note_presenters.note_response(note)))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
 
@@ -197,28 +154,6 @@ fn require_task_access(
 ) -> Result(Nil, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
-}
-
-fn note_json(note: task_notes_db.TaskNote) -> json.Json {
-  let task_notes_db.TaskNote(
-    id: id,
-    task_id: task_id,
-    user_id: user_id,
-    content: content,
-    created_at: created_at,
-  ) = note
-
-  json.object([
-    #("id", json.int(id)),
-    #("task_id", json.int(task_id)),
-    #("user_id", json.int(user_id)),
-    #("content", json.string(content)),
-    #("created_at", json.string(created_at)),
-  ])
 }

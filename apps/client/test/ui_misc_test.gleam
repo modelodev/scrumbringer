@@ -1,13 +1,27 @@
 import gleam/string
-import gleeunit/should
 import lustre/element
+import scrumbringer_client/features/admin/org_user_fallback
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
 
 import scrumbringer_client/ui/layout
+
+pub fn attribute_value_boolean_serializes_html_booleans_test() {
+  let assert "true" = attribute_value.boolean(True)
+  let assert "false" = attribute_value.boolean(False)
+}
+
+pub fn org_user_fallback_builds_stable_admin_placeholder_test() {
+  let user = org_user_fallback.from_id(42)
+
+  let assert 42 = user.id
+  let assert "User #42" = user.email
+  let assert "" = user.created_at
+}
 
 pub fn empty_state_view_renders_title_description_and_action_test() {
   let state =
@@ -18,9 +32,9 @@ pub fn empty_state_view_renders_title_description_and_action_test() {
     empty_state.view(state)
     |> element.to_document_string
 
-  string.contains(html, "No results") |> should.be_true
-  string.contains(html, "Try again") |> should.be_true
-  string.contains(html, "Retry") |> should.be_true
+  let assert True = string.contains(html, "No results")
+  let assert True = string.contains(html, "Try again")
+  let assert True = string.contains(html, "Retry")
 }
 
 pub fn empty_state_simple_renders_description_test() {
@@ -28,7 +42,7 @@ pub fn empty_state_simple_renders_description_test() {
     empty_state.simple("hand-raised", "Nothing here")
     |> element.to_document_string
 
-  string.contains(html, "Nothing here") |> should.be_true
+  let assert True = string.contains(html, "Nothing here")
 }
 
 pub fn error_notice_renders_error_text_test() {
@@ -36,13 +50,13 @@ pub fn error_notice_renders_error_text_test() {
     error_notice.view("Boom")
     |> element.to_document_string
 
-  string.contains(error_html, "Boom") |> should.be_true
+  let assert True = string.contains(error_html, "Boom")
 }
 
 pub fn error_banner_renders_message_test() {
   let html = error_banner.view("Oops") |> element.to_document_string
-  string.contains(html, "Oops") |> should.be_true
-  string.contains(html, "error-banner") |> should.be_true
+  let assert True = string.contains(html, "Oops")
+  let assert True = string.contains(html, "error-banner")
 }
 
 pub fn layout_theme_switch_renders_options_test() {
@@ -50,8 +64,8 @@ pub fn layout_theme_switch_renders_options_test() {
     layout.theme_switch(locale.En, theme.Default, fn(_s) { "msg" })
     |> element.to_document_string
 
-  string.contains(html, "default") |> should.be_true
-  string.contains(html, "dark") |> should.be_true
+  let assert True = string.contains(html, "default")
+  let assert True = string.contains(html, "dark")
 }
 
 pub fn layout_locale_switch_renders_options_test() {
@@ -59,6 +73,6 @@ pub fn layout_locale_switch_renders_options_test() {
     layout.locale_switch(locale.En, fn(_s) { "msg" })
     |> element.to_document_string
 
-  string.contains(html, "es") |> should.be_true
-  string.contains(html, "en") |> should.be_true
+  let assert True = string.contains(html, "es")
+  let assert True = string.contains(html, "en")
 }

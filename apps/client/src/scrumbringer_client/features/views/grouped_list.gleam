@@ -31,8 +31,10 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
+import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
@@ -109,7 +111,6 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn view_card_group(
   config: GroupedListConfig(msg),
   group: CardGroup,
@@ -122,7 +123,7 @@ fn view_card_group(
   let is_expanded =
     dict.get(config.expanded_cards, card_id)
     |> option.from_result
-    |> option.unwrap(True)
+    |> expanded_card_or_default
 
   let title = case group.card {
     Some(c) -> c.title
@@ -138,7 +139,7 @@ fn view_card_group(
     Some(c) ->
       card_title_meta.elements(
         span([attribute.class("card-title")], [text(title)]),
-        c.color,
+        option.map(c.color, color_picker.css_var),
         None,
         c.has_new_notes,
         i18n.t(config.locale, i18n_text.NewNotesTooltip),
@@ -166,7 +167,10 @@ fn view_card_group(
       button(
         [
           attribute.class("card-group-header"),
-          attribute.attribute("aria-expanded", bool_to_string(is_expanded)),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(is_expanded),
+          ),
           event.on_click(config.on_toggle_card(card_id)),
         ],
         header_children,
@@ -205,7 +209,7 @@ fn view_task_item(
           list.find(config.org_users, fn(u) { u.id == user_id })
           |> option.from_result
           |> option.map(fn(u) { u.email })
-          |> option.unwrap(i18n.t(config.locale, i18n_text.UnknownUser))
+          |> claimed_email_or_unknown(config)
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
       let status_icon = task_status_utils.claimed_icon(task.status)
@@ -300,7 +304,7 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
         None -> 0
       }
       let existing =
-        dict.get(acc, key) |> option.from_result |> option.unwrap([])
+        dict.get(acc, key) |> option.from_result |> task_group_or_empty
       dict.insert(acc, key, [task, ..existing])
     })
 
@@ -329,10 +333,27 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
   })
 }
 
-fn bool_to_string(b: Bool) -> String {
-  case b {
-    True -> "true"
-    False -> "false"
+fn expanded_card_or_default(expanded: Option(Bool)) -> Bool {
+  case expanded {
+    None -> True
+    Some(value) -> value
+  }
+}
+
+fn claimed_email_or_unknown(
+  email: Option(String),
+  config: GroupedListConfig(msg),
+) -> String {
+  case email {
+    None -> i18n.t(config.locale, i18n_text.UnknownUser)
+    Some(value) -> value
+  }
+}
+
+fn task_group_or_empty(tasks: Option(List(Task))) -> List(Task) {
+  case tasks {
+    None -> []
+    Some(values) -> values
   }
 }
 

@@ -21,18 +21,16 @@
 //// - Uses `http/auth.gleam` for session identity
 //// - Uses `http/csrf.gleam` for mutation protection
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
-import gleam/option.{type Option, None}
-import helpers/json as json_helpers
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/service_error_response
+import scrumbringer_server/http/task_templates/payloads as template_payloads
+import scrumbringer_server/http/task_templates/presenters as template_presenters
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
@@ -86,8 +84,8 @@ fn handle_list_project(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> list_project_templates_for_user(ctx, user, project_id)
   }
 }
@@ -97,8 +95,8 @@ fn handle_create_project(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> create_project_template_for_user(req, ctx, user, project_id)
   }
 }
@@ -108,8 +106,8 @@ fn handle_update(
   ctx: auth.Ctx,
   template_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> update_template_for_user(req, ctx, user, template_id)
   }
 }
@@ -119,8 +117,8 @@ fn handle_delete(
   ctx: auth.Ctx,
   template_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> delete_template_for_user(req, ctx, user, template_id)
   }
 }
@@ -134,7 +132,7 @@ fn list_project_templates_for_user(
   user: StoredUser,
   project_id: String,
 ) -> wisp.Response {
-  case parse_project_id(project_id) {
+  case api.parse_id(project_id) {
     Error(resp) -> resp
     Ok(project_id) -> list_project_templates(ctx, user, project_id)
   }
@@ -147,10 +145,9 @@ fn list_project_templates(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case projects_db.is_project_manager(db, project_id, user.id) {
-    Ok(True) -> list_project_templates_db(db, project_id)
-    Ok(False) -> api.error(403, "FORBIDDEN", "Forbidden")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  case ensure_project_manager_db(db, project_id, user.id) {
+    Ok(Nil) -> list_project_templates_db(db, project_id)
+    Error(resp) -> resp
   }
 }
 
@@ -159,14 +156,9 @@ fn list_project_templates_db(
   project_id: Int,
 ) -> wisp.Response {
   case task_templates_db.list_project_templates(db, project_id) {
-    Ok(templates) ->
-      api.ok(
-        json.object([
-          #("templates", json.array(templates, of: template_json)),
-        ]),
-      )
+    Ok(templates) -> api.ok(template_presenters.templates_response(templates))
 
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Error(error) -> template_error_response(error)
   }
 }
 
@@ -176,7 +168,7 @@ fn create_project_template_for_user(
   user: StoredUser,
   project_id: String,
 ) -> wisp.Response {
-  case parse_project_id(project_id) {
+  case api.parse_id(project_id) {
     Error(resp) -> resp
     Ok(project_id) -> create_template_for_project(req, ctx, user, project_id)
   }
@@ -200,13 +192,12 @@ fn update_template_for_user(
   user: StoredUser,
   template_id: String,
 ) -> wisp.Response {
-  case parse_template_id(template_id) {
+  case api.parse_id(template_id) {
     Error(resp) -> resp
     Ok(template_id) -> update_template_for_id(req, ctx, user, template_id)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn update_template_for_id(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -215,23 +206,10 @@ fn update_template_for_id(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case fetch_template(db, template_id) {
+  case require_template_project_manager(db, user, template_id) {
     Error(resp) -> resp
-
-    Ok(template) ->
-      // Justification: nested case enforces project-manager authorization.
-      case
-        authorization.require_project_manager(
-          db,
-          user,
-          template.org_id,
-          template.project_id,
-        )
-      {
-        Error(resp) -> resp
-        Ok(#(org_id, project_id)) ->
-          update_template(req, ctx, template_id, org_id, project_id)
-      }
+    Ok(#(org_id, project_id)) ->
+      update_template(req, ctx, template_id, org_id, project_id)
   }
 }
 
@@ -241,13 +219,12 @@ fn delete_template_for_user(
   user: StoredUser,
   template_id: String,
 ) -> wisp.Response {
-  case parse_template_id(template_id) {
+  case api.parse_id(template_id) {
     Error(resp) -> resp
     Ok(template_id) -> delete_template_for_id(req, ctx, user, template_id)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn delete_template_for_id(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -256,23 +233,9 @@ fn delete_template_for_id(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case fetch_template(db, template_id) {
+  case require_template_project_manager(db, user, template_id) {
     Error(resp) -> resp
-
-    Ok(template) ->
-      // Justification: nested case enforces project-manager authorization.
-      case
-        authorization.require_project_manager(
-          db,
-          user,
-          template.org_id,
-          template.project_id,
-        )
-      {
-        Error(resp) -> resp
-        Ok(#(org_id, _project_id)) ->
-          delete_template(req, ctx, template_id, org_id)
-      }
+    Ok(#(org_id, _project_id)) -> delete_template(req, ctx, template_id, org_id)
   }
 }
 
@@ -283,11 +246,33 @@ fn ensure_project_manager(
 ) -> Result(Nil, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
 
+  ensure_project_manager_db(db, project_id, user_id)
+}
+
+fn ensure_project_manager_db(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> Result(Nil, wisp.Response) {
   case projects_db.is_project_manager(db, project_id, user_id) {
     Ok(True) -> Ok(Nil)
     Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(_) -> Error(database_error_response())
   }
+}
+
+fn require_template_project_manager(
+  db: pog.Connection,
+  user: StoredUser,
+  template_id: Int,
+) -> Result(#(Int, Int), wisp.Response) {
+  use template <- result.try(fetch_template(db, template_id))
+  authorization.require_project_manager(
+    db,
+    user,
+    template.org_id,
+    template.project_id,
+  )
 }
 
 fn fetch_template(
@@ -296,36 +281,7 @@ fn fetch_template(
 ) -> Result(task_templates_db.TaskTemplate, wisp.Response) {
   case task_templates_db.get_template(db, template_id) {
     Ok(template) -> Ok(template)
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(service_error.InvalidReference("type_id")) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid type_id"))
-    Error(service_error.InvalidReference(_)) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid type_id"))
-    Error(service_error.ValidationError(msg)) ->
-      Error(api.error(422, "VALIDATION_ERROR", msg))
-    Error(service_error.Conflict(_)) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-    Error(service_error.Unexpected(_)) ->
-      Error(api.error(500, "INTERNAL", "Unexpected error"))
-    Error(service_error.AlreadyExists) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-  }
-}
-
-fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
-  case int.parse(value) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
-}
-
-fn parse_template_id(value: String) -> Result(Int, wisp.Response) {
-  case int.parse(value) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(error) -> Error(template_error_response(error))
   }
 }
 
@@ -333,7 +289,6 @@ fn parse_template_id(value: String) -> Result(Int, wisp.Response) {
 // Shared helpers
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 fn create_template(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -341,40 +296,16 @@ fn create_template(
   project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      // Justification: nested case validates payload before persistence.
-      case decode_create_payload(data) {
-        Error(resp) -> resp
-
-        Ok(#(name, description, type_id, priority)) ->
-          create_template_db(
-            ctx,
-            org_id,
-            project_id,
-            name,
-            description,
-            type_id,
-            priority,
-            user_id,
-          )
-      }
-    }
-  }
+  with_mutation_payload(req, decode_create_payload, fn(payload) {
+    create_template_db(ctx, org_id, project_id, payload, user_id)
+  })
 }
 
 fn create_template_db(
   ctx: auth.Ctx,
   org_id: Int,
   project_id: Int,
-  name: String,
-  description: String,
-  type_id: Int,
-  priority: Int,
+  payload: template_payloads.CreatePayload,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
@@ -384,33 +315,19 @@ fn create_template_db(
       db,
       org_id,
       project_id,
-      name,
-      description,
-      type_id,
-      priority,
+      payload.name,
+      payload.description,
+      payload.type_id,
+      payload.priority,
       user_id,
     )
   {
-    Ok(template) ->
-      api.ok(json.object([#("template", template_json(template))]))
+    Ok(template) -> api.ok(template_presenters.template_response(template))
 
-    Error(service_error.InvalidReference("type_id")) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(error) -> template_error_response(error)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn update_template(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -418,30 +335,9 @@ fn update_template(
   org_id: Int,
   project_id: Int,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      // Justification: nested case validates payload before persistence.
-      case decode_update_payload(data) {
-        Error(resp) -> resp
-
-        Ok(#(name, description, type_id, priority)) ->
-          update_template_db(
-            ctx,
-            template_id,
-            org_id,
-            project_id,
-            name,
-            description,
-            type_id,
-            priority,
-          )
-      }
-    }
-  }
+  with_mutation_payload(req, decode_update_payload, fn(payload) {
+    update_template_db(ctx, template_id, org_id, project_id, payload)
+  })
 }
 
 fn update_template_db(
@@ -449,10 +345,7 @@ fn update_template_db(
   template_id: Int,
   org_id: Int,
   project_id: Int,
-  name: Option(String),
-  description: Option(String),
-  type_id: Option(Int),
-  priority: Option(Int),
+  payload: template_payloads.UpdatePayload,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
@@ -462,28 +355,15 @@ fn update_template_db(
       template_id,
       org_id,
       project_id,
-      name,
-      description,
-      type_id,
-      priority,
+      payload.name,
+      payload.description,
+      payload.type_id,
+      payload.priority,
     )
   {
-    Ok(template) ->
-      api.ok(json.object([#("template", template_json(template))]))
+    Ok(template) -> api.ok(template_presenters.template_response(template))
 
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.InvalidReference("type_id")) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
+    Error(error) -> template_error_response(error)
   }
 }
 
@@ -509,100 +389,55 @@ fn delete_template_db(
 
   case task_templates_db.delete_template(db, template_id, org_id) {
     Ok(Nil) -> api.no_content()
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.InvalidReference(_)) ->
+    Error(error) -> template_error_response(error)
+  }
+}
+
+fn template_error_response(error: service_error.ServiceError) -> wisp.Response {
+  case error {
+    service_error.InvalidReference(_) ->
       api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
+    _ -> service_error_response.to_response(error)
+  }
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
+}
+
+fn with_mutation_payload(
+  req: wisp.Request,
+  decode_payload,
+  handle_payload: fn(payload) -> wisp.Response,
+) -> wisp.Response {
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
+
+    Ok(Nil) -> {
+      use data <- wisp.require_json(req)
+
+      case decode_payload(data) {
+        Error(resp) -> resp
+        Ok(payload) -> handle_payload(payload)
+      }
+    }
   }
 }
 
 fn decode_create_payload(
-  data: dynamic.Dynamic,
-) -> Result(#(String, String, Int, Int), wisp.Response) {
-  let decoder = {
-    use name <- decode.field("name", decode.string)
-    use description <- decode.optional_field("description", "", decode.string)
-    use type_id <- decode.field("type_id", decode.int)
-    use priority <- decode.optional_field("priority", 3, decode.int)
-    decode.success(#(name, description, type_id, priority))
-  }
-
-  case decode.run(data, decoder) {
+  data,
+) -> Result(template_payloads.CreatePayload, wisp.Response) {
+  case template_payloads.decode_create(data) {
     Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
     Ok(payload) -> Ok(payload)
   }
 }
 
 fn decode_update_payload(
-  data: dynamic.Dynamic,
-) -> Result(
-  #(Option(String), Option(String), Option(Int), Option(Int)),
-  wisp.Response,
-) {
-  let decoder = {
-    use name <- decode.optional_field(
-      "name",
-      None,
-      decode.optional(decode.string),
-    )
-    use description <- decode.optional_field(
-      "description",
-      None,
-      decode.optional(decode.string),
-    )
-    use type_id <- decode.optional_field(
-      "type_id",
-      None,
-      decode.optional(decode.int),
-    )
-    use priority <- decode.optional_field(
-      "priority",
-      None,
-      decode.optional(decode.int),
-    )
-    decode.success(#(name, description, type_id, priority))
-  }
-
-  case decode.run(data, decoder) {
+  data,
+) -> Result(template_payloads.UpdatePayload, wisp.Response) {
+  case template_payloads.decode_update(data) {
     Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
     Ok(payload) -> Ok(payload)
   }
-}
-
-/// Story 4.9 AC20: Added rules_count field.
-fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
-  let task_templates_db.TaskTemplate(
-    id: id,
-    org_id: org_id,
-    project_id: project_id,
-    name: name,
-    description: description,
-    type_id: type_id,
-    type_name: type_name,
-    priority: priority,
-    created_by: created_by,
-    created_at: created_at,
-    rules_count: rules_count,
-  ) = template
-
-  json.object([
-    #("id", json.int(id)),
-    #("org_id", json.int(org_id)),
-    #("project_id", json.int(project_id)),
-    #("name", json.string(name)),
-    #("description", json_helpers.option_string_json(description)),
-    #("type_id", json.int(type_id)),
-    #("type_name", json.string(type_name)),
-    #("priority", json.int(priority)),
-    #("created_by", json.int(created_by)),
-    #("created_at", json.string(created_at)),
-    #("rules_count", json.int(rules_count)),
-  ])
 }

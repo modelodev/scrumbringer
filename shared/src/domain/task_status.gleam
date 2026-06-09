@@ -97,6 +97,12 @@ pub type OngoingBy {
   OngoingBy(user_id: Int)
 }
 
+/// Error returned when an external task status/work state cannot be parsed.
+pub type TaskStatusParseError {
+  UnknownTaskStatus(String)
+  UnknownWorkState(String)
+}
+
 // =============================================================================
 // Status Parsing
 // =============================================================================
@@ -110,15 +116,17 @@ pub type OngoingBy {
 /// parse_task_status("claimed")    // -> Ok(Claimed(Taken))
 /// parse_task_status("ongoing")    // -> Ok(Claimed(Ongoing))
 /// parse_task_status("completed")  // -> Ok(Completed)
-/// parse_task_status("invalid")    // -> Error("Unknown task status: invalid")
+/// parse_task_status("invalid")    // -> Error(UnknownTaskStatus("invalid"))
 /// ```
-pub fn parse_task_status(value: String) -> Result(TaskStatus, String) {
+pub fn parse_task_status(
+  value: String,
+) -> Result(TaskStatus, TaskStatusParseError) {
   case value {
     "available" -> Ok(Available)
     "claimed" -> Ok(Claimed(Taken))
     "ongoing" -> Ok(Claimed(Ongoing))
     "completed" -> Ok(Completed)
-    _ -> Error("Unknown task status: " <> value)
+    other -> Error(UnknownTaskStatus(other))
   }
 }
 
@@ -146,18 +154,45 @@ pub fn task_status_to_string(status: TaskStatus) -> String {
 /// ## Example
 ///
 /// ```gleam
-/// parse_work_state("available")  // -> WorkAvailable
-/// parse_work_state("claimed")    // -> WorkClaimed
-/// parse_work_state("ongoing")    // -> WorkOngoing
-/// parse_work_state("completed")  // -> WorkCompleted
+/// parse_work_state("available")  // -> Ok(WorkAvailable)
+/// parse_work_state("claimed")    // -> Ok(WorkClaimed)
+/// parse_work_state("ongoing")    // -> Ok(WorkOngoing)
+/// parse_work_state("completed")  // -> Ok(WorkCompleted)
+/// parse_work_state("invalid")    // -> Error(UnknownWorkState("invalid"))
 /// ```
-pub fn parse_work_state(value: String) -> WorkState {
+pub fn parse_work_state(
+  value: String,
+) -> Result(WorkState, TaskStatusParseError) {
   case value {
-    "available" -> WorkAvailable
-    "claimed" -> WorkClaimed
-    "ongoing" -> WorkOngoing
-    "completed" -> WorkCompleted
-    _ -> WorkClaimed
+    "available" -> Ok(WorkAvailable)
+    "claimed" -> Ok(WorkClaimed)
+    "ongoing" -> Ok(WorkOngoing)
+    "completed" -> Ok(WorkCompleted)
+    other -> Error(UnknownWorkState(other))
+  }
+}
+
+/// Convert parse errors into stable labels for diagnostics.
+pub fn parse_error_to_string(error: TaskStatusParseError) -> String {
+  case error {
+    UnknownTaskStatus(value) -> "Unknown task status: " <> value
+    UnknownWorkState(value) -> "Unknown work state: " <> value
+  }
+}
+
+/// Convert WorkState to string for API/UI serialization.
+///
+/// ## Example
+///
+/// ```gleam
+/// work_state_to_string(WorkAvailable) // -> "available"
+/// ```
+pub fn work_state_to_string(state: WorkState) -> String {
+  case state {
+    WorkAvailable -> "available"
+    WorkClaimed -> "claimed"
+    WorkOngoing -> "ongoing"
+    WorkCompleted -> "completed"
   }
 }
 
@@ -205,19 +240,22 @@ pub fn from_work_state(state: WorkState) -> TaskStatus {
 /// ## Example
 ///
 /// ```gleam
-/// from_db("available", False)  // -> Available
-/// from_db("claimed", False)    // -> Claimed(Taken)
-/// from_db("claimed", True)     // -> Claimed(Ongoing)
-/// from_db("completed", False)  // -> Completed
+/// from_db("available", False)  // -> Ok(Available)
+/// from_db("claimed", False)    // -> Ok(Claimed(Taken))
+/// from_db("claimed", True)     // -> Ok(Claimed(Ongoing))
+/// from_db("completed", False)  // -> Ok(Completed)
+/// from_db("invalid", False)    // -> Error(UnknownTaskStatus("invalid"))
 /// ```
-pub fn from_db(status: String, is_ongoing: Bool) -> TaskStatus {
+pub fn from_db(
+  status: String,
+  is_ongoing: Bool,
+) -> Result(TaskStatus, TaskStatusParseError) {
   case status, is_ongoing {
-    "available", _ -> Available
-    "claimed", True -> Claimed(Ongoing)
-    "claimed", False -> Claimed(Taken)
-    "completed", _ -> Completed
-    // Fallback for any unexpected values (defensive)
-    _, _ -> Available
+    "available", _ -> Ok(Available)
+    "claimed", True -> Ok(Claimed(Ongoing))
+    "claimed", False -> Ok(Claimed(Taken))
+    "completed", _ -> Ok(Completed)
+    other, _ -> Error(UnknownTaskStatus(other))
   }
 }
 

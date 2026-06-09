@@ -2,13 +2,16 @@
 ////
 //// Card notes provide context and decisions at the card level.
 
+import domain/org_role
+import domain/project_role
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
-import helpers/option as option_helpers
 import pog
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/persisted_role
 import scrumbringer_server/services/service_error.{
-  type ServiceError, DbError, NotFound, Unexpected,
+  type ServiceError, DbError, NotFound,
 }
 import scrumbringer_server/sql
 
@@ -22,8 +25,8 @@ pub type CardNote {
     created_at: String,
     // AC20: Author info for tooltip
     author_email: String,
-    author_project_role: Option(String),
-    author_org_role: String,
+    author_project_role: Option(project_role.ProjectRole),
+    author_org_role: org_role.OrgRole,
   )
 }
 
@@ -37,9 +40,7 @@ pub fn list_notes_for_card(
     |> result.map_error(DbError),
   )
 
-  returned.rows
-  |> list.map(note_from_list_row)
-  |> Ok
+  list.try_map(returned.rows, note_from_list_row)
 }
 
 /// Get a note for a card by ID.
@@ -51,7 +52,7 @@ pub fn get_note(
   case sql.card_notes_get(db, card_id, note_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_get_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> note_from_get_row(row)
   }
 }
 
@@ -63,8 +64,13 @@ pub fn create_note(
   content: String,
 ) -> Result(CardNote, ServiceError) {
   case sql.card_notes_create(db, card_id, user_id, content) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "card_notes.create_note",
+      ))
+      note_from_create_row(row)
+    }
     Error(e) -> Error(DbError(e))
   }
 }
@@ -82,47 +88,78 @@ pub fn delete_note(
   }
 }
 
-fn note_from_list_row(row: sql.CardNotesListRow) -> CardNote {
-  CardNote(
+fn note_from_list_row(
+  row: sql.CardNotesListRow,
+) -> Result(CardNote, ServiceError) {
+  note_from_fields(
     id: row.id,
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_project_role: option_helpers.string_to_option(
-      row.author_project_role,
-    ),
+    author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
   )
 }
 
-fn note_from_create_row(row: sql.CardNotesCreateRow) -> CardNote {
-  CardNote(
+fn note_from_create_row(
+  row: sql.CardNotesCreateRow,
+) -> Result(CardNote, ServiceError) {
+  note_from_fields(
     id: row.id,
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_project_role: option_helpers.string_to_option(
-      row.author_project_role,
-    ),
+    author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
   )
 }
 
-fn note_from_get_row(row: sql.CardNotesGetRow) -> CardNote {
-  CardNote(
+fn note_from_get_row(row: sql.CardNotesGetRow) -> Result(CardNote, ServiceError) {
+  note_from_fields(
     id: row.id,
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_project_role: option_helpers.string_to_option(
-      row.author_project_role,
-    ),
+    author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
   )
+}
+
+fn note_from_fields(
+  id id: Int,
+  card_id card_id: Int,
+  user_id user_id: Int,
+  content content: String,
+  created_at created_at: String,
+  author_email author_email: String,
+  author_project_role author_project_role_raw: String,
+  author_org_role author_org_role_raw: String,
+) -> Result(CardNote, ServiceError) {
+  use author_project_role <- result.try(
+    persisted_role.optional_project_role_service_error(
+      author_project_role_raw,
+      "Invalid persisted author project role",
+    ),
+  )
+  use author_org_role <- result.try(persisted_role.org_role_service_error(
+    author_org_role_raw,
+    "Invalid persisted author org role",
+  ))
+
+  Ok(CardNote(
+    id: id,
+    card_id: card_id,
+    user_id: user_id,
+    content: content,
+    created_at: created_at,
+    author_email: author_email,
+    author_project_role: author_project_role,
+    author_org_role: author_org_role,
+  ))
 }

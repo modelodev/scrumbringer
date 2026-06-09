@@ -18,6 +18,7 @@
 //// - Permission logic (receives as parameters)
 //// - API calls (handled by parent)
 
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
@@ -145,7 +146,7 @@ fn view_nav_item(
   }
   let badge_el = case badge {
     Some(count) if count > 0 ->
-      span([attribute.class("badge")], [text(int_to_string(count))])
+      span([attribute.class("badge")], [text(int.to_string(count))])
     _ -> element.none()
   }
 
@@ -219,7 +220,7 @@ pub fn view(config: LeftPanelConfig(msg)) -> Element(msg) {
 
 fn view_project_selector(config: LeftPanelConfig(msg)) -> Element(msg) {
   let selected_value = case config.selected_project_id {
-    Some(id) -> int_to_string(id)
+    Some(id) -> int.to_string(id)
     None -> ""
   }
 
@@ -243,7 +244,7 @@ fn view_project_selector(config: LeftPanelConfig(msg)) -> Element(msg) {
           ..list.map(config.projects, fn(p) {
             option(
               [
-                attribute.value(int_to_string(p.id)),
+                attribute.value(int.to_string(p.id)),
                 attribute.selected(Some(p.id) == config.selected_project_id),
               ],
               p.name,
@@ -429,69 +430,69 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           False -> "section-items"
         }
         div([attribute.class(items_class)], [
-            view_config_nav_link(
-              config,
-              permissions.Members,
-              "nav-team",
-              icons.Team,
-              i18n_text.Team,
-              config.on_navigate_config_team,
-            ),
-            view_config_nav_link(
-              config,
-              permissions.Capabilities,
-              "nav-capabilities",
-              icons.Crosshairs,
-              i18n_text.Capabilities,
-              config.on_navigate_config_capabilities,
-            ),
-            // Story 4.9 AC3: Separator - ORGANIZACIÓN DEL TRABAJO group
-            view_nav_separator(),
-            view_config_nav_link(
-              config,
-              permissions.Cards,
-              "nav-cards-config",
-              icons.Cards,
-              i18n_text.CardsConfig,
-              config.on_navigate_config_cards,
-            ),
-            view_config_nav_link(
-              config,
-              permissions.TaskTypes,
-              "nav-task-types",
-              icons.TaskTypes,
-              i18n_text.TaskTypes,
-              config.on_navigate_config_task_types,
-            ),
-            // Story 4.9 AC3: Separator - AUTOMATIZACIÓN group
-            view_nav_separator(),
-            view_config_nav_link(
-              config,
-              permissions.Workflows,
-              "nav-rules",
-              icons.Automation,
-              i18n_text.AdminWorkflows,
-              config.on_navigate_config_rules,
-            ),
-            view_config_nav_link(
-              config,
-              permissions.TaskTemplates,
-              "nav-templates",
-              icons.TaskTemplates,
-              i18n_text.Templates,
-              config.on_navigate_config_templates,
-            ),
-            // Story 4.9 AC3: Separator - RESULTADOS group
-            view_nav_separator(),
-            view_config_nav_link(
-              config,
-              permissions.RuleMetrics,
-              "nav-metrics",
-              icons.Metrics,
-              i18n_text.AdminMetrics,
-              config.on_navigate_config_metrics,
-            ),
-          ])
+          view_config_nav_link(
+            config,
+            permissions.Members,
+            "nav-team",
+            icons.Team,
+            i18n_text.Team,
+            config.on_navigate_config_team,
+          ),
+          view_config_nav_link(
+            config,
+            permissions.Capabilities,
+            "nav-capabilities",
+            icons.Crosshairs,
+            i18n_text.Capabilities,
+            config.on_navigate_config_capabilities,
+          ),
+          // Story 4.9 AC3: Separator - ORGANIZACIÓN DEL TRABAJO group
+          view_nav_separator(),
+          view_config_nav_link(
+            config,
+            permissions.Cards,
+            "nav-cards-config",
+            icons.Cards,
+            i18n_text.CardsConfig,
+            config.on_navigate_config_cards,
+          ),
+          view_config_nav_link(
+            config,
+            permissions.TaskTypes,
+            "nav-task-types",
+            icons.TaskTypes,
+            i18n_text.TaskTypes,
+            config.on_navigate_config_task_types,
+          ),
+          // Story 4.9 AC3: Separator - AUTOMATIZACIÓN group
+          view_nav_separator(),
+          view_config_nav_link(
+            config,
+            permissions.Workflows,
+            "nav-rules",
+            icons.Automation,
+            i18n_text.AdminWorkflows,
+            config.on_navigate_config_rules,
+          ),
+          view_config_nav_link(
+            config,
+            permissions.TaskTemplates,
+            "nav-templates",
+            icons.TaskTemplates,
+            i18n_text.Templates,
+            config.on_navigate_config_templates,
+          ),
+          // Story 4.9 AC3: Separator - RESULTADOS group
+          view_nav_separator(),
+          view_config_nav_link(
+            config,
+            permissions.RuleMetrics,
+            "nav-metrics",
+            icons.Metrics,
+            i18n_text.AdminMetrics,
+            config.on_navigate_config_metrics,
+          ),
+        ])
       },
     ],
   )
@@ -560,63 +561,56 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           False -> "section-items"
         }
         div([attribute.class(items_class)], [
-            view_org_nav_link(
-              config,
-              permissions.Invites,
-              "nav-invites",
-              icons.Invites,
-              i18n_text.Invites,
-              config.on_navigate_org_invites,
-              Some(config.pending_invites_count),
-            ),
-            view_org_nav_link(
-              config,
-              permissions.OrgSettings,
-              "nav-users",
-              icons.OrgUsers,
-              i18n_text.OrgUsers,
-              config.on_navigate_org_users,
-              Some(config.users_count),
-            ),
-            view_org_nav_link(
-              config,
-              permissions.Projects,
-              "nav-projects",
-              icons.Projects,
-              i18n_text.Projects,
-              config.on_navigate_org_projects,
-              Some(config.projects_count),
-            ),
-            view_org_nav_link(
-              config,
-              permissions.Assignments,
-              "nav-assignments",
-              icons.Team,
-              i18n_text.Assignments,
-              config.on_navigate_org_assignments,
-              None,
-            ),
-            view_org_nav_link(
-              config,
-              permissions.Metrics,
-              "nav-org-metrics",
-              icons.OrgMetrics,
-              i18n_text.OrgMetrics,
-              config.on_navigate_org_metrics,
-              None,
-            ),
-          ])
+          view_org_nav_link(
+            config,
+            permissions.Invites,
+            "nav-invites",
+            icons.Invites,
+            i18n_text.Invites,
+            config.on_navigate_org_invites,
+            Some(config.pending_invites_count),
+          ),
+          view_org_nav_link(
+            config,
+            permissions.OrgSettings,
+            "nav-users",
+            icons.OrgUsers,
+            i18n_text.OrgUsers,
+            config.on_navigate_org_users,
+            Some(config.users_count),
+          ),
+          view_org_nav_link(
+            config,
+            permissions.Projects,
+            "nav-projects",
+            icons.Projects,
+            i18n_text.Projects,
+            config.on_navigate_org_projects,
+            Some(config.projects_count),
+          ),
+          view_org_nav_link(
+            config,
+            permissions.Assignments,
+            "nav-assignments",
+            icons.Team,
+            i18n_text.Assignments,
+            config.on_navigate_org_assignments,
+            None,
+          ),
+          view_org_nav_link(
+            config,
+            permissions.Metrics,
+            "nav-org-metrics",
+            icons.OrgMetrics,
+            i18n_text.OrgMetrics,
+            config.on_navigate_org_metrics,
+            None,
+          ),
+        ])
       },
     ],
   )
 }
-
 // =============================================================================
 // Helpers
 // =============================================================================
-
-import gleam/int
-
-fn int_to_string(i: Int) -> String {
-  int.to_string(i)
-}

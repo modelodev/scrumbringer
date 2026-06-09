@@ -1,11 +1,14 @@
 import gleam/dict
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 pub fn grouped_list_renders_empty_state_test() {
   let config =
@@ -25,5 +28,5 @@ pub fn grouped_list_renders_empty_state_test() {
 
   let html = grouped_list.view(config) |> element.to_document_string
 
-  string.contains(html, "No available tasks right now") |> should.be_true
+  assert_contains(html, "No available tasks right now")
 }

@@ -2,17 +2,30 @@
 ////
 //// Tests Model construction, Msg type constructors, and DialogMode type.
 
-import gleeunit/should
-
 import gleam/option
+import gleam/string
+import lustre/element
+
+import domain/workflow.{type Workflow, Workflow}
+import scrumbringer_client/components/crud_dialog_base.{
+  Closed, Creating, Deleting, Editing,
+}
 import scrumbringer_client/components/workflow_crud_dialog.{
   CloseRequested, CreateActiveToggled, CreateDescriptionChanged,
   CreateNameChanged, CreateSubmitted, DeleteCancelled, DeleteConfirmed,
   EditActiveToggled, EditCancelled, EditDescriptionChanged, EditNameChanged,
-  EditSubmitted, LocaleReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived,
-  Model, ProjectIdReceived,
+  EditSubmitted, LocaleReceived, ModeReceived, Model, ProjectIdReceived,
+  view_create_dialog_for_test, view_edit_dialog_for_test,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
+
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
 
 // =============================================================================
 // Model Tests
@@ -23,7 +36,7 @@ pub fn model_default_values_test() {
     Model(
       locale: En,
       project_id: option.None,
-      mode: option.None,
+      mode: Closed,
       create_name: "",
       create_description: "",
       create_active: True,
@@ -38,12 +51,12 @@ pub fn model_default_values_test() {
       delete_error: option.None,
     )
 
-  model.locale |> should.equal(En)
-  model.project_id |> should.equal(option.None)
-  model.mode |> should.equal(option.None)
-  model.create_name |> should.equal("")
-  model.create_active |> should.equal(True)
-  model.create_in_flight |> should.equal(False)
+  let assert En = model.locale
+  let assert option.None = model.project_id
+  let assert Closed = model.mode
+  let assert "" = model.create_name
+  let assert True = model.create_active
+  let assert False = model.create_in_flight
 }
 
 pub fn model_with_spanish_locale_test() {
@@ -51,7 +64,7 @@ pub fn model_with_spanish_locale_test() {
     Model(
       locale: Es,
       project_id: option.Some(42),
-      mode: option.Some(ModeCreate),
+      mode: Creating,
       create_name: "Mi Automatización",
       create_description: "Descripción",
       create_active: True,
@@ -66,9 +79,9 @@ pub fn model_with_spanish_locale_test() {
       delete_error: option.None,
     )
 
-  model.locale |> should.equal(Es)
-  model.project_id |> should.equal(option.Some(42))
-  model.create_name |> should.equal("Mi Automatización")
+  let assert Es = model.locale
+  let assert option.Some(42) = model.project_id
+  let assert "Mi Automatización" = model.create_name
 }
 
 pub fn model_with_create_in_flight_test() {
@@ -76,7 +89,7 @@ pub fn model_with_create_in_flight_test() {
     Model(
       locale: En,
       project_id: option.None,
-      mode: option.Some(ModeCreate),
+      mode: Creating,
       create_name: "Test Workflow",
       create_description: "",
       create_active: True,
@@ -91,7 +104,7 @@ pub fn model_with_create_in_flight_test() {
       delete_error: option.None,
     )
 
-  model.create_in_flight |> should.equal(True)
+  let assert True = model.create_in_flight
 }
 
 pub fn model_with_error_test() {
@@ -99,7 +112,7 @@ pub fn model_with_error_test() {
     Model(
       locale: En,
       project_id: option.None,
-      mode: option.Some(ModeCreate),
+      mode: Creating,
       create_name: "",
       create_description: "",
       create_active: True,
@@ -114,7 +127,7 @@ pub fn model_with_error_test() {
       delete_error: option.None,
     )
 
-  model.create_error |> should.equal(option.Some("Name is required"))
+  let assert option.Some("Name is required") = model.create_error
 }
 
 // =============================================================================
@@ -122,20 +135,20 @@ pub fn model_with_error_test() {
 // =============================================================================
 
 pub fn dialog_mode_create_test() {
-  let mode = ModeCreate
-  should.equal(mode, ModeCreate)
+  let mode = Creating
+  assert_equal(mode, Creating)
 }
 
 pub fn dialog_mode_edit_test() {
   let workflow = make_test_workflow()
-  let ModeEdit(w) = ModeEdit(workflow)
-  w.id |> should.equal(1)
+  let Editing(w) = Editing(workflow)
+  let assert 1 = w.id
 }
 
 pub fn dialog_mode_delete_test() {
   let workflow = make_test_workflow()
-  let ModeDelete(w) = ModeDelete(workflow)
-  w.name |> should.equal("Test Workflow")
+  let Deleting(w) = Deleting(workflow)
+  let assert "Test Workflow" = w.name
 }
 
 // =============================================================================
@@ -144,105 +157,115 @@ pub fn dialog_mode_delete_test() {
 
 pub fn msg_locale_received_test() {
   let msg = LocaleReceived(Es)
-  case msg {
-    LocaleReceived(loc) -> loc |> should.equal(Es)
-  }
+  assert_equal(msg, LocaleReceived(Es))
 }
 
 pub fn msg_project_id_received_test() {
   let msg = ProjectIdReceived(option.Some(123))
-  case msg {
-    ProjectIdReceived(id) -> id |> should.equal(option.Some(123))
-  }
+  assert_equal(msg, ProjectIdReceived(option.Some(123)))
 }
 
 pub fn msg_project_id_received_none_test() {
   let msg = ProjectIdReceived(option.None)
-  case msg {
-    ProjectIdReceived(id) -> id |> should.equal(option.None)
-  }
+  assert_equal(msg, ProjectIdReceived(option.None))
 }
 
 pub fn msg_mode_received_test() {
-  let msg = ModeReceived(ModeCreate)
-  case msg {
-    ModeReceived(mode) -> should.equal(mode, ModeCreate)
-  }
+  let msg = ModeReceived(Creating)
+  assert_equal(msg, ModeReceived(Creating))
 }
 
 pub fn msg_create_name_changed_test() {
   let msg = CreateNameChanged("New Workflow")
-  case msg {
-    CreateNameChanged(name) -> name |> should.equal("New Workflow")
-  }
+  assert_equal(msg, CreateNameChanged("New Workflow"))
 }
 
 pub fn msg_create_description_changed_test() {
   let msg = CreateDescriptionChanged("New Description")
-  case msg {
-    CreateDescriptionChanged(desc) -> desc |> should.equal("New Description")
-  }
+  assert_equal(msg, CreateDescriptionChanged("New Description"))
 }
 
 pub fn msg_create_active_toggled_test() {
   let msg = CreateActiveToggled
-  should.equal(msg, CreateActiveToggled)
+  assert_equal(msg, CreateActiveToggled)
 }
 
 pub fn msg_create_submitted_test() {
   let msg = CreateSubmitted
-  should.equal(msg, CreateSubmitted)
+  assert_equal(msg, CreateSubmitted)
 }
 
 pub fn msg_edit_name_changed_test() {
   let msg = EditNameChanged("Updated Name")
-  case msg {
-    EditNameChanged(name) -> name |> should.equal("Updated Name")
-  }
+  assert_equal(msg, EditNameChanged("Updated Name"))
 }
 
 pub fn msg_edit_description_changed_test() {
   let msg = EditDescriptionChanged("Updated Description")
-  case msg {
-    EditDescriptionChanged(desc) -> desc |> should.equal("Updated Description")
-  }
+  assert_equal(msg, EditDescriptionChanged("Updated Description"))
 }
 
 pub fn msg_edit_active_toggled_test() {
   let msg = EditActiveToggled
-  should.equal(msg, EditActiveToggled)
+  assert_equal(msg, EditActiveToggled)
 }
 
 pub fn msg_edit_submitted_test() {
   let msg = EditSubmitted
-  should.equal(msg, EditSubmitted)
+  assert_equal(msg, EditSubmitted)
 }
 
 pub fn msg_edit_cancelled_test() {
   let msg = EditCancelled
-  should.equal(msg, EditCancelled)
+  assert_equal(msg, EditCancelled)
 }
 
 pub fn msg_delete_confirmed_test() {
   let msg = DeleteConfirmed
-  should.equal(msg, DeleteConfirmed)
+  assert_equal(msg, DeleteConfirmed)
 }
 
 pub fn msg_delete_cancelled_test() {
   let msg = DeleteCancelled
-  should.equal(msg, DeleteCancelled)
+  assert_equal(msg, DeleteCancelled)
 }
 
 pub fn msg_close_requested_test() {
   let msg = CloseRequested
-  should.equal(msg, CloseRequested)
+  assert_equal(msg, CloseRequested)
+}
+
+// =============================================================================
+// View Tests
+// =============================================================================
+
+pub fn create_dialog_renders_shared_workflow_fields_test() {
+  let html =
+    view_create_dialog_for_test(En)
+    |> element.to_document_string
+
+  assert_contains(html, "workflow-create-form")
+  assert_contains(html, "Create Workflow")
+  assert_contains(html, "Workflow name")
+  assert_contains(html, "Workflow description")
+  assert_contains(html, "Active")
+}
+
+pub fn edit_dialog_renders_shared_workflow_fields_test() {
+  let html =
+    view_edit_dialog_for_test(En, make_test_workflow())
+    |> element.to_document_string
+
+  assert_contains(html, "workflow-edit-form")
+  assert_contains(html, "Edit Workflow")
+  assert_contains(html, "Test Workflow")
+  assert_contains(html, "Test Description")
+  assert_contains(html, "Active")
 }
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-import domain/workflow.{type Workflow, Workflow}
 
 fn make_test_workflow() -> Workflow {
   Workflow(

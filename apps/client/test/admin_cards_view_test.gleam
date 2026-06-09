@@ -1,6 +1,5 @@
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/card.{Card, Pendiente}
@@ -17,6 +16,14 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/view as admin_view
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
 
 fn base_model() -> Model {
   default_model()
@@ -85,8 +92,8 @@ pub fn cards_view_renders_detail_button_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  string.contains(html, "card-title-button") |> should.be_true
-  string.contains(html, "card-detail-open") |> should.be_true
+  assert_contains(html, "card-title-button")
+  assert_contains(html, "card-detail-open")
 }
 
 pub fn cards_view_renders_detail_modal_when_open_test() {
@@ -111,7 +118,7 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  string.contains(html, "card-detail-modal") |> should.be_true
+  assert_contains(html, "card-detail-modal")
 }
 
 pub fn cards_view_passes_milestone_context_to_dialog_test() {
@@ -143,8 +150,8 @@ pub fn cards_view_passes_milestone_context_to_dialog_test() {
     admin_view.view_card_crud_dialog(model, 1)
     |> element.to_document_string
 
-  string.contains(html, "milestone-id=\"89\"") |> should.be_true
-  string.contains(html, "milestone-name=\"Milestone 89\"") |> should.be_true
+  assert_contains(html, "milestone-id=\"89\"")
+  assert_contains(html, "milestone-name=\"Milestone 89\"")
 }
 
 pub fn cards_view_without_context_keeps_milestone_attributes_empty_test() {
@@ -166,6 +173,6 @@ pub fn cards_view_without_context_keeps_milestone_attributes_empty_test() {
     admin_view.view_card_crud_dialog(model, 1)
     |> element.to_document_string
 
-  string.contains(html, "milestone-id=\"89\"") |> should.be_false
-  string.contains(html, "milestone-name=\"Milestone 89\"") |> should.be_false
+  assert_not_contains(html, "milestone-id=\"89\"")
+  assert_not_contains(html, "milestone-name=\"Milestone 89\"")
 }

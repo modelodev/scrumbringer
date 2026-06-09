@@ -20,6 +20,7 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
 
 // =============================================================================
@@ -30,12 +31,12 @@ import scrumbringer_client/api/core
 pub fn get_member_capability_ids(
   project_id: Int,
   user_id: Int,
-  to_msg: fn(core.ApiResult(List(Int))) -> msg,
+  to_msg: fn(ApiResult(List(Int))) -> msg,
 ) -> Effect(msg) {
   let decoder =
     decode.field("capability_ids", decode.list(decode.int), decode.success)
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -52,13 +53,13 @@ pub fn put_member_capability_ids(
   project_id: Int,
   user_id: Int,
   ids: List(Int),
-  to_msg: fn(core.ApiResult(List(Int))) -> msg,
+  to_msg: fn(ApiResult(List(Int))) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("capability_ids", json.array(ids, of: json.int))])
   let decoder =
     decode.field("capability_ids", decode.list(decode.int), decode.success)
   core.request(
-    "PUT",
+    core.Put,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"

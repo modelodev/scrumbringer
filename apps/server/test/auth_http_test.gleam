@@ -4,11 +4,10 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -22,31 +21,31 @@ pub fn bootstrap_happy_path_creates_org_default_project_and_membership_test() {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let org_name = single_text(db, "select name from organizations where id = 1")
-  org_name |> should.equal("Acme")
+  org_name |> expect.equal("Acme")
 
   let default_projects =
     single_int(
       db,
       "select count(*) from projects where org_id = 1 and name = 'Default'",
     )
-  default_projects |> should.equal(1)
+  default_projects |> expect.equal(1)
 
   let admin_user_count =
     single_int(
       db,
       "select count(*) from users where org_id = 1 and org_role = 'admin'",
     )
-  admin_user_count |> should.equal(1)
+  admin_user_count |> expect.equal(1)
 
   let admin_memberships =
     single_int(
       db,
       "select count(*) from project_members where user_id = 1 and role = 'manager'",
     )
-  admin_memberships |> should.equal(1)
+  admin_memberships |> expect.equal(1)
 }
 
 pub fn register_sets_session_and_csrf_cookies_test() {
@@ -58,10 +57,10 @@ pub fn register_sets_session_and_csrf_cookies_test() {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let cookies = set_cookie_headers(res.headers)
-  list.length(cookies) |> should.equal(2)
+  list.length(cookies) |> expect.equal(2)
 
   let has_session_cookie =
     cookies
@@ -73,7 +72,7 @@ pub fn register_sets_session_and_csrf_cookies_test() {
       && string.contains(h, "Path=/")
     })
 
-  has_session_cookie |> should.be_true
+  has_session_cookie |> expect.is_true
 
   let has_csrf_cookie =
     cookies
@@ -85,7 +84,7 @@ pub fn register_sets_session_and_csrf_cookies_test() {
       && string.contains(h, "Path=/")
     })
 
-  has_csrf_cookie |> should.be_true
+  has_csrf_cookie |> expect.is_true
 }
 
 pub fn register_after_bootstrap_requires_invite_test() {
@@ -99,9 +98,9 @@ pub fn register_after_bootstrap_requires_invite_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "INVITE_REQUIRED")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn register_rejects_short_password_test() {
@@ -121,9 +120,9 @@ pub fn register_rejects_short_password_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
   string.contains(simulate.read_body(res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn validate_invite_link_returns_email_when_active_test() {
@@ -136,9 +135,9 @@ pub fn validate_invite_link_returns_email_when_active_test() {
   let res =
     handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_active"))
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   string.contains(simulate.read_body(res), "member@example.com")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
@@ -152,9 +151,9 @@ pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
   let missing_res =
     handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_missing"))
 
-  missing_res.status |> should.equal(403)
+  expect.expect_status(missing_res, 403)
   string.contains(simulate.read_body(missing_res), "INVITE_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   let invalidated_res =
     handler(simulate.request(
@@ -162,16 +161,16 @@ pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
       "/api/v1/auth/invite-links/il_invalidated",
     ))
 
-  invalidated_res.status |> should.equal(403)
+  expect.expect_status(invalidated_res, 403)
   string.contains(simulate.read_body(invalidated_res), "INVITE_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   let used_res =
     handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_used"))
 
-  used_res.status |> should.equal(403)
+  expect.expect_status(used_res, 403)
   string.contains(simulate.read_body(used_res), "INVITE_USED")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn register_consumes_invite_once_test() {
@@ -191,7 +190,7 @@ pub fn register_consumes_invite_once_test() {
     )
 
   let first_res = handler(first_req)
-  first_res.status |> should.equal(200)
+  expect.expect_status(first_res, 200)
 
   let second_req =
     simulate.request(http.Post, "/api/v1/auth/register")
@@ -203,9 +202,9 @@ pub fn register_consumes_invite_once_test() {
     )
 
   let second_res = handler(second_req)
-  second_res.status |> should.equal(403)
+  expect.expect_status(second_res, 403)
   string.contains(simulate.read_body(second_res), "INVITE_USED")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
@@ -230,9 +229,9 @@ pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
     )
 
   let invalid_res = handler(invalid_req)
-  invalid_res.status |> should.equal(403)
+  expect.expect_status(invalid_res, 403)
   string.contains(simulate.read_body(invalid_res), "INVITE_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   let invalidated_req =
     simulate.request(http.Post, "/api/v1/auth/register")
@@ -244,9 +243,9 @@ pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
     )
 
   let invalidated_res = handler(invalidated_req)
-  invalidated_res.status |> should.equal(403)
+  expect.expect_status(invalidated_res, 403)
   string.contains(simulate.read_body(invalidated_res), "INVITE_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   let used_req =
     simulate.request(http.Post, "/api/v1/auth/register")
@@ -258,9 +257,9 @@ pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
     )
 
   let used_res = handler(used_req)
-  used_res.status |> should.equal(403)
+  expect.expect_status(used_res, 403)
   string.contains(simulate.read_body(used_res), "INVITE_USED")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn login_sets_session_and_csrf_cookies_test() {
@@ -268,10 +267,10 @@ pub fn login_sets_session_and_csrf_cookies_test() {
   let handler = scrumbringer_server.handler(app)
 
   let res = login(handler)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let cookies = set_cookie_headers(res.headers)
-  list.length(cookies) |> should.equal(2)
+  list.length(cookies) |> expect.equal(2)
 
   let has_session_cookie =
     cookies
@@ -283,7 +282,7 @@ pub fn login_sets_session_and_csrf_cookies_test() {
       && string.contains(h, "Path=/")
     })
 
-  has_session_cookie |> should.be_true
+  has_session_cookie |> expect.is_true
 
   let has_csrf_cookie =
     cookies
@@ -295,7 +294,7 @@ pub fn login_sets_session_and_csrf_cookies_test() {
       && string.contains(h, "Path=/")
     })
 
-  has_csrf_cookie |> should.be_true
+  has_csrf_cookie |> expect.is_true
 }
 
 pub fn login_rejects_invalid_credentials_test() {
@@ -313,8 +312,8 @@ pub fn login_rejects_invalid_credentials_test() {
       ),
     )
 
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn login_rejects_unknown_email_test() {
@@ -332,8 +331,8 @@ pub fn login_rejects_unknown_email_test() {
       ),
     )
 
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
@@ -341,9 +340,9 @@ pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
   let handler = scrumbringer_server.handler(app)
 
   let unauth_res = handler(simulate.request(http.Get, "/api/v1/auth/me"))
-  unauth_res.status |> should.equal(401)
+  expect.expect_status(unauth_res, 401)
   string.contains(simulate.read_body(unauth_res), "AUTH_REQUIRED")
-  |> should.be_true
+  |> expect.is_true
 
   let login_res = login(handler)
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -355,9 +354,9 @@ pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let authed_res = handler(authed_req)
-  authed_res.status |> should.equal(200)
+  expect.expect_status(authed_res, 200)
   string.contains(simulate.read_body(authed_res), "admin@example.com")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
@@ -374,8 +373,8 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let bad_res = handler(bad_req)
-  bad_res.status |> should.equal(403)
-  list.length(set_cookie_headers(bad_res.headers)) |> should.equal(0)
+  expect.expect_status(bad_res, 403)
+  list.length(set_cookie_headers(bad_res.headers)) |> expect.equal(0)
 
   let ok_req =
     simulate.request(http.Post, "/api/v1/auth/logout")
@@ -384,10 +383,10 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let ok_res = handler(ok_req)
-  ok_res.status |> should.equal(204)
+  expect.expect_status(ok_res, 204)
 
   let cookies = set_cookie_headers(ok_res.headers)
-  list.length(cookies) |> should.equal(2)
+  list.length(cookies) |> expect.equal(2)
 
   let clears_session =
     cookies
@@ -397,7 +396,7 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
       && string.contains(h, "Expires=Thu, 01 Jan 1970")
     })
 
-  clears_session |> should.be_true
+  clears_session |> expect.is_true
 
   let clears_csrf =
     cookies
@@ -407,7 +406,7 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
       && string.contains(h, "Expires=Thu, 01 Jan 1970")
     })
 
-  clears_csrf |> should.be_true
+  clears_csrf |> expect.is_true
 }
 
 fn new_test_app() -> scrumbringer_server.App {
@@ -426,7 +425,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -472,11 +471,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -484,7 +482,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

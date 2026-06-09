@@ -18,6 +18,12 @@
 //// - Direct SQL operations (see seed_db.gleam)
 //// - CLI or output (see seed.gleam)
 
+import domain/card
+import domain/milestone
+import domain/org_role
+import domain/project_role
+import domain/task_status.{type TaskStatus, Available, Claimed, Completed, Taken}
+import domain/workflow
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -81,7 +87,7 @@ pub type TaskSeedInfo {
   TaskSeedInfo(
     task_id: Int,
     project_id: Int,
-    status: String,
+    status: TaskStatus,
     created_at: String,
     created_by: Int,
     claimed_by: Option(Int),
@@ -171,8 +177,17 @@ pub fn card_title_pool() -> List(String) {
 }
 
 /// Pool of valid card colors.
-pub fn card_color_pool() -> List(String) {
-  ["gray", "red", "orange", "yellow", "green", "blue", "purple", "pink"]
+pub fn card_color_pool() -> List(card.CardColor) {
+  [
+    card.Gray,
+    card.Red,
+    card.Orange,
+    card.Yellow,
+    card.Green,
+    card.Blue,
+    card.Purple,
+    card.Pink,
+  ]
 }
 
 /// Pool of user emails for generated users.
@@ -288,7 +303,7 @@ fn build_users(
         seed_db.UserInsertOptions(
           org_id: state.org_id,
           email: email,
-          org_role: "member",
+          org_role: org_role.Member,
           first_login_at: first_login,
           created_at: Some(days_ago_timestamp(config.date_range_days)),
         ),
@@ -334,12 +349,17 @@ fn build_projects(
             db,
             project_id,
             state.admin_id,
-            "manager",
+            project_role.Manager,
           ))
 
           use _ <- result.try(
             list.try_map(assignable_users, fn(user_id) {
-              seed_db.insert_member(db, project_id, user_id, "member")
+              seed_db.insert_member(
+                db,
+                project_id,
+                user_id,
+                project_role.Member,
+              )
             }),
           )
 
@@ -523,7 +543,7 @@ fn build_cards(
             <> base_title
             <> " #"
             <> int.to_string(idx + 1)
-          let color = Some(list_at(colors, idx, "gray"))
+          let color = Some(list_at_helper(colors, idx, card.Gray))
           let creator_idx = idx % list.length(state.user_ids)
           let creator_id =
             list_at_int(state.user_ids, creator_idx, state.admin_id)
@@ -662,13 +682,11 @@ fn build_rules(
         [active_wf, inactive_wf], Some(#(bug_id, feature_id, _task_id)) -> {
           use active_rule <- result.try(seed_db.insert_rule(
             db,
-            seed_db.RuleInsertOptions(
+            seed_rule_options(
               workflow_id: active_wf,
               name: "On Task Completed (Active)",
               goal: Some("Auto action on completion"),
-              resource_type: "task",
-              task_type_id: Some(bug_id),
-              to_state: "completed",
+              target: workflow.TaskRule(Completed, Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -676,13 +694,11 @@ fn build_rules(
 
           use inactive_rule <- result.try(seed_db.insert_rule(
             db,
-            seed_db.RuleInsertOptions(
+            seed_rule_options(
               workflow_id: inactive_wf,
               name: "On Task Completed (Inactive)",
               goal: Some("Should not trigger"),
-              resource_type: "task",
-              task_type_id: Some(feature_id),
-              to_state: "completed",
+              target: workflow.TaskRule(Completed, Some(feature_id)),
               active: True,
               created_at: None,
             ),
@@ -693,13 +709,11 @@ fn build_rules(
         [single_wf], Some(#(bug_id, _feature_id, _task_id)) ->
           seed_db.insert_rule(
             db,
-            seed_db.RuleInsertOptions(
+            seed_rule_options(
               workflow_id: single_wf,
               name: "On Task Completed",
               goal: Some("Auto action on completion"),
-              resource_type: "task",
-              task_type_id: Some(bug_id),
-              to_state: "completed",
+              target: workflow.TaskRule(Completed, Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -724,6 +738,26 @@ fn build_rules(
       rule_ids: rule_ids,
       rule_ids_by_project: rule_ids_by_project,
     ),
+  )
+}
+
+fn seed_rule_options(
+  workflow_id workflow_id: Int,
+  name name: String,
+  goal goal: Option(String),
+  target target: workflow.RuleTarget,
+  active active: Bool,
+  created_at created_at: Option(String),
+) -> seed_db.RuleInsertOptions {
+  seed_db.RuleInsertOptions(
+    workflow_id: workflow_id,
+    name: name,
+    goal: goal,
+    resource_type: workflow.rule_target_resource_type(target),
+    task_type_id: workflow.rule_target_task_type_id(target),
+    to_state: workflow.rule_target_to_state_string(target),
+    active: active,
+    created_at: created_at,
   )
 }
 
@@ -771,38 +805,33 @@ fn build_tasks(
       let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
 
       let tasks = [
-        #(
-          title_for(base_idx, "Task A"),
-          bug_id,
-          "completed",
-          Some(card_all_done),
-        ),
+        #(title_for(base_idx, "Task A"), bug_id, Completed, Some(card_all_done)),
         #(
           title_for(base_idx + 1, "Task B"),
           feature_id,
-          "completed",
+          Completed,
           Some(card_all_done),
         ),
         #(
           title_for(base_idx + 2, "Task C"),
           bug_id,
-          "completed",
+          Completed,
           Some(card_mixed),
         ),
         #(
           title_for(base_idx + 3, "Task D"),
           feature_id,
-          "claimed",
+          Claimed(Taken),
           Some(card_mixed),
         ),
         #(
           title_for(base_idx + 4, "Task E"),
           task_id,
-          "available",
+          Available,
           Some(card_single),
         ),
-        #(title_for(base_idx + 5, "Task F"), bug_id, "available", None),
-        #(title_for(base_idx + 6, "Task G"), feature_id, "available", None),
+        #(title_for(base_idx + 5, "Task F"), bug_id, Available, None),
+        #(title_for(base_idx + 6, "Task G"), feature_id, Available, None),
       ]
 
       let extra_count =
@@ -842,17 +871,17 @@ fn build_tasks(
         let last_entered_pool_at =
           seeded_last_entered_pool_at(status, pool_lifetime_s, base_days, idx)
         let #(claimed_by, claimed_at, completed_at) = case status {
-          "claimed" -> #(
+          Claimed(_) -> #(
             Some(claimed_user_for),
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
             None,
           )
-          "completed" -> #(
+          Completed -> #(
             None,
             None,
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
           )
-          _ -> #(None, None, None)
+          Available -> #(None, None, None)
         }
 
         let created_at =
@@ -918,9 +947,7 @@ fn build_task_events(
             project_id: seed.project_id,
             task_id: seed.task_id,
             actor_user_id: seed.created_by,
-            event_type: task_events_db.event_type_to_string(
-              task_events_db.TaskCreated,
-            ),
+            event_type: task_events_db.TaskCreated,
             created_at: Some(seed.created_at),
           )
         })
@@ -970,7 +997,7 @@ fn build_milestones(
             Some(
               "Early planning milestone with exploratory cards, loose research tasks and an explicit empty slot for future work.",
             ),
-            "ready",
+            milestone.Ready,
             21,
             None,
             None,
@@ -997,7 +1024,7 @@ fn build_milestones(
             Some(
               "Intentional empty milestone to exercise empty-state UX and show upcoming planning space.",
             ),
-            "ready",
+            milestone.Ready,
             15,
             None,
             None,
@@ -1013,7 +1040,7 @@ fn build_milestones(
             Some(
               "Milestone packed with QA, polish and rollout preparation so the new milestones UI shows a realistic planning queue.",
             ),
-            "ready",
+            milestone.Ready,
             9,
             None,
             None,
@@ -1040,7 +1067,7 @@ fn build_milestones(
             Some(
               "Ready milestone dominated by loose documentation and compliance tasks, useful to validate the exception treatment in the new view.",
             ),
-            "ready",
+            milestone.Ready,
             5,
             None,
             None,
@@ -1070,7 +1097,7 @@ fn build_milestones(
             Some(
               "Recently completed milestone used to exercise historical metrics and completed content sections.",
             ),
-            "completed",
+            milestone.Completed,
             28,
             Some(days_ago_timestamp(18)),
             Some(days_ago_timestamp(6)),
@@ -1097,7 +1124,7 @@ fn build_milestones(
             Some(
               "The currently active milestone with in-flight delivery work, claimed tasks and visible loose scope.",
             ),
-            "active",
+            milestone.Active,
             12,
             Some(days_ago_timestamp(3)),
             None,
@@ -1130,7 +1157,7 @@ fn build_milestones(
             Some(
               "A ready milestone with enough queued cards and loose tasks to preview the upcoming tranche of work.",
             ),
-            "ready",
+            milestone.Ready,
             6,
             None,
             None,
@@ -1157,7 +1184,7 @@ fn build_milestones(
             Some(
               "Small ready milestone mixing discovery cards and one loose task to keep the list visually varied.",
             ),
-            "ready",
+            milestone.Ready,
             2,
             None,
             None,
@@ -1184,7 +1211,7 @@ fn build_milestones(
             Some(
               "Explicitly empty ready milestone reserved for partner rollout planning and empty-state validation.",
             ),
-            "ready",
+            milestone.Ready,
             2,
             None,
             None,
@@ -1203,7 +1230,7 @@ fn build_milestones(
             Some(
               "Primary ready milestone with several cards and loose tasks for visual inspection of the new split view.",
             ),
-            "ready",
+            milestone.Ready,
             11,
             None,
             None,
@@ -1230,7 +1257,7 @@ fn build_milestones(
             Some(
               "Active bugfix milestone so the seed includes another project with live milestone context.",
             ),
-            "active",
+            milestone.Active,
             5,
             Some(days_ago_timestamp(1)),
             None,
@@ -1263,7 +1290,7 @@ fn build_milestones(
             Some(
               "Secondary ready milestone with a small amount of work to make the milestone list feel more realistic.",
             ),
-            "ready",
+            milestone.Ready,
             3,
             None,
             None,
@@ -1284,7 +1311,7 @@ fn build_milestones(
             Some(
               "Card-heavy ready milestone with little loose work, useful to contrast against the more ad-hoc planning milestones.",
             ),
-            "ready",
+            milestone.Ready,
             2,
             None,
             None,
@@ -1305,7 +1332,7 @@ fn build_milestones(
             Some(
               "Another ready-but-empty milestone so the left pane shows multiple realistic placeholders instead of a single artificial case.",
             ),
-            "ready",
+            milestone.Ready,
             1,
             None,
             None,
@@ -1328,7 +1355,7 @@ fn insert_seed_milestone(
   position: Int,
   name: String,
   description: Option(String),
-  state_label: String,
+  milestone_state: milestone.MilestoneState,
   created_days_ago: Int,
   activated_at: Option(String),
   completed_at: Option(String),
@@ -1339,7 +1366,7 @@ fn insert_seed_milestone(
       project_id: project_id,
       name: name,
       description: description,
-      state: state_label,
+      state: milestone_state,
       position: position,
       created_by: state.admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
@@ -1383,11 +1410,11 @@ fn build_work_sessions(
 ) -> Result(BuildState, String) {
   let claimed_tasks =
     state.task_seeds
-    |> list.filter(fn(seed) { seed.status == "claimed" })
+    |> list.filter(fn(seed) { is_claimed_status(seed.status) })
     |> list.map(fn(seed) { seed.task_id })
   let completed_tasks =
     state.task_seeds
-    |> list.filter(fn(seed) { seed.status == "completed" })
+    |> list.filter(fn(seed) { is_completed_status(seed.status) })
     |> list.map(fn(seed) { seed.task_id })
   let tasks = list.append(claimed_tasks, completed_tasks)
   let tasks = list.take(tasks, 8)
@@ -1478,8 +1505,8 @@ fn trigger_rule_executions(
                 card_id: None,
               ),
               state.admin_id,
-              Some("claimed"),
-              "completed",
+              Some(Claimed(Taken)),
+              Completed,
             )
           rules_engine.evaluate_rules(db, event)
           |> result.map_error(fn(_) { "Rule evaluation failed" })
@@ -1574,25 +1601,25 @@ fn repeat_value(value: a, count: Int) -> List(a) {
   }
 }
 
-fn status_pool_from(distribution: StatusDistribution) -> List(String) {
+fn status_pool_from(distribution: StatusDistribution) -> List(TaskStatus) {
   let StatusDistribution(
     available: available,
     claimed: claimed,
     completed: completed,
   ) = distribution
   list.append(
-    repeat_value("available", available),
+    repeat_value(Available, available),
     list.append(
-      repeat_value("claimed", claimed),
-      repeat_value("completed", completed),
+      repeat_value(Claimed(Taken), claimed),
+      repeat_value(Completed, completed),
     ),
   )
 }
 
-fn status_from_pool(pool: List(String), idx: Int) -> String {
+fn status_from_pool(pool: List(TaskStatus), idx: Int) -> TaskStatus {
   case pool {
-    [] -> "available"
-    _ -> list_at(pool, idx % list.length(pool), "available")
+    [] -> Available
+    _ -> list_at_helper(pool, idx % list.length(pool), Available)
   }
 }
 
@@ -1644,29 +1671,25 @@ fn task_event_options_for_seed(
   let complete_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
 
   let claim_event = case seed.status {
-    "claimed" ->
+    Claimed(_) ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.event_type_to_string(
-          task_events_db.TaskClaimed,
-        ),
+        event_type: task_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
-    "completed" ->
+    Completed ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.event_type_to_string(
-          task_events_db.TaskClaimed,
-        ),
+        event_type: task_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
-    _ -> None
+    Available -> None
   }
 
   let release_event = case idx % 4 == 0 {
@@ -1676,9 +1699,7 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.event_type_to_string(
-          task_events_db.TaskReleased,
-        ),
+        event_type: task_events_db.TaskReleased,
         created_at: Some(release_time),
       ))
     False -> None
@@ -1691,27 +1712,23 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.event_type_to_string(
-          task_events_db.TaskClaimed,
-        ),
+        event_type: task_events_db.TaskClaimed,
         created_at: Some(reclaim_time),
       ))
     False -> None
   }
 
   let complete_event = case seed.status {
-    "completed" ->
+    Completed ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.event_type_to_string(
-          task_events_db.TaskCompleted,
-        ),
+        event_type: task_events_db.TaskCompleted,
         created_at: Some(complete_time),
       ))
-    _ -> None
+    Available | Claimed(_) -> None
   }
 
   compact_options([claim_event, release_event, reclaim_event, complete_event])
@@ -1738,7 +1755,7 @@ fn first_claim_events_for_users(
         TaskSeedInfo(
           task_id: list_at_int(state.task_ids, 0, 0),
           project_id: state.org_id,
-          status: "claimed",
+          status: Claimed(Taken),
           created_at: timestamp_days_hours(login_days, 0),
           created_by: state.admin_id,
           claimed_by: Some(user_id),
@@ -1750,9 +1767,7 @@ fn first_claim_events_for_users(
       project_id: seed.project_id,
       task_id: seed.task_id,
       actor_user_id: user_id,
-      event_type: task_events_db.event_type_to_string(
-        task_events_db.TaskClaimed,
-      ),
+      event_type: task_events_db.TaskClaimed,
       created_at: Some(timestamp_days_hours(login_days, hours)),
     )
   })
@@ -1818,7 +1833,7 @@ fn seeded_rule_for_task(
 }
 
 fn seeded_pool_lifetime_s(
-  status: String,
+  status: TaskStatus,
   task_idx: Int,
   project_idx: Int,
 ) -> Int {
@@ -1831,26 +1846,39 @@ fn seeded_pool_lifetime_s(
   }
 
   case status {
-    "available" -> base
-    "claimed" -> int.max(300, base)
-    "completed" -> int.max(900, base)
-    _ -> base
+    Available -> base
+    Claimed(_) -> int.max(300, base)
+    Completed -> int.max(900, base)
   }
 }
 
 fn seeded_last_entered_pool_at(
-  status: String,
+  status: TaskStatus,
   pool_lifetime_s: Int,
   base_days: Int,
   task_idx: Int,
 ) -> Option(String) {
   case status {
-    "available" ->
+    Available ->
       case pool_lifetime_s > 0 {
         True ->
           Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
         False -> None
       }
-    _ -> None
+    Claimed(_) | Completed -> None
+  }
+}
+
+fn is_claimed_status(status: TaskStatus) -> Bool {
+  case status {
+    Claimed(_) -> True
+    Available | Completed -> False
+  }
+}
+
+fn is_completed_status(status: TaskStatus) -> Bool {
+  case status {
+    Completed -> True
+    Available | Claimed(_) -> False
   }
 }

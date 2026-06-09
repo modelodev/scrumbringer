@@ -11,7 +11,9 @@
 //// let card = Card(id: 1, project_id: 10, title: "OAuth", ...)
 //// ```
 
-import gleam/option.{type Option}
+import domain/org_role.{type OrgRole}
+import domain/project_role.{type ProjectRole}
+import gleam/option.{type Option, None, Some}
 
 // =============================================================================
 // Types
@@ -28,6 +30,28 @@ pub type CardState {
   Cerrada
 }
 
+/// Error returned when an external card state cannot be parsed.
+pub type CardStateParseError {
+  UnknownCardState(String)
+}
+
+/// Available card colors.
+pub type CardColor {
+  Gray
+  Red
+  Orange
+  Yellow
+  Green
+  Blue
+  Purple
+  Pink
+}
+
+/// Error returned when an external card color cannot be parsed.
+pub type CardColorParseError {
+  UnknownCardColor(String)
+}
+
 /// A card (ficha) that groups related tasks.
 ///
 /// ## Example
@@ -38,7 +62,7 @@ pub type CardState {
 ///   project_id: 10,
 ///   title: "OAuth Implementation",
 ///   description: "Login with Google and GitHub",
-///   color: Some("blue"),
+///   color: Some(Blue),
 ///   state: EnCurso,
 ///   task_count: 3,
 ///   completed_count: 1,
@@ -54,7 +78,7 @@ pub type Card {
     milestone_id: Option(Int),
     title: String,
     description: String,
-    color: Option(String),
+    color: Option(CardColor),
     state: CardState,
     task_count: Int,
     completed_count: Int,
@@ -76,8 +100,8 @@ pub type Card {
 ///   content: "Scope agreed with PM",
 ///   created_at: "2026-01-28T12:00:00Z",
 ///   author_email: "user@example.com",
-///   author_project_role: Some("manager"),
-///   author_org_role: "admin",
+///   author_project_role: Some(Manager),
+///   author_org_role: Admin,
 /// )
 /// ```
 pub type CardNote {
@@ -88,8 +112,8 @@ pub type CardNote {
     content: String,
     created_at: String,
     author_email: String,
-    author_project_role: Option(String),
-    author_org_role: String,
+    author_project_role: Option(ProjectRole),
+    author_org_role: OrgRole,
   )
 }
 
@@ -141,10 +165,86 @@ pub fn state_to_string(state: CardState) -> String {
 }
 
 /// Parse CardState from API string.
-pub fn state_from_string(s: String) -> CardState {
+pub fn parse_state(s: String) -> Result(CardState, CardStateParseError) {
   case s {
-    "en_curso" -> EnCurso
-    "cerrada" -> Cerrada
-    _ -> Pendiente
+    "pendiente" -> Ok(Pendiente)
+    "en_curso" -> Ok(EnCurso)
+    "cerrada" -> Ok(Cerrada)
+    other -> Error(UnknownCardState(other))
   }
+}
+
+/// Parse CardState from an external string.
+///
+/// This function is intentionally strict. Unknown external values must be
+/// handled at the boundary instead of being silently normalised.
+pub fn state_from_string(s: String) -> Result(CardState, CardStateParseError) {
+  parse_state(s)
+}
+
+/// All available card colors in display order.
+pub const all_colors = [Gray, Red, Orange, Yellow, Green, Blue, Purple, Pink]
+
+/// Convert CardColor to its external string representation.
+pub fn color_to_string(color: CardColor) -> String {
+  case color {
+    Gray -> "gray"
+    Red -> "red"
+    Orange -> "orange"
+    Yellow -> "yellow"
+    Green -> "green"
+    Blue -> "blue"
+    Purple -> "purple"
+    Pink -> "pink"
+  }
+}
+
+/// Convert an optional CardColor to its external string representation.
+///
+/// Empty string is the wire/storage representation for an absent color.
+pub fn optional_color_to_string(color: Option(CardColor)) -> String {
+  case color {
+    None -> ""
+    Some(value) -> color_to_string(value)
+  }
+}
+
+/// Parse CardColor from an external string.
+pub fn parse_color(s: String) -> Result(CardColor, CardColorParseError) {
+  case s {
+    "gray" -> Ok(Gray)
+    "red" -> Ok(Red)
+    "orange" -> Ok(Orange)
+    "yellow" -> Ok(Yellow)
+    "green" -> Ok(Green)
+    "blue" -> Ok(Blue)
+    "purple" -> Ok(Purple)
+    "pink" -> Ok(Pink)
+    other -> Error(UnknownCardColor(other))
+  }
+}
+
+/// Parse an optional CardColor from its external string representation.
+///
+/// Empty string represents absence. Any other value must be a valid CardColor.
+pub fn parse_optional_color(
+  s: String,
+) -> Result(Option(CardColor), CardColorParseError) {
+  case s {
+    "" -> Ok(None)
+    value -> {
+      case parse_color(value) {
+        Ok(color) -> Ok(Some(color))
+        Error(error) -> Error(error)
+      }
+    }
+  }
+}
+
+/// Parse CardColor from an external string.
+///
+/// This function is intentionally strict. Unknown external values must be
+/// handled at the boundary instead of being silently normalised.
+pub fn color_from_string(s: String) -> Result(CardColor, CardColorParseError) {
+  parse_color(s)
 }

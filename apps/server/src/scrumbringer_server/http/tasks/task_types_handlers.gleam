@@ -20,15 +20,13 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/workflows/handlers.gleam` for domain operations
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
-import gleam/option.{type Option, None, Some}
+import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/tasks/payload_responses
+import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows/handlers as workflow
@@ -46,9 +44,9 @@ pub fn handle_task_types_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> list_task_types_for_user(ctx, user, project_id)
+  case list_task_types_payload(req, ctx, project_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -63,10 +61,9 @@ pub fn handle_task_types_create(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> create_task_type_for_user(req, ctx, user, project_id)
-  }
+  with_task_type_payload(req, ctx, project_id, fn(user, project_id, payload) {
+    create_task_type_payload(ctx, user, project_id, payload)
+  })
 }
 
 /// Updates a task type (PATCH).
@@ -78,10 +75,9 @@ pub fn handle_task_type_update(
   ctx: auth.Ctx,
   type_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> update_task_type_for_user(req, ctx, user, type_id)
-  }
+  with_task_type_payload(req, ctx, type_id, fn(user, type_id, payload) {
+    update_task_type_payload(ctx, user, type_id, payload)
+  })
 }
 
 /// Deletes a task type if not in use (DELETE).
@@ -93,95 +89,41 @@ pub fn handle_task_type_delete(
   ctx: auth.Ctx,
   type_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> delete_task_type_for_user(req, ctx, user, type_id)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn list_task_types_for_user(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: String,
-) -> wisp.Response {
-  case parse_project_id(project_id) {
+  case delete_task_type_payload(req, ctx, type_id) {
+    Ok(Nil) -> api.no_content()
     Error(resp) -> resp
-
-    Ok(project_id) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      // Justification: nested case maps workflow results into HTTP responses.
-      case
-        workflow.handle(db, workflow_types.ListTaskTypes(project_id, user.id))
-      {
-        Ok(workflow_types.TaskTypesList(task_types)) ->
-          api.ok(
-            json.object([
-              #(
-                "task_types",
-                json.array(task_types, of: presenters.task_type_json),
-              ),
-            ]),
-          )
-
-        Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-        Error(workflow_types.NotAuthorized) ->
-          api.error(403, "FORBIDDEN", "Forbidden")
-        Error(workflow_types.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
-      }
-    }
   }
 }
 
-fn create_task_type_for_user(
+fn list_task_types_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   project_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> create_task_type_with_csrf(req, ctx, user, project_id)
+) -> Result(wisp.Response, wisp.Response) {
+  let auth.Ctx(db: db, ..) = ctx
+
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id))
+
+  case workflow.handle(db, workflow_types.ListTaskTypes(project_id, user.id)) {
+    Ok(response) -> list_task_types_response(response)
+    Error(error) -> Error(list_task_types_error_response(error))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn create_task_type_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: String,
-) -> wisp.Response {
-  case parse_project_id(project_id) {
-    Error(resp) -> resp
-
-    Ok(project_id) -> {
-      use data <- wisp.require_json(req)
-
-      case decode_task_type_payload(data) {
-        Error(resp) -> resp
-
-        Ok(#(name, icon, capability_id)) ->
-          create_task_type_db(ctx, user, project_id, name, icon, capability_id)
-      }
-    }
-  }
-}
-
-fn create_task_type_db(
+fn create_task_type_payload(
   ctx: auth.Ctx,
   user: StoredUser,
   project_id: Int,
-  name: String,
-  icon: String,
-  capability_id: Option(Int),
-) -> wisp.Response {
+  payload: payloads.TaskTypePayload,
+) -> Result(wisp.Response, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
+  let payloads.TaskTypePayload(
+    name: name,
+    icon: icon,
+    capability_id: capability_id,
+  ) = payload
 
-  // Justification: nested case maps workflow results into HTTP responses.
   case
     workflow.handle(
       db,
@@ -195,180 +137,236 @@ fn create_task_type_db(
       ),
     )
   {
-    Ok(workflow_types.TaskTypeCreated(task_type)) ->
-      api.ok(
-        json.object([
-          #("task_type", presenters.task_type_json(task_type)),
-        ]),
-      )
-
-    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-    Error(workflow_types.NotAuthorized) ->
-      api.error(403, "FORBIDDEN", "Forbidden")
-    Error(workflow_types.TaskTypeAlreadyExists) ->
-      api.error(422, "VALIDATION_ERROR", "Task type name already exists")
-    Error(workflow_types.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(workflow_types.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Ok(response) -> create_task_type_response(response)
+    Error(error) -> Error(create_task_type_error_response(error))
   }
 }
 
-fn update_task_type_for_user(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  type_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> update_task_type_with_csrf(req, ctx, user, type_id)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn update_task_type_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  type_id: String,
-) -> wisp.Response {
-  case parse_type_id(type_id) {
-    Error(resp) -> resp
-
-    Ok(type_id) -> {
-      use data <- wisp.require_json(req)
-
-      case decode_task_type_payload(data) {
-        Error(resp) -> resp
-
-        Ok(#(name, icon, capability_id)) ->
-          update_task_type_db(ctx, user, type_id, name, icon, capability_id)
-      }
-    }
-  }
-}
-
-fn update_task_type_db(
+fn update_task_type_payload(
   ctx: auth.Ctx,
   user: StoredUser,
   type_id: Int,
-  name: String,
-  icon: String,
-  capability_id: Option(Int),
-) -> wisp.Response {
+  payload: payloads.TaskTypePayload,
+) -> Result(wisp.Response, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
+  let payloads.TaskTypePayload(
+    name: name,
+    icon: icon,
+    capability_id: capability_id,
+  ) = payload
 
-  // Justification: nested case maps workflow results into HTTP responses.
   case
     workflow.handle(
       db,
       workflow_types.UpdateTaskType(type_id, user.id, name, icon, capability_id),
     )
   {
-    Ok(workflow_types.TaskTypeUpdated(task_type)) ->
-      api.ok(
-        json.object([
-          #("task_type", presenters.task_type_json(task_type)),
-        ]),
-      )
-
-    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-    Error(workflow_types.NotAuthorized) ->
-      api.error(403, "FORBIDDEN", "Forbidden")
-    Error(workflow_types.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(workflow_types.TaskTypeAlreadyExists) ->
-      api.error(422, "VALIDATION_ERROR", "Task type name already exists")
-    Error(workflow_types.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(workflow_types.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Ok(response) -> update_task_type_response(response)
+    Error(error) -> Error(update_task_type_error_response(error))
   }
 }
 
-fn delete_task_type_for_user(
+fn delete_task_type_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   type_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> delete_task_type_with_csrf(ctx, user, type_id)
-  }
-}
-
-fn delete_task_type_with_csrf(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  type_id: String,
-) -> wisp.Response {
-  case parse_type_id(type_id) {
-    Error(resp) -> resp
-    Ok(type_id) -> delete_task_type_db(ctx, user, type_id)
-  }
-}
-
-fn delete_task_type_db(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  type_id: Int,
-) -> wisp.Response {
+) -> Result(Nil, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
 
-  // Justification: nested case maps workflow results into HTTP responses.
+  use #(user, type_id) <- result.try(require_write_context(req, ctx, type_id))
+
   case workflow.handle(db, workflow_types.DeleteTaskType(type_id, user.id)) {
-    Ok(workflow_types.TaskTypeDeleted(_)) -> api.no_content()
-    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-    Error(workflow_types.NotAuthorized) ->
-      api.error(403, "FORBIDDEN", "Forbidden")
-    Error(workflow_types.TaskTypeInUse) ->
-      api.error(422, "VALIDATION_ERROR", "Task type is in use")
-    Error(workflow_types.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(workflow_types.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Ok(response) -> delete_task_type_response(response)
+    Error(error) -> Error(delete_task_type_error_response(error))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn require_write_context(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  id: String,
+) -> Result(#(StoredUser, Int), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use id <- result.try(api.parse_id(id))
+
+  Ok(#(user, id))
+}
+
+fn with_task_type_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  id: String,
+  handle_payload: fn(StoredUser, Int, payloads.TaskTypePayload) ->
+    Result(wisp.Response, wisp.Response),
+) -> wisp.Response {
+  case require_write_context(req, ctx, id) {
+    Error(resp) -> resp
+    Ok(#(user, id)) -> {
+      use data <- wisp.require_json(req)
+      case decode_task_type_payload(data) {
+        Error(resp) -> resp
+        Ok(payload) ->
+          case handle_payload(user, id, payload) {
+            Ok(resp) -> resp
+            Error(resp) -> resp
+          }
+      }
+    }
+  }
+}
+
 fn decode_task_type_payload(
-  data: dynamic.Dynamic,
-) -> Result(#(String, String, Option(Int)), wisp.Response) {
-  let decoder = {
-    use name <- decode.field("name", decode.string)
-    use icon <- decode.field("icon", decode.string)
-    use capability_id <- decode.optional_field("capability_id", 0, decode.int)
-    decode.success(#(name, icon, capability_id))
-  }
+  data,
+) -> Result(payloads.TaskTypePayload, wisp.Response) {
+  payloads.decode_task_type(data)
+  |> result.map_error(payload_responses.decode_error)
+}
 
-  case decode.run(data, decoder) {
-    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
-    Ok(#(name, icon, capability_id)) ->
-      Ok(#(
-        name,
-        icon,
-        // Justification: nested case maps optional capability sentinel.
-        case capability_id {
-          0 -> None
-          id -> Some(id)
-        },
-      ))
+fn list_task_types_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TaskTypesList(task_types) ->
+      Ok(api.ok(presenters.task_types_response(task_types)))
+    workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TasksList(_)
+    | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
 }
 
-fn parse_project_id(project_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(project_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+fn create_task_type_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TaskTypeCreated(task_type) ->
+      Ok(api.ok(presenters.task_type_response(task_type)))
+    workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TasksList(_)
+    | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
 }
 
-fn parse_type_id(type_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(type_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+fn update_task_type_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TaskTypeUpdated(task_type) ->
+      Ok(api.ok(presenters.task_type_response(task_type)))
+    workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TasksList(_)
+    | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
+}
+
+fn delete_task_type_response(
+  response: workflow_types.Response,
+) -> Result(Nil, wisp.Response) {
+  case response {
+    workflow_types.TaskTypeDeleted(_) -> Ok(Nil)
+    workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TasksList(_)
+    | workflow_types.TaskResult(_) -> Error(unexpected_response())
+  }
+}
+
+fn list_task_types_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.NotFound
+    | workflow_types.ValidationError(_)
+    | workflow_types.TaskMilestoneInheritedFromCard
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeAlreadyExists
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn create_task_type_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.TaskTypeAlreadyExists ->
+      api.error(422, "VALIDATION_ERROR", "Task type name already exists")
+    workflow_types.ValidationError(message) ->
+      api.error(422, "VALIDATION_ERROR", message)
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.NotFound
+    | workflow_types.TaskMilestoneInheritedFromCard
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn update_task_type_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.ValidationError(message) ->
+      api.error(422, "VALIDATION_ERROR", message)
+    workflow_types.TaskTypeAlreadyExists ->
+      api.error(422, "VALIDATION_ERROR", "Task type name already exists")
+    workflow_types.NotFound -> not_found_response()
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.TaskMilestoneInheritedFromCard
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn delete_task_type_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.TaskTypeInUse ->
+      api.error(422, "VALIDATION_ERROR", "Task type is in use")
+    workflow_types.NotFound -> not_found_response()
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.ValidationError(_)
+    | workflow_types.TaskMilestoneInheritedFromCard
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeAlreadyExists
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn forbidden_response() -> wisp.Response {
+  api.error(403, "FORBIDDEN", "Forbidden")
+}
+
+fn not_found_response() -> wisp.Response {
+  api.error(404, "NOT_FOUND", "Not found")
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
+}
+
+fn unexpected_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected response")
+}
+
+fn unexpected_error() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected error")
 }

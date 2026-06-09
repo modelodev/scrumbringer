@@ -11,7 +11,7 @@
 ////
 //// ## Relations
 ////
-//// - **decoders.gleam**: Provides position decoder
+//// - **domain/task/codec.gleam**: Provides position decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -21,9 +21,10 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/task.{type TaskPosition}
+import domain/task/codec as decoders
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 
 // =============================================================================
 // Task Position API Functions
@@ -32,7 +33,7 @@ import scrumbringer_client/api/tasks/decoders
 /// List user's task positions, optionally filtered by project.
 pub fn list_me_task_positions(
   project_id: option.Option(Int),
-  to_msg: fn(core.ApiResult(List(TaskPosition))) -> msg,
+  to_msg: fn(ApiResult(List(TaskPosition))) -> msg,
 ) -> Effect(msg) {
   let url = case project_id {
     option.None -> "/api/v1/me/task-positions"
@@ -47,7 +48,7 @@ pub fn list_me_task_positions(
       decode.success,
     )
 
-  core.request("GET", url, option.None, decoder, to_msg)
+  core.request(core.Get, url, option.None, decoder, to_msg)
 }
 
 /// Update or create a task position.
@@ -55,14 +56,14 @@ pub fn upsert_me_task_position(
   task_id: Int,
   x: Int,
   y: Int,
-  to_msg: fn(core.ApiResult(TaskPosition)) -> msg,
+  to_msg: fn(ApiResult(TaskPosition)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("x", json.int(x)), #("y", json.int(y))])
   let decoder =
     decode.field("position", decoders.position_decoder(), decode.success)
 
   core.request(
-    "PUT",
+    core.Put,
     "/api/v1/me/task-positions/" <> int.to_string(task_id),
     option.Some(body),
     decoder,

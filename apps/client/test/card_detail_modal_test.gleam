@@ -4,7 +4,6 @@
 //// card detail modal component.
 
 import gleam/option
-import gleeunit/should
 
 import domain/card.{type Card, Card, EnCurso, Pendiente}
 import domain/remote.{Loaded, NotAsked}
@@ -45,7 +44,7 @@ fn make_card(id: Int) -> Card {
     milestone_id: option.None,
     title: "Test Card",
     description: "A test card",
-    color: option.Some("blue"),
+    color: option.Some(card.Blue),
     state: Pendiente,
     task_count: 3,
     completed_count: 1,
@@ -66,42 +65,36 @@ fn make_card(id: Int) -> Card {
 pub fn initial_model_has_correct_defaults_test() {
   let model = make_model()
 
-  model.card_id |> should.equal(option.None)
-  model.card |> should.equal(option.None)
-  model.locale |> should.equal(En)
-  model.current_user_id |> should.equal(option.None)
-  model.can_manage_notes |> should.equal(False)
-  model.notes |> should.equal(NotAsked)
-  model.note_content |> should.equal("")
-  model.note_in_flight |> should.equal(False)
-  model.note_error |> should.equal(option.None)
-  model.tasks |> should.equal(NotAsked)
-  model.metrics |> should.equal(NotAsked)
+  let assert option.None = model.card_id
+  let assert option.None = model.card
+  let assert En = model.locale
+  let assert option.None = model.current_user_id
+  let assert False = model.can_manage_notes
+  let assert NotAsked = model.notes
+  let assert "" = model.note_content
+  let assert False = model.note_in_flight
+  let assert option.None = model.note_error
+  let assert NotAsked = model.tasks
+  let assert NotAsked = model.metrics
   // AC21: Default tab is Tasks
-  model.active_tab |> should.equal(card_tabs.TasksTab)
+  let assert card_tabs.TasksTab = model.active_tab
 }
 
 pub fn model_with_card_retains_data_test() {
   let card = make_card(42)
   let model = Model(..make_model(), card: option.Some(card))
 
-  case model.card {
-    option.Some(c) -> {
-      c.id |> should.equal(42)
-      c.title |> should.equal("Test Card")
-      c.state |> should.equal(Pendiente)
-    }
-    option.None -> should.fail()
-  }
+  let assert option.Some(c) = model.card
+  let assert 42 = c.id
+  let assert "Test Card" = c.title
+  let assert Pendiente = c.state
 }
 
 pub fn model_with_loaded_tasks_has_correct_remote_state_test() {
   let model = Model(..make_model(), tasks: Loaded([]))
 
-  case model.tasks {
-    Loaded(t) -> t |> should.equal([])
-    _ -> should.fail()
-  }
+  let assert Loaded(t) = model.tasks
+  let assert [] = t
 }
 
 // =============================================================================
@@ -110,23 +103,23 @@ pub fn model_with_loaded_tasks_has_correct_remote_state_test() {
 
 pub fn card_id_received_msg_carries_id_test() {
   let CardIdReceived(id) = CardIdReceived(123)
-  id |> should.equal(123)
+  let assert 123 = id
 }
 
 pub fn card_received_msg_carries_card_test() {
   let card = make_card(99)
   let CardReceived(c) = CardReceived(card)
-  c.id |> should.equal(99)
+  let assert 99 = c.id
 }
 
 pub fn locale_received_msg_carries_locale_test() {
   let LocaleReceived(loc) = LocaleReceived(Es)
-  loc |> should.equal(Es)
+  let assert Es = loc
 }
 
 pub fn tasks_received_msg_carries_tasks_test() {
   let TasksReceived(tasks) = TasksReceived([])
-  tasks |> should.equal([])
+  let assert [] = tasks
 }
 
 // =============================================================================
@@ -134,13 +127,13 @@ pub fn tasks_received_msg_carries_tasks_test() {
 // =============================================================================
 
 pub fn remote_not_asked_is_initial_test() {
-  let NotAsked = NotAsked
-  should.be_true(True)
+  let state = make_model().notes
+  let assert NotAsked = state
 }
 
 pub fn remote_loaded_carries_data_test() {
   let Loaded(data) = Loaded([1, 2, 3])
-  data |> should.equal([1, 2, 3])
+  let assert [1, 2, 3] = data
 }
 
 // =============================================================================
@@ -149,20 +142,20 @@ pub fn remote_loaded_carries_data_test() {
 
 pub fn card_state_pendiente_test() {
   let card = Card(..make_card(1), state: Pendiente)
-  card.state |> should.equal(Pendiente)
+  let assert Pendiente = card.state
 }
 
 pub fn card_state_en_curso_test() {
   let card = Card(..make_card(1), state: EnCurso)
-  card.state |> should.equal(EnCurso)
+  let assert EnCurso = card.state
 }
 
 pub fn card_color_option_some_test() {
   let card = make_card(1)
-  card.color |> should.equal(option.Some("blue"))
+  let assert option.Some(card.Blue) = card.color
 }
 
 pub fn card_color_option_none_test() {
   let card = Card(..make_card(1), color: option.None)
-  card.color |> should.equal(option.None)
+  let assert option.None = card.color
 }

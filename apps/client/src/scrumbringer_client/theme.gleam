@@ -16,6 +16,11 @@ pub type Theme {
   Dark
 }
 
+/// Theme parse failure.
+pub type ThemeParseError {
+  InvalidTheme(String)
+}
+
 /// Stored theme decoding result.
 pub type ThemeStorage {
   ThemeStored(Theme)
@@ -30,12 +35,12 @@ pub fn serialize(theme: Theme) -> String {
   }
 }
 
-/// Parses a string into a theme (defaults to Default).
-pub fn deserialize(value: String) -> Theme {
+/// Parses a string into a theme.
+pub fn parse(value: String) -> Result(Theme, ThemeParseError) {
   case string.trim(value) {
-    "default" -> Default
-    "dark" -> Dark
-    _ -> Default
+    "default" -> Ok(Default)
+    "dark" -> Ok(Dark)
+    other -> Error(InvalidTheme(other))
   }
 }
 
@@ -46,10 +51,9 @@ pub fn encode_storage(theme: Theme) -> String {
 
 /// Decodes a stored theme value with explicit invalid state.
 pub fn decode_storage(value: String) -> ThemeStorage {
-  case string.trim(value) {
-    "default" -> ThemeStored(Default)
-    "dark" -> ThemeStored(Dark)
-    other -> ThemeInvalid(other)
+  case parse(value) {
+    Ok(theme) -> ThemeStored(theme)
+    Error(InvalidTheme(value)) -> ThemeInvalid(value)
   }
 }
 
@@ -80,7 +84,13 @@ pub fn local_storage_set(key: String, value: String) -> Nil {
 
 /// Loads the theme preference from localStorage.
 pub fn load_from_storage() -> Theme {
-  case local_storage_get(storage_key) |> decode_storage {
+  local_storage_get(storage_key)
+  |> decode_storage
+  |> stored_theme_or_default
+}
+
+fn stored_theme_or_default(stored: ThemeStorage) -> Theme {
+  case stored {
     ThemeStored(theme) -> theme
     ThemeInvalid(_) -> Default
   }

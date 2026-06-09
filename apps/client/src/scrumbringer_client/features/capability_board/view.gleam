@@ -428,7 +428,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
   }
 
   let #(_card_title_opt, resolved_color) =
-    card_queries.resolve_task_card_info_from_cards(config.cards, task)
+    card_queries.resolve_task_card_info(config.cards, task)
   let border_class = task_color.card_border_class(resolved_color)
   let blocked_class = case task.blocked_count > 0 {
     True -> " task-blocked"

@@ -29,7 +29,7 @@
 - [x] `shared/src/domain/task_status.gleam`
   - TaskStatus, ClaimedState, WorkState, OngoingBy
 - [x] `shared/src/domain/task.gleam`
-  - Task, TaskNote, TaskPosition, ActiveTask, ActiveTaskPayload, TaskFilters
+  - Task, TaskNote, TaskPosition, WorkSession, WorkSessionsPayload, TaskFilters
 - [x] `shared/src/domain/project.gleam`
   - Project, ProjectMember
 - [x] `shared/src/domain/org.gleam`

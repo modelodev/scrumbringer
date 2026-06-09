@@ -17,45 +17,57 @@ import lustre/event
 
 import domain/org.{type OrgUser, OrgUser}
 import domain/project.{type Project}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import domain/user.{User}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state
-import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/projects/view as projects_view
-import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/permissions
-import scrumbringer_client/router
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
 
-pub fn view_assignments(
-  model: client_state.Model,
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    assignments: state_types.AssignmentsModel,
+    projects: Remote(List(Project)),
+    org_users: Remote(List(OrgUser)),
+    project_card: project_card.Config(msg),
+    user_card: user_card.Config(msg),
+    on_view_mode_changed: fn(assignments_view_mode.AssignmentsViewMode) -> msg,
+    on_search_changed: fn(String) -> msg,
+    on_search_debounced: fn(String) -> msg,
+    on_project_create_clicked: msg,
+    on_invites_clicked: msg,
+    project_dialogs: projects_view.Config(msg),
+  )
+}
+
+pub fn view_assignments(config: Config(msg)) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
 
   div([attribute.class("section")], [
     section_header.view(icons.Team, t(i18n_text.Assignments)),
-    view_toolbar(model),
-    case model.admin.assignments.view_mode {
-      assignments_view_mode.ByProject -> view_by_project(model)
-      assignments_view_mode.ByUser -> view_by_user(model)
+    view_toolbar(config),
+    case config.assignments.view_mode {
+      assignments_view_mode.ByProject -> view_by_project(config)
+      assignments_view_mode.ByUser -> view_by_user(config)
     },
-    projects_view.view_project_dialogs(model),
+    projects_view.view_project_dialogs(config.project_dialogs),
   ])
 }
 
-fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let assignments = model.admin.assignments
+fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  let assignments = config.assignments
   let is_projects = assignments.view_mode == assignments_view_mode.ByProject
   let is_users = assignments.view_mode == assignments_view_mode.ByUser
 
@@ -72,13 +84,9 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
                   False -> ""
                 },
               ),
-              event.on_click(
-                client_state.admin_msg(
-                  admin_messages.AssignmentsViewModeChanged(
-                    assignments_view_mode.ByProject,
-                  ),
-                ),
-              ),
+              event.on_click(config.on_view_mode_changed(
+                assignments_view_mode.ByProject,
+              )),
             ],
             [text(t(i18n_text.AssignmentsByProject))],
           ),
@@ -91,13 +99,9 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
                   False -> ""
                 },
               ),
-              event.on_click(
-                client_state.admin_msg(
-                  admin_messages.AssignmentsViewModeChanged(
-                    assignments_view_mode.ByUser,
-                  ),
-                ),
-              ),
+              event.on_click(config.on_view_mode_changed(
+                assignments_view_mode.ByUser,
+              )),
             ],
             [text(t(i18n_text.AssignmentsByUser))],
           ),
@@ -108,30 +112,17 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
           attribute.type_("text"),
           attribute.value(assignments.search_input),
           attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
-          event.on_input(fn(value) {
-            client_state.admin_msg(admin_messages.AssignmentsSearchChanged(
-              value,
-            ))
-          }),
-          event.debounce(
-            event.on_input(fn(value) {
-              client_state.admin_msg(admin_messages.AssignmentsSearchDebounced(
-                value,
-              ))
-            }),
-            350,
-          ),
+          event.on_input(config.on_search_changed),
+          event.debounce(event.on_input(config.on_search_debounced), 350),
         ]),
       ]),
     ]),
   ])
 }
 
-fn view_by_project(
-  model: client_state.Model,
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  case model.core.projects {
+fn view_by_project(config: Config(msg)) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  case config.projects {
     NotAsked | Loading ->
       loading.loading(t(i18n_text.AssignmentsLoadingProjects))
 
@@ -146,7 +137,7 @@ fn view_by_project(
           )
           |> empty_state.with_action(
             t(i18n_text.CreateProject),
-            client_state.admin_msg(admin_messages.ProjectCreateDialogOpened),
+            config.on_project_create_clicked,
           )
           |> empty_state.view
 
@@ -159,20 +150,22 @@ fn view_by_project(
               ]),
             ]),
             tbody([], [
-              filter_projects(model, projects_list)
+              filter_projects(config, projects_list)
               |> list.flat_map(fn(project) {
                 let members_state = case
-                  dict.get(model.admin.assignments.project_members, project.id)
+                  dict.get(config.assignments.project_members, project.id)
                 {
                   Ok(state) -> state
                   Error(_) -> NotAsked
                 }
                 let expanded =
-                  set.contains(
-                    model.admin.assignments.expanded_projects,
-                    project.id,
-                  )
-                project_card.view_rows(model, project, members_state, expanded)
+                  set.contains(config.assignments.expanded_projects, project.id)
+                project_card.view_rows(
+                  config.project_card,
+                  project,
+                  members_state,
+                  expanded,
+                )
               })
               |> element.fragment,
             ]),
@@ -181,16 +174,19 @@ fn view_by_project(
   }
 }
 
-fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  case model.admin.members.org_users_cache {
+fn view_by_user(config: Config(msg)) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  case config.org_users {
     NotAsked | Loading -> loading.loading(t(i18n_text.LoadingUsers))
 
     Failed(err) -> error_notice.view(err.message)
 
     Loaded(users_list) -> {
-      let only_current_user = case model.core.user, list.first(users_list) {
-        opt.Some(User(id: user_id, ..)), Ok(OrgUser(id: org_user_id, ..)) ->
+      let only_current_user = case
+        config.project_card.current_user_id,
+        list.first(users_list)
+      {
+        opt.Some(user_id), Ok(OrgUser(id: org_user_id, ..)) ->
           list.length(users_list) == 1 && user_id == org_user_id
         _, _ -> False
       }
@@ -202,10 +198,7 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
           )
           |> empty_state.with_action(
             t(i18n_text.CreateInviteLink),
-            client_state.NavigateTo(
-              router.Org(permissions.Invites),
-              client_state.Push,
-            ),
+            config.on_invites_clicked,
           )
           |> empty_state.view
 
@@ -218,17 +211,22 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
               ]),
             ]),
             tbody([], [
-              filter_users(model, users_list)
+              filter_users(config, users_list)
               |> list.flat_map(fn(user) {
                 let projects_state = case
-                  dict.get(model.admin.assignments.user_projects, user.id)
+                  dict.get(config.assignments.user_projects, user.id)
                 {
                   Ok(state) -> state
                   Error(_) -> NotAsked
                 }
                 let expanded =
-                  set.contains(model.admin.assignments.expanded_users, user.id)
-                user_card.view_rows(model, user, projects_state, expanded)
+                  set.contains(config.assignments.expanded_users, user.id)
+                user_card.view_rows(
+                  config.user_card,
+                  user,
+                  projects_state,
+                  expanded,
+                )
               })
               |> element.fragment,
             ]),
@@ -239,11 +237,10 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
 }
 
 fn filter_projects(
-  model: client_state.Model,
+  config: Config(msg),
   projects: List(Project),
 ) -> List(Project) {
-  let query =
-    string.lowercase(string.trim(model.admin.assignments.search_query))
+  let query = string.lowercase(string.trim(config.assignments.search_query))
   case query == "" {
     True -> projects
     False ->
@@ -251,26 +248,21 @@ fn filter_projects(
         let project_name = string.lowercase(project.name)
         case string.contains(project_name, query) {
           True -> True
-          False -> project_members_match(model, project.id, query)
+          False -> project_members_match(config, project.id, query)
         }
       })
   }
 }
 
 fn project_members_match(
-  model: client_state.Model,
+  config: Config(msg),
   project_id: Int,
   query: String,
 ) -> Bool {
-  case dict.get(model.admin.assignments.project_members, project_id) {
+  case dict.get(config.assignments.project_members, project_id) {
     Ok(Loaded(members)) ->
       list.any(members, fn(member) {
-        case
-          helpers_lookup.resolve_org_user(
-            model.admin.members.org_users_cache,
-            member.user_id,
-          )
-        {
+        case helpers_lookup.resolve_org_user(config.org_users, member.user_id) {
           opt.Some(user) -> string.contains(string.lowercase(user.email), query)
           opt.None -> False
         }
@@ -279,30 +271,22 @@ fn project_members_match(
   }
 }
 
-fn filter_users(
-  model: client_state.Model,
-  users: List(OrgUser),
-) -> List(OrgUser) {
-  let query =
-    string.lowercase(string.trim(model.admin.assignments.search_query))
+fn filter_users(config: Config(msg), users: List(OrgUser)) -> List(OrgUser) {
+  let query = string.lowercase(string.trim(config.assignments.search_query))
   case query == "" {
     True -> users
     False ->
       list.filter(users, fn(user) {
         case string.contains(string.lowercase(user.email), query) {
           True -> True
-          False -> user_projects_match(model, user.id, query)
+          False -> user_projects_match(config, user.id, query)
         }
       })
   }
 }
 
-fn user_projects_match(
-  model: client_state.Model,
-  user_id: Int,
-  query: String,
-) -> Bool {
-  case dict.get(model.admin.assignments.user_projects, user_id) {
+fn user_projects_match(config: Config(msg), user_id: Int, query: String) -> Bool {
+  case dict.get(config.assignments.user_projects, user_id) {
     Ok(Loaded(projects)) ->
       list.any(projects, fn(project) {
         string.contains(string.lowercase(project.name), query)

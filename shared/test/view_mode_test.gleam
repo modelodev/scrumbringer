@@ -1,49 +1,33 @@
 import domain/view_mode.{Capabilities, Cards, Milestones, People, Pool}
 import gleam/list
-import gleeunit/should
 
 // =============================================================================
-// from_string tests
+// parse tests
 // =============================================================================
 
-pub fn from_string_pool_test() {
-  view_mode.from_string("pool")
-  |> should.equal(Pool)
+pub fn parse_pool_test() {
+  let assert Ok(Pool) = view_mode.parse("pool")
 }
 
-pub fn from_string_milestones_test() {
-  view_mode.from_string("milestones")
-  |> should.equal(Milestones)
+pub fn parse_milestones_test() {
+  let assert Ok(Milestones) = view_mode.parse("milestones")
 }
 
-pub fn from_string_cards_test() {
-  view_mode.from_string("cards")
-  |> should.equal(Cards)
+pub fn parse_cards_test() {
+  let assert Ok(Cards) = view_mode.parse("cards")
 }
 
-pub fn from_string_capabilities_test() {
-  view_mode.from_string("capabilities")
-  |> should.equal(Capabilities)
+pub fn parse_capabilities_test() {
+  let assert Ok(Capabilities) = view_mode.parse("capabilities")
 }
 
-pub fn from_string_people_test() {
-  view_mode.from_string("people")
-  |> should.equal(People)
+pub fn parse_people_test() {
+  let assert Ok(People) = view_mode.parse("people")
 }
 
-pub fn from_string_unknown_defaults_to_pool_test() {
-  view_mode.from_string("unknown")
-  |> should.equal(Pool)
-}
-
-pub fn from_string_list_defaults_to_pool_test() {
-  view_mode.from_string("list")
-  |> should.equal(Pool)
-}
-
-pub fn from_string_empty_defaults_to_pool_test() {
-  view_mode.from_string("")
-  |> should.equal(Pool)
+pub fn parse_unknown_rejects_value_test() {
+  let assert Error(view_mode.UnknownViewMode("unknown")) =
+    view_mode.parse("unknown")
 }
 
 // =============================================================================
@@ -51,35 +35,29 @@ pub fn from_string_empty_defaults_to_pool_test() {
 // =============================================================================
 
 pub fn to_string_pool_test() {
-  view_mode.to_string(Pool)
-  |> should.equal("pool")
+  let assert "pool" = view_mode.to_string(Pool)
 }
 
 pub fn to_string_milestones_test() {
-  view_mode.to_string(Milestones)
-  |> should.equal("milestones")
+  let assert "milestones" = view_mode.to_string(Milestones)
 }
 
 pub fn to_string_cards_test() {
-  view_mode.to_string(Cards)
-  |> should.equal("cards")
+  let assert "cards" = view_mode.to_string(Cards)
 }
 
 pub fn to_string_capabilities_test() {
-  view_mode.to_string(Capabilities)
-  |> should.equal("capabilities")
+  let assert "capabilities" = view_mode.to_string(Capabilities)
 }
 
 pub fn to_string_people_test() {
-  view_mode.to_string(People)
-  |> should.equal("people")
+  let assert "people" = view_mode.to_string(People)
 }
 
 pub fn to_string_never_emits_list_test() {
   [Pool, Cards, Capabilities, People, Milestones]
   |> list.each(fn(mode) {
-    view_mode.to_string(mode)
-    |> should.not_equal("list")
+    let assert False = view_mode.to_string(mode) == "list"
   })
 }
 
@@ -88,38 +66,38 @@ pub fn to_string_never_emits_list_test() {
 // =============================================================================
 
 pub fn roundtrip_pool_test() {
-  Pool
-  |> view_mode.to_string
-  |> view_mode.from_string
-  |> should.equal(Pool)
+  let assert Ok(Pool) =
+    Pool
+    |> view_mode.to_string
+    |> view_mode.parse
 }
 
 pub fn roundtrip_milestones_test() {
-  Milestones
-  |> view_mode.to_string
-  |> view_mode.from_string
-  |> should.equal(Milestones)
+  let assert Ok(Milestones) =
+    Milestones
+    |> view_mode.to_string
+    |> view_mode.parse
 }
 
 pub fn roundtrip_cards_test() {
-  Cards
-  |> view_mode.to_string
-  |> view_mode.from_string
-  |> should.equal(Cards)
+  let assert Ok(Cards) =
+    Cards
+    |> view_mode.to_string
+    |> view_mode.parse
 }
 
 pub fn roundtrip_capabilities_test() {
-  Capabilities
-  |> view_mode.to_string
-  |> view_mode.from_string
-  |> should.equal(Capabilities)
+  let assert Ok(Capabilities) =
+    Capabilities
+    |> view_mode.to_string
+    |> view_mode.parse
 }
 
 pub fn roundtrip_people_test() {
-  People
-  |> view_mode.to_string
-  |> view_mode.from_string
-  |> should.equal(People)
+  let assert Ok(People) =
+    People
+    |> view_mode.to_string
+    |> view_mode.parse
 }
 
 // =============================================================================
@@ -127,28 +105,23 @@ pub fn roundtrip_people_test() {
 // =============================================================================
 
 pub fn pool_supports_drag_drop_test() {
-  view_mode.supports_drag_drop(Pool)
-  |> should.be_true
+  let assert True = view_mode.supports_drag_drop(Pool)
 }
 
 pub fn milestones_does_not_support_drag_drop_test() {
-  view_mode.supports_drag_drop(Milestones)
-  |> should.be_false
+  let assert False = view_mode.supports_drag_drop(Milestones)
 }
 
 pub fn cards_supports_drag_drop_test() {
-  view_mode.supports_drag_drop(Cards)
-  |> should.be_true
+  let assert True = view_mode.supports_drag_drop(Cards)
 }
 
 pub fn people_does_not_support_drag_drop_test() {
-  view_mode.supports_drag_drop(People)
-  |> should.be_false
+  let assert False = view_mode.supports_drag_drop(People)
 }
 
 pub fn capabilities_does_not_support_drag_drop_test() {
-  view_mode.supports_drag_drop(Capabilities)
-  |> should.be_false
+  let assert False = view_mode.supports_drag_drop(Capabilities)
 }
 
 // =============================================================================
@@ -156,26 +129,21 @@ pub fn capabilities_does_not_support_drag_drop_test() {
 // =============================================================================
 
 pub fn label_key_pool_test() {
-  view_mode.label_key(Pool)
-  |> should.equal("ViewModePool")
+  let assert "ViewModePool" = view_mode.label_key(Pool)
 }
 
 pub fn label_key_milestones_test() {
-  view_mode.label_key(Milestones)
-  |> should.equal("ViewModeMilestones")
+  let assert "ViewModeMilestones" = view_mode.label_key(Milestones)
 }
 
 pub fn label_key_cards_test() {
-  view_mode.label_key(Cards)
-  |> should.equal("ViewModeCards")
+  let assert "ViewModeCards" = view_mode.label_key(Cards)
 }
 
 pub fn label_key_capabilities_test() {
-  view_mode.label_key(Capabilities)
-  |> should.equal("ViewModeCapabilities")
+  let assert "ViewModeCapabilities" = view_mode.label_key(Capabilities)
 }
 
 pub fn label_key_people_test() {
-  view_mode.label_key(People)
-  |> should.equal("ViewModePeople")
+  let assert "ViewModePeople" = view_mode.label_key(People)
 }

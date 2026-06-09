@@ -2,7 +2,6 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/api_error.{ApiError}
@@ -24,6 +23,18 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/people/state as people_state
 import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/i18n/locale
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
+
+fn assert_equal(actual: Int, expected: Int) {
+  let assert True = actual == expected
+}
 
 fn make_task(
   id: Int,
@@ -71,6 +82,20 @@ fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task
 fn base_model() -> client_state.Model {
   client_state.default_model()
   |> client_state.update_ui(fn(ui) { ui_state.UiModel(..ui, locale: locale.En) })
+}
+
+fn people_config(model: client_state.Model) -> people_view.Config(Int) {
+  people_view.Config(
+    locale: model.ui.locale,
+    people_roster: model.member.pool.people_roster,
+    member_tasks: model.member.pool.member_tasks,
+    org_users: model.admin.members.org_users_cache,
+    people_expansions: model.member.pool.people_expansions,
+    search_query: model.member.pool.member_filters_q,
+    task_card_color: fn(task) { task.card_color },
+    on_person_toggle: fn(user_id) { user_id },
+    on_task_click: fn(task_id) { task_id },
+  )
 }
 
 fn with_people_roster(
@@ -144,9 +169,10 @@ fn count_occurrences(haystack: String, needle: String) -> Int {
 
 pub fn people_view_loading_state_test() {
   let model = base_model() |> with_people_roster(remote.Loading)
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "Loading people...") |> should.be_true
+  assert_contains(html, "Loading people...")
 }
 
 pub fn people_view_error_state_test() {
@@ -156,17 +182,19 @@ pub fn people_view_error_state_test() {
       remote.Failed(ApiError(status: 500, code: "E_PEOPLE", message: "boom")),
     )
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "Could not load people") |> should.be_true
-  string.contains(html, "people-error") |> should.be_true
+  assert_contains(html, "Could not load people")
+  assert_contains(html, "people-error")
 }
 
 pub fn people_view_empty_roster_state_test() {
   let model = base_model() |> with_people_roster(remote.Loaded([]))
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "No members in this project") |> should.be_true
+  assert_contains(html, "No members in this project")
 }
 
 pub fn people_view_no_results_state_test() {
@@ -199,8 +227,9 @@ pub fn people_view_no_results_state_test() {
       )
     })
 
-  let html = people_view.view(model) |> element.to_document_string
-  string.contains(html, "No people match your search") |> should.be_true
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
+  assert_contains(html, "No people match your search")
 }
 
 pub fn people_view_availability_rules_test() {
@@ -255,11 +284,12 @@ pub fn people_view_availability_rules_test() {
     ])
     |> with_tasks(tasks)
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "Working") |> should.be_true
-  string.contains(html, "Busy") |> should.be_true
-  string.contains(html, "Free") |> should.be_true
+  assert_contains(html, "Working")
+  assert_contains(html, "Busy")
+  assert_contains(html, "Free")
 }
 
 pub fn people_view_availability_prefers_ongoing_by_test() {
@@ -287,10 +317,11 @@ pub fn people_view_availability_prefers_ongoing_by_test() {
     ])
     |> with_tasks(tasks)
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "Working") |> should.be_true
-  string.contains(html, "Busy") |> should.be_false
+  assert_contains(html, "Working")
+  assert_not_contains(html, "Busy")
 }
 
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
@@ -317,14 +348,15 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
     |> with_tasks([make_task(1, "Active task", 10, task_status.Ongoing)])
     |> with_people_expanded(10)
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "aria-expanded=\"true\"") |> should.be_true
-  string.contains(html, "aria-controls=\"person-details-10\"") |> should.be_true
-  string.contains(html, "Collapse status for ana@example.com") |> should.be_true
-  string.contains(html, "Active") |> should.be_true
-  string.contains(html, "Claimed") |> should.be_true
-  string.contains(html, "task-item-content") |> should.be_true
+  assert_contains(html, "aria-expanded=\"true\"")
+  assert_contains(html, "aria-controls=\"person-details-10\"")
+  assert_contains(html, "Collapse status for ana@example.com")
+  assert_contains(html, "Active")
+  assert_contains(html, "Claimed")
+  assert_contains(html, "task-item-content")
 }
 
 pub fn people_view_uses_list_semantics_test() {
@@ -342,10 +374,11 @@ pub fn people_view_uses_list_semantics_test() {
     )
     |> with_tasks([])
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "<ul") |> should.be_true
-  string.contains(html, "<li") |> should.be_true
+  assert_contains(html, "<ul")
+  assert_contains(html, "<li")
 }
 
 pub fn people_view_toggle_is_keyboard_accessible_button_test() {
@@ -371,13 +404,13 @@ pub fn people_view_toggle_is_keyboard_accessible_button_test() {
     ])
     |> with_tasks([])
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "<button") |> should.be_true
-  string.contains(html, "people-row-toggle") |> should.be_true
-  string.contains(html, "aria-expanded=\"false\"") |> should.be_true
-  string.contains(html, "aria-label=\"Expand status for ana@example.com\"")
-  |> should.be_true
+  assert_contains(html, "<button")
+  assert_contains(html, "people-row-toggle")
+  assert_contains(html, "aria-expanded=\"false\"")
+  assert_contains(html, "aria-label=\"Expand status for ana@example.com\"")
 }
 
 pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
@@ -410,12 +443,13 @@ pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
     |> with_tasks(tasks)
     |> with_people_expanded(10)
 
-  let html = people_view.view(model) |> element.to_document_string
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
 
-  string.contains(html, "Active") |> should.be_true
-  string.contains(html, "Claimed") |> should.be_true
+  assert_contains(html, "Active")
+  assert_contains(html, "Claimed")
 
-  count_occurrences(html, "Ongoing one") |> should.equal(1)
-  count_occurrences(html, "Ongoing via session") |> should.equal(1)
-  count_occurrences(html, "Claimed parked") |> should.equal(1)
+  assert_equal(count_occurrences(html, "Ongoing one"), 1)
+  assert_equal(count_occurrences(html, "Ongoing via session"), 1)
+  assert_equal(count_occurrences(html, "Claimed parked"), 1)
 }

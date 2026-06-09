@@ -9,8 +9,9 @@ import pog
 
 import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_status
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/service_error.{
-  type ServiceError, DbError, NotFound, Unexpected,
+  type ServiceError, DbError, NotFound,
 }
 import scrumbringer_server/sql
 
@@ -21,8 +22,7 @@ pub fn list_dependencies_for_task(
   case sql.task_dependencies_list(db, task_id) {
     Ok(pog.Returned(rows: rows, ..)) ->
       rows
-      |> list.map(dependency_from_list_row)
-      |> Ok
+      |> list.try_map(dependency_from_list_row)
     Error(e) -> Error(DbError(e))
   }
 }
@@ -52,8 +52,13 @@ pub fn create_dependency(
   case
     sql.task_dependencies_create(db, task_id, depends_on_task_id, created_by)
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(dependency_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "task_dependencies.create_dependency",
+      ))
+      dependency_from_create_row(row)
+    }
     Error(e) -> Error(DbError(e))
   }
 }
@@ -70,24 +75,39 @@ pub fn delete_dependency(
   }
 }
 
-fn dependency_from_list_row(row: sql.TaskDependenciesListRow) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: row.task_id,
-    title: row.title,
-    status: task_status.parse_task_status(row.status)
-      |> result.unwrap(task_status.Available),
-    claimed_by: option_helpers.string_to_option(row.claimed_by),
-  )
+fn dependency_from_list_row(
+  row: sql.TaskDependenciesListRow,
+) -> Result(TaskDependency, ServiceError) {
+  dependency_from_fields(row.task_id, row.title, row.status, row.claimed_by)
 }
 
 fn dependency_from_create_row(
   row: sql.TaskDependenciesCreateRow,
-) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: row.task_id,
-    title: row.title,
-    status: task_status.parse_task_status(row.status)
-      |> result.unwrap(task_status.Available),
-    claimed_by: option_helpers.string_to_option(row.claimed_by),
+) -> Result(TaskDependency, ServiceError) {
+  dependency_from_fields(row.task_id, row.title, row.status, row.claimed_by)
+}
+
+fn dependency_from_fields(
+  task_id: Int,
+  title: String,
+  status_value: String,
+  claimed_by: String,
+) -> Result(TaskDependency, ServiceError) {
+  use status <- result.try(parse_dependency_status(status_value))
+  Ok(TaskDependency(
+    depends_on_task_id: task_id,
+    title: title,
+    status: status,
+    claimed_by: option_helpers.string_to_option(claimed_by),
+  ))
+}
+
+fn parse_dependency_status(
+  value: String,
+) -> Result(task_status.TaskStatus, ServiceError) {
+  persisted_field.required(
+    value,
+    task_status.parse_task_status,
+    "Invalid persisted task dependency status",
   )
 }

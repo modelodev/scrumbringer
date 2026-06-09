@@ -2,11 +2,20 @@
 
 import gleam/option
 import gleam/string
-import gleeunit/should
 import lustre/element
 
+import domain/org_role
+import domain/project_role
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/tooltips/types.{DeleteAsAdmin, DeleteOwnNote}
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
+}
 
 pub fn delete_button_shows_own_note_label_test() {
   let notes = [
@@ -19,7 +28,7 @@ pub fn delete_button_shows_own_note_label_test() {
       delete_context: DeleteOwnNote,
       author_email: "maria@example.com",
       author_project_role: option.None,
-      author_org_role: "member",
+      author_org_role: org_role.Member,
     ),
   ]
 
@@ -32,8 +41,8 @@ pub fn delete_button_shows_own_note_label_test() {
     )
     |> element.to_document_string
 
-  string.contains(html, "Eliminar nota") |> should.be_true
-  string.contains(html, "(como admin)") |> should.be_false
+  assert_contains(html, "Eliminar nota")
+  assert_not_contains(html, "(como admin)")
 }
 
 pub fn delete_button_shows_admin_context_test() {
@@ -46,8 +55,8 @@ pub fn delete_button_shows_admin_context_test() {
       can_delete: True,
       delete_context: DeleteAsAdmin,
       author_email: "carlos@example.com",
-      author_project_role: option.Some("manager"),
-      author_org_role: "admin",
+      author_project_role: option.Some(project_role.Manager),
+      author_org_role: org_role.Admin,
     ),
   ]
 
@@ -60,5 +69,5 @@ pub fn delete_button_shows_admin_context_test() {
     )
     |> element.to_document_string
 
-  string.contains(html, "Eliminar nota (como admin)") |> should.be_true
+  assert_contains(html, "Eliminar nota (como admin)")
 }

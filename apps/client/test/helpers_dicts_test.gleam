@@ -5,22 +5,19 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{None}
-import gleeunit/should
 import scrumbringer_client/helpers/dicts as helpers_dicts
 
 pub fn ids_to_bool_dict_sets_true_test() {
   let result = helpers_dicts.ids_to_bool_dict([1, 2])
-  dict.get(result, 1)
-  |> should.equal(Ok(True))
-  dict.get(result, 2)
-  |> should.equal(Ok(True))
+  let assert Ok(True) = dict.get(result, 1)
+  let assert Ok(True) = dict.get(result, 2)
 }
 
 pub fn bool_dict_to_ids_filters_false_test() {
   let values = dict.from_list([#(1, True), #(2, False), #(3, True)])
-  helpers_dicts.bool_dict_to_ids(values)
-  |> list.sort(int.compare)
-  |> should.equal([1, 3])
+  let assert [1, 3] =
+    helpers_dicts.bool_dict_to_ids(values)
+    |> list.sort(int.compare)
 }
 
 pub fn positions_to_dict_maps_task_id_test() {
@@ -34,8 +31,7 @@ pub fn positions_to_dict_maps_task_id_test() {
     ),
   ]
   let result = helpers_dicts.positions_to_dict(positions)
-  dict.get(result, 10)
-  |> should.equal(Ok(#(4, 8)))
+  let assert Ok(#(4, 8)) = dict.get(result, 10)
 }
 
 pub fn flatten_tasks_collects_all_tasks_test() {
@@ -66,8 +62,8 @@ pub fn flatten_tasks_collects_all_tasks_test() {
     )
   let t2 = Task(..t1, id: 2, title: "B")
   let tasks = dict.from_list([#(1, [t1]), #(2, [t2])])
-  helpers_dicts.flatten_tasks(tasks)
-  |> list.map(fn(t) { t.id })
-  |> list.sort(int.compare)
-  |> should.equal([1, 2])
+  let assert [1, 2] =
+    helpers_dicts.flatten_tasks(tasks)
+    |> list.map(fn(t) { t.id })
+    |> list.sort(int.compare)
 }

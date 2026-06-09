@@ -1,11 +1,7 @@
 import gleam/option
-import gleeunit/should
 
 import domain/card.{type Card, Card, Pendiente}
-import domain/remote.{NotAsked}
-import scrumbringer_client/client_state
-import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/pool as member_pool
+import domain/remote.{Loaded, NotAsked}
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
 
@@ -38,22 +34,8 @@ pub fn find_card_uses_store_by_id_test() {
     normalized_store.new()
     |> normalized_store.upsert(10, [card_a], card_id)
 
-  let model =
-    client_state.default_model()
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_cards_store: store,
-          member_cards: NotAsked,
-        ),
-      )
-    })
-
-  card_queries.find_card(model, 1) |> should.equal(option.Some(card_a))
+  let assert True =
+    card_queries.find_card(store, NotAsked, 1) == option.Some(card_a)
 }
 
 pub fn get_project_cards_uses_store_index_test() {
@@ -64,29 +46,16 @@ pub fn get_project_cards_uses_store_index_test() {
     normalized_store.new()
     |> normalized_store.upsert(10, [card_a, card_b], card_id)
 
-  let model =
-    client_state.default_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, selected_project_id: option.Some(10))
-    })
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(..pool, member_cards_store: store),
-      )
-    })
-
-  card_queries.get_project_cards(model) |> should.equal([card_a, card_b])
+  let assert True =
+    card_queries.get_project_cards(store, Loaded([]), option.Some(10))
+    == [card_a, card_b]
 }
 
 pub fn get_project_cards_ignores_missing_ids_test() {
-  let model =
-    client_state.default_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, selected_project_id: option.Some(999))
-    })
-
-  card_queries.get_project_cards(model) |> should.equal([])
+  let assert [] =
+    card_queries.get_project_cards(
+      normalized_store.new(),
+      NotAsked,
+      option.Some(999),
+    )
 }

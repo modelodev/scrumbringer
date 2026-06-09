@@ -4,11 +4,10 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -62,9 +61,9 @@ pub fn rules_crud_and_templates_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_rule_names(simulate.read_body(list_res))
-  |> should.equal(["Rule 1"])
+  |> expect.equal(["Rule 1"])
 
   let attach_res =
     handler(
@@ -81,9 +80,9 @@ pub fn rules_crud_and_templates_test() {
       |> simulate.json_body(json.object([#("execution_order", json.int(1))])),
     )
 
-  attach_res.status |> should.equal(200)
+  expect.expect_status(attach_res, 200)
   decode_template_names(simulate.read_body(attach_res))
-  |> should.equal(["Rule Template"])
+  |> expect.equal(["Rule Template"])
 
   let patch_res =
     handler(
@@ -99,9 +98,9 @@ pub fn rules_crud_and_templates_test() {
       ),
     )
 
-  patch_res.status |> should.equal(200)
+  expect.expect_status(patch_res, 200)
   decode_rule_name(simulate.read_body(patch_res))
-  |> should.equal("Rule 1 Updated")
+  |> expect.equal("Rule 1 Updated")
 
   let detach_res =
     handler(
@@ -117,7 +116,7 @@ pub fn rules_crud_and_templates_test() {
       |> request.set_header("X-CSRF", csrf),
     )
 
-  detach_res.status |> should.equal(204)
+  expect.expect_status(detach_res, 204)
 
   let delete_res =
     handler(
@@ -127,7 +126,7 @@ pub fn rules_crud_and_templates_test() {
       |> request.set_header("X-CSRF", csrf),
     )
 
-  delete_res.status |> should.equal(204)
+  expect.expect_status(delete_res, 204)
 }
 
 pub fn rules_invalid_payload_returns_400_test() {
@@ -164,7 +163,7 @@ pub fn rules_invalid_payload_returns_400_test() {
       |> simulate.json_body(json.object([#("name", json.int(1))])),
     )
 
-  bad_res.status |> should.equal(400)
+  expect.expect_status(bad_res, 400)
 }
 
 fn create_project(
@@ -181,7 +180,7 @@ fn create_project(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_task_type(
@@ -208,7 +207,7 @@ fn create_task_type(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_workflow(
@@ -235,7 +234,7 @@ fn create_workflow(
       ),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   decode_workflow_id(simulate.read_body(res))
 }
 
@@ -266,7 +265,7 @@ fn create_template(
       ),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   decode_template_id(simulate.read_body(res))
 }
 
@@ -299,7 +298,7 @@ fn create_rule(
       ),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   decode_rule_id(simulate.read_body(res))
 }
 
@@ -468,7 +467,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -501,11 +500,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -513,7 +511,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

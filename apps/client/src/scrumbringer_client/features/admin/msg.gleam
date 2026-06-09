@@ -60,7 +60,7 @@ pub type Msg {
   OrgSettingsDeleted(ApiResult(Nil))
   MemberAddDialogOpened
   MemberAddDialogClosed
-  MemberAddRoleChanged(String)
+  MemberAddRoleChanged(ProjectRole)
   MemberAddUserSelected(Int)
   MemberAddSubmitted
   MemberAdded(ApiResult(ProjectMember))
@@ -97,7 +97,7 @@ pub type Msg {
   AssignmentsInlineAddStarted(state_types.AssignmentsAddContext)
   AssignmentsInlineAddSearchChanged(String)
   AssignmentsInlineAddSelectionChanged(String)
-  AssignmentsInlineAddRoleChanged(String)
+  AssignmentsInlineAddRoleChanged(ProjectRole)
   AssignmentsInlineAddSubmitted
   AssignmentsInlineAddCancelled
   AssignmentsProjectMemberAdded(Int, ApiResult(ProjectMember))

@@ -26,12 +26,15 @@ import scrumbringer_server/services/workflows/types.{
 import scrumbringer_server/services/workflows/validation_core
 
 // =============================================================================
-// Constants
-// =============================================================================
-
-// =============================================================================
 // Validation Helpers
 // =============================================================================
+
+fn validation_issue_to_error(issue: validation_core.ValidationIssue) -> Error {
+  case issue {
+    validation_core.ValidationError(msg) -> ValidationError(msg)
+    validation_core.DbError(e) -> DbError(e)
+  }
+}
 
 /// Validate task title: required and max 56 characters.
 pub fn validate_task_title(
@@ -40,8 +43,7 @@ pub fn validate_task_title(
 ) -> Result(Response, Error) {
   case validation_core.validate_task_title_value(title) {
     Ok(value) -> next(value)
-    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
-    Error(validation_core.DbError(e)) -> Error(DbError(e))
+    Error(issue) -> Error(validation_issue_to_error(issue))
   }
 }
 
@@ -52,12 +54,10 @@ pub fn validate_priority(
 ) -> Result(Response, Error) {
   case validation_core.validate_priority_value(priority) {
     Ok(Nil) -> next(Nil)
-    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
-    Error(validation_core.DbError(e)) -> Error(DbError(e))
+    Error(issue) -> Error(validation_issue_to_error(issue))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Validate optional priority (Unchanged means no update).
 pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
@@ -68,9 +68,7 @@ pub fn validate_optional_priority(
     Set(value) ->
       case validation_core.validate_priority_value(value) {
         Ok(Nil) -> next(Nil)
-        Error(validation_core.ValidationError(msg)) ->
-          Error(ValidationError(msg))
-        Error(validation_core.DbError(e)) -> Error(DbError(e))
+        Error(issue) -> Error(validation_issue_to_error(issue))
       }
   }
 }
@@ -85,9 +83,7 @@ pub fn validate_optional_title(
     Set(value) ->
       case validation_core.validate_task_title_value(value) {
         Ok(_) -> next(Nil)
-        Error(validation_core.ValidationError(msg)) ->
-          Error(ValidationError(msg))
-        Error(validation_core.DbError(e)) -> Error(DbError(e))
+        Error(issue) -> Error(validation_issue_to_error(issue))
       }
   }
 }
@@ -101,12 +97,10 @@ pub fn validate_task_type_in_project(
 ) -> Result(Response, Error) {
   case validation_core.validate_task_type_in_project(db, type_id, project_id) {
     Ok(Nil) -> next(Nil)
-    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
-    Error(validation_core.DbError(e)) -> Error(DbError(e))
+    Error(issue) -> Error(validation_issue_to_error(issue))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Validate type update (Unchanged means no update).
 pub fn validate_type_update(
   db: pog.Connection,
@@ -121,9 +115,7 @@ pub fn validate_type_update(
         validation_core.validate_task_type_in_project(db, value, project_id)
       {
         Ok(Nil) -> next(Nil)
-        Error(validation_core.ValidationError(msg)) ->
-          Error(ValidationError(msg))
-        Error(validation_core.DbError(e)) -> Error(DbError(e))
+        Error(issue) -> Error(validation_issue_to_error(issue))
       }
   }
 }

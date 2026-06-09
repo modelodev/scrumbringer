@@ -36,8 +36,8 @@ Run this command as an isolated runtime subtask with agent `awo-runtime`. Do not
    a. **BEFORE starting any work**, record the current UTC timestamp as `started_at`.
    b. Execute only `<step_id>`.
    c. **AFTER finishing all work**, record the current UTC timestamp as `ended_at`.
-   d. Write/update the step-report with contractual core fields (`schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `started_at`, `ended_at`), using the real timestamps from (a) and (c).
-   e. Include observability fields: `declared_skill_refs` (skill paths from compiled workflow), `observed_skill_refs` (files actually read), `commands_run` (shell commands as `{"cmd","workdir","result"}`), `artifacts_materialized` (files created/modified), `interruption_events` (if any, as `{"kind","severity"}`).
+   d. Write/update the step-report with contractual core fields (`schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `next_command`, `started_at`, `ended_at`), using the real timestamps from (a) and (c).
+   e. Include observability fields: `declared_skill_refs` (skill paths from compiled workflow), `materialized_skill_refs` (exact runtime skill files AWO materialized for this step when known), `observed_skill_refs` (files actually read), `commands_run` (shell commands as `{"cmd","workdir","result"}`), `artifacts_materialized` (files created/modified), `interruption_events` (if any, as `{"kind","severity"}`).
 6. Keep evidence coherent: ensure `.awo/runs/<run_id>/run-envelope.json` exists, includes the step report path exactly once in `step_reports`, has coherent `status` (`ok|warning|blocked|failed`), and refresh `.awo/runs/index/opencode/<workflow_id>.breadcrumbs.json` (`latest_run=<run_id>`).
 7. Emit exactly one deterministic JSON envelope to stdout with schema `awo.step_envelope/v1`.
 

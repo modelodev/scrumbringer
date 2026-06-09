@@ -7,6 +7,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/sql
 
 /// A capability (skill) defined within a project.
@@ -28,7 +29,68 @@ pub type ProjectMemberCapability {
 pub type CreateCapabilityError {
   AlreadyExists
   DbError(pog.QueryError)
-  NoRowReturned
+}
+
+fn capability_from_fields(
+  id: Int,
+  project_id: Int,
+  name: String,
+  created_at: String,
+) -> Capability {
+  Capability(id: id, project_id: project_id, name: name, created_at: created_at)
+}
+
+fn capability_from_list_row(
+  row: sql.CapabilitiesListForProjectRow,
+) -> Capability {
+  capability_from_fields(row.id, row.project_id, row.name, row.created_at)
+}
+
+fn capability_from_create_row(row: sql.CapabilitiesCreateRow) -> Capability {
+  capability_from_fields(row.id, row.project_id, row.name, row.created_at)
+}
+
+fn member_capability_from_fields(
+  project_id: Int,
+  user_id: Int,
+  capability_id: Int,
+  capability_name: String,
+) -> ProjectMemberCapability {
+  ProjectMemberCapability(
+    project_id: project_id,
+    user_id: user_id,
+    capability_id: capability_id,
+    capability_name: capability_name,
+  )
+}
+
+fn member_capability_from_row(
+  row: sql.ProjectMemberCapabilitiesListRow,
+) -> ProjectMemberCapability {
+  member_capability_from_fields(
+    row.project_id,
+    row.user_id,
+    row.capability_id,
+    row.capability_name,
+  )
+}
+
+fn capability_member_from_fields(
+  project_id: Int,
+  capability_id: Int,
+  user_id: Int,
+) -> CapabilityMember {
+  CapabilityMember(
+    project_id: project_id,
+    capability_id: capability_id,
+    user_id: user_id,
+  )
+}
+
+fn capability_member_from_row(
+  row: sql.CapabilityMembersListRow,
+) -> CapabilityMember {
+  capability_member_from_fields(row.project_id, row.capability_id, row.user_id)
 }
 
 /// Lists all capabilities defined for a project.
@@ -39,14 +101,7 @@ pub fn list_capabilities_for_project(
   use returned <- result.try(sql.capabilities_list_for_project(db, project_id))
 
   returned.rows
-  |> list.map(fn(row) {
-    Capability(
-      id: row.id,
-      project_id: row.project_id,
-      name: row.name,
-      created_at: row.created_at,
-    )
-  })
+  |> list.map(capability_from_list_row)
   |> Ok
 }
 
@@ -59,21 +114,18 @@ pub fn create_capability(
   name: String,
 ) -> Result(Capability, CreateCapabilityError) {
   case sql.capabilities_create(db, project_id, name) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(Capability(
-        id: row.id,
-        project_id: row.project_id,
-        name: row.name,
-        created_at: row.created_at,
-      ))
-
-    Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(
+        persisted_field.query_row(rows)
+        |> result.map_error(DbError),
+      )
+      Ok(capability_from_create_row(row))
+    }
 
     Error(error) -> map_create_error(error)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn map_create_error(
   error: pog.QueryError,
 ) -> Result(Capability, CreateCapabilityError) {
@@ -113,10 +165,8 @@ pub fn capability_is_in_project(
     capability_id,
     project_id,
   ))
-  case returned.rows {
-    [row, ..] -> Ok(row.ok)
-    [] -> Ok(False)
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.ok)
 }
 
 /// Lists all capabilities for a project member.
@@ -132,14 +182,7 @@ pub fn list_member_capabilities(
   ))
 
   returned.rows
-  |> list.map(fn(row) {
-    ProjectMemberCapability(
-      project_id: row.project_id,
-      user_id: row.user_id,
-      capability_id: row.capability_id,
-      capability_name: row.capability_name,
-    )
-  })
+  |> list.map(member_capability_from_row)
   |> Ok
 }
 
@@ -211,13 +254,7 @@ pub fn list_capability_members(
   ))
 
   returned.rows
-  |> list.map(fn(row) {
-    CapabilityMember(
-      project_id: row.project_id,
-      capability_id: row.capability_id,
-      user_id: row.user_id,
-    )
-  })
+  |> list.map(capability_member_from_row)
   |> Ok
 }
 

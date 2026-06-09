@@ -17,6 +17,17 @@ pub type Locale {
   En
 }
 
+/// Locale parse failure.
+pub type LocaleParseError {
+  InvalidLocale(String)
+}
+
+/// Stored locale decoding result.
+pub type LocaleStorage {
+  LocaleStored(Locale)
+  LocaleInvalid(String)
+}
+
 /// Converts a locale to its string representation.
 pub fn serialize(locale: Locale) -> String {
   case locale {
@@ -25,12 +36,20 @@ pub fn serialize(locale: Locale) -> String {
   }
 }
 
-/// Parses a string into a locale (defaults to English).
-pub fn deserialize(value: String) -> Locale {
+/// Parses a string into a supported locale.
+pub fn parse(value: String) -> Result(Locale, LocaleParseError) {
   case value |> string.trim |> string.lowercase {
-    "es" -> Es
-    "en" -> En
-    _ -> En
+    "es" -> Ok(Es)
+    "en" -> Ok(En)
+    other -> Error(InvalidLocale(other))
+  }
+}
+
+/// Decodes a stored locale value with explicit invalid state.
+pub fn decode_storage(value: String) -> LocaleStorage {
+  case parse(value) {
+    Ok(locale) -> LocaleStored(locale)
+    Error(InvalidLocale(value)) -> LocaleInvalid(value)
   }
 }
 
@@ -60,14 +79,21 @@ pub fn load() -> Locale {
   let stored = theme.local_storage_get(storage_key)
 
   case string.trim(stored) {
-    "" -> {
-      let detected = detect()
-      theme.local_storage_set(storage_key, serialize(detected))
-      detected
-    }
+    "" -> detect_and_store()
 
-    value -> deserialize(value)
+    value -> {
+      case decode_storage(value) {
+        LocaleStored(locale) -> locale
+        LocaleInvalid(_) -> detect_and_store()
+      }
+    }
   }
+}
+
+fn detect_and_store() -> Locale {
+  let detected = detect()
+  theme.local_storage_set(storage_key, serialize(detected))
+  detected
 }
 
 /// Saves the locale preference to localStorage.

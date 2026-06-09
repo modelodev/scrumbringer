@@ -13,7 +13,7 @@
 ////
 //// ## Relations
 ////
-//// - **helpers/i18n.gleam**: Delegates to i18n_t for error messages
+//// - **i18n/i18n.gleam**: Translates auth error messages
 //// - **features/*/update.gleam**: All update modules use these for auth errors
 //// - **client_state.gleam**: Uses Model, Msg, Login page
 
@@ -86,5 +86,18 @@ pub fn handle_auth_error(
         }),
       ))
     _ -> None
+  }
+}
+
+/// Handle 401 errors with redirect to login, or run fallback for other errors.
+pub fn handle_401_or(
+  model: client_state_module.Model,
+  err: ApiError,
+  fallback: fn() ->
+    #(client_state_module.Model, Effect(client_state_module.Msg)),
+) -> #(client_state_module.Model, Effect(client_state_module.Msg)) {
+  case err.status {
+    401 -> reset_to_login(model)
+    _ -> fallback()
   }
 }

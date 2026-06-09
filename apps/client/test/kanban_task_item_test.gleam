@@ -8,13 +8,20 @@ import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
 
 fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
   let card =
@@ -24,7 +31,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
       milestone_id: None,
       title: "Sprint",
       description: "",
-      color: Some("blue"),
+      color: Some(card.Blue),
       state: Pendiente,
       task_count: list.length(tasks),
       completed_count: 0,
@@ -96,7 +103,7 @@ fn claimed_task() -> Task {
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -124,7 +131,7 @@ fn available_task() -> Task {
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -137,10 +144,10 @@ pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  string.contains(html, "kanban-task-item") |> should.be_true
-  string.contains(html, "task-claimed-by") |> should.be_true
-  string.contains(html, "task-type-icon") |> should.be_true
-  string.contains(html, "admin") |> should.be_true
+  assert_contains(html, "kanban-task-item")
+  assert_contains(html, "task-claimed-by")
+  assert_contains(html, "task-type-icon")
+  assert_contains(html, "admin")
 }
 
 pub fn kanban_task_item_renders_claim_button_for_available_test() {
@@ -149,7 +156,7 @@ pub fn kanban_task_item_renders_claim_button_for_available_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  string.contains(html, "btn-claim-mini") |> should.be_true
+  assert_contains(html, "btn-claim-mini")
 }
 
 pub fn kanban_card_shows_notes_indicator_test() {
@@ -164,7 +171,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  string.contains(html, "card-notes-indicator") |> should.be_true
+  assert_contains(html, "card-notes-indicator")
 }
 
 pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
@@ -177,5 +184,5 @@ pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  string.contains(html, "Review copy") |> should.be_false
+  assert_not_contains(html, "Review copy")
 }

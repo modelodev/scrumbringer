@@ -1,7 +1,6 @@
 import gleam/list
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/view_mode as view_mode_module
@@ -11,6 +10,18 @@ import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
+
+fn assert_true(value: Bool) {
+  let assert True = value
+}
 
 fn base_config(
   current_route: opt.Option(router.Route),
@@ -84,7 +95,7 @@ pub fn left_panel_active_nav_has_active_class_test() {
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "nav-link active") |> should.be_true
+  assert_contains(html, "nav-link active")
 }
 
 pub fn left_panel_all_view_modes_can_be_active_test() {
@@ -98,7 +109,7 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   |> list.each(fn(mode) {
     let rendered = left_panel.view(base_config(opt.Some(member_route(mode))))
     let html = element.to_document_string(rendered)
-    string.contains(html, "nav-link active") |> should.be_true
+    assert_contains(html, "nav-link active")
   })
 }
 
@@ -114,7 +125,7 @@ pub fn left_panel_config_section_active_test() {
   let html = element.to_document_string(rendered)
 
   // Should have active class on the Team nav item
-  string.contains(html, "nav-link active") |> should.be_true
+  assert_contains(html, "nav-link active")
 }
 
 pub fn left_panel_org_section_active_test() {
@@ -129,7 +140,7 @@ pub fn left_panel_org_section_active_test() {
   let html = element.to_document_string(rendered)
 
   // Should have active class on the Invites nav item
-  string.contains(html, "nav-link active") |> should.be_true
+  assert_contains(html, "nav-link active")
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_en_test() {
@@ -138,37 +149,32 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_e
     |> element.to_document_string
 
   appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-cards\"",
     "data-testid=\"nav-capabilities-board\"",
   )
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-capabilities-board\"",
     "data-testid=\"nav-people\"",
   )
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-people\"",
     "data-testid=\"nav-milestones\"",
   )
-  |> should.be_true
+  |> assert_true
 
-  string.contains(html, "<span class=\"nav-label\">Pool</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Kanban</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Capabilities</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">People</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Milestones</span>")
-  |> should.be_true
-  string.contains(html, ">List<") |> should.be_false
+  assert_contains(html, "<span class=\"nav-label\">Pool</span>")
+  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
+  assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
+  assert_contains(html, "<span class=\"nav-label\">People</span>")
+  assert_contains(html, "<span class=\"nav-label\">Milestones</span>")
+  assert_not_contains(html, ">List<")
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_test() {
@@ -181,35 +187,30 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_te
   let html = left_panel.view(config) |> element.to_document_string
 
   appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-cards\"",
     "data-testid=\"nav-capabilities-board\"",
   )
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-capabilities-board\"",
     "data-testid=\"nav-people\"",
   )
-  |> should.be_true
+  |> assert_true
   appears_before(
     html,
     "data-testid=\"nav-people\"",
     "data-testid=\"nav-milestones\"",
   )
-  |> should.be_true
+  |> assert_true
 
-  string.contains(html, "<span class=\"nav-label\">Pool</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Kanban</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Capacidades</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Personas</span>")
-  |> should.be_true
-  string.contains(html, "<span class=\"nav-label\">Hitos</span>")
-  |> should.be_true
-  string.contains(html, ">Lista<") |> should.be_false
+  assert_contains(html, "<span class=\"nav-label\">Pool</span>")
+  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
+  assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
+  assert_contains(html, "<span class=\"nav-label\">Personas</span>")
+  assert_contains(html, "<span class=\"nav-label\">Hitos</span>")
+  assert_not_contains(html, ">Lista<")
 }

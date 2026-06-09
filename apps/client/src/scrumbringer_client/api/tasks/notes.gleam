@@ -11,7 +11,7 @@
 ////
 //// ## Relations
 ////
-//// - **decoders.gleam**: Provides note decoder
+//// - **domain/task/codec.gleam**: Provides note decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -21,9 +21,10 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/task.{type TaskNote}
+import domain/task/codec as decoders
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 
 // =============================================================================
 // Task Notes API Functions
@@ -32,12 +33,12 @@ import scrumbringer_client/api/tasks/decoders
 /// List notes for a task.
 pub fn list_task_notes(
   task_id: Int,
-  to_msg: fn(core.ApiResult(List(TaskNote))) -> msg,
+  to_msg: fn(ApiResult(List(TaskNote))) -> msg,
 ) -> Effect(msg) {
   let decoder =
     decode.field("notes", decode.list(decoders.note_decoder()), decode.success)
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     option.None,
     decoder,
@@ -49,13 +50,13 @@ pub fn list_task_notes(
 pub fn add_task_note(
   task_id: Int,
   content: String,
-  to_msg: fn(core.ApiResult(TaskNote)) -> msg,
+  to_msg: fn(ApiResult(TaskNote)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("content", json.string(content))])
   let decoder = decode.field("note", decoders.note_decoder(), decode.success)
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     option.Some(body),
     decoder,

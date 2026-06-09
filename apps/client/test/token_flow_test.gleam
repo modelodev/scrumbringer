@@ -1,5 +1,4 @@
 import gleam/option
-import gleeunit/should
 
 import domain/api_error.{type ApiError, ApiError}
 import scrumbringer_client/token_flow
@@ -7,21 +6,16 @@ import scrumbringer_client/token_flow
 pub fn init_with_missing_token_stays_no_token_state_test() {
   let #(model, action) = token_flow.init("")
 
-  let token_flow.Model(token: token, state: state, ..) = model
-
-  token |> should.equal("")
-  state |> should.equal(token_flow.NoToken)
-  action |> should.equal(token_flow.NoOp)
+  let assert token_flow.Model(token: "", state: token_flow.NoToken, ..) = model
+  let assert token_flow.NoOp = action
 }
 
 pub fn init_with_token_triggers_validation_test() {
   let #(model, action) = token_flow.init("token")
 
-  let token_flow.Model(token: token, state: state, ..) = model
-
-  token |> should.equal("token")
-  state |> should.equal(token_flow.Validating)
-  action |> should.equal(token_flow.ValidateToken("token"))
+  let assert token_flow.Model(token: "token", state: token_flow.Validating, ..) =
+    model
+  let assert token_flow.ValidateToken("token") = action
 }
 
 pub fn token_validation_success_moves_to_ready_test() {
@@ -34,10 +28,9 @@ pub fn token_validation_success_moves_to_ready_test() {
       default_error_state,
     )
 
-  let token_flow.Model(state: state, ..) = next
-
-  state |> should.equal(token_flow.Ready("person@example.com"))
-  action |> should.equal(token_flow.NoOp)
+  let assert token_flow.Model(state: token_flow.Ready("person@example.com"), ..) =
+    next
+  let assert token_flow.NoOp = action
 }
 
 pub fn token_validation_failure_moves_to_invalid_test() {
@@ -52,11 +45,11 @@ pub fn token_validation_failure_moves_to_invalid_test() {
       default_error_state,
     )
 
-  let token_flow.Model(state: state, ..) = next
-
-  state
-  |> should.equal(token_flow.Invalid(code: "TOKEN_INVALID", message: "Nope"))
-  action |> should.equal(token_flow.NoOp)
+  let assert token_flow.Model(
+    state: token_flow.Invalid(code: "TOKEN_INVALID", message: "Nope"),
+    ..,
+  ) = next
+  let assert token_flow.NoOp = action
 }
 
 pub fn submit_requires_min_password_length_test() {
@@ -79,11 +72,11 @@ pub fn submit_requires_min_password_length_test() {
   let #(next, action) =
     token_flow.update(model, token_flow.Submitted, default_error_state)
 
-  let token_flow.Model(password_error: password_error, ..) = next
-
-  password_error
-  |> should.equal(option.Some("Password must be at least 12 characters"))
-  action |> should.equal(token_flow.NoOp)
+  let assert token_flow.Model(
+    password_error: option.Some("Password must be at least 12 characters"),
+    ..,
+  ) = next
+  let assert token_flow.NoOp = action
 }
 
 pub fn submit_with_valid_password_triggers_submit_action_test() {
@@ -106,14 +99,12 @@ pub fn submit_with_valid_password_triggers_submit_action_test() {
   let #(next, action) =
     token_flow.update(model, token_flow.Submitted, default_error_state)
 
-  let token_flow.Model(state: state, ..) = next
-
-  state |> should.equal(token_flow.Submitting("person@example.com"))
-  action
-  |> should.equal(token_flow.Submit(
-    token: "token",
-    password: "passwordpassword",
-  ))
+  let assert token_flow.Model(
+    state: token_flow.Submitting("person@example.com"),
+    ..,
+  ) = next
+  let assert token_flow.Submit(token: "token", password: "passwordpassword") =
+    action
 }
 
 pub fn completed_success_moves_to_done_and_emits_action_test() {
@@ -122,10 +113,8 @@ pub fn completed_success_moves_to_done_and_emits_action_test() {
   let #(next, action) =
     token_flow.update(model, token_flow.Completed(Ok(7)), default_error_state)
 
-  let token_flow.Model(state: state, ..) = next
-
-  state |> should.equal(token_flow.Done)
-  action |> should.equal(token_flow.Succeeded(7))
+  let assert token_flow.Model(state: token_flow.Done, ..) = next
+  let assert token_flow.Succeeded(7) = action
 }
 
 pub fn completed_error_uses_handler_and_sets_submit_error_test() {
@@ -153,12 +142,12 @@ pub fn completed_error_uses_handler_and_sets_submit_error_test() {
   let #(next, action) =
     token_flow.update(model, token_flow.Completed(Error(err)), error_to_invalid)
 
-  let token_flow.Model(state: state, submit_error: submit_error, ..) = next
-
-  state
-  |> should.equal(token_flow.Invalid(code: "SUBMIT_FAILED", message: "Nope"))
-  submit_error |> should.equal(option.Some("Nope"))
-  action |> should.equal(token_flow.NoOp)
+  let assert token_flow.Model(
+    state: token_flow.Invalid(code: "SUBMIT_FAILED", message: "Nope"),
+    submit_error: option.Some("Nope"),
+    ..,
+  ) = next
+  let assert token_flow.NoOp = action
 }
 
 fn default_error_state(email: String, _err: ApiError) -> token_flow.State {

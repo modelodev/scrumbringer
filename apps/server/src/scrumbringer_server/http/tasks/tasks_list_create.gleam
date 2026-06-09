@@ -20,16 +20,15 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/workflows/handlers.gleam` for domain operations
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, Some}
+import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/filters
+import scrumbringer_server/http/tasks/payload_responses
+import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows/handlers as workflow
@@ -47,9 +46,9 @@ pub fn handle_tasks_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> list_tasks_for_user(req, ctx, user, project_id)
+  case list_tasks_payload(req, ctx, project_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -64,165 +63,51 @@ pub fn handle_tasks_create(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> create_task_for_user(req, ctx, user, project_id)
-  }
+  with_create_payload(req, ctx, project_id, fn(user, project_id, payload) {
+    create_task_payload(ctx, user, project_id, payload)
+  })
 }
 
-fn list_tasks_for_user(
+fn list_tasks_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   project_id: String,
-) -> wisp.Response {
-  case parse_project_id(project_id) {
-    Error(resp) -> resp
-    Ok(project_id) -> list_tasks_for_project(req, ctx, user, project_id)
-  }
-}
-
-fn list_tasks_for_project(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: Int,
-) -> wisp.Response {
-  let query = wisp.get_query(req)
-
-  case filters.parse_task_filters(query) {
-    Error(resp) -> resp
-    Ok(task_filters) ->
-      list_tasks_with_filters(ctx, user, project_id, task_filters)
-  }
-}
-
-fn list_tasks_with_filters(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: Int,
-  task_filters: workflow_types.TaskFilters,
-) -> wisp.Response {
+) -> Result(wisp.Response, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
+  let query = wisp.get_query(req)
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id))
+  use task_filters <- result.try(filters.parse_task_filters(query))
 
-  // Justification: nested case maps workflow results into HTTP responses.
   case
     workflow.handle(
       db,
       workflow_types.ListTasks(project_id, user.id, task_filters),
     )
   {
-    Ok(workflow_types.TasksList(tasks)) ->
-      api.ok(
-        json.object([#("tasks", json.array(tasks, of: presenters.task_json))]),
-      )
-
-    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-    Error(workflow_types.NotAuthorized) ->
-      api.error(403, "FORBIDDEN", "Forbidden")
-    Error(workflow_types.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Ok(response) -> list_tasks_response(response)
+    Error(error) -> Error(list_tasks_error_response(error))
   }
 }
 
-fn create_task_for_user(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> create_task_with_csrf(req, ctx, user, project_id)
-  }
-}
-
-fn create_task_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: String,
-) -> wisp.Response {
-  case parse_project_id(project_id) {
-    Error(resp) -> resp
-    Ok(project_id) -> create_task_with_project(req, ctx, user, project_id)
-  }
-}
-
-fn create_task_with_project(
-  req: wisp.Request,
+fn create_task_payload(
   ctx: auth.Ctx,
   user: StoredUser,
   project_id: Int,
-) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_create_payload(data) {
-    Error(resp) -> resp
-
-    Ok(#(title, description, priority, type_id, card_id, milestone_id)) ->
-      create_task_db(
-        ctx,
-        user,
-        project_id,
-        title,
-        description,
-        priority,
-        type_id,
-        card_id,
-        milestone_id,
-      )
-  }
-}
-
-fn create_task_db(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
-  card_id: Option(Int),
-  milestone_id: Option(Int),
-) -> wisp.Response {
-  case card_id, milestone_id {
-    Some(_), Some(_) ->
-      api.error(
-        422,
-        "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task milestone is inherited from card",
-      )
-    _, _ ->
-      create_task_db_insert(
-        ctx,
-        user,
-        project_id,
-        title,
-        description,
-        priority,
-        type_id,
-        card_id,
-        milestone_id,
-      )
-  }
-}
-
-fn create_task_db_insert(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  project_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
-  card_id: Option(Int),
-  milestone_id: Option(Int),
-) -> wisp.Response {
+  payload: payloads.CreateTaskPayload,
+) -> Result(wisp.Response, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
+  let payloads.CreateTaskPayload(
+    title: title,
+    description: description,
+    priority: priority,
+    type_id: type_id,
+    card_id: card_id,
+    milestone_id: milestone_id,
+  ) = payload
 
-  // Justification: nested case maps workflow results into HTTP responses.
+  use Nil <- result.try(require_milestone_not_inherited(card_id, milestone_id))
+
   case
     workflow.handle(
       db,
@@ -239,60 +124,152 @@ fn create_task_db_insert(
       ),
     )
   {
-    Ok(workflow_types.TaskResult(task)) ->
-      api.ok(json.object([#("task", presenters.task_json(task))]))
+    Ok(response) -> create_task_response(response)
+    Error(error) -> Error(create_task_error_response(error))
+  }
+}
 
-    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-    Error(workflow_types.NotAuthorized) ->
-      api.error(403, "FORBIDDEN", "Forbidden")
-    Error(workflow_types.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(workflow_types.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+fn require_create_context(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> Result(#(StoredUser, Int), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use project_id <- result.try(api.parse_id(project_id))
+
+  Ok(#(user, project_id))
+}
+
+fn with_create_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  handle_payload: fn(StoredUser, Int, payloads.CreateTaskPayload) ->
+    Result(wisp.Response, wisp.Response),
+) -> wisp.Response {
+  case require_create_context(req, ctx, project_id) {
+    Error(resp) -> resp
+    Ok(#(user, project_id)) -> {
+      use data <- wisp.require_json(req)
+      case decode_create_payload(data) {
+        Error(resp) -> resp
+        Ok(payload) ->
+          case handle_payload(user, project_id, payload) {
+            Ok(resp) -> resp
+            Error(resp) -> resp
+          }
+      }
+    }
+  }
+}
+
+fn require_milestone_not_inherited(
+  card_id: Option(Int),
+  milestone_id: Option(Int),
+) -> Result(Nil, wisp.Response) {
+  case card_id, milestone_id {
+    Some(_), Some(_) ->
+      Error(api.error(
+        422,
+        "TASK_MILESTONE_INHERITED_FROM_CARD",
+        "Task milestone is inherited from card",
+      ))
+    _, _ -> Ok(Nil)
   }
 }
 
 fn decode_create_payload(
-  data: dynamic.Dynamic,
-) -> Result(
-  #(String, String, Int, Int, Option(Int), Option(Int)),
-  wisp.Response,
-) {
-  let decoder = {
-    use title <- decode.field("title", decode.string)
-    use description <- decode.optional_field("description", "", decode.string)
-    use priority <- decode.field("priority", decode.int)
-    use type_id <- decode.field("type_id", decode.int)
-    use card_id <- decode.optional_field(
-      "card_id",
-      None,
-      decode.optional(decode.int),
-    )
-    use milestone_id <- decode.optional_field(
-      "milestone_id",
-      None,
-      decode.optional(decode.int),
-    )
-    decode.success(#(
-      title,
-      description,
-      priority,
-      type_id,
-      card_id,
-      milestone_id,
-    ))
-  }
+  data,
+) -> Result(payloads.CreateTaskPayload, wisp.Response) {
+  payloads.decode_create_task(data)
+  |> result.map_error(payload_responses.decode_error)
+}
 
-  case decode.run(data, decoder) {
-    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
-    Ok(payload) -> Ok(payload)
+fn list_tasks_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TasksList(tasks) ->
+      Ok(api.ok(presenters.tasks_response(tasks)))
+    workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
 }
 
-fn parse_project_id(project_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(project_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+fn create_task_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TaskResult(task) ->
+      Ok(api.ok(presenters.task_response(task)))
+    workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TasksList(_) -> Error(unexpected_response())
   }
+}
+
+fn list_tasks_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.NotFound
+    | workflow_types.ValidationError(_)
+    | workflow_types.TaskMilestoneInheritedFromCard
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeAlreadyExists
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.ValidationError(message) ->
+      api.error(422, "VALIDATION_ERROR", message)
+    workflow_types.TaskMilestoneInheritedFromCard ->
+      inherited_milestone_response()
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.NotFound
+    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskTypeAlreadyExists
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn inherited_milestone_response() -> wisp.Response {
+  api.error(
+    422,
+    "TASK_MILESTONE_INHERITED_FROM_CARD",
+    "Task milestone is inherited from card",
+  )
+}
+
+fn forbidden_response() -> wisp.Response {
+  api.error(403, "FORBIDDEN", "Forbidden")
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
+}
+
+fn unexpected_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected response")
+}
+
+fn unexpected_error() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected error")
 }

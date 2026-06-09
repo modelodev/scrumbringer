@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleeunit/should
 
 import domain/task.{type Task, Task}
 import domain/task_state
@@ -68,8 +67,8 @@ pub fn derive_status_excludes_active_from_claimed_when_ongoing_by_test() {
   ]
 
   let person = people_state.derive_status(10, "ana@example.com", tasks)
-  active_task_ids(person) |> should.equal([1])
-  claimed_task_ids(person) |> should.equal([])
+  let assert [1] = active_task_ids(person)
+  let assert [] = claimed_task_ids(person)
 }
 
 pub fn derive_status_keeps_non_active_taken_tasks_in_claimed_test() {
@@ -84,5 +83,5 @@ pub fn derive_status_keeps_non_active_taken_tasks_in_claimed_test() {
   ]
 
   let person = people_state.derive_status(10, "ana@example.com", tasks)
-  claimed_task_ids(person) |> should.equal([2])
+  let assert [2] = claimed_task_ids(person)
 }

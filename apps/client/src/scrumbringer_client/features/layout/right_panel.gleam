@@ -24,9 +24,9 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, label, option, select, span, text}
 import lustre/event
 
+import domain/card
 import domain/task.{type Task}
 import domain/user.{type User}
-import scrumbringer_client/client_state.{type Model}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -37,7 +37,6 @@ import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_type_icon
-import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // Types
@@ -49,7 +48,7 @@ pub type ActiveTaskInfo {
     task_id: Int,
     task_title: String,
     task_type_icon: String,
-    card_color: Option(String),
+    card_color: Option(card.CardColor),
     elapsed_display: String,
     is_paused: Bool,
   )
@@ -60,7 +59,7 @@ pub type MyCardProgress {
   MyCardProgress(
     card_id: Int,
     card_title: String,
-    card_color: Option(String),
+    card_color: Option(card.CardColor),
     completed: Int,
     total: Int,
   )
@@ -70,11 +69,11 @@ pub type MyCardProgress {
 pub type RightPanelConfig(msg) {
   RightPanelConfig(
     locale: Locale,
-    model: Model,
     user: Option(User),
     my_tasks: List(Task),
     my_cards: List(MyCardProgress),
     active_tasks: List(ActiveTaskInfo),
+    task_card_color: fn(Task) -> Option(card.CardColor),
     on_task_start: fn(Int) -> msg,
     on_task_pause: fn(Int) -> msg,
     on_task_complete: fn(Int) -> msg,
@@ -199,7 +198,7 @@ fn view_active_task_card(
     div([attribute.class("task-actions")], [
       case active.is_paused {
         True ->
-          task_actions.icon_action(
+          action_buttons.task_icon_button(
             i18n.t(config.locale, i18n_text.Resume),
             config.on_task_start(active.task_id),
             icons.Play,
@@ -309,8 +308,7 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) {
-  let #(_card_title_opt, resolved_color) =
-    card_queries.resolve_task_card_info(config.model, task)
+  let resolved_color = config.task_card_color(task)
   let border_class = task_color.card_border_class(resolved_color)
 
   div([attribute.class("task-item " <> border_class)], [
@@ -331,7 +329,7 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
       ),
     ]),
     div([attribute.class("task-actions")], [
-      task_actions.icon_action(
+      action_buttons.task_icon_button(
         i18n.t(config.locale, i18n_text.Start),
         config.on_task_start(task.id),
         icons.Play,
@@ -425,7 +423,6 @@ fn view_my_card_item(
 // Preferences Popup (Story 4.8 UX: moved from inline section)
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
   case config.preferences_popup_open {
     False -> element.none()

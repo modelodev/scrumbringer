@@ -18,12 +18,19 @@
 //// - Business logic or scenarios (see seed_builder.gleam)
 //// - CLI or output (see seed.gleam)
 
+import domain/card
+import domain/milestone
+import domain/org_role
+import domain/project_role
+import domain/task_status
 import gleam/dynamic/decode
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/task_events_db
 
 // =============================================================================
 // Types
@@ -34,7 +41,7 @@ pub type UserInsertOptions {
   UserInsertOptions(
     org_id: Int,
     email: String,
-    org_role: String,
+    org_role: org_role.OrgRole,
     first_login_at: Option(String),
     created_at: Option(String),
   )
@@ -48,7 +55,7 @@ pub type TaskInsertOptions {
     title: String,
     description: String,
     priority: Int,
-    status: String,
+    status: task_status.TaskStatus,
     created_by: Int,
     claimed_by: Option(Int),
     card_id: Option(Int),
@@ -67,7 +74,7 @@ pub type CardInsertOptions {
     project_id: Int,
     title: String,
     description: String,
-    color: Option(String),
+    color: Option(card.CardColor),
     created_by: Int,
     created_at: Option(String),
   )
@@ -79,7 +86,7 @@ pub type MilestoneInsertOptions {
     project_id: Int,
     name: String,
     description: Option(String),
-    state: String,
+    state: milestone.MilestoneState,
     position: Int,
     created_by: Int,
     created_at: Option(String),
@@ -136,7 +143,7 @@ pub type TaskEventInsertOptions {
     project_id: Int,
     task_id: Int,
     actor_user_id: Int,
-    event_type: String,
+    event_type: task_events_db.TaskEventType,
     created_at: Option(String),
   )
 }
@@ -159,7 +166,7 @@ pub type WorkSessionInsertOptions {
 // =============================================================================
 
 /// Fixed password hash for "passwordpassword" (argon2).
-pub const default_password_hash = "$argon2id$v=19$m=19456,t=2,p=1$WFdS11YsLLialYVbuHIxhg$N3DNEU4tlErd/6a8eP5VZEwvpN2UgLWgET+mS41iAYI"
+const default_password_hash = "$argon2id$v=19$m=19456,t=2,p=1$WFdS11YsLLialYVbuHIxhg$N3DNEU4tlErd/6a8eP5VZEwvpN2UgLWgET+mS41iAYI"
 
 // =============================================================================
 // Timestamp Helpers
@@ -177,7 +184,7 @@ fn timestamp_value(
   case is_sql_timestamp(value) {
     True -> #(value, None, param_idx)
     False -> #(
-      "$" <> int_to_string(param_idx) <> "::timestamptz",
+      "$" <> int.to_string(param_idx) <> "::timestamptz",
       Some(value),
       param_idx + 1,
     )
@@ -261,7 +268,7 @@ pub fn insert_user(
     |> pog.parameter(pog.text(opts.email))
     |> pog.parameter(pog.text(default_password_hash))
     |> pog.parameter(pog.int(opts.org_id))
-    |> pog.parameter(pog.text(opts.org_role))
+    |> pog.parameter(pog.text(org_role.to_string(opts.org_role)))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
@@ -282,7 +289,7 @@ pub fn insert_user_simple(
   db: pog.Connection,
   org_id: Int,
   email: String,
-  org_role: String,
+  org_role: org_role.OrgRole,
 ) -> Result(Int, String) {
   insert_user(
     db,
@@ -364,14 +371,14 @@ pub fn insert_member(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  role: String,
+  role: project_role.ProjectRole,
 ) -> Result(Nil, String) {
   pog.query(
     "INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)",
   )
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(user_id))
-  |> pog.parameter(pog.text(role))
+  |> pog.parameter(pog.text(project_role.to_string(role)))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "insert_member: " <> string.inspect(e) })
@@ -528,7 +535,7 @@ pub fn insert_task(
     |> pog.parameter(pog.text(opts.title))
     |> pog.parameter(pog.text(opts.description))
     |> pog.parameter(pog.int(opts.priority))
-    |> pog.parameter(pog.text(opts.status))
+    |> pog.parameter(pog.text(task_status.task_status_to_string(opts.status)))
     |> pog.parameter(pog.int(opts.created_by))
     |> pog.parameter(pog.nullable(pog.int, opts.claimed_by))
     |> pog.parameter(pog.nullable(pog.int, opts.card_id))
@@ -564,7 +571,7 @@ pub fn insert_task_simple(
       title: title,
       description: "Seeded",
       priority: 3,
-      status: "available",
+      status: task_status.Available,
       created_by: created_by,
       claimed_by: None,
       card_id: card_id,
@@ -582,9 +589,10 @@ pub fn insert_task_simple(
 pub fn update_task_status(
   db: pog.Connection,
   task_id: Int,
-  status: String,
+  status: task_status.TaskStatus,
   claimed_by: Option(Int),
 ) -> Result(Nil, String) {
+  let status = task_status.task_status_to_string(status)
   case claimed_by {
     Some(claimed_user_id) -> {
       pog.query(
@@ -641,7 +649,10 @@ pub fn insert_card(
     |> pog.parameter(pog.int(opts.project_id))
     |> pog.parameter(pog.text(opts.title))
     |> pog.parameter(pog.text(opts.description))
-    |> pog.parameter(pog.nullable(pog.text, opts.color))
+    |> pog.parameter(pog.nullable(
+      pog.text,
+      option.map(opts.color, card.color_to_string),
+    ))
     |> pog.parameter(pog.int(opts.created_by))
 
   apply_timestamp_params(base_query, params)
@@ -661,7 +672,7 @@ pub fn insert_card_simple(
   db: pog.Connection,
   project_id: Int,
   title: String,
-  color: Option(String),
+  color: Option(card.CardColor),
   created_by: Int,
 ) -> Result(Int, String) {
   insert_card(
@@ -732,7 +743,7 @@ pub fn insert_milestone(
     |> pog.parameter(pog.int(opts.project_id))
     |> pog.parameter(pog.text(opts.name))
     |> pog.parameter(pog.nullable(pog.text, opts.description))
-    |> pog.parameter(pog.text(opts.state))
+    |> pog.parameter(pog.text(milestone.state_to_string(opts.state)))
     |> pog.parameter(pog.int(opts.position))
     |> pog.parameter(pog.int(opts.created_by))
 
@@ -788,7 +799,7 @@ pub fn assign_available_pool_tasks_to_milestone(
     db,
     project_id,
     milestone_id,
-    "available",
+    task_status.Available,
     limit,
   )
 }
@@ -804,7 +815,7 @@ pub fn assign_claimed_pool_tasks_to_milestone(
     db,
     project_id,
     milestone_id,
-    "claimed",
+    task_status.Claimed(task_status.Taken),
     limit,
   )
 }
@@ -820,7 +831,7 @@ pub fn assign_completed_pool_tasks_to_milestone(
     db,
     project_id,
     milestone_id,
-    "completed",
+    task_status.Completed,
     limit,
   )
 }
@@ -829,9 +840,10 @@ fn assign_pool_tasks_to_milestone_by_status(
   db: pog.Connection,
   project_id: Int,
   milestone_id: Int,
-  status: String,
+  status: task_status.TaskStatus,
   limit: Int,
 ) -> Result(Nil, String) {
+  let status = task_status.task_status_to_string(status)
   pog.query(
     "UPDATE tasks
      SET milestone_id = $2
@@ -1107,6 +1119,26 @@ pub fn insert_task_event(
   db: pog.Connection,
   opts: TaskEventInsertOptions,
 ) -> Result(Nil, String) {
+  insert_task_event_raw(
+    db,
+    opts.org_id,
+    opts.project_id,
+    opts.task_id,
+    opts.actor_user_id,
+    task_events_db.event_type_to_string(opts.event_type),
+    opts.created_at,
+  )
+}
+
+fn insert_task_event_raw(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  task_id: Int,
+  actor_user_id: Int,
+  event_type: String,
+  created_at: Option(String),
+) -> Result(Nil, String) {
   let base_cols = "org_id, project_id, task_id, actor_user_id, event_type"
   let base_vals = "$1, $2, $3, $4, $5"
   let base_idx = 6
@@ -1117,7 +1149,7 @@ pub fn insert_task_event(
       base_vals,
       base_idx,
       "created_at",
-      opts.created_at,
+      created_at,
       [],
     )
 
@@ -1125,11 +1157,11 @@ pub fn insert_task_event(
 
   let base_query =
     pog.query(sql)
-    |> pog.parameter(pog.int(opts.org_id))
-    |> pog.parameter(pog.int(opts.project_id))
-    |> pog.parameter(pog.int(opts.task_id))
-    |> pog.parameter(pog.int(opts.actor_user_id))
-    |> pog.parameter(pog.text(opts.event_type))
+    |> pog.parameter(pog.int(org_id))
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.parameter(pog.int(actor_user_id))
+    |> pog.parameter(pog.text(event_type))
 
   apply_timestamp_params(base_query, params)
   |> pog.execute(db)
@@ -1146,16 +1178,14 @@ pub fn insert_task_event_simple(
   user_id: Int,
   event_type: String,
 ) -> Result(Nil, String) {
-  insert_task_event(
+  insert_task_event_raw(
     db,
-    TaskEventInsertOptions(
-      org_id: org_id,
-      project_id: project_id,
-      task_id: task_id,
-      actor_user_id: user_id,
-      event_type: event_type,
-      created_at: None,
-    ),
+    org_id,
+    project_id,
+    task_id,
+    user_id,
+    event_type,
+    None,
   )
 }
 
@@ -1403,26 +1433,4 @@ pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
 fn int_decoder() {
   use value <- decode.field(0, decode.int)
   decode.success(value)
-}
-
-fn int_to_string(n: Int) -> String {
-  case n {
-    0 -> "0"
-    1 -> "1"
-    2 -> "2"
-    3 -> "3"
-    4 -> "4"
-    5 -> "5"
-    6 -> "6"
-    7 -> "7"
-    8 -> "8"
-    9 -> "9"
-    10 -> "10"
-    11 -> "11"
-    12 -> "12"
-    13 -> "13"
-    14 -> "14"
-    15 -> "15"
-    _ -> "0"
-  }
 }

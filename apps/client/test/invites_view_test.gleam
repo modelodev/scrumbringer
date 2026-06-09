@@ -1,0 +1,58 @@
+import gleam/option
+import gleam/string
+import lustre/element
+
+import domain/org.{type InviteLink, Active, InviteLink}
+import domain/remote
+import scrumbringer_client/client_state/admin/invites as invites_state
+import scrumbringer_client/features/invites/view as invites_view
+import scrumbringer_client/i18n/locale
+
+fn assert_contains(html: String, fragment: String) {
+  let assert True = string.contains(html, fragment)
+}
+
+fn invite_link(email: String) -> InviteLink {
+  InviteLink(
+    email: email,
+    token: "token",
+    url_path: "/accept-invite?token=token",
+    state: Active,
+    created_at: "2026-01-01T10:00:00Z",
+    used_at: option.None,
+    invalidated_at: option.None,
+  )
+}
+
+fn config(invites: invites_state.Model) -> invites_view.Config(String) {
+  invites_view.Config(
+    locale: locale.En,
+    invites: invites,
+    origin: "https://scrumbringer.test",
+    on_create_dialog_opened: "open",
+    on_create_dialog_closed: "close",
+    on_create_submitted: "submit",
+    on_email_changed: fn(value) { "email:" <> value },
+    on_link_copy_clicked: fn(value) { "copy:" <> value },
+    on_link_regenerate_clicked: fn(value) { "regenerate:" <> value },
+  )
+}
+
+pub fn invites_view_loaded_links_uses_config_data_test() {
+  let link = invite_link("new@example.test")
+  let state =
+    invites_state.Model(
+      ..invites_state.default_model(),
+      invite_links: remote.Loaded([link]),
+      invite_link_last: option.Some(link),
+    )
+
+  let html =
+    invites_view.view_invites(config(state))
+    |> element.to_document_string
+
+  assert_contains(html, "INVITES")
+  assert_contains(html, "new@example.test")
+  assert_contains(html, "https://scrumbringer.test/accept-invite?token=token")
+  assert_contains(html, "Pending")
+}

@@ -23,6 +23,7 @@
 //// - **sql.gleam**: Squirrel-generated query functions
 //// - **task_events_db.gleam**: Records audit events
 
+import domain/field_update
 import domain/task_status
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -57,9 +58,9 @@ pub fn list_tasks_for_project(
       db,
       project_id,
       status_filter_to_db_string(status),
-      option_helpers.option_to_value(type_id, 0),
-      option_helpers.option_to_value(capability_id, 0),
-      option_helpers.option_to_value(q, ""),
+      optional_id_filter_value(type_id),
+      optional_id_filter_value(capability_id),
+      search_filter_value(q),
       user_id,
       blocked_filter_to_db(blocked),
     )
@@ -67,8 +68,7 @@ pub fn list_tasks_for_project(
   )
 
   returned.rows
-  |> list.map(mappers.from_list_row)
-  |> Ok
+  |> list.try_map(mappers.from_list_row)
 }
 
 fn blocked_filter_to_db(value: Option(Bool)) -> String {
@@ -83,6 +83,40 @@ fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String 
   case status {
     None -> ""
     Some(value) -> task_status.to_db_status(value)
+  }
+}
+
+fn optional_id_filter_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
+fn search_filter_value(value: Option(String)) -> String {
+  option_helpers.option_to_value(value, "")
+}
+
+fn optional_id_create_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
+fn text_update_value(value: Option(String)) -> String {
+  option_helpers.option_to_value(value, "__unset__")
+}
+
+fn priority_update_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
+fn type_id_update_value(value: Option(Int)) -> Int {
+  option_helpers.option_to_value(value, 0)
+}
+
+fn milestone_id_update_value(
+  value: field_update.FieldUpdate(Option(Int)),
+) -> Int {
+  case value {
+    field_update.Unchanged -> -1
+    field_update.Set(None) -> 0
+    field_update.Set(Some(id)) -> id
   }
 }
 
@@ -110,13 +144,13 @@ pub fn create_task(
         description,
         priority,
         created_by,
-        option_helpers.option_to_value(card_id, 0),
-        option_helpers.option_to_value(milestone_id, 0),
-        option_helpers.option_to_value(created_from_rule_id, 0),
+        optional_id_create_value(card_id),
+        optional_id_create_value(milestone_id),
+        optional_id_create_value(created_from_rule_id),
       )
     {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
-        let task = mappers.from_create_row(row)
+        use task <- result.try(mappers.from_create_row(row))
 
         use _ <- result.try(
           task_events_db.insert(
@@ -148,7 +182,7 @@ pub fn get_task_for_user(
   user_id: Int,
 ) -> Result(Task, service_error.ServiceError) {
   case sql.tasks_get_for_user(db, task_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_get_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> mappers.from_get_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
     Error(e) -> Error(service_error.DbError(e))
   }
@@ -163,7 +197,7 @@ pub fn update_task_claimed_by_user(
   description: Option(String),
   priority: Option(Int),
   type_id: Option(Int),
-  milestone_id: Int,
+  milestone_id: field_update.FieldUpdate(Option(Int)),
   version: Int,
 ) -> Result(Task, service_error.ServiceError) {
   case
@@ -171,15 +205,15 @@ pub fn update_task_claimed_by_user(
       db,
       task_id,
       user_id,
-      option_helpers.option_to_value(title, "__unset__"),
-      option_helpers.option_to_value(description, "__unset__"),
-      option_helpers.option_to_value(priority, 0),
-      option_helpers.option_to_value(type_id, 0),
-      milestone_id,
+      text_update_value(title),
+      text_update_value(description),
+      priority_update_value(priority),
+      type_id_update_value(type_id),
+      milestone_id_update_value(milestone_id),
       version,
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_update_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> mappers.from_update_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
     Error(e) -> Error(service_error.DbError(e))
   }
@@ -196,7 +230,7 @@ pub fn claim_task(
   pog.transaction(db, fn(tx) {
     case sql.tasks_claim(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
-        let task = mappers.from_claim_row(row)
+        use task <- result.try(mappers.from_claim_row(row))
 
         use _ <- result.try(
           task_events_db.insert(
@@ -239,7 +273,7 @@ pub fn release_task(
 
     case sql.tasks_release(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
-        let task = mappers.from_release_row(row)
+        use task <- result.try(mappers.from_release_row(row))
 
         use _ <- result.try(
           task_events_db.insert(
@@ -333,7 +367,7 @@ pub fn complete_task(
 
     case sql.tasks_complete(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
-        let task = mappers.from_complete_row(row)
+        use task <- result.try(mappers.from_complete_row(row))
 
         use _ <- result.try(
           task_events_db.insert(

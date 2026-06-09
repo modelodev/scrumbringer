@@ -23,16 +23,17 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/api/tasks/decoders as task_decoders
+import domain/api_error.{type ApiResult}
+import scrumbringer_client/api/core
 
-import domain/card.{type Card, type CardNote}
+import domain/card.{type Card, type CardColor, type CardNote}
 import domain/card/codec as card_codec
 import domain/metrics.{
   type CardModalMetrics, type ModalExecutionHealth, type WorkflowBreakdown,
   CardModalMetrics, ModalExecutionHealth, WorkflowBreakdown,
 }
 import domain/task.{type Task}
+import domain/task/codec as task_codec
 
 // =============================================================================
 // API Functions
@@ -50,7 +51,7 @@ pub fn list_cards(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
     option.None,
     decoder,
@@ -63,7 +64,7 @@ pub fn create_card(
   project_id: Int,
   title: String,
   description: String,
-  color: option.Option(String),
+  color: option.Option(CardColor),
   milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
@@ -72,7 +73,10 @@ pub fn create_card(
     #("description", json.string(description)),
   ]
   let fields = case color {
-    option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
+    option.Some(c) ->
+      list.append(base_fields, [
+        #("color", json.string(card.color_to_string(c))),
+      ])
     option.None -> base_fields
   }
   let fields = case milestone_id {
@@ -82,7 +86,7 @@ pub fn create_card(
   let body = json.object(fields)
   let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
     option.Some(body),
     decoder,
@@ -94,7 +98,7 @@ pub fn create_card(
 pub fn get_card(card_id: Int, to_msg: fn(ApiResult(Card)) -> msg) -> Effect(msg) {
   let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/cards/" <> int.to_string(card_id),
     option.None,
     decoder,
@@ -107,7 +111,7 @@ pub fn get_card_metrics(
   to_msg: fn(ApiResult(CardModalMetrics)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
     option.None,
     decode.field("metrics", card_metrics_decoder(), decode.success),
@@ -121,7 +125,7 @@ pub fn mark_card_view(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "PUT",
+    core.Put,
     "/api/v1/views/cards/" <> int.to_string(card_id),
     option.None,
     to_msg,
@@ -133,7 +137,7 @@ pub fn update_card(
   card_id: Int,
   title: String,
   description: String,
-  color: option.Option(String),
+  color: option.Option(CardColor),
   milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
@@ -142,7 +146,10 @@ pub fn update_card(
     #("description", json.string(description)),
   ]
   let fields = case color {
-    option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
+    option.Some(c) ->
+      list.append(base_fields, [
+        #("color", json.string(card.color_to_string(c))),
+      ])
     option.None -> base_fields
   }
   let fields = case milestone_id {
@@ -152,7 +159,7 @@ pub fn update_card(
   let body = json.object(fields)
   let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/cards/" <> int.to_string(card_id),
     option.Some(body),
     decoder,
@@ -166,7 +173,7 @@ pub fn delete_card(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/cards/" <> int.to_string(card_id),
     option.None,
     to_msg,
@@ -181,11 +188,11 @@ pub fn list_card_tasks(
   let decoder =
     decode.field(
       "tasks",
-      decode.list(task_decoders.task_decoder()),
+      decode.list(task_codec.task_decoder()),
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/cards/" <> int.to_string(card_id) <> "/tasks",
     option.None,
     decoder,
@@ -205,7 +212,7 @@ pub fn get_card_notes(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     option.None,
     decoder,
@@ -223,7 +230,7 @@ pub fn create_card_note(
   let decoder =
     decode.field("note", card_codec.card_note_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     option.Some(body),
     decoder,
@@ -238,7 +245,7 @@ pub fn delete_card_note(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/cards/"
       <> int.to_string(card_id)
       <> "/notes/"

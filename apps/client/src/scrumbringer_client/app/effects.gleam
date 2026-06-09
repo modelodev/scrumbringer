@@ -29,10 +29,14 @@
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state
+import scrumbringer_client/client_state.{
+  type Msg, ToastShow, ToastShowWithAction,
+}
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/storage
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/toast
 
 // =============================================================================
 // Theme Persistence Effects
@@ -42,7 +46,7 @@ import scrumbringer_client/theme.{type Theme}
 ///
 /// Persists the user's theme choice for future sessions.
 pub fn save_theme(t: Theme) -> Effect(msg) {
-  effect.from(fn(_dispatch) { storage.save_theme(t) })
+  effect.from(fn(_dispatch) { theme.save_to_storage(t) })
 }
 
 // =============================================================================
@@ -102,21 +106,55 @@ pub fn schedule_timeout(ms: Int, make_msg: fn() -> msg) -> Effect(msg) {
 }
 
 // =============================================================================
+// Toast Effects
+// =============================================================================
+
+/// Build a toast effect to show a message with a variant.
+pub fn toast_effect(message: String, variant: toast.ToastVariant) -> Effect(Msg) {
+  effect.from(fn(dispatch) { dispatch(ToastShow(message, variant)) })
+}
+
+/// Build a toast effect with an action button.
+pub fn toast_effect_with_action(
+  message: String,
+  variant: toast.ToastVariant,
+  action: toast.ToastAction,
+) -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    dispatch(ToastShowWithAction(message, variant, action))
+  })
+}
+
+/// Build a success toast effect.
+pub fn toast_success(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Success)
+}
+
+/// Build an error toast effect.
+pub fn toast_error(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Error)
+}
+
+/// Build a warning toast effect.
+pub fn toast_warning(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Warning)
+}
+
+// =============================================================================
 // Sidebar Preferences Persistence Effects
 // =============================================================================
 
 /// Save sidebar collapse state to localStorage.
 ///
 /// Persists both config and org section collapsed states as "config,org" format.
-pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Effect(msg) {
+pub fn save_sidebar_state(state: ui_state.SidebarCollapse) -> Effect(msg) {
   effect.from(fn(_dispatch) { storage.save_sidebar_state(state) })
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Load sidebar collapse state from localStorage.
 ///
 /// Returns the persisted SidebarCollapse value.
 /// Defaults to NoneCollapsed if not found or invalid.
-pub fn load_sidebar_state() -> client_state.SidebarCollapse {
+pub fn load_sidebar_state() -> ui_state.SidebarCollapse {
   storage.load_sidebar_state()
 }

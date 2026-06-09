@@ -30,7 +30,7 @@
 //// section_header.view_with_action(
 ////   icons.Crosshairs,
 ////   "Capacidades",
-////   dialog.add_button(model, i18n_text.CreateCapability, OpenDialog),
+////   dialog.add_button_with_locale(locale, i18n_text.CreateCapability, OpenDialog),
 //// )
 ////
 //// // Header with action AND subtitle
@@ -38,7 +38,7 @@
 ////   icons.Team,
 ////   "Miembros",
 ////   "Los miembros pueden ver y reclamar tareas.",
-////   dialog.add_button(model, i18n_text.AddMember, OpenDialog),
+////   dialog.add_button_with_locale(locale, i18n_text.AddMember, OpenDialog),
 //// )
 //// ```
 

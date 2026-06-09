@@ -7,7 +7,8 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
+import domain/api_error.{type ApiResult}
+import scrumbringer_client/api/core
 
 import domain/metrics.{
   type MilestoneModalMetrics, type ModalExecutionHealth, type WorkflowBreakdown,
@@ -28,7 +29,7 @@ pub fn list_milestones(
     )
 
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
     option.None,
     decoder,
@@ -49,7 +50,7 @@ pub fn create_milestone(
     ])
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
     option.Some(body),
     decode.field(
@@ -66,7 +67,7 @@ pub fn activate_milestone(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/milestones/" <> int.to_string(milestone_id) <> "/activate",
     option.Some(json.object([])),
     decode.success(Nil),
@@ -87,7 +88,7 @@ pub fn update_milestone(
     ])
 
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/milestones/" <> int.to_string(milestone_id),
     option.Some(body),
     decode.field(
@@ -104,7 +105,7 @@ pub fn delete_milestone(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/milestones/" <> int.to_string(milestone_id),
     option.None,
     to_msg,
@@ -116,7 +117,7 @@ pub fn get_milestone_metrics(
   to_msg: fn(ApiResult(MilestoneModalMetrics)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/milestones/" <> int.to_string(milestone_id) <> "?include=metrics",
     option.None,
     decode.field("metrics", milestone_metrics_decoder(), decode.success),

@@ -1,7 +1,6 @@
 //// Task action helpers for common task buttons.
 ////
-//// Provides thin wrappers over action_buttons for consistent icons and
-//// configuration across views.
+//// Provides semantic task actions with consistent icons across views.
 
 import gleam/option.{type Option}
 
@@ -13,50 +12,6 @@ import lustre/event
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/icons
 
-pub fn icon_action(
-  title: String,
-  on_click: msg,
-  icon: icons.NavIcon,
-  size: action_buttons.ButtonSize,
-  disabled: Bool,
-  extra_class: String,
-  tooltip: Option(String),
-  testid: Option(String),
-) -> Element(msg) {
-  action_buttons.task_icon_button(
-    title,
-    on_click,
-    icon,
-    size,
-    disabled,
-    extra_class,
-    tooltip,
-    testid,
-  )
-}
-
-pub fn icon_action_with_class(
-  title: String,
-  on_click: msg,
-  icon: icons.NavIcon,
-  icon_size: icons.IconSize,
-  disabled: Bool,
-  class: String,
-  tooltip: Option(String),
-  testid: Option(String),
-) -> Element(msg) {
-  action_buttons.task_icon_button_with_class(
-    title,
-    on_click,
-    icon,
-    icon_size,
-    disabled,
-    class,
-    tooltip,
-    testid,
-  )
-}
-
 pub fn claim_icon_with_class(
   title: String,
   on_click: msg,
@@ -66,7 +21,7 @@ pub fn claim_icon_with_class(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  icon_action_with_class(
+  action_buttons.task_icon_button_with_class(
     title,
     on_click,
     icons.HandRaised,
@@ -106,7 +61,7 @@ pub fn claim_icon(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  icon_action(
+  action_buttons.task_icon_button(
     title,
     on_click,
     icons.HandRaised,
@@ -127,7 +82,7 @@ pub fn release_icon(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  icon_action(
+  action_buttons.task_icon_button(
     title,
     on_click,
     icons.Refresh,
@@ -148,7 +103,7 @@ pub fn complete_icon(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  icon_action(
+  action_buttons.task_icon_button(
     title,
     on_click,
     icons.CheckCircle,
@@ -169,7 +124,7 @@ pub fn pause_icon(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  icon_action(
+  action_buttons.task_icon_button(
     title,
     on_click,
     icons.Pause,

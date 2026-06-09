@@ -25,19 +25,10 @@ pub type ViewModeStorage {
 }
 
 /// Converts a view mode to its string representation.
-pub fn serialize_view_mode(mode: ViewMode) -> String {
+fn serialize_view_mode(mode: ViewMode) -> String {
   case mode {
     Canvas -> "canvas"
     List -> "list"
-  }
-}
-
-/// Parses a string into a view mode (defaults to Canvas).
-pub fn deserialize_view_mode(value: String) -> ViewMode {
-  case string.trim(value) {
-    "list" -> List
-    "canvas" -> Canvas
-    _ -> Canvas
   }
 }
 
@@ -99,23 +90,6 @@ pub fn decode_filters_visibility(
     "true" -> option.Some(FiltersVisible)
     "false" -> option.Some(FiltersHidden)
     _ -> option.None
-  }
-}
-
-/// Converts a boolean to its string representation.
-pub fn serialize_bool(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
-}
-
-/// Parses a string into a boolean with a default fallback.
-pub fn deserialize_bool(value: String, default: Bool) -> Bool {
-  case string.trim(value) {
-    "true" -> True
-    "false" -> False
-    _ -> default
   }
 }
 

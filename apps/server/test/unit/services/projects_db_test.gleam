@@ -5,10 +5,10 @@
 
 import fixtures
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
 import scrumbringer_server/services/authorization
+import support/assertions as expect
 
 pub fn main() {
   gleeunit.main()
@@ -33,7 +33,7 @@ pub fn is_project_member_returns_true_for_member_test() {
   let result = authorization.is_project_member(db, user_id, project_id)
 
   // Then: Returns True
-  result |> should.be_true()
+  result |> expect.is_true
 }
 
 // =============================================================================
@@ -62,7 +62,7 @@ pub fn is_project_member_returns_false_for_non_member_test() {
   let result = authorization.is_project_member(db, other_user_id, project_id)
 
   // Then: Returns False
-  result |> should.be_false()
+  result |> expect.is_false
 }
 
 // =============================================================================
@@ -84,7 +84,7 @@ pub fn is_project_manager_returns_true_for_admin_test() {
   let result = authorization.is_project_manager(db, user_id, project_id)
 
   // Then: Returns True
-  result |> should.be_true()
+  result |> expect.is_true
 }
 
 // =============================================================================
@@ -109,7 +109,7 @@ pub fn is_project_manager_returns_false_for_member_test() {
   let result = authorization.is_project_manager(db, member_user_id, project_id)
 
   // Then: Returns False
-  result |> should.be_false()
+  result |> expect.is_false
 }
 
 // =============================================================================
@@ -128,7 +128,7 @@ pub fn org_admin_role_correctly_identified_test() {
     ])
 
   // Then: org_role should be 'admin'
-  org_role |> should.equal("admin")
+  org_role |> expect.equal("admin")
 }
 
 pub fn org_member_role_correctly_identified_test() {
@@ -152,5 +152,5 @@ pub fn org_member_role_correctly_identified_test() {
     ])
 
   // Then: org_role should be 'member'
-  org_role |> should.equal("member")
+  org_role |> expect.equal("member")
 }

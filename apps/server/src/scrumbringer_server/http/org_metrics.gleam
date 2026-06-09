@@ -19,20 +19,17 @@
 //// - SQL queries (see `sql.gleam`)
 
 import gleam/http
-import gleam/int
-import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/result
 
 import domain/org_role
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/metrics_presenters
+import scrumbringer_server/http/metrics_query
 import scrumbringer_server/http/metrics_service
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
-
-const default_window_days = 30
 
 const max_window_days = 90
 
@@ -50,10 +47,9 @@ pub fn handle_org_metrics_overview(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) ->
-      ensure_admin(user, fn() { overview_as_admin(req, ctx, user.org_id) })
+  case overview(req, ctx) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -68,12 +64,9 @@ pub fn handle_org_metrics_project_tasks(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) ->
-      ensure_admin(user, fn() {
-        project_tasks_as_admin(req, ctx, user.org_id, project_id)
-      })
+  case project_tasks(req, ctx, project_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -81,73 +74,48 @@ pub fn handle_org_metrics_project_tasks(
 // Private Handlers
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
-fn overview_as_admin(
+fn overview(
   req: wisp.Request,
   ctx: auth.Ctx,
-  org_id: Int,
-) -> wisp.Response {
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_admin_user(req, ctx))
+  use window_days <- result.try(metrics_query.parse_window_days(
+    req,
+    max_window_days,
+  ))
   let auth.Ctx(db: db, ..) = ctx
 
-  case parse_window_days(req) {
-    Error(resp) -> resp
-
-    Ok(window_days) ->
-      // Justification: nested case converts service result to HTTP response.
-      case metrics_service.get_org_overview(db, org_id, window_days) {
-        Ok(overview) -> api.ok(metrics_presenters.overview_json(overview))
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
+  case metrics_service.get_org_overview(db, user.org_id, window_days) {
+    Ok(overview) -> Ok(api.ok(metrics_presenters.overview_json(overview)))
+    Error(_) -> Error(database_error_response())
   }
 }
 
-fn project_tasks_as_admin(
+fn project_tasks(
   req: wisp.Request,
   ctx: auth.Ctx,
-  org_id: Int,
   project_id_raw: String,
-) -> wisp.Response {
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_admin_user(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id_raw))
+  use window_days <- result.try(metrics_query.parse_window_days(
+    req,
+    max_window_days,
+  ))
   let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(verify_project_org(db, project_id, user.org_id))
 
-  case parse_project_id(project_id_raw) {
-    Error(resp) -> resp
-    Ok(project_id) -> project_tasks_with_id(req, db, org_id, project_id)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn project_tasks_with_id(
-  req: wisp.Request,
-  db: pog.Connection,
-  org_id: Int,
-  project_id: Int,
-) -> wisp.Response {
-  case verify_project_org(db, project_id, org_id) {
-    Error(resp) -> resp
-
-    Ok(Nil) ->
-      case parse_window_days(req) {
-        Error(resp) -> resp
-        Ok(window_days) ->
-          project_tasks_with_window(db, project_id, window_days)
-      }
-  }
-}
-
-fn project_tasks_with_window(
-  db: pog.Connection,
-  project_id: Int,
-  window_days: Int,
-) -> wisp.Response {
   case metrics_service.get_project_tasks(db, project_id, window_days) {
     Ok(tasks) ->
-      api.ok(metrics_presenters.project_tasks_json(
-        window_days,
-        project_id,
-        tasks,
-      ))
+      Ok(
+        api.ok(metrics_presenters.project_tasks_json(
+          window_days,
+          project_id,
+          tasks,
+        )),
+      )
 
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Error(_) -> Error(database_error_response())
   }
 }
 
@@ -157,26 +125,23 @@ fn verify_project_org(
   org_id: Int,
 ) -> Result(Nil, wisp.Response) {
   case metrics_service.verify_project_org(db, project_id, org_id) {
-    Error(metrics_service.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(metrics_service.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Ok(False) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(metrics_service.NotFound) -> Error(not_found_response())
+    Error(metrics_service.DbError(_)) -> Error(database_error_response())
+    Error(metrics_service.InvalidTaskStatus(_)) ->
+      Error(database_error_response())
+    Ok(False) -> Error(not_found_response())
     Ok(True) -> Ok(Nil)
   }
 }
 
-fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
-  case int.parse(value) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
-}
-
-fn ensure_admin(user: StoredUser, next: fn() -> wisp.Response) -> wisp.Response {
+fn require_admin_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(StoredUser, wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
   case user.org_role {
-    org_role.Admin -> next()
-    _ -> api.error(403, "FORBIDDEN", "Forbidden")
+    org_role.Admin -> Ok(user)
+    _ -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
   }
 }
 
@@ -184,40 +149,10 @@ fn ensure_admin(user: StoredUser, next: fn() -> wisp.Response) -> wisp.Response 
 // Request Parsing
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
-fn parse_window_days(req: wisp.Request) -> Result(Int, wisp.Response) {
-  let query = wisp.get_query(req)
-
-  case single_query_value(query, "window_days") {
-    Ok(None) -> Ok(default_window_days)
-
-    Ok(Some(value)) ->
-      // Justification: nested case validates and bounds the parsed integer.
-      case int.parse(value) {
-        Ok(days) if days >= 1 && days <= max_window_days -> Ok(days)
-        _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid window_days"))
-      }
-
-    Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid window_days"))
-  }
+fn not_found_response() -> wisp.Response {
+  api.error(404, "NOT_FOUND", "Not found")
 }
 
-fn single_query_value(
-  query: List(#(String, String)),
-  key: String,
-) -> Result(Option(String), Nil) {
-  let values =
-    query
-    |> list.filter_map(fn(pair) {
-      case pair.0 == key {
-        True -> Ok(pair.1)
-        False -> Error(Nil)
-      }
-    })
-
-  case values {
-    [] -> Ok(None)
-    [value] -> Ok(Some(value))
-    _ -> Error(Nil)
-  }
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }

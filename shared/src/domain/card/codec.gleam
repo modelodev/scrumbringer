@@ -4,19 +4,31 @@ import gleam/dynamic/decode
 import gleam/option
 
 import domain/card.{
-  type Card, type CardNote, type CardState, Card, CardNote, state_from_string,
+  type Card, type CardColor, type CardNote, type CardState, Card, CardNote,
+  Pendiente, parse_color, parse_state,
 }
+import domain/org_role/codec as org_role_codec
+import domain/project_role/codec as project_role_codec
 
 /// Decoder for CardState.
 pub fn card_state_decoder() -> decode.Decoder(CardState) {
-  decode.string |> decode.map(state_from_string)
+  use raw <- decode.then(decode.string)
+  case parse_state(raw) {
+    Ok(state) -> decode.success(state)
+    Error(_) -> decode.failure(Pendiente, "CardState")
+  }
 }
 
-fn color_decoder() -> decode.Decoder(option.Option(String)) {
-  use color_str <- decode.then(decode.string)
-  case color_str {
-    "" -> decode.success(option.None)
-    c -> decode.success(option.Some(c))
+pub fn optional_color_decoder() -> decode.Decoder(option.Option(CardColor)) {
+  use raw <- decode.then(decode.optional(decode.string))
+  case raw {
+    option.None -> decode.success(option.None)
+    option.Some("") -> decode.success(option.None)
+    option.Some(value) ->
+      case parse_color(value) {
+        Ok(color) -> decode.success(option.Some(color))
+        Error(_) -> decode.failure(option.None, "CardColor")
+      }
   }
 }
 
@@ -31,7 +43,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
   )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
-  use color <- decode.field("color", color_decoder())
+  use color <- decode.field("color", optional_color_decoder())
   use state <- decode.field("state", card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
@@ -69,9 +81,12 @@ pub fn card_note_decoder() -> decode.Decoder(CardNote) {
   use author_project_role <- decode.optional_field(
     "author_project_role",
     option.None,
-    decode.optional(decode.string),
+    decode.optional(project_role_codec.project_role_decoder()),
   )
-  use author_org_role <- decode.field("author_org_role", decode.string)
+  use author_org_role <- decode.field(
+    "author_org_role",
+    org_role_codec.org_role_decoder(),
+  )
   decode.success(CardNote(
     id: id,
     card_id: card_id,

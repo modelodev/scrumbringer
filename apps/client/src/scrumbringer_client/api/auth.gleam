@@ -28,9 +28,10 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/user.{type User}
 import domain/user/codec as user_codec
-import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
 
 /// Decoder for user wrapped in { "user": ... } envelope.
@@ -60,7 +61,7 @@ pub type PasswordReset {
 /// ```
 pub fn fetch_me(to_msg: fn(ApiResult(User)) -> msg) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/auth/me",
     option.None,
     user_payload_decoder(),
@@ -86,7 +87,7 @@ pub fn login(
       #("password", json.string(password)),
     ])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/auth/login",
     option.Some(body),
     user_payload_decoder(),
@@ -102,7 +103,7 @@ pub fn login(
 /// logout(LogoutResult)
 /// ```
 pub fn logout(to_msg: fn(ApiResult(Nil)) -> msg) -> Effect(msg) {
-  core.request_nil("POST", "/api/v1/auth/logout", option.None, to_msg)
+  core.request_nil(core.Post, "/api/v1/auth/logout", option.None, to_msg)
 }
 
 /// Validate an invite link token and get the associated email.
@@ -119,7 +120,7 @@ pub fn validate_invite_link_token(
   let decoder = decode.field("email", decode.string, decode.success)
 
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/auth/invite-links/" <> client_ffi.encode_uri_component(token),
     option.None,
     decoder,
@@ -146,7 +147,7 @@ pub fn register_with_invite_link(
     ])
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/auth/register",
     option.Some(body),
     user_payload_decoder(),
@@ -176,7 +177,7 @@ pub fn request_password_reset(
   let envelope_decoder = decode.field("reset", decoder, decode.success)
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/auth/password-resets",
     option.Some(body),
     envelope_decoder,
@@ -198,7 +199,7 @@ pub fn validate_password_reset_token(
   let decoder = decode.field("email", decode.string, decode.success)
 
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/auth/password-resets/" <> client_ffi.encode_uri_component(token),
     option.None,
     decoder,
@@ -225,7 +226,7 @@ pub fn consume_password_reset_token(
     ])
 
   core.request_nil(
-    "POST",
+    core.Post,
     "/api/v1/auth/password-resets/consume",
     option.Some(body),
     to_msg,

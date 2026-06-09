@@ -22,7 +22,6 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/string
 
 import lustre
 import lustre/attribute
@@ -34,11 +33,12 @@ import lustre/element/html.{
 }
 import lustre/event
 
-import domain/api_error.{type ApiError}
-import domain/capability.{type Capability, Capability}
-import domain/task_type.{type TaskType, TaskType}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/capability.{type Capability}
+import domain/capability/codec as capability_codec
+import domain/task/codec as task_codec
+import domain/task_type.{type TaskType}
 
-import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/task_types as api_task_types
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
@@ -53,11 +53,8 @@ import scrumbringer_client/ui/modal_header
 // =============================================================================
 
 /// Dialog mode determines which view to show.
-pub type DialogMode {
-  ModeCreate
-  ModeEdit(TaskType)
-  ModeDelete(TaskType)
-}
+pub type DialogMode =
+  crud_dialog_base.DialogLifecycle(TaskType)
 
 /// Internal component model.
 pub type Model {
@@ -65,7 +62,7 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     project_id: Option(Int),
-    mode: Option(DialogMode),
+    mode: DialogMode,
     capabilities: List(Capability),
     // Create dialog fields
     create_name: String,
@@ -151,44 +148,28 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
 }
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
-  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
+  crud_dialog_base.decode_create_mode(
+    value,
+    crud_dialog_base.Creating,
+    ModeReceived,
+  )
 }
 
 fn task_type_property_decoder() -> Decoder(Msg) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  use capability_id <- decode.optional_field(
-    "capability_id",
-    None,
-    decode.optional(decode.int),
-  )
-  use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
+  use task_type <- decode.then(task_codec.task_type_decoder())
   use mode <- decode.field("_mode", decode.string)
-  let task_type =
-    TaskType(
-      id: id,
-      name: name,
-      icon: icon,
-      capability_id: capability_id,
-      tasks_count: tasks_count,
-    )
-  case mode {
-    "edit" -> decode.success(ModeReceived(ModeEdit(task_type)))
-    "delete" -> decode.success(ModeReceived(ModeDelete(task_type)))
-    _ -> decode.success(ModeReceived(ModeEdit(task_type)))
-  }
+  crud_dialog_base.decode_entity_mode(
+    mode,
+    task_type,
+    crud_dialog_base.Editing,
+    crud_dialog_base.Deleting,
+    ModeReceived,
+  )
 }
 
 fn capabilities_property_decoder() -> Decoder(Msg) {
-  decode.list(capability_decoder())
+  decode.list(capability_codec.capability_decoder())
   |> decode.map(CapabilitiesReceived)
-}
-
-fn capability_decoder() -> Decoder(Capability) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  decode.success(Capability(id: id, name: name))
 }
 
 // =============================================================================
@@ -203,7 +184,7 @@ fn default_model() -> Model {
   Model(
     locale: En,
     project_id: None,
-    mode: None,
+    mode: crud_dialog_base.Closed,
     capabilities: [],
     create_name: "",
     create_icon: "clipboard-document-list",
@@ -316,10 +297,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate -> #(
+    crud_dialog_base.Closed -> #(
+      Model(..model, mode: crud_dialog_base.Closed),
+      effect.none(),
+    )
+
+    crud_dialog_base.Creating -> #(
       Model(
         ..model,
-        mode: Some(ModeCreate),
+        mode: crud_dialog_base.Creating,
         create_name: "",
         create_icon: "clipboard-document-list",
         create_icon_open: False,
@@ -330,10 +316,10 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeEdit(task_type) -> #(
+    crud_dialog_base.Editing(task_type) -> #(
       Model(
         ..model,
-        mode: Some(ModeEdit(task_type)),
+        mode: crud_dialog_base.Editing(task_type),
         edit_name: task_type.name,
         edit_icon: task_type.icon,
         edit_icon_open: False,
@@ -344,10 +330,10 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeDelete(task_type) -> #(
+    crud_dialog_base.Deleting(task_type) -> #(
       Model(
         ..model,
-        mode: Some(ModeDelete(task_type)),
+        mode: crud_dialog_base.Deleting(task_type),
         delete_in_flight: False,
         delete_error: None,
       ),
@@ -356,18 +342,20 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  crud_dialog_base.submit_if_idle(model, model.create_in_flight, submit_create)
+}
+
+fn submit_create(model: Model) -> #(Model, Effect(Msg)) {
   case model.project_id {
     None -> #(model, effect.none())
     Some(project_id) -> {
-      let name = string.trim(model.create_name)
-      case name {
-        "" -> #(
+      case crud_dialog_base.required_text(model.create_name) {
+        Error(_) -> #(
           Model(..model, create_error: Some("Name is required")),
           effect.none(),
         )
-        _ -> #(
+        Ok(name) -> #(
           Model(..model, create_in_flight: True, create_error: None),
           api_task_types.create_task_type(
             project_id,
@@ -399,17 +387,19 @@ fn handle_create_success(
   )
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  crud_dialog_base.submit_if_idle(model, model.edit_in_flight, submit_edit)
+}
+
+fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
-    Some(ModeEdit(task_type)) -> {
-      let name = string.trim(model.edit_name)
-      case name {
-        "" -> #(
+    crud_dialog_base.Editing(task_type) -> {
+      case crud_dialog_base.required_text(model.edit_name) {
+        Error(_) -> #(
           Model(..model, edit_error: Some("Name is required")),
           effect.none(),
         )
-        _ -> #(
+        Ok(name) -> #(
           Model(..model, edit_in_flight: True, edit_error: None),
           api_task_types.update_task_type(
             task_type.id,
@@ -433,8 +423,12 @@ fn handle_edit_success(
 }
 
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
+  crud_dialog_base.submit_if_idle(model, model.delete_in_flight, submit_delete)
+}
+
+fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
-    Some(ModeDelete(task_type)) -> #(
+    crud_dialog_base.Deleting(task_type) -> #(
       Model(..model, delete_in_flight: True, delete_error: None),
       api_task_types.delete_task_type(task_type.id, DeleteResult),
     )
@@ -444,7 +438,7 @@ fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
 
 fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
-    Some(ModeDelete(task_type)) -> #(
+    crud_dialog_base.Deleting(task_type) -> #(
       reset_delete_fields(model),
       emit_type_deleted(task_type.id),
     )
@@ -466,7 +460,7 @@ fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
 fn reset_edit_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: None,
+    mode: crud_dialog_base.Closed,
     edit_name: "",
     edit_icon: "clipboard-document-list",
     edit_icon_open: False,
@@ -477,7 +471,12 @@ fn reset_edit_fields(model: Model) -> Model {
 }
 
 fn reset_delete_fields(model: Model) -> Model {
-  Model(..model, mode: None, delete_in_flight: False, delete_error: None)
+  Model(
+    ..model,
+    mode: crud_dialog_base.Closed,
+    delete_in_flight: False,
+    delete_error: None,
+  )
 }
 
 // =============================================================================
@@ -519,203 +518,209 @@ fn task_type_to_json(task_type: TaskType) -> json.Json {
 
 fn view(model: Model) -> Element(Msg) {
   case model.mode {
-    None -> div([], [])
-    Some(ModeCreate) -> view_create_dialog(model)
-    Some(ModeEdit(_)) -> view_edit_dialog(model)
-    Some(ModeDelete(task_type)) -> view_delete_dialog(model, task_type)
+    crud_dialog_base.Closed -> div([], [])
+    crud_dialog_base.Creating -> view_create_dialog(model)
+    crud_dialog_base.Editing(_) -> view_edit_dialog(model)
+    crud_dialog_base.Deleting(task_type) -> view_delete_dialog(model, task_type)
+  }
+}
+
+fn view_optional_fields(
+  model: Model,
+  icon: String,
+  icon_open: Bool,
+  on_icon_toggle: Msg,
+  on_icon_changed: fn(String) -> Msg,
+  capability_id: Option(Int),
+  capability_selector_id: String,
+  on_capability_changed: fn(Option(Int)) -> Msg,
+) -> Element(Msg) {
+  div([attribute.class("form-group-optional")], [
+    label([attribute.class("optional-title")], [
+      text(i18n_t(model.locale, i18n_text.OptionalFields)),
+    ]),
+    div([attribute.class("optional-fields")], [
+      div([attribute.class("form-group")], [
+        label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
+        view_icon_picker(
+          model.locale,
+          icon,
+          icon_open,
+          on_icon_toggle,
+          on_icon_changed,
+        ),
+      ]),
+      view_capability_selector(
+        model,
+        capability_selector_id,
+        capability_id,
+        on_capability_changed,
+      ),
+    ]),
+  ])
+}
+
+fn view_name_field(
+  model: Model,
+  id: String,
+  value: String,
+  placeholder: Option(String),
+  hint: Option(String),
+  on_input: fn(String) -> Msg,
+) -> Element(Msg) {
+  div([attribute.class("form-group")], [
+    label([attribute.for(id)], [
+      text(i18n_t(model.locale, i18n_text.Name)),
+      span([attribute.class("required")], [text(" *")]),
+    ]),
+    input(
+      [
+        attribute.id(id),
+        attribute.type_("text"),
+        attribute.value(value),
+        attribute.autofocus(True),
+        event.on_input(on_input),
+      ]
+      |> maybe_add_placeholder(placeholder),
+    ),
+    view_name_hint(hint),
+  ])
+}
+
+fn maybe_add_placeholder(
+  attrs: List(attribute.Attribute(Msg)),
+  placeholder: Option(String),
+) -> List(attribute.Attribute(Msg)) {
+  case placeholder {
+    Some(text) -> [attribute.placeholder(text), ..attrs]
+    None -> attrs
+  }
+}
+
+fn view_name_hint(hint: Option(String)) -> Element(Msg) {
+  case hint {
+    Some(message) -> div([attribute.class("form-hint")], [text(message)])
+    None -> element.none()
   }
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
-      modal_header.view_dialog(
-        i18n_t(model.locale, i18n_text.CreateTaskType),
-        option.None,
-        CloseRequested,
-      ),
+  crud_dialog_base.view_dialog_frame(
+    "dialog dialog-lg dialog-lg-tight",
+    modal_header.view_dialog(
+      i18n_t(model.locale, i18n_text.CreateTaskType),
+      option.None,
+      CloseRequested,
+    ),
+    [
       form(
         [
           attribute.class("dialog-body"),
           event.on_submit(fn(_) { CreateSubmitted }),
         ],
         [
-          // Name field
-          div([attribute.class("form-group")], [
-            label([attribute.for("create-name")], [
-              text(i18n_t(model.locale, i18n_text.Name)),
-              span([attribute.class("required")], [text(" *")]),
-            ]),
-            input([
-              attribute.id("create-name"),
-              attribute.type_("text"),
-              attribute.value(model.create_name),
-              attribute.placeholder(i18n_t(model.locale, i18n_text.TaskTypeName)),
-              attribute.autofocus(True),
-              event.on_input(CreateNameChanged),
-            ]),
-            div([attribute.class("form-hint")], [
-              text(i18n_t(model.locale, i18n_text.TaskTypeNameHint)),
-            ]),
-          ]),
-          // Optional fields
-          div([attribute.class("form-group-optional")], [
-            label([attribute.class("optional-title")], [
-              text(i18n_t(model.locale, i18n_text.OptionalFields)),
-            ]),
-            div([attribute.class("optional-fields")], [
-              // Icon picker
-              div([attribute.class("form-group")], [
-                label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
-                view_icon_picker(
-                  model.locale,
-                  model.create_icon,
-                  model.create_icon_open,
-                  CreateIconToggle,
-                  CreateIconChanged,
-                ),
-              ]),
-              // Capability selector
-              view_capability_selector(
-                model,
-                "create-capability",
-                model.create_capability_id,
-                CreateCapabilityChanged,
-              ),
-            ]),
-          ]),
-          // Error
-          case model.create_error {
-            Some(err) -> div([attribute.class("form-error")], [text(err)])
-            None -> element.none()
-          },
+          view_name_field(
+            model,
+            "create-name",
+            model.create_name,
+            Some(i18n_t(model.locale, i18n_text.TaskTypeName)),
+            Some(i18n_t(model.locale, i18n_text.TaskTypeNameHint)),
+            CreateNameChanged,
+          ),
+          view_optional_fields(
+            model,
+            model.create_icon,
+            model.create_icon_open,
+            CreateIconToggle,
+            CreateIconChanged,
+            model.create_capability_id,
+            "create-capability",
+            CreateCapabilityChanged,
+          ),
+          crud_dialog_base.view_form_error(model.create_error),
         ],
       ),
-      div([attribute.class("dialog-footer")], [
-        button(
-          [
-            attribute.class("btn btn-secondary btn-sm"),
-            attribute.type_("button"),
-            event.on_click(CloseRequested),
-          ],
-          [text(i18n_t(model.locale, i18n_text.Cancel))],
-        ),
-        button(
-          [
-            attribute.class("btn btn-primary btn-compact"),
-            attribute.type_("button"),
-            attribute.disabled(model.create_in_flight),
-            event.on_click(CreateSubmitted),
-          ],
-          [
-            case model.create_in_flight {
-              True -> text(i18n_t(model.locale, i18n_text.Creating))
-              False -> text(i18n_t(model.locale, i18n_text.CreateTaskType))
-            },
-          ],
-        ),
-      ]),
-    ]),
-  ])
+    ],
+    [
+      crud_dialog_base.view_cancel_button_with_class(
+        model.locale,
+        CloseRequested,
+        "btn btn-secondary btn-sm",
+      ),
+      crud_dialog_base.view_primary_action_button(
+        CreateSubmitted,
+        model.create_in_flight,
+        i18n_t(model.locale, i18n_text.CreateTaskType),
+        i18n_t(model.locale, i18n_text.Creating),
+        "btn btn-primary btn-compact",
+      ),
+    ],
+  )
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
-      modal_header.view_dialog(
-        i18n_t(model.locale, i18n_text.EditTaskType),
-        option.None,
-        EditCancelled,
-      ),
+  crud_dialog_base.view_dialog_frame(
+    "dialog dialog-lg dialog-lg-tight",
+    modal_header.view_dialog(
+      i18n_t(model.locale, i18n_text.EditTaskType),
+      option.None,
+      EditCancelled,
+    ),
+    [
       form(
         [
           attribute.class("dialog-body"),
           event.on_submit(fn(_) { EditSubmitted }),
         ],
         [
-          // Name field
-          div([attribute.class("form-group")], [
-            label([attribute.for("edit-name")], [
-              text(i18n_t(model.locale, i18n_text.Name)),
-              span([attribute.class("required")], [text(" *")]),
-            ]),
-            input([
-              attribute.id("edit-name"),
-              attribute.type_("text"),
-              attribute.value(model.edit_name),
-              attribute.autofocus(True),
-              event.on_input(EditNameChanged),
-            ]),
-          ]),
-          // Optional fields
-          div([attribute.class("form-group-optional")], [
-            label([attribute.class("optional-title")], [
-              text(i18n_t(model.locale, i18n_text.OptionalFields)),
-            ]),
-            div([attribute.class("optional-fields")], [
-              // Icon picker
-              div([attribute.class("form-group")], [
-                label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
-                view_icon_picker(
-                  model.locale,
-                  model.edit_icon,
-                  model.edit_icon_open,
-                  EditIconToggle,
-                  EditIconChanged,
-                ),
-              ]),
-              // Capability selector
-              view_capability_selector(
-                model,
-                "edit-capability",
-                model.edit_capability_id,
-                EditCapabilityChanged,
-              ),
-            ]),
-          ]),
-          // Error
-          case model.edit_error {
-            Some(err) -> div([attribute.class("form-error")], [text(err)])
-            None -> element.none()
-          },
+          view_name_field(
+            model,
+            "edit-name",
+            model.edit_name,
+            None,
+            None,
+            EditNameChanged,
+          ),
+          view_optional_fields(
+            model,
+            model.edit_icon,
+            model.edit_icon_open,
+            EditIconToggle,
+            EditIconChanged,
+            model.edit_capability_id,
+            "edit-capability",
+            EditCapabilityChanged,
+          ),
+          crud_dialog_base.view_form_error(model.edit_error),
         ],
       ),
-      div([attribute.class("dialog-footer")], [
-        button(
-          [
-            attribute.class("btn btn-secondary btn-sm"),
-            attribute.type_("button"),
-            event.on_click(EditCancelled),
-          ],
-          [text(i18n_t(model.locale, i18n_text.Cancel))],
-        ),
-        button(
-          [
-            attribute.class("btn btn-primary btn-compact"),
-            attribute.type_("button"),
-            attribute.disabled(model.edit_in_flight),
-            event.on_click(EditSubmitted),
-          ],
-          [
-            case model.edit_in_flight {
-              True -> text(i18n_t(model.locale, i18n_text.Saving))
-              False -> text(i18n_t(model.locale, i18n_text.Save))
-            },
-          ],
-        ),
-      ]),
-    ]),
-  ])
+    ],
+    [
+      crud_dialog_base.view_cancel_button_with_class(
+        model.locale,
+        EditCancelled,
+        "btn btn-secondary btn-sm",
+      ),
+      crud_dialog_base.view_primary_action_button(
+        EditSubmitted,
+        model.edit_in_flight,
+        i18n_t(model.locale, i18n_text.Save),
+        i18n_t(model.locale, i18n_text.Saving),
+        "btn btn-primary btn-compact",
+      ),
+    ],
+  )
 }
 
 fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div([attribute.class("dialog dialog-small")], [
-      modal_header.view_dialog(
-        i18n_t(model.locale, i18n_text.DeleteTaskType),
-        option.None,
-        DeleteCancelled,
-      ),
+  crud_dialog_base.view_dialog_frame(
+    "dialog dialog-small",
+    modal_header.view_dialog(
+      i18n_t(model.locale, i18n_text.DeleteTaskType),
+      option.None,
+      DeleteCancelled,
+    ),
+    [
       div([attribute.class("dialog-body")], [
         p([], [
           text(i18n_t(
@@ -736,40 +741,25 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
             ])
           False -> element.none()
         },
-        // Error
-        case model.delete_error {
-          Some(err) -> div([attribute.class("form-error")], [text(err)])
-          None -> element.none()
-        },
+        crud_dialog_base.view_form_error(model.delete_error),
       ]),
-      div([attribute.class("dialog-footer")], [
-        button(
-          [
-            attribute.class("btn btn-secondary"),
-            attribute.type_("button"),
-            event.on_click(DeleteCancelled),
-          ],
-          [text(i18n_t(model.locale, i18n_text.Cancel))],
-        ),
-        button(
-          [
-            attribute.class("btn btn-danger"),
-            attribute.type_("button"),
-            attribute.disabled(
-              model.delete_in_flight || task_type.tasks_count > 0,
-            ),
-            event.on_click(DeleteConfirmed),
-          ],
-          [
-            case model.delete_in_flight {
-              True -> text(i18n_t(model.locale, i18n_text.Deleting))
-              False -> text(i18n_t(model.locale, i18n_text.Delete))
-            },
-          ],
-        ),
-      ]),
-    ]),
-  ])
+    ],
+    [
+      crud_dialog_base.view_cancel_button_with_class(
+        model.locale,
+        DeleteCancelled,
+        "btn btn-secondary",
+      ),
+      crud_dialog_base.view_danger_action_button(
+        DeleteConfirmed,
+        model.delete_in_flight,
+        model.delete_in_flight || task_type.tasks_count > 0,
+        i18n_t(model.locale, i18n_text.Delete),
+        i18n_t(model.locale, i18n_text.Deleting),
+        "btn btn-danger",
+      ),
+    ],
+  )
 }
 
 // =============================================================================
@@ -800,8 +790,25 @@ pub fn view_icon_picker_trigger_for_test(
 
 pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
   let model = default_model()
-  let model = Model(..model, locale: locale, mode: Some(ModeCreate))
+  let model = Model(..model, locale: locale, mode: crud_dialog_base.Creating)
   view_create_dialog(model)
+}
+
+pub fn view_edit_dialog_for_test(
+  locale: Locale,
+  task_type: TaskType,
+) -> Element(Msg) {
+  let model = default_model()
+  let model =
+    Model(
+      ..model,
+      locale: locale,
+      mode: crud_dialog_base.Editing(task_type),
+      edit_name: task_type.name,
+      edit_icon: task_type.icon,
+      edit_capability_id: task_type.capability_id,
+    )
+  view_edit_dialog(model)
 }
 
 fn view_icon_picker(

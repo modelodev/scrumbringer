@@ -5,8 +5,10 @@
 
 import gleam/bit_array
 import gleam/crypto
+import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/sql
 
 /// An invitation code for joining an organization.
@@ -18,7 +20,6 @@ pub type OrgInvite {
 pub type CreateInviteError {
   DbError(pog.QueryError)
   ExpiryHoursInvalid
-  NoRowReturned
 }
 
 /// Creates a new organization invite code.
@@ -56,14 +57,13 @@ fn create_with_retry(
   let code = new_invite_code()
 
   case sql.org_invites(db, code, org_id, created_by, expires_in_hours) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(OrgInvite(
-        code: row.code,
-        created_at: row.created_at,
-        expires_at: row.expires_at,
-      ))
-
-    Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(
+        persisted_field.query_row(rows)
+        |> result.map_error(DbError),
+      )
+      Ok(invite_from_row(row))
+    }
 
     Error(error) ->
       handle_create_error(
@@ -77,7 +77,14 @@ fn create_with_retry(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn invite_from_row(row: sql.OrgInvitesRow) -> OrgInvite {
+  OrgInvite(
+    code: row.code,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+  )
+}
+
 fn handle_create_error(
   error: pog.QueryError,
   db: pog.Connection,

@@ -1,16 +1,19 @@
+import domain/card
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
-import scrumbringer_client/client_state
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 fn base_config(
   my_tasks: List(Task),
@@ -19,11 +22,11 @@ fn base_config(
 ) -> right_panel.RightPanelConfig(Int) {
   right_panel.RightPanelConfig(
     locale: i18n_locale.En,
-    model: client_state.default_model(),
     user: None,
     my_tasks: my_tasks,
     my_cards: my_cards,
     active_tasks: active_tasks,
+    task_card_color: fn(task) { task.card_color },
     on_task_start: fn(id) { id },
     on_task_pause: fn(id) { id },
     on_task_complete: fn(id) { id },
@@ -61,7 +64,7 @@ fn sample_task(state: task_state.TaskState) -> Task {
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -74,7 +77,7 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
       task_id: 1,
       task_title: "Fix login",
       task_type_icon: "bug-ant",
-      card_color: Some("blue"),
+      card_color: Some(card.Blue),
       elapsed_display: "00:10",
       is_paused: False,
     )
@@ -84,9 +87,9 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  string.contains(html, "active-task-card card-border-blue") |> should.be_true
-  string.contains(html, "task-type-icon") |> should.be_true
-  string.contains(html, "task-timer") |> should.be_true
+  assert_contains(html, "active-task-card card-border-blue")
+  assert_contains(html, "task-type-icon")
+  assert_contains(html, "task-timer")
 }
 
 pub fn right_panel_my_task_renders_border_and_actions_test() {
@@ -102,10 +105,10 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  string.contains(html, "task-item card-border-blue") |> should.be_true
-  string.contains(html, "my-task-start-btn") |> should.be_true
-  string.contains(html, "my-task-release-btn") |> should.be_true
-  string.contains(html, "task-type-icon") |> should.be_true
+  assert_contains(html, "task-item card-border-blue")
+  assert_contains(html, "my-task-start-btn")
+  assert_contains(html, "my-task-release-btn")
+  assert_contains(html, "task-type-icon")
 }
 
 pub fn right_panel_my_cards_renders_border_and_progress_test() {
@@ -113,7 +116,7 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
     right_panel.MyCardProgress(
       card_id: 1,
       card_title: "Sprint",
-      card_color: Some("blue"),
+      card_color: Some(card.Blue),
       completed: 1,
       total: 3,
     )
@@ -123,6 +126,6 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  string.contains(html, "my-card-item card-border-blue") |> should.be_true
-  string.contains(html, "1/3") |> should.be_true
+  assert_contains(html, "my-card-item card-border-blue")
+  assert_contains(html, "1/3")
 }

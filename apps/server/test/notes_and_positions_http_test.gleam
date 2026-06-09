@@ -4,19 +4,18 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
 import gleam/time/timestamp
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 // Justification: large function kept intact to preserve cohesive logic.
-pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_claim_test() {
+pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -101,9 +100,9 @@ pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_cl
     )
 
   let note_res = handler(note_req)
-  note_res.status |> should.equal(200)
+  expect.expect_status(note_res, 200)
   decode_note_content(simulate.read_body(note_res))
-  |> should.equal("Investigating")
+  |> expect.equal("Investigating")
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
@@ -118,7 +117,7 @@ pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_cl
     )
 
   let patch_res = handler(patch_req)
-  patch_res.status |> should.equal(403)
+  expect.expect_status(patch_res, 200)
 
   let _ = member1_csrf
 }
@@ -210,9 +209,9 @@ pub fn task_notes_list_requires_task_membership_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  member_list_res.status |> should.equal(200)
+  expect.expect_status(member_list_res, 200)
   decode_note_list_contents(simulate.read_body(member_list_res))
-  |> should.equal(["One"])
+  |> expect.equal(["One"])
 
   let outsider_req =
     simulate.request(
@@ -223,9 +222,9 @@ pub fn task_notes_list_requires_task_membership_test() {
     |> request.set_cookie("sb_csrf", outsider_csrf)
 
   let outsider_res = handler(outsider_req)
-  outsider_res.status |> should.equal(404)
+  expect.expect_status(outsider_res, 404)
   string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
-  |> should.be_true
+  |> expect.is_true
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -296,7 +295,7 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  delete_collection_res.status |> should.equal(405)
+  expect.expect_status(delete_collection_res, 405)
 
   let patch_collection_res =
     handler(
@@ -309,7 +308,7 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
       |> request.set_header("X-CSRF", member_csrf),
     )
 
-  patch_collection_res.status |> should.equal(405)
+  expect.expect_status(patch_collection_res, 405)
 
   let delete_item_res =
     handler(
@@ -321,7 +320,7 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  delete_item_res.status |> should.equal(404)
+  expect.expect_status(delete_item_res, 404)
 
   let patch_item_res =
     handler(
@@ -334,7 +333,7 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
       |> request.set_header("X-CSRF", member_csrf),
     )
 
-  patch_item_res.status |> should.equal(404)
+  expect.expect_status(patch_item_res, 404)
 }
 
 pub fn task_notes_create_requires_csrf_test() {
@@ -404,7 +403,7 @@ pub fn task_notes_create_requires_csrf_test() {
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
-  note_res.status |> should.equal(403)
+  expect.expect_status(note_res, 403)
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -470,9 +469,9 @@ pub fn card_notes_list_requires_card_membership_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  member_list_res.status |> should.equal(200)
+  expect.expect_status(member_list_res, 200)
   decode_note_list_contents(simulate.read_body(member_list_res))
-  |> should.equal(["One"])
+  |> expect.equal(["One"])
 
   let outsider_req =
     simulate.request(
@@ -483,9 +482,9 @@ pub fn card_notes_list_requires_card_membership_test() {
     |> request.set_cookie("sb_csrf", outsider_csrf)
 
   let outsider_res = handler(outsider_req)
-  outsider_res.status |> should.equal(404)
+  expect.expect_status(outsider_res, 404)
   string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn card_notes_list_orders_by_created_at_test() {
@@ -534,9 +533,9 @@ pub fn card_notes_list_orders_by_created_at_test() {
       |> request.set_cookie("sb_csrf", admin_csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_note_list_contents(simulate.read_body(list_res))
-  |> should.equal(["First", "Second"])
+  |> expect.equal(["First", "Second"])
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -599,7 +598,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
   let note_res = handler(note_req)
-  note_res.status |> should.equal(200)
+  expect.expect_status(note_res, 200)
   let note_id = decode_note_id(simulate.read_body(note_res))
 
   let delete_forbidden =
@@ -614,7 +613,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
     |> request.set_cookie("sb_csrf", member2_csrf)
     |> request.set_header("X-CSRF", member2_csrf)
 
-  handler(delete_forbidden).status |> should.equal(403)
+  expect.expect_status(handler(delete_forbidden), 403)
 
   let delete_author =
     simulate.request(
@@ -628,10 +627,10 @@ pub fn card_notes_create_and_delete_permissions_test() {
     |> request.set_cookie("sb_csrf", member1_csrf)
     |> request.set_header("X-CSRF", member1_csrf)
 
-  handler(delete_author).status |> should.equal(204)
+  expect.expect_status(handler(delete_author), 204)
 
   let note_res_2 = handler(note_req)
-  note_res_2.status |> should.equal(200)
+  expect.expect_status(note_res_2, 200)
   let note_id_2 = decode_note_id(simulate.read_body(note_res_2))
 
   let delete_admin =
@@ -646,7 +645,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
     |> request.set_cookie("sb_csrf", admin_csrf)
     |> request.set_header("X-CSRF", admin_csrf)
 
-  handler(delete_admin).status |> should.equal(204)
+  expect.expect_status(handler(delete_admin), 204)
 }
 
 pub fn card_notes_create_requires_csrf_test() {
@@ -692,7 +691,7 @@ pub fn card_notes_create_requires_csrf_test() {
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
-  note_res.status |> should.equal(403)
+  expect.expect_status(note_res, 403)
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -738,7 +737,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
     |> request.set_header("X-CSRF", member_csrf)
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
-  handler(note_req).status |> should.equal(200)
+  expect.expect_status(handler(note_req), 200)
 
   let list_req =
     simulate.request(
@@ -749,9 +748,9 @@ pub fn card_notes_indicator_updates_after_view_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_card_has_new_notes(simulate.read_body(list_res), card_id)
-  |> should.equal(True)
+  |> expect.equal(True)
 
   let view_req =
     simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
@@ -759,12 +758,12 @@ pub fn card_notes_indicator_updates_after_view_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
     |> request.set_header("X-CSRF", member_csrf)
 
-  handler(view_req).status |> should.equal(204)
+  expect.expect_status(handler(view_req), 204)
 
   let list_res_2 = handler(list_req)
-  list_res_2.status |> should.equal(200)
+  expect.expect_status(list_res_2, 200)
   decode_card_has_new_notes(simulate.read_body(list_res_2), card_id)
-  |> should.equal(False)
+  |> expect.equal(False)
 }
 
 pub fn task_positions_upsert_requires_csrf_test() {
@@ -836,7 +835,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
     )
 
   let put_res = handler(put_req)
-  put_res.status |> should.equal(403)
+  expect.expect_status(put_res, 403)
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -945,13 +944,13 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
     )
 
   upsert_position(handler, member1_session, member1_csrf, core_task_id, 10, 20)
-  |> should.equal(200)
+  |> expect.equal(200)
 
   upsert_position(handler, member1_session, member1_csrf, other_task_id, 1, 2)
-  |> should.equal(200)
+  |> expect.equal(200)
 
   upsert_position(handler, member2_session, member2_csrf, core_task_id, 30, 40)
-  |> should.equal(200)
+  |> expect.equal(200)
 
   let member1_all_res =
     handler(
@@ -960,10 +959,10 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
       |> request.set_cookie("sb_csrf", member1_csrf),
     )
 
-  member1_all_res.status |> should.equal(200)
+  expect.expect_status(member1_all_res, 200)
 
   decode_positions_xy_by_task(simulate.read_body(member1_all_res), core_task_id)
-  |> should.equal(#(10, 20))
+  |> expect.equal(#(10, 20))
 
   let member1_core_res =
     handler(
@@ -975,9 +974,9 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
       |> request.set_cookie("sb_csrf", member1_csrf),
     )
 
-  member1_core_res.status |> should.equal(200)
+  expect.expect_status(member1_core_res, 200)
   decode_position_task_ids(simulate.read_body(member1_core_res))
-  |> should.equal([core_task_id])
+  |> expect.equal([core_task_id])
 
   let member2_all_res =
     handler(
@@ -986,9 +985,9 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
       |> request.set_cookie("sb_csrf", member2_csrf),
     )
 
-  member2_all_res.status |> should.equal(200)
+  expect.expect_status(member2_all_res, 200)
   decode_positions_xy_by_task(simulate.read_body(member2_all_res), core_task_id)
-  |> should.equal(#(30, 40))
+  |> expect.equal(#(30, 40))
 }
 
 pub fn task_positions_reject_non_member_task_and_project_filter_test() {
@@ -1068,7 +1067,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
     )
 
   let put_res = handler(put_req)
-  put_res.status |> should.equal(404)
+  expect.expect_status(put_res, 404)
 
   let filtered_req =
     simulate.request(
@@ -1079,7 +1078,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
     |> request.set_cookie("sb_csrf", outsider_csrf)
 
   let filtered_res = handler(filtered_req)
-  filtered_res.status |> should.equal(403)
+  expect.expect_status(filtered_res, 403)
 }
 
 fn decode_note_content(body: String) -> String {
@@ -1304,7 +1303,7 @@ fn create_project(
     |> request.set_header("X-CSRF", csrf)
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
-  handler(req).status |> should.equal(200)
+  expect.expect_status(handler(req), 200)
 }
 
 fn create_task_type(
@@ -1327,7 +1326,7 @@ fn create_task_type(
       json.object([#("name", json.string(name)), #("icon", json.string(icon))]),
     )
 
-  handler(req).status |> should.equal(200)
+  expect.expect_status(handler(req), 200)
 }
 
 fn create_task(
@@ -1358,7 +1357,7 @@ fn create_task(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -1405,7 +1404,7 @@ fn create_card(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   decode_card_id(simulate.read_body(res))
 }
@@ -1432,7 +1431,7 @@ fn add_member(
       ]),
     )
 
-  handler(req).status |> should.equal(200)
+  expect.expect_status(handler(req), 200)
 }
 
 fn create_member_user(
@@ -1452,7 +1451,7 @@ fn create_member_user(
       ]),
     )
 
-  handler(req).status |> should.equal(200)
+  expect.expect_status(handler(req), 200)
 }
 
 fn login_as(
@@ -1480,7 +1479,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -1561,11 +1560,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -1573,7 +1571,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

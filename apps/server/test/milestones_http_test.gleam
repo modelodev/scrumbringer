@@ -4,11 +4,10 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option
-import gleam/result
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -38,7 +37,7 @@ pub fn milestones_crud_patch_delete_ready_empty_test() {
       ),
     )
 
-  patch_res.status |> should.equal(200)
+  expect.expect_status(patch_res, 200)
 
   let get_res =
     handler(
@@ -49,11 +48,11 @@ pub fn milestones_crud_patch_delete_ready_empty_test() {
       |> fixtures.with_auth(session),
     )
 
-  get_res.status |> should.equal(200)
+  expect.expect_status(get_res, 200)
   let assert Ok(#(name, description)) =
     decode_milestone_name_desc(simulate.read_body(get_res))
-  name |> should.equal("Release 1.1")
-  description |> should.equal("Updated")
+  name |> expect.equal("Release 1.1")
+  description |> expect.equal("Updated")
 
   let delete_res =
     handler(
@@ -64,7 +63,7 @@ pub fn milestones_crud_patch_delete_ready_empty_test() {
       |> fixtures.with_auth(session),
     )
 
-  delete_res.status |> should.equal(204)
+  expect.expect_status(delete_res, 204)
 
   let get_after_delete =
     handler(
@@ -75,7 +74,7 @@ pub fn milestones_crud_patch_delete_ready_empty_test() {
       |> fixtures.with_auth(session),
     )
 
-  get_after_delete.status |> should.equal(404)
+  expect.expect_status(get_after_delete, 404)
 }
 
 pub fn milestones_delete_conflict_when_not_empty_test() {
@@ -103,7 +102,7 @@ pub fn milestones_delete_conflict_when_not_empty_test() {
       ),
     )
 
-  card_create_res.status |> should.equal(200)
+  expect.expect_status(card_create_res, 200)
 
   let delete_res =
     handler(
@@ -114,9 +113,11 @@ pub fn milestones_delete_conflict_when_not_empty_test() {
       |> fixtures.with_auth(session),
     )
 
-  delete_res.status |> should.equal(409)
-  let assert Ok(code) = decode_error_code(simulate.read_body(delete_res))
-  code |> should.equal("MILESTONE_DELETE_NOT_ALLOWED")
+  expect.expect_status(delete_res, 409)
+  expect.expect_json_contains_code(
+    simulate.read_body(delete_res),
+    "MILESTONE_DELETE_NOT_ALLOWED",
+  )
 }
 
 pub fn milestones_patch_requires_project_admin_test() {
@@ -144,7 +145,7 @@ pub fn milestones_patch_requires_project_admin_test() {
       |> simulate.json_body(json.object([#("name", json.string("Nope"))])),
     )
 
-  patch_res.status |> should.equal(403)
+  expect.expect_status(patch_res, 403)
 }
 
 pub fn create_task_with_card_and_milestone_is_rejected_test() {
@@ -171,14 +172,13 @@ pub fn create_task_with_card_and_milestone_is_rejected_test() {
         ]),
       ),
     )
-  card_res.status |> should.equal(200)
-  let card_id =
+  expect.expect_status(card_res, 200)
+  let assert Ok(card_id) =
     fixtures.query_int(
       db,
       "select id from cards where project_id = $1 order by id desc limit 1",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
@@ -202,9 +202,11 @@ pub fn create_task_with_card_and_milestone_is_rejected_test() {
       ),
     )
 
-  task_res.status |> should.equal(422)
-  let assert Ok(code) = decode_error_code(simulate.read_body(task_res))
-  code |> should.equal("TASK_MILESTONE_INHERITED_FROM_CARD")
+  expect.expect_status(task_res, 422)
+  expect.expect_json_contains_code(
+    simulate.read_body(task_res),
+    "TASK_MILESTONE_INHERITED_FROM_CARD",
+  )
 }
 
 pub fn card_move_from_pool_to_milestone_is_rejected_test() {
@@ -230,15 +232,14 @@ pub fn card_move_from_pool_to_milestone_is_rejected_test() {
         ]),
       ),
     )
-  card_res.status |> should.equal(200)
+  expect.expect_status(card_res, 200)
 
-  let card_id =
+  let assert Ok(card_id) =
     fixtures.query_int(
       db,
       "select id from cards where project_id = $1 and title = 'Pool Card'",
       [pog.int(project_id)],
     )
-    |> result.unwrap(0)
 
   let patch_res =
     handler(
@@ -254,9 +255,11 @@ pub fn card_move_from_pool_to_milestone_is_rejected_test() {
       ),
     )
 
-  patch_res.status |> should.equal(422)
-  let assert Ok(code) = decode_error_code(simulate.read_body(patch_res))
-  code |> should.equal("INVALID_MOVE_POOL_TO_MILESTONE")
+  expect.expect_status(patch_res, 422)
+  expect.expect_json_contains_code(
+    simulate.read_body(patch_res),
+    "INVALID_MOVE_POOL_TO_MILESTONE",
+  )
 }
 
 pub fn task_patch_with_card_and_milestone_is_rejected_test() {
@@ -291,7 +294,7 @@ pub fn task_patch_with_card_and_milestone_is_rejected_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let patch_res =
     handler(
@@ -305,9 +308,11 @@ pub fn task_patch_with_card_and_milestone_is_rejected_test() {
       ),
     )
 
-  patch_res.status |> should.equal(422)
-  let assert Ok(code) = decode_error_code(simulate.read_body(patch_res))
-  code |> should.equal("TASK_MILESTONE_INHERITED_FROM_CARD")
+  expect.expect_status(patch_res, 422)
+  expect.expect_json_contains_code(
+    simulate.read_body(patch_res),
+    "TASK_MILESTONE_INHERITED_FROM_CARD",
+  )
 }
 
 pub fn task_move_from_pool_to_milestone_is_rejected_test() {
@@ -333,7 +338,7 @@ pub fn task_move_from_pool_to_milestone_is_rejected_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let patch_res =
     handler(
@@ -347,9 +352,11 @@ pub fn task_move_from_pool_to_milestone_is_rejected_test() {
       ),
     )
 
-  patch_res.status |> should.equal(422)
-  let assert Ok(code) = decode_error_code(simulate.read_body(patch_res))
-  code |> should.equal("INVALID_MOVE_POOL_TO_MILESTONE")
+  expect.expect_status(patch_res, 422)
+  expect.expect_json_contains_code(
+    simulate.read_body(patch_res),
+    "INVALID_MOVE_POOL_TO_MILESTONE",
+  )
 }
 
 pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
@@ -384,7 +391,7 @@ pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let move_ready_to_ready =
     handler(
@@ -397,12 +404,12 @@ pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
         ]),
       ),
     )
-  move_ready_to_ready.status |> should.equal(200)
+  expect.expect_status(move_ready_to_ready, 200)
   let assert Ok(db_milestone_after_move) =
     fixtures.query_int(db, "select milestone_id from tasks where id = $1", [
       pog.int(task_id),
     ])
-  db_milestone_after_move |> should.equal(milestone_2)
+  db_milestone_after_move |> expect.equal(milestone_2)
 
   let move_ready_to_pool =
     handler(
@@ -415,7 +422,7 @@ pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
         ]),
       ),
     )
-  move_ready_to_pool.status |> should.equal(200)
+  expect.expect_status(move_ready_to_pool, 200)
   let assert Ok(db_milestone_after_pool) =
     fixtures.query_nullable_int(
       db,
@@ -424,7 +431,7 @@ pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
         pog.int(task_id),
       ],
     )
-  db_milestone_after_pool |> should.equal(option.None)
+  db_milestone_after_pool |> expect.equal(option.None)
 }
 
 pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
@@ -441,7 +448,7 @@ pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
     fixtures.query_int(db, "select pool_lifetime_s from tasks where id = $1", [
       pog.int(task_id),
     ])
-  initial_pool_lifetime_s |> should.equal(0)
+  initial_pool_lifetime_s |> expect.equal(0)
 
   let claim_res =
     handler(
@@ -454,7 +461,7 @@ pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let assert Ok(non_negative_after_claim) =
     fixtures.query_int(
@@ -462,7 +469,7 @@ pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
       "select case when pool_lifetime_s >= 0 then 1 else 0 end from tasks where id = $1",
       [pog.int(task_id)],
     )
-  non_negative_after_claim |> should.equal(1)
+  non_negative_after_claim |> expect.equal(1)
 
   let release_res =
     handler(
@@ -475,7 +482,7 @@ pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  release_res.status |> should.equal(200)
+  expect.expect_status(release_res, 200)
 
   let assert Ok(release_last_entered_present) =
     fixtures.query_int(
@@ -483,7 +490,7 @@ pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
       "select case when last_entered_pool_at is null then 0 else 1 end from tasks where id = $1",
       [pog.int(task_id)],
     )
-  release_last_entered_present |> should.equal(1)
+  release_last_entered_present |> expect.equal(1)
 }
 
 pub fn milestone_activation_returns_snapshot_and_blocks_second_active_test() {
@@ -506,12 +513,12 @@ pub fn milestone_activation_returns_snapshot_and_blocks_second_active_test() {
       |> simulate.json_body(json.object([])),
     )
 
-  activate_1.status |> should.equal(200)
+  expect.expect_status(activate_1, 200)
   let assert Ok(#(cards_released, tasks_released, activated_at_present)) =
     decode_activation_snapshot(simulate.read_body(activate_1))
-  cards_released |> should.equal(0)
-  tasks_released |> should.equal(0)
-  activated_at_present |> should.equal(True)
+  cards_released |> expect.equal(0)
+  tasks_released |> expect.equal(0)
+  activated_at_present |> expect.equal(True)
 
   let activate_2 =
     handler(
@@ -523,9 +530,11 @@ pub fn milestone_activation_returns_snapshot_and_blocks_second_active_test() {
       |> simulate.json_body(json.object([])),
     )
 
-  activate_2.status |> should.equal(409)
-  let assert Ok(code) = decode_error_code(simulate.read_body(activate_2))
-  code |> should.equal("MILESTONE_ALREADY_ACTIVE")
+  expect.expect_status(activate_2, 409)
+  expect.expect_json_contains_code(
+    simulate.read_body(activate_2),
+    "MILESTONE_ALREADY_ACTIVE",
+  )
 }
 
 pub fn milestone_completes_when_all_items_complete_test() {
@@ -556,7 +565,7 @@ pub fn milestone_completes_when_all_items_complete_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([])),
     )
-  activate.status |> should.equal(200)
+  expect.expect_status(activate, 200)
 
   let claim =
     handler(
@@ -569,7 +578,7 @@ pub fn milestone_completes_when_all_items_complete_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  claim.status |> should.equal(200)
+  expect.expect_status(claim, 200)
 
   let complete =
     handler(
@@ -582,13 +591,13 @@ pub fn milestone_completes_when_all_items_complete_test() {
         json.object([#("version", json.int(task_version(db, task_id)))]),
       ),
     )
-  complete.status |> should.equal(200)
+  expect.expect_status(complete, 200)
 
   let assert Ok(state_after_complete) =
     fixtures.query_string(db, "select state from milestones where id = $1", [
       pog.int(milestone_id),
     ])
-  state_after_complete |> should.equal("completed")
+  state_after_complete |> expect.equal("completed")
 
   let assert Ok(completed_at_present) =
     fixtures.query_int(
@@ -596,7 +605,7 @@ pub fn milestone_completes_when_all_items_complete_test() {
       "select case when completed_at is null then 0 else 1 end from milestones where id = $1",
       [pog.int(milestone_id)],
     )
-  completed_at_present |> should.equal(1)
+  completed_at_present |> expect.equal(1)
 }
 
 fn create_milestone(
@@ -684,22 +693,6 @@ fn decode_milestone_name_desc(body: String) -> Result(#(String, String), String)
   }
 }
 
-fn decode_error_code(body: String) -> Result(String, String) {
-  let decoder = {
-    use code <- decode.field("code", decode.string)
-    decode.success(code)
-  }
-
-  case json.parse(body, decode.dynamic) {
-    Error(_) -> Error("invalid json")
-    Ok(dynamic) ->
-      case decode.run(dynamic, decode.field("error", decoder, decode.success)) {
-        Ok(code) -> Ok(code)
-        Error(_) -> Error("decode error code failed")
-      }
-  }
-}
-
 fn decode_activation_snapshot(body: String) -> Result(#(Int, Int, Bool), String) {
   let decoder = {
     use cards <- decode.field("cards_released", decode.int)
@@ -722,10 +715,11 @@ fn decode_activation_snapshot(body: String) -> Result(#(Int, Int, Bool), String)
 }
 
 fn task_version(db: pog.Connection, task_id: Int) -> Int {
-  fixtures.query_int(db, "select version from tasks where id = $1", [
-    pog.int(task_id),
-  ])
-  |> result.unwrap(0)
+  let assert Ok(version) =
+    fixtures.query_int(db, "select version from tasks where id = $1", [
+      pog.int(task_id),
+    ])
+  version
 }
 
 fn create_task_with_milestone(

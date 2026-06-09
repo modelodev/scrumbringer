@@ -9,6 +9,9 @@
 //// Set SB_RULES_ENGINE_LOG=true to enable debug logging for rule evaluation.
 //// This helps diagnose why rules might not be firing or creating tasks.
 
+import domain/card as domain_card
+import domain/task_status
+import domain/workflow
 import envoy
 import gleam/int
 import gleam/io
@@ -17,7 +20,7 @@ import gleam/option
 import gleam/result
 import helpers/option as option_helpers
 import pog
-import scrumbringer_server/services/rules_target
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/rules_templates
 import scrumbringer_server/sql
 
@@ -52,8 +55,7 @@ fn log_event(event: StateChange) -> Nil {
     <> ", org="
     <> int.to_string(event_org_id(event))
     <> ", task_type="
-    <> option.map(event_task_type_id(event), int.to_string)
-    |> option.unwrap("none")
+    <> event_task_type_label(event)
     <> ", user_triggered="
     <> case event_user_triggered(event) {
       True -> "true"
@@ -81,13 +83,13 @@ pub type TaskContext {
 
 /// State change event that may trigger rules.
 ///
-/// Task and card state values are string-backed but separated by type to
-/// prevent cross-resource mixing.
+/// Task and card state values stay typed inside the engine. Conversion to
+/// strings happens only at persistence, logging, and template boundaries.
 pub type StateChange {
   TaskChange(
     ctx: TaskContext,
-    from_state: option.Option(String),
-    to_state: String,
+    from_state: option.Option(task_status.TaskStatus),
+    to_state: task_status.TaskStatus,
     user_id: Int,
     user_triggered: Bool,
   )
@@ -95,8 +97,8 @@ pub type StateChange {
     card_id: Int,
     project_id: Int,
     org_id: Int,
-    from_state: option.Option(String),
-    to_state: String,
+    from_state: option.Option(domain_card.CardState),
+    to_state: domain_card.CardState,
     user_id: Int,
     user_triggered: Bool,
   )
@@ -116,6 +118,7 @@ pub type RuleOutcome {
 /// Error during rule evaluation.
 pub type RuleEngineError {
   DbError(pog.QueryError)
+  InvalidRuleTarget
 }
 
 // =============================================================================
@@ -126,8 +129,8 @@ pub type RuleEngineError {
 pub fn task_event(
   ctx: TaskContext,
   user_id: Int,
-  from_state: option.Option(String),
-  to_state: String,
+  from_state: option.Option(task_status.TaskStatus),
+  to_state: task_status.TaskStatus,
 ) -> StateChange {
   TaskChange(
     ctx: ctx,
@@ -145,8 +148,8 @@ pub fn card_event(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: option.Option(String),
-  to_state: String,
+  from_state: option.Option(domain_card.CardState),
+  to_state: domain_card.CardState,
 ) -> StateChange {
   CardChange(
     card_id: card_id,
@@ -239,6 +242,7 @@ fn debug_error(e: RuleEngineError) -> String {
       <> ", got "
       <> int.to_string(got)
     DbError(_) -> "database error"
+    InvalidRuleTarget -> "invalid persisted rule target"
   }
 }
 
@@ -252,7 +256,7 @@ type MatchingRule {
     workflow_id: Int,
     name: String,
     goal: option.Option(String),
-    target: rules_target.RuleTarget,
+    target: workflow.RuleTarget,
     active: Bool,
     created_at: String,
     workflow_org_id: Int,
@@ -284,8 +288,7 @@ fn find_matching_rules(
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
   let resource_type_str = event_resource_type(event)
-  let task_type_param =
-    option_helpers.option_to_value(event_task_type_id(event), 0)
+  let task_type_param = task_type_filter_value(event)
   let to_state_value = event_to_state_string(event)
 
   case
@@ -298,32 +301,51 @@ fn find_matching_rules(
       task_type_param,
     )
   {
-    Ok(returned) ->
-      returned.rows
-      |> list.map(fn(row) {
-        let assert Ok(target) =
-          rules_target.from_strings(
-            row.resource_type,
-            row.task_type_id,
-            row.to_state,
-          )
-        MatchingRule(
-          id: row.id,
-          workflow_id: row.workflow_id,
-          name: row.name,
-          goal: option_helpers.string_to_option(row.goal),
-          target: target,
-          active: row.active,
-          created_at: row.created_at,
-          workflow_org_id: row.workflow_org_id,
-          workflow_project_id: option_helpers.int_to_option(
-            row.workflow_project_id,
-          ),
-        )
-      })
-      |> Ok
+    Ok(returned) -> list.try_map(returned.rows, matching_rule_from_row)
 
     Error(e) -> Error(DbError(e))
+  }
+}
+
+fn matching_rule_from_row(
+  row: sql.RulesFindMatchingRow,
+) -> Result(MatchingRule, RuleEngineError) {
+  use target <- result.try(parse_persisted_target(
+    row.resource_type,
+    row.task_type_id,
+    row.to_state,
+  ))
+
+  Ok(MatchingRule(
+    id: row.id,
+    workflow_id: row.workflow_id,
+    name: row.name,
+    goal: option_helpers.string_to_option(row.goal),
+    target: target,
+    active: row.active,
+    created_at: row.created_at,
+    workflow_org_id: row.workflow_org_id,
+    workflow_project_id: option_helpers.int_to_option(row.workflow_project_id),
+  ))
+}
+
+fn parse_persisted_target(
+  resource_type: String,
+  task_type_id: Int,
+  to_state: String,
+) -> Result(workflow.RuleTarget, RuleEngineError) {
+  workflow.parse_rule_target(
+    resource_type,
+    db_task_type_id(task_type_id),
+    to_state,
+  )
+  |> result.map_error(fn(_) { InvalidRuleTarget })
+}
+
+fn db_task_type_id(value: Int) -> option.Option(Int) {
+  case value {
+    id if id > 0 -> option.Some(id)
+    _ -> option.None
   }
 }
 
@@ -470,24 +492,27 @@ fn get_rule_templates(
   case sql.rules_get_templates_for_execution(db, rule_id) {
     Ok(returned) ->
       returned.rows
-      |> list.map(fn(row) {
-        ExecutionTemplate(
-          id: row.id,
-          org_id: row.org_id,
-          project_id: option_helpers.int_to_option(row.project_id),
-          name: row.name,
-          description: option_helpers.string_to_option(row.description),
-          type_id: row.type_id,
-          priority: row.priority,
-          created_by: row.created_by,
-          created_at: row.created_at,
-          execution_order: row.execution_order,
-        )
-      })
-      |> Ok
+      |> list.try_map(execution_template_from_row)
 
     Error(e) -> Error(DbError(e))
   }
+}
+
+fn execution_template_from_row(
+  row: sql.RulesGetTemplatesForExecutionRow,
+) -> Result(ExecutionTemplate, RuleEngineError) {
+  Ok(ExecutionTemplate(
+    id: row.id,
+    org_id: row.org_id,
+    project_id: option_helpers.int_to_option(row.project_id),
+    name: row.name,
+    description: option_helpers.string_to_option(row.description),
+    type_id: row.type_id,
+    priority: row.priority,
+    created_by: row.created_by,
+    created_at: row.created_at,
+    execution_order: row.execution_order,
+  ))
 }
 
 fn create_tasks_from_templates(
@@ -541,7 +566,7 @@ fn create_task_from_template(
       event_resource_type(event),
       event_resource_id(event),
     )
-  let from_state = option.unwrap(event_from_state_string(event), "(created)")
+  let from_state = event_from_state_label(event)
   let to_state = event_to_state_string(event)
   let title =
     rules_templates.substitute(
@@ -554,7 +579,7 @@ fn create_task_from_template(
     )
   let description =
     rules_templates.substitute(
-      option.unwrap(template.description, ""),
+      template_description_text(template),
       father,
       from_state,
       to_state,
@@ -580,7 +605,8 @@ fn create_task_from_template(
   )
 
   // Create task via SQL
-  // $1=type_id, $2=project_id, $3=title, $4=description, $5=priority, $6=created_by, $7=card_id
+  // $1=type_id, $2=project_id, $3=title, $4=description, $5=priority,
+  // $6=created_by, $7=card_id, $8=milestone_id, $9=rule_id
   case
     sql.tasks_create(
       db,
@@ -590,19 +616,22 @@ fn create_task_from_template(
       description,
       template.priority,
       event_user_id(event),
-      option_helpers.option_to_value(card_id_param, 0),
-      0,
+      card_id_create_value(card_id_param),
+      no_task_milestone_id,
       rule_id,
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      log("    Created task #" <> int.to_string(row.id))
-      Ok(row.id)
-    }
-    Ok(pog.Returned(rows: [], ..)) -> {
-      log("    Error: task creation returned no rows")
-      // This shouldn't happen but treat as no-op
-      Error(DbError(pog.UnexpectedArgumentCount(7, 0)))
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      case persisted_field.query_row(rows) {
+        Ok(row) -> {
+          log("    Created task #" <> int.to_string(row.id))
+          Ok(row.id)
+        }
+        Error(e) -> {
+          log("    Error: task creation returned no rows")
+          Error(DbError(e))
+        }
+      }
     }
     Error(e) -> {
       log("    Error creating task: " <> debug_error(DbError(e)))
@@ -696,7 +725,6 @@ fn event_user_triggered(event: StateChange) -> Bool {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn event_task_type_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) ->
@@ -708,6 +736,17 @@ fn event_task_type_id(event: StateChange) -> option.Option(Int) {
   }
 }
 
+fn task_type_filter_value(event: StateChange) -> Int {
+  option_helpers.option_to_value(event_task_type_id(event), 0)
+}
+
+fn event_task_type_label(event: StateChange) -> String {
+  case event_task_type_id(event) {
+    option.Some(type_id) -> int.to_string(type_id)
+    option.None -> "none"
+  }
+}
+
 fn event_card_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) -> ctx.card_id
@@ -715,16 +754,39 @@ fn event_card_id(event: StateChange) -> option.Option(Int) {
   }
 }
 
+fn card_id_create_value(card_id: option.Option(Int)) -> Int {
+  option_helpers.option_to_value(card_id, 0)
+}
+
+const no_task_milestone_id = 0
+
 fn event_to_state_string(event: StateChange) -> String {
   case event {
-    TaskChange(to_state: to_state, ..) -> to_state
-    CardChange(to_state: to_state, ..) -> to_state
+    TaskChange(to_state: to_state, ..) ->
+      task_status.task_status_to_string(to_state)
+    CardChange(to_state: to_state, ..) -> domain_card.state_to_string(to_state)
   }
 }
 
 fn event_from_state_string(event: StateChange) -> option.Option(String) {
   case event {
-    TaskChange(from_state: from_state, ..) -> from_state
-    CardChange(from_state: from_state, ..) -> from_state
+    TaskChange(from_state: from_state, ..) ->
+      option.map(from_state, task_status.task_status_to_string)
+    CardChange(from_state: from_state, ..) ->
+      option.map(from_state, domain_card.state_to_string)
+  }
+}
+
+fn event_from_state_label(event: StateChange) -> String {
+  case event_from_state_string(event) {
+    option.Some(from_state) -> from_state
+    option.None -> "(created)"
+  }
+}
+
+fn template_description_text(template: ExecutionTemplate) -> String {
+  case template.description {
+    option.Some(description) -> description
+    option.None -> ""
   }
 }

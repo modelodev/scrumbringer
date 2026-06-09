@@ -1,50 +1,64 @@
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/element
-import scrumbringer_client/client_state.{type Model, default_model, update_auth}
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/view as auth_view
+import scrumbringer_client/i18n/locale
 
-fn base_model() -> Model {
-  default_model()
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn config(auth: auth_state.AuthModel) -> auth_view.Config(String) {
+  auth_view.Config(
+    locale: locale.En,
+    auth: auth,
+    origin: "https://scrumbringer.test",
+    on_login_email_changed: fn(value) { "login-email:" <> value },
+    on_login_password_changed: fn(value) { "login-password:" <> value },
+    on_login_submitted: "login-submit",
+    on_forgot_password_clicked: "forgot-open",
+    on_forgot_password_email_changed: fn(value) { "forgot-email:" <> value },
+    on_forgot_password_submitted: "forgot-submit",
+    on_forgot_password_copy_clicked: "forgot-copy",
+    on_forgot_password_dismissed: "forgot-dismiss",
+    on_accept_invite: fn(_msg) { "accept-invite" },
+    on_reset_password: fn(_msg) { "reset-password" },
+  )
 }
 
 pub fn login_error_renders_error_banner_test() {
-  let model =
-    update_auth(base_model(), fn(auth) {
-      auth_state.AuthModel(..auth, login_error: opt.Some("Bad creds"))
-    })
+  let auth =
+    auth_state.AuthModel(
+      ..auth_state.default_model(),
+      login_error: opt.Some("Bad creds"),
+    )
 
-  let html = auth_view.view_login(model) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  string.contains(html, "error-banner") |> should.be_true
-  string.contains(html, "Bad creds") |> should.be_true
+  assert_contains(html, "error-banner")
+  assert_contains(html, "Bad creds")
 }
 
 pub fn login_in_flight_adds_loading_class_test() {
-  let model =
-    update_auth(base_model(), fn(auth) {
-      auth_state.AuthModel(..auth, login_in_flight: True)
-    })
+  let auth =
+    auth_state.AuthModel(..auth_state.default_model(), login_in_flight: True)
 
-  let html = auth_view.view_login(model) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  string.contains(html, "btn-loading") |> should.be_true
+  assert_contains(html, "btn-loading")
 }
 
 pub fn forgot_password_error_renders_error_block_test() {
-  let model =
-    update_auth(base_model(), fn(auth) {
-      auth_state.AuthModel(
-        ..auth,
-        forgot_password_open: True,
-        forgot_password_error: opt.Some("Email not found"),
-      )
-    })
+  let auth =
+    auth_state.AuthModel(
+      ..auth_state.default_model(),
+      forgot_password_open: True,
+      forgot_password_error: opt.Some("Email not found"),
+    )
 
-  let html = auth_view.view_login(model) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  string.contains(html, "class=\"error\"") |> should.be_true
-  string.contains(html, "Email not found") |> should.be_true
+  assert_contains(html, "class=\"error\"")
+  assert_contains(html, "Email not found")
 }

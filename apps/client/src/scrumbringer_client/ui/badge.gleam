@@ -79,27 +79,27 @@ pub fn new(text_value: String, variant: BadgeVariant) -> Result(Badge, String) {
 
 /// Create a badge that truncates text if too long.
 ///
-/// Panics if original text is empty (use `new` for validation).
+/// Returns Error if original text is empty.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// let badge = badge.new_truncated("Very Long Status Name", badge.Neutral, 10)
-/// // Shows "Very Long…"
+/// case badge.new_truncated("Very Long Status Name", badge.Neutral, 10) {
+///   Ok(badge) -> badge.view(badge)
+///   Error(msg) -> html.text(msg)
+/// }
 /// ```
 pub fn new_truncated(
   text_value: String,
   variant: BadgeVariant,
   max_len: Int,
-) -> Badge {
+) -> Result(Badge, String) {
   let trimmed = string.trim(text_value)
   let truncated = case string.length(trimmed) > max_len {
     True -> string.slice(trimmed, 0, max_len) <> "…"
     False -> trimmed
   }
-  // If original text was empty, truncated will be empty - use let assert
-  let assert Ok(badge) = new(truncated, variant)
-  badge
+  new(truncated, variant)
 }
 
 /// Create a badge without validation (for internal use when text is known valid).
@@ -136,8 +136,10 @@ pub fn get_variant(badge: Badge) -> BadgeVariant {
 /// ## Example
 ///
 /// ```gleam
-/// let assert Ok(b) = badge.new("Done", badge.Success)
-/// badge.view(b)
+/// case badge.new("Done", badge.Success) {
+///   Ok(b) -> badge.view(b)
+///   Error(msg) -> html.text(msg)
+/// }
 /// ```
 pub fn view(badge: Badge) -> Element(msg) {
   let Badge(text: badge_text, variant:) = badge

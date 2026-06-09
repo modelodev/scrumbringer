@@ -19,14 +19,14 @@
 //// - POST /api/v1/me/work-sessions/pause
 //// - POST /api/v1/me/work-sessions/heartbeat
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
 import gleam/int
-import gleam/json
+import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/work_sessions/payloads as session_payloads
+import scrumbringer_server/http/work_sessions/presenters as session_presenters
 import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
@@ -49,15 +49,15 @@ fn heartbeat_rate_limit_ok(user_id: Int, task_id: Int) -> Bool {
   )
 }
 
-fn decode_task_id_data(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
-  let decoder = {
-    use task_id <- decode.field("task_id", decode.int)
-    decode.success(task_id)
-  }
-
-  case decode.run(data, decoder) {
-    Ok(task_id) -> Ok(task_id)
-    Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON"))
+fn work_session_internal_error_response(
+  error: work_sessions_db.WorkSessionError,
+) -> wisp.Response {
+  case error {
+    work_sessions_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
+    work_sessions_db.NotClaimed
+    | work_sessions_db.TaskCompleted
+    | work_sessions_db.SessionNotFound ->
+      api.error(500, "INTERNAL", "Unexpected error")
   }
 }
 
@@ -72,8 +72,8 @@ fn decode_task_id_data(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
 pub fn handle_get_active(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> get_active_for_user(ctx, user)
   }
 }
@@ -85,8 +85,8 @@ pub fn handle_get_active(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 pub fn handle_start(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> start_for_user(req, ctx, user)
   }
 }
@@ -98,8 +98,8 @@ pub fn handle_start(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 pub fn handle_pause(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> pause_for_user(req, ctx, user)
   }
 }
@@ -111,8 +111,8 @@ pub fn handle_pause(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 pub fn handle_heartbeat(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> heartbeat_for_user(req, ctx, user)
   }
 }
@@ -128,7 +128,7 @@ fn get_active_for_user(ctx: auth.Ctx, user: StoredUser) -> wisp.Response {
   let _ = work_sessions_db.close_stale_sessions(db)
 
   case work_sessions_db.get_active_sessions(db, user.id) {
-    Ok(state) -> api.ok(state_to_json(state))
+    Ok(state) -> api.ok(session_presenters.state(state))
     Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
@@ -138,31 +138,18 @@ fn start_for_user(
   ctx: auth.Ctx,
   user: StoredUser,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> start_with_csrf(req, ctx, user)
-  }
+  with_task_id_mutation(req, fn(payload) { start_session(ctx, user, payload) })
 }
 
-fn start_with_csrf(
-  req: wisp.Request,
+fn start_session(
   ctx: auth.Ctx,
   user: StoredUser,
+  payload: session_payloads.TaskIdPayload,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_task_id_payload(data) {
-    Error(resp) -> resp
-    Ok(task_id) -> start_session(ctx, user, task_id)
-  }
-}
-
-fn start_session(ctx: auth.Ctx, user: StoredUser, task_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  // Justification: nested case maps session errors into HTTP responses.
-  case work_sessions_db.start_session(db, user.id, task_id) {
-    Ok(state) -> api.ok(state_to_json(state))
+  case work_sessions_db.start_session(db, user.id, payload.task_id) {
+    Ok(state) -> api.ok(session_presenters.state(state))
 
     Error(work_sessions_db.NotClaimed) ->
       api.error(409, "CONFLICT_CLAIMED", "Task is not claimed by you")
@@ -170,13 +157,7 @@ fn start_session(ctx: auth.Ctx, user: StoredUser, task_id: Int) -> wisp.Response
     Error(work_sessions_db.TaskCompleted) ->
       api.error(409, "CONFLICT_INVALID_STATE", "Task is completed")
 
-    Error(work_sessions_db.SessionExists) ->
-      api.error(409, "CONFLICT_SESSION_EXISTS", "Session already exists")
-
-    Error(work_sessions_db.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Error(error) -> work_session_internal_error_response(error)
   }
 }
 
@@ -185,33 +166,19 @@ fn pause_for_user(
   ctx: auth.Ctx,
   user: StoredUser,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> pause_with_csrf(req, ctx, user)
-  }
+  with_task_id_mutation(req, fn(payload) { pause_session(ctx, user, payload) })
 }
 
-fn pause_with_csrf(
-  req: wisp.Request,
+fn pause_session(
   ctx: auth.Ctx,
   user: StoredUser,
+  payload: session_payloads.TaskIdPayload,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_task_id_payload(data) {
-    Error(resp) -> resp
-    Ok(task_id) -> pause_session(ctx, user, task_id)
-  }
-}
-
-fn pause_session(ctx: auth.Ctx, user: StoredUser, task_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case work_sessions_db.pause_session(db, user.id, task_id) {
-    Ok(state) -> api.ok(state_to_json(state))
-    Error(work_sessions_db.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+  case work_sessions_db.pause_session(db, user.id, payload.task_id) {
+    Ok(state) -> api.ok(session_presenters.state(state))
+    Error(error) -> work_session_internal_error_response(error)
   }
 }
 
@@ -220,80 +187,61 @@ fn heartbeat_for_user(
   ctx: auth.Ctx,
   user: StoredUser,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> heartbeat_with_csrf(req, ctx, user)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn heartbeat_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_task_id_payload(data) {
-    Error(resp) -> resp
-
-    Ok(task_id) ->
-      // Justification: nested case applies per-task heartbeat rate limits.
-      case heartbeat_rate_limit_ok(user.id, task_id) {
-        False -> api.error(429, "RATE_LIMITED", "Too many heartbeats")
-        True -> heartbeat_session(ctx, user, task_id)
-      }
-  }
+  with_task_id_mutation(req, fn(payload) {
+    case heartbeat_rate_limit_ok(user.id, payload.task_id) {
+      False -> api.error(429, "RATE_LIMITED", "Too many heartbeats")
+      True -> heartbeat_session(ctx, user, payload)
+    }
+  })
 }
 
 fn heartbeat_session(
   ctx: auth.Ctx,
   user: StoredUser,
-  task_id: Int,
+  payload: session_payloads.TaskIdPayload,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case work_sessions_db.heartbeat_session(db, user.id, task_id) {
-    Ok(state) -> api.ok(state_to_json(state))
+  case work_sessions_db.heartbeat_session(db, user.id, payload.task_id) {
+    Ok(state) -> api.ok(session_presenters.state(state))
 
     Error(work_sessions_db.SessionNotFound) ->
       api.error(404, "NOT_FOUND", "No active session for this task")
 
-    Error(work_sessions_db.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Error(error) -> work_session_internal_error_response(error)
   }
 }
 
-fn decode_task_id_payload(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
-  decode_task_id_data(data)
+fn decode_task_id_payload(
+  data,
+) -> Result(session_payloads.TaskIdPayload, wisp.Response) {
+  session_payloads.decode_task_id(data)
+  |> result.map_error(session_payload_error_to_response)
 }
 
-fn state_to_json(state: work_sessions_db.WorkSessionsState) -> json.Json {
-  let work_sessions_db.WorkSessionsState(
-    active_sessions: sessions,
-    as_of: as_of,
-  ) = state
+fn with_task_id_mutation(
+  req: wisp.Request,
+  handle_payload: fn(session_payloads.TaskIdPayload) -> wisp.Response,
+) -> wisp.Response {
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
 
-  let sessions_json =
-    sessions
-    |> json.array(of: fn(session) {
-      let work_sessions_db.ActiveSession(
-        task_id: task_id,
-        started_at: started_at,
-        accumulated_s: accumulated_s,
-      ) = session
+    Ok(Nil) -> {
+      use data <- wisp.require_json(req)
 
-      json.object([
-        #("task_id", json.int(task_id)),
-        #("started_at", json.string(started_at)),
-        #("accumulated_s", json.int(accumulated_s)),
-      ])
-    })
+      case decode_task_id_payload(data) {
+        Error(resp) -> resp
+        Ok(payload) -> handle_payload(payload)
+      }
+    }
+  }
+}
 
-  json.object([
-    #("active_sessions", sessions_json),
-    #("as_of", json.string(as_of)),
-  ])
+fn session_payload_error_to_response(
+  error: session_payloads.DecodeError,
+) -> wisp.Response {
+  case error {
+    session_payloads.InvalidJson ->
+      api.error(422, "VALIDATION_ERROR", "Invalid JSON")
+  }
 }

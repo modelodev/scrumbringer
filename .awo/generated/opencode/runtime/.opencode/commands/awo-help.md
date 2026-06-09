@@ -12,6 +12,8 @@ requires_context: false
 
 Use the isolated AWO runtime helper to inspect generated workflows without depending on the current session mode.
 
+This is a runtime inspection entrypoint, not a planning prompt. Prefer exact next commands over free-form planning text.
+
 ## Native runtime mode
 
 You are in native OpenCode runtime mode.
@@ -40,7 +42,7 @@ Before responding, determine how you are being executed:
 - **Native slash command** (correct): you are running as an isolated OpenCode subtask via `awo-runtime` agent. Proceed normally.
 - **Missing `awo-runtime` agent**: return `RUNTIME_COMMAND_UNAVAILABLE_IN_SESSION` and explain the agent is required.
 - **Missing generated commands** (`.opencode/commands/awo-*.md` absent): include `error_code: RUNTIME_ASSETS_MISSING` and instruct the user to run `awo apply`.
-- **Manual prompt-driven or external mediator**: include `execution_mode: manual_guided` or `execution_mode: external_mediated` in output and warn that native slash commands are preferred.
+- **Manual prompt-driven or external mediator**: include `execution_mode: manual_guided` or `execution_mode: external_mediated` in output, state clearly that this is not native slash-command execution, and give the first recommended command in exact slash-command form.
 
 ## Session errors
 

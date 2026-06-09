@@ -21,21 +21,52 @@
 //// - DELETE /api/v1/cards/:card_id
 //// - GET  /api/v1/cards/:card_id/tasks
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
 import gleam/int
-import gleam/json
-import gleam/list
-import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/cards/payloads as card_payloads
+import scrumbringer_server/http/cards/presenters as card_presenters
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/query
 import scrumbringer_server/services/authorization
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/metrics_db
 import wisp
+
+fn card_not_found_response(include_metrics: Bool) -> wisp.Response {
+  case include_metrics {
+    True -> api.error(404, "not_found", "Card not found")
+    False -> api.error(404, "NOT_FOUND", "Card not found")
+  }
+}
+
+fn forbidden_project_member_response(include_metrics: Bool) -> wisp.Response {
+  case include_metrics {
+    True -> api.error(403, "forbidden", "Not a member of this project")
+    False -> api.error(403, "FORBIDDEN", "Not a member of this project")
+  }
+}
+
+fn card_error_response(error: cards_db.CardError) -> wisp.Response {
+  case error {
+    cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
+    cards_db.InvalidMilestone ->
+      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
+    cards_db.InvalidMovePoolToMilestone ->
+      api.error(
+        422,
+        "INVALID_MOVE_POOL_TO_MILESTONE",
+        "Cannot move pool content into a milestone",
+      )
+    cards_db.InvalidMilestoneState(_) ->
+      api.error(500, "INTERNAL", "Invalid milestone state in database")
+    cards_db.InvalidColor(_) -> api.error(500, "INTERNAL", "Invalid card color")
+    cards_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
+    cards_db.CardHasTasks(_) -> api.error(500, "INTERNAL", "Unexpected error")
+  }
+}
 
 // =============================================================================
 // Public Handlers
@@ -59,8 +90,8 @@ fn handle_list(
   ctx: auth.Ctx,
   project_id: Int,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> list_cards_for_user(ctx, project_id, user.id)
   }
 }
@@ -84,8 +115,8 @@ fn list_cards_in_project(
   user_id: Int,
 ) -> wisp.Response {
   case cards_db.list_cards(db, project_id, user_id) {
-    Ok(cards) -> api.ok(json.object([#("cards", cards_to_json(cards))]))
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(cards) -> api.ok(card_presenters.cards_response(cards))
+    Error(error) -> card_error_response(error)
   }
 }
 
@@ -100,82 +131,27 @@ fn require_project_admin(
   }
 }
 
-/// Valid card colors.
-const valid_colors = [
-  "gray",
-  "red",
-  "orange",
-  "yellow",
-  "green",
-  "blue",
-  "purple",
-  "pink",
-]
-
-fn validate_color(color: String) -> Result(Option(String), wisp.Response) {
-  case color {
-    "" -> Ok(None)
-    c -> validate_named_color(c)
-  }
-}
-
-fn validate_named_color(color: String) -> Result(Option(String), wisp.Response) {
-  case list.contains(valid_colors, color) {
-    True -> Ok(Some(color))
-    False -> Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
-  }
-}
-
 fn decode_card_payload_data(
-  data: dynamic.Dynamic,
-) -> Result(
-  #(String, Option(String), Option(String), Option(Int)),
-  wisp.Response,
-) {
-  let decoder = {
-    use title <- decode.field("title", decode.string)
-    use description <- decode.optional_field("description", "", decode.string)
-    use color <- decode.optional_field("color", "", decode.string)
-    use milestone_id <- decode.optional_field(
-      "milestone_id",
-      None,
-      decode.optional(decode.int),
-    )
-    decode.success(#(title, description, color, milestone_id))
-  }
-
-  case decode.run(data, decoder) {
-    Ok(#(title, description, color, milestone_id)) ->
-      normalize_card_payload(title, description, color, milestone_id)
-    Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
+  data,
+) -> Result(card_payloads.CardPayload, wisp.Response) {
+  case card_payloads.decode_card(data) {
+    Ok(payload) -> Ok(payload)
+    Error(card_payloads.InvalidJson) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
+    Error(card_payloads.InvalidColor) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
   }
 }
 
-fn normalize_card_payload(
-  title: String,
-  description: String,
-  color: String,
-  milestone_id: Option(Int),
-) -> Result(
-  #(String, Option(String), Option(String), Option(Int)),
-  wisp.Response,
-) {
-  case validate_color(color) {
-    Error(resp) -> Error(resp)
-    Ok(validated_color) ->
-      Ok(#(
-        title,
-        normalize_optional(description),
-        validated_color,
-        milestone_id,
-      ))
-  }
-}
+fn with_card_payload(
+  req: wisp.Request,
+  handle_payload: fn(card_payloads.CardPayload) -> wisp.Response,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
 
-fn normalize_optional(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    other -> Some(other)
+  case decode_card_payload_data(data) {
+    Error(resp) -> resp
+    Ok(payload) -> handle_payload(payload)
   }
 }
 
@@ -184,8 +160,8 @@ fn handle_create(
   ctx: auth.Ctx,
   project_id: Int,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> create_card_with_csrf(req, ctx, project_id, user.id)
   }
 }
@@ -196,8 +172,8 @@ fn create_card_with_csrf(
   project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
     Ok(Nil) -> create_card_with_auth(req, ctx, project_id, user_id)
   }
 }
@@ -222,30 +198,15 @@ fn create_card_with_payload(
   project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_card_payload_data(data) {
-    Error(resp) -> resp
-    Ok(#(title, description, color, milestone_id)) ->
-      create_card_in_project(
-        ctx,
-        project_id,
-        milestone_id,
-        title,
-        description,
-        color,
-        user_id,
-      )
-  }
+  with_card_payload(req, fn(payload) {
+    create_card_in_project(ctx, project_id, payload, user_id)
+  })
 }
 
 fn create_card_in_project(
   ctx: auth.Ctx,
   project_id: Int,
-  milestone_id: Option(Int),
-  title: String,
-  description: Option(String),
-  color: Option(String),
+  payload: card_payloads.CardPayload,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
@@ -254,23 +215,15 @@ fn create_card_in_project(
     cards_db.create_card(
       db,
       project_id,
-      milestone_id,
-      title,
-      description,
-      color,
+      payload.milestone_id,
+      payload.title,
+      payload.description,
+      payload.color,
       user_id,
     )
   {
-    Ok(card) -> api.ok(json.object([#("card", card_to_json(card))]))
-    Error(cards_db.InvalidMilestone) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
-    Error(cards_db.InvalidMovePoolToMilestone) ->
-      api.error(
-        422,
-        "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Cannot move pool content into a milestone",
-      )
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(card) -> api.ok(card_presenters.card_response(card))
+    Error(error) -> card_error_response(error)
   }
 }
 
@@ -291,8 +244,8 @@ pub fn handle_card(
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
   let include_metrics = wants_metrics(req)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> get_card_for_user(req, ctx, card_id, user.id, include_metrics)
   }
 }
@@ -308,13 +261,8 @@ fn get_card_for_user(
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
-    Error(cards_db.CardNotFound) ->
-      case include_metrics {
-        True -> api.error(404, "not_found", "Card not found")
-        False -> api.error(404, "NOT_FOUND", "Card not found")
-      }
-    Error(cards_db.DbError(_)) -> api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Error(cards_db.CardNotFound) -> card_not_found_response(include_metrics)
+    Error(error) -> card_error_response(error)
     Ok(card) -> respond_with_card_if_member(db, user_id, card, include_metrics)
   }
 }
@@ -326,22 +274,13 @@ fn respond_with_card_if_member(
   include_metrics: Bool,
 ) -> wisp.Response {
   case authorization.is_project_member(db, user_id, card.project_id) {
-    False ->
-      case include_metrics {
-        True -> api.error(403, "forbidden", "Not a member of this project")
-        False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-      }
+    False -> forbidden_project_member_response(include_metrics)
     True -> {
       case include_metrics {
         True ->
           case metrics_db.get_card_metrics(db, card.id) {
             Ok(metrics) ->
-              api.ok(
-                json.object([
-                  #("id", json.string(int.to_string(card.id))),
-                  #("metrics", card_metrics_json(metrics)),
-                ]),
-              )
+              api.ok(card_presenters.card_metrics_response(card.id, metrics))
             Error(metrics_db.NotFound) ->
               api.error(404, "not_found", "Card not found")
             Error(metrics_db.MetricsUnavailable) ->
@@ -349,15 +288,14 @@ fn respond_with_card_if_member(
             Error(metrics_db.DbError(_)) ->
               api.error(500, "internal", "Database error")
           }
-        False -> api.ok(json.object([#("card", card_to_json(card))]))
+        False -> api.ok(card_presenters.card_response(card))
       }
     }
   }
 }
 
 fn wants_metrics(req: wisp.Request) -> Bool {
-  wisp.get_query(req)
-  |> list.any(fn(pair) { pair.0 == "include" && pair.1 == "metrics" })
+  query.has_value(wisp.get_query(req), "include", "metrics")
 }
 
 fn handle_update(
@@ -365,8 +303,8 @@ fn handle_update(
   ctx: auth.Ctx,
   card_id: Int,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id)
   }
 }
@@ -377,8 +315,8 @@ fn update_card_with_csrf(
   card_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
     Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id)
   }
 }
@@ -392,9 +330,7 @@ fn update_card_with_auth(
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
-    Error(cards_db.CardNotFound) ->
-      api.error(404, "NOT_FOUND", "Card not found")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Error(error) -> card_error_response(error)
     Ok(card) -> update_card_in_project(req, ctx, card, user_id)
   }
 }
@@ -419,30 +355,15 @@ fn update_card_with_payload(
   card_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode_card_payload_data(data) {
-    Error(resp) -> resp
-    Ok(#(title, description, color, milestone_id)) ->
-      update_card_in_db(
-        ctx,
-        card_id,
-        milestone_id,
-        title,
-        description,
-        color,
-        user_id,
-      )
-  }
+  with_card_payload(req, fn(payload) {
+    update_card_in_db(ctx, card_id, payload, user_id)
+  })
 }
 
 fn update_card_in_db(
   ctx: auth.Ctx,
   card_id: Int,
-  milestone_id: Option(Int),
-  title: String,
-  description: Option(String),
-  color: Option(String),
+  payload: card_payloads.CardPayload,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
@@ -451,25 +372,15 @@ fn update_card_in_db(
     cards_db.update_card(
       db,
       card_id,
-      milestone_id,
-      title,
-      description,
-      color,
+      payload.milestone_id,
+      payload.title,
+      payload.description,
+      payload.color,
       user_id,
     )
   {
-    Ok(updated) -> api.ok(json.object([#("card", card_to_json(updated))]))
-    Error(cards_db.CardNotFound) ->
-      api.error(404, "NOT_FOUND", "Card not found")
-    Error(cards_db.InvalidMilestone) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
-    Error(cards_db.InvalidMovePoolToMilestone) ->
-      api.error(
-        422,
-        "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Cannot move pool content into a milestone",
-      )
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(updated) -> api.ok(card_presenters.card_response(updated))
+    Error(error) -> card_error_response(error)
   }
 }
 
@@ -478,8 +389,8 @@ fn handle_delete(
   ctx: auth.Ctx,
   card_id: Int,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> delete_card_with_csrf(req, ctx, card_id, user.id)
   }
 }
@@ -490,8 +401,8 @@ fn delete_card_with_csrf(
   card_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
     Ok(Nil) -> delete_card_with_auth(ctx, card_id, user_id)
   }
 }
@@ -504,9 +415,7 @@ fn delete_card_with_auth(
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
-    Error(cards_db.CardNotFound) ->
-      api.error(404, "NOT_FOUND", "Card not found")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Error(error) -> card_error_response(error)
     Ok(card) -> delete_card_in_project(ctx, card, user_id)
   }
 }
@@ -533,112 +442,6 @@ fn delete_card_in_db(db: pog.Connection, card_id: Int) -> wisp.Response {
         "CONFLICT_HAS_TASKS",
         "Cannot delete card with " <> int.to_string(count) <> " tasks",
       )
-    Error(cards_db.CardNotFound) ->
-      api.error(404, "NOT_FOUND", "Card not found")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-  }
-}
-
-// =============================================================================
-// JSON Serialization
-// =============================================================================
-
-fn card_to_json(card: cards_db.Card) -> json.Json {
-  json.object([
-    #("id", json.int(card.id)),
-    #("project_id", json.int(card.project_id)),
-    #("milestone_id", option_int_json(card.milestone_id)),
-    #("title", json.string(card.title)),
-    #("description", json.string(card.description)),
-    #("color", json.string(card.color)),
-    #("state", json.string(cards_db.state_to_string(card.state))),
-    #("task_count", json.int(card.task_count)),
-    #("completed_count", json.int(card.completed_count)),
-    #("created_by", json.int(card.created_by)),
-    #("created_at", json.string(card.created_at)),
-    #("has_new_notes", json.bool(card.has_new_notes)),
-  ])
-}
-
-fn cards_to_json(cards: List(cards_db.Card)) -> json.Json {
-  json.array(cards, of: card_to_json)
-}
-
-fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.int(v)
-  }
-}
-
-fn card_metrics_json(metrics: metrics_db.CardMetrics) -> json.Json {
-  let metrics_db.CardMetrics(
-    tasks_total: tasks_total,
-    tasks_completed: tasks_completed,
-    tasks_available: tasks_available,
-    tasks_claimed: tasks_claimed,
-    tasks_ongoing: tasks_ongoing,
-    health: health,
-    workflows: workflows,
-    most_activated: most_activated,
-  ) = metrics
-
-  let metrics_db.ExecutionHealth(
-    avg_rebotes: avg_rebotes,
-    avg_pool_lifetime_s: avg_pool_lifetime_s,
-    avg_executors: avg_executors,
-  ) = health
-
-  json.object([
-    #(
-      "progress",
-      json.object([
-        #("tasks_total", json.int(tasks_total)),
-        #("tasks_completed", json.int(tasks_completed)),
-        #(
-          "tasks_percent",
-          json.int(metrics_db.percent(tasks_completed, tasks_total)),
-        ),
-      ]),
-    ),
-    #(
-      "states",
-      json.object([
-        #("available", json.int(tasks_available)),
-        #("claimed", json.int(tasks_claimed)),
-        #("ongoing", json.int(tasks_ongoing)),
-        #("completed", json.int(tasks_completed)),
-      ]),
-    ),
-    #(
-      "health",
-      json.object([
-        #("avg_rebotes", json.int(avg_rebotes)),
-        #("avg_pool_lifetime_s", json.int(avg_pool_lifetime_s)),
-        #("avg_executors", json.int(avg_executors)),
-      ]),
-    ),
-    #(
-      "workflows",
-      json.object([
-        #("items", json.array(workflows, of: workflow_count_json)),
-        #("most_activated", option_string_json(most_activated)),
-      ]),
-    ),
-  ])
-}
-
-fn workflow_count_json(value: metrics_db.WorkflowCount) -> json.Json {
-  let metrics_db.WorkflowCount(name: name, count: count) = value
-  json.object([
-    #("name", json.string(metrics_db.workflow_name_or_default(name))),
-    #("count", json.int(count)),
-  ])
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.string(v)
+    Error(error) -> card_error_response(error)
   }
 }

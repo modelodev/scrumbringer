@@ -25,6 +25,11 @@ pub type OrgRole {
   Member
 }
 
+/// Error returned when an external org role cannot be parsed.
+pub type OrgRoleParseError {
+  UnknownOrgRole(String)
+}
+
 /// Converts an org role to its string representation.
 ///
 /// ## Example
@@ -47,12 +52,12 @@ pub fn to_string(role: OrgRole) -> String {
 /// ```gleam
 /// parse("admin")   // Ok(Admin)
 /// parse("member")  // Ok(Member)
-/// parse("unknown") // Error(Nil)
+/// parse("unknown") // Error(UnknownOrgRole("unknown"))
 /// ```
-pub fn parse(value: String) -> Result(OrgRole, Nil) {
+pub fn parse(value: String) -> Result(OrgRole, OrgRoleParseError) {
   case value {
     "admin" -> Ok(Admin)
     "member" -> Ok(Member)
-    _ -> Error(Nil)
+    other -> Error(UnknownOrgRole(other))
   }
 }

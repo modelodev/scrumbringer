@@ -1,6 +1,5 @@
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/effect
 import lustre/element
 
@@ -15,13 +14,56 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/pool/task_details_dialog_config as task_details_dialog
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/ui/task_tabs
 
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
 fn test_context() -> pool_update.Context {
   pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
+}
+
+fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
+  task_details_dialog.Callbacks(
+    on_close: "close",
+    on_tab_clicked: fn(_) { "tab" },
+    on_dependency_dialog_opened: "dependency-open",
+    on_dependency_dialog_closed: "dependency-close",
+    on_dependency_add_submitted: "dependency-add",
+    on_dependency_search_changed: fn(value) { "dependency-search:" <> value },
+    on_dependency_selected: fn(_) { "dependency-selected" },
+    on_dependency_remove: fn(_) { "dependency-remove" },
+    on_edit_started: "edit-start",
+    on_edit_cancelled: "edit-cancel",
+    on_edit_title_changed: fn(value) { "title:" <> value },
+    on_edit_description_changed: fn(value) { "description:" <> value },
+    on_edit_submitted: "edit-submit",
+    on_note_dialog_opened: "note-open",
+    on_note_dialog_closed: "note-close",
+    on_note_content_changed: fn(value) { "note:" <> value },
+    on_note_submitted: "note-submit",
+    on_note_delete: fn(_) { "note-delete" },
+    on_claim: fn(_, _) { "claim" },
+    on_release: fn(_, _) { "release" },
+    on_complete: fn(_, _) { "complete" },
+  )
+}
+
+fn task_detail_view(model: client_state.Model, task_id: Int) {
+  task_details_dialog.view(
+    model.ui.locale,
+    model.member.pool,
+    model.member.dependencies,
+    model.member.notes,
+    model.core.user |> opt.map(fn(user) { user.id }),
+    [],
+    task_id,
+    task_details_callbacks(),
+  )
 }
 
 fn model_with_notes_task_id(
@@ -120,13 +162,11 @@ pub fn task_details_open_sets_default_tasks_tab_test() {
       test_context(),
     )
 
-  next.member.pool.member_task_detail_tab
-  |> should.equal(task_tabs.TasksTab)
-  next.member.pool.member_task_detail_editing |> should.equal(False)
-  next.member.pool.member_task_detail_edit_title
-  |> should.equal("Prepare release")
-  next.member.pool.member_task_detail_edit_description
-  |> should.equal("Review release checklist.")
+  let assert task_tabs.TasksTab = next.member.pool.member_task_detail_tab
+  let assert False = next.member.pool.member_task_detail_editing
+  let assert "Prepare release" = next.member.pool.member_task_detail_edit_title
+  let assert "Review release checklist." =
+    next.member.pool.member_task_detail_edit_description
 }
 
 pub fn task_details_close_resets_default_tasks_tab_test() {
@@ -150,10 +190,9 @@ pub fn task_details_close_resets_default_tasks_tab_test() {
       test_context(),
     )
 
-  next.member.pool.member_task_detail_tab
-  |> should.equal(task_tabs.TasksTab)
-  next.member.pool.member_task_detail_editing |> should.equal(False)
-  next.member.pool.member_task_detail_edit_title |> should.equal("")
+  let assert task_tabs.TasksTab = next.member.pool.member_task_detail_tab
+  let assert False = next.member.pool.member_task_detail_editing
+  let assert "" = next.member.pool.member_task_detail_edit_title
 }
 
 pub fn task_detail_edit_submit_blank_title_sets_error_test() {
@@ -194,20 +233,20 @@ pub fn task_detail_edit_submit_blank_title_sets_error_test() {
       test_context(),
     )
 
-  next.member.pool.member_task_detail_editing |> should.equal(True)
-  next.member.pool.member_task_detail_edit_error
-  |> should.equal(opt.Some("Title is required"))
+  let assert True = next.member.pool.member_task_detail_editing
+  let assert opt.Some("Title is required") =
+    next.member.pool.member_task_detail_edit_error
 }
 
 pub fn task_detail_modal_renders_edit_controls_for_owner_test() {
   let html =
     model_with_task()
     |> model_with_notes_task_id(42)
-    |> pool_dialogs.view_task_details(42)
+    |> task_detail_view(42)
     |> element.to_document_string
 
-  string.contains(html, "task-detail-edit-toggle") |> should.be_true
-  string.contains(html, "Edit task") |> should.be_true
+  assert_contains(html, "task-detail-edit-toggle")
+  assert_contains(html, "Edit task")
 }
 
 pub fn task_detail_modal_renders_edit_controls_for_unclaimed_task_test() {
@@ -224,11 +263,11 @@ pub fn task_detail_modal_renders_edit_controls_for_unclaimed_task_test() {
         ),
       )
     })
-    |> pool_dialogs.view_task_details(42)
+    |> task_detail_view(42)
     |> element.to_document_string
 
-  string.contains(html, "task-detail-edit-toggle") |> should.be_true
-  string.contains(html, "Edit task") |> should.be_true
+  assert_contains(html, "task-detail-edit-toggle")
+  assert_contains(html, "Edit task")
 }
 
 pub fn task_detail_edit_started_allows_unclaimed_task_test() {
@@ -261,5 +300,5 @@ pub fn task_detail_edit_started_allows_unclaimed_task_test() {
       test_context(),
     )
 
-  next.member.pool.member_task_detail_editing |> should.equal(True)
+  let assert True = next.member.pool.member_task_detail_editing
 }

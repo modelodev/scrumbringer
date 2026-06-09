@@ -6,16 +6,17 @@ import lustre/element.{type Element, none}
 import lustre/element/html.{button, div, h3, p, span, text}
 import lustre/event
 
-import scrumbringer_client/client_state
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/detail_metrics
 
 pub type Config(msg) {
   Config(
-    model: client_state.Model,
+    locale: Locale,
     progress: MilestoneProgress,
     tasks_in_cards: Int,
     loose_tasks: Int,
@@ -72,15 +73,15 @@ fn view_header(config: Config(msg)) -> Element(msg) {
     },
     div([attribute.class("milestone-item-stats")], [
       stat_pill(
-        config.model,
+        config.locale,
         i18n_text.MilestoneCardsCount(progress.cards_total),
       ),
       stat_pill(
-        config.model,
+        config.locale,
         i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
       ),
       stat_pill(
-        config.model,
+        config.locale,
         i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
       ),
     ]),
@@ -92,9 +93,9 @@ fn view_header(config: Config(msg)) -> Element(msg) {
   ])
 }
 
-fn stat_pill(model: client_state.Model, label: i18n_text.Text) -> Element(msg) {
+fn stat_pill(locale: Locale, label: i18n_text.Text) -> Element(msg) {
   span([attribute.class("milestone-stat-pill")], [
-    text(helpers_i18n.i18n_t(model, label)),
+    text(i18n.t(locale, label)),
   ])
 }
 
@@ -104,13 +105,13 @@ fn view_header_actions(config: Config(msg)) -> Element(msg) {
 
 fn view_summary_block(config: Config(msg)) -> Element(msg) {
   let summary_meta =
-    helpers_i18n.i18n_t(
-      config.model,
+    i18n.t(
+      config.locale,
       i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
     )
     <> " · "
-    <> helpers_i18n.i18n_t(
-      config.model,
+    <> i18n.t(
+      config.locale,
       i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
     )
 
@@ -119,18 +120,15 @@ fn view_summary_block(config: Config(msg)) -> Element(msg) {
       [
         attribute.class("milestone-summary-toggle"),
         attribute.type_("button"),
-        attribute.attribute("aria-expanded", case config.summary_expanded {
-          True -> "true"
-          False -> "false"
-        }),
+        attribute.attribute(
+          "aria-expanded",
+          attribute_value.boolean(config.summary_expanded),
+        ),
         event.on_click(config.on_summary_toggle),
       ],
       [
         span([attribute.class("milestone-subsection-title")], [
-          text(helpers_i18n.i18n_t(
-            config.model,
-            i18n_text.MilestoneStructureSummary,
-          )),
+          text(i18n.t(config.locale, i18n_text.MilestoneStructureSummary)),
         ]),
         span([attribute.class("milestone-summary-meta")], [text(summary_meta)]),
       ],
@@ -140,10 +138,7 @@ fn view_summary_block(config: Config(msg)) -> Element(msg) {
         div([attribute.class("milestone-summary-grid")], [
           div([attribute.class("milestone-summary-column")], [
             p([attribute.class("milestone-summary-heading")], [
-              text(helpers_i18n.i18n_t(
-                config.model,
-                i18n_text.MilestoneHealthSummary,
-              )),
+              text(i18n.t(config.locale, i18n_text.MilestoneHealthSummary)),
             ]),
             div(
               [
@@ -153,56 +148,41 @@ fn view_summary_block(config: Config(msg)) -> Element(msg) {
               ],
               [
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(
-                    config.model,
-                    i18n_text.MilestoneLifecycle,
-                  ),
+                  i18n.t(config.locale, i18n_text.MilestoneLifecycle),
                   config.milestone_state_label(config.progress.milestone.state),
                 ),
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(
-                    config.model,
-                    i18n_text.MilestoneCardsLabel,
-                  ),
-                  helpers_i18n.i18n_t(
-                    config.model,
+                  i18n.t(config.locale, i18n_text.MilestoneCardsLabel),
+                  i18n.t(
+                    config.locale,
                     i18n_text.MilestoneCardsCount(config.progress.cards_total),
                   ),
                 ),
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(
-                    config.model,
-                    i18n_text.MilestoneTasksLabel,
-                  ),
-                  helpers_i18n.i18n_t(
-                    config.model,
+                  i18n.t(config.locale, i18n_text.MilestoneTasksLabel),
+                  i18n.t(
+                    config.locale,
                     i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
                   ),
                 ),
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(
-                    config.model,
-                    i18n_text.MilestoneLooseTasksNotice,
-                  ),
-                  helpers_i18n.i18n_t(
-                    config.model,
+                  i18n.t(config.locale, i18n_text.MilestoneLooseTasksNotice),
+                  i18n.t(
+                    config.locale,
                     i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
                   ),
                 ),
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(config.model, i18n_text.Blocked),
-                  helpers_i18n.i18n_t(
-                    config.model,
+                  i18n.t(config.locale, i18n_text.Blocked),
+                  i18n.t(
+                    config.locale,
                     i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
                   ),
                 ),
                 detail_metrics.view_row(
-                  helpers_i18n.i18n_t(
-                    config.model,
-                    i18n_text.MilestoneEmptyCardsLabel,
-                  ),
-                  helpers_i18n.i18n_t(
-                    config.model,
+                  i18n.t(config.locale, i18n_text.MilestoneEmptyCardsLabel),
+                  i18n.t(
+                    config.locale,
                     i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
                   ),
                 ),
@@ -211,10 +191,7 @@ fn view_summary_block(config: Config(msg)) -> Element(msg) {
           ]),
           div([attribute.class("milestone-summary-column")], [
             p([attribute.class("milestone-summary-heading")], [
-              text(helpers_i18n.i18n_t(
-                config.model,
-                i18n_text.MilestoneMetricsSummary,
-              )),
+              text(i18n.t(config.locale, i18n_text.MilestoneMetricsSummary)),
             ]),
             div([attribute.class("milestone-summary-list")], [
               config.metrics_summary,

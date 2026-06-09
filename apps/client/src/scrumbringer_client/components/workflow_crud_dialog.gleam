@@ -26,13 +26,13 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, input, p, span, text}
+import lustre/element/html.{form, input, p, text}
 import lustre/event
 
-import domain/api_error.{type ApiError}
-import domain/workflow.{type Workflow, Workflow}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/workflow.{type Workflow}
+import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
@@ -47,11 +47,8 @@ import scrumbringer_client/ui/modal_header
 // =============================================================================
 
 /// Dialog mode determines which view to show.
-pub type DialogMode {
-  ModeCreate
-  ModeEdit(Workflow)
-  ModeDelete(Workflow)
-}
+pub type DialogMode =
+  crud_dialog_base.DialogLifecycle(Workflow)
 
 /// Internal component model - encapsulates all 15 workflow CRUD fields.
 pub type Model {
@@ -59,7 +56,7 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     project_id: Option(Int),
-    mode: Option(DialogMode),
+    mode: DialogMode,
     // Create dialog fields
     create_name: String,
     create_description: String,
@@ -137,37 +134,23 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
   // edit and delete modes need workflow data from property
-  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
+  crud_dialog_base.decode_create_mode(
+    value,
+    crud_dialog_base.Creating,
+    ModeReceived,
+  )
 }
 
 fn workflow_property_decoder() -> Decoder(Msg) {
-  use id <- decode.field("id", decode.int)
-  use org_id <- decode.field("org_id", decode.int)
-  use project_id <- decode.field("project_id", decode.optional(decode.int))
-  use name <- decode.field("name", decode.string)
-  use description <- decode.field("description", decode.optional(decode.string))
-  use active <- decode.field("active", decode.bool)
-  use rule_count <- decode.field("rule_count", decode.int)
-  use created_by <- decode.field("created_by", decode.int)
-  use created_at <- decode.field("created_at", decode.string)
+  use workflow <- decode.then(workflow_codec.workflow_decoder())
   use mode <- decode.field("_mode", decode.string)
-  let workflow =
-    Workflow(
-      id: id,
-      org_id: org_id,
-      project_id: project_id,
-      name: name,
-      description: description,
-      active: active,
-      rule_count: rule_count,
-      created_by: created_by,
-      created_at: created_at,
-    )
-  case mode {
-    "edit" -> decode.success(ModeReceived(ModeEdit(workflow)))
-    "delete" -> decode.success(ModeReceived(ModeDelete(workflow)))
-    _ -> decode.success(ModeReceived(ModeEdit(workflow)))
-  }
+  crud_dialog_base.decode_entity_mode(
+    mode,
+    workflow,
+    crud_dialog_base.Editing,
+    crud_dialog_base.Deleting,
+    ModeReceived,
+  )
 }
 
 // =============================================================================
@@ -182,7 +165,7 @@ fn default_model() -> Model {
   Model(
     locale: En,
     project_id: option.None,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     create_name: "",
     create_description: "",
     create_active: True,
@@ -282,10 +265,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate -> #(
+    crud_dialog_base.Closed -> #(
+      Model(..model, mode: crud_dialog_base.Closed),
+      effect.none(),
+    )
+
+    crud_dialog_base.Creating -> #(
       Model(
         ..model,
-        mode: option.Some(ModeCreate),
+        mode: crud_dialog_base.Creating,
         create_name: "",
         create_description: "",
         create_active: True,
@@ -295,12 +283,14 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeEdit(workflow) -> #(
+    crud_dialog_base.Editing(workflow) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeEdit(workflow)),
+        mode: crud_dialog_base.Editing(workflow),
         edit_name: workflow.name,
-        edit_description: option.unwrap(workflow.description, ""),
+        edit_description: crud_dialog_base.optional_text_input_value(
+          workflow.description,
+        ),
         edit_active: workflow.active,
         edit_in_flight: False,
         edit_error: option.None,
@@ -308,10 +298,10 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeDelete(workflow) -> #(
+    crud_dialog_base.Deleting(workflow) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeDelete(workflow)),
+        mode: crud_dialog_base.Deleting(workflow),
         delete_in_flight: False,
         delete_error: option.None,
       ),
@@ -321,22 +311,23 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
 }
 
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.create_in_flight {
-    True -> #(model, effect.none())
-    False -> submit_workflow_name(model)
-  }
+  crud_dialog_base.submit_if_idle(
+    model,
+    model.create_in_flight,
+    submit_workflow_name,
+  )
 }
 
 fn submit_workflow_name(model: Model) -> #(Model, Effect(Msg)) {
-  case model.create_name {
-    "" -> #(
+  case crud_dialog_base.required_text(model.create_name) {
+    Error(_) -> #(
       Model(
         ..model,
         create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
       ),
       effect.none(),
     )
-    name -> submit_workflow_with_name(model, name)
+    Ok(name) -> submit_workflow_with_name(model, name)
   }
 }
 
@@ -372,7 +363,7 @@ fn handle_create_success(
   #(
     Model(
       ..model,
-      mode: option.None,
+      mode: crud_dialog_base.Closed,
       create_name: "",
       create_description: "",
       create_active: True,
@@ -384,28 +375,25 @@ fn handle_create_success(
 }
 
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_in_flight {
-    True -> #(model, effect.none())
-    False -> submit_edit(model)
-  }
+  crud_dialog_base.submit_if_idle(model, model.edit_in_flight, submit_edit)
 }
 
 fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_name {
-    "" -> #(
+  case crud_dialog_base.required_text(model.edit_name) {
+    Error(_) -> #(
       Model(
         ..model,
         edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
       ),
       effect.none(),
     )
-    name -> submit_edit_with_name(model, name)
+    Ok(name) -> submit_edit_with_name(model, name)
   }
 }
 
 fn submit_edit_with_name(model: Model, name: String) -> #(Model, Effect(Msg)) {
   case model.mode {
-    option.Some(ModeEdit(workflow)) -> #(
+    crud_dialog_base.Editing(workflow) -> #(
       Model(..model, edit_in_flight: True, edit_error: option.None),
       api_workflows.update_workflow(
         workflow.id,
@@ -426,24 +414,23 @@ fn handle_edit_success(
   #(reset_edit_fields(model), emit_workflow_updated(workflow))
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.delete_in_flight {
-    True -> #(model, effect.none())
-    False ->
-      case model.mode {
-        option.Some(ModeDelete(workflow)) -> #(
-          Model(..model, delete_in_flight: True, delete_error: option.None),
-          api_workflows.delete_workflow(workflow.id, DeleteResult),
-        )
-        _ -> #(model, effect.none())
-      }
+  crud_dialog_base.submit_if_idle(model, model.delete_in_flight, submit_delete)
+}
+
+fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    crud_dialog_base.Deleting(workflow) -> #(
+      Model(..model, delete_in_flight: True, delete_error: option.None),
+      api_workflows.delete_workflow(workflow.id, DeleteResult),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
 fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
   let workflow_id = case model.mode {
-    option.Some(ModeDelete(workflow)) -> workflow.id
+    crud_dialog_base.Deleting(workflow) -> workflow.id
     _ -> 0
   }
   #(reset_delete_fields(model), emit_workflow_deleted(workflow_id))
@@ -463,7 +450,7 @@ fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
 fn reset_edit_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     edit_name: "",
     edit_description: "",
     edit_active: True,
@@ -475,7 +462,7 @@ fn reset_edit_fields(model: Model) -> Model {
 fn reset_delete_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     delete_in_flight: False,
     delete_error: option.None,
   )
@@ -557,239 +544,197 @@ fn append_fields(
 
 fn view(model: Model) -> Element(Msg) {
   case model.mode {
-    option.None -> element.none()
-    option.Some(ModeCreate) -> view_create_dialog(model)
-    option.Some(ModeEdit(_workflow)) -> view_edit_dialog(model)
-    option.Some(ModeDelete(workflow)) -> view_delete_dialog(model, workflow)
+    crud_dialog_base.Closed -> element.none()
+    crud_dialog_base.Creating -> view_create_dialog(model)
+    crud_dialog_base.Editing(_workflow) -> view_edit_dialog(model)
+    crud_dialog_base.Deleting(workflow) -> view_delete_dialog(model, workflow)
+  }
+}
+
+fn view_workflow_fields(
+  model: Model,
+  name: String,
+  description: String,
+  active: Bool,
+  on_name_changed: fn(String) -> Msg,
+  on_description_changed: fn(String) -> Msg,
+  on_active_toggled: Msg,
+  name_aria_label: Option(String),
+  description_aria_label: Option(String),
+) -> List(Element(Msg)) {
+  [
+    form_field.view(
+      t(model.locale, i18n_text.WorkflowName),
+      input(
+        [
+          attribute.type_("text"),
+          attribute.value(name),
+          event.on_input(on_name_changed),
+          attribute.required(True),
+        ]
+        |> maybe_add_aria_label(name_aria_label),
+      ),
+    ),
+    form_field.view(
+      t(model.locale, i18n_text.WorkflowDescription),
+      input(
+        [
+          attribute.type_("text"),
+          attribute.value(description),
+          event.on_input(on_description_changed),
+        ]
+        |> maybe_add_aria_label(description_aria_label),
+      ),
+    ),
+    form_field.view_checkbox(
+      t(model.locale, i18n_text.WorkflowActive),
+      input([
+        attribute.type_("checkbox"),
+        attribute.checked(active),
+        event.on_check(fn(_) { on_active_toggled }),
+      ]),
+    ),
+  ]
+}
+
+fn maybe_add_aria_label(
+  attrs: List(attribute.Attribute(Msg)),
+  label: Option(String),
+) -> List(attribute.Attribute(Msg)) {
+  case label {
+    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
+    option.None -> attrs
   }
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-md"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.CreateWorkflow),
-          text("\u{2699}"),
-          CloseRequested,
-        ),
-        // Error
-        view_error(model.create_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { CreateSubmitted }),
-              attribute.id("workflow-create-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.WorkflowName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_name),
-                  event.on_input(CreateNameChanged),
-                  attribute.required(True),
-                  attribute.attribute("aria-label", "Workflow name"),
-                ]),
-              ),
-              // Description field
-              form_field.view(
-                t(model.locale, i18n_text.WorkflowDescription),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_description),
-                  event.on_input(CreateDescriptionChanged),
-                  attribute.attribute("aria-label", "Workflow description"),
-                ]),
-              ),
-              // Active checkbox
-              form_field.view_checkbox(
-                t(model.locale, i18n_text.WorkflowActive),
-                input([
-                  attribute.type_("checkbox"),
-                  attribute.checked(model.create_active),
-                  event.on_check(fn(_) { CreateActiveToggled }),
-                ]),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, CloseRequested),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("workflow-create-form"),
-              attribute.disabled(model.create_in_flight),
-              attribute.class(case model.create_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.create_in_flight {
-                True -> t(model.locale, i18n_text.Creating)
-                False -> t(model.locale, i18n_text.Create)
-              }),
-            ],
-          ),
-        ]),
-      ],
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-md",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.CreateWorkflow),
+      text("\u{2699}"),
+      CloseRequested,
     ),
-  ])
+    model.create_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { CreateSubmitted }),
+          attribute.id("workflow-create-form"),
+        ],
+        view_workflow_fields(
+          model,
+          model.create_name,
+          model.create_description,
+          model.create_active,
+          CreateNameChanged,
+          CreateDescriptionChanged,
+          CreateActiveToggled,
+          option.Some("Workflow name"),
+          option.Some("Workflow description"),
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, CloseRequested),
+      crud_dialog_base.view_submit_button(
+        "workflow-create-form",
+        model.create_in_flight,
+        t(model.locale, i18n_text.Create),
+        t(model.locale, i18n_text.Creating),
+      ),
+    ],
+  )
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-md"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.EditWorkflow),
-          text("\u{270F}"),
-          EditCancelled,
-        ),
-        // Error
-        view_error(model.edit_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { EditSubmitted }),
-              attribute.id("workflow-edit-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.WorkflowName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_name),
-                  event.on_input(EditNameChanged),
-                  attribute.required(True),
-                ]),
-              ),
-              // Description field
-              form_field.view(
-                t(model.locale, i18n_text.WorkflowDescription),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_description),
-                  event.on_input(EditDescriptionChanged),
-                ]),
-              ),
-              // Active checkbox
-              form_field.view_checkbox(
-                t(model.locale, i18n_text.WorkflowActive),
-                input([
-                  attribute.type_("checkbox"),
-                  attribute.checked(model.edit_active),
-                  event.on_check(fn(_) { EditActiveToggled }),
-                ]),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, EditCancelled),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("workflow-edit-form"),
-              attribute.disabled(model.edit_in_flight),
-              attribute.class(case model.edit_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.edit_in_flight {
-                True -> t(model.locale, i18n_text.Working)
-                False -> t(model.locale, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ],
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-md",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.EditWorkflow),
+      text("\u{270F}"),
+      EditCancelled,
     ),
-  ])
+    model.edit_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { EditSubmitted }),
+          attribute.id("workflow-edit-form"),
+        ],
+        view_workflow_fields(
+          model,
+          model.edit_name,
+          model.edit_description,
+          model.edit_active,
+          EditNameChanged,
+          EditDescriptionChanged,
+          EditActiveToggled,
+          option.None,
+          option.None,
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, EditCancelled),
+      crud_dialog_base.view_submit_button(
+        "workflow-edit-form",
+        model.edit_in_flight,
+        t(model.locale, i18n_text.Save),
+        t(model.locale, i18n_text.Working),
+      ),
+    ],
+  )
 }
 
 fn view_delete_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-sm"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.DeleteWorkflow),
-          text("\u{1F5D1}"),
-          DeleteCancelled,
-        ),
-        // Error
-        view_error(model.delete_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          p([], [
-            text(t(model.locale, i18n_text.WorkflowDeleteConfirm(workflow.name))),
-          ]),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, DeleteCancelled),
-          button(
-            [
-              event.on_click(DeleteConfirmed),
-              attribute.disabled(model.delete_in_flight),
-              attribute.class("btn-danger"),
-            ],
-            [
-              text(case model.delete_in_flight {
-                True -> t(model.locale, i18n_text.Removing)
-                False -> t(model.locale, i18n_text.DeleteWorkflow)
-              }),
-            ],
-          ),
-        ]),
-      ],
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-sm",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.DeleteWorkflow),
+      text("\u{1F5D1}"),
+      DeleteCancelled,
     ),
-  ])
+    model.delete_error,
+    [
+      p([], [
+        text(t(model.locale, i18n_text.WorkflowDeleteConfirm(workflow.name))),
+      ]),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
+      crud_dialog_base.view_danger_button(
+        DeleteConfirmed,
+        model.delete_in_flight,
+        t(model.locale, i18n_text.DeleteWorkflow),
+        t(model.locale, i18n_text.Removing),
+      ),
+    ],
+  )
 }
 
-fn view_error(error: Option(String)) -> Element(Msg) {
-  case error {
-    option.Some(msg) ->
-      div([attribute.class("dialog-error")], [
-        span([], [text("\u{26A0}")]),
-        text(" " <> msg),
-      ])
-    option.None -> element.none()
-  }
+pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
+  let model =
+    Model(..default_model(), locale: locale, mode: crud_dialog_base.Creating)
+  view_create_dialog(model)
 }
 
-fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button([attribute.type_("button"), event.on_click(on_click_msg)], [
-    text(t(locale, i18n_text.Cancel)),
-  ])
+pub fn view_edit_dialog_for_test(
+  locale: Locale,
+  workflow: Workflow,
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Editing(workflow),
+      edit_name: workflow.name,
+      edit_description: crud_dialog_base.optional_text_input_value(
+        workflow.description,
+      ),
+      edit_active: workflow.active,
+    )
+  view_edit_dialog(model)
 }
 
 // =============================================================================

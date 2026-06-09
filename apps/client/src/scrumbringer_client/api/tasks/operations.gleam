@@ -12,7 +12,7 @@
 ////
 //// ## Relations
 ////
-//// - **decoders.gleam**: Provides task decoder
+//// - **domain/task/codec.gleam**: Provides task decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -24,11 +24,12 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/metrics.{type TaskModalMetrics, TaskModalMetrics}
 import domain/task.{type Task, type TaskFilters, TaskFilters}
+import domain/task/codec as decoders
 import domain/task_status
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 import scrumbringer_client/client_ffi
 
 // =============================================================================
@@ -99,10 +100,7 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     blocked: blocked,
   ) = filters
 
-  let status_param = case status {
-    option.None -> option.None
-    option.Some(value) -> option.Some(task_status.task_status_to_string(value))
-  }
+  let status_param = option.map(status, task_status.task_status_to_string)
 
   let params =
     ""
@@ -123,14 +121,14 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
 pub fn list_project_tasks(
   project_id: Int,
   filters: TaskFilters,
-  to_msg: fn(core.ApiResult(List(Task))) -> msg,
+  to_msg: fn(ApiResult(List(Task))) -> msg,
 ) -> Effect(msg) {
   let url = project_tasks_url(project_id, filters)
 
   let decoder =
     decode.field("tasks", decode.list(decoders.task_decoder()), decode.success)
 
-  core.request("GET", url, option.None, decoder, to_msg)
+  core.request(core.Get, url, option.None, decoder, to_msg)
 }
 
 /// Create a new task in a project.
@@ -140,7 +138,7 @@ pub fn create_task(
   description: option.Option(String),
   priority: Int,
   type_id: Int,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   create_task_with_card(
     project_id,
@@ -163,7 +161,7 @@ pub fn create_task_with_card(
   type_id: Int,
   card_id: option.Option(Int),
   milestone_id: option.Option(Int),
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let entries = [
     #("title", json.string(title)),
@@ -191,7 +189,7 @@ pub fn create_task_with_card(
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     option.Some(body),
     decoder,
@@ -207,12 +205,12 @@ pub fn create_task_with_card(
 pub fn claim_task(
   task_id: Int,
   version: Int,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("version", json.int(version))])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     option.Some(body),
     decoder,
@@ -224,12 +222,12 @@ pub fn claim_task(
 pub fn release_task(
   task_id: Int,
   version: Int,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("version", json.int(version))])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     option.Some(body),
     decoder,
@@ -241,12 +239,12 @@ pub fn release_task(
 pub fn complete_task(
   task_id: Int,
   version: Int,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("version", json.int(version))])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
     option.Some(body),
     decoder,
@@ -255,13 +253,10 @@ pub fn complete_task(
 }
 
 /// Get a single task by ID.
-pub fn get_task(
-  task_id: Int,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
-) -> Effect(msg) {
+pub fn get_task(task_id: Int, to_msg: fn(ApiResult(Task)) -> msg) -> Effect(msg) {
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/tasks/" <> int.to_string(task_id),
     option.None,
     decoder,
@@ -272,10 +267,10 @@ pub fn get_task(
 /// Get modal metrics payload for a task.
 pub fn get_task_metrics(
   task_id: Int,
-  to_msg: fn(core.ApiResult(TaskModalMetrics)) -> msg,
+  to_msg: fn(ApiResult(TaskModalMetrics)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
     option.None,
     decode.field("metrics", task_metrics_decoder(), decode.success),
@@ -289,7 +284,7 @@ pub fn update_task(
   version: Int,
   title: String,
   description: String,
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([
@@ -299,7 +294,7 @@ pub fn update_task(
     ])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/tasks/" <> int.to_string(task_id),
     option.Some(body),
     decoder,
@@ -311,7 +306,7 @@ pub fn update_task(
 pub fn update_task_milestone(
   task_id: Int,
   milestone_id: option.Option(Int),
-  to_msg: fn(core.ApiResult(Task)) -> msg,
+  to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let fields = case milestone_id {
     option.Some(id) -> [#("milestone_id", json.int(id))]
@@ -320,7 +315,7 @@ pub fn update_task_milestone(
   let body = json.object(fields)
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/tasks/" <> int.to_string(task_id),
     option.Some(body),
     decoder,

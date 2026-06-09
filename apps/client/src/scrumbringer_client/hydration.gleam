@@ -169,7 +169,6 @@ fn plan_admin(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn plan_admin_authed(
   snap: Snapshot,
   section: AdminSection,

@@ -5,11 +5,10 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -35,14 +34,14 @@ pub fn org_users_requires_admin_or_project_admin_test() {
     |> request.set_cookie("sb_session", member_session)
 
   let member_res = handler(member_req)
-  member_res.status |> should.equal(403)
+  expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/users")
     |> request.set_cookie("sb_session", admin_session)
 
   let admin_res = handler(admin_req)
-  admin_res.status |> should.equal(200)
+  expect.expect_status(admin_res, 200)
 }
 
 pub fn org_users_sorted_search_and_empty_test() {
@@ -62,9 +61,9 @@ pub fn org_users_sorted_search_and_empty_test() {
       |> request.set_cookie("sb_session", session),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
   decode_user_emails(simulate.read_body(res))
-  |> should.equal(["aaa@example.com", "admin@example.com", "z@example.com"])
+  |> expect.equal(["aaa@example.com", "admin@example.com", "z@example.com"])
 
   let search_res =
     handler(
@@ -72,9 +71,9 @@ pub fn org_users_sorted_search_and_empty_test() {
       |> request.set_cookie("sb_session", session),
     )
 
-  search_res.status |> should.equal(200)
+  expect.expect_status(search_res, 200)
   decode_user_emails(simulate.read_body(search_res))
-  |> should.equal(["z@example.com"])
+  |> expect.equal(["z@example.com"])
 
   let empty_res =
     handler(
@@ -82,8 +81,8 @@ pub fn org_users_sorted_search_and_empty_test() {
       |> request.set_cookie("sb_session", session),
     )
 
-  empty_res.status |> should.equal(200)
-  decode_user_emails(simulate.read_body(empty_res)) |> should.equal([])
+  expect.expect_status(empty_res, 200)
+  decode_user_emails(simulate.read_body(empty_res)) |> expect.equal([])
 
   let empty_q_res =
     handler(
@@ -91,9 +90,9 @@ pub fn org_users_sorted_search_and_empty_test() {
       |> request.set_cookie("sb_session", session),
     )
 
-  empty_q_res.status |> should.equal(200)
+  expect.expect_status(empty_q_res, 200)
   decode_user_emails(simulate.read_body(empty_q_res))
-  |> should.equal(["aaa@example.com", "admin@example.com", "z@example.com"])
+  |> expect.equal(["aaa@example.com", "admin@example.com", "z@example.com"])
 }
 
 pub fn org_users_allows_project_admin_and_scopes_org_test() {
@@ -121,9 +120,9 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
       |> request.set_cookie("sb_session", user2_session),
     )
 
-  user2_res.status |> should.equal(200)
+  expect.expect_status(user2_res, 200)
   decode_user_emails(simulate.read_body(user2_res))
-  |> should.equal(["a@org2.com", "b@org2.com"])
+  |> expect.equal(["a@org2.com", "b@org2.com"])
 
   let admin_login_res =
     login_as(handler, "admin@example.com", "passwordpassword")
@@ -135,9 +134,9 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
       |> request.set_cookie("sb_session", admin_session),
     )
 
-  admin_res.status |> should.equal(200)
+  expect.expect_status(admin_res, 200)
   decode_user_emails(simulate.read_body(admin_res))
-  |> should.equal(["admin@example.com"])
+  |> expect.equal(["admin@example.com"])
 }
 
 pub fn patch_org_user_role_requires_org_admin_test() {
@@ -174,7 +173,7 @@ pub fn patch_org_user_role_requires_org_admin_test() {
     |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
 
   let member_res = handler(member_req)
-  member_res.status |> should.equal(403)
+  expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(
@@ -187,7 +186,7 @@ pub fn patch_org_user_role_requires_org_admin_test() {
     |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
 
   let admin_res = handler(admin_req)
-  admin_res.status |> should.equal(200)
+  expect.expect_status(admin_res, 200)
 }
 
 pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
@@ -206,9 +205,9 @@ pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
     |> simulate.json_body(json.object([#("org_role", json.string("member"))]))
 
   let res = handler(req)
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_LAST_ORG_ADMIN")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn delete_org_user_requires_admin_test() {
@@ -242,7 +241,7 @@ pub fn delete_org_user_requires_admin_test() {
     |> request.set_header("X-CSRF", member_csrf)
 
   let member_res = handler(member_req)
-  member_res.status |> should.equal(403)
+  expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(
@@ -254,7 +253,7 @@ pub fn delete_org_user_requires_admin_test() {
     |> request.set_header("X-CSRF", admin_csrf)
 
   let admin_res = handler(admin_req)
-  admin_res.status |> should.equal(204)
+  expect.expect_status(admin_res, 204)
 }
 
 pub fn delete_org_user_removes_from_listing_test() {
@@ -283,7 +282,7 @@ pub fn delete_org_user_removes_from_listing_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let delete_res = handler(delete_req)
-  delete_res.status |> should.equal(204)
+  expect.expect_status(delete_res, 204)
 
   let list_res =
     handler(
@@ -291,10 +290,10 @@ pub fn delete_org_user_removes_from_listing_test() {
       |> request.set_cookie("sb_session", session),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_user_emails(simulate.read_body(list_res))
   |> list.contains(member_email)
-  |> should.be_false
+  |> expect.is_false
 }
 
 pub fn delete_org_user_rejects_self_delete_test() {
@@ -312,9 +311,9 @@ pub fn delete_org_user_rejects_self_delete_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_SELF_DELETE")
-  |> should.be_true
+  |> expect.is_true
 }
 
 // =============================================================================
@@ -363,11 +362,11 @@ pub fn add_user_to_project_with_role_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify role in response
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"role\":\"manager\"") |> expect.is_true
 }
 
 /// AC13: POST defaults to member if role not provided
@@ -411,11 +410,11 @@ pub fn add_user_to_project_defaults_to_member_test() {
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify role defaults to member
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"member\"") |> should.be_true
+  string.contains(body, "\"role\":\"member\"") |> expect.is_true
 }
 
 /// AC14: PATCH changes user's role in a project
@@ -459,12 +458,12 @@ pub fn update_user_project_role_test() {
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify role change in response
   let body = simulate.read_body(res)
-  string.contains(body, "\"role\":\"manager\"") |> should.be_true
-  string.contains(body, "\"previous_role\":\"member\"") |> should.be_true
+  string.contains(body, "\"role\":\"manager\"") |> expect.is_true
+  string.contains(body, "\"previous_role\":\"member\"") |> expect.is_true
 }
 
 /// AC15: PATCH returns 422 when trying to demote last manager
@@ -495,11 +494,11 @@ pub fn update_user_project_role_last_manager_test() {
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
 
   // Verify error message
   let body = simulate.read_body(res)
-  string.contains(body, "LAST_MANAGER") |> should.be_true
+  string.contains(body, "LAST_MANAGER") |> expect.is_true
 }
 
 /// AC14: PATCH returns 404 when user is not a member
@@ -548,11 +547,11 @@ pub fn update_user_project_role_not_member_test() {
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
-  res.status |> should.equal(404)
+  expect.expect_status(res, 404)
 
   // Verify error message
   let body = simulate.read_body(res)
-  string.contains(body, "NOT_FOUND") |> should.be_true
+  string.contains(body, "NOT_FOUND") |> expect.is_true
 }
 
 fn decode_user_emails(body: String) -> List(String) {
@@ -596,7 +595,7 @@ fn create_user_via_invite(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn insert_invite_link_active(
@@ -703,7 +702,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
       ),
     )
 
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -741,11 +740,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -753,7 +751,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

@@ -19,14 +19,11 @@
 ////
 //// ## Relations
 ////
-//// - **client_state.gleam**: Provides Model, Msg types
-//// - **client_update.gleam**: Delegates LocaleSelected message here
+//// - **client_update.gleam**: Applies the returned locale to the root model
 //// - **i18n/locale.gleam**: Provides locale serialization and persistence
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/client_state.{type Model, type Msg, update_ui}
-import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/i18n/msg as i18n_messages
 import scrumbringer_client/i18n/locale as i18n_locale
 
@@ -36,27 +33,34 @@ import scrumbringer_client/i18n/locale as i18n_locale
 
 /// Handle locale selection from dropdown.
 ///
-/// Deserializes the locale value, updates model if changed,
-/// and persists the preference to local storage.
-pub fn handle_locale_selected(
-  model: Model,
+/// Parses the locale value, returns the next locale if changed, and persists the
+/// preference to local storage.
+pub fn update_locale(
+  current: i18n_locale.Locale,
   value: String,
-) -> #(Model, Effect(Msg)) {
-  let next_locale = i18n_locale.deserialize(value)
+) -> #(i18n_locale.Locale, Effect(parent_msg)) {
+  case i18n_locale.parse(value) {
+    Ok(next_locale) -> {
+      case next_locale == current {
+        True -> #(current, effect.none())
 
-  case next_locale == model.ui.locale {
-    True -> #(model, effect.none())
+        False -> #(
+          next_locale,
+          effect.from(fn(_dispatch) { i18n_locale.save(next_locale) }),
+        )
+      }
+    }
 
-    False -> #(
-      update_ui(model, fn(ui) { ui_state.UiModel(..ui, locale: next_locale) }),
-      effect.from(fn(_dispatch) { i18n_locale.save(next_locale) }),
-    )
+    Error(_) -> #(current, effect.none())
   }
 }
 
-/// Updates the model for a message.
-pub fn update(model: Model, msg: i18n_messages.Msg) -> #(Model, Effect(Msg)) {
+/// Updates the locale preference for a message.
+pub fn update(
+  current: i18n_locale.Locale,
+  msg: i18n_messages.Msg,
+) -> #(i18n_locale.Locale, Effect(parent_msg)) {
   case msg {
-    i18n_messages.LocaleSelected(value) -> handle_locale_selected(model, value)
+    i18n_messages.LocaleSelected(value) -> update_locale(current, value)
   }
 }

@@ -28,6 +28,11 @@ pub type ProjectRole {
   Member
 }
 
+/// Error returned when an external project role cannot be parsed.
+pub type ProjectRoleParseError {
+  UnknownProjectRole(String)
+}
+
 /// Converts a project role to its string representation.
 ///
 /// ## Example
@@ -50,13 +55,13 @@ pub fn to_string(role: ProjectRole) -> String {
 /// ```gleam
 /// parse("manager") // Ok(Manager)
 /// parse("member")  // Ok(Member)
-/// parse("admin")   // Error(Nil)
+/// parse("admin")   // Error(UnknownProjectRole("admin"))
 /// ```
-pub fn parse(value: String) -> Result(ProjectRole, Nil) {
+pub fn parse(value: String) -> Result(ProjectRole, ProjectRoleParseError) {
   case value {
     "manager" -> Ok(Manager)
     "member" -> Ok(Member)
-    _ -> Error(Nil)
+    other -> Error(UnknownProjectRole(other))
   }
 }
 

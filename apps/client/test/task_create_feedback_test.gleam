@@ -1,17 +1,16 @@
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
+import lustre/effect
 import lustre/element
 
+import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
-
-import scrumbringer_client/client_state
-import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/ui as ui_state
-import scrumbringer_client/features/tasks/update as tasks_update
+import scrumbringer_client/capability_scope.{AllCapabilities}
+import scrumbringer_client/features/pool/available_tasks
+import scrumbringer_client/features/pool/task_created_feedback
+import scrumbringer_client/features/pool/task_created_update
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/toast
 
@@ -43,44 +42,26 @@ fn make_task(id: Int, title: String, type_id: Int) -> Task {
 }
 
 pub fn created_task_visible_feedback_uses_view_action_test() {
-  let model = client_state.default_model()
   let task = make_task(42, "Implement toast", 1)
 
   let #(message, variant, action) =
-    tasks_update.task_created_feedback_for_test(model, task)
+    task_created_feedback.view(config(locale.En, None), task)
 
-  message |> should.equal("Task created")
-  variant |> should.equal(toast.Success)
-  action
-  |> should.equal(toast.ToastAction(label: "View", kind: toast.ViewTask(42)))
+  let assert "Task created" = message
+  let assert toast.Success = variant
+  let assert toast.ToastAction(label: "View", kind: toast.ViewTask(42)) = action
 }
 
 pub fn created_task_hidden_feedback_uses_clear_filters_action_test() {
-  let model =
-    client_state.default_model()
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(..pool, member_filters_type_id: Some(99)),
-      )
-    })
-    |> client_state.update_ui(fn(ui) {
-      ui_state.UiModel(..ui, locale: locale.Es)
-    })
-
   let task = make_task(7, "Tarea visible", 1)
 
   let #(message, variant, action) =
-    tasks_update.task_created_feedback_for_test(model, task)
+    task_created_feedback.view(config(locale.Es, Some(99)), task)
 
-  message |> should.equal("Tarea creada, pero no visible por filtros actuales")
-  variant |> should.equal(toast.Info)
-  action
-  |> should.equal(toast.ToastAction(
-    label: "Limpiar",
-    kind: toast.ClearPoolFilters,
-  ))
+  let assert "Tarea creada, pero no visible por filtros actuales" = message
+  let assert toast.Info = variant
+  let assert toast.ToastAction(label: "Limpiar", kind: toast.ClearPoolFilters) =
+    action
 }
 
 pub fn toast_view_container_renders_action_button_and_aria_live_test() {
@@ -97,7 +78,41 @@ pub fn toast_view_container_renders_action_button_and_aria_live_test() {
     toast.view_container(state, fn(_) { 0 }, fn(_) { 1 })
     |> element.to_document_string
 
-  string.contains(html, "toast-action") |> should.be_true
-  string.contains(html, "aria-live=\"polite\"") |> should.be_true
-  string.contains(html, ">View<") |> should.be_true
+  let assert True = string.contains(html, "toast-action")
+  let assert True = string.contains(html, "aria-live=\"polite\"")
+  let assert True = string.contains(html, ">View<")
+}
+
+pub fn post_create_effects_emit_feedback_timeout_and_toast_test() {
+  let task = make_task(42, "Implement toast", 1)
+
+  let fx = task_created_update.effects(config(locale.En, None), task, context())
+
+  let assert False = fx == effect.none()
+}
+
+fn config(locale, type_filter) -> task_created_feedback.Config {
+  task_created_feedback.Config(
+    locale: locale,
+    status_filter: None,
+    work_filters: available_tasks.Config(
+      tasks: Loaded([]),
+      task_types: Loaded([]),
+      my_capability_ids: Loaded([]),
+      type_filter: type_filter,
+      capability_filter: None,
+      search_query: "",
+      capability_scope: AllCapabilities,
+    ),
+  )
+}
+
+fn context() -> task_created_update.Context(Int) {
+  task_created_update.Context(
+    on_task_created_feedback: fn(task_id) { task_id },
+    on_highlight_expired: fn(task_id) { task_id },
+    on_toast: fn(_message, _variant, _action) {
+      effect.from(fn(_dispatch) { Nil })
+    },
+  )
 }

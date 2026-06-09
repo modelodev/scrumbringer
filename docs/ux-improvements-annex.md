@@ -12,7 +12,7 @@ Se completó el plan de mejoras UX al 100%, incluyendo la corrección de un bug 
 
 **Problema:** El mensaje "Error En curso: Failed to decode response" aparecía en la sección My Bar, rompiendo la confianza del usuario.
 
-**Causa raíz:** El cliente usaba la API legacy `/api/v1/me/active-task` que espera `ActiveTaskPayload`, pero el servidor redirigía a los handlers de work sessions que devuelven `WorkSessionsPayload`.
+**Causa raíz:** El cliente usaba la API legacy `/api/v1/me/active-task`, pero el servidor redirigía a los handlers de work sessions que devuelven `WorkSessionsPayload`.
 
 **Solución implementada:**
 1. Actualizado `client_update.gleam` para usar `get_work_sessions(MemberWorkSessionsFetched)` en lugar de `get_me_active_task(MemberActiveTaskFetched)`
@@ -31,14 +31,14 @@ Se completó el plan de mejoras UX al 100%, incluyendo la corrección de un bug 
 
 **Problema:** Al hacer clic en "Empezar" en una tarea reclamada, aparecía el error de decode.
 
-**Causa:** `handle_start_clicked`, `handle_pause_clicked` y `handle_ticked` usaban la API legacy que esperaba `ActiveTaskPayload`.
+**Causa:** `handle_start_clicked`, `handle_pause_clicked` y `handle_ticked` usaban la API legacy de tarea activa individual en vez del contrato multi-session.
 
 **Solución:**
 1. Actualizado `handle_start_clicked` para usar `start_work_session(task_id, MemberWorkSessionStarted)`
 2. Actualizado `handle_pause_clicked` para usar `pause_work_session(task_id, MemberWorkSessionPaused)`
 3. Actualizado `handle_ticked` para usar `heartbeat_work_session(task_id, MemberWorkSessionHeartbeated)`
 4. Añadido helper `get_first_active_session_task_id` para obtener task_id de work sessions
-5. Actualizado `now_working_active_task` en update_helpers para leer de `member_work_sessions`
+5. Actualizado el acceso a la sesión activa para leer de `member_work_sessions`
 
 ## Mejoras UI Adicionales
 

@@ -17,6 +17,7 @@
 //// - **auth_logic.gleam**: Error types
 
 import domain/org_role
+import domain/project_role
 import gleam/option.{type Option, Some}
 import gleam/result
 import pog
@@ -95,14 +96,19 @@ fn bootstrap_register(
     )
 
     use user_row <- result.try(
-      queries.insert_user(tx, email, password_hash, org_id, "admin")
+      queries.insert_user(tx, email, password_hash, org_id, org_role.Admin)
       |> result.map_error(queries.map_user_insert_error),
     )
 
     let #(user_id, created_at) = user_row
 
     use _ <- result.try(
-      queries.insert_project_member(tx, project_id, user_id, "manager")
+      queries.insert_project_member(
+        tx,
+        project_id,
+        user_id,
+        project_role.Manager,
+      )
       |> result.map_error(auth_logic.DbError),
     )
 
@@ -122,7 +128,6 @@ fn bootstrap_register(
 // Invite Registration
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 /// Register user via invite token.
 fn invite_register(
   db: pog.Connection,
@@ -153,7 +158,7 @@ fn invite_register(
 
       org_invite_links_db.TokenActive(org_id: org_id, email: email) -> {
         use user_row <- result.try(
-          queries.insert_user(tx, email, password_hash, org_id, "member")
+          queries.insert_user(tx, email, password_hash, org_id, org_role.Member)
           |> result.map_error(queries.map_user_insert_error),
         )
 

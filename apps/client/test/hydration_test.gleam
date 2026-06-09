@@ -1,5 +1,4 @@
 import gleam/option.{type Option, None, Some}
-import gleeunit/should
 
 import domain/org_role
 import scrumbringer_client/hydration
@@ -7,6 +6,10 @@ import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
+
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
 
 pub fn admin_members_unknown_auth_requires_fetch_me_test() {
   let snap =
@@ -32,8 +35,10 @@ pub fn admin_members_unknown_auth_requires_fetch_me_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Config(permissions.Members, Some(2)), snap)
-  |> should.equal([hydration.FetchMe])
+  assert_equal(
+    hydration.plan(router.Config(permissions.Members, Some(2)), snap),
+    [hydration.FetchMe],
+  )
 }
 
 pub fn admin_members_authed_admin_plans_projects_then_members_test() {
@@ -60,14 +65,16 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Config(permissions.Members, Some(2)), snap)
-  |> should.equal([
-    hydration.FetchProjects,
-    hydration.FetchInviteLinks,
-    hydration.FetchCapabilities,
-    hydration.FetchMeMetrics,
-    hydration.FetchWorkSessions,
-  ])
+  assert_equal(
+    hydration.plan(router.Config(permissions.Members, Some(2)), snap),
+    [
+      hydration.FetchProjects,
+      hydration.FetchInviteLinks,
+      hydration.FetchCapabilities,
+      hydration.FetchMeMetrics,
+      hydration.FetchWorkSessions,
+    ],
+  )
 
   let snap_with_projects =
     hydration.Snapshot(
@@ -92,15 +99,17 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(
-    router.Config(permissions.Members, Some(2)),
-    snap_with_projects,
+  assert_equal(
+    hydration.plan(
+      router.Config(permissions.Members, Some(2)),
+      snap_with_projects,
+    ),
+    [
+      hydration.FetchMeMetrics,
+      hydration.FetchWorkSessions,
+      hydration.FetchMembers(project_id: 2),
+    ],
   )
-  |> should.equal([
-    hydration.FetchMeMetrics,
-    hydration.FetchWorkSessions,
-    hydration.FetchMembers(project_id: 2),
-  ])
 }
 
 pub fn admin_route_non_admin_redirects_to_member_pool_test() {
@@ -127,8 +136,7 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Org(permissions.Invites), snap)
-  |> should.equal([
+  assert_equal(hydration.plan(router.Org(permissions.Invites), snap), [
     hydration.Redirect(to: member_route(None)),
   ])
 }
@@ -159,8 +167,10 @@ pub fn admin_members_project_manager_not_loaded_fetches_projects_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Config(permissions.Members, Some(8)), snap)
-  |> should.equal([hydration.FetchProjects])
+  assert_equal(
+    hydration.plan(router.Config(permissions.Members, Some(8)), snap),
+    [hydration.FetchProjects],
+  )
 }
 
 pub fn admin_members_project_manager_loaded_grants_access_test() {
@@ -190,13 +200,15 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
     )
 
   // Should NOT redirect - should fetch members instead
-  hydration.plan(router.Config(permissions.Members, Some(8)), snap)
-  |> should.equal([
-    hydration.FetchCapabilities,
-    hydration.FetchMeMetrics,
-    hydration.FetchWorkSessions,
-    hydration.FetchMembers(project_id: 8),
-  ])
+  assert_equal(
+    hydration.plan(router.Config(permissions.Members, Some(8)), snap),
+    [
+      hydration.FetchCapabilities,
+      hydration.FetchMeMetrics,
+      hydration.FetchWorkSessions,
+      hydration.FetchMembers(project_id: 8),
+    ],
+  )
 }
 
 pub fn admin_org_level_section_pm_redirects_test() {
@@ -226,8 +238,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
     )
 
   // Should redirect because Invites is org-level
-  hydration.plan(router.Org(permissions.Invites), snap)
-  |> should.equal([
+  assert_equal(hydration.plan(router.Org(permissions.Invites), snap), [
     hydration.Redirect(to: member_route(None)),
   ])
 }
@@ -257,8 +268,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(member_route(Some(2)), snap)
-  |> should.equal([
+  assert_equal(hydration.plan(member_route(Some(2)), snap), [
     hydration.FetchWorkSessions,
     hydration.FetchMeMetrics,
     hydration.RefreshMember,
@@ -289,8 +299,9 @@ pub fn member_pool_refreshes_when_cards_missing_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(member_route(Some(2)), snap)
-  |> should.equal([hydration.RefreshMember])
+  assert_equal(hydration.plan(member_route(Some(2)), snap), [
+    hydration.RefreshMember,
+  ])
 }
 
 fn member_route(project_id: Option(Int)) -> router.Route {

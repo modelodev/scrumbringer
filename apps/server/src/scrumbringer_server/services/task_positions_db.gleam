@@ -6,9 +6,8 @@
 import gleam/list
 import gleam/result
 import pog
-import scrumbringer_server/services/service_error.{
-  type ServiceError, DbError, Unexpected,
-}
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/service_error.{type ServiceError, DbError}
 import scrumbringer_server/sql
 
 /// A task's position on a user's board view.
@@ -29,12 +28,11 @@ pub fn list_positions_for_user(
   db: pog.Connection,
   user_id: Int,
   project_id: Int,
-) -> Result(List(TaskPosition), pog.QueryError) {
-  use returned <- result.try(sql.task_positions_list_for_user(
-    db,
-    user_id,
-    project_id,
-  ))
+) -> Result(List(TaskPosition), ServiceError) {
+  use returned <- result.try(
+    sql.task_positions_list_for_user(db, user_id, project_id)
+    |> result.map_error(DbError),
+  )
 
   returned.rows
   |> list.map(position_from_list_row)
@@ -58,28 +56,37 @@ pub fn upsert_position(
   y: Int,
 ) -> Result(TaskPosition, ServiceError) {
   case sql.task_positions_upsert(db, task_id, user_id, x, y) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(position_from_upsert_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "task_positions.upsert_position",
+      ))
+      Ok(position_from_upsert_row(row))
+    }
     Error(e) -> Error(DbError(e))
   }
 }
 
 fn position_from_list_row(row: sql.TaskPositionsListForUserRow) -> TaskPosition {
-  TaskPosition(
-    task_id: row.task_id,
-    user_id: row.user_id,
-    x: row.x,
-    y: row.y,
-    updated_at: row.updated_at,
-  )
+  position_from_fields(row.task_id, row.user_id, row.x, row.y, row.updated_at)
 }
 
 fn position_from_upsert_row(row: sql.TaskPositionsUpsertRow) -> TaskPosition {
+  position_from_fields(row.task_id, row.user_id, row.x, row.y, row.updated_at)
+}
+
+fn position_from_fields(
+  task_id: Int,
+  user_id: Int,
+  x: Int,
+  y: Int,
+  updated_at: String,
+) -> TaskPosition {
   TaskPosition(
-    task_id: row.task_id,
-    user_id: row.user_id,
-    x: row.x,
-    y: row.y,
-    updated_at: row.updated_at,
+    task_id: task_id,
+    user_id: user_id,
+    x: x,
+    y: y,
+    updated_at: updated_at,
   )
 }

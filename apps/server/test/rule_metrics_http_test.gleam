@@ -3,18 +3,17 @@
 //// Validates metrics aggregation, date filtering, drill-down to executions,
 //// and authorization for admin-only access.
 
+import domain/task_status
 import fixtures
-import gleam/dynamic/decode
 import gleam/http
 import gleam/int
-import gleam/json
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 // =============================================================================
@@ -38,17 +37,17 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
       workflow_id,
       Some(type_id),
       "Test Rule",
-      "completed",
+      task_status.Completed,
     )
 
   let res = get_workflow_metrics(handler, session, workflow_id)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_workflow_id(body) |> should.equal(workflow_id)
-  let _ = decode_totals_evaluated(body) |> should.equal(0)
-  let _ = decode_totals_applied(body) |> should.equal(0)
-  let _ = decode_totals_suppressed(body) |> should.equal(0)
+  expect.expect_json_field_int(body, ["data", "workflow_id"], workflow_id)
+  expect.expect_json_field_int(body, ["data", "totals", "evaluated_count"], 0)
+  expect.expect_json_field_int(body, ["data", "totals", "applied_count"], 0)
+  expect.expect_json_field_int(body, ["data", "totals", "suppressed_count"], 0)
 
   Nil
 }
@@ -71,7 +70,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
       workflow_id,
       Some(type_id),
       "Counts Rule",
-      "completed",
+      task_status.Completed,
     )
 
   let ts = execution_time()
@@ -111,12 +110,12 @@ pub fn rule_metrics_returns_correct_counts_test() {
       "2025-11-15T00:00:00Z",
       "2026-01-30T23:59:59Z",
     )
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_data_int(body, "evaluated_count") |> should.equal(4)
-  let _ = decode_data_int(body, "applied_count") |> should.equal(2)
-  let _ = decode_data_int(body, "suppressed_count") |> should.equal(2)
+  expect.expect_json_field_int(body, ["data", "evaluated_count"], 4)
+  expect.expect_json_field_int(body, ["data", "applied_count"], 2)
+  expect.expect_json_field_int(body, ["data", "suppressed_count"], 2)
 
   Nil
 }
@@ -139,7 +138,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       workflow_id,
       Some(type_id),
       "Breakdown Rule",
-      "completed",
+      task_status.Completed,
     )
 
   let ts = execution_time()
@@ -218,13 +217,29 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       "2025-11-15T00:00:00Z",
       "2026-01-30T23:59:59Z",
     )
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_breakdown_field(body, "idempotent") |> should.equal(3)
-  let _ = decode_breakdown_field(body, "not_user_triggered") |> should.equal(1)
-  let _ = decode_breakdown_field(body, "not_matching") |> should.equal(1)
-  let _ = decode_breakdown_field(body, "inactive") |> should.equal(1)
+  expect.expect_json_field_int(
+    body,
+    ["data", "suppression_breakdown", "idempotent"],
+    3,
+  )
+  expect.expect_json_field_int(
+    body,
+    ["data", "suppression_breakdown", "not_user_triggered"],
+    1,
+  )
+  expect.expect_json_field_int(
+    body,
+    ["data", "suppression_breakdown", "not_matching"],
+    1,
+  )
+  expect.expect_json_field_int(
+    body,
+    ["data", "suppression_breakdown", "inactive"],
+    1,
+  )
 
   Nil
 }
@@ -252,7 +267,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 1",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(rule2_id) =
     fixtures.create_rule(
@@ -261,7 +276,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 2",
-      "completed",
+      task_status.Completed,
     )
 
   let ts = execution_time()
@@ -314,12 +329,12 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       "2025-11-15T00:00:00Z",
       "2026-01-30T23:59:59Z",
     )
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_totals_evaluated(body) |> should.equal(6)
-  let _ = decode_totals_applied(body) |> should.equal(3)
-  let _ = decode_totals_suppressed(body) |> should.equal(3)
+  expect.expect_json_field_int(body, ["data", "totals", "evaluated_count"], 6)
+  expect.expect_json_field_int(body, ["data", "totals", "applied_count"], 3)
+  expect.expect_json_field_int(body, ["data", "totals", "suppressed_count"], 3)
 
   Nil
 }
@@ -351,7 +366,7 @@ pub fn executions_list_returns_paginated_results_test() {
       workflow_id,
       Some(type_id),
       "Executions Rule",
-      "completed",
+      task_status.Completed,
     )
 
   let ts = execution_time()
@@ -394,12 +409,12 @@ pub fn executions_list_returns_paginated_results_test() {
       "2025-11-15T00:00:00Z",
       "2026-01-30T23:59:59Z",
     )
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_pagination_total(body) |> should.equal(5)
-  let _ = decode_pagination_limit(body) |> should.equal(2)
-  let _ = decode_pagination_offset(body) |> should.equal(0)
+  expect.expect_json_field_int(body, ["data", "pagination", "total"], 5)
+  expect.expect_json_field_int(body, ["data", "pagination", "limit"], 2)
+  expect.expect_json_field_int(body, ["data", "pagination", "offset"], 0)
 
   Nil
 }
@@ -421,14 +436,14 @@ pub fn executions_list_empty_returns_empty_array_test() {
       workflow_id,
       Some(type_id),
       "Empty Rule",
-      "completed",
+      task_status.Completed,
     )
 
   let res = get_rule_executions(handler, session, rule_id, None, None)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let _ = decode_pagination_total(body) |> should.equal(0)
+  expect.expect_json_field_int(body, ["data", "pagination", "total"], 0)
 
   Nil
 }
@@ -454,7 +469,102 @@ pub fn date_range_exceeds_90_days_returns_error_test() {
       "2026-04-15T00:00:00Z",
     )
 
-  res.status |> should.equal(400)
+  expect.expect_status(res, 400)
+
+  Nil
+}
+
+pub fn invalid_from_date_returns_validation_error_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "InvalidFromDateTest")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Invalid From")
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/workflows/"
+          <> int.to_string(workflow_id)
+          <> "/metrics?from=not-a-date",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 422)
+  let assert True = string.contains(simulate.read_body(res), "Invalid from")
+
+  Nil
+}
+
+pub fn invalid_execution_limit_returns_validation_error_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "InvalidLimitTest")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Invalid Limit")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      workflow_id,
+      Some(type_id),
+      "Invalid Limit Rule",
+      task_status.Completed,
+    )
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/rules/" <> int.to_string(rule_id) <> "/executions?limit=101",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 422)
+  let assert True = string.contains(simulate.read_body(res), "Invalid limit")
+
+  Nil
+}
+
+pub fn duplicate_execution_offset_returns_validation_error_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "DuplicateOffsetTest")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Duplicate Offset")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      workflow_id,
+      Some(type_id),
+      "Duplicate Offset Rule",
+      task_status.Completed,
+    )
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/rules/"
+          <> int.to_string(rule_id)
+          <> "/executions?offset=0&offset=1",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 422)
+  let assert True = string.contains(simulate.read_body(res), "Invalid offset")
 
   Nil
 }
@@ -486,7 +596,7 @@ pub fn member_cannot_access_workflow_metrics_test() {
     fixtures.add_member(handler, session, project_id, member_id, "member")
 
   let res = get_workflow_metrics(handler, member_session, workflow_id)
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
 
   Nil
 }
@@ -495,7 +605,7 @@ pub fn org_admin_can_access_org_metrics_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
   let res = get_org_metrics(handler, session)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   Nil
 }
@@ -649,164 +759,4 @@ fn insert_execution(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "insert_execution failed: " <> string.inspect(e) })
-}
-
-// =============================================================================
-// Response Decoders
-// =============================================================================
-
-fn decode_workflow_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use workflow_id <- decode.field("workflow_id", decode.int)
-      decode.success(workflow_id)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(workflow_id) = decode.run(dynamic, response_decoder)
-  workflow_id
-}
-
-fn decode_totals_evaluated(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use totals <- decode.field("totals", {
-        use evaluated_count <- decode.field("evaluated_count", decode.int)
-        decode.success(evaluated_count)
-      })
-      decode.success(totals)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(evaluated_count) = decode.run(dynamic, response_decoder)
-  evaluated_count
-}
-
-fn decode_totals_applied(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use totals <- decode.field("totals", {
-        use applied_count <- decode.field("applied_count", decode.int)
-        decode.success(applied_count)
-      })
-      decode.success(totals)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(applied_count) = decode.run(dynamic, response_decoder)
-  applied_count
-}
-
-fn decode_totals_suppressed(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use totals <- decode.field("totals", {
-        use suppressed_count <- decode.field("suppressed_count", decode.int)
-        decode.success(suppressed_count)
-      })
-      decode.success(totals)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(suppressed_count) = decode.run(dynamic, response_decoder)
-  suppressed_count
-}
-
-fn decode_data_int(body: String, field: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use value <- decode.field(field, decode.int)
-      decode.success(value)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(value) = decode.run(dynamic, response_decoder)
-  value
-}
-
-fn decode_breakdown_field(body: String, field: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use breakdown <- decode.field("suppression_breakdown", {
-        use value <- decode.field(field, decode.int)
-        decode.success(value)
-      })
-      decode.success(breakdown)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(value) = decode.run(dynamic, response_decoder)
-  value
-}
-
-fn decode_pagination_total(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use pagination <- decode.field("pagination", {
-        use total <- decode.field("total", decode.int)
-        decode.success(total)
-      })
-      decode.success(pagination)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(total) = decode.run(dynamic, response_decoder)
-  total
-}
-
-fn decode_pagination_limit(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use pagination <- decode.field("pagination", {
-        use limit <- decode.field("limit", decode.int)
-        decode.success(limit)
-      })
-      decode.success(pagination)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(limit) = decode.run(dynamic, response_decoder)
-  limit
-}
-
-fn decode_pagination_offset(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let response_decoder = {
-    use data <- decode.field("data", {
-      use pagination <- decode.field("pagination", {
-        use offset <- decode.field("offset", decode.int)
-        decode.success(offset)
-      })
-      decode.success(pagination)
-    })
-    decode.success(data)
-  }
-
-  let assert Ok(offset) = decode.run(dynamic, response_decoder)
-  offset
 }

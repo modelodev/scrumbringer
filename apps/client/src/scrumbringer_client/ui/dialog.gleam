@@ -21,12 +21,13 @@
 ////     // form fields...
 ////   ],
 ////   [
-////     dialog.cancel_button(model, CapabilityCreateDialogClosed),
-////     dialog.submit_button(model, is_loading, False, Create, Creating),
+////     dialog.cancel_button_with_locale(locale, CapabilityCreateDialogClosed),
+////     dialog.submit_button_with_locale(locale, is_loading, False, Create, Creating),
 ////   ],
 //// )
 //// ```
 
+import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
@@ -34,8 +35,8 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h3, span, text}
 import lustre/event
 
-import scrumbringer_client/client_state.{type Model, type Msg}
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/modal_close_button
 
@@ -67,12 +68,12 @@ pub type DialogConfig(msg) {
 
 /// Render a dialog when open.
 pub fn view(
-  config: DialogConfig(Msg),
+  config: DialogConfig(msg),
   is_open: Bool,
   error: Option(String),
-  content: List(Element(Msg)),
-  footer: List(Element(Msg)),
-) -> Element(Msg) {
+  content: List(Element(msg)),
+  footer: List(Element(msg)),
+) -> Element(msg) {
   case is_open {
     False -> element.none()
     True -> view_dialog(config, error, content, footer)
@@ -80,11 +81,11 @@ pub fn view(
 }
 
 fn view_dialog(
-  config: DialogConfig(Msg),
+  config: DialogConfig(msg),
   error: Option(String),
-  content: List(Element(Msg)),
-  footer: List(Element(Msg)),
-) -> Element(Msg) {
+  content: List(Element(msg)),
+  footer: List(Element(msg)),
+) -> Element(msg) {
   let size_class = size_to_class(config.size)
 
   div([attribute.class("dialog-overlay")], [
@@ -109,7 +110,7 @@ fn view_dialog(
   ])
 }
 
-fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
+fn view_header(config: DialogConfig(msg)) -> Element(msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       case config.icon {
@@ -122,7 +123,7 @@ fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
   ])
 }
 
-fn view_error(error: Option(String)) -> Element(Msg) {
+fn view_error(error: Option(String)) -> Element(msg) {
   case error {
     Some(msg) ->
       div(
@@ -153,46 +154,68 @@ fn size_to_class(size: DialogSize) -> String {
 // Button Helpers
 // =============================================================================
 
-/// Create a cancel button for dialog footer.
-pub fn cancel_button(model: Model, on_click: Msg) -> Element(Msg) {
+/// Create a cancel button for dialog footer using an explicit locale.
+pub fn cancel_button_with_locale(locale: Locale, on_click: msg) -> Element(msg) {
   button([attribute.type_("button"), event.on_click(on_click)], [
-    text(helpers_i18n.i18n_t(model, i18n_text.Cancel)),
+    text(i18n.t(locale, i18n_text.Cancel)),
   ])
 }
 
-/// Create a submit button for dialog footer.
-pub fn submit_button(
-  model: Model,
+/// Create a submit button for dialog footer using an explicit locale.
+pub fn submit_button_with_locale(
+  locale: Locale,
   is_loading: Bool,
   is_disabled: Bool,
   label: i18n_text.Text,
   loading_label: i18n_text.Text,
-) -> Element(Msg) {
+) -> Element(msg) {
+  submit_button_with_locale_attrs(
+    locale,
+    [],
+    is_loading,
+    is_disabled,
+    label,
+    loading_label,
+  )
+}
+
+/// Create a submit button with explicit locale and additional attributes.
+pub fn submit_button_with_locale_attrs(
+  locale: Locale,
+  extra_attrs: List(attribute.Attribute(msg)),
+  is_loading: Bool,
+  is_disabled: Bool,
+  label: i18n_text.Text,
+  loading_label: i18n_text.Text,
+) -> Element(msg) {
   button(
-    [
-      attribute.type_("submit"),
-      attribute.disabled(is_loading || is_disabled),
-      attribute.class(case is_loading {
-        True -> "btn-loading"
-        False -> ""
-      }),
-    ],
+    list.append(
+      [
+        attribute.type_("submit"),
+        attribute.disabled(is_loading || is_disabled),
+        attribute.class(case is_loading {
+          True -> "btn-loading"
+          False -> ""
+        }),
+      ],
+      extra_attrs,
+    ),
     [
       text(case is_loading {
-        True -> helpers_i18n.i18n_t(model, loading_label)
-        False -> helpers_i18n.i18n_t(model, label)
+        True -> i18n.t(locale, loading_label)
+        False -> i18n.t(locale, label)
       }),
     ],
   )
 }
 
-/// Create an add button that opens a dialog.
-pub fn add_button(
-  model: Model,
+/// Create an add button that opens a dialog using an explicit locale.
+pub fn add_button_with_locale(
+  locale: Locale,
   label: i18n_text.Text,
-  on_click: Msg,
-) -> Element(Msg) {
+  on_click: msg,
+) -> Element(msg) {
   button([attribute.class("btn-add"), event.on_click(on_click)], [
-    text(helpers_i18n.i18n_t(model, label)),
+    text(i18n.t(locale, label)),
   ])
 }

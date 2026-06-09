@@ -10,13 +10,24 @@ import domain/task_status
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/capability_board/view as capability_board
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
+
+fn assert_true(value: Bool) {
+  let assert True = value
+}
 
 fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int) {
   capability_board.Config(
@@ -57,7 +68,7 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
         milestone_id: None,
         title: "Sprint",
         description: "",
-        color: Some("blue"),
+        color: Some(card.Blue),
         state: EnCurso,
         task_count: 3,
         completed_count: 0,
@@ -113,7 +124,7 @@ fn task_with(
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -172,25 +183,25 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  string.contains(html, "Backend") |> should.be_true
-  string.contains(html, "Frontend") |> should.be_true
-  string.contains(html, "No capability") |> should.be_true
-  appears_before(html, ">Backend<", ">Frontend<") |> should.be_true
-  appears_before(html, ">Frontend<", ">No capability<") |> should.be_true
-  string.contains(html, "data-column-state=\"pending\"") |> should.be_true
-  string.contains(html, "data-column-state=\"claimed\"") |> should.be_true
-  string.contains(html, "data-column-state=\"ongoing\"") |> should.be_true
-  string.contains(html, ">Pending<") |> should.be_true
-  string.contains(html, ">Claimed<") |> should.be_true
-  string.contains(html, ">Now Working<") |> should.be_true
-  string.contains(html, "Frontend polish") |> should.be_true
-  string.contains(html, "Frontend takeover") |> should.be_true
-  string.contains(html, "Backend API") |> should.be_true
-  string.contains(html, "Docs refresh") |> should.be_true
-  string.contains(html, "Completed task") |> should.be_false
-  string.contains(html, "task-item card-border-blue") |> should.be_true
-  string.contains(html, "task-claim-btn") |> should.be_true
-  string.contains(html, "Claimed by admin@example.com") |> should.be_true
+  assert_contains(html, "Backend")
+  assert_contains(html, "Frontend")
+  assert_contains(html, "No capability")
+  assert_true(appears_before(html, ">Backend<", ">Frontend<"))
+  assert_true(appears_before(html, ">Frontend<", ">No capability<"))
+  assert_contains(html, "data-column-state=\"pending\"")
+  assert_contains(html, "data-column-state=\"claimed\"")
+  assert_contains(html, "data-column-state=\"ongoing\"")
+  assert_contains(html, ">Pending<")
+  assert_contains(html, ">Claimed<")
+  assert_contains(html, ">Now Working<")
+  assert_contains(html, "Frontend polish")
+  assert_contains(html, "Frontend takeover")
+  assert_contains(html, "Backend API")
+  assert_contains(html, "Docs refresh")
+  assert_not_contains(html, "Completed task")
+  assert_contains(html, "task-item card-border-blue")
+  assert_contains(html, "task-claim-btn")
+  assert_contains(html, "Claimed by admin@example.com")
 }
 
 pub fn capability_board_keeps_empty_columns_visible_test() {
@@ -199,8 +210,8 @@ pub fn capability_board_keeps_empty_columns_visible_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  string.contains(html, "No claimed tasks") |> should.be_true
-  string.contains(html, "No ongoing tasks") |> should.be_true
+  assert_contains(html, "No claimed tasks")
+  assert_contains(html, "No ongoing tasks")
 }
 
 pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
@@ -218,10 +229,10 @@ pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  string.contains(html, "Backend API") |> should.be_true
-  string.contains(html, "Frontend polish") |> should.be_false
-  string.contains(html, "Docs refresh") |> should.be_false
-  string.contains(html, "No capability") |> should.be_false
+  assert_contains(html, "Backend API")
+  assert_not_contains(html, "Frontend polish")
+  assert_not_contains(html, "Docs refresh")
+  assert_not_contains(html, "No capability")
 }
 
 pub fn capability_board_shows_no_results_after_filters_test() {
@@ -237,7 +248,7 @@ pub fn capability_board_shows_no_results_after_filters_test() {
     html,
     "No active tasks grouped by capability match the current filters",
   )
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn capability_board_shows_loading_state_test() {
@@ -246,7 +257,7 @@ pub fn capability_board_shows_loading_state_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  string.contains(html, "Loading capabilities...") |> should.be_true
+  assert_contains(html, "Loading capabilities...")
 }
 
 pub fn capability_board_shows_error_state_test() {
@@ -262,5 +273,5 @@ pub fn capability_board_shows_error_state_test() {
     |> element.to_document_string
 
   string.contains(html, "Could not load the capability board: server exploded")
-  |> should.be_true
+  |> assert_true
 }

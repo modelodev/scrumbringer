@@ -4,7 +4,7 @@ import gleam/option.{type Option}
 import gleam/set
 
 import domain/remote.{type Remote, NotAsked}
-import domain/workflow.{type Rule, type RuleTemplate}
+import domain/workflow.{type Rule}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_state/types as state_types
 
@@ -14,10 +14,6 @@ pub type Model {
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
     rules_dialog_mode: Option(state_types.RuleDialogMode),
-    rules_templates: Remote(List(RuleTemplate)),
-    rules_attach_template_id: Option(Int),
-    rules_attach_in_flight: Bool,
-    rules_attach_error: Option(String),
     rules_expanded: set.Set(Int),
     attach_template_modal: Option(Int),
     attach_template_selected: Option(Int),
@@ -33,10 +29,6 @@ pub fn default_model() -> Model {
     rules_workflow_id: option.None,
     rules: NotAsked,
     rules_dialog_mode: option.None,
-    rules_templates: NotAsked,
-    rules_attach_template_id: option.None,
-    rules_attach_in_flight: False,
-    rules_attach_error: option.None,
     rules_expanded: set.new(),
     attach_template_modal: option.None,
     attach_template_selected: option.None,

@@ -23,7 +23,8 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
+import domain/api_error.{type ApiResult}
+import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
 
 // Import types from shared domain
@@ -32,6 +33,7 @@ import domain/capability/codec as capability_codec
 import domain/org.{type InviteLink, type OrgInvite, type OrgUser}
 import domain/org/codec as org_codec
 import domain/org_role
+import domain/project_role.{type ProjectRole}
 
 /// Decoder for invite link wrapped in envelope.
 pub fn invite_link_payload_decoder() -> decode.Decoder(InviteLink) {
@@ -69,7 +71,7 @@ pub fn list_org_users(
       decode.list(org_codec.org_user_decoder()),
       decode.success,
     )
-  core.request("GET", url, option.None, decoder, to_msg)
+  core.request(core.Get, url, option.None, decoder, to_msg)
 }
 
 /// Update an organization user's role.
@@ -84,7 +86,7 @@ pub fn update_org_user_role(
     decode.field("user", org_codec.org_user_decoder(), decode.success)
 
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/org/users/" <> int.to_string(user_id),
     option.Some(body),
     decoder,
@@ -98,7 +100,7 @@ pub fn delete_org_user(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/org/users/" <> int.to_string(user_id),
     option.None,
     to_msg,
@@ -124,7 +126,7 @@ pub fn list_user_projects(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
     option.None,
     decoder,
@@ -136,13 +138,13 @@ pub fn list_user_projects(
 pub fn add_user_to_project(
   user_id: Int,
   project_id: Int,
-  role: String,
+  role: ProjectRole,
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([
       #("project_id", json.int(project_id)),
-      #("role", json.string(role)),
+      #("role", json.string(project_role.to_string(role))),
     ])
   let decoder =
     decode.field(
@@ -151,7 +153,7 @@ pub fn add_user_to_project(
       decode.success,
     )
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
     option.Some(body),
     decoder,
@@ -163,10 +165,10 @@ pub fn add_user_to_project(
 pub fn update_user_project_role(
   user_id: Int,
   project_id: Int,
-  role: String,
+  role: ProjectRole,
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("role", json.string(role))])
+  let body = json.object([#("role", json.string(project_role.to_string(role)))])
   let decoder =
     decode.field(
       "project",
@@ -174,7 +176,7 @@ pub fn update_user_project_role(
       decode.success,
     )
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/org/users/"
       <> int.to_string(user_id)
       <> "/projects/"
@@ -192,7 +194,7 @@ pub fn remove_user_from_project(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/org/users/"
       <> int.to_string(user_id)
       <> "/projects/"
@@ -218,7 +220,7 @@ pub fn list_project_capabilities(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
     option.None,
     decoder,
@@ -240,7 +242,7 @@ pub fn create_project_capability(
       decode.success,
     )
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
     option.Some(body),
     decoder,
@@ -256,7 +258,7 @@ pub fn delete_project_capability(
 ) -> Effect(msg) {
   let decoder = decode.field("id", decode.int, decode.success)
   core.request(
-    "DELETE",
+    core.Delete,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/capabilities/"
@@ -285,7 +287,7 @@ pub fn create_invite(
   let decoder =
     decode.field("invite", org_codec.invite_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/org/invites",
     option.Some(body),
     decoder,
@@ -298,7 +300,7 @@ pub fn list_invite_links(
   to_msg: fn(ApiResult(List(InviteLink))) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/invite-links",
     option.None,
     invite_links_payload_decoder(),
@@ -313,7 +315,7 @@ pub fn create_invite_link(
 ) -> Effect(msg) {
   let body = json.object([#("email", json.string(string.trim(email)))])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/org/invite-links",
     option.Some(body),
     invite_link_payload_decoder(),
@@ -328,7 +330,7 @@ pub fn regenerate_invite_link(
 ) -> Effect(msg) {
   let body = json.object([#("email", json.string(string.trim(email)))])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/org/invite-links/regenerate",
     option.Some(body),
     invite_link_payload_decoder(),

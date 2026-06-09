@@ -1,6 +1,5 @@
 import domain/remote.{Loading, NotAsked}
 import gleam/option as opt
-import gleeunit/should
 import lustre/effect
 
 import scrumbringer_client/client_state
@@ -40,10 +39,9 @@ pub fn member_refresh_fichas_fetches_cards_test() {
   let #(next, fx) =
     client_update.update(model, client_state.ProjectSelected("2"))
 
-  next.member.pool.member_cards |> should.equal(Loading)
-  normalized_store.pending(next.member.pool.member_cards_store)
-  |> should.equal(1)
-  fx |> should.not_equal(effect.none())
+  let assert Loading = next.member.pool.member_cards
+  let assert 1 = normalized_store.pending(next.member.pool.member_cards_store)
+  let assert False = fx == effect.none()
 }
 
 pub fn member_refresh_skills_fetches_capabilities_test() {
@@ -66,8 +64,8 @@ pub fn member_refresh_skills_fetches_capabilities_test() {
   let #(next, fx) =
     client_update.update(model, client_state.ProjectSelected("2"))
 
-  next.member.skills.member_capabilities |> should.equal(Loading)
-  fx |> should.not_equal(effect.none())
+  let assert Loading = next.member.skills.member_capabilities
+  let assert False = fx == effect.none()
 }
 
 pub fn member_refresh_pool_fetches_org_users_cache_for_people_labels_test() {
@@ -87,5 +85,5 @@ pub fn member_refresh_pool_fetches_org_users_cache_for_people_labels_test() {
   let #(next, _fx) =
     client_update.update(model, client_state.ProjectSelected("2"))
 
-  next.admin.members.org_users_cache |> should.equal(Loading)
+  let assert Loading = next.admin.members.org_users_cache
 }

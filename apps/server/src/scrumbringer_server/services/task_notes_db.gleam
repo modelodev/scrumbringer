@@ -6,9 +6,8 @@
 import gleam/list
 import gleam/result
 import pog
-import scrumbringer_server/services/service_error.{
-  type ServiceError, DbError, Unexpected,
-}
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/service_error.{type ServiceError, DbError}
 import scrumbringer_server/sql
 
 /// A note attached to a task.
@@ -34,8 +33,11 @@ pub type TaskNote {
 pub fn list_notes_for_task(
   db: pog.Connection,
   task_id: Int,
-) -> Result(List(TaskNote), pog.QueryError) {
-  use returned <- result.try(sql.task_notes_list(db, task_id))
+) -> Result(List(TaskNote), ServiceError) {
+  use returned <- result.try(
+    sql.task_notes_list(db, task_id)
+    |> result.map_error(DbError),
+  )
 
   returned.rows
   |> list.map(note_from_list_row)
@@ -59,28 +61,49 @@ pub fn create_note(
   content: String,
 ) -> Result(TaskNote, ServiceError) {
   case sql.task_notes_create(db, task_id, user_id, content) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "task_notes.create_note",
+      ))
+      Ok(note_from_create_row(row))
+    }
     Error(e) -> Error(DbError(e))
   }
 }
 
 fn note_from_list_row(row: sql.TaskNotesListRow) -> TaskNote {
-  TaskNote(
-    id: row.id,
-    task_id: row.task_id,
-    user_id: row.user_id,
-    content: row.content,
-    created_at: row.created_at,
+  note_from_fields(
+    row.id,
+    row.task_id,
+    row.user_id,
+    row.content,
+    row.created_at,
   )
 }
 
 fn note_from_create_row(row: sql.TaskNotesCreateRow) -> TaskNote {
+  note_from_fields(
+    row.id,
+    row.task_id,
+    row.user_id,
+    row.content,
+    row.created_at,
+  )
+}
+
+fn note_from_fields(
+  id: Int,
+  task_id: Int,
+  user_id: Int,
+  content: String,
+  created_at: String,
+) -> TaskNote {
   TaskNote(
-    id: row.id,
-    task_id: row.task_id,
-    user_id: row.user_id,
-    content: row.content,
-    created_at: row.created_at,
+    id: id,
+    task_id: task_id,
+    user_id: user_id,
+    content: content,
+    created_at: created_at,
   )
 }

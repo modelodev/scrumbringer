@@ -17,6 +17,7 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
+import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
@@ -87,7 +88,7 @@ fn view_title(config: Config(msg)) -> Element(msg) {
   let title_children =
     card_title_meta.elements(
       text(config.card.title),
-      config.card.color,
+      option.map(config.card.color, color_picker.css_var),
       option.None,
       config.card.has_new_notes,
       i18n.t(config.locale, i18n_text.NewNotesTooltip),
@@ -254,7 +255,17 @@ fn compact_claimed_name(config: Config(msg), task: Task) -> String {
 
 fn comfortable_claimed_name(config: Config(msg), task: Task) -> String {
   claimed_email(config, task)
-  |> option.unwrap(i18n.t(config.locale, i18n_text.UnknownUser))
+  |> claimed_email_or_unknown(config)
+}
+
+fn claimed_email_or_unknown(
+  email: option.Option(String),
+  config: Config(msg),
+) -> String {
+  case email {
+    option.None -> i18n.t(config.locale, i18n_text.UnknownUser)
+    option.Some(value) -> value
+  }
 }
 
 fn claimed_email(config: Config(msg), task: Task) -> option.Option(String) {

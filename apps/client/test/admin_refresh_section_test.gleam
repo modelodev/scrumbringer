@@ -2,7 +2,6 @@
 
 import domain/remote.{Loading}
 import gleam/option as opt
-import gleeunit/should
 import lustre/effect
 import scrumbringer_client/client_state.{
   type Model, Admin, CoreModel, update_core,
@@ -29,7 +28,7 @@ pub fn refresh_section_fetches_workflows_test() {
   let #(next, effects) = client_update.refresh_section_for_test(model)
 
   // Workflows are now project-scoped only
-  next.admin.workflows.workflows_project |> should.equal(Loading)
+  let assert Loading = next.admin.workflows.workflows_project
 
-  effects |> should.not_equal(effect.none())
+  let assert False = effects == effect.none()
 }

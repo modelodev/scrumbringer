@@ -14,29 +14,50 @@ import lustre/event
 import domain/metrics.{type OrgMetricsUserOverview, OrgMetricsUserOverview}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
-import domain/project_role.{Manager, Member, to_string}
+import domain/project_role.{type ProjectRole, Manager, Member, to_string}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
-import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/features/admin/member_role as project_member_role
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
-import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    assignments: state_types.AssignmentsModel,
+    all_projects: Remote(List(Project)),
+    metrics: Remote(List(OrgMetricsUserOverview)),
+    on_user_toggled: fn(Int) -> msg,
+    on_inline_add_started: fn(state_types.AssignmentsAddContext) -> msg,
+    on_role_changed: fn(Int, Int, ProjectRole) -> msg,
+    on_remove_confirmed: msg,
+    on_remove_cancelled: msg,
+    on_remove_clicked: fn(Int, Int) -> msg,
+    on_inline_add_selection_changed: fn(String) -> msg,
+    on_inline_add_role_changed: fn(ProjectRole) -> msg,
+    on_inline_add_cancelled: msg,
+    on_inline_add_submitted: msg,
+    noop: msg,
+  )
+}
+
 pub fn view_rows(
-  model: client_state.Model,
+  config: Config(msg),
   user: OrgUser,
   projects_state: Remote(List(Project)),
   expanded: Bool,
-) -> List(element.Element(client_state.Msg)) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let assignments = model.admin.assignments
+) -> List(element.Element(msg)) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  let assignments = config.assignments
 
   let projects = case projects_state {
     Loaded(projects_list) -> projects_list
@@ -63,7 +84,7 @@ pub fn view_rows(
     _ -> list.length(projects)
   }
   let projects_label = t(i18n_text.AssignmentsProjectsCount(projects_count))
-  let metrics_summary = view_user_metrics_summary(model, user.id)
+  let metrics_summary = view_user_metrics_summary(config, user.id)
 
   let is_inline_add = case assignments.inline_add_context {
     opt.Some(state_types.AddProjectToUser(id)) -> id == user.id
@@ -103,24 +124,22 @@ pub fn view_rows(
             False ->
               div([attribute.class("assignments-rows")], [
                 list.map(projects_list, fn(project) {
-                  view_project_row(model, user.id, project, inline_confirm)
+                  view_project_row(config, user.id, project, inline_confirm)
                 })
                 |> element.fragment,
               ])
           }
       },
       case is_inline_add {
-        True -> view_inline_add(model, user.id, projects)
+        True -> view_inline_add(config, projects)
         False ->
           button(
             [
               attribute.class("btn-sm btn-secondary"),
               event.on_click(
-                client_state.admin_msg(
-                  admin_messages.AssignmentsInlineAddStarted(
-                    state_types.AddProjectToUser(user.id),
-                  ),
-                ),
+                config.on_inline_add_started(state_types.AddProjectToUser(
+                  user.id,
+                )),
               ),
             ],
             [text(t(i18n_text.UserProjectsAdd))],
@@ -136,12 +155,11 @@ pub fn view_rows(
             [
               attribute.class("btn-expand"),
               attribute.attribute("aria-label", toggle_label),
-              attribute.attribute("aria-expanded", bool_to_string(is_expanded)),
-              event.on_click(
-                client_state.admin_msg(admin_messages.AssignmentsUserToggled(
-                  user.id,
-                )),
+              attribute.attribute(
+                "aria-expanded",
+                attribute_value.boolean(is_expanded),
               ),
+              event.on_click(config.on_user_toggled(user.id)),
             ],
             [expand_toggle.view(is_expanded)],
           ),
@@ -171,21 +189,14 @@ pub fn view_rows(
   [summary_row, ..expansion_rows]
 }
 
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
-}
-
 fn view_user_metrics_summary(
-  model: client_state.Model,
+  config: Config(msg),
   user_id: Int,
-) -> opt.Option(element.Element(client_state.Msg)) {
-  case model.admin.metrics.admin_metrics_users {
+) -> opt.Option(element.Element(msg)) {
+  case config.metrics {
     Loaded(users) ->
       case list.find(users, fn(user) { user.user_id == user_id }) {
-        Ok(metrics) -> opt.Some(user_metrics_view(model, metrics))
+        Ok(metrics) -> opt.Some(user_metrics_view(config.locale, metrics))
         Error(_) -> opt.None
       }
     _ -> opt.None
@@ -193,10 +204,10 @@ fn view_user_metrics_summary(
 }
 
 fn user_metrics_view(
-  model: client_state.Model,
+  locale: Locale,
   metrics: OrgMetricsUserOverview,
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(locale, key) }
   let OrgMetricsUserOverview(
     claimed_count: claimed_count,
     released_count: released_count,
@@ -233,18 +244,18 @@ fn option_string_label(value: opt.Option(String)) -> String {
 }
 
 fn view_project_row(
-  model: client_state.Model,
+  config: Config(msg),
   user_id: Int,
   project: Project,
   inline_confirm: opt.Option(#(Int, Int)),
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   let is_confirming = case inline_confirm {
     opt.Some(#(pid, uid)) -> pid == project.id && uid == user_id
     _ -> False
   }
 
-  let is_role_in_flight = case model.admin.assignments.role_change_in_flight {
+  let is_role_in_flight = case config.assignments.role_change_in_flight {
     opt.Some(#(pid, uid)) -> pid == project.id && uid == user_id
     _ -> False
   }
@@ -258,15 +269,11 @@ fn view_project_row(
         attribute.value(to_string(project.my_role)),
         attribute.disabled(is_role_in_flight),
         event.on_input(fn(value) {
-          let new_role = case value {
-            "manager" -> Manager
-            _ -> Member
+          case project_member_role.changed_input_value(value, project.my_role) {
+            Ok(new_role) ->
+              config.on_role_changed(project.id, user_id, new_role)
+            Error(_) -> config.noop
           }
-          client_state.admin_msg(admin_messages.AssignmentsRoleChanged(
-            project.id,
-            user_id,
-            new_role,
-          ))
         }),
       ],
       [
@@ -294,46 +301,38 @@ fn view_project_row(
               attribute.class("btn-xs btn-danger"),
               attribute.attribute("title", remove_label),
               attribute.attribute("aria-label", remove_label),
-              event.on_click(client_state.admin_msg(
-                admin_messages.AssignmentsRemoveConfirmed,
-              )),
+              event.on_click(config.on_remove_confirmed),
             ],
             [text(t(i18n_text.Remove))],
           ),
           button(
             [
               attribute.class("btn-xs btn-secondary"),
-              event.on_click(client_state.admin_msg(
-                admin_messages.AssignmentsRemoveCancelled,
-              )),
+              event.on_click(config.on_remove_cancelled),
             ],
             [text(t(i18n_text.Cancel))],
           ),
         ])
       False ->
-        icon_actions.delete(
+        action_buttons.delete_button(
           remove_label,
-          client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
-            project.id,
-            user_id,
-          )),
+          config.on_remove_clicked(project.id, user_id),
         )
     },
   ])
 }
 
 fn view_inline_add(
-  model: client_state.Model,
-  _user_id: Int,
+  config: Config(msg),
   assigned_projects: List(Project),
-) -> element.Element(client_state.Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let assignments = model.admin.assignments
+) -> element.Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+  let assignments = config.assignments
   let selected = assignments.inline_add_selection
   let is_disabled = assignments.inline_add_in_flight
 
   let assigned_ids = list.map(assigned_projects, fn(project) { project.id })
-  let options = case model.core.projects {
+  let options = case config.all_projects {
     Loaded(projects) ->
       projects
       |> list.filter(fn(project) { !list.contains(assigned_ids, project.id) })
@@ -355,9 +354,7 @@ fn view_inline_add(
             opt.None -> ""
           }),
           event.on_input(fn(value) {
-            client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddSelectionChanged(value),
-            )
+            config.on_inline_add_selection_changed(value)
           }),
         ],
         [
@@ -372,9 +369,10 @@ fn view_inline_add(
         [
           attribute.value(to_string(assignments.inline_add_role)),
           event.on_input(fn(value) {
-            client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddRoleChanged(value),
-            )
+            case project_member_role.input_value(value) {
+              Ok(role) -> config.on_inline_add_role_changed(role)
+              Error(_) -> config.noop
+            }
           }),
         ],
         [
@@ -387,9 +385,7 @@ fn view_inline_add(
           [
             attribute.class("btn-xs btn-secondary"),
             attribute.disabled(is_disabled),
-            event.on_click(client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddCancelled,
-            )),
+            event.on_click(config.on_inline_add_cancelled),
           ],
           [text(t(i18n_text.Cancel))],
         ),
@@ -397,9 +393,7 @@ fn view_inline_add(
           [
             attribute.class("btn-xs btn-primary"),
             attribute.disabled(is_disabled || selected == opt.None),
-            event.on_click(client_state.admin_msg(
-              admin_messages.AssignmentsInlineAddSubmitted,
-            )),
+            event.on_click(config.on_inline_add_submitted),
           ],
           [
             text(case is_disabled {

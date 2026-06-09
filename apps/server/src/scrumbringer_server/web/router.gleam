@@ -20,7 +20,6 @@
 //// - Receives `RouterCtx` from `scrumbringer_server.gleam`
 
 import gleam/int
-import gleam/json
 import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/http/api
@@ -90,7 +89,6 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
 type RouteFn =
   fn(List(String), wisp.Request, RouterCtx) -> Option(wisp.Response)
 
-// Justification: nested case improves clarity for branching logic.
 fn find_route(
   routes: List(RouteFn),
   segments: List(String),
@@ -280,7 +278,6 @@ fn route_rule_metrics(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn route_cards(
   segments: List(String),
   req: wisp.Request,
@@ -351,7 +348,6 @@ fn route_tasks(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn route_capabilities(
   segments: List(String),
   req: wisp.Request,
@@ -440,8 +436,7 @@ fn route_health(
   _ctx: RouterCtx,
 ) -> Option(wisp.Response) {
   case segments {
-    ["api", "v1", "health"] ->
-      Some(api.ok(json.object([#("ok", json.bool(True))])))
+    ["api", "v1", "health"] -> Some(api.health_ok())
     _ -> None
   }
 }

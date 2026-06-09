@@ -1,14 +1,15 @@
 //// HTTP handler for task view tracking.
 
 import gleam/http
-import gleam/int
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/service_error_response
+import scrumbringer_server/persistence/tasks/mappers.{type Task}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/authorization
-import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/user_task_views_db
 import wisp
@@ -32,67 +33,74 @@ fn handle_put(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Put)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> mark_view_for_user(req, ctx, user, task_id)
+  case mark_view_payload(req, ctx, task_id) {
+    Ok(Nil) -> api.no_content()
+    Error(resp) -> resp
   }
 }
 
-fn mark_view_for_user(
+fn mark_view_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   task_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> mark_view_with_csrf(ctx, user, task_id)
-  }
+) -> Result(Nil, wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use task_id <- result.try(api.parse_id(task_id))
+
+  mark_view(ctx, user, task_id)
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn mark_view_with_csrf(
+fn mark_view(
   ctx: auth.Ctx,
   user: StoredUser,
-  task_id: String,
-) -> wisp.Response {
-  case parse_task_id(task_id) {
-    Error(resp) -> resp
-    Ok(task_id) -> mark_view(ctx, user, task_id)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn mark_view(ctx: auth.Ctx, user: StoredUser, task_id: Int) -> wisp.Response {
+  task_id: Int,
+) -> Result(Nil, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
 
-  case tasks_queries.get_task_for_user(db, task_id, user.id) {
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-    Ok(task) ->
-      case authorization.is_project_member(db, user.id, task.project_id) {
-        False -> api.error(404, "NOT_FOUND", "Not found")
-        True -> mark_view_in_db(db, user.id, task_id)
-      }
-  }
+  use task <- result.try(fetch_task(db, task_id, user.id))
+  use Nil <- result.try(require_project_member(db, user.id, task.project_id))
+
+  mark_view_in_db(db, user.id, task_id)
 }
 
 fn mark_view_in_db(
   db: pog.Connection,
   user_id: Int,
   task_id: Int,
-) -> wisp.Response {
+) -> Result(Nil, wisp.Response) {
   case user_task_views_db.touch_task_view(db, user_id, task_id) {
-    Ok(_) -> api.no_content()
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(_) -> Ok(Nil)
+    Error(_) -> Error(database_error_response())
   }
 }
 
-fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(task_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+fn fetch_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Task, wisp.Response) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Ok(task) -> Ok(task)
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
+}
+
+fn require_project_member(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case authorization.is_project_member(db, user_id, project_id) {
+    True -> Ok(Nil)
+    False -> Error(not_found_response())
+  }
+}
+
+fn not_found_response() -> wisp.Response {
+  api.error(404, "NOT_FOUND", "Not found")
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }

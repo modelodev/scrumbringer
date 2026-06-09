@@ -1,10 +1,13 @@
 //// Workflow JSON decoders.
 
 import gleam/dynamic/decode
+import gleam/option
 
+import domain/task_status
 import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
-  RuleTemplate, TaskTemplate, Workflow,
+  type Rule, type RuleTarget, type RuleTargetValidationError, type RuleTemplate,
+  type TaskTemplate, type Workflow, Rule, RuleTemplate, TaskRule, TaskTemplate,
+  Workflow, parse_rule_target, rule_target_validation_error_label,
 }
 
 // =============================================================================
@@ -52,18 +55,45 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     [],
     decode.list(rule_template_decoder()),
   )
-  decode.success(Rule(
-    id: id,
-    workflow_id: workflow_id,
-    name: name,
-    goal: goal,
-    resource_type: resource_type,
-    task_type_id: task_type_id,
-    to_state: to_state,
-    active: active,
-    created_at: created_at,
-    templates: templates,
-  ))
+  case decode_rule_target(resource_type, task_type_id, to_state) {
+    Ok(target) ->
+      decode.success(Rule(
+        id: id,
+        workflow_id: workflow_id,
+        name: name,
+        goal: goal,
+        target: target,
+        active: active,
+        created_at: created_at,
+        templates: templates,
+      ))
+    Error(error) ->
+      decode.failure(
+        rule_decode_placeholder(),
+        rule_target_validation_error_label(error),
+      )
+  }
+}
+
+fn decode_rule_target(
+  resource_type: String,
+  task_type_id: option.Option(Int),
+  to_state: String,
+) -> Result(RuleTarget, RuleTargetValidationError) {
+  parse_rule_target(resource_type, task_type_id, to_state)
+}
+
+fn rule_decode_placeholder() -> Rule {
+  Rule(
+    id: 0,
+    workflow_id: 0,
+    name: "",
+    goal: option.None,
+    target: TaskRule(task_status.Available, option.None),
+    active: False,
+    created_at: "",
+    templates: [],
+  )
 }
 
 /// Decoder for TaskTemplate.

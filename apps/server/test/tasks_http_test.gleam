@@ -5,11 +5,10 @@ import gleam/http/request
 import gleam/json
 import gleam/list
 import gleam/option
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -40,7 +39,7 @@ pub fn task_types_list_sorted_by_name_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -61,7 +60,7 @@ pub fn task_types_list_sorted_by_name_test() {
   }
 
   let assert Ok(task_types) = decode.run(dynamic, response_decoder)
-  task_types |> should.equal(["Alpha", "Zulu"])
+  task_types |> expect.equal(["Alpha", "Zulu"])
 }
 
 pub fn task_types_create_requires_project_admin_and_csrf_test() {
@@ -116,7 +115,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
     )
 
   let member_res = handler(member_req)
-  member_res.status |> should.equal(403)
+  expect.expect_status(member_res, 403)
 
   let no_csrf_req =
     simulate.request(
@@ -133,7 +132,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
     )
 
   let no_csrf_res = handler(no_csrf_req)
-  no_csrf_res.status |> should.equal(403)
+  expect.expect_status(no_csrf_res, 403)
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -225,9 +224,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   let list_titles = decode_task_titles(simulate.read_body(list_res))
-  list_titles |> should.equal(["needle in title", "Unrelated", "Old"])
+  list_titles |> expect.equal(["needle in title", "Unrelated", "Old"])
 
   let q_res =
     handler(
@@ -239,9 +238,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  q_res.status |> should.equal(200)
+  expect.expect_status(q_res, 200)
   let q_titles = decode_task_titles(simulate.read_body(q_res))
-  q_titles |> should.equal(["needle in title"])
+  q_titles |> expect.equal(["needle in title"])
 
   let cap_res =
     handler(
@@ -256,9 +255,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  cap_res.status |> should.equal(200)
+  expect.expect_status(cap_res, 200)
   let cap_titles = decode_task_titles(simulate.read_body(cap_res))
-  cap_titles |> should.equal(["Unrelated"])
+  cap_titles |> expect.equal(["Unrelated"])
 
   let multi_cap_req =
     simulate.request(
@@ -271,9 +270,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let multi_cap_res = handler(multi_cap_req)
-  multi_cap_res.status |> should.equal(422)
+  expect.expect_status(multi_cap_res, 422)
   string.contains(simulate.read_body(multi_cap_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn tasks_list_includes_task_contract_fields_test() {
@@ -308,7 +307,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -347,14 +346,14 @@ pub fn tasks_list_includes_task_contract_fields_test() {
       #(work_state, #(task_type_id, task_type_name, task_type_icon), ongoing_by),
       ..
     ] -> {
-      work_state |> should.equal("available")
-      task_type_id |> should.equal(type_id)
-      task_type_name |> should.equal("Bug")
-      task_type_icon |> should.equal("bug-ant")
-      ongoing_by |> should.equal(option.None)
+      work_state |> expect.equal("available")
+      task_type_id |> expect.equal(type_id)
+      task_type_name |> expect.equal("Bug")
+      task_type_icon |> expect.equal("bug-ant")
+      ongoing_by |> expect.equal(option.None)
       Nil
     }
-    _ -> False |> should.be_true
+    _ -> False |> expect.is_true
   }
 }
 
@@ -388,7 +387,7 @@ pub fn task_get_includes_task_contract_fields_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -426,11 +425,11 @@ pub fn task_get_includes_task_contract_fields_test() {
     ongoing_by,
   )) = decode.run(dynamic, response_decoder)
 
-  work_state |> should.equal("available")
-  task_type_id |> should.equal(type_id)
-  task_type_name |> should.equal("Bug")
-  task_type_icon |> should.equal("bug-ant")
-  ongoing_by |> should.equal(option.None)
+  work_state |> expect.equal("available")
+  task_type_id |> expect.equal(type_id)
+  task_type_name |> expect.equal("Bug")
+  task_type_icon |> expect.equal("bug-ant")
+  ongoing_by |> expect.equal(option.None)
 }
 
 pub fn task_get_includes_ongoing_by_when_active_test() {
@@ -457,8 +456,8 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
-  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -469,7 +468,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -507,11 +506,11 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     ongoing_by,
   )) = decode.run(dynamic, response_decoder)
 
-  work_state |> should.equal("ongoing")
-  task_type_id |> should.equal(type_id)
-  task_type_name |> should.equal("Bug")
-  task_type_icon |> should.equal("bug-ant")
-  ongoing_by |> should.equal(option.Some(user_id))
+  work_state |> expect.equal("ongoing")
+  task_type_id |> expect.equal(type_id)
+  task_type_name |> expect.equal("Bug")
+  task_type_icon |> expect.equal("bug-ant")
+  ongoing_by |> expect.equal(option.Some(user_id))
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -600,7 +599,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim_res = handler(claim_req)
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let claim2_req =
     simulate.request(
@@ -613,9 +612,9 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim2_res = handler(claim2_req)
-  claim2_res.status |> should.equal(409)
+  expect.expect_status(claim2_res, 409)
   string.contains(simulate.read_body(claim2_res), "CONFLICT_CLAIMED")
-  |> should.be_true
+  |> expect.is_true
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
@@ -631,9 +630,9 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     )
 
   let patch_res = handler(patch_req)
-  patch_res.status |> should.equal(409)
+  expect.expect_status(patch_res, 409)
   string.contains(simulate.read_body(patch_res), "CONFLICT_VERSION")
-  |> should.be_true
+  |> expect.is_true
 
   let release_bad_req =
     simulate.request(
@@ -646,9 +645,9 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let release_bad_res = handler(release_bad_req)
-  release_bad_res.status |> should.equal(409)
+  expect.expect_status(release_bad_res, 409)
   string.contains(simulate.read_body(release_bad_res), "CONFLICT_VERSION")
-  |> should.be_true
+  |> expect.is_true
 
   let release_ok_req =
     simulate.request(
@@ -661,7 +660,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> simulate.json_body(json.object([#("version", json.int(2))]))
 
   let release_ok_res = handler(release_ok_req)
-  release_ok_res.status |> should.equal(200)
+  expect.expect_status(release_ok_res, 200)
 
   let complete_bad_req =
     simulate.request(
@@ -674,9 +673,9 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> simulate.json_body(json.object([#("version", json.int(3))]))
 
   let complete_bad_res = handler(complete_bad_req)
-  complete_bad_res.status |> should.equal(422)
+  expect.expect_status(complete_bad_res, 422)
   string.contains(simulate.read_body(complete_bad_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn task_events_persist_for_lifecycle_actions_test() {
@@ -706,19 +705,19 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  count_task_events(db, task_id, "task_created") |> should.equal(1)
+  count_task_events(db, task_id, "task_created") |> expect.equal(1)
   count_task_events_for_actor(db, task_id, admin_id, "task_created")
-  |> should.equal(1)
+  |> expect.equal(1)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
-  count_task_events(db, task_id, "task_claimed") |> should.equal(1)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  count_task_events(db, task_id, "task_claimed") |> expect.equal(1)
 
-  release_task(handler, session, csrf, task_id, 2) |> should.equal(200)
-  count_task_events(db, task_id, "task_released") |> should.equal(1)
+  release_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
+  count_task_events(db, task_id, "task_released") |> expect.equal(1)
 
-  claim_task(handler, session, csrf, task_id, 3) |> should.equal(200)
-  complete_task(handler, session, csrf, task_id, 4) |> should.equal(200)
-  count_task_events(db, task_id, "task_completed") |> should.equal(1)
+  claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
+  complete_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
+  count_task_events(db, task_id, "task_completed") |> expect.equal(1)
 }
 
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
@@ -762,9 +761,9 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
     )
 
   let patch_res = handler(patch_req)
-  patch_res.status |> should.equal(200)
+  expect.expect_status(patch_res, 200)
   string.contains(simulate.read_body(patch_res), "Editable updated")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn release_all_tasks_for_member_success_test() {
@@ -814,7 +813,7 @@ pub fn release_all_tasks_for_member_success_test() {
     task_a,
     task_version(db, task_a),
   )
-  |> should.equal(200)
+  |> expect.equal(200)
   claim_task(
     handler,
     member_session,
@@ -822,7 +821,7 @@ pub fn release_all_tasks_for_member_success_test() {
     task_b,
     task_version(db, task_b),
   )
-  |> should.equal(200)
+  |> expect.equal(200)
 
   let list_req =
     simulate.request(
@@ -833,7 +832,7 @@ pub fn release_all_tasks_for_member_success_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let list_res = handler(list_req)
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   let list_body = simulate.read_body(list_res)
   let assert Ok(list_dynamic) = json.parse(list_body, decode.dynamic)
   let member_decoder = {
@@ -856,7 +855,7 @@ pub fn release_all_tasks_for_member_success_test() {
     members_payload
     |> list.filter(fn(row) { row.0 == member_id })
     |> list.map(fn(row) { row.1 })
-  member_claimed |> should.equal([2])
+  member_claimed |> expect.equal([2])
 
   let req =
     simulate.request(
@@ -872,7 +871,7 @@ pub fn release_all_tasks_for_member_success_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -888,8 +887,8 @@ pub fn release_all_tasks_for_member_success_test() {
 
   let assert Ok(#(released_count, task_ids)) =
     decode.run(dynamic, response_decoder)
-  released_count |> should.equal(2)
-  list.length(task_ids) |> should.equal(2)
+  released_count |> expect.equal(2)
+  list.length(task_ids) |> expect.equal(2)
 
   let claimed_left =
     single_int(
@@ -897,7 +896,7 @@ pub fn release_all_tasks_for_member_success_test() {
       "select count(*) from tasks where project_id = $1 and claimed_by = $2 and status = 'claimed'",
       [pog.int(project_id), pog.int(member_id)],
     )
-  claimed_left |> should.equal(0)
+  claimed_left |> expect.equal(0)
 }
 
 pub fn release_all_tasks_for_member_forbidden_test() {
@@ -948,8 +947,8 @@ pub fn release_all_tasks_for_member_forbidden_test() {
     |> request.set_header("X-CSRF", member_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn release_all_tasks_for_member_self_release_test() {
@@ -986,8 +985,8 @@ pub fn release_all_tasks_for_member_self_release_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(400)
-  string.contains(simulate.read_body(res), "SELF_RELEASE") |> should.be_true
+  expect.expect_status(res, 400)
+  string.contains(simulate.read_body(res), "SELF_RELEASE") |> expect.is_true
 }
 
 pub fn release_all_tasks_for_member_not_found_test() {
@@ -1009,8 +1008,8 @@ pub fn release_all_tasks_for_member_not_found_test() {
     |> request.set_header("X-CSRF", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(404)
-  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+  expect.expect_status(res, 404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
 pub fn task_dependencies_reject_circular_dependency_test() {
@@ -1052,7 +1051,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
     )
 
   let dep_res = handler(dep_req)
-  dep_res.status |> should.equal(200)
+  expect.expect_status(dep_res, 200)
 
   let circular_req =
     simulate.request(
@@ -1067,10 +1066,10 @@ pub fn task_dependencies_reject_circular_dependency_test() {
     )
 
   let circular_res = handler(circular_req)
-  circular_res.status |> should.equal(422)
+  expect.expect_status(circular_res, 422)
   simulate.read_body(circular_res)
   |> string.contains("Circular dependency detected")
-  |> should.be_true()
+  |> expect.is_true
 }
 
 pub fn task_dependencies_reject_cross_project_dependency_test() {
@@ -1142,10 +1141,10 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
     )
 
   let cross_res = handler(cross_req)
-  cross_res.status |> should.equal(422)
+  expect.expect_status(cross_res, 422)
   simulate.read_body(cross_res)
   |> string.contains("Dependency must be in same project")
-  |> should.be_true()
+  |> expect.is_true
 }
 
 pub fn task_dependencies_reject_completed_dependency_test() {
@@ -1200,7 +1199,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       task_completed,
       task_version(db, task_completed),
     )
-  claim_status |> should.equal(200)
+  claim_status |> expect.equal(200)
 
   let complete_status =
     complete_task(
@@ -1210,7 +1209,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       task_completed,
       task_version(db, task_completed),
     )
-  complete_status |> should.equal(200)
+  complete_status |> expect.equal(200)
 
   let completed_req =
     simulate.request(
@@ -1225,10 +1224,10 @@ pub fn task_dependencies_reject_completed_dependency_test() {
     )
 
   let completed_res = handler(completed_req)
-  completed_res.status |> should.equal(422)
+  expect.expect_status(completed_res, 422)
   simulate.read_body(completed_res)
   |> string.contains("Dependency task is already completed")
-  |> should.be_true()
+  |> expect.is_true
 }
 
 pub fn task_dependencies_schema_indices_present_test() {
@@ -1241,7 +1240,7 @@ pub fn task_dependencies_schema_indices_present_test() {
       "select count(*) from information_schema.columns where table_name = 'task_dependencies' and column_name in ('task_id', 'depends_on_task_id', 'created_at', 'created_by')",
       [],
     )
-  columns_count |> should.equal(4)
+  columns_count |> expect.equal(4)
 
   let index_count =
     single_int(
@@ -1249,7 +1248,7 @@ pub fn task_dependencies_schema_indices_present_test() {
       "select count(*) from pg_indexes where tablename = 'task_dependencies' and indexname in ('idx_task_dependencies_task_id', 'idx_task_dependencies_depends_on_task_id')",
       [],
     )
-  index_count |> should.equal(2)
+  index_count |> expect.equal(2)
 }
 
 pub fn me_metrics_returns_counts_test() {
@@ -1276,8 +1275,8 @@ pub fn me_metrics_returns_counts_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
-  complete_task(handler, session, csrf, task_id, 2) |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  complete_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
@@ -1285,7 +1284,7 @@ pub fn me_metrics_returns_counts_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -1307,9 +1306,9 @@ pub fn me_metrics_returns_counts_test() {
   let assert Ok(#(claimed, released, completed)) =
     decode.run(dynamic, response_decoder)
 
-  claimed |> should.equal(1)
-  released |> should.equal(0)
-  completed |> should.equal(1)
+  claimed |> expect.equal(1)
+  released |> expect.equal(0)
+  completed |> expect.equal(1)
 }
 
 pub fn org_metrics_overview_requires_org_admin_test() {
@@ -1336,7 +1335,7 @@ pub fn org_metrics_overview_requires_org_admin_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(403)
+  expect.expect_status(res, 403)
 
   // admin succeeds
   let admin_req =
@@ -1345,7 +1344,7 @@ pub fn org_metrics_overview_requires_org_admin_test() {
     |> request.set_cookie("sb_csrf", admin_csrf)
 
   let admin_res = handler(admin_req)
-  admin_res.status |> should.equal(200)
+  expect.expect_status(admin_res, 200)
 }
 
 pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
@@ -1372,7 +1371,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
 
   let req =
     simulate.request(
@@ -1383,7 +1382,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -1424,14 +1423,14 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
   case tasks {
     [#(id, claim_count, release_count, complete_count, first_claim_at), ..] -> {
-      id |> should.equal(task_id)
-      claim_count |> should.equal(1)
-      release_count |> should.equal(0)
-      complete_count |> should.equal(0)
-      let _ = first_claim_at |> should.be_some
+      id |> expect.equal(task_id)
+      claim_count |> expect.equal(1)
+      release_count |> expect.equal(0)
+      complete_count |> expect.equal(0)
+      let _ = first_claim_at |> expect.some
       Nil
     }
-    _ -> False |> should.be_true
+    _ -> False |> expect.is_true
   }
 }
 
@@ -1458,7 +1457,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
     |> request.set_cookie("sb_csrf", member_csrf)
 
   let member_res = handler(member_req)
-  member_res.status |> should.equal(403)
+  expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
@@ -1466,7 +1465,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
     |> request.set_cookie("sb_csrf", admin_csrf)
 
   let admin_res = handler(admin_req)
-  admin_res.status |> should.equal(200)
+  expect.expect_status(admin_res, 200)
 
   let body = simulate.read_body(admin_res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -1503,10 +1502,10 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
 
   case users {
     [#(_user_id, email, _claimed, _released, _completed, _ongoing), ..] -> {
-      email |> should.equal("admin@example.com")
+      email |> expect.equal("admin@example.com")
       Nil
     }
-    _ -> False |> should.be_true
+    _ -> False |> expect.is_true
   }
 }
 
@@ -1525,7 +1524,7 @@ pub fn org_metrics_users_invalid_window_days_returns_422_test() {
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
 }
 
 pub fn tasks_list_requires_membership_test() {
@@ -1558,8 +1557,8 @@ pub fn tasks_list_requires_membership_test() {
     |> request.set_cookie("sb_csrf", outsider_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn task_get_requires_membership_test() {
@@ -1599,8 +1598,8 @@ pub fn task_get_requires_membership_test() {
     |> request.set_cookie("sb_csrf", outsider_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(404)
-  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+  expect.expect_status(res, 404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -1670,9 +1669,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       bug_type_id,
     )
 
-  claim_task(handler, session, csrf, claimed_id, 1) |> should.equal(200)
-  claim_task(handler, session, csrf, completed_id, 1) |> should.equal(200)
-  complete_task(handler, session, csrf, completed_id, 2) |> should.equal(200)
+  claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
+  claim_task(handler, session, csrf, completed_id, 1) |> expect.equal(200)
+  complete_task(handler, session, csrf, completed_id, 2) |> expect.equal(200)
 
   let available_res =
     handler(
@@ -1686,9 +1685,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  available_res.status |> should.equal(200)
+  expect.expect_status(available_res, 200)
   decode_task_titles(simulate.read_body(available_res))
-  |> should.equal(["Available"])
+  |> expect.equal(["Available"])
 
   let claimed_res =
     handler(
@@ -1702,9 +1701,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  claimed_res.status |> should.equal(200)
+  expect.expect_status(claimed_res, 200)
   decode_task_titles(simulate.read_body(claimed_res))
-  |> should.equal(["Claimed"])
+  |> expect.equal(["Claimed"])
 
   let completed_res =
     handler(
@@ -1718,9 +1717,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  completed_res.status |> should.equal(200)
+  expect.expect_status(completed_res, 200)
   decode_task_titles(simulate.read_body(completed_res))
-  |> should.equal(["Completed"])
+  |> expect.equal(["Completed"])
 
   let type_res =
     handler(
@@ -1735,9 +1734,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  type_res.status |> should.equal(200)
+  expect.expect_status(type_res, 200)
   decode_task_titles(simulate.read_body(type_res))
-  |> should.equal(["Completed", "Available"])
+  |> expect.equal(["Completed", "Available"])
 
   let invalid_status_res =
     handler(
@@ -1749,9 +1748,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  invalid_status_res.status |> should.equal(422)
+  expect.expect_status(invalid_status_res, 422)
   string.contains(simulate.read_body(invalid_status_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 
   let invalid_type_res =
     handler(
@@ -1763,9 +1762,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  invalid_type_res.status |> should.equal(422)
+  expect.expect_status(invalid_type_res, 422)
   string.contains(simulate.read_body(invalid_type_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 
   let invalid_cap_res =
     handler(
@@ -1779,9 +1778,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  invalid_cap_res.status |> should.equal(422)
+  expect.expect_status(invalid_cap_res, 422)
   string.contains(simulate.read_body(invalid_cap_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 
   let _ = available_id
 }
@@ -1862,7 +1861,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     )
 
   claim_task(handler, member_session, member_csrf, task_id, 1)
-  |> should.equal(200)
+  |> expect.equal(200)
 
   let patch_ok_res =
     handler(
@@ -1879,9 +1878,9 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       ),
     )
 
-  patch_ok_res.status |> should.equal(200)
+  expect.expect_status(patch_ok_res, 200)
 
-  task_claimed_by(db, task_id) |> should.equal(member_id)
+  task_claimed_by(db, task_id) |> expect.equal(member_id)
 
   let version = task_version(db, task_id)
 
@@ -1899,7 +1898,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       ),
     )
 
-  patch_other_res.status |> should.equal(403)
+  expect.expect_status(patch_other_res, 403)
 
   let release_other_res =
     handler(
@@ -1913,7 +1912,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
-  release_other_res.status |> should.equal(403)
+  expect.expect_status(release_other_res, 403)
 
   let complete_other_res =
     handler(
@@ -1927,7 +1926,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
-  complete_other_res.status |> should.equal(403)
+  expect.expect_status(complete_other_res, 403)
 }
 
 pub fn patch_rejects_blank_title_test() {
@@ -1954,7 +1953,7 @@ pub fn patch_rejects_blank_title_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
 
   let res =
     handler(
@@ -1970,9 +1969,9 @@ pub fn patch_rejects_blank_title_test() {
       ),
     )
 
-  res.status |> should.equal(422)
+  expect.expect_status(res, 422)
   string.contains(simulate.read_body(res), "Title is required")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn me_active_task_start_pause_and_persist_test() {
@@ -1999,18 +1998,18 @@ pub fn me_active_task_start_pause_and_persist_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
 
   let start_body =
     simulate.read_body(start_active_task(handler, session, csrf, task_id))
 
-  decode_active_task_id(start_body) |> should.equal(option.Some(task_id))
-  is_iso8601_utc(decode_as_of(start_body)) |> should.equal(True)
+  decode_active_task_id(start_body) |> expect.equal(option.Some(task_id))
+  is_iso8601_utc(decode_as_of(start_body)) |> expect.equal(True)
 
   let get_res = get_active_task(handler, session, csrf)
-  get_res.status |> should.equal(200)
+  expect.expect_status(get_res, 200)
   decode_active_task_id(simulate.read_body(get_res))
-  |> should.equal(option.Some(task_id))
+  |> expect.equal(option.Some(task_id))
 
   // Simulate ~70s of elapsed time, then pause to flush accumulation.
   let user_id =
@@ -2025,9 +2024,9 @@ pub fn me_active_task_start_pause_and_persist_test() {
     |> pog.execute(db)
 
   let pause_res = pause_active_task(handler, session, csrf, task_id)
-  pause_res.status |> should.equal(200)
+  expect.expect_status(pause_res, 200)
   decode_active_task_id(simulate.read_body(pause_res))
-  |> should.equal(option.None)
+  |> expect.equal(option.None)
 
   let accumulated_after_pause =
     single_int(
@@ -2036,18 +2035,18 @@ pub fn me_active_task_start_pause_and_persist_test() {
       [pog.int(user_id), pog.int(task_id)],
     )
 
-  let _ = should.be_true(accumulated_after_pause >= 70)
+  let _ = expect.is_true(accumulated_after_pause >= 70)
 
   let resume_body =
     simulate.read_body(start_active_task(handler, session, csrf, task_id))
 
   decode_active_task_accumulated_s(resume_body)
-  |> should.equal(option.Some(accumulated_after_pause))
+  |> expect.equal(option.Some(accumulated_after_pause))
 
   let get_after_pause = get_active_task(handler, session, csrf)
-  get_after_pause.status |> should.equal(200)
+  expect.expect_status(get_after_pause, 200)
   decode_active_task_id(simulate.read_body(get_after_pause))
-  |> should.equal(option.Some(task_id))
+  |> expect.equal(option.Some(task_id))
 }
 
 pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
@@ -2074,8 +2073,8 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
-  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -2098,7 +2097,7 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
     )
 
   let heartbeat_res = heartbeat_active_task(handler, session, csrf, task_id)
-  heartbeat_res.status |> should.equal(200)
+  expect.expect_status(heartbeat_res, 200)
 
   // Get last_heartbeat_at after heartbeat
   let heartbeat_after =
@@ -2109,7 +2108,7 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
     )
 
   // last_heartbeat_at should have been updated (>= before, allows for same-second update)
-  let _ = should.be_true(heartbeat_after >= heartbeat_before)
+  let _ = expect.is_true(heartbeat_after >= heartbeat_before)
   // Note: In the new multi-session model, accumulated_s is flushed to
   // user_task_work_total only when the session is paused/closed, not on heartbeat.
   // The API returns accumulated_s from user_task_work_total (previous sessions)
@@ -2140,13 +2139,13 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let t1 = create_task(handler, session, csrf, project_id, "T1", "", 3, type_id)
   let t2 = create_task(handler, session, csrf, project_id, "T2", "", 3, type_id)
 
-  claim_task(handler, session, csrf, t1, 1) |> should.equal(200)
-  claim_task(handler, session, csrf, t2, 1) |> should.equal(200)
+  claim_task(handler, session, csrf, t1, 1) |> expect.equal(200)
+  claim_task(handler, session, csrf, t2, 1) |> expect.equal(200)
 
   // Start sessions on both tasks - multi-session model supports this
-  start_active_task(handler, session, csrf, t1).status |> should.equal(200)
+  expect.expect_status(start_active_task(handler, session, csrf, t1), 200)
   let res = start_active_task(handler, session, csrf, t2)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify both sessions exist
   let user_id =
@@ -2157,7 +2156,7 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
       "select count(*)::int from user_task_work_session where user_id = $1 and ended_at is null",
       [pog.int(user_id)],
     )
-  session_count |> should.equal(2)
+  session_count |> expect.equal(2)
 }
 
 pub fn me_active_task_start_returns_409_when_not_claimed_test() {
@@ -2185,9 +2184,9 @@ pub fn me_active_task_start_returns_409_when_not_claimed_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   let res = start_active_task(handler, session, csrf, task_id)
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
-  |> should.equal(True)
+  |> expect.equal(True)
 }
 
 pub fn me_active_task_clears_before_release_and_complete_test() {
@@ -2214,8 +2213,8 @@ pub fn me_active_task_clears_before_release_and_complete_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
-  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
 
   let version = task_version(db, task_id)
 
@@ -2231,23 +2230,23 @@ pub fn me_active_task_clears_before_release_and_complete_test() {
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
-  release_res.status |> should.equal(200)
+  expect.expect_status(release_res, 200)
 
   let active_after_release = get_active_task(handler, session, csrf)
   decode_active_task_id(simulate.read_body(active_after_release))
-  |> should.equal(option.None)
+  |> expect.equal(option.None)
 
   // Re-claim + start, then complete.
   let version = task_version(db, task_id)
-  claim_task(handler, session, csrf, task_id, version) |> should.equal(200)
-  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+  claim_task(handler, session, csrf, task_id, version) |> expect.equal(200)
+  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
 
   let version = task_version(db, task_id)
-  complete_task(handler, session, csrf, task_id, version) |> should.equal(200)
+  complete_task(handler, session, csrf, task_id, version) |> expect.equal(200)
 
   let active_after_complete = get_active_task(handler, session, csrf)
   decode_active_task_id(simulate.read_body(active_after_complete))
-  |> should.equal(option.None)
+  |> expect.equal(option.None)
 }
 
 fn get_active_task(
@@ -2497,7 +2496,7 @@ fn create_project(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_task_type(
@@ -2534,7 +2533,7 @@ fn create_task_type(
     |> simulate.json_body(body)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_task(
@@ -2565,7 +2564,7 @@ fn create_task(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
@@ -2613,7 +2612,7 @@ fn add_member(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
@@ -2664,7 +2663,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -2700,7 +2699,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -2733,11 +2732,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -2745,7 +2743,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

@@ -1,12 +1,15 @@
 import gleam/option.{None}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
 
 pub fn kanban_column_headers_show_icons_test() {
   let config =
@@ -33,6 +36,6 @@ pub fn kanban_column_headers_show_icons_test() {
 
   let html = kanban_board.view(config) |> element.to_document_string
 
-  string.contains(html, "kanban-column-icon") |> should.be_true
-  string.contains(html, "aria-hidden") |> should.be_true
+  assert_contains(html, "kanban-column-icon")
+  assert_contains(html, "aria-hidden")
 }

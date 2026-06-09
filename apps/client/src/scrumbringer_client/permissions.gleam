@@ -51,7 +51,25 @@ pub fn any_project_manager(projects: List(Project)) -> Bool {
   |> list.any(is_project_manager)
 }
 
-// Justification: nested case improves clarity for branching logic.
+/// Returns true if the selected project exists and the user manages it.
+pub fn is_selected_project_manager(selected_project: Option(Project)) -> Bool {
+  case selected_project {
+    Some(project) -> is_project_manager(project)
+    None -> False
+  }
+}
+
+/// Returns true when the user can edit content in the selected project.
+pub fn can_manage_project_content(
+  org_role: OrgRole,
+  selected_project: Option(Project),
+) -> Bool {
+  case is_org_admin(org_role) {
+    True -> True
+    False -> is_selected_project_manager(selected_project)
+  }
+}
+
 /// Checks if a user can access an admin section.
 pub fn can_access_section(
   section: AdminSection,

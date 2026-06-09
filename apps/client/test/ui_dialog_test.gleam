@@ -1,10 +1,16 @@
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 import lustre/element/html.{div, text}
-import scrumbringer_client/client_state
 import scrumbringer_client/ui/dialog
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
+}
 
 pub fn dialog_view_closed_renders_nothing_test() {
   let config =
@@ -12,13 +18,13 @@ pub fn dialog_view_closed_renders_nothing_test() {
       title: "Test",
       icon: None,
       size: dialog.DialogSm,
-      on_close: client_state.NoOp,
+      on_close: "close",
     )
 
   let rendered = dialog.view(config, False, None, [], [])
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "dialog") |> should.be_false
+  assert_not_contains(html, "dialog")
 }
 
 pub fn dialog_view_open_includes_title_and_icon_test() {
@@ -27,13 +33,13 @@ pub fn dialog_view_open_includes_title_and_icon_test() {
       title: "Create",
       icon: Some(text("icon")),
       size: dialog.DialogSm,
-      on_close: client_state.NoOp,
+      on_close: "close",
     )
 
   let rendered = dialog.view(config, True, None, [div([], [text("Body")])], [])
 
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "Create") |> should.be_true
-  string.contains(html, "icon") |> should.be_true
+  assert_contains(html, "Create")
+  assert_contains(html, "icon")
 }

@@ -19,11 +19,11 @@
 
 import domain/task_status.{type TaskStatus}
 import gleam/int
-import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import scrumbringer_server/http/api
+import scrumbringer_server/http/query as query_params
 import scrumbringer_server/services/workflows/types as workflow_types
 import wisp
 
@@ -63,7 +63,6 @@ pub fn parse_task_filters(
 // Individual Parsers
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 /// Parse status filter: must be available, claimed, or completed.
 ///
 /// Returns None for empty/missing, Some(TaskStatus) for valid values,
@@ -113,7 +112,6 @@ fn parse_capability_id(value: String) -> Result(Option(Int), wisp.Response) {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Parse integer filter from query parameter.
 ///
 /// ## Example
@@ -122,7 +120,6 @@ fn parse_capability_id(value: String) -> Result(Option(Int), wisp.Response) {
 /// parse_int_filter([#("type_id", "5")], "type_id")  // Ok(Some(5))
 /// parse_int_filter([], "type_id")                   // Ok(None)
 /// ```
-/// Justification: nested case improves clarity for branching logic.
 pub fn parse_int_filter(
   query: List(#(String, String)),
   key: String,
@@ -196,20 +193,7 @@ pub fn single_query_value(
   query: List(#(String, String)),
   key: String,
 ) -> Result(Option(String), Nil) {
-  let values =
-    query
-    |> list.filter_map(fn(pair) {
-      case pair.0 == key {
-        True -> Ok(pair.1)
-        False -> Error(Nil)
-      }
-    })
-
-  case values {
-    [] -> Ok(None)
-    [value] -> Ok(Some(value))
-    _ -> Error(Nil)
-  }
+  query_params.single_value(query, key)
 }
 
 fn normalize_optional_string(value: String) -> Option(String) {

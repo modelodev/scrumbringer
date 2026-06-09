@@ -12,7 +12,6 @@
 //// - URL formatting (`format`)
 //// - Navigation effects (`push`, `replace`)
 //// - Page title updates (`update_page_title`)
-//// - Mobile-specific routing rules (`apply_mobile_rules`)
 ////
 //// ## Non-responsibilities
 ////
@@ -132,13 +131,22 @@ fn parse_app_route(pathname: String, search: String) -> ParseResult {
 
 fn parse_config_route(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/config")
-  let section = config_section_from_slug(slug)
   let result = url_state.parse_query(search_to_query(search), url_state.Config)
+
+  case config_section_from_slug(slug) {
+    Ok(section) -> config_parse_result(section, result)
+    Error(_) -> config_parse_result(permissions.Members, result) |> as_redirect
+  }
+}
+
+fn config_parse_result(
+  section: permissions.AdminSection,
+  result: url_state.QueryParseResult,
+) -> ParseResult {
   let route = case result {
     url_state.Parsed(state) -> Config(section, url_state.project(state))
     url_state.Redirect(state) -> Config(section, url_state.project(state))
   }
-
   case result {
     url_state.Parsed(_) -> Parsed(route)
     url_state.Redirect(_) -> Redirect(route)
@@ -154,7 +162,17 @@ fn parse_org_route(pathname: String, search: String) -> ParseResult {
 
 fn parse_org_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/org")
-  let section = org_section_from_slug(slug)
+  case org_section_from_slug(slug) {
+    Ok(section) -> parse_org_section_query(section, search)
+    Error(_) ->
+      parse_org_section_query(permissions.Invites, search) |> as_redirect
+  }
+}
+
+fn parse_org_section_query(
+  section: permissions.AdminSection,
+  search: String,
+) -> ParseResult {
   let context = case section {
     permissions.Assignments -> url_state.OrgAssignments
     _ -> url_state.Org
@@ -177,16 +195,31 @@ fn parse_member_route(pathname: String, search: String) -> ParseResult {
 
 fn parse_member_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/app")
-  let section = member_section.from_slug(slug)
   let result = url_state.parse_query(search_to_query(search), url_state.Member)
 
+  case member_section.parse_slug(slug) {
+    Ok(section) -> member_parse_result(section, result)
+    Error(_) -> member_parse_result(member_section.Pool, result) |> as_redirect
+  }
+}
+
+fn member_parse_result(
+  section: MemberSection,
+  result: url_state.QueryParseResult,
+) -> ParseResult {
   case result {
     url_state.Parsed(state) -> Parsed(Member(section, state))
     url_state.Redirect(state) -> Redirect(Member(section, state))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn as_redirect(result: ParseResult) -> ParseResult {
+  case result {
+    Parsed(route) -> Redirect(route)
+    Redirect(route) -> Redirect(route)
+  }
+}
+
 /// Format a Route into a URL string.
 ///
 /// ## Example
@@ -195,7 +228,6 @@ fn parse_member_section(pathname: String, search: String) -> ParseResult {
 /// format(Login)  // "/"
 /// format(Config(Members, Some(5)))  // "/config/members?project=5"
 /// format(AcceptInvite("abc123"))  // "/accept-invite?token=abc123"
-/// Justification: nested case improves clarity for branching logic.
 /// ```
 pub fn format(route: Route) -> String {
   let #(path, query, fragment) = format_parts(route)
@@ -313,7 +345,6 @@ fn token_from_search(search: String) -> String {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn query_param(search: String, key: String) -> Option(String) {
   let cleaned = case string.starts_with(search, "?") {
     True -> string.drop_start(search, 1)
@@ -348,16 +379,18 @@ fn path_segment(pathname: String, prefix: String) -> String {
 // =============================================================================
 
 /// Parse slug into config section (project-scoped sections)
-fn config_section_from_slug(slug: String) -> permissions.AdminSection {
+fn config_section_from_slug(
+  slug: String,
+) -> Result(permissions.AdminSection, Nil) {
   case slug {
-    "members" -> permissions.Members
-    "capabilities" -> permissions.Capabilities
-    "task-types" -> permissions.TaskTypes
-    "cards" -> permissions.Cards
-    "workflows" -> permissions.Workflows
-    "templates" -> permissions.TaskTemplates
-    "rule-metrics" -> permissions.RuleMetrics
-    _ -> permissions.Members
+    "" | "members" -> Ok(permissions.Members)
+    "capabilities" -> Ok(permissions.Capabilities)
+    "task-types" -> Ok(permissions.TaskTypes)
+    "cards" -> Ok(permissions.Cards)
+    "workflows" -> Ok(permissions.Workflows)
+    "templates" -> Ok(permissions.TaskTemplates)
+    "rule-metrics" -> Ok(permissions.RuleMetrics)
+    _ -> Error(Nil)
   }
 }
 
@@ -377,16 +410,16 @@ fn config_section_slug(section: permissions.AdminSection) -> String {
 }
 
 /// Parse slug into org section (org-scoped sections)
-fn org_section_from_slug(slug: String) -> permissions.AdminSection {
+fn org_section_from_slug(slug: String) -> Result(permissions.AdminSection, Nil) {
   case slug {
-    "invites" -> permissions.Invites
-    "settings" -> permissions.OrgSettings
-    "users" -> permissions.OrgSettings
-    "projects" -> permissions.Projects
-    "assignments" -> permissions.Assignments
-    "metrics" -> permissions.Metrics
-    "rule-metrics" -> permissions.RuleMetrics
-    _ -> permissions.Invites
+    "" | "invites" -> Ok(permissions.Invites)
+    "settings" -> Ok(permissions.OrgSettings)
+    "users" -> Ok(permissions.OrgSettings)
+    "projects" -> Ok(permissions.Projects)
+    "assignments" -> Ok(permissions.Assignments)
+    "metrics" -> Ok(permissions.Metrics)
+    "rule-metrics" -> Ok(permissions.RuleMetrics)
+    _ -> Error(Nil)
   }
 }
 
@@ -402,26 +435,6 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
     // Config sections should not use this, but provide fallback
     _ -> "invites"
   }
-}
-
-/// Apply mobile-specific routing rules.
-///
-/// Story 4.4: With the new 3-panel layout, mobile uses drawers instead of
-/// redirecting to different routes. Pool works on mobile (no drag-drop,
-/// uses tap-to-claim instead). This function is kept for backwards
-/// compatibility but now returns the input unchanged.
-///
-/// ## Example
-///
-/// ```gleam
-/// let result = parse_uri(uri)
-/// apply_mobile_rules(result, True)
-/// // Parsed(Member(Pool, state)) - no longer redirects
-/// ```
-pub fn apply_mobile_rules(result: ParseResult, _is_mobile: Bool) -> ParseResult {
-  // Story 4.4: Mobile no longer redirects Pool to MyBar
-  // The 3-panel layout handles mobile with drawers
-  result
 }
 
 // =============================================================================

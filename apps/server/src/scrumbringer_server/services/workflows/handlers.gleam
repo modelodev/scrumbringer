@@ -27,7 +27,7 @@
 import domain/field_update
 import domain/milestone
 import domain/task_state
-import domain/task_status.{Available, Claimed, Completed, task_status_to_string}
+import domain/task_status.{type TaskStatus, Available, Claimed, Completed}
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
@@ -135,7 +135,17 @@ fn handle_list_task_types(
 
   case task_types_db.list_task_types_for_project(db, project_id) {
     Ok(task_types) -> Ok(TaskTypesList(task_types))
-    Error(e) -> Error(DbError(e))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to list task types"))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Failed to list task types"))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to list task types"))
   }
 }
 
@@ -175,7 +185,6 @@ fn handle_create_task_type(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Story 4.9 AC13: Update task type name, icon, or capability.
 fn handle_update_task_type(
   db: pog.Connection,
@@ -185,33 +194,36 @@ fn handle_update_task_type(
   icon: String,
   capability_id: Option(Int),
 ) -> Result(Response, Error) {
+  use project_id <- result.try(require_task_type_project_id(db, type_id))
+  use _ <- authorization.require_project_admin(db, project_id, user_id)
+  use _ <- validation.validate_capability_in_project(
+    db,
+    capability_id,
+    project_id,
+  )
+
+  case task_types_db.update_task_type(db, type_id, name, icon, capability_id) {
+    Ok(task_type) -> Ok(TaskTypeUpdated(task_type))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to update task type"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to update task type"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Task type already exists"))
+  }
+}
+
+fn require_task_type_project_id(
+  db: pog.Connection,
+  type_id: Int,
+) -> Result(Int, Error) {
   case task_types_db.get_task_type_project_id(db, type_id) {
-    Ok(Some(project_id)) -> {
-      use _ <- authorization.require_project_admin(db, project_id, user_id)
-      use _ <- validation.validate_capability_in_project(
-        db,
-        capability_id,
-        project_id,
-      )
-
-      case
-        task_types_db.update_task_type(db, type_id, name, icon, capability_id)
-      {
-        Ok(task_type) -> Ok(TaskTypeUpdated(task_type))
-        Error(service_error.NotFound) -> Error(NotFound)
-        Error(service_error.DbError(e)) -> Error(DbError(e))
-        Error(service_error.Conflict(_)) ->
-          Error(ValidationError("Failed to update task type"))
-        Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
-        Error(service_error.InvalidReference(_)) ->
-          Error(ValidationError("Invalid capability_id"))
-        Error(service_error.Unexpected(_)) ->
-          Error(ValidationError("Failed to update task type"))
-        Error(service_error.AlreadyExists) ->
-          Error(ValidationError("Task type already exists"))
-      }
-    }
-
+    Ok(Some(project_id)) -> Ok(project_id)
     Ok(None) -> Error(NotFound)
     Error(e) -> Error(DbError(e))
   }
@@ -262,13 +274,24 @@ fn handle_list_tasks(
   {
     Ok(tasks) -> Ok(TasksList(tasks))
     Error(service_error.DbError(e)) -> Error(DbError(e))
-    Error(service_error.Unexpected(_)) ->
-      Error(DbError(pog.UnexpectedArgumentCount(1, 0)))
-    Error(_) -> Error(DbError(pog.UnexpectedArgumentCount(1, 0)))
+    Error(service_error.Unexpected(message)) ->
+      Error(
+        DbError(pog.PostgresqlError(
+          code: "UNEXPECTED_SERVICE_ERROR",
+          name: "unexpected_service_error",
+          message: message,
+        )),
+      )
+    Error(service_error.ValidationError(message)) ->
+      Error(ValidationError(message))
+    Error(service_error.InvalidReference(message)) ->
+      Error(ValidationError(message))
+    Error(service_error.NotFound) -> Error(ValidationError("Not found"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+    Error(service_error.Conflict(message)) -> Error(ValidationError(message))
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_create_task(
   db: pog.Connection,
   project_id: Int,
@@ -285,59 +308,52 @@ fn handle_create_task(
   use validated_title <- validation.validate_task_title(title)
   use _ <- validation.validate_priority(priority)
   use _ <- validation.validate_task_type_in_project(db, type_id, project_id)
+  use card_id <- result.try(normalize_card_id(card_id))
 
-  let normalized_card_id = case card_id {
+  case
+    tasks_queries.create_task(
+      db,
+      org_id,
+      type_id,
+      project_id,
+      validated_title,
+      description,
+      priority,
+      user_id,
+      card_id,
+      milestone_id,
+      None,
+    )
+  {
+    Ok(task) -> {
+      // Trigger rules engine for task creation (null → available)
+      let ctx =
+        rules_engine.TaskContext(task.id, project_id, org_id, type_id, card_id)
+      let _ = evaluate_task_rules_created(db, ctx, user_id)
+      Ok(TaskResult(task))
+    }
+    Error(service_error.InvalidReference("type_id")) ->
+      Error(ValidationError("Invalid type_id"))
+    Error(service_error.InvalidReference("card_id")) ->
+      Error(ValidationError("Invalid card_id"))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+    Error(service_error.NotFound) -> Error(NotFound)
+  }
+}
+
+fn normalize_card_id(card_id: Option(Int)) -> Result(Option(Int), Error) {
+  case card_id {
     None -> Ok(None)
     Some(0) -> Ok(None)
     Some(id) if id > 0 -> Ok(Some(id))
     Some(_) -> Error(ValidationError("Invalid card_id"))
-  }
-
-  case normalized_card_id {
-    Error(err) -> Error(err)
-    Ok(card_id) ->
-      case
-        tasks_queries.create_task(
-          db,
-          org_id,
-          type_id,
-          project_id,
-          validated_title,
-          description,
-          priority,
-          user_id,
-          card_id,
-          milestone_id,
-          None,
-        )
-      {
-        Ok(task) -> {
-          // Trigger rules engine for task creation (null → available)
-          let ctx =
-            rules_engine.TaskContext(
-              task.id,
-              project_id,
-              org_id,
-              type_id,
-              card_id,
-            )
-          let _ = evaluate_task_rules_created(db, ctx, user_id)
-          Ok(TaskResult(task))
-        }
-        Error(service_error.InvalidReference("type_id")) ->
-          Error(ValidationError("Invalid type_id"))
-        Error(service_error.InvalidReference("card_id")) ->
-          Error(ValidationError("Invalid card_id"))
-        Error(service_error.InvalidReference(_)) ->
-          Error(ValidationError("Invalid reference"))
-        Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
-        Error(service_error.DbError(e)) -> Error(DbError(e))
-        Error(service_error.Unexpected(_)) ->
-          Error(ValidationError("Unexpected error"))
-        Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
-        Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
-        Error(service_error.NotFound) -> Error(NotFound)
-      }
   }
 }
 
@@ -441,7 +457,6 @@ fn update_task_for_owner(
   let description_update = field_update.to_option(updates.description)
   let priority_update = field_update.to_option(updates.priority)
   let type_id_update = field_update.to_option(updates.type_id)
-  let milestone_update = to_milestone_query_value(updates.milestone_id)
 
   case
     tasks_queries.update_task_claimed_by_user(
@@ -452,7 +467,7 @@ fn update_task_for_owner(
       description_update,
       priority_update,
       type_id_update,
-      milestone_update,
+      updates.milestone_id,
       version,
     )
   {
@@ -502,6 +517,8 @@ fn validate_milestone_move(
     Ok(value) -> Ok(value)
     Error(milestones_db.NotFound) -> Ok(None)
     Error(milestones_db.DeleteNotAllowed) ->
+      Error(ValidationError("Invalid milestone_id"))
+    Error(milestones_db.InvalidState(_)) ->
       Error(ValidationError("Invalid milestone_id"))
     Error(milestones_db.DbError(e)) -> Error(DbError(e))
   }
@@ -559,17 +576,9 @@ fn validate_ready_milestone(
       Error(ValidationError("Invalid milestone_id"))
     Error(milestones_db.DeleteNotAllowed) ->
       Error(ValidationError("Invalid milestone_id"))
+    Error(milestones_db.InvalidState(_)) ->
+      Error(ValidationError("Invalid milestone_id"))
     Error(milestones_db.DbError(e)) -> Error(DbError(e))
-  }
-}
-
-fn to_milestone_query_value(
-  update: field_update.FieldUpdate(Option(Int)),
-) -> Int {
-  case update {
-    field_update.Unchanged -> -1
-    field_update.Set(None) -> 0
-    field_update.Set(Some(id)) -> id
   }
 }
 
@@ -650,9 +659,7 @@ fn claim_task_success(
       current.type_id,
       current.card_id,
     )
-  let from_state = task_status_to_string(current.status)
-  let to_state = task_status_to_string(task.status)
-  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
 
   let _ =
     maybe_evaluate_card_rules(
@@ -765,9 +772,7 @@ fn release_task_success(
       current.type_id,
       current.card_id,
     )
-  let from_state = task_status_to_string(current.status)
-  let to_state = task_status_to_string(task.status)
-  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
 
   let _ =
     maybe_evaluate_card_rules(
@@ -880,9 +885,7 @@ fn complete_task_success(
       current.type_id,
       current.card_id,
     )
-  let from_state = task_status_to_string(current.status)
-  let to_state = task_status_to_string(task.status)
-  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
 
   let _ = recompute_milestone_if_needed(db, task_id)
 
@@ -950,8 +953,8 @@ fn evaluate_task_rules(
   db: pog.Connection,
   ctx: rules_engine.TaskContext,
   user_id: Int,
-  from_state: String,
-  to_state: String,
+  from_state: TaskStatus,
+  to_state: TaskStatus,
 ) -> Nil {
   let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
   // Fire and forget - don't block on rules engine
@@ -965,7 +968,7 @@ fn evaluate_task_rules_created(
   ctx: rules_engine.TaskContext,
   user_id: Int,
 ) -> Nil {
-  let event = rules_engine.task_event(ctx, user_id, None, "available")
+  let event = rules_engine.task_event(ctx, user_id, None, Available)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -997,8 +1000,6 @@ fn evaluate_card_rules_for_task(
   case cards_db.get_card(db, card_id, user_id) {
     Error(_) -> Nil
     Ok(card) -> {
-      let state = cards_db.state_to_string(card.state)
-
       let event =
         rules_engine.card_event(
           card_id,
@@ -1006,7 +1007,7 @@ fn evaluate_card_rules_for_task(
           org_id,
           user_id,
           None,
-          state,
+          card.state,
         )
 
       let _ = rules_engine.evaluate_rules(db, event)

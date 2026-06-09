@@ -1,360 +1,117 @@
-//// Pool Filters Component for Scrumbringer client.
-////
-//// ## Mission
-////
-//// Render the filter panel for the pool view with type, capability, and search.
-////
-//// ## Responsibilities
-////
-//// - Type filter dropdown
-//// - Capability filter dropdown
-//// - My capabilities quick toggle
-//// - Search input with debounce
-////
-//// ## Non-responsibilities
-////
-//// - Filter state management (see features/pool/update.gleam)
-//// - Task filtering logic (handled by server)
-////
-//// ## Relations
-////
-//// - **features/pool/view.gleam**: Imports and uses this component
-//// - **client_state.gleam**: Provides Model, Msg types
+//// Member pool filter update workflow.
 
-import gleam/int
-import gleam/list
 import gleam/option as opt
 import gleam/string
 
-import lustre/attribute
-import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, input, label, option, select, span, text,
-}
-import lustre/event
-
-import domain/remote.{Loaded}
-import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
-import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/capability_scope
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/icons
+import scrumbringer_client/helpers/options as helpers_options
 
-/// Counts how many filters are currently active.
-fn count_active_filters(model: Model) -> Int {
-  let type_active = case model.member.pool.member_filters_type_id {
-    opt.None -> 0
-    opt.Some(_) -> 1
-  }
-  let cap_active = case model.member.pool.member_filters_capability_id {
-    opt.None -> 0
-    opt.Some(_) -> 1
-  }
-  let search_active = case string.is_empty(model.member.pool.member_filters_q) {
-    True -> 0
-    False -> 1
-  }
-  let my_caps_active = case model.member.pool.member_capability_scope {
-    MyCapabilities -> 1
-    AllCapabilities -> 0
-  }
-  type_active + cap_active + search_active + my_caps_active
-}
+import domain/task_status
 
-/// Renders the filter panel with type, capability, and search filters.
-pub fn view(model: Model) -> Element(Msg) {
-  let type_options = case model.member.pool.member_task_types {
-    Loaded(task_types) -> [
-      option(
-        [attribute.value("")],
-        helpers_i18n.i18n_t(model, i18n_text.AllOption),
-      ),
-      ..list.map(task_types, fn(tt) {
-        option([attribute.value(int.to_string(tt.id))], tt.name)
-      })
-    ]
-
-    _ -> [
-      option(
-        [attribute.value("")],
-        helpers_i18n.i18n_t(model, i18n_text.AllOption),
-      ),
-    ]
-  }
-
-  let capability_options = case model.admin.capabilities.capabilities {
-    Loaded(caps) -> [
-      option(
-        [attribute.value("")],
-        helpers_i18n.i18n_t(model, i18n_text.AllOption),
-      ),
-      ..list.map(caps, fn(c) {
-        option([attribute.value(int.to_string(c.id))], c.name)
-      })
-    ]
-
-    _ -> [
-      option(
-        [attribute.value("")],
-        helpers_i18n.i18n_t(model, i18n_text.AllOption),
-      ),
-    ]
-  }
-
-  let my_caps_active =
-    model.member.pool.member_capability_scope == MyCapabilities
-
-  let my_caps_class = case my_caps_active {
-    True -> "btn-xs btn-icon"
-    False -> "btn-xs btn-icon"
-  }
-
-  let active_count = count_active_filters(model)
-
-  div([attribute.class("filters-row")], [
-    view_type_filter(model, type_options),
-    view_capability_filter(model, capability_options),
-    view_my_capabilities_toggle(model, my_caps_class, my_caps_active),
-    view_search_filter(model),
-    view_filter_actions(model, active_count),
-  ])
-}
-
-/// Renders the filter badge and clear button.
-fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
-  case active_count {
-    0 -> element.none()
-    count ->
-      div([attribute.class("filter-actions")], [
-        span(
-          [
-            attribute.class("filter-badge"),
-            attribute.attribute(
-              "aria-label",
-              helpers_i18n.i18n_t(model, i18n_text.ActiveFilters(count)),
-            ),
-          ],
-          [text(int.to_string(count))],
-        ),
-        button(
-          [
-            attribute.class("btn-xs btn-clear-filters"),
-            attribute.attribute("data-testid", "clear-filters-btn"),
-            attribute.attribute(
-              "title",
-              helpers_i18n.i18n_t(model, i18n_text.ClearFilters),
-            ),
-            event.on_click(pool_msg(pool_messages.MemberClearFilters)),
-          ],
-          [text(helpers_i18n.i18n_t(model, i18n_text.ClearFilters))],
-        ),
-      ])
+pub fn try_update(
+  model: member_pool.Model,
+  inner: pool_messages.Msg,
+) -> opt.Option(#(member_pool.Model, Bool)) {
+  case inner {
+    pool_messages.MemberPoolStatusChanged(value) ->
+      opt.Some(handle_status_changed(model, value))
+    pool_messages.MemberPoolTypeChanged(value) ->
+      opt.Some(handle_type_changed(model, value))
+    pool_messages.MemberPoolCapabilityChanged(value) ->
+      opt.Some(handle_capability_changed(model, value))
+    pool_messages.MemberPoolCapabilityScopeChanged(value) ->
+      opt.Some(handle_capability_scope_changed(model, value))
+    pool_messages.MemberClearFilters -> opt.Some(handle_clear(model))
+    pool_messages.MemberPoolSearchChanged(value) ->
+      opt.Some(handle_search_changed(model, value))
+    pool_messages.MemberPoolSearchDebounced(value) ->
+      opt.Some(handle_search_debounced(model, value))
+    _ -> opt.None
   }
 }
 
-fn view_type_filter(
-  model: Model,
-  options: List(element.Element(Msg)),
-) -> Element(Msg) {
-  let current_value = option_int_value(model.member.pool.member_filters_type_id)
-  div([attribute.class("field")], [
-    span([attribute.class("filter-tooltip")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.TypeLabel)),
-    ]),
-    span(
-      [
-        attribute.class("filter-icon"),
-        attribute.attribute(
-          "title",
-          helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
-        ),
-        attribute.attribute("aria-hidden", "true"),
-      ],
-      [icons.nav_icon(icons.TagLabel, icons.Small)],
-    ),
-    label(
-      [
-        attribute.class("filter-label"),
-        attribute.attribute("for", "pool-filter-type"),
-      ],
-      [text(helpers_i18n.i18n_t(model, i18n_text.TypeLabel))],
-    ),
-    select(
-      [
-        attribute.attribute("id", "pool-filter-type"),
-        attribute.attribute(
-          "aria-label",
-          helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
-        ),
-        attribute.value(current_value),
-        event.on_input(fn(value) {
-          pool_msg(pool_messages.MemberPoolTypeChanged(value))
-        }),
-        attribute.disabled(case model.member.pool.member_task_types {
-          Loaded(_) -> False
-          _ -> True
-        }),
-      ],
-      options,
-    ),
-  ])
+pub fn handle_status_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  let next_status = case string.trim(value) {
+    "" -> opt.None
+    _ ->
+      case task_status.parse_task_status(value) {
+        Ok(status) -> opt.Some(status)
+        Error(_) -> opt.None
+      }
+  }
+
+  #(member_pool.Model(..model, member_filters_status: next_status), True)
 }
 
-fn view_capability_filter(
-  model: Model,
-  options: List(element.Element(Msg)),
-) -> Element(Msg) {
-  let current_value =
-    option_int_value(model.member.pool.member_filters_capability_id)
-  div([attribute.class("field")], [
-    span([attribute.class("filter-tooltip")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel)),
-    ]),
-    span(
-      [
-        attribute.class("filter-icon"),
-        attribute.attribute(
-          "title",
-          helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel),
-        ),
-        attribute.attribute("aria-hidden", "true"),
-      ],
-      [icons.nav_icon(icons.Crosshairs, icons.Small)],
+pub fn handle_type_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_filters_type_id: helpers_options.empty_to_int_opt(value),
     ),
-    label(
-      [
-        attribute.class("filter-label"),
-        attribute.attribute("for", "pool-filter-capability"),
-      ],
-      [text(helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel))],
-    ),
-    select(
-      [
-        attribute.attribute("id", "pool-filter-capability"),
-        attribute.attribute(
-          "aria-label",
-          helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel),
-        ),
-        attribute.value(current_value),
-        event.on_input(fn(value) {
-          pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
-        }),
-      ],
-      options,
-    ),
-  ])
+    True,
+  )
 }
 
-fn view_my_capabilities_toggle(
-  model: Model,
-  button_class: String,
-  is_active: Bool,
-) -> Element(Msg) {
-  div([attribute.class("field")], [
-    span([attribute.class("filter-tooltip")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
-    ]),
-    span(
-      [
-        attribute.class("filter-icon"),
-        attribute.attribute(
-          "title",
-          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel),
-        ),
-        attribute.attribute("aria-hidden", "true"),
-      ],
-      [icons.nav_icon(icons.Star, icons.Small)],
+pub fn handle_capability_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_filters_capability_id: helpers_options.empty_to_int_opt(value),
     ),
-    label([attribute.class("filter-label")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
-    ]),
-    button(
-      [
-        attribute.class(button_class),
-        attribute.attribute(
-          "title",
-          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesHint),
-        ),
-        attribute.attribute(
-          "aria-label",
-          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)
-            <> ": "
-            <> case is_active {
-            True -> helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesOn)
-            False -> helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesOff)
-          },
-        ),
-        event.on_click(
-          pool_msg(
-            pool_messages.MemberPoolCapabilityScopeChanged(case is_active {
-              True -> "all"
-              False -> "mine"
-            }),
-          ),
-        ),
-      ],
-      [
-        case is_active {
-          True -> icons.nav_icon(icons.Star, icons.Small)
-          False -> icons.nav_icon(icons.StarOutline, icons.Small)
-        },
-      ],
-    ),
-  ])
+    True,
+  )
 }
 
-fn view_search_filter(model: Model) -> Element(Msg) {
-  div([attribute.class("field filter-q")], [
-    span([attribute.class("filter-tooltip")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.SearchLabel)),
-    ]),
-    span(
-      [
-        attribute.class("filter-icon"),
-        attribute.attribute(
-          "title",
-          helpers_i18n.i18n_t(model, i18n_text.SearchLabel),
-        ),
-        attribute.attribute("aria-hidden", "true"),
-      ],
-      [icons.nav_icon(icons.MagnifyingGlass, icons.Small)],
-    ),
-    label(
-      [
-        attribute.class("filter-label"),
-        attribute.attribute("for", "pool-filter-q"),
-      ],
-      [text(helpers_i18n.i18n_t(model, i18n_text.SearchLabel))],
-    ),
-    input([
-      attribute.attribute("id", "pool-filter-q"),
-      attribute.attribute(
-        "aria-label",
-        helpers_i18n.i18n_t(model, i18n_text.SearchLabel),
-      ),
-      attribute.type_("text"),
-      attribute.value(model.member.pool.member_filters_q),
-      event.on_input(fn(value) {
-        pool_msg(pool_messages.MemberPoolSearchChanged(value))
-      }),
-      event.debounce(
-        event.on_input(fn(value) {
-          pool_msg(pool_messages.MemberPoolSearchDebounced(value))
-        }),
-        350,
-      ),
-      attribute.placeholder(helpers_i18n.i18n_t(
-        model,
-        i18n_text.SearchPlaceholder,
-      )),
-    ]),
-  ])
+pub fn handle_search_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(member_pool.Model(..model, member_filters_q: value), False)
 }
 
-fn option_int_value(value: opt.Option(Int)) -> String {
-  case value {
-    opt.Some(id) -> int.to_string(id)
-    opt.None -> ""
+pub fn handle_search_debounced(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(member_pool.Model(..model, member_filters_q: value), True)
+}
+
+pub fn handle_clear(model: member_pool.Model) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_filters_status: opt.None,
+      member_filters_type_id: opt.None,
+      member_filters_capability_id: opt.None,
+      member_filters_q: "",
+      member_capability_scope: capability_scope.default(),
+    ),
+    True,
+  )
+}
+
+pub fn handle_capability_scope_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  case capability_scope.parse(value) {
+    Ok(next_scope) -> #(
+      member_pool.Model(..model, member_capability_scope: next_scope),
+      True,
+    )
+
+    Error(_) -> #(model, False)
   }
 }

@@ -21,7 +21,7 @@
 //// ## Responsibilities
 ////
 //// - Shared task status label helpers
-//// - Task decay styling utilities (re-exported from member_visuals)
+//// - Task decay styling utilities
 //// - Documentation of task view locations
 ////
 //// ## Non-responsibilities
@@ -44,7 +44,6 @@ import gleam/int
 import domain/task_status.{type TaskStatus}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/member_visuals
 
 // =============================================================================
 // Task Status Helpers
@@ -94,14 +93,6 @@ pub fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
     d if d < 27 -> #(0.85, 0.65)
     _ -> #(0.8, 0.55)
   }
-}
-
-/// Calculate priority-based visual size in pixels for task cards.
-///
-/// Higher priority tasks appear larger in the pool canvas.
-/// Re-exported from member_visuals for convenience.
-pub fn priority_to_px(priority: Int) -> Int {
-  member_visuals.priority_to_px(priority)
 }
 
 /// Generate CSS style string for task decay visualization.

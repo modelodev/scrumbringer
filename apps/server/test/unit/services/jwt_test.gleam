@@ -2,9 +2,9 @@ import domain/org_role
 import gleam/bit_array
 import gleam/crypto
 import gleam/json
-import gleeunit/should
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/time
+import support/assertions as expect
 
 const secret_a = <<"secret-a":utf8>>
 
@@ -53,7 +53,7 @@ fn sign_with_payload_string(payload: String, secret: BitArray) -> String {
 pub fn verify_invalid_format_for_two_segments_test() {
   case jwt.verify("abc.def", secret_a) {
     Error(jwt.InvalidFormat) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }
 
@@ -72,7 +72,7 @@ pub fn verify_invalid_signature_test() {
 
   case jwt.verify(token, secret_b) {
     Error(jwt.InvalidSignature) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }
 
@@ -81,7 +81,7 @@ pub fn verify_invalid_json_payload_test() {
 
   case jwt.verify(token, secret_a) {
     Error(jwt.InvalidJson) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }
 
@@ -99,7 +99,7 @@ pub fn verify_missing_claim_test() {
 
   case jwt.verify(token, secret_a) {
     Error(jwt.MissingClaim) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }
 
@@ -117,7 +117,7 @@ pub fn verify_unsupported_role_test() {
 
   case jwt.verify(token, secret_a) {
     Error(jwt.UnsupportedRole) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }
 
@@ -136,6 +136,6 @@ pub fn verify_expired_token_test() {
 
   case jwt.verify(token, secret_a) {
     Error(jwt.Expired) -> Nil
-    _ -> should.fail()
+    _ -> expect.fail()
   }
 }

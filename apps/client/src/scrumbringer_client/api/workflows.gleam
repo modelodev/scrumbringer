@@ -8,38 +8,18 @@
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
+import domain/api_error.{type ApiResult}
+import scrumbringer_client/api/core
 
 import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
+  type Rule, type RuleTarget, type RuleTemplate, type TaskTemplate,
+  type Workflow,
 }
 import domain/workflow/codec as workflow_codec
-
-// =============================================================================
-// Decoders
-// =============================================================================
-
-fn workflow_decoder() -> decode.Decoder(Workflow) {
-  workflow_codec.workflow_decoder()
-}
-
-/// Story 4.10: Added templates field decoding.
-fn rule_decoder() -> decode.Decoder(Rule) {
-  workflow_codec.rule_decoder()
-}
-
-/// Story 4.9 AC20: Added rules_count field.
-fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
-  workflow_codec.task_template_decoder()
-}
-
-fn rule_template_decoder() -> decode.Decoder(RuleTemplate) {
-  workflow_codec.rule_template_decoder()
-}
 
 // =============================================================================
 // Public Payload Decoders (for testing)
@@ -47,34 +27,46 @@ fn rule_template_decoder() -> decode.Decoder(RuleTemplate) {
 
 /// Decoder for workflow wrapped in envelope.
 pub fn workflow_payload_decoder() -> decode.Decoder(Workflow) {
-  decode.field("workflow", workflow_decoder(), decode.success)
+  decode.field("workflow", workflow_codec.workflow_decoder(), decode.success)
 }
 
 /// Decoder for list of workflows.
 pub fn workflows_payload_decoder() -> decode.Decoder(List(Workflow)) {
-  decode.field("workflows", decode.list(workflow_decoder()), decode.success)
+  decode.field(
+    "workflows",
+    decode.list(workflow_codec.workflow_decoder()),
+    decode.success,
+  )
 }
 
 /// Decoder for rule wrapped in envelope.
 pub fn rule_payload_decoder() -> decode.Decoder(Rule) {
-  decode.field("rule", rule_decoder(), decode.success)
+  decode.field("rule", workflow_codec.rule_decoder(), decode.success)
 }
 
 /// Decoder for list of rules.
 pub fn rules_payload_decoder() -> decode.Decoder(List(Rule)) {
-  decode.field("rules", decode.list(rule_decoder()), decode.success)
+  decode.field(
+    "rules",
+    decode.list(workflow_codec.rule_decoder()),
+    decode.success,
+  )
 }
 
 /// Decoder for task template wrapped in envelope.
 pub fn task_template_payload_decoder() -> decode.Decoder(TaskTemplate) {
-  decode.field("template", task_template_decoder(), decode.success)
+  decode.field(
+    "template",
+    workflow_codec.task_template_decoder(),
+    decode.success,
+  )
 }
 
 /// Decoder for list of task templates.
 pub fn task_templates_payload_decoder() -> decode.Decoder(List(TaskTemplate)) {
   decode.field(
     "templates",
-    decode.list(task_template_decoder()),
+    decode.list(workflow_codec.task_template_decoder()),
     decode.success,
   )
 }
@@ -83,7 +75,7 @@ pub fn task_templates_payload_decoder() -> decode.Decoder(List(TaskTemplate)) {
 pub fn rule_templates_payload_decoder() -> decode.Decoder(List(RuleTemplate)) {
   decode.field(
     "templates",
-    decode.list(rule_template_decoder()),
+    decode.list(workflow_codec.rule_template_decoder()),
     decode.success,
   )
 }
@@ -98,9 +90,13 @@ pub fn list_project_workflows(
   to_msg: fn(ApiResult(List(Workflow))) -> msg,
 ) -> Effect(msg) {
   let decoder =
-    decode.field("workflows", decode.list(workflow_decoder()), decode.success)
+    decode.field(
+      "workflows",
+      decode.list(workflow_codec.workflow_decoder()),
+      decode.success,
+    )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
     None,
     decoder,
@@ -122,9 +118,10 @@ pub fn create_project_workflow(
       #("description", json.string(description)),
       #("active", json.bool(active)),
     ])
-  let decoder = decode.field("workflow", workflow_decoder(), decode.success)
+  let decoder =
+    decode.field("workflow", workflow_codec.workflow_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
     Some(body),
     decoder,
@@ -152,9 +149,10 @@ pub fn update_workflow(
         }),
       ),
     ])
-  let decoder = decode.field("workflow", workflow_decoder(), decode.success)
+  let decoder =
+    decode.field("workflow", workflow_codec.workflow_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/workflows/" <> int.to_string(workflow_id),
     Some(body),
     decoder,
@@ -168,7 +166,7 @@ pub fn delete_workflow(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/workflows/" <> int.to_string(workflow_id),
     None,
     to_msg,
@@ -185,9 +183,13 @@ pub fn list_rules(
   to_msg: fn(ApiResult(List(Rule))) -> msg,
 ) -> Effect(msg) {
   let decoder =
-    decode.field("rules", decode.list(rule_decoder()), decode.success)
+    decode.field(
+      "rules",
+      decode.list(workflow_codec.rule_decoder()),
+      decode.success,
+    )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
     None,
     decoder,
@@ -200,9 +202,7 @@ pub fn create_rule(
   workflow_id: Int,
   name: String,
   goal: String,
-  resource_type: String,
-  task_type_id: Option(Int),
-  to_state: String,
+  target: RuleTarget,
   active: Bool,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
@@ -210,17 +210,21 @@ pub fn create_rule(
     json.object([
       #("name", json.string(name)),
       #("goal", json.string(goal)),
-      #("resource_type", json.string(resource_type)),
-      #("task_type_id", case task_type_id {
+      #(
+        "resource_type",
+        json.string(workflow.rule_target_resource_type(target)),
+      ),
+      #("task_type_id", case workflow.rule_target_task_type_id(target) {
         None -> json.null()
         Some(id) -> json.int(id)
       }),
-      #("to_state", json.string(to_state)),
+      #("to_state", json.string(workflow.rule_target_to_state_string(target))),
       #("active", json.bool(active)),
     ])
-  let decoder = decode.field("rule", rule_decoder(), decode.success)
+  let decoder =
+    decode.field("rule", workflow_codec.rule_decoder(), decode.success)
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
     Some(body),
     decoder,
@@ -233,9 +237,7 @@ pub fn update_rule(
   rule_id: Int,
   name: String,
   goal: String,
-  resource_type: String,
-  task_type_id: Option(Int),
-  to_state: String,
+  target: RuleTarget,
   active: Bool,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
@@ -243,12 +245,15 @@ pub fn update_rule(
     json.object([
       #("name", json.string(name)),
       #("goal", json.string(goal)),
-      #("resource_type", json.string(resource_type)),
-      #("task_type_id", case task_type_id {
-        None -> json.int(-1)
+      #(
+        "resource_type",
+        json.string(workflow.rule_target_resource_type(target)),
+      ),
+      #("task_type_id", case workflow.rule_target_task_type_id(target) {
+        None -> json.null()
         Some(id) -> json.int(id)
       }),
-      #("to_state", json.string(to_state)),
+      #("to_state", json.string(workflow.rule_target_to_state_string(target))),
       #(
         "active",
         json.int(case active {
@@ -257,9 +262,10 @@ pub fn update_rule(
         }),
       ),
     ])
-  let decoder = decode.field("rule", rule_decoder(), decode.success)
+  let decoder =
+    decode.field("rule", workflow_codec.rule_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/rules/" <> int.to_string(rule_id),
     Some(body),
     decoder,
@@ -273,7 +279,7 @@ pub fn delete_rule(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/rules/" <> int.to_string(rule_id),
     None,
     to_msg,
@@ -291,11 +297,11 @@ pub fn attach_template(
   let decoder =
     decode.field(
       "templates",
-      decode.list(rule_template_decoder()),
+      decode.list(workflow_codec.rule_template_decoder()),
       decode.success,
     )
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/templates/"
@@ -313,7 +319,7 @@ pub fn detach_template(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/templates/"
@@ -335,11 +341,11 @@ pub fn list_project_templates(
   let decoder =
     decode.field(
       "templates",
-      decode.list(task_template_decoder()),
+      decode.list(workflow_codec.task_template_decoder()),
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
     None,
     decoder,
@@ -364,9 +370,13 @@ pub fn create_project_template(
       #("priority", json.int(priority)),
     ])
   let decoder =
-    decode.field("template", task_template_decoder(), decode.success)
+    decode.field(
+      "template",
+      workflow_codec.task_template_decoder(),
+      decode.success,
+    )
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
     Some(body),
     decoder,
@@ -391,9 +401,13 @@ pub fn update_template(
       #("priority", json.int(priority)),
     ])
   let decoder =
-    decode.field("template", task_template_decoder(), decode.success)
+    decode.field(
+      "template",
+      workflow_codec.task_template_decoder(),
+      decode.success,
+    )
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/task-templates/" <> int.to_string(template_id),
     Some(body),
     decoder,
@@ -407,7 +421,7 @@ pub fn delete_template(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/task-templates/" <> int.to_string(template_id),
     None,
     to_msg,
@@ -478,7 +492,7 @@ pub fn get_workflow_metrics(
 ) -> Effect(msg) {
   // Note: core.request already unwraps the { data: ... } envelope
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/metrics",
     None,
     workflow_metrics_decoder(),
@@ -537,7 +551,7 @@ pub fn get_org_rule_metrics(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/rule-metrics?from=" <> from <> "&to=" <> to,
     None,
     decoder,
@@ -559,7 +573,7 @@ pub fn get_project_rule_metrics(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/rule-metrics?from="
@@ -643,7 +657,7 @@ pub fn get_rule_metrics_detailed(
   to_msg: fn(ApiResult(RuleMetricsDetailed)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/metrics?from="
@@ -750,7 +764,7 @@ pub fn get_rule_executions(
   to_msg: fn(ApiResult(RuleExecutionsResponse)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/executions?from="

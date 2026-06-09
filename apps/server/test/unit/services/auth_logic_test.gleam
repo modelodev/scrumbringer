@@ -1,9 +1,9 @@
 import domain/org_role
 import gleam/dict
 import gleam/option.{None, Some}
-import gleeunit/should
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/store_state as ss
+import support/assertions as expect
 
 const now_iso = "2026-01-20T00:00:00Z"
 
@@ -54,7 +54,7 @@ pub fn register_requires_org_name_when_bootstrapping_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.OrgNameRequired))
+  result |> expect.equal(Error(auth_logic.OrgNameRequired))
 }
 
 pub fn register_requires_invite_when_org_exists_test() {
@@ -71,7 +71,7 @@ pub fn register_requires_invite_when_org_exists_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.InviteRequired))
+  result |> expect.equal(Error(auth_logic.InviteRequired))
 }
 
 pub fn register_rejects_invalid_invite_code_test() {
@@ -88,7 +88,7 @@ pub fn register_rejects_invalid_invite_code_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.InviteInvalid))
+  result |> expect.equal(Error(auth_logic.InviteInvalid))
 }
 
 pub fn register_rejects_expired_invite_test() {
@@ -107,7 +107,7 @@ pub fn register_rejects_expired_invite_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.InviteExpired))
+  result |> expect.equal(Error(auth_logic.InviteExpired))
 }
 
 pub fn register_rejects_used_invite_test() {
@@ -130,7 +130,7 @@ pub fn register_rejects_used_invite_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.InviteUsed))
+  result |> expect.equal(Error(auth_logic.InviteUsed))
 }
 
 pub fn register_rejects_taken_email_test() {
@@ -163,5 +163,5 @@ pub fn register_rejects_taken_email_test() {
       now_unix,
     )
 
-  result |> should.equal(Error(auth_logic.EmailTaken))
+  result |> expect.equal(Error(auth_logic.EmailTaken))
 }

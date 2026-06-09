@@ -2,20 +2,36 @@
 ////
 //// Tests Model construction, Msg type constructors, and DialogMode type.
 
-import gleeunit/should
 import lustre/effect
+import lustre/element
 
 import domain/api_error.{ApiError}
+import domain/card.{
+  type Card, type CardColor, Blue, Card, Gray, Green, Orange, Pendiente, Pink,
+  Purple, Red, Yellow,
+}
 import gleam/option
+import gleam/string
 import scrumbringer_client/components/card_crud_dialog.{
-  type CardColor, Blue, CreateColorChanged, CreateColorToggle,
-  CreateDescriptionChanged, CreateResult, CreateSubmitted, CreateTitleChanged,
-  DeleteCancelled, DeleteConfirmed, EditCancelled, EditTitleChanged, Gray, Green,
-  LocaleReceived, MilestoneIdReceived, MilestoneNameCleared,
-  MilestoneNameReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model,
-  Orange, Pink, ProjectIdReceived, Purple, Red, Yellow, update_for_test,
+  CreateColorChanged, CreateColorToggle, CreateDescriptionChanged, CreateResult,
+  CreateSubmitted, CreateTitleChanged, DeleteCancelled, DeleteConfirmed,
+  EditCancelled, EditTitleChanged, LocaleReceived, MilestoneIdReceived,
+  MilestoneNameCleared, MilestoneNameReceived, ModeReceived, Model,
+  ProjectIdReceived, update_for_test, view_create_dialog_for_test,
+  view_edit_dialog_for_test,
+}
+import scrumbringer_client/components/crud_dialog_base.{
+  Closed, Creating, Deleting, Editing,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
+
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
 
 // =============================================================================
 // Model Tests
@@ -28,7 +44,7 @@ pub fn model_default_values_test() {
       project_id: option.None,
       create_milestone_id: option.None,
       create_milestone_name: option.None,
-      mode: option.None,
+      mode: Closed,
       create_title: "",
       create_description: "",
       create_color: option.None,
@@ -45,11 +61,11 @@ pub fn model_default_values_test() {
       delete_error: option.None,
     )
 
-  model.locale |> should.equal(En)
-  model.project_id |> should.equal(option.None)
-  model.mode |> should.equal(option.None)
-  model.create_title |> should.equal("")
-  model.create_in_flight |> should.equal(False)
+  let assert En = model.locale
+  let assert option.None = model.project_id
+  let assert Closed = model.mode
+  let assert "" = model.create_title
+  let assert False = model.create_in_flight
 }
 
 pub fn model_with_spanish_locale_test() {
@@ -59,7 +75,7 @@ pub fn model_with_spanish_locale_test() {
       project_id: option.Some(42),
       create_milestone_id: option.Some(7),
       create_milestone_name: option.Some("Milestone 7"),
-      mode: option.Some(ModeCreate),
+      mode: Creating,
       create_title: "Mi Ficha",
       create_description: "Descripción",
       create_color: option.Some("blue"),
@@ -76,11 +92,11 @@ pub fn model_with_spanish_locale_test() {
       delete_error: option.None,
     )
 
-  model.locale |> should.equal(Es)
-  model.project_id |> should.equal(option.Some(42))
-  model.create_title |> should.equal("Mi Ficha")
-  model.create_color |> should.equal(option.Some("blue"))
-  model.create_color_open |> should.equal(True)
+  let assert Es = model.locale
+  let assert option.Some(42) = model.project_id
+  let assert "Mi Ficha" = model.create_title
+  let assert option.Some("blue") = model.create_color
+  let assert True = model.create_color_open
 }
 
 // =============================================================================
@@ -88,20 +104,20 @@ pub fn model_with_spanish_locale_test() {
 // =============================================================================
 
 pub fn dialog_mode_create_test() {
-  let mode = ModeCreate
-  should.equal(mode, ModeCreate)
+  let mode = Creating
+  assert_equal(mode, Creating)
 }
 
 pub fn dialog_mode_edit_test() {
   let card = make_test_card()
-  let ModeEdit(c) = ModeEdit(card)
-  c.id |> should.equal(1)
+  let Editing(c) = Editing(card)
+  let assert 1 = c.id
 }
 
 pub fn dialog_mode_delete_test() {
   let card = make_test_card()
-  let ModeDelete(c) = ModeDelete(card)
-  c.title |> should.equal("Test Card")
+  let Deleting(c) = Deleting(card)
+  let assert "Test Card" = c.title
 }
 
 // =============================================================================
@@ -110,95 +126,77 @@ pub fn dialog_mode_delete_test() {
 
 pub fn msg_locale_received_test() {
   let msg = LocaleReceived(Es)
-  case msg {
-    LocaleReceived(loc) -> loc |> should.equal(Es)
-  }
+  assert_equal(msg, LocaleReceived(Es))
 }
 
 pub fn msg_project_id_received_test() {
   let msg = ProjectIdReceived(123)
-  case msg {
-    ProjectIdReceived(id) -> id |> should.equal(123)
-  }
+  assert_equal(msg, ProjectIdReceived(123))
 }
 
 pub fn msg_mode_received_test() {
-  let msg = ModeReceived(ModeCreate)
-  case msg {
-    ModeReceived(mode) -> should.equal(mode, ModeCreate)
-  }
+  let msg = ModeReceived(Creating)
+  assert_equal(msg, ModeReceived(Creating))
 }
 
 pub fn msg_milestone_id_received_test() {
   let msg = MilestoneIdReceived(77)
-  case msg {
-    MilestoneIdReceived(id) -> id |> should.equal(77)
-  }
+  assert_equal(msg, MilestoneIdReceived(77))
 }
 
 pub fn msg_milestone_name_received_test() {
   let msg = MilestoneNameReceived("Milestone 77")
-  case msg {
-    MilestoneNameReceived(name) -> name |> should.equal("Milestone 77")
-  }
+  assert_equal(msg, MilestoneNameReceived("Milestone 77"))
 }
 
 pub fn msg_milestone_name_cleared_test() {
   let msg = MilestoneNameCleared
-  should.equal(msg, MilestoneNameCleared)
+  assert_equal(msg, MilestoneNameCleared)
 }
 
 pub fn msg_create_title_changed_test() {
   let msg = CreateTitleChanged("New Title")
-  case msg {
-    CreateTitleChanged(title) -> title |> should.equal("New Title")
-  }
+  assert_equal(msg, CreateTitleChanged("New Title"))
 }
 
 pub fn msg_create_description_changed_test() {
   let msg = CreateDescriptionChanged("New Description")
-  case msg {
-    CreateDescriptionChanged(desc) -> desc |> should.equal("New Description")
-  }
+  assert_equal(msg, CreateDescriptionChanged("New Description"))
 }
 
 pub fn msg_create_color_toggle_test() {
   let msg = CreateColorToggle
-  should.equal(msg, CreateColorToggle)
+  assert_equal(msg, CreateColorToggle)
 }
 
 pub fn msg_create_color_changed_test() {
   let msg = CreateColorChanged(option.Some("red"))
-  case msg {
-    CreateColorChanged(color) -> color |> should.equal(option.Some("red"))
-  }
+  assert_equal(msg, CreateColorChanged(option.Some("red")))
 }
 
 pub fn msg_create_submitted_test() {
   let msg = CreateSubmitted
-  should.equal(msg, CreateSubmitted)
+  assert_equal(msg, CreateSubmitted)
 }
 
 pub fn msg_edit_title_changed_test() {
   let msg = EditTitleChanged("Updated Title")
-  case msg {
-    EditTitleChanged(title) -> title |> should.equal("Updated Title")
-  }
+  assert_equal(msg, EditTitleChanged("Updated Title"))
 }
 
 pub fn msg_edit_cancelled_test() {
   let msg = EditCancelled
-  should.equal(msg, EditCancelled)
+  assert_equal(msg, EditCancelled)
 }
 
 pub fn msg_delete_confirmed_test() {
   let msg = DeleteConfirmed
-  should.equal(msg, DeleteConfirmed)
+  assert_equal(msg, DeleteConfirmed)
 }
 
 pub fn msg_delete_cancelled_test() {
   let msg = DeleteCancelled
-  should.equal(msg, DeleteCancelled)
+  assert_equal(msg, DeleteCancelled)
 }
 
 pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() {
@@ -208,7 +206,7 @@ pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() 
       project_id: option.Some(10),
       create_milestone_id: option.Some(89),
       create_milestone_name: option.Some("Milestone 89"),
-      mode: option.Some(ModeCreate),
+      mode: Creating,
       create_title: "Card with context",
       create_description: "desc",
       create_color: option.None,
@@ -237,12 +235,48 @@ pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() 
       ),
     )
 
-  next.mode |> should.equal(option.Some(ModeCreate))
-  next.create_milestone_id |> should.equal(option.Some(89))
-  next.create_milestone_name |> should.equal(option.Some("Milestone 89"))
-  next.create_in_flight |> should.equal(False)
-  next.create_error |> should.equal(option.Some("validation failed"))
-  fx |> should.equal(effect.none())
+  let assert Creating = next.mode
+  let assert option.Some(89) = next.create_milestone_id
+  let assert option.Some("Milestone 89") = next.create_milestone_name
+  let assert False = next.create_in_flight
+  let assert option.Some("validation failed") = next.create_error
+  let assert True = fx == effect.none()
+}
+
+// =============================================================================
+// View Tests
+// =============================================================================
+
+pub fn create_dialog_renders_shared_card_fields_test() {
+  let html =
+    view_create_dialog_for_test(
+      En,
+      option.Some(89),
+      option.Some("Milestone 89"),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "card-create-form")
+  assert_contains(html, "Create Card")
+  assert_contains(html, "Destination milestone")
+  assert_contains(html, "Milestone 89")
+  assert_contains(html, "Card title")
+  assert_contains(html, "Card description")
+  assert_contains(html, "Color")
+  assert_contains(html, "None")
+}
+
+pub fn edit_dialog_renders_shared_card_fields_test() {
+  let html =
+    view_edit_dialog_for_test(En, make_test_card())
+    |> element.to_document_string
+
+  assert_contains(html, "card-edit-form")
+  assert_contains(html, "Edit Card")
+  assert_contains(html, "Test Card")
+  assert_contains(html, "Test Description")
+  assert_contains(html, "Color")
+  assert_contains(html, "Blue")
 }
 
 // =============================================================================
@@ -251,29 +285,27 @@ pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() 
 
 pub fn card_color_all_variants_test() {
   let colors = [Gray, Red, Orange, Yellow, Green, Blue, Purple, Pink]
-  colors |> should.not_equal([])
+  let assert False = colors == []
 }
 
 pub fn card_color_gray_test() {
   let color: CardColor = Gray
-  should.equal(color, Gray)
+  assert_equal(color, Gray)
 }
 
 pub fn card_color_red_test() {
   let color: CardColor = Red
-  should.equal(color, Red)
+  assert_equal(color, Red)
 }
 
 pub fn card_color_blue_test() {
   let color: CardColor = Blue
-  should.equal(color, Blue)
+  assert_equal(color, Blue)
 }
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-import domain/card.{type Card, Card, Pendiente}
 
 fn make_test_card() -> Card {
   Card(
@@ -282,7 +314,7 @@ fn make_test_card() -> Card {
     milestone_id: option.None,
     title: "Test Card",
     description: "Test Description",
-    color: option.Some("blue"),
+    color: option.Some(card.Blue),
     state: Pendiente,
     task_count: 5,
     completed_count: 2,

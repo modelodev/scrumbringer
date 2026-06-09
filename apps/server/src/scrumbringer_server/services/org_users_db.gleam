@@ -25,6 +25,8 @@ import gleam/list
 import gleam/option as opt
 import gleam/result
 import pog
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/persisted_role
 import scrumbringer_server/sql
 
 /// Organization user record with role.
@@ -36,7 +38,6 @@ pub type OrgUser {
 pub type UpdateOrgRoleError {
   UpdateUserNotFound
   UpdateCannotDemoteLastAdmin
-  UpdateInvalidRole
   UpdateDbError(pog.QueryError)
 }
 
@@ -45,18 +46,6 @@ pub type DeleteOrgUserError {
   DeleteUserNotFound
   DeleteLastAdmin
   DeleteDbError(pog.QueryError)
-}
-
-fn parse_org_role(value: String) -> Result(OrgRole, pog.QueryError) {
-  case org_role.parse(value) {
-    Ok(role) -> Ok(role)
-    Error(_) ->
-      Error(pog.PostgresqlError(
-        code: "INVALID_ROLE",
-        name: "invalid_role",
-        message: "Invalid org role: " <> value,
-      ))
-  }
 }
 
 /// Lists organization users, optionally filtered by query.
@@ -72,18 +61,20 @@ pub fn list_org_users(
 
   returned.rows
   |> list.try_map(fn(row) {
-    use role <- result.try(parse_org_role(row.org_role))
-    Ok(OrgUser(
-      id: row.id,
-      email: row.email,
-      org_role: role,
-      created_at: row.created_at,
-    ))
+    org_user_from_fields(row.id, row.email, row.org_role, row.created_at)
   })
 }
 
 type OrgUserRow {
   OrgUserRow(id: Int, email: String, org_role: String, created_at: String)
+}
+
+fn org_user_row_decoder() -> decode.Decoder(OrgUserRow) {
+  use id <- decode.field(0, decode.int)
+  use email <- decode.field(1, decode.string)
+  use org_role <- decode.field(2, decode.string)
+  use created_at <- decode.field(3, decode.string)
+  decode.success(OrgUserRow(id:, email:, org_role:, created_at:))
 }
 
 /// Updates a user's organization role.
@@ -102,32 +93,49 @@ pub fn update_org_role(
       |> result.map_error(UpdateDbError),
     )
     use row <- result.try(require_user_row(existing))
-
-    let OrgUserRow(org_role: current_role, ..) = row
-    use current_role <- result.try(
-      parse_org_role(current_role)
+    use current_user <- result.try(
+      org_user_from_row(row)
       |> result.map_error(UpdateDbError),
     )
-    use _ <- result.try(ensure_can_demote(tx, org_id, current_role, new_role))
 
-    case current_role == new_role {
-      True -> Ok(row)
-      False -> update_role_row(tx, org_id, user_id, new_role)
+    use _ <- result.try(ensure_can_demote(
+      tx,
+      org_id,
+      current_user.org_role,
+      new_role,
+    ))
+
+    case current_user.org_role == new_role {
+      True -> Ok(current_user)
+      False -> {
+        use row <- result.try(update_role_row(tx, org_id, user_id, new_role))
+        org_user_from_row(row)
+        |> result.map_error(UpdateDbError)
+      }
     }
   })
   |> result.map_error(transaction_error_to_update_error)
-  |> result.try(fn(row) {
-    let OrgUserRow(
-      id: id,
-      email: email,
-      org_role: role_value,
-      created_at: created_at,
-    ) = row
-    use role <- result.try(
-      parse_org_role(role_value) |> result.map_error(UpdateDbError),
-    )
-    Ok(OrgUser(id: id, email: email, org_role: role, created_at: created_at))
-  })
+}
+
+fn org_user_from_fields(
+  id: Int,
+  email: String,
+  role_value: String,
+  created_at: String,
+) -> Result(OrgUser, pog.QueryError) {
+  use role <- result.try(persisted_role.org_role(role_value))
+  Ok(OrgUser(id: id, email: email, org_role: role, created_at: created_at))
+}
+
+fn org_user_from_row(row: OrgUserRow) -> Result(OrgUser, pog.QueryError) {
+  let OrgUserRow(
+    id: id,
+    email: email,
+    org_role: role_value,
+    created_at: created_at,
+  ) = row
+
+  org_user_from_fields(id, email, role_value, created_at)
 }
 
 /// Soft-delete a user from an organization.
@@ -145,29 +153,18 @@ pub fn delete_org_user(
       |> result.map_error(DeleteDbError),
     )
     use row <- result.try(require_user_row_for_delete(existing))
-
-    let OrgUserRow(org_role: current_role, ..) = row
-    use current_role <- result.try(
-      parse_org_role(current_role)
+    use current_user <- result.try(
+      org_user_from_row(row)
       |> result.map_error(DeleteDbError),
     )
-    use _ <- result.try(ensure_can_delete(tx, org_id, current_role))
 
-    soft_delete_row(tx, org_id, user_id)
+    use _ <- result.try(ensure_can_delete(tx, org_id, current_user.org_role))
+
+    use row <- result.try(soft_delete_row(tx, org_id, user_id))
+    org_user_from_row(row)
+    |> result.map_error(DeleteDbError)
   })
   |> result.map_error(transaction_error_to_delete_error)
-  |> result.try(fn(row) {
-    let OrgUserRow(
-      id: id,
-      email: email,
-      org_role: role_value,
-      created_at: created_at,
-    ) = row
-    use role <- result.try(
-      parse_org_role(role_value) |> result.map_error(DeleteDbError),
-    )
-    Ok(OrgUser(id: id, email: email, org_role: role, created_at: created_at))
-  })
 }
 
 fn require_user_row(
@@ -188,7 +185,6 @@ fn require_user_row_for_delete(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn ensure_can_demote(
   tx,
   org_id: Int,
@@ -201,8 +197,7 @@ fn ensure_can_demote(
         count_org_admins(tx, org_id)
         |> result.map_error(UpdateDbError),
       )
-      // Justification: nested case ensures the last admin is preserved.
-      case admin_count <= 1 {
+      case is_last_admin(admin_count) {
         True -> Error(UpdateCannotDemoteLastAdmin)
         False -> Ok(Nil)
       }
@@ -223,7 +218,7 @@ fn ensure_can_delete(
         count_org_admins(tx, org_id)
         |> result.map_error(DeleteDbError),
       )
-      case admin_count <= 1 {
+      case is_last_admin(admin_count) {
         True -> Error(DeleteLastAdmin)
         False -> Ok(Nil)
       }
@@ -232,26 +227,22 @@ fn ensure_can_delete(
   }
 }
 
+fn is_last_admin(admin_count: Int) -> Bool {
+  admin_count <= 1
+}
+
 fn fetch_user_for_update(
   db: pog.Connection,
   org_id: Int,
   user_id: Int,
 ) -> Result(opt.Option(OrgUserRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use email <- decode.field(1, decode.string)
-    use org_role <- decode.field(2, decode.string)
-    use created_at <- decode.field(3, decode.string)
-    decode.success(OrgUserRow(id:, email:, org_role:, created_at:))
-  }
-
   use returned <- result.try(
     pog.query(
       "select id, email, org_role, to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at from users where org_id = $1 and id = $2 and deleted_at is null for update",
     )
     |> pog.parameter(pog.int(org_id))
     |> pog.parameter(pog.int(user_id))
-    |> pog.returning(decoder)
+    |> pog.returning(org_user_row_decoder())
     |> pog.execute(db),
   )
 
@@ -265,24 +256,16 @@ fn count_org_admins(
   db: pog.Connection,
   org_id: Int,
 ) -> Result(Int, pog.QueryError) {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
   use returned <- result.try(
     pog.query(
       "select count(*) from users where org_id = $1 and org_role = 'admin' and deleted_at is null",
     )
     |> pog.parameter(pog.int(org_id))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
-  case returned.rows {
-    [count, ..] -> Ok(count)
-    _ -> Ok(0)
-  }
+  persisted_field.query_row(returned.rows)
 }
 
 fn update_role_row(
@@ -291,13 +274,6 @@ fn update_role_row(
   user_id: Int,
   new_role: OrgRole,
 ) -> Result(OrgUserRow, UpdateOrgRoleError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use email <- decode.field(1, decode.string)
-    use org_role <- decode.field(2, decode.string)
-    use created_at <- decode.field(3, decode.string)
-    decode.success(OrgUserRow(id:, email:, org_role:, created_at:))
-  }
   let org_role_value = org_role.to_string(new_role)
 
   case
@@ -307,7 +283,7 @@ fn update_role_row(
     |> pog.parameter(pog.int(org_id))
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.text(org_role_value))
-    |> pog.returning(decoder)
+    |> pog.returning(org_user_row_decoder())
     |> pog.execute(db)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row)
@@ -321,21 +297,13 @@ fn soft_delete_row(
   org_id: Int,
   user_id: Int,
 ) -> Result(OrgUserRow, DeleteOrgUserError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use email <- decode.field(1, decode.string)
-    use org_role <- decode.field(2, decode.string)
-    use created_at <- decode.field(3, decode.string)
-    decode.success(OrgUserRow(id:, email:, org_role:, created_at:))
-  }
-
   case
     pog.query(
       "update users set deleted_at = now() where org_id = $1 and id = $2 and deleted_at is null returning id, email, org_role, to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at",
     )
     |> pog.parameter(pog.int(org_id))
     |> pog.parameter(pog.int(user_id))
-    |> pog.returning(decoder)
+    |> pog.returning(org_user_row_decoder())
     |> pog.execute(db)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row)

@@ -6,6 +6,7 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
 import lustre/event
+import scrumbringer_client/ui/attribute_value
 
 pub type TabItem(id) {
   TabItem(id: id, label: String, count: Option(Int), has_indicator: Bool)
@@ -105,7 +106,7 @@ fn tab_button(
       attribute.role("tab"),
       attribute.id(tab_dom_id(index)),
       attribute.attribute("aria-controls", tab_panel_dom_id(index)),
-      attribute.attribute("aria-selected", bool_to_string(is_active)),
+      attribute.attribute("aria-selected", attribute_value.boolean(is_active)),
       attribute.attribute("aria-setsize", int.to_string(total)),
       attribute.attribute("aria-posinset", int.to_string(index + 1)),
       attribute.attribute("tabindex", case is_active {
@@ -285,12 +286,5 @@ fn view_indicator(has_indicator: Bool) -> Element(msg) {
   case has_indicator {
     True -> span([attribute.class("new-notes-indicator")], [text("●")])
     False -> element.none()
-  }
-}
-
-fn bool_to_string(b: Bool) -> String {
-  case b {
-    True -> "true"
-    False -> "false"
   }
 }

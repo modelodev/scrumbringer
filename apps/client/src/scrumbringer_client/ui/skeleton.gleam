@@ -63,8 +63,6 @@ pub fn skeleton_table(rows: Int) -> Element(msg) {
 pub fn skeleton_list(rows: Int) -> Element(msg) {
   div([attribute.class("skeleton-list")], {
     list.range(1, rows)
-    |> list.map(fn(_) {
-      skeleton_line("100%", "40px")
-    })
+    |> list.map(fn(_) { skeleton_line("100%", "40px") })
   })
 }

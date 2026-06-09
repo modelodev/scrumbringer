@@ -26,26 +26,39 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, h3, hr, span, text}
 import lustre/event
 
-import domain/remote.{Loaded}
-import domain/task.{type Task, ActiveTask, Task, claimed_by}
+import domain/remote.{type Remote, Loaded}
+import domain/task.{type Task, type WorkSession, Task, WorkSession, claimed_by}
 import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{
-  type Model, type Msg, layout_msg, pool_msg,
-}
-import scrumbringer_client/features/layout/msg as layout_messages
-import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/lookup as helpers_lookup
-import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/helpers/time as helpers_time
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
+
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    theme: Theme,
+    panel_expanded: Bool,
+    user_id: Int,
+    tasks: Remote(List(Task)),
+    active_sessions: List(WorkSession),
+    server_offset_ms: Int,
+    disable_actions: Bool,
+    on_panel_toggled: msg,
+    on_pause: msg,
+    on_complete: fn(Int, Int) -> msg,
+    on_start: fn(Int) -> msg,
+    on_release: fn(Int, Int) -> msg,
+  )
+}
 
 // =============================================================================
 // Mini-Bar (Sticky Bottom)
@@ -53,12 +66,12 @@ import scrumbringer_client/ui/task_type_icon
 
 /// Sticky mini-bar at bottom of mobile screen.
 /// Shows "Now Working (N)" with aggregated timer.
-pub fn view_mini_bar(model: Model) -> Element(Msg) {
-  let active_sessions = get_active_sessions(model)
+pub fn view_mini_bar(config: Config(msg)) -> Element(msg) {
+  let active_sessions = get_active_sessions(config)
   let count = list.length(active_sessions)
-  let total_time = aggregate_session_time(model, active_sessions)
+  let total_time = aggregate_session_time(active_sessions)
 
-  let expand_icon = case model.member.pool.member_panel_expanded {
+  let expand_icon = case config.panel_expanded {
     True -> "▼"
     False -> "▲"
   }
@@ -66,14 +79,14 @@ pub fn view_mini_bar(model: Model) -> Element(Msg) {
   div(
     [
       attribute.class("member-mini-bar"),
-      event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
+      event.on_click(config.on_panel_toggled),
     ],
     [
       span([attribute.class("member-mini-bar-expand")], [text(expand_icon)]),
       div([attribute.class("member-mini-bar-status")], [
         span([attribute.class("member-mini-bar-label")], [
           text(
-            helpers_i18n.i18n_t(model, i18n_text.NowWorking)
+            i18n.t(config.locale, i18n_text.NowWorking)
             <> " ("
             <> int.to_string(count)
             <> ")",
@@ -97,11 +110,11 @@ pub fn view_mini_bar(model: Model) -> Element(Msg) {
 
 /// Bottom sheet with NOW WORKING and CLAIMED sections.
 /// Appears when mini-bar is tapped.
-pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
-  let active_sessions = get_active_sessions(model)
-  let claimed_tasks = get_claimed_not_working(model, user_id, active_sessions)
+pub fn view_panel_sheet(config: Config(msg)) -> Element(msg) {
+  let active_sessions = get_active_sessions(config)
+  let claimed_tasks = get_claimed_not_working(config, active_sessions)
 
-  let sheet_class = case model.member.pool.member_panel_expanded {
+  let sheet_class = case config.panel_expanded {
     True -> "member-panel-sheet open"
     False -> "member-panel-sheet"
   }
@@ -111,27 +124,27 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
     div(
       [
         attribute.class("member-panel-sheet-handle"),
-        event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
+        event.on_click(config.on_panel_toggled),
       ],
       [],
     ),
     div([attribute.class("member-panel-sheet-content")], [
       // Section 1: NOW WORKING (primary)
       div([attribute.class("sheet-section sheet-section-primary")], [
-        h3([], [text(helpers_i18n.i18n_t(model, i18n_text.NowWorking))]),
+        h3([], [text(i18n.t(config.locale, i18n_text.NowWorking))]),
         case active_sessions {
           [] ->
             div([attribute.class("sheet-empty")], [
               empty_state.simple(
                 "clock",
-                helpers_i18n.i18n_t(model, i18n_text.NowWorkingNone),
+                i18n.t(config.locale, i18n_text.NowWorkingNone),
               ),
             ])
           _ ->
             div(
               [],
               list.map(active_sessions, fn(session) {
-                view_session_row(model, session)
+                view_session_row(config, session)
               }),
             )
         },
@@ -140,19 +153,21 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
       hr([attribute.class("sheet-divider")]),
       // Section 2: CLAIMED (secondary)
       div([attribute.class("sheet-section")], [
-        h3([], [text(helpers_i18n.i18n_t(model, i18n_text.MyTasks))]),
+        h3([], [text(i18n.t(config.locale, i18n_text.MyTasks))]),
         case claimed_tasks {
           [] ->
             div([attribute.class("sheet-empty")], [
               empty_state.simple(
                 "hand-raised",
-                helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
+                i18n.t(config.locale, i18n_text.NoClaimedTasks),
               ),
             ])
           _ ->
             div(
               [],
-              list.map(claimed_tasks, fn(task) { view_claimed_row(model, task) }),
+              list.map(claimed_tasks, fn(task) {
+                view_claimed_row(config, task)
+              }),
             )
         },
       ]),
@@ -161,13 +176,13 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
 }
 
 /// Overlay that appears behind the sheet when expanded.
-pub fn view_overlay(model: Model) -> Element(Msg) {
-  case model.member.pool.member_panel_expanded {
+pub fn view_overlay(config: Config(msg)) -> Element(msg) {
+  case config.panel_expanded {
     True ->
       div(
         [
           attribute.class("member-panel-overlay visible"),
-          event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
+          event.on_click(config.on_panel_toggled),
         ],
         [],
       )
@@ -181,7 +196,7 @@ pub fn view_overlay(model: Model) -> Element(Msg) {
 
 /// Row for an active work session (NOW WORKING section).
 /// Actions: Pause, Complete
-fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
+fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
   let SessionInfo(
     task_id: task_id,
     title: title,
@@ -189,27 +204,24 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
     elapsed: elapsed,
     version: version,
   ) = session
-  let disable_actions =
-    model.member.pool.member_task_mutation_in_flight
-    || model.member.now_working.member_now_working_in_flight
 
   let actions = [
-    task_actions.icon_action_with_class(
-      helpers_i18n.i18n_t(model, i18n_text.Pause),
-      pool_msg(pool_messages.MemberNowWorkingPauseClicked),
+    action_buttons.task_icon_button_with_class(
+      i18n.t(config.locale, i18n_text.Pause),
+      config.on_pause,
       icons.Pause,
       icons.Small,
-      disable_actions,
+      config.disable_actions,
       "btn-action",
       opt.None,
       opt.None,
     ),
-    task_actions.icon_action_with_class(
-      helpers_i18n.i18n_t(model, i18n_text.Complete),
-      pool_msg(pool_messages.MemberCompleteClicked(task_id, version)),
+    action_buttons.task_icon_button_with_class(
+      i18n.t(config.locale, i18n_text.Complete),
+      config.on_complete(task_id, version),
       icons.Check,
       icons.Small,
-      disable_actions,
+      config.disable_actions,
       "btn-action btn-complete",
       opt.None,
       opt.None,
@@ -221,7 +233,7 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
       container_class: "session-row",
       content_class: "session-row-content",
       on_click: opt.None,
-      icon: opt.Some(task_type_icon.view(icon, 18, model.ui.theme)),
+      icon: opt.Some(task_type_icon.view(icon, 18, config.theme)),
       icon_class: opt.Some("session-icon"),
       title: title,
       title_class: opt.Some("session-title"),
@@ -237,30 +249,27 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
 
 /// Row for a claimed (paused) task (CLAIMED section).
 /// Actions: Start, Release
-fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
+fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
   let Task(id: id, title: title, task_type: task_type, version: version, ..) =
     task
-  let disable_actions =
-    model.member.pool.member_task_mutation_in_flight
-    || model.member.now_working.member_now_working_in_flight
 
   let actions = [
-    task_actions.icon_action_with_class(
-      helpers_i18n.i18n_t(model, i18n_text.Start),
-      pool_msg(pool_messages.MemberNowWorkingStartClicked(id)),
+    action_buttons.task_icon_button_with_class(
+      i18n.t(config.locale, i18n_text.Start),
+      config.on_start(id),
       icons.Play,
       icons.Small,
-      disable_actions,
+      config.disable_actions,
       "btn-action btn-start",
       opt.None,
       opt.None,
     ),
-    task_actions.icon_action_with_class(
-      helpers_i18n.i18n_t(model, i18n_text.Release),
-      pool_msg(pool_messages.MemberReleaseClicked(id, version)),
+    action_buttons.task_icon_button_with_class(
+      i18n.t(config.locale, i18n_text.Release),
+      config.on_release(id, version),
       icons.Return,
       icons.Small,
-      disable_actions,
+      config.disable_actions,
       "btn-action",
       opt.None,
       opt.None,
@@ -272,7 +281,7 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
       container_class: "claimed-row",
       content_class: "claimed-row-content",
       on_click: opt.None,
-      icon: opt.Some(task_type_icon.view(task_type.icon, 18, model.ui.theme)),
+      icon: opt.Some(task_type_icon.view(task_type.icon, 18, config.theme)),
       icon_class: opt.Some("claimed-icon"),
       title: title,
       title_class: opt.Some("claimed-title"),
@@ -302,39 +311,32 @@ type SessionInfo {
 }
 
 /// Get all active work sessions with their display info.
-fn get_active_sessions(model: Model) -> List(SessionInfo) {
-  case helpers_selection.now_working_active_task(model) {
-    opt.None -> []
-    opt.Some(ActiveTask(
+fn get_active_sessions(config: Config(msg)) -> List(SessionInfo) {
+  config.active_sessions
+  |> list.map(fn(session) {
+    let WorkSession(
       task_id: task_id,
       started_at: started_at,
       accumulated_s: accumulated_s,
-      ..,
-    )) -> {
-      let task_info =
-        helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
-      let #(title, icon, version) = case task_info {
-        opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(
-          t,
-          tt.icon,
-          v,
-        )
-        opt.None -> #(
-          helpers_i18n.i18n_t(model, i18n_text.TaskNumber(task_id)),
-          "",
-          0,
-        )
-      }
-      let elapsed = calculate_elapsed(model, started_at, accumulated_s)
-      [SessionInfo(task_id, title, icon, elapsed, version)]
+    ) = session
+    let task_info = find_task_by_id(config.tasks, task_id)
+    let #(title, icon, version) = case task_info {
+      opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(
+        t,
+        tt.icon,
+        v,
+      )
+      opt.None -> #(i18n.t(config.locale, i18n_text.TaskNumber(task_id)), "", 0)
     }
-  }
+    let elapsed =
+      calculate_elapsed(config.server_offset_ms, started_at, accumulated_s)
+    SessionInfo(task_id, title, icon, elapsed, version)
+  })
 }
 
 /// Get claimed tasks that are NOT currently being worked on.
 fn get_claimed_not_working(
-  model: Model,
-  user_id: Int,
+  config: Config(msg),
   active_sessions: List(SessionInfo),
 ) -> List(Task) {
   let active_ids =
@@ -343,22 +345,21 @@ fn get_claimed_not_working(
       id
     })
 
-  case model.member.pool.member_tasks {
+  case config.tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
         let Task(id: id, status: status, ..) = t
         status == Claimed(Taken)
-        && claimed_by(t) == opt.Some(user_id)
+        && claimed_by(t) == opt.Some(config.user_id)
         && !list.contains(active_ids, id)
       })
     _ -> []
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Calculate aggregated time for all active sessions.
-fn aggregate_session_time(_model: Model, sessions: List(SessionInfo)) -> String {
+fn aggregate_session_time(sessions: List(SessionInfo)) -> String {
   case sessions {
     [] -> "00:00"
     [SessionInfo(elapsed: elapsed, ..)] -> elapsed
@@ -378,17 +379,32 @@ fn aggregate_session_time(_model: Model, sessions: List(SessionInfo)) -> String 
 
 /// Calculate elapsed time string for a session.
 fn calculate_elapsed(
-  model: Model,
+  server_offset_ms: Int,
   started_at: String,
   accumulated_s: Int,
 ) -> String {
   let started_ms = client_ffi.parse_iso_ms(started_at)
   let local_now_ms = client_ffi.now_ms()
-  let server_now_ms =
-    local_now_ms - model.member.now_working.now_working_server_offset_ms
+  let server_now_ms = local_now_ms - server_offset_ms
   helpers_time.now_working_elapsed_from_ms(
     accumulated_s,
     started_ms,
     server_now_ms,
   )
+}
+
+fn find_task_by_id(tasks: Remote(List(Task)), task_id: Int) -> opt.Option(Task) {
+  case tasks {
+    Loaded(items) ->
+      case
+        list.find(items, fn(task) {
+          let Task(id: id, ..) = task
+          id == task_id
+        })
+      {
+        Ok(task) -> opt.Some(task)
+        Error(_) -> opt.None
+      }
+    _ -> opt.None
+  }
 }

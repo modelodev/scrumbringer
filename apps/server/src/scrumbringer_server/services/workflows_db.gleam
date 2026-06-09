@@ -25,8 +25,9 @@ import gleam/result
 import gleam/string
 import helpers/option as option_helpers
 import pog
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/service_error.{
-  type ServiceError, AlreadyExists, DbError, NotFound, Unexpected,
+  type ServiceError, AlreadyExists, DbError, NotFound,
 }
 import scrumbringer_server/sql
 
@@ -49,31 +50,87 @@ pub type Workflow {
 // Helpers
 // =============================================================================
 
-fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> Workflow {
+fn text_update_value(value: Option(String)) -> String {
+  option_helpers.option_to_value(value, "__unset__")
+}
+
+fn workflow_from_fields(
+  id: Int,
+  org_id: Int,
+  project_id: Int,
+  name: String,
+  description: String,
+  active: Bool,
+  rule_count: Int,
+  created_by: Int,
+  created_at: String,
+) -> Workflow {
   Workflow(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    active: row.active,
-    rule_count: row.rule_count,
-    created_by: row.created_by,
-    created_at: row.created_at,
+    id: id,
+    org_id: org_id,
+    project_id: project_id,
+    name: name,
+    description: option_helpers.string_to_option(description),
+    active: active,
+    rule_count: rule_count,
+    created_by: created_by,
+    created_at: created_at,
+  )
+}
+
+fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> Workflow {
+  workflow_from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.active,
+    row.rule_count,
+    row.created_by,
+    row.created_at,
   )
 }
 
 fn from_get_row(row: sql.WorkflowsGetRow) -> Workflow {
-  Workflow(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    active: row.active,
-    rule_count: row.rule_count,
-    created_by: row.created_by,
-    created_at: row.created_at,
+  workflow_from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.active,
+    row.rule_count,
+    row.created_by,
+    row.created_at,
+  )
+}
+
+fn from_create_row(row: sql.WorkflowsCreateRow) -> Workflow {
+  workflow_from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.active,
+    0,
+    row.created_by,
+    row.created_at,
+  )
+}
+
+fn from_update_row(row: sql.WorkflowsUpdateRow) -> Workflow {
+  workflow_from_fields(
+    row.id,
+    row.org_id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.active,
+    0,
+    row.created_by,
+    row.created_at,
   )
 }
 
@@ -135,19 +192,13 @@ pub fn create_workflow(
       created_by,
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(Workflow(
-        id: row.id,
-        org_id: row.org_id,
-        project_id: row.project_id,
-        name: row.name,
-        description: option_helpers.string_to_option(row.description),
-        active: row.active,
-        rule_count: 0,
-        created_by: row.created_by,
-        created_at: row.created_at,
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "workflows.create_workflow",
       ))
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+      Ok(from_create_row(row))
+    }
     Error(error) -> Error(map_create_workflow_error(error))
   }
 }
@@ -188,22 +239,11 @@ pub fn update_workflow(
       workflow_id,
       org_id,
       project_id,
-      option_helpers.option_to_value(name, "__unset__"),
-      option_helpers.option_to_value(description, "__unset__"),
+      text_update_value(name),
+      text_update_value(description),
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(Workflow(
-        id: row.id,
-        org_id: row.org_id,
-        project_id: row.project_id,
-        name: row.name,
-        description: option_helpers.string_to_option(row.description),
-        active: row.active,
-        rule_count: 0,
-        created_by: row.created_by,
-        created_at: row.created_at,
-      ))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_update_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(map_update_workflow_error(error))
   }

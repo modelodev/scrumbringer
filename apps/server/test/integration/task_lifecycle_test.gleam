@@ -8,9 +8,9 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -46,7 +46,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status1 |> should.equal("available")
+  status1 |> expect.equal("available")
 
   // Step 2: Claim the task
   let claim_res =
@@ -58,14 +58,14 @@ pub fn full_lifecycle_create_claim_complete_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   // Verify task is now claimed
   let assert Ok(status2) =
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status2 |> should.equal("claimed")
+  status2 |> expect.equal("claimed")
 
   // Step 3: Complete the task (version is now 2 after claim)
   let complete_res =
@@ -77,14 +77,14 @@ pub fn full_lifecycle_create_claim_complete_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // Verify task is now completed
   let assert Ok(status3) =
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status3 |> should.equal("completed")
+  status3 |> expect.equal("completed")
 
   // Verify claimed_by is cleared on completion
   let assert Ok(claimed_by_cleared) =
@@ -93,7 +93,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
       "SELECT CASE WHEN claimed_by IS NULL THEN 1 ELSE 0 END FROM tasks WHERE id = $1",
       [pog.int(task_id)],
     )
-  claimed_by_cleared |> should.equal(1)
+  claimed_by_cleared |> expect.equal(1)
 
   // Verify completed_at is set
   let assert Ok(completed_at_check) =
@@ -102,7 +102,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
       "SELECT CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END FROM tasks WHERE id = $1",
       [pog.int(task_id)],
     )
-  completed_at_check |> should.equal(1)
+  completed_at_check |> expect.equal(1)
 }
 
 // =============================================================================
@@ -141,7 +141,7 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim1_res.status |> should.equal(200)
+  expect.expect_status(claim1_res, 200)
 
   // Verify claimed_by is user 1
   let assert Ok(user1_id) = fixtures.get_user_id(db, "admin@example.com")
@@ -149,7 +149,7 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
     fixtures.query_int(db, "SELECT claimed_by FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  claimed_by1 |> should.equal(user1_id)
+  claimed_by1 |> expect.equal(user1_id)
 
   // Step 3: User 1 releases the task (version is now 2 after claim)
   let release_res =
@@ -161,14 +161,14 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  release_res.status |> should.equal(200)
+  expect.expect_status(release_res, 200)
 
   // Verify task is back to available
   let assert Ok(status_after_release) =
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status_after_release |> should.equal("available")
+  status_after_release |> expect.equal("available")
 
   // Step 4: User 2 claims the task (version is now 3 after release)
   let claim2_res =
@@ -180,19 +180,19 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
       |> fixtures.with_auth(session2)
       |> simulate.json_body(json.object([#("version", json.int(3))])),
     )
-  claim2_res.status |> should.equal(200)
+  expect.expect_status(claim2_res, 200)
 
   // Verify claimed_by is now user 2
   let assert Ok(claimed_by2) =
     fixtures.query_int(db, "SELECT claimed_by FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  claimed_by2 |> should.equal(user2_id)
+  claimed_by2 |> expect.equal(user2_id)
 
   // Verify task status is claimed
   let assert Ok(status_final) =
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status_final |> should.equal("claimed")
+  status_final |> expect.equal("claimed")
 }

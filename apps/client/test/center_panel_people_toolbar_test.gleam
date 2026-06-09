@@ -1,6 +1,5 @@
 import gleam/option
 import gleam/string
-import gleeunit/should
 import lustre/element
 import lustre/element/html
 
@@ -9,6 +8,14 @@ import scrumbringer_client/features/layout/center_panel
 import scrumbringer_client/i18n/locale
 
 import domain/view_mode
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
+}
 
 fn base_config(
   mode: view_mode.ViewMode,
@@ -42,11 +49,10 @@ pub fn people_toolbar_renders_only_search_test() {
     center_panel.view(base_config(view_mode.People))
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"people-toolbar\"") |> should.be_true
-  string.contains(html, "data-testid=\"filter-search-people\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"filter-type\"") |> should.be_false
-  string.contains(html, "data-testid=\"filter-capability\"") |> should.be_false
+  assert_contains(html, "data-testid=\"people-toolbar\"")
+  assert_contains(html, "data-testid=\"filter-search-people\"")
+  assert_not_contains(html, "data-testid=\"filter-type\"")
+  assert_not_contains(html, "data-testid=\"filter-capability\"")
 }
 
 pub fn work_toolbar_keeps_type_and_capability_filters_test() {
@@ -54,10 +60,9 @@ pub fn work_toolbar_keeps_type_and_capability_filters_test() {
     center_panel.view(base_config(view_mode.Pool))
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"filter-type\"") |> should.be_true
-  string.contains(html, "data-testid=\"filter-capability\"") |> should.be_true
-  string.contains(html, "data-testid=\"filter-capability-scope\"")
-  |> should.be_true
+  assert_contains(html, "data-testid=\"filter-type\"")
+  assert_contains(html, "data-testid=\"filter-capability\"")
+  assert_contains(html, "data-testid=\"filter-capability-scope\"")
 }
 
 pub fn milestones_toolbar_hides_pool_filters_test() {
@@ -65,10 +70,9 @@ pub fn milestones_toolbar_hides_pool_filters_test() {
     center_panel.view(base_config(view_mode.Milestones))
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"filter-type\"") |> should.be_false
-  string.contains(html, "data-testid=\"filter-capability\"") |> should.be_false
-  string.contains(html, "data-testid=\"filter-search-people\"")
-  |> should.be_false
+  assert_not_contains(html, "data-testid=\"filter-type\"")
+  assert_not_contains(html, "data-testid=\"filter-capability\"")
+  assert_not_contains(html, "data-testid=\"filter-search-people\"")
 }
 
 pub fn capabilities_toolbar_keeps_type_and_search_without_capability_test() {
@@ -76,13 +80,9 @@ pub fn capabilities_toolbar_keeps_type_and_search_without_capability_test() {
     center_panel.view(base_config(view_mode.Capabilities))
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"capabilities-toolbar\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"filter-type\"") |> should.be_true
-  string.contains(html, "data-testid=\"filter-search-capabilities\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"filter-capability-scope\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"filter-capability\"")
-  |> should.be_false
+  assert_contains(html, "data-testid=\"capabilities-toolbar\"")
+  assert_contains(html, "data-testid=\"filter-type\"")
+  assert_contains(html, "data-testid=\"filter-search-capabilities\"")
+  assert_contains(html, "data-testid=\"filter-capability-scope\"")
+  assert_not_contains(html, "data-testid=\"filter-capability\"")
 }

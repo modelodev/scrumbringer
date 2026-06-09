@@ -22,6 +22,7 @@
 //// DATABASE_URL=... gleam run -m scrumbringer_server/seed
 //// ```
 
+import domain/org_role
 import gleam/erlang/charlist
 import gleam/int
 import gleam/io
@@ -90,7 +91,7 @@ fn run_seed(
     db,
     empty_org_id,
     "empty-admin@example.com",
-    "admin",
+    org_role.Admin,
   ))
   io.println("[OK] Empty org created (no projects): empty-admin@example.com")
 

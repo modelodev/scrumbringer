@@ -1,11 +1,14 @@
 //// Tests for author tooltip (AC20).
 
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/tooltips/author_tooltip
 import scrumbringer_client/ui/tooltips/types.{AuthorInfo}
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 pub fn shows_email_and_role_test() {
   let config =
@@ -17,7 +20,7 @@ pub fn shows_email_and_role_test() {
 
   let html = author_tooltip.view(config) |> element.to_document_string
 
-  string.contains(html, "María García") |> should.be_true
-  string.contains(html, "maria@example.com") |> should.be_true
-  string.contains(html, "Product Owner") |> should.be_true
+  assert_contains(html, "María García")
+  assert_contains(html, "maria@example.com")
+  assert_contains(html, "Product Owner")
 }

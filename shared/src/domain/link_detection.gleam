@@ -14,7 +14,6 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regexp.{type Match}
-import gleam/result
 import gleam/string
 
 // =============================================================================
@@ -57,14 +56,16 @@ pub type TextSegment {
 /// Detect all links in a text string.
 /// Returns a list of segments (plain text or links) in order.
 pub fn detect_links(text: String) -> List(TextSegment) {
-  let assert Ok(url_regex) =
-    regexp.from_string("https?://[^\\s<>\"'\\[\\]\\(\\)]+")
+  case regexp.from_string("https?://[^\\s<>\"'\\[\\]\\(\\)]+") {
+    Error(_) -> [PlainText(text)]
+    Ok(url_regex) -> {
+      let matches = regexp.scan(url_regex, text)
 
-  let matches = regexp.scan(url_regex, text)
-
-  case matches {
-    [] -> [PlainText(text)]
-    _ -> build_segments(text, matches, 0, [])
+      case matches {
+        [] -> [PlainText(text)]
+        _ -> build_segments(text, matches, 0, [])
+      }
+    }
   }
 }
 
@@ -138,7 +139,7 @@ fn find_match_start(text: String, match_content: String, from: Int) -> Int {
 }
 
 fn categorize_url(url: String, start: Int, end: Int) -> DetectedLink {
-  let link_type = parse_github_url(url) |> result.unwrap(GenericUrl)
+  let link_type = classify_url(url)
   let display_text = case github_short_path(link_type) {
     Some(short) -> short
     None -> url
@@ -151,6 +152,13 @@ fn categorize_url(url: String, start: Int, end: Int) -> DetectedLink {
     link_type: link_type,
     display_text: display_text,
   )
+}
+
+fn classify_url(url: String) -> LinkType {
+  case parse_github_url(url) {
+    Ok(link_type) -> link_type
+    Error(_) -> GenericUrl
+  }
 }
 
 fn parse_github_url(url: String) -> Result(LinkType, Nil) {
@@ -167,12 +175,27 @@ fn parse_github_url(url: String) -> Result(LinkType, Nil) {
         |> string.split("/")
 
       case path {
-        [owner, repo, "pull", number, ..] -> Ok(GitHubPR(owner, repo, number))
+        [owner, repo, "pull", number, ..] ->
+          case has_github_required_parts(owner, repo, number) {
+            True -> Ok(GitHubPR(owner, repo, number))
+            False -> Error(Nil)
+          }
         [owner, repo, "issues", number, ..] ->
-          Ok(GitHubIssue(owner, repo, number))
-        [owner, repo, "commit", sha, ..] -> Ok(GitHubCommit(owner, repo, sha))
+          case has_github_required_parts(owner, repo, number) {
+            True -> Ok(GitHubIssue(owner, repo, number))
+            False -> Error(Nil)
+          }
+        [owner, repo, "commit", sha, ..] ->
+          case has_github_required_parts(owner, repo, sha) {
+            True -> Ok(GitHubCommit(owner, repo, sha))
+            False -> Error(Nil)
+          }
         _ -> Error(Nil)
       }
     }
   }
+}
+
+fn has_github_required_parts(owner: String, repo: String, value: String) -> Bool {
+  owner != "" && repo != "" && value != ""
 }

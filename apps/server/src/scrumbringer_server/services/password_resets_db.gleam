@@ -10,9 +10,10 @@ import gleam/int
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/persisted_field
 
 /// Token time-to-live in hours.
-pub const reset_token_ttl_hours = 24
+const reset_token_ttl_hours = 24
 
 /// Status of a password reset token.
 pub type TokenStatus {
@@ -71,22 +72,14 @@ pub fn user_exists(
   db: pog.Connection,
   email: String,
 ) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use exists <- decode.field(0, decode.bool)
-    decode.success(exists)
-  }
-
   use returned <- result.try(
     pog.query("select exists(select 1 from users where email = $1)")
     |> pog.parameter(pog.text(email))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.bool_decoder())
     |> pog.execute(db),
   )
 
-  case returned.rows {
-    [exists, ..] -> Ok(exists)
-    _ -> Ok(False)
-  }
+  persisted_field.query_row(returned.rows)
 }
 
 /// Gets the status of a reset token.
@@ -114,14 +107,6 @@ fn token_status_internal(
   token: String,
   for_update: Bool,
 ) -> Result(TokenStatus, pog.QueryError) {
-  let decoder = {
-    use email <- decode.field(0, decode.string)
-    use used <- decode.field(1, decode.bool)
-    use invalidated <- decode.field(2, decode.bool)
-    use expired <- decode.field(3, decode.bool)
-    decode.success(TokenRow(email:, used:, invalidated:, expired:))
-  }
-
   let sql =
     "\nselect\n  email,\n  (used_at is not null) as used,\n  (invalidated_at is not null) as invalidated,\n  (created_at < now() - interval '"
     <> int.to_string(reset_token_ttl_hours)
@@ -134,7 +119,7 @@ fn token_status_internal(
   use returned <- result.try(
     pog.query(sql)
     |> pog.parameter(pog.text(token))
-    |> pog.returning(decoder)
+    |> pog.returning(token_row_decoder())
     |> pog.execute(db),
   )
 
@@ -156,17 +141,12 @@ pub fn mark_used(
   db: pog.Connection,
   token: String,
 ) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use ok <- decode.field(0, decode.int)
-    decode.success(ok)
-  }
-
   use returned <- result.try(
     pog.query(
       "update password_resets set used_at = now() where token = $1 and used_at is null and invalidated_at is null returning 1",
     )
     |> pog.parameter(pog.text(token))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
@@ -182,18 +162,13 @@ pub fn update_user_password_hash(
   email: String,
   password_hash: String,
 ) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use ok <- decode.field(0, decode.int)
-    decode.success(ok)
-  }
-
   use returned <- result.try(
     pog.query(
       "update users set password_hash = $2 where email = $1 returning 1",
     )
     |> pog.parameter(pog.text(string.trim(email)))
     |> pog.parameter(pog.text(password_hash))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
@@ -201,4 +176,12 @@ pub fn update_user_password_hash(
     [] -> Ok(False)
     _ -> Ok(True)
   }
+}
+
+fn token_row_decoder() -> decode.Decoder(TokenRow) {
+  use email <- decode.field(0, decode.string)
+  use used <- decode.field(1, decode.bool)
+  use invalidated <- decode.field(2, decode.bool)
+  use expired <- decode.field(3, decode.bool)
+  decode.success(TokenRow(email:, used:, invalidated:, expired:))
 }

@@ -1,0 +1,277 @@
+//// Task creation dialog view.
+
+import gleam/int
+import gleam/list
+import gleam/option as opt
+
+import lustre/attribute
+import lustre/element.{type Element}
+import lustre/element/html.{button, div, form, input, option, select, text}
+import lustre/event
+
+import domain/card.{type Card}
+import domain/milestone.{type MilestoneProgress}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import domain/task_type.{type TaskType}
+
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icons
+
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    error: opt.Option(String),
+    title: String,
+    description: String,
+    priority: String,
+    type_id: String,
+    card_id: opt.Option(Int),
+    milestone_id: opt.Option(Int),
+    in_flight: Bool,
+    task_types: Remote(List(TaskType)),
+    milestones: Remote(List(MilestoneProgress)),
+    cards: List(Card),
+    on_close: msg,
+    on_submit: msg,
+    on_title_changed: fn(String) -> msg,
+    on_description_changed: fn(String) -> msg,
+    on_priority_changed: fn(String) -> msg,
+    on_type_id_changed: fn(String) -> msg,
+    on_type_options_retry_clicked: msg,
+    on_card_id_changed: fn(String) -> msg,
+  )
+}
+
+fn t(config: Config(msg), key: i18n_text.Text) -> String {
+  i18n.t(config.locale, key)
+}
+
+pub fn view(config: Config(msg)) -> Element(msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: t(config, i18n_text.NewTask),
+      icon: opt.Some(icons.nav_icon(icons.ClipboardDoc, icons.Medium)),
+      size: dialog.DialogMd,
+      on_close: config.on_close,
+    ),
+    True,
+    config.error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { config.on_submit }),
+          attribute.id("task-create-form"),
+        ],
+        [
+          view_title_field(config),
+          view_description_field(config),
+          view_priority_field(config),
+          view_type_field(config),
+          view_milestone_target(config),
+          case config.milestone_id {
+            opt.Some(_) -> element.none()
+            opt.None -> view_card_selector(config)
+          },
+        ],
+      ),
+    ],
+    [
+      dialog.cancel_button_with_locale(config.locale, config.on_close),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("task-create-form"),
+          attribute.disabled(config.in_flight),
+          attribute.class(case config.in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
+        ],
+        [
+          text(case config.in_flight {
+            True -> t(config, i18n_text.Creating)
+            False -> t(config, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_title_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    t(config, i18n_text.Title),
+    input([
+      attribute.type_("text"),
+      attribute.attribute("maxlength", "56"),
+      attribute.value(config.title),
+      event.on_input(config.on_title_changed),
+    ]),
+  )
+}
+
+fn view_description_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    t(config, i18n_text.Description),
+    input([
+      attribute.type_("text"),
+      attribute.value(config.description),
+      event.on_input(config.on_description_changed),
+    ]),
+  )
+}
+
+fn view_priority_field(config: Config(msg)) -> Element(msg) {
+  form_field.with_hint(
+    t(config, i18n_text.Priority),
+    input([
+      attribute.type_("number"),
+      attribute.attribute("min", "1"),
+      attribute.attribute("max", "5"),
+      attribute.value(config.priority),
+      event.on_input(config.on_priority_changed),
+    ]),
+    "1 = "
+      <> t(config, i18n_text.PriorityHighest)
+      <> ", 5 = "
+      <> t(config, i18n_text.PriorityLowest),
+  )
+}
+
+fn view_type_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    t(config, i18n_text.TypeLabel),
+    div([], [
+      select(
+        [
+          attribute.value(config.type_id),
+          event.on_input(config.on_type_id_changed),
+          attribute.disabled(case config.task_types {
+            Loaded(_) -> False
+            _ -> True
+          }),
+        ],
+        task_type_options(config),
+      ),
+      case config.task_types {
+        Failed(_) ->
+          button(
+            [
+              attribute.type_("button"),
+              event.on_click(config.on_type_options_retry_clicked),
+            ],
+            [text(t(config, i18n_text.Retry))],
+          )
+        _ -> element.none()
+      },
+    ]),
+  )
+}
+
+fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
+  case config.task_types {
+    Loaded(task_types) -> [
+      option([attribute.value("")], t(config, i18n_text.SelectType)),
+      ..list.map(task_types, fn(tt) {
+        option([attribute.value(int.to_string(tt.id))], tt.name)
+      })
+    ]
+    Loading -> [
+      option([attribute.value("")], t(config, i18n_text.LoadingEllipsis)),
+    ]
+    NotAsked -> [
+      option([attribute.value("")], t(config, i18n_text.SelectProjectFirst)),
+    ]
+    Failed(_) -> [
+      option([attribute.value("")], t(config, i18n_text.ErrorLoadingTasks)),
+    ]
+  }
+}
+
+fn view_milestone_target(config: Config(msg)) -> Element(msg) {
+  case config.milestone_id {
+    opt.Some(milestone_id) ->
+      form_field.view(
+        t(config, i18n_text.Milestones),
+        div([attribute.class("task-create-milestone-target")], [
+          text(
+            milestone_name(config.milestones, milestone_id)
+            |> milestone_name_or_id(milestone_id),
+          ),
+        ]),
+      )
+    opt.None -> element.none()
+  }
+}
+
+fn milestone_name(
+  milestones: Remote(List(MilestoneProgress)),
+  milestone_id: Int,
+) -> opt.Option(String) {
+  case milestones {
+    Loaded(items) ->
+      list.find_map(items, fn(progress) {
+        case progress.milestone.id == milestone_id {
+          True -> Ok(progress.milestone.name)
+          False -> Error(Nil)
+        }
+      })
+      |> opt.from_result
+    _ -> opt.None
+  }
+}
+
+fn milestone_name_or_id(name: opt.Option(String), milestone_id: Int) -> String {
+  case name {
+    opt.None -> "#" <> int.to_string(milestone_id)
+    opt.Some(value) -> value
+  }
+}
+
+fn view_card_selector(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    t(config, i18n_text.ParentCardLabel),
+    select(
+      [
+        attribute.value(card_id_to_string(config.card_id)),
+        event.on_input(config.on_card_id_changed),
+      ],
+      [
+        option(
+          [
+            attribute.value(""),
+            attribute.selected(opt.is_none(config.card_id)),
+          ],
+          t(config, i18n_text.NoCard),
+        ),
+        ..list.map(config.cards, fn(card) { view_card_option(config, card) })
+      ],
+    ),
+  )
+}
+
+fn view_card_option(config: Config(msg), card: Card) -> Element(msg) {
+  let color_indicator = case card.color {
+    opt.Some(color) -> color_picker.color_emoji(color) <> " "
+    opt.None -> ""
+  }
+
+  let is_selected = config.card_id == opt.Some(card.id)
+
+  option(
+    [attribute.value(int.to_string(card.id)), attribute.selected(is_selected)],
+    color_indicator <> card.title,
+  )
+}
+
+fn card_id_to_string(card_id: opt.Option(Int)) -> String {
+  case card_id {
+    opt.Some(id) -> int.to_string(id)
+    opt.None -> ""
+  }
+}

@@ -4,9 +4,9 @@ import gleam/http
 import gleam/json
 import gleam/list
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -24,7 +24,7 @@ pub fn request_reset_does_not_leak_unknown_email_test() {
       ),
     )
 
-  known_res.status |> should.equal(200)
+  expect.expect_status(known_res, 200)
   let known_token = decode_reset_token(simulate.read_body(known_res))
 
   let unknown_res =
@@ -35,7 +35,7 @@ pub fn request_reset_does_not_leak_unknown_email_test() {
       ),
     )
 
-  unknown_res.status |> should.equal(200)
+  expect.expect_status(unknown_res, 200)
   let unknown_token = decode_reset_token(simulate.read_body(unknown_res))
 
   let known_validate =
@@ -44,9 +44,9 @@ pub fn request_reset_does_not_leak_unknown_email_test() {
       "/api/v1/auth/password-resets/" <> known_token,
     ))
 
-  known_validate.status |> should.equal(200)
+  expect.expect_status(known_validate, 200)
   string.contains(simulate.read_body(known_validate), "admin@example.com")
-  |> should.be_true
+  |> expect.is_true
 
   let unknown_validate =
     handler(simulate.request(
@@ -54,15 +54,15 @@ pub fn request_reset_does_not_leak_unknown_email_test() {
       "/api/v1/auth/password-resets/" <> unknown_token,
     ))
 
-  unknown_validate.status |> should.equal(403)
+  expect.expect_status(unknown_validate, 403)
   string.contains(simulate.read_body(unknown_validate), "RESET_TOKEN_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   // Unknown token should not be persisted
   single_int(db, "select count(*) from password_resets where token = $1", [
     pog.text(unknown_token),
   ])
-  |> should.equal(0)
+  |> expect.equal(0)
 }
 
 pub fn request_reset_invalidates_previous_active_token_test() {
@@ -77,7 +77,7 @@ pub fn request_reset_invalidates_previous_active_token_test() {
       ),
     )
 
-  first_res.status |> should.equal(200)
+  expect.expect_status(first_res, 200)
   let first_token = decode_reset_token(simulate.read_body(first_res))
 
   let second_res =
@@ -88,7 +88,7 @@ pub fn request_reset_invalidates_previous_active_token_test() {
       ),
     )
 
-  second_res.status |> should.equal(200)
+  expect.expect_status(second_res, 200)
   let second_token = decode_reset_token(simulate.read_body(second_res))
 
   let first_validate =
@@ -97,9 +97,9 @@ pub fn request_reset_invalidates_previous_active_token_test() {
       "/api/v1/auth/password-resets/" <> first_token,
     ))
 
-  first_validate.status |> should.equal(403)
+  expect.expect_status(first_validate, 403)
   string.contains(simulate.read_body(first_validate), "RESET_TOKEN_INVALID")
-  |> should.be_true
+  |> expect.is_true
 
   let second_validate =
     handler(simulate.request(
@@ -107,7 +107,7 @@ pub fn request_reset_invalidates_previous_active_token_test() {
       "/api/v1/auth/password-resets/" <> second_token,
     ))
 
-  second_validate.status |> should.equal(200)
+  expect.expect_status(second_validate, 200)
 }
 
 pub fn reset_token_is_single_use_test() {
@@ -122,7 +122,7 @@ pub fn reset_token_is_single_use_test() {
       ),
     )
 
-  create_res.status |> should.equal(200)
+  expect.expect_status(create_res, 200)
   let token = decode_reset_token(simulate.read_body(create_res))
 
   let consume_res =
@@ -136,14 +136,14 @@ pub fn reset_token_is_single_use_test() {
       ),
     )
 
-  consume_res.status |> should.equal(204)
+  expect.expect_status(consume_res, 204)
 
   let validate_again =
     handler(simulate.request(http.Get, "/api/v1/auth/password-resets/" <> token))
 
-  validate_again.status |> should.equal(403)
+  expect.expect_status(validate_again, 403)
   string.contains(simulate.read_body(validate_again), "RESET_TOKEN_USED")
-  |> should.be_true
+  |> expect.is_true
 
   let consume_again =
     handler(
@@ -156,9 +156,9 @@ pub fn reset_token_is_single_use_test() {
       ),
     )
 
-  consume_again.status |> should.equal(403)
+  expect.expect_status(consume_again, 403)
   string.contains(simulate.read_body(consume_again), "RESET_TOKEN_USED")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn consume_rejects_short_password_and_keeps_token_active_test() {
@@ -173,7 +173,7 @@ pub fn consume_rejects_short_password_and_keeps_token_active_test() {
       ),
     )
 
-  create_res.status |> should.equal(200)
+  expect.expect_status(create_res, 200)
   let token = decode_reset_token(simulate.read_body(create_res))
 
   let consume_res =
@@ -187,18 +187,18 @@ pub fn consume_rejects_short_password_and_keeps_token_active_test() {
       ),
     )
 
-  consume_res.status |> should.equal(422)
+  expect.expect_status(consume_res, 422)
   string.contains(simulate.read_body(consume_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
   string.contains(simulate.read_body(consume_res), "at least 12")
-  |> should.be_true
+  |> expect.is_true
 
   let validate =
     handler(simulate.request(http.Get, "/api/v1/auth/password-resets/" <> token))
 
-  validate.status |> should.equal(200)
+  expect.expect_status(validate, 200)
   string.contains(simulate.read_body(validate), "admin@example.com")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn validate_rejects_expired_tokens_test() {
@@ -211,9 +211,9 @@ pub fn validate_rejects_expired_tokens_test() {
   let validate =
     handler(simulate.request(http.Get, "/api/v1/auth/password-resets/pr_old"))
 
-  validate.status |> should.equal(403)
+  expect.expect_status(validate, 403)
   string.contains(simulate.read_body(validate), "RESET_TOKEN_INVALID")
-  |> should.be_true
+  |> expect.is_true
 }
 
 fn decode_reset_token(body: String) -> String {
@@ -252,7 +252,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
         ]),
       ),
     )
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -260,7 +260,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

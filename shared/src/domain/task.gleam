@@ -11,6 +11,7 @@
 //// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
 //// ```
 
+import domain/card
 import domain/task_state
 import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
 import domain/task_type.{type TaskTypeInline}
@@ -66,7 +67,7 @@ pub type Task {
     // Card (ficha) association
     card_id: Option(Int),
     card_title: Option(String),
-    card_color: Option(String),
+    card_color: Option(card.CardColor),
     /// Story 5.4 AC4: True if task has notes newer than user's last view.
     has_new_notes: Bool,
     /// Story 5.6: Number of incomplete dependencies blocking this task.
@@ -129,33 +130,6 @@ pub type TaskNote {
 /// ```
 pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
-}
-
-/// Currently active task for a user (legacy single-session type).
-///
-/// ## Example
-///
-/// ```gleam
-/// ActiveTask(task_id: 1, project_id: 1, started_at: "2024-01-17T12:00:00Z", accumulated_s: 3600)
-/// ```
-pub type ActiveTask {
-  ActiveTask(
-    task_id: Int,
-    project_id: Int,
-    started_at: String,
-    accumulated_s: Int,
-  )
-}
-
-/// Payload containing active task and server timestamp (legacy single-session).
-///
-/// ## Example
-///
-/// ```gleam
-/// ActiveTaskPayload(active_task: Some(active_task), as_of: "2024-01-17T12:00:00Z")
-/// ```
-pub type ActiveTaskPayload {
-  ActiveTaskPayload(active_task: Option(ActiveTask), as_of: String)
 }
 
 /// An active work session on a task (multi-session model).

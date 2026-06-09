@@ -21,12 +21,14 @@
 ////
 //// - Uses `pog` for DB access
 
+import domain/task_status
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
+import scrumbringer_server/services/persisted_field
 
 // =============================================================================
 // Types
@@ -48,8 +50,6 @@ pub type WorkSessionError {
   NotClaimed
   /// Task is completed (cannot start session).
   TaskCompleted
-  /// Session already exists for this task.
-  SessionExists
   /// No active session found for heartbeat.
   SessionNotFound
   /// Database error.
@@ -61,7 +61,7 @@ pub type WorkSessionError {
 // =============================================================================
 
 /// Stale cutoff in seconds (3 minutes).
-pub const stale_cutoff_seconds = 180
+const stale_cutoff_seconds = 180
 
 // =============================================================================
 // Public API
@@ -80,7 +80,6 @@ pub fn get_active_sessions(
   Ok(WorkSessionsState(active_sessions: sessions, as_of: as_of))
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Start a work session on a task.
 /// - Validates task is claimed by user
 /// - Validates task is not completed
@@ -88,7 +87,6 @@ pub fn get_active_sessions(
 ///
 /// Example:
 ///   start_session(db, user_id, task_id)
-/// Justification: nested case improves clarity for branching logic.
 pub fn start_session(
   db: pog.Connection,
   user_id: Int,
@@ -207,20 +205,13 @@ pub fn close_stale_sessions(db: pog.Connection) -> Result(Int, pog.QueryError) {
     SELECT COUNT(*)::INT FROM closed
   "
 
-  let decoder = {
-    use count <- decode.field(0, decode.int)
-    decode.success(count)
-  }
+  use returned <- result.try(
+    pog.query(query)
+    |> pog.returning(persisted_field.int_decoder())
+    |> pog.execute(db),
+  )
 
-  pog.query(query)
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-  |> result.map(fn(returned) {
-    case returned.rows {
-      [count, ..] -> count
-      _ -> 0
-    }
-  })
+  persisted_field.query_row(returned.rows)
 }
 
 /// Get time tracking data for a task (total and by user).
@@ -249,25 +240,10 @@ pub fn get_task_time_tracking(
     ORDER BY uwt.accumulated_s DESC
   "
 
-  let decoder = {
-    use user_id <- decode.field(0, decode.int)
-    use email <- decode.field(1, decode.string)
-    use accumulated_s <- decode.field(2, decode.int)
-    use started_at <- decode.field(3, decode.optional(decode.string))
-    use session_elapsed <- decode.field(4, decode.optional(decode.int))
-    decode.success(ContributorTime(
-      user_id: user_id,
-      email: email,
-      accumulated_s: accumulated_s,
-      ongoing_started_at: started_at,
-      ongoing_elapsed_s: session_elapsed,
-    ))
-  }
-
   use returned <- result.try(
     pog.query(query)
     |> pog.parameter(pog.int(task_id))
-    |> pog.returning(decoder)
+    |> pog.returning(contributor_time_decoder())
     |> pog.execute(db),
   )
 
@@ -327,21 +303,36 @@ type TaskClaimState {
   Completed
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn task_claim_state(status: String, claimed_by: Option(Int)) -> TaskClaimState {
-  case status {
-    "completed" -> Completed
-    "claimed" ->
-      // Justification: nested case disambiguates claimed vs available.
+type TaskClaimRow {
+  TaskClaimRow(status: String, claimed_by: Option(Int))
+}
+
+fn task_claim_state(
+  status: String,
+  claimed_by: Option(Int),
+) -> Result(TaskClaimState, WorkSessionError) {
+  use parsed_status <- result.try(
+    task_status.from_db(status, False)
+    |> result.map_error(fn(_) {
+      DbError(pog.PostgresqlError(
+        code: "INVALID_TASK_STATUS",
+        name: "invalid_task_status",
+        message: "Invalid task status: " <> status,
+      ))
+    }),
+  )
+
+  case parsed_status {
+    task_status.Completed -> Ok(Completed)
+    task_status.Claimed(_) ->
       case claimed_by {
-        Some(user_id) -> ClaimedBy(user_id)
-        None -> Available
+        Some(user_id) -> Ok(ClaimedBy(user_id))
+        None -> Ok(Available)
       }
-    _ -> Available
+    task_status.Available -> Ok(Available)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn validate_task_for_session(
   db: pog.Connection,
   user_id: Int,
@@ -354,21 +345,17 @@ fn validate_task_for_session(
     WHERE id = $1
   "
 
-  let decoder = {
-    use status <- decode.field(0, decode.string)
-    use claimed_by <- decode.field(1, decode.optional(decode.int))
-    decode.success(task_claim_state(status, claimed_by))
-  }
-
   case
     pog.query(query)
     |> pog.parameter(pog.int(task_id))
-    |> pog.returning(decoder)
+    |> pog.returning(task_claim_row_decoder())
     |> pog.execute(db)
   {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotClaimed)
-    Ok(pog.Returned(rows: [state, ..], ..)) -> {
+    Ok(pog.Returned(rows: [TaskClaimRow(status:, claimed_by:), ..], ..)) -> {
+      use state <- result.try(task_claim_state(status, claimed_by))
+
       case state {
         Completed -> Ok(TaskIsCompleted)
         ClaimedBy(id) if id == user_id -> Ok(TaskValidForSession)
@@ -396,16 +383,11 @@ fn insert_session(
     RETURNING id
   "
 
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
   case
     pog.query(query)
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.int(task_id))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db)
   {
     Error(e) -> Error(InsertDbError(e))
@@ -489,39 +471,53 @@ fn query_active_sessions(
     ORDER BY ws.started_at ASC
   "
 
-  let decoder = {
-    use task_id <- decode.field(0, decode.int)
-    use started_at <- decode.field(1, decode.string)
-    use accumulated_s <- decode.field(2, decode.int)
-    decode.success(ActiveSession(
-      task_id: task_id,
-      started_at: started_at,
-      accumulated_s: accumulated_s,
-    ))
-  }
-
   pog.query(query)
   |> pog.parameter(pog.int(user_id))
-  |> pog.returning(decoder)
+  |> pog.returning(active_session_decoder())
   |> pog.execute(db)
   |> result.map(fn(returned) { returned.rows })
 }
 
 fn get_server_time(db: pog.Connection) -> Result(String, pog.QueryError) {
-  let decoder = {
-    use value <- decode.field(0, decode.string)
-    decode.success(value)
-  }
-
-  pog.query(
-    "SELECT TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+  use returned <- result.try(
+    pog.query(
+      "SELECT TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+    )
+    |> pog.returning(persisted_field.string_decoder())
+    |> pog.execute(db),
   )
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-  |> result.map(fn(returned) {
-    case returned.rows {
-      [value, ..] -> value
-      _ -> ""
-    }
-  })
+
+  persisted_field.query_row(returned.rows)
+}
+
+fn contributor_time_decoder() -> decode.Decoder(ContributorTime) {
+  use user_id <- decode.field(0, decode.int)
+  use email <- decode.field(1, decode.string)
+  use accumulated_s <- decode.field(2, decode.int)
+  use started_at <- decode.field(3, decode.optional(decode.string))
+  use session_elapsed <- decode.field(4, decode.optional(decode.int))
+  decode.success(ContributorTime(
+    user_id: user_id,
+    email: email,
+    accumulated_s: accumulated_s,
+    ongoing_started_at: started_at,
+    ongoing_elapsed_s: session_elapsed,
+  ))
+}
+
+fn task_claim_row_decoder() -> decode.Decoder(TaskClaimRow) {
+  use status <- decode.field(0, decode.string)
+  use claimed_by <- decode.field(1, decode.optional(decode.int))
+  decode.success(TaskClaimRow(status:, claimed_by:))
+}
+
+fn active_session_decoder() -> decode.Decoder(ActiveSession) {
+  use task_id <- decode.field(0, decode.int)
+  use started_at <- decode.field(1, decode.string)
+  use accumulated_s <- decode.field(2, decode.int)
+  decode.success(ActiveSession(
+    task_id: task_id,
+    started_at: started_at,
+    accumulated_s: accumulated_s,
+  ))
 }

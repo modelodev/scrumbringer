@@ -5,11 +5,10 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -56,7 +55,7 @@ pub fn task_templates_project_crud_test() {
       ),
     )
 
-  create_res.status |> should.equal(200)
+  expect.expect_status(create_res, 200)
   let template_id = decode_template_id(simulate.read_body(create_res))
 
   let list_res =
@@ -69,9 +68,9 @@ pub fn task_templates_project_crud_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_template_names(simulate.read_body(list_res))
-  |> should.equal(["Project Template"])
+  |> expect.equal(["Project Template"])
 
   let patch_res =
     handler(
@@ -90,9 +89,9 @@ pub fn task_templates_project_crud_test() {
       ),
     )
 
-  patch_res.status |> should.equal(200)
+  expect.expect_status(patch_res, 200)
   decode_template_name(simulate.read_body(patch_res))
-  |> should.equal("Project Updated")
+  |> expect.equal("Project Updated")
 
   let delete_res =
     handler(
@@ -105,7 +104,7 @@ pub fn task_templates_project_crud_test() {
       |> request.set_header("X-CSRF", csrf),
     )
 
-  delete_res.status |> should.equal(204)
+  expect.expect_status(delete_res, 204)
 
   let list_after_res =
     handler(
@@ -117,9 +116,9 @@ pub fn task_templates_project_crud_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_after_res.status |> should.equal(200)
+  expect.expect_status(list_after_res, 200)
   decode_template_names(simulate.read_body(list_after_res))
-  |> should.equal([])
+  |> expect.equal([])
 }
 
 pub fn task_templates_project_scope_requires_project_manager_test() {
@@ -192,7 +191,7 @@ pub fn task_templates_project_scope_requires_project_manager_test() {
       ),
     )
 
-  create_res.status |> should.equal(403)
+  expect.expect_status(create_res, 403)
 
   let list_res =
     handler(
@@ -204,7 +203,7 @@ pub fn task_templates_project_scope_requires_project_manager_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  list_res.status |> should.equal(403)
+  expect.expect_status(list_res, 403)
 }
 
 pub fn task_templates_project_list_filters_scope_test() {
@@ -296,9 +295,9 @@ pub fn task_templates_project_list_filters_scope_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_template_names(simulate.read_body(list_res))
-  |> should.equal(["Core Template"])
+  |> expect.equal(["Core Template"])
 }
 
 pub fn task_templates_invalid_type_id_returns_422_test() {
@@ -331,7 +330,7 @@ pub fn task_templates_invalid_type_id_returns_422_test() {
       ),
     )
 
-  create_res.status |> should.equal(422)
+  expect.expect_status(create_res, 422)
 }
 
 fn decode_template_id(body: String) -> Int {
@@ -414,7 +413,7 @@ fn create_project(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_task_type(
@@ -441,7 +440,7 @@ fn create_task_type(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn add_member(
@@ -468,7 +467,7 @@ fn add_member(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_member_user(
@@ -489,7 +488,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -525,7 +524,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -558,11 +557,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -570,7 +568,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

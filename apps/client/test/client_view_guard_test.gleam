@@ -1,6 +1,5 @@
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/org_role
@@ -23,7 +22,7 @@ pub fn admin_page_without_user_shows_login_test() {
 
   let html = client_view.view(model) |> element.to_document_string
 
-  string.contains(html, "login-email") |> should.be_true
+  let assert True = string.contains(html, "login-email")
 }
 
 pub fn admin_section_without_permission_shows_not_permitted_test() {
@@ -45,5 +44,5 @@ pub fn admin_section_without_permission_shows_not_permitted_test() {
 
   let html = client_view.view(model) |> element.to_document_string
 
-  string.contains(html, "not-permitted") |> should.be_true
+  let assert True = string.contains(html, "not-permitted")
 }

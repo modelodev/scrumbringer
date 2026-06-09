@@ -28,7 +28,7 @@
 ////   test_db.with_test_transaction(db, fn(tx) {
 ////     // All operations here will be rolled back after the test
 ////     let result = some_db_operation(tx)
-////     result |> should.be_ok()
+////     let assert Ok(_) = result
 ////   })
 //// }
 //// ```

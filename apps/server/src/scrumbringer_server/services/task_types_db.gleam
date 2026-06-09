@@ -5,12 +5,13 @@
 ////
 //// Story 4.9: Added update, delete, and tasks_count support.
 
-import gleam/dynamic/decode
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/service_error.{
   type ServiceError, AlreadyExists, Conflict, DbError, InvalidReference,
   NotFound, Unexpected,
@@ -30,6 +31,64 @@ pub type TaskType {
   )
 }
 
+fn task_type_from_fields(
+  id: Int,
+  project_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Int,
+  tasks_count: Int,
+) -> Result(TaskType, ServiceError) {
+  use parsed_capability_id <- result.try(capability_option(capability_id))
+  Ok(TaskType(
+    id: id,
+    project_id: project_id,
+    name: name,
+    icon: icon,
+    capability_id: parsed_capability_id,
+    tasks_count: tasks_count,
+  ))
+}
+
+fn task_type_from_list_row(
+  row: sql.TaskTypesListRow,
+) -> Result(TaskType, ServiceError) {
+  task_type_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.icon,
+    row.capability_id,
+    row.tasks_count,
+  )
+}
+
+fn task_type_from_create_row(
+  row: sql.TaskTypesCreateRow,
+) -> Result(TaskType, ServiceError) {
+  task_type_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.icon,
+    row.capability_id,
+    0,
+  )
+}
+
+fn task_type_from_update_row(
+  row: sql.TaskTypesUpdateRow,
+) -> Result(TaskType, ServiceError) {
+  task_type_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.icon,
+    row.capability_id,
+    0,
+  )
+}
+
 /// Lists all task types for a given project.
 /// Story 4.9 AC15: Includes tasks_count for each type.
 ///
@@ -42,21 +101,14 @@ pub type TaskType {
 pub fn list_task_types_for_project(
   db: pog.Connection,
   project_id: Int,
-) -> Result(List(TaskType), pog.QueryError) {
-  use returned <- result.try(sql.task_types_list(db, project_id))
+) -> Result(List(TaskType), ServiceError) {
+  use returned <- result.try(
+    sql.task_types_list(db, project_id)
+    |> result.map_error(DbError),
+  )
 
   returned.rows
-  |> list.map(fn(row) {
-    TaskType(
-      id: row.id,
-      project_id: row.project_id,
-      name: row.name,
-      icon: row.icon,
-      capability_id: capability_option(row.capability_id),
-      tasks_count: row.tasks_count,
-    )
-  })
-  |> Ok
+  |> list.try_map(task_type_from_list_row)
 }
 
 /// Returns the project_id for a task type if it exists.
@@ -64,15 +116,10 @@ pub fn get_task_type_project_id(
   db: pog.Connection,
   type_id: Int,
 ) -> Result(Option(Int), pog.QueryError) {
-  let decoder = {
-    use project_id <- decode.field(0, decode.int)
-    decode.success(project_id)
-  }
-
   use returned <- result.try(
     pog.query("select project_id from task_types where id = $1")
     |> pog.parameter(pog.int(type_id))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
@@ -100,17 +147,13 @@ pub fn create_task_type(
   let capability_param = capability_param(capability_id)
 
   case sql.task_types_create(db, project_id, name, icon, capability_param) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(TaskType(
-        id: row.id,
-        project_id: row.project_id,
-        name: row.name,
-        icon: row.icon,
-        capability_id: capability_option(row.capability_id),
-        tasks_count: 0,
+    Ok(pog.Returned(rows: rows, ..)) -> {
+      use row <- result.try(persisted_field.returned_row(
+        rows,
+        "task_types.create_task_type",
       ))
-
-    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("no_row_returned"))
+      task_type_from_create_row(row)
+    }
 
     Error(error) -> Error(map_create_task_type_error(error))
   }
@@ -163,15 +206,7 @@ pub fn update_task_type(
   let capability_param = capability_param(capability_id)
 
   case sql.task_types_update(db, type_id, name, icon, capability_param) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(TaskType(
-        id: row.id,
-        project_id: row.project_id,
-        name: row.name,
-        icon: row.icon,
-        capability_id: capability_option(row.capability_id),
-        tasks_count: 0,
-      ))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> task_type_from_update_row(row)
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(DbError(error))
@@ -227,15 +262,17 @@ pub fn is_task_type_in_project(
     project_id,
   ))
 
-  case returned.rows {
-    [row, ..] -> Ok(row.ok)
-    [] -> Ok(False)
-  }
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.ok)
 }
 
-fn capability_option(value: Int) -> Option(Int) {
+fn capability_option(value: Int) -> Result(Option(Int), ServiceError) {
   case value {
-    0 -> None
-    id -> Some(id)
+    0 -> Ok(None)
+    id if id > 0 -> Ok(Some(id))
+    id ->
+      Error(Unexpected(
+        "Invalid persisted task type capability_id: " <> int.to_string(id),
+      ))
   }
 }

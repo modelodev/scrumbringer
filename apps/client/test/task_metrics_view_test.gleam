@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/option.{None}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/api_error.{ApiError}
@@ -14,9 +13,13 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
-import scrumbringer_client/features/pool/dialogs as pool_dialogs
+import scrumbringer_client/features/pool/task_details_dialog_config as task_details_dialog
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/ui/task_tabs
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 fn sample_task(id: Int) -> Task {
   let state = task_state.Available
@@ -54,6 +57,45 @@ fn with_locale(
   })
 }
 
+fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
+  task_details_dialog.Callbacks(
+    on_close: "close",
+    on_tab_clicked: fn(_) { "tab" },
+    on_dependency_dialog_opened: "dependency-open",
+    on_dependency_dialog_closed: "dependency-close",
+    on_dependency_add_submitted: "dependency-add",
+    on_dependency_search_changed: fn(value) { "dependency-search:" <> value },
+    on_dependency_selected: fn(_) { "dependency-selected" },
+    on_dependency_remove: fn(_) { "dependency-remove" },
+    on_edit_started: "edit-start",
+    on_edit_cancelled: "edit-cancel",
+    on_edit_title_changed: fn(value) { "title:" <> value },
+    on_edit_description_changed: fn(value) { "description:" <> value },
+    on_edit_submitted: "edit-submit",
+    on_note_dialog_opened: "note-open",
+    on_note_dialog_closed: "note-close",
+    on_note_content_changed: fn(value) { "note:" <> value },
+    on_note_submitted: "note-submit",
+    on_note_delete: fn(_) { "note-delete" },
+    on_claim: fn(_, _) { "claim" },
+    on_release: fn(_, _) { "release" },
+    on_complete: fn(_, _) { "complete" },
+  )
+}
+
+fn task_details_view(model: client_state.Model, task_id: Int) {
+  task_details_dialog.view(
+    model.ui.locale,
+    model.member.pool,
+    model.member.dependencies,
+    model.member.notes,
+    None,
+    [],
+    task_id,
+    task_details_callbacks(),
+  )
+}
+
 pub fn task_metrics_error_copy_i18n_test() {
   let html =
     client_state.default_model()
@@ -74,10 +116,10 @@ pub fn task_metrics_error_copy_i18n_test() {
         ),
       )
     })
-    |> pool_dialogs.view_task_details(201)
+    |> task_details_view(201)
     |> element.to_document_string
 
-  string.contains(html, "Could not load metrics") |> should.be_true
+  assert_contains(html, "Could not load metrics")
 }
 
 pub fn task_metrics_empty_copy_i18n_test() {
@@ -105,8 +147,8 @@ pub fn task_metrics_empty_copy_i18n_test() {
         ),
       )
     })
-    |> pool_dialogs.view_task_details(202)
+    |> task_details_view(202)
     |> element.to_document_string
 
-  string.contains(html, "Sin datos suficientes para métricas") |> should.be_true
+  assert_contains(html, "Sin datos suficientes para métricas")
 }

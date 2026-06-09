@@ -7,7 +7,7 @@ Alcance principal: apps/client/src/scrumbringer_client
 ## Objetivos
 
 - Modularizar MVU por feature.
-- Reducir "god modules" (client_state/update/view/update_helpers).
+- Reducir "god modules" (client_state/update/view; update_helpers ya eliminado).
 - Unificar routing y URL state.
 - Reutilizar flujos TEA de tokens.
 - Modularizar CSS sin cambiar API publica.
@@ -65,32 +65,29 @@ Done:
 - Cada feature tiene sus 4 modulos.
 - client_state/update/view quedan como routers/ensambladores.
 
-## Fase 2 - Reducir update_helpers.gleam
+## Fase 2 - Helpers cliente
 
 Pre-fase (TDD):
 - Crear tests unitarios por helper movido (funciones puras).
 - Para helpers con effects (toast/auth), crear tests de wiring en update.
 - Actualizar `docs/architecture/helpers-catalog.md` con los helpers movidos.
 
-Decision: crear `scrumbringer_client/helpers/` y mantener update_helpers como facade temporal.
-Inventario de helpers en `docs/architecture/helpers-catalog.md` (debe actualizarse en esta fase).
+Estado: `update_helpers.gleam` ya fue eliminado; los helpers viven en `scrumbringer_client/helpers/`.
+Inventario de helpers vigente en `docs/architecture/helpers-catalog.md`.
 
 Modulos sugeridos:
 - helpers/dicts.gleam
 - helpers/options.gleam
 - helpers/lookup.gleam
 - helpers/time.gleam
-- helpers/validation.gleam
-- helpers/selection.gleam
-- helpers/toast.gleam
-- helpers/i18n.gleam
-- helpers/auth.gleam
+- client_state/selectors.gleam
+- app/effects.gleam (toast effects, focus, persistence)
+- features/auth/helpers.gleam
 
 Estrategia:
-- Mover funciones a helpers.
-- Re-exports en update_helpers (temporal).
-- Migrar imports por lotes (i18n -> time/validation -> lookup/selection).
-- Al final eliminar update_helpers.
+- Mantener imports directos a helpers por dominio.
+- No reintroducir facades temporales.
+- Anadir tests directos al tocar cada helper.
 
 ## Fase 3 - Refactor client_state.gleam
 
@@ -181,12 +178,12 @@ Pre-fase (TDD):
 
 Decision:
 - Naming: domain/<entity>/codec.gleam
-- Mover api/tasks/decoders.gleam a domain/task/codec.gleam
+- `api/tasks/decoders.gleam` ya fue consolidado en `domain/task/codec.gleam`.
 
 Acciones:
 - Mover decoders locales de api/* a domain/*/codec.
 - api/* importa codecs de domain.
-- scrumbringer_client/decoders.gleam queda como facade temporal.
+- Eliminar facades temporales como scrumbringer_client/decoders.gleam cuando no tengan consumidores.
 
 ## Notas
 

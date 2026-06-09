@@ -3,12 +3,13 @@
 //// Tests workflow create/update/delete operations and active cascade behavior.
 //// Uses fixtures.gleam for test setup.
 
+import domain/task_status
 import fixtures
 import gleam/option.{None}
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 
 pub fn main() {
   gleeunit.main()
@@ -36,7 +37,7 @@ pub fn create_workflow_succeeds_with_valid_data_test() {
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM workflows WHERE id = $1", [
       pog.int(workflow_id),
     ])
-  count |> should.equal(1)
+  count |> expect.equal(1)
 
   // Verify workflow is active by default
   let assert Ok(active) =
@@ -45,7 +46,7 @@ pub fn create_workflow_succeeds_with_valid_data_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM workflows WHERE id = $1",
       [pog.int(workflow_id)],
     )
-  active |> should.equal(1)
+  active |> expect.equal(1)
 }
 
 // =============================================================================
@@ -65,7 +66,7 @@ pub fn create_workflow_fails_for_duplicate_name_test() {
     fixtures.create_workflow(handler, session, project_id, "Unique Workflow")
 
   // Then: Fails with error
-  result |> should.be_error()
+  let assert Error(_) = result
 }
 
 // =============================================================================
@@ -92,7 +93,7 @@ pub fn update_workflow_succeeds_for_existing_workflow_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM workflows WHERE id = $1",
       [pog.int(workflow_id)],
     )
-  active |> should.equal(0)
+  active |> expect.equal(0)
 }
 
 // =============================================================================
@@ -117,7 +118,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       workflow_id,
       None,
       "Test Rule",
-      "completed",
+      task_status.Completed,
     )
 
   // Verify rule is initially active
@@ -127,7 +128,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM rules WHERE id = $1",
       [pog.int(rule_id)],
     )
-  rule_active_before |> should.equal(1)
+  rule_active_before |> expect.equal(1)
 
   // When: Deactivate workflow via API (cascades to rules)
   let assert Ok(Nil) =
@@ -140,7 +141,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM rules WHERE id = $1",
       [pog.int(rule_id)],
     )
-  rule_active_after |> should.equal(0)
+  rule_active_after |> expect.equal(0)
 }
 
 pub fn set_active_cascade_activates_children_test() {
@@ -159,7 +160,7 @@ pub fn set_active_cascade_activates_children_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      "completed",
+      task_status.Completed,
     )
 
   // Deactivate both using cascade API
@@ -173,7 +174,7 @@ pub fn set_active_cascade_activates_children_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM rules WHERE id = $1",
       [pog.int(rule_id)],
     )
-  rule_inactive |> should.equal(0)
+  rule_inactive |> expect.equal(0)
 
   // When: Activate workflow via API (cascades to rules)
   let assert Ok(Nil) =
@@ -186,7 +187,7 @@ pub fn set_active_cascade_activates_children_test() {
       "SELECT CASE WHEN active THEN 1 ELSE 0 END FROM rules WHERE id = $1",
       [pog.int(rule_id)],
     )
-  rule_active |> should.equal(1)
+  rule_active |> expect.equal(1)
 }
 
 // =============================================================================
@@ -211,7 +212,7 @@ pub fn delete_workflow_succeeds_if_no_rules_test() {
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM workflows WHERE id = $1", [
       pog.int(workflow_id),
     ])
-  count |> should.equal(0)
+  count |> expect.equal(0)
 }
 
 pub fn delete_workflow_cascades_deletes_rules_test() {
@@ -235,7 +236,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       workflow_id,
       None,
       "Rule To Delete",
-      "completed",
+      task_status.Completed,
     )
 
   // Verify rule exists
@@ -243,7 +244,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM rules WHERE id = $1", [
       pog.int(rule_id),
     ])
-  rule_count_before |> should.equal(1)
+  rule_count_before |> expect.equal(1)
 
   // When: Delete workflow (cascades to rules via FK)
   let assert Ok(Nil) = fixtures.delete_workflow(handler, session, workflow_id)
@@ -253,5 +254,5 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM rules WHERE id = $1", [
       pog.int(rule_id),
     ])
-  rule_count_after |> should.equal(0)
+  rule_count_after |> expect.equal(0)
 }

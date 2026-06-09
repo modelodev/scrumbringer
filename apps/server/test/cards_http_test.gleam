@@ -4,8 +4,8 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/string
-import gleeunit/should
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -32,7 +32,7 @@ pub fn create_card_requires_auth_test() {
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res = handler(create_card_req(project_id, "Card", "red"))
-  res.status |> should.equal(401)
+  expect.expect_status(res, 401)
 }
 
 pub fn create_card_requires_csrf_test() {
@@ -45,8 +45,8 @@ pub fn create_card_requires_csrf_test() {
       |> request.set_cookie("sb_session", session.token),
     )
 
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn create_card_rejects_invalid_color_test() {
@@ -59,8 +59,8 @@ pub fn create_card_rejects_invalid_color_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(422)
-  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
+  expect.expect_status(res, 422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> expect.is_true
 }
 
 pub fn create_card_rejects_missing_title_test() {
@@ -77,8 +77,8 @@ pub fn create_card_rejects_missing_title_test() {
       |> simulate.json_body(json.object([])),
     )
 
-  res.status |> should.equal(422)
-  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
+  expect.expect_status(res, 422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> expect.is_true
 }
 
 pub fn create_card_rejects_invalid_content_type_test() {
@@ -95,7 +95,7 @@ pub fn create_card_rejects_invalid_content_type_test() {
       |> simulate.string_body("not-json"),
     )
 
-  res.status |> should.equal(415)
+  expect.expect_status(res, 415)
 }
 
 pub fn create_card_requires_project_admin_test() {
@@ -118,8 +118,8 @@ pub fn create_card_requires_project_admin_test() {
       |> fixtures.with_auth(member_session),
     )
 
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn get_card_not_found_test() {
@@ -131,8 +131,8 @@ pub fn get_card_not_found_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(404)
-  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+  expect.expect_status(res, 404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
 pub fn update_card_not_found_test() {
@@ -151,8 +151,8 @@ pub fn update_card_not_found_test() {
       ),
     )
 
-  res.status |> should.equal(404)
-  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+  expect.expect_status(res, 404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
 pub fn update_card_rejects_invalid_color_test() {
@@ -186,8 +186,8 @@ pub fn update_card_rejects_invalid_color_test() {
       ),
     )
 
-  res.status |> should.equal(422)
-  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
+  expect.expect_status(res, 422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> expect.is_true
 }
 
 pub fn delete_card_not_found_test() {
@@ -199,8 +199,8 @@ pub fn delete_card_not_found_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(404)
-  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+  expect.expect_status(res, 404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
 pub fn delete_card_conflict_when_tasks_exist_test() {
@@ -227,7 +227,7 @@ pub fn delete_card_conflict_when_tasks_exist_test() {
       |> fixtures.with_auth(session),
     )
 
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_HAS_TASKS")
-  |> should.be_true
+  |> expect.is_true
 }

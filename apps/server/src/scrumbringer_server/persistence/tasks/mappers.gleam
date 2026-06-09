@@ -22,13 +22,16 @@
 //// - **sql.gleam**: Provides row types from squirrel
 //// - **domain/task_status**: Provides TaskStatus ADT
 
+import domain/card
 import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_state
 import domain/task_status
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option, None}
+import gleam/result
 import helpers/option as option_helpers
+import scrumbringer_server/services/service_error.{type ServiceError, Unexpected}
 import scrumbringer_server/sql
 
 /// Task record with type-safe status.
@@ -54,7 +57,7 @@ pub type Task {
     milestone_id: Option(Int),
     card_id: Option(Int),
     card_title: Option(String),
-    card_color: Option(String),
+    card_color: Option(card.CardColor),
     /// Story 5.4 AC4: True if task has notes newer than user's last view.
     has_new_notes: Bool,
     /// Story 5.6: Number of incomplete dependencies blocking this task.
@@ -65,7 +68,7 @@ pub type Task {
 }
 
 /// Map a list query row to Task.
-pub fn from_list_row(row: sql.TasksListRow) -> Task {
+pub fn from_list_row(row: sql.TasksListRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -90,12 +93,12 @@ pub fn from_list_row(row: sql.TasksListRow) -> Task {
     card_color: row.card_color,
     has_new_notes: row.has_new_notes,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map a get query row to Task.
-pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
+pub fn from_get_row(row: sql.TasksGetForUserRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -120,12 +123,12 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map a create query row to Task.
-pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
+pub fn from_create_row(row: sql.TasksCreateRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -150,12 +153,12 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map an update query row to Task.
-pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
+pub fn from_update_row(row: sql.TasksUpdateRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -180,12 +183,12 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map a claim query row to Task.
-pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
+pub fn from_claim_row(row: sql.TasksClaimRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -210,12 +213,12 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map a release query row to Task.
-pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
+pub fn from_release_row(row: sql.TasksReleaseRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -240,12 +243,14 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
 /// Map a complete query row to Task.
-pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
+pub fn from_complete_row(
+  row: sql.TasksCompleteRow,
+) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,
@@ -270,7 +275,7 @@ pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
     card_color: row.card_color,
     has_new_notes: False,
     blocked_count: row.blocked_count,
-    dependencies: decode_dependencies(row.dependencies),
+    dependencies: row.dependencies,
   )
 }
 
@@ -299,13 +304,13 @@ fn from_fields(
   card_color card_color: String,
   has_new_notes has_new_notes: Bool,
   blocked_count blocked_count: Int,
-  dependencies dependencies: List(TaskDependency),
-) -> Task {
+  dependencies dependencies_raw: String,
+) -> Result(Task, ServiceError) {
   let claimed_by_option = option_helpers.int_to_option(claimed_by)
   let claimed_at_option = option_helpers.string_to_option(claimed_at)
   let completed_at_option = option_helpers.string_to_option(completed_at)
 
-  let state = case
+  use state <- result.try(
     task_state.from_db(
       status,
       is_ongoing,
@@ -313,12 +318,12 @@ fn from_fields(
       claimed_at_option,
       completed_at_option,
     )
-  {
-    Ok(state) -> state
-    Error(_) -> task_state.Available
-  }
+    |> result.map_error(fn(error) { invalid_task_state_error(status, error) }),
+  )
+  use dependencies <- result.try(decode_dependencies(dependencies_raw))
+  use parsed_card_color <- result.try(parse_optional_card_color(card_color))
 
-  Task(
+  Ok(Task(
     id: id,
     project_id: project_id,
     type_id: type_id,
@@ -336,17 +341,47 @@ fn from_fields(
     milestone_id: option_helpers.int_to_option(milestone_id),
     card_id: option_helpers.int_to_option(card_id),
     card_title: option_helpers.string_to_option(card_title),
-    card_color: option_helpers.string_to_option(card_color),
+    card_color: parsed_card_color,
     has_new_notes: has_new_notes,
     blocked_count: blocked_count,
     dependencies: dependencies,
+  ))
+}
+
+fn parse_optional_card_color(
+  color: String,
+) -> Result(Option(card.CardColor), ServiceError) {
+  card.parse_optional_color(color)
+  |> result.map_error(fn(_) {
+    Unexpected("Invalid persisted card color: " <> color)
+  })
+}
+
+fn invalid_task_state_error(
+  status: String,
+  error: task_state.TaskStateError,
+) -> ServiceError {
+  let reason = case error {
+    task_state.UnknownStatus(value) -> "unknown status " <> value
+    task_state.ClaimedMissingUser -> "claimed missing user"
+    task_state.ClaimedMissingAt -> "claimed missing at"
+    task_state.CompletedMissingAt -> "completed missing at"
+    task_state.CompletedWithClaim -> "completed with claim"
+    task_state.AvailableWithClaim -> "available with claim"
+  }
+
+  Unexpected(
+    "Invalid persisted task state: " <> status <> " (" <> reason <> ")",
   )
 }
 
-fn decode_dependencies(raw: String) -> List(TaskDependency) {
+fn decode_dependencies(
+  raw: String,
+) -> Result(List(TaskDependency), ServiceError) {
   case json.parse(from: raw, using: decode.list(task_dependency_decoder())) {
-    Ok(deps) -> deps
-    Error(_) -> []
+    Ok(deps) -> Ok(deps)
+    Error(_) ->
+      Error(Unexpected("Invalid persisted task dependencies: " <> raw))
   }
 }
 
@@ -359,14 +394,24 @@ fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
     None,
     decode.optional(decode.string),
   )
-  let status = case task_status.parse_task_status(status_str) {
-    Ok(s) -> s
-    Error(_) -> task_status.Available
+  case task_status.parse_task_status(status_str) {
+    Ok(status) ->
+      decode.success(TaskDependency(
+        depends_on_task_id: depends_on_task_id,
+        title: title,
+        status: status,
+        claimed_by: claimed_by,
+      ))
+    Error(task_status.UnknownTaskStatus(value))
+    | Error(task_status.UnknownWorkState(value)) ->
+      decode.failure(
+        TaskDependency(
+          depends_on_task_id: depends_on_task_id,
+          title: title,
+          status: task_status.Available,
+          claimed_by: claimed_by,
+        ),
+        "TaskDependency.status: " <> value,
+      )
   }
-  decode.success(TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: title,
-    status: status,
-    claimed_by: claimed_by,
-  ))
 }

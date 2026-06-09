@@ -7,7 +7,6 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/sql
 import wisp
 
 /// Check if user is a member of the given project.
@@ -16,9 +15,9 @@ pub fn is_project_member(
   user_id: Int,
   project_id: Int,
 ) -> Bool {
-  case sql.project_members_is_member(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_member
-    _ -> False
+  case projects_db.is_project_member(db, project_id, user_id) {
+    Ok(is_member) -> is_member
+    Error(_) -> False
   }
 }
 
@@ -28,9 +27,9 @@ pub fn is_project_manager(
   user_id: Int,
   project_id: Int,
 ) -> Bool {
-  case sql.project_members_is_manager(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_manager
-    _ -> False
+  case projects_db.is_project_manager(db, project_id, user_id) {
+    Ok(is_manager) -> is_manager
+    Error(_) -> False
   }
 }
 
@@ -63,7 +62,6 @@ pub fn require_project_manager_simple(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Require user is manager for a project-scoped resource.
 /// Org admins always have access regardless of project assignment.
 pub fn require_project_manager_with_org_bypass(

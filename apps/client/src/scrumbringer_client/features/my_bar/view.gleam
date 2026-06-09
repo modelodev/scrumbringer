@@ -21,8 +21,8 @@
 //// ## Relations
 ////
 //// - **client_view.gleam**: Main view imports this for member section
-//// - **client_state.gleam**: Provides Model and Msg types
-//// - **helpers/**: Provides shared helper functions
+//// - **client_state.gleam**: Root assembler provides Config data and callbacks
+//// - **features/pool/view.gleam**: Reuses task row rendering
 ////
 //// ## Line Count Justification
 ////
@@ -42,23 +42,21 @@ import lustre/element/html.{button, div, h2, h3, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
-import domain/metrics.{MyMetrics, window_days_value}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/card
+import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task, Task, claimed_by}
 import domain/task_state
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
-import domain/user.{type User}
 
-import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
-import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_badge
-import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
@@ -67,26 +65,50 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
-import scrumbringer_client/utils/card_queries
 
-// Re-export view_task_type_icon_inline from client_view for internal use
-// This function is needed for rendering task type icons in the bar
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    has_active_projects: Bool,
+    member_tasks: Remote(List(Task)),
+    member_metrics: Remote(MyMetrics),
+    task_row_config: TaskRowConfig(msg),
+    on_create_task_in_card: fn(Int) -> msg,
+  )
+}
 
-// Justification: nested case improves clarity for branching logic.
+pub type TaskRowConfig(msg) {
+  TaskRowConfig(
+    locale: Locale,
+    theme: Theme,
+    user_id: Int,
+    active_task_id: opt.Option(Int),
+    disable_actions: Bool,
+    task_card_info: fn(Task) ->
+      #(opt.Option(String), opt.Option(card.CardColor)),
+    on_claim: fn(Int, Int) -> msg,
+    on_start: fn(Int) -> msg,
+    on_pause: msg,
+    on_release: fn(Int, Int) -> msg,
+    on_complete: fn(Int, Int) -> msg,
+    on_task_open: fn(Int) -> msg,
+  )
+}
+
 /// Renders the My Bar section with claimed tasks and metrics.
-pub fn view_bar(model: Model, user: User) -> Element(Msg) {
-  case helpers_selection.active_projects(model) {
-    [] ->
+pub fn view_bar(config: Config(msg)) -> Element(msg) {
+  case config.has_active_projects {
+    False ->
       div([attribute.class("empty")], [
-        h2([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsBody))]),
+        h2([], [text(i18n.t(config.locale, i18n_text.NoProjectsYet))]),
+        p([], [text(i18n.t(config.locale, i18n_text.NoProjectsBody))]),
       ])
 
-    _ ->
-      case model.member.pool.member_tasks {
+    True ->
+      case config.member_tasks {
         NotAsked | Loading ->
           div([attribute.class("empty")], [
-            text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
+            text(i18n.t(config.locale, i18n_text.LoadingEllipsis)),
           ])
 
         // MB01: Error display with banner
@@ -98,25 +120,25 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
             |> list.filter(fn(t) {
               case t.state {
                 task_state.Claimed(claimed_by: claimed_by, ..) ->
-                  claimed_by == user.id
+                  claimed_by == config.task_row_config.user_id
                 _ -> False
               }
             })
             |> list.sort(by: compare_member_bar_tasks)
 
           div([attribute.class("section")], [
-            view_member_metrics_panel(model),
+            view_member_metrics_panel(config.locale, config.member_metrics),
             case mine {
               // MB02: Improved empty state using empty_state component
               [] ->
                 empty_state.new(
                   "archive-box",
-                  helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
-                  helpers_i18n.i18n_t(model, i18n_text.GoToPoolToClaimTasks),
+                  i18n.t(config.locale, i18n_text.NoClaimedTasks),
+                  i18n.t(config.locale, i18n_text.GoToPoolToClaimTasks),
                 )
                 |> empty_state.view
 
-              _ -> view_tasks_grouped_by_card(model, user, mine)
+              _ -> view_tasks_grouped_by_card(config, mine)
             },
           ])
         }
@@ -129,23 +151,22 @@ type CardGroup {
   CardGroup(
     card_id: opt.Option(Int),
     card_title: opt.Option(String),
-    card_color: opt.Option(String),
+    card_color: opt.Option(card.CardColor),
     tasks: List(Task),
   )
 }
 
 /// Groups tasks by card_id and renders them with collapsible headers.
 fn view_tasks_grouped_by_card(
-  model: Model,
-  user: User,
+  config: Config(msg),
   tasks: List(Task),
-) -> Element(Msg) {
+) -> Element(msg) {
   // Group tasks by card_id
   let groups = group_tasks_by_card(tasks)
 
   div(
     [attribute.class("my-bar-card-groups")],
-    list.map(groups, fn(g) { view_card_group(model, user, g) }),
+    list.map(groups, fn(g) { view_card_group(config, g) }),
   )
 }
 
@@ -163,7 +184,7 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
     with_card
     |> list.group(fn(t) {
       let Task(card_id: card_id, ..) = t
-      opt.unwrap(card_id, 0)
+      grouped_card_id(card_id)
     })
     |> dict.to_list()
     |> list.map(fn(pair) {
@@ -212,19 +233,21 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
   list.append(card_groups, ungrouped_group)
 }
 
+fn grouped_card_id(card_id: opt.Option(Int)) -> Int {
+  case card_id {
+    opt.Some(id) -> id
+    opt.None -> 0
+  }
+}
+
 /// Render a single card group with header and task list.
-fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
+fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
   let CardGroup(
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
     tasks: tasks,
   ) = group
-
-  let card_color_opt = case card_color {
-    opt.None -> opt.None
-    opt.Some(c) -> color_picker.string_to_color(c)
-  }
 
   let border_class = task_color.card_border_class(card_color)
 
@@ -234,7 +257,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
   let header_title = case card_title {
     opt.Some(title) -> title
-    opt.None -> helpers_i18n.i18n_t(model, i18n_text.UngroupedTasks)
+    opt.None -> i18n.t(config.locale, i18n_text.UngroupedTasks)
   }
 
   div([attribute.class("my-bar-card-group " <> border_class)], [
@@ -242,15 +265,15 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
     div([attribute.class("my-bar-card-header")], [
       // Card badge (only if has card)
       case card_title {
-        opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.None)
+        opt.Some(ct) -> card_badge.view(ct, card_color, opt.None)
         opt.None -> element.none()
       },
       // Card title
       span([attribute.class("my-bar-card-title")], [text(header_title)]),
       // Progress count
       span([attribute.class("my-bar-card-progress")], [
-        text(helpers_i18n.i18n_t(
-          model,
+        text(i18n.t(
+          config.locale,
           i18n_text.CardProgressCount(completed, total),
         )),
       ]),
@@ -262,11 +285,9 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
               attribute.class("btn-icon btn-sm my-bar-add-task"),
               attribute.attribute(
                 "title",
-                helpers_i18n.i18n_t(model, i18n_text.NewTaskInCard(title)),
+                i18n.t(config.locale, i18n_text.NewTaskInCard(title)),
               ),
-              event.on_click(
-                pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id)),
-              ),
+              event.on_click(config.on_create_task_in_card(id)),
             ],
             [text("+")],
           )
@@ -278,17 +299,23 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
       [attribute.class("task-list")],
       list.map(tasks, fn(t) {
         let Task(id: task_id, ..) = t
-        #(int.to_string(task_id), view_member_bar_task_row(model, user, t))
+        #(
+          int.to_string(task_id),
+          view_member_bar_task_row(config.task_row_config, t),
+        )
       }),
     ),
   ])
 }
 
 /// Renders the personal metrics panel.
-pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+pub fn view_member_metrics_panel(
+  locale: Locale,
+  member_metrics: Remote(MyMetrics),
+) -> Element(msg) {
+  let t = fn(key) { i18n.t(locale, key) }
 
-  case model.member.metrics.member_metrics {
+  case member_metrics {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
         h3([], [text(t(i18n_text.MyMetrics))]),
@@ -336,12 +363,10 @@ pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
 }
 
 /// Render a task row for the bar/list view mode.
-/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn view_member_bar_task_row(
-  model: Model,
-  user: User,
+  config: TaskRowConfig(msg),
   task: Task,
-) -> Element(Msg) {
+) -> Element(msg) {
   let Task(
     id: id,
     type_id: _type_id,
@@ -351,54 +376,26 @@ pub fn view_member_bar_task_row(
     status: status,
     created_at: _created_at,
     version: version,
-    card_id: card_id,
+    card_id: _card_id,
     card_title: card_title,
     card_color: card_color,
     ..,
   ) = task
 
-  let is_mine = claimed_by(task) == opt.Some(user.id)
+  let is_mine = claimed_by(task) == opt.Some(config.user_id)
 
   let type_label = task_type.name
 
   let type_icon = task_type.icon
 
-  let none_color: opt.Option(color_picker.CardColor) = opt.None
-
+  let #(resolved_card_title, resolved_card_color) = config.task_card_info(task)
   let card_title_opt = case card_title {
     opt.Some(ct) -> opt.Some(ct)
-    opt.None -> {
-      case card_id {
-        opt.Some(cid) ->
-          case card_queries.find_card(model, cid) {
-            opt.Some(card) -> opt.Some(card.title)
-            opt.None -> opt.None
-          }
-        opt.None -> opt.None
-      }
-    }
+    opt.None -> resolved_card_title
   }
-
-  let card_color_opt: opt.Option(color_picker.CardColor) = case card_title {
-    opt.Some(_) ->
-      case card_color {
-        opt.None -> none_color
-        opt.Some(c) -> color_picker.string_to_color(c)
-      }
-    opt.None -> {
-      case card_id {
-        opt.Some(cid) ->
-          case card_queries.find_card(model, cid) {
-            opt.Some(card) ->
-              case card.color {
-                opt.None -> none_color
-                opt.Some(c) -> color_picker.string_to_color(c)
-              }
-            opt.None -> none_color
-          }
-        opt.None -> none_color
-      }
-    }
+  let card_color_opt = case card_title {
+    opt.Some(_) -> card_color
+    opt.None -> resolved_card_color
   }
 
   let card_badge_el = case card_title_opt {
@@ -406,16 +403,12 @@ pub fn view_member_bar_task_row(
     opt.None -> element.none()
   }
 
-  let disable_actions =
-    model.member.pool.member_task_mutation_in_flight
-    || model.member.now_working.member_now_working_in_flight
-
   let claim_action =
     task_actions.claim_only(
-      helpers_i18n.i18n_t(model, i18n_text.Claim),
-      pool_msg(pool_messages.MemberClaimClicked(id, version)),
+      i18n.t(config.locale, i18n_text.Claim),
+      config.on_claim(id, version),
       action_buttons.SizeXs,
-      disable_actions,
+      config.disable_actions,
       "",
       opt.None,
       opt.None,
@@ -423,25 +416,23 @@ pub fn view_member_bar_task_row(
 
   let start_action =
     task_actions.text_action(
-      helpers_i18n.i18n_t(model, i18n_text.Start),
-      pool_msg(pool_messages.MemberNowWorkingStartClicked(id)),
+      i18n.t(config.locale, i18n_text.Start),
+      config.on_start(id),
       "btn-xs",
-      helpers_i18n.i18n_t(model, i18n_text.StartNowWorking),
-      disable_actions,
+      i18n.t(config.locale, i18n_text.StartNowWorking),
+      config.disable_actions,
     )
 
   let pause_action =
     task_actions.text_action(
-      helpers_i18n.i18n_t(model, i18n_text.Pause),
-      pool_msg(pool_messages.MemberNowWorkingPauseClicked),
+      i18n.t(config.locale, i18n_text.Pause),
+      config.on_pause,
       "btn-xs",
-      helpers_i18n.i18n_t(model, i18n_text.PauseNowWorking),
-      disable_actions,
+      i18n.t(config.locale, i18n_text.PauseNowWorking),
+      config.disable_actions,
     )
 
-  let is_active =
-    helpers_selection.now_working_active_task_id(model) == opt.Some(id)
-
+  let is_active = config.active_task_id == opt.Some(id)
   let now_working_action = case is_active {
     True -> pause_action
     False -> start_action
@@ -452,16 +443,16 @@ pub fn view_member_bar_task_row(
     Claimed(_), True -> [
       now_working_action,
       ..task_actions.release_and_complete(
-        helpers_i18n.i18n_t(model, i18n_text.Release),
-        pool_msg(pool_messages.MemberReleaseClicked(id, version)),
-        helpers_i18n.i18n_t(model, i18n_text.Complete),
-        pool_msg(pool_messages.MemberCompleteClicked(id, version)),
+        i18n.t(config.locale, i18n_text.Release),
+        config.on_release(id, version),
+        i18n.t(config.locale, i18n_text.Complete),
+        config.on_complete(id, version),
         action_buttons.SizeXs,
-        disable_actions,
+        config.disable_actions,
         "",
         "",
-        opt.Some(helpers_i18n.i18n_t(model, i18n_text.Release)),
-        opt.Some(helpers_i18n.i18n_t(model, i18n_text.Complete)),
+        opt.Some(i18n.t(config.locale, i18n_text.Release)),
+        opt.Some(i18n.t(config.locale, i18n_text.Complete)),
         opt.None,
         opt.None,
       )
@@ -473,7 +464,7 @@ pub fn view_member_bar_task_row(
     task_item.Config(
       container_class: "task-row",
       content_class: "task-row-title",
-      on_click: opt.Some(pool_msg(pool_messages.MemberTaskDetailsOpened(id))),
+      on_click: opt.Some(config.on_task_open(id)),
       icon: opt.None,
       icon_class: opt.None,
       title: title,
@@ -481,9 +472,9 @@ pub fn view_member_bar_task_row(
       secondary: div([attribute.class("task-row-meta")], [
         card_badge_el,
         span([attribute.attribute("style", "margin-right:4px;")], [
-          task_type_icon.view(type_icon, 16, model.ui.theme),
+          task_type_icon.view(type_icon, 16, config.theme),
         ]),
-        text(helpers_i18n.i18n_t(model, i18n_text.PriorityShort(priority))),
+        text(i18n.t(config.locale, i18n_text.PriorityShort(priority))),
         text(" · "),
         text(type_label),
       ]),
@@ -508,7 +499,6 @@ pub fn member_bar_status_rank(status: TaskStatus) -> Int {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Compare tasks for bar sorting (priority desc, status, created desc).
 pub fn compare_member_bar_tasks(a: Task, b: Task) -> order.Order {
   let Task(priority: priority_a, status: status_a, created_at: created_at_a, ..) =

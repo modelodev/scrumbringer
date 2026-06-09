@@ -26,6 +26,10 @@ pub type IconPickerMsg {
   IconSelected(String)
 }
 
+pub type IconCategoryParseError {
+  InvalidIconCategory(String)
+}
+
 // =============================================================================
 // View
 // =============================================================================
@@ -47,7 +51,8 @@ pub fn view(
   empty_text: String,
   on_msg: fn(IconPickerMsg) -> msg,
 ) -> Element(msg) {
-  let category = category_from_string(active_category)
+  let category = active_category_or_default(active_category)
+  let active_category_id = category_to_string(category)
 
   // Get filtered icons
   let icons = case string.trim(search_query) {
@@ -77,7 +82,7 @@ pub fn view(
       [attribute.class("icon-picker-tabs")],
       list.map(icon_catalog.categories(), fn(cat) {
         let cat_id = category_to_string(cat)
-        let is_active = cat_id == active_category
+        let is_active = cat_id == active_category_id
         html.button(
           [
             attribute.class(
@@ -155,14 +160,23 @@ pub fn category_to_string(cat: IconCategory) -> String {
   }
 }
 
-/// Convert string ID to category enum.
-pub fn category_from_string(s: String) -> IconCategory {
+/// Parse string ID to category enum.
+pub fn parse_category(s: String) -> Result(IconCategory, IconCategoryParseError) {
   case s {
-    "tasks" -> icon_catalog.Tasks
-    "status" -> icon_catalog.Status
-    "priority" -> icon_catalog.Priority
-    "objects" -> icon_catalog.Objects
-    "actions" -> icon_catalog.Actions
-    _ -> icon_catalog.All
+    "all" -> Ok(icon_catalog.All)
+    "tasks" -> Ok(icon_catalog.Tasks)
+    "status" -> Ok(icon_catalog.Status)
+    "priority" -> Ok(icon_catalog.Priority)
+    "objects" -> Ok(icon_catalog.Objects)
+    "actions" -> Ok(icon_catalog.Actions)
+    other -> Error(InvalidIconCategory(other))
+  }
+}
+
+/// Resolve the active tab category, recovering invalid UI state to `All`.
+pub fn active_category_or_default(s: String) -> IconCategory {
+  case parse_category(s) {
+    Ok(category) -> category
+    Error(_) -> All
   }
 }

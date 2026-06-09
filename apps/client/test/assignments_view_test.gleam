@@ -1,6 +1,5 @@
 import gleam/dict
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/metrics.{
@@ -10,7 +9,7 @@ import domain/metrics.{
 import domain/org.{OrgUser}
 import domain/org_role.{Admin, Member}
 import domain/project.{type Project, Project, ProjectMember}
-import domain/project_role.{Manager}
+import domain/project_role.{type ProjectRole, Manager}
 import domain/remote.{Loaded}
 import domain/user.{User}
 import gleam/option as opt
@@ -21,7 +20,108 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/assignments/components/project_card
+import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
+import scrumbringer_client/features/projects/view as projects_view
+
+fn render_assignments(model: client_state.Model) -> String {
+  assignments_view.view_assignments(config_from_model(model))
+  |> element.to_document_string
+}
+
+fn config_from_model(
+  model: client_state.Model,
+) -> assignments_view.Config(String) {
+  assignments_view.Config(
+    locale: model.ui.locale,
+    assignments: model.admin.assignments,
+    projects: model.core.projects,
+    org_users: model.admin.members.org_users_cache,
+    project_card: project_card_config(model),
+    user_card: user_card_config(model),
+    on_view_mode_changed: fn(_) { "view-mode" },
+    on_search_changed: fn(value) { "search:" <> value },
+    on_search_debounced: fn(value) { "search-debounced:" <> value },
+    on_project_create_clicked: "create-project",
+    on_invites_clicked: "invites",
+    project_dialogs: projects_dialogs_config(model),
+  )
+}
+
+fn projects_dialogs_config(
+  model: client_state.Model,
+) -> projects_view.Config(String) {
+  projects_view.Config(
+    locale: model.ui.locale,
+    projects: model.core.projects,
+    project_dialog: model.admin.projects,
+    on_create_dialog_opened: "project-create-open",
+    on_create_dialog_closed: "project-create-close",
+    on_create_submitted: "project-create-submit",
+    on_create_name_changed: fn(value) { "project-create-name:" <> value },
+    on_edit_dialog_opened: fn(_, _) { "project-edit-open" },
+    on_edit_dialog_closed: "project-edit-close",
+    on_edit_submitted: "project-edit-submit",
+    on_edit_name_changed: fn(value) { "project-edit-name:" <> value },
+    on_delete_confirm_opened: fn(_, _) { "project-delete-open" },
+    on_delete_confirm_closed: "project-delete-close",
+    on_delete_submitted: "project-delete-submit",
+  )
+}
+
+fn project_card_config(model: client_state.Model) -> project_card.Config(String) {
+  project_card.Config(
+    locale: model.ui.locale,
+    assignments: model.admin.assignments,
+    current_user_id: case model.core.user {
+      opt.Some(User(id: id, ..)) -> opt.Some(id)
+      opt.None -> opt.None
+    },
+    org_users: model.admin.members.org_users_cache,
+    metrics: model.admin.metrics.admin_metrics_overview,
+    on_project_toggled: fn(_) { "project-toggle" },
+    on_inline_add_started: fn(_) { "inline-add-start" },
+    on_role_changed: fn(_, _, _role: ProjectRole) { "role-change" },
+    on_remove_confirmed: "remove-confirm",
+    on_remove_cancelled: "remove-cancel",
+    on_remove_clicked: fn(_, _) { "remove-click" },
+    on_inline_add_search_changed: fn(value) { "inline-search:" <> value },
+    on_inline_add_selection_changed: fn(value) { "inline-select:" <> value },
+    on_inline_add_role_changed: fn(_role) { "inline-role" },
+    on_inline_add_cancelled: "inline-cancel",
+    on_inline_add_submitted: "inline-submit",
+    noop: "noop",
+  )
+}
+
+fn user_card_config(model: client_state.Model) -> user_card.Config(String) {
+  user_card.Config(
+    locale: model.ui.locale,
+    assignments: model.admin.assignments,
+    all_projects: model.core.projects,
+    metrics: model.admin.metrics.admin_metrics_users,
+    on_user_toggled: fn(_) { "user-toggle" },
+    on_inline_add_started: fn(_) { "inline-add-start" },
+    on_role_changed: fn(_, _, _role: ProjectRole) { "role-change" },
+    on_remove_confirmed: "remove-confirm",
+    on_remove_cancelled: "remove-cancel",
+    on_remove_clicked: fn(_, _) { "remove-click" },
+    on_inline_add_selection_changed: fn(value) { "inline-select:" <> value },
+    on_inline_add_role_changed: fn(_role) { "inline-role" },
+    on_inline_add_cancelled: "inline-cancel",
+    on_inline_add_submitted: "inline-submit",
+    noop: "noop",
+  )
+}
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
 
 fn base_model() -> client_state.Model {
   client_state.default_model()
@@ -60,11 +160,10 @@ pub fn filter_projects_by_name_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "Project Alpha") |> should.be_true
-  string.contains(html, "Project Beta") |> should.be_false
+  assert_contains(html, "Project Alpha")
+  assert_not_contains(html, "Project Beta")
 }
 
 pub fn project_collapsed_hides_members_test() {
@@ -105,10 +204,9 @@ pub fn project_collapsed_hides_members_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "member@example.com") |> should.be_false
+  assert_not_contains(html, "member@example.com")
 }
 
 pub fn project_expanded_shows_members_test() {
@@ -153,10 +251,9 @@ pub fn project_expanded_shows_members_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "member@example.com") |> should.be_true
+  assert_contains(html, "member@example.com")
 }
 
 pub fn user_without_projects_shows_badge_test() {
@@ -185,10 +282,9 @@ pub fn user_without_projects_shows_badge_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "NO PROJECTS") |> should.be_true
+  assert_contains(html, "NO PROJECTS")
 }
 
 pub fn project_without_members_shows_badge_test() {
@@ -212,10 +308,9 @@ pub fn project_without_members_shows_badge_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "NO MEMBERS") |> should.be_true
+  assert_contains(html, "NO MEMBERS")
 }
 
 pub fn project_metrics_summary_renders_counts_test() {
@@ -279,13 +374,12 @@ pub fn project_metrics_summary_renders_counts_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "Available: 3") |> should.be_true
-  string.contains(html, "Ongoing: 1") |> should.be_true
-  string.contains(html, "Completed: 2") |> should.be_true
-  string.contains(html, "Release %: 50%") |> should.be_true
+  assert_contains(html, "Available: 3")
+  assert_contains(html, "Ongoing: 1")
+  assert_contains(html, "Completed: 2")
+  assert_contains(html, "Release %: 50%")
 }
 
 pub fn user_metrics_summary_renders_counts_test() {
@@ -329,14 +423,13 @@ pub fn user_metrics_summary_renders_counts_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "Claimed: 4") |> should.be_true
-  string.contains(html, "Released: 1") |> should.be_true
-  string.contains(html, "Completed: 2") |> should.be_true
-  string.contains(html, "Ongoing: 1") |> should.be_true
-  string.contains(html, "Last claim: 2026-01-02") |> should.be_true
+  assert_contains(html, "Claimed: 4")
+  assert_contains(html, "Released: 1")
+  assert_contains(html, "Completed: 2")
+  assert_contains(html, "Ongoing: 1")
+  assert_contains(html, "Last claim: 2026-01-02")
 }
 
 pub fn empty_state_when_no_projects_test() {
@@ -355,11 +448,10 @@ pub fn empty_state_when_no_projects_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "No projects yet") |> should.be_true
-  string.contains(html, "Create Project") |> should.be_true
+  assert_contains(html, "No projects yet")
+  assert_contains(html, "Create Project")
 }
 
 pub fn empty_state_when_no_users_test() {
@@ -379,11 +471,10 @@ pub fn empty_state_when_no_users_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "No users yet") |> should.be_true
-  string.contains(html, "Create invite link") |> should.be_true
+  assert_contains(html, "No users yet")
+  assert_contains(html, "Create invite link")
 }
 
 pub fn empty_state_when_only_admin_user_test() {
@@ -422,11 +513,10 @@ pub fn empty_state_when_only_admin_user_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "No users yet") |> should.be_true
-  string.contains(html, "Create invite link") |> should.be_true
+  assert_contains(html, "No users yet")
+  assert_contains(html, "Create invite link")
 }
 
 pub fn filter_users_by_email_test() {
@@ -466,11 +556,10 @@ pub fn filter_users_by_email_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "admin@example.com") |> should.be_true
-  string.contains(html, "member@example.com") |> should.be_false
+  assert_contains(html, "admin@example.com")
+  assert_not_contains(html, "member@example.com")
 }
 
 pub fn assignments_renders_table_layout_project_mode_test() {
@@ -494,11 +583,10 @@ pub fn assignments_renders_table_layout_project_mode_test() {
       )
     })
 
-  let html =
-    assignments_view.view_assignments(model) |> element.to_document_string
+  let html = render_assignments(model)
 
-  string.contains(html, "assignments-toolbar-card") |> should.be_true
-  string.contains(html, "table assignments-table") |> should.be_true
+  assert_contains(html, "assignments-toolbar-card")
+  assert_contains(html, "table assignments-table")
 }
 
 pub fn assignments_expansion_row_toggles_test() {
@@ -551,13 +639,9 @@ pub fn assignments_expansion_row_toggles_test() {
       )
     })
 
-  let collapsed_html =
-    assignments_view.view_assignments(collapsed_model)
-    |> element.to_document_string
-  let expanded_html =
-    assignments_view.view_assignments(expanded_model)
-    |> element.to_document_string
+  let collapsed_html = render_assignments(collapsed_model)
+  let expanded_html = render_assignments(expanded_model)
 
-  string.contains(collapsed_html, "expansion-row") |> should.be_false
-  string.contains(expanded_html, "expansion-row") |> should.be_true
+  assert_not_contains(collapsed_html, "expansion-row")
+  assert_contains(expanded_html, "expansion-row")
 }

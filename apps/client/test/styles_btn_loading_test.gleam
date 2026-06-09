@@ -1,8 +1,15 @@
 import gleam/string
-import gleeunit/should
 import lustre/attribute
 import lustre/element
 import lustre/element/html
+
+fn assert_contains(haystack: String, needle: String) {
+  let assert True = string.contains(haystack, needle)
+}
+
+fn assert_not_contains(haystack: String, needle: String) {
+  let assert False = string.contains(haystack, needle)
+}
 
 pub fn button_with_loading_class_test() {
   let rendered =
@@ -11,12 +18,12 @@ pub fn button_with_loading_class_test() {
     ])
 
   let html_str = element.to_document_string(rendered)
-  string.contains(html_str, "btn-loading") |> should.be_true
+  assert_contains(html_str, "btn-loading")
 }
 
 pub fn button_without_loading_class_test() {
   let rendered = html.button([attribute.class("")], [html.text("Enviar")])
 
   let html_str = element.to_document_string(rendered)
-  string.contains(html_str, "btn-loading") |> should.be_false
+  assert_not_contains(html_str, "btn-loading")
 }

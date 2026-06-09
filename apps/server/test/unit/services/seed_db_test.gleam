@@ -1,9 +1,11 @@
+import domain/org_role
+import domain/task_status
 import fixtures
 import gleam/option.{None, Some}
-import gleeunit/should
 import pog
 import scrumbringer_server
 import scrumbringer_server/seed_db
+import support/assertions as expect
 
 pub fn insert_project_accepts_sql_timestamp_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
@@ -19,7 +21,7 @@ pub fn insert_project_accepts_sql_timestamp_test() {
       [pog.int(project_id)],
     )
 
-  has_created |> should.equal(1)
+  has_created |> expect.equal(1)
 }
 
 pub fn insert_card_accepts_sql_timestamp_test() {
@@ -28,7 +30,7 @@ pub fn insert_card_accepts_sql_timestamp_test() {
 
   let assert Ok(project_id) = seed_db.insert_project(db, 1, "Core", None)
   let assert Ok(user_id) =
-    seed_db.insert_user_simple(db, 1, "card@example.com", "admin")
+    seed_db.insert_user_simple(db, 1, "card@example.com", org_role.Admin)
 
   let assert Ok(card_id) =
     seed_db.insert_card(
@@ -50,7 +52,7 @@ pub fn insert_card_accepts_sql_timestamp_test() {
       [pog.int(card_id)],
     )
 
-  has_created |> should.equal(1)
+  has_created |> expect.equal(1)
 }
 
 pub fn insert_task_accepts_sql_timestamp_test() {
@@ -59,7 +61,7 @@ pub fn insert_task_accepts_sql_timestamp_test() {
 
   let assert Ok(project_id) = seed_db.insert_project(db, 1, "Core", None)
   let assert Ok(user_id) =
-    seed_db.insert_user_simple(db, 1, "task@example.com", "admin")
+    seed_db.insert_user_simple(db, 1, "task@example.com", org_role.Admin)
   let assert Ok(type_id) =
     seed_db.insert_task_type(db, project_id, "Bug", "bug-ant")
 
@@ -72,7 +74,7 @@ pub fn insert_task_accepts_sql_timestamp_test() {
         title: "Task",
         description: "Desc",
         priority: 3,
-        status: "available",
+        status: task_status.Available,
         created_by: user_id,
         claimed_by: None,
         card_id: None,
@@ -92,5 +94,5 @@ pub fn insert_task_accepts_sql_timestamp_test() {
       [pog.int(task_id)],
     )
 
-  has_created |> should.equal(1)
+  has_created |> expect.equal(1)
 }

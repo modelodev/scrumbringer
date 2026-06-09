@@ -262,18 +262,13 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     decode.optional(task_codec.ongoing_by_decoder()),
   )
   let is_ongoing = status_raw == "ongoing"
-  let state = case
-    task_state.from_db(
-      status_raw,
-      is_ongoing,
-      claimed_by,
-      claimed_at,
-      completed_at,
-    )
-  {
-    Ok(s) -> s
-    Error(_) -> task_state.Available
-  }
+  use state <- decode.then(task_codec.task_state_decoder_from_fields(
+    status_raw,
+    is_ongoing,
+    claimed_by,
+    claimed_at,
+    completed_at,
+  ))
   let status = task_state.to_status(state)
   let work_state = task_state.to_work_state(state)
 

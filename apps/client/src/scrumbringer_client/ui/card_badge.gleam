@@ -22,14 +22,12 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{span, text}
 
-import scrumbringer_client/client_state.{type Msg}
 import scrumbringer_client/ui/color_picker.{type CardColor}
 
 // =============================================================================
 // Initials Generation
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 /// Generate initials from a card title.
 ///
 /// Rules:
@@ -37,7 +35,6 @@ import scrumbringer_client/ui/color_picker.{type CardColor}
 /// 2. If single word, take first 2 characters (e.g., "Refactor" → "RE")
 /// 3. Uppercase always
 /// 4. Max 2 characters
-/// Justification: nested case improves clarity for branching logic.
 pub fn generate_initials(title: String) -> String {
   let words =
     title
@@ -47,25 +44,27 @@ pub fn generate_initials(title: String) -> String {
 
   case words {
     [] -> "??"
-    [single] -> {
-      let chars = string.to_graphemes(single)
-      case chars {
-        [] -> "??"
-        [a] -> string.uppercase(a)
-        [a, b, ..] -> string.uppercase(a <> b)
-      }
-    }
+    [single] -> single_word_initials(single)
     [first, second, ..] -> {
-      let first_char = case string.to_graphemes(first) {
-        [c, ..] -> c
-        [] -> "?"
-      }
-      let second_char = case string.to_graphemes(second) {
-        [c, ..] -> c
-        [] -> "?"
-      }
-      string.uppercase(first_char <> second_char)
+      string.uppercase(
+        first_grapheme_or(first, "?") <> first_grapheme_or(second, "?"),
+      )
     }
+  }
+}
+
+fn single_word_initials(word: String) -> String {
+  case string.to_graphemes(word) {
+    [] -> "??"
+    [a] -> string.uppercase(a)
+    [a, b, ..] -> string.uppercase(a <> b)
+  }
+}
+
+fn first_grapheme_or(value: String, fallback: String) -> String {
+  case string.to_graphemes(value) {
+    [first, ..] -> first
+    [] -> fallback
   }
 }
 
@@ -82,7 +81,7 @@ pub fn view(
   title: String,
   color: Option(CardColor),
   tooltip: Option(String),
-) -> Element(Msg) {
+) -> Element(msg) {
   let initials = generate_initials(title)
   let color_class = color_picker.initials_class(color)
 
@@ -104,7 +103,7 @@ pub fn view(
 }
 
 /// Renders a small card color indicator (just the dot, no initials).
-pub fn view_color_dot(color: Option(CardColor)) -> Element(Msg) {
+pub fn view_color_dot(color: Option(CardColor)) -> Element(msg) {
   case color {
     option.None -> element.none()
     option.Some(c) ->

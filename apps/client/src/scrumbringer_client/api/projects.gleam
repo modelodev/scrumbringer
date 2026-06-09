@@ -21,11 +21,12 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/project.{type Project, type ProjectMember}
 import domain/project/codec as project_codec
 import domain/project_role.{type ProjectRole}
 import domain/project_role/codec as project_role_codec
-import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/core
 
 // =============================================================================
 // API Functions
@@ -39,7 +40,7 @@ pub fn list_projects(to_msg: fn(ApiResult(List(Project))) -> msg) -> Effect(msg)
       decode.list(project_codec.project_decoder()),
       decode.success,
     )
-  core.request("GET", "/api/v1/projects", option.None, decoder, to_msg)
+  core.request(core.Get, "/api/v1/projects", option.None, decoder, to_msg)
 }
 
 /// Create a new project.
@@ -50,7 +51,13 @@ pub fn create_project(
   let body = json.object([#("name", json.string(name))])
   let decoder =
     decode.field("project", project_codec.project_decoder(), decode.success)
-  core.request("POST", "/api/v1/projects", option.Some(body), decoder, to_msg)
+  core.request(
+    core.Post,
+    "/api/v1/projects",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
 }
 
 /// List members of a project.
@@ -65,7 +72,7 @@ pub fn list_project_members(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     option.None,
     decoder,
@@ -92,7 +99,7 @@ pub fn add_project_member(
       decode.success,
     )
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     option.Some(body),
     decoder,
@@ -107,7 +114,7 @@ pub fn remove_project_member(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -173,7 +180,7 @@ pub fn update_member_role(
   let decoder =
     decode.field("member", role_change_result_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -192,7 +199,7 @@ pub fn release_all_member_tasks(
 ) -> Effect(msg) {
   let decoder = release_all_result_decoder()
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -224,7 +231,7 @@ pub fn get_member_capabilities(
     decode.success(MemberCapabilities(user_id: user_id, capability_ids: ids))
   }
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -252,7 +259,7 @@ pub fn set_member_capabilities(
     decode.success(MemberCapabilities(user_id: user_id, capability_ids: ids))
   }
   core.request(
-    "PUT",
+    core.Put,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/members/"
@@ -287,7 +294,7 @@ pub fn get_capability_members(
     ))
   }
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/capabilities/"
@@ -315,7 +322,7 @@ pub fn set_capability_members(
     ))
   }
   core.request(
-    "PUT",
+    core.Put,
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/capabilities/"
@@ -341,7 +348,7 @@ pub fn update_project(
   let decoder =
     decode.field("project", project_codec.project_decoder(), decode.success)
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/projects/" <> int.to_string(project_id),
     option.Some(body),
     decoder,
@@ -355,7 +362,7 @@ pub fn delete_project(
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/projects/" <> int.to_string(project_id),
     option.None,
     to_msg,

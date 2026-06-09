@@ -26,13 +26,14 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/project_role
-import scrumbringer_client/client_state.{type Model, type Msg, admin_msg}
+import domain/remote.{type Remote}
+import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{
   type OperationState, DialogOpen, Error as OpError, InFlight,
   ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit,
 }
-import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
@@ -46,32 +47,51 @@ import scrumbringer_client/utils/format_date
 // Public API
 // =============================================================================
 
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    projects: Remote(List(Project)),
+    project_dialog: projects_state.Model,
+    on_create_dialog_opened: msg,
+    on_create_dialog_closed: msg,
+    on_create_submitted: msg,
+    on_create_name_changed: fn(String) -> msg,
+    on_edit_dialog_opened: fn(Int, String) -> msg,
+    on_edit_dialog_closed: msg,
+    on_edit_submitted: msg,
+    on_edit_name_changed: fn(String) -> msg,
+    on_delete_confirm_opened: fn(Int, String) -> msg,
+    on_delete_confirm_closed: msg,
+    on_delete_submitted: msg,
+  )
+}
+
 /// Main projects section view.
-pub fn view_projects(model: Model) -> element.Element(Msg) {
+pub fn view_projects(config: Config(msg)) -> element.Element(msg) {
   div([attribute.class("section")], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Projects,
-      helpers_i18n.i18n_t(model, i18n_text.Projects),
-      dialog.add_button(
-        model,
+      t(config, i18n_text.Projects),
+      dialog.add_button_with_locale(
+        config.locale,
         i18n_text.CreateProject,
-        admin_msg(admin_messages.ProjectCreateDialogOpened),
+        config.on_create_dialog_opened,
       ),
     ),
     // Projects list
-    view_projects_list(model),
+    view_projects_list(config),
     // Dialogs
-    view_project_dialogs(model),
+    view_project_dialogs(config),
   ])
 }
 
 /// Project dialogs (create/edit/delete) for reuse in other views.
-pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
+pub fn view_project_dialogs(config: Config(msg)) -> element.Element(msg) {
   element.fragment([
-    view_projects_create_dialog(model),
-    view_projects_edit_dialog(model),
-    view_projects_delete_confirm(model),
+    view_projects_create_dialog(config),
+    view_projects_edit_dialog(config),
+    view_projects_delete_confirm(config),
   ])
 }
 
@@ -80,9 +100,9 @@ pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
 // =============================================================================
 
 /// Dialog for creating a new project.
-fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
+fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight, error) = case
-    model.admin.projects.projects_dialog
+    config.project_dialog.projects_dialog
   {
     DialogOpen(form: ProjectDialogCreate(name: name), operation: op) -> #(
       True,
@@ -95,10 +115,10 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: helpers_i18n.i18n_t(model, i18n_text.CreateProject),
+      title: t(config, i18n_text.CreateProject),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: admin_msg(admin_messages.ProjectCreateDialogClosed),
+      on_close: config.on_create_dialog_closed,
     ),
     is_open,
     error,
@@ -106,20 +126,16 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) {
-            admin_msg(admin_messages.ProjectCreateSubmitted)
-          }),
+          event.on_submit(fn(_) { config.on_create_submitted }),
           attribute.id("project-create-form"),
         ],
         [
           form_field.view(
-            helpers_i18n.i18n_t(model, i18n_text.Name),
+            t(config, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
-              event.on_input(fn(value) {
-                admin_msg(admin_messages.ProjectCreateNameChanged(value))
-              }),
+              event.on_input(fn(value) { config.on_create_name_changed(value) }),
               attribute.required(True),
               attribute.autofocus(True),
             ]),
@@ -129,35 +145,26 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(
-        model,
-        admin_msg(admin_messages.ProjectCreateDialogClosed),
+      dialog.cancel_button_with_locale(
+        config.locale,
+        config.on_create_dialog_closed,
       ),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("project-create-form"),
-          attribute.disabled(in_flight),
-          attribute.class(case in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case in_flight {
-            True -> helpers_i18n.i18n_t(model, i18n_text.Creating)
-            False -> helpers_i18n.i18n_t(model, i18n_text.Create)
-          }),
-        ],
+      dialog.submit_button_with_locale_attrs(
+        config.locale,
+        [attribute.form("project-create-form")],
+        in_flight,
+        False,
+        i18n_text.Create,
+        i18n_text.Creating,
       ),
     ],
   )
 }
 
 /// Dialog for editing a project (Story 4.8 AC39).
-fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
+fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight, error) = case
-    model.admin.projects.projects_dialog
+    config.project_dialog.projects_dialog
   {
     DialogOpen(form: ProjectDialogEdit(id: _, name: name), operation: op) -> #(
       True,
@@ -170,10 +177,10 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: helpers_i18n.i18n_t(model, i18n_text.EditProject),
+      title: t(config, i18n_text.EditProject),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: admin_msg(admin_messages.ProjectEditDialogClosed),
+      on_close: config.on_edit_dialog_closed,
     ),
     is_open,
     error,
@@ -181,20 +188,16 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) {
-            admin_msg(admin_messages.ProjectEditSubmitted)
-          }),
+          event.on_submit(fn(_) { config.on_edit_submitted }),
           attribute.id("project-edit-form"),
         ],
         [
           form_field.view(
-            helpers_i18n.i18n_t(model, i18n_text.Name),
+            t(config, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
-              event.on_input(fn(value) {
-                admin_msg(admin_messages.ProjectEditNameChanged(value))
-              }),
+              event.on_input(fn(value) { config.on_edit_name_changed(value) }),
               attribute.required(True),
               attribute.autofocus(True),
             ]),
@@ -204,34 +207,25 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(
-        model,
-        admin_msg(admin_messages.ProjectEditDialogClosed),
+      dialog.cancel_button_with_locale(
+        config.locale,
+        config.on_edit_dialog_closed,
       ),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("project-edit-form"),
-          attribute.disabled(in_flight),
-          attribute.class(case in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case in_flight {
-            True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
-            False -> helpers_i18n.i18n_t(model, i18n_text.Save)
-          }),
-        ],
+      dialog.submit_button_with_locale_attrs(
+        config.locale,
+        [attribute.form("project-edit-form")],
+        in_flight,
+        False,
+        i18n_text.Save,
+        i18n_text.Saving,
       ),
     ],
   )
 }
 
 /// Delete confirmation dialog (Story 4.8 AC39).
-fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight) = case model.admin.projects.projects_dialog {
+fn view_projects_delete_confirm(config: Config(msg)) -> element.Element(msg) {
+  let #(is_open, name, in_flight) = case config.project_dialog.projects_dialog {
     DialogOpen(form: ProjectDialogDelete(id: _, name: name), operation: op) -> #(
       True,
       name,
@@ -242,38 +236,38 @@ fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: helpers_i18n.i18n_t(model, i18n_text.DeleteProjectTitle),
+      title: t(config, i18n_text.DeleteProjectTitle),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: admin_msg(admin_messages.ProjectDeleteConfirmClosed),
+      on_close: config.on_delete_confirm_closed,
     ),
     is_open,
     opt.None,
     // Content
     [
       p([attribute.class("dialog-message")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.DeleteProjectConfirm(name))),
+        text(t(config, i18n_text.DeleteProjectConfirm(name))),
       ]),
       p([attribute.class("dialog-warning")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.DeleteProjectWarning)),
+        text(t(config, i18n_text.DeleteProjectWarning)),
       ]),
     ],
     // Footer buttons
     [
-      dialog.cancel_button(
-        model,
-        admin_msg(admin_messages.ProjectDeleteConfirmClosed),
+      dialog.cancel_button_with_locale(
+        config.locale,
+        config.on_delete_confirm_closed,
       ),
       button(
         [
           attribute.class("btn-danger"),
           attribute.disabled(in_flight),
-          event.on_click(admin_msg(admin_messages.ProjectDeleteSubmitted)),
+          event.on_click(config.on_delete_submitted),
         ],
         [
           text(case in_flight {
-            True -> helpers_i18n.i18n_t(model, i18n_text.Deleting)
-            False -> helpers_i18n.i18n_t(model, i18n_text.Delete)
+            True -> t(config, i18n_text.Deleting)
+            False -> t(config, i18n_text.Delete)
           }),
         ],
       ),
@@ -295,43 +289,45 @@ fn operation_error(operation: OperationState) -> opt.Option(String) {
   }
 }
 
-fn view_projects_list(model: Model) -> element.Element(Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+fn view_projects_list(config: Config(msg)) -> element.Element(msg) {
+  let translate = fn(key) { t(config, key) }
 
   data_table.view_remote_with_forbidden(
-    model.core.projects,
-    loading_msg: t(i18n_text.LoadingEllipsis),
-    empty_msg: t(i18n_text.NoProjectsYet),
-    forbidden_msg: t(i18n_text.NotPermitted),
+    config.projects,
+    loading_msg: translate(i18n_text.LoadingEllipsis),
+    empty_msg: translate(i18n_text.NoProjectsYet),
+    forbidden_msg: translate(i18n_text.NotPermitted),
     config: data_table.new()
       |> data_table.with_columns([
         // Name
-        data_table.column(t(i18n_text.Name), fn(p: Project) { text(p.name) }),
+        data_table.column(translate(i18n_text.Name), fn(p: Project) {
+          text(p.name)
+        }),
         // Members count (AC38)
         data_table.column_with_class(
-          t(i18n_text.MembersCount),
+          translate(i18n_text.MembersCount),
           fn(p: Project) { text(int.to_string(p.members_count)) },
           "col-center",
           "cell-center",
         ),
         // Created date (AC38)
         data_table.column_with_class(
-          t(i18n_text.CreatedAt),
+          translate(i18n_text.CreatedAt),
           fn(p: Project) { text(format_date.date_only(p.created_at)) },
           "col-center",
           "cell-center",
         ),
         // My role
         data_table.column_with_class(
-          t(i18n_text.MyRole),
+          translate(i18n_text.MyRole),
           fn(p: Project) { text(project_role.to_string(p.my_role)) },
           "col-center",
           "cell-center",
         ),
         // Actions (AC39)
         data_table.column_with_class(
-          t(i18n_text.Actions),
-          fn(p: Project) { view_project_actions(model, p) },
+          translate(i18n_text.Actions),
+          fn(p: Project) { view_project_actions(config, p) },
           "col-actions",
           "cell-actions",
         ),
@@ -340,14 +336,15 @@ fn view_projects_list(model: Model) -> element.Element(Msg) {
   )
 }
 
-fn view_project_actions(model: Model, p: Project) -> element.Element(Msg) {
+fn view_project_actions(config: Config(msg), p: Project) -> element.Element(msg) {
   action_buttons.edit_delete_row(
-    edit_title: helpers_i18n.i18n_t(model, i18n_text.EditProject),
-    edit_click: admin_msg(admin_messages.ProjectEditDialogOpened(p.id, p.name)),
-    delete_title: helpers_i18n.i18n_t(model, i18n_text.DeleteProject),
-    delete_click: admin_msg(admin_messages.ProjectDeleteConfirmOpened(
-      p.id,
-      p.name,
-    )),
+    edit_title: t(config, i18n_text.EditProject),
+    edit_click: config.on_edit_dialog_opened(p.id, p.name),
+    delete_title: t(config, i18n_text.DeleteProject),
+    delete_click: config.on_delete_confirm_opened(p.id, p.name),
   )
+}
+
+fn t(config: Config(msg), text: i18n_text.Text) -> String {
+  i18n.t(config.locale, text)
 }

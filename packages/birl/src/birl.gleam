@@ -9,6 +9,7 @@ import gleam/order
 import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam/yielder
 
 import ranger
 
@@ -295,7 +296,9 @@ pub fn to_iso8601(value: Time) -> String {
 ///
 ///   - `1905-12-22T16:38:23.000+03:30` -> `1905-12-22T16:38:23.000+03:30`
 pub fn parse(value: String) -> Result(Time, Nil) {
-  let assert Ok(offset_pattern) = regexp.from_string("(.*)([+|\\-].*)")
+  use offset_pattern <- result.try(
+    regexp.from_string("(.*)([+|\\-].*)") |> result.replace_error(Nil),
+  )
   let value = string.trim(value)
 
   use #(day_string, offsetted_time_string) <- result.try(
@@ -369,11 +372,13 @@ pub fn parse(value: String) -> Result(Time, Nil) {
 
   case milli_seconds_result {
     Ok(milli_seconds) -> {
-      use day <- result.try(parse_date_section(day_string))
-      let assert [year, month, date] = day
+      use #(year, month, date) <- result.try(
+        parse_date_section(day_string) |> result.try(list3),
+      )
 
-      use time_of_day <- result.try(parse_time_section(time_string))
-      let assert [hour, minute, second] = time_of_day
+      use #(hour, minute, second) <- result.try(
+        parse_time_section(time_string) |> result.try(list3),
+      )
 
       from_parts(
         #(year, month, date),
@@ -405,7 +410,9 @@ pub fn parse(value: String) -> Result(Time, Nil) {
 ///
 ///   - `T16:38:23.050+03:30` -> `#(TimeOfDay(16, 38, 23, 50), "+03:30")`
 pub fn parse_time_of_day(value: String) -> Result(#(TimeOfDay, String), Nil) {
-  let assert Ok(offset_pattern) = regexp.from_string("(.*)([+|\\-].*)")
+  use offset_pattern <- result.try(
+    regexp.from_string("(.*)([+|\\-].*)") |> result.replace_error(Nil),
+  )
 
   let time_string = case
     string.starts_with(value, "T"),
@@ -457,8 +464,9 @@ pub fn parse_time_of_day(value: String) -> Result(#(TimeOfDay, String), Nil) {
 
   case milli_seconds_result {
     Ok(milli_seconds) -> {
-      use time_of_day <- result.try(parse_time_section(time_string))
-      let assert [hour, minute, second] = time_of_day
+      use #(hour, minute, second) <- result.try(
+        parse_time_section(time_string) |> result.try(list3),
+      )
 
       use offset <- result.try(parse_offset(offset_string))
       use offset_string <- result.try(generate_offset(offset))
@@ -505,8 +513,9 @@ pub fn parse_naive_time_of_day(
 
   case milli_seconds_result {
     Ok(milli_seconds) -> {
-      use time_of_day <- result.try(parse_time_section(time_string))
-      let assert [hour, minute, second] = time_of_day
+      use #(hour, minute, second) <- result.try(
+        parse_time_section(time_string) |> result.try(list3),
+      )
 
       Ok(#(TimeOfDay(hour, minute, second, milli_seconds), "Z"))
     }
@@ -622,11 +631,13 @@ pub fn from_naive(value: String) -> Result(Time, Nil) {
 
   case milli_seconds_result {
     Ok(milli_seconds) -> {
-      use day <- result.try(parse_date_section(day_string))
-      let assert [year, month, date] = day
+      use #(year, month, date) <- result.try(
+        parse_date_section(day_string) |> result.try(list3),
+      )
 
-      use time_of_day <- result.try(parse_time_section(time_string))
-      let assert [hour, minute, second] = time_of_day
+      use #(hour, minute, second) <- result.try(
+        parse_time_section(time_string) |> result.try(list3),
+      )
 
       from_parts(
         #(year, month, date),
@@ -641,7 +652,10 @@ pub fn from_naive(value: String) -> Result(Time, Nil) {
 
 /// see [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Date)
 pub fn to_http(value: Time) -> String {
-  let assert Ok(value) = set_offset(value, "Z")
+  let value = case set_offset(value, "Z") {
+    Ok(value) -> value
+    Error(_) -> value
+  }
   let #(#(year, _, day), #(hour, minute, second, _), _) = to_parts(value)
   let short_weekday = short_string_weekday(value)
   let short_month = short_string_month(value)
@@ -748,7 +762,9 @@ pub fn from_http(value: String) -> Result(Time, Nil) {
   )
 
   let rest = string.trim(rest)
-  let assert Ok(whitespace_pattern) = regexp.from_string("\\s+")
+  use whitespace_pattern <- result.try(
+    regexp.from_string("\\s+") |> result.replace_error(Nil),
+  )
   case regexp.split(whitespace_pattern, rest) {
     [day_string, month_string, year_string, time_string, offset_string] -> {
       let time_string = string.replace(time_string, ":", "")
@@ -982,7 +998,10 @@ pub fn legible_difference(a: Time, b: Time) -> String {
     #(_, duration.MicroSecond) | #(_, duration.MilliSecond) -> "just now"
 
     #(amount, unit) -> {
-      let assert Ok(unit) = list.key_find(units_to_string, unit)
+      let unit = case list.key_find(units_to_string, unit) {
+        Ok(unit) -> unit
+        Error(_) -> "moment"
+      }
       let is_negative = amount < 0
       let amount = int.absolute_value(amount)
 
@@ -1052,8 +1071,10 @@ pub fn subtract(value: Time, duration: duration.Duration) -> Time {
 pub fn weekday(value: Time) -> Weekday {
   case value {
     Time(wall_time: t, offset: o, timezone: _, monotonic_time: _) -> {
-      let assert Ok(weekday) = weekday_from_int(ffi_weekday(t, o))
-      weekday
+      case weekday_from_int(ffi_weekday(t, o)) {
+        Ok(weekday) -> weekday
+        Error(_) -> Mon
+      }
     }
   }
 }
@@ -1118,8 +1139,10 @@ pub fn parse_month(value: String) -> Result(Month, Nil) {
 
 pub fn month(value: Time) -> Month {
   let #(#(_, month, _), _, _) = to_parts(value)
-  let assert Ok(month) = month_from_int(month)
-  month
+  case month_from_int(month) {
+    Ok(month) -> month
+    Error(_) -> Jan
+  }
 }
 
 pub fn string_month(value: Time) -> String {
@@ -1160,7 +1183,18 @@ pub fn short_string_month(value: Time) -> String {
 ///
 /// if `b` is `option.None` the range will be infinite
 pub fn range(from a: Time, to b: option.Option(Time), step s: duration.Duration) {
-  let assert Ok(range) = case b {
+  case try_range(from: a, to: b, step: s) {
+    Ok(range) -> range
+    Error(_) -> yielder.once(fn() { a })
+  }
+}
+
+pub fn try_range(
+  from a: Time,
+  to b: option.Option(Time),
+  step s: duration.Duration,
+) {
+  case b {
     option.Some(b) ->
       ranger.create(
         validate: fn(_) { True },
@@ -1178,7 +1212,6 @@ pub fn range(from a: Time, to b: option.Option(Time), step s: duration.Duration)
         compare: compare,
       )(a, s)
   }
-  range
 }
 
 /// WARNING: Does not respect daylight saving time!
@@ -1217,14 +1250,23 @@ pub fn set_offset(value: Time, new_offset: String) -> Result(Time, Nil) {
 
 pub fn get_offset(value: Time) -> String {
   let Time(_, offset, _, _) = value
-  let assert Ok(offset) = generate_offset(offset)
-  offset
+  case generate_offset(offset) {
+    Ok(offset) -> offset
+    Error(_) -> "Z"
+  }
 }
 
 pub fn set_day(value: Time, day: Day) -> Time {
+  case try_set_day(value, day) {
+    Ok(new_value) -> new_value
+    Error(_) -> value
+  }
+}
+
+pub fn try_set_day(value: Time, day: Day) -> Result(Time, Nil) {
   let #(_, time, offset) = to_parts(value)
   let Day(year, month, date) = day
-  let assert Ok(new_value) = from_parts(#(year, month, date), time, offset)
+  use new_value <- result.try(from_parts(#(year, month, date), time, offset))
 
   Time(
     new_value.wall_time,
@@ -1232,6 +1274,7 @@ pub fn set_day(value: Time, day: Day) -> Time {
     value.timezone,
     value.monotonic_time,
   )
+  |> Ok
 }
 
 pub fn get_day(value: Time) -> Day {
@@ -1240,10 +1283,20 @@ pub fn get_day(value: Time) -> Day {
 }
 
 pub fn set_time_of_day(value: Time, time: TimeOfDay) -> Time {
+  case try_set_time_of_day(value, time) {
+    Ok(new_value) -> new_value
+    Error(_) -> value
+  }
+}
+
+pub fn try_set_time_of_day(value: Time, time: TimeOfDay) -> Result(Time, Nil) {
   let #(date, _, offset) = to_parts(value)
   let TimeOfDay(hour, minute, second, milli_second) = time
-  let assert Ok(new_value) =
-    from_parts(date, #(hour, minute, second, milli_second), offset)
+  use new_value <- result.try(from_parts(
+    date,
+    #(hour, minute, second, milli_second),
+    offset,
+  ))
 
   Time(
     new_value.wall_time,
@@ -1251,6 +1304,7 @@ pub fn set_time_of_day(value: Time, time: TimeOfDay) -> Time {
     value.timezone,
     value.monotonic_time,
   )
+  |> Ok
 }
 
 pub fn get_time_of_day(value: Time) -> TimeOfDay {
@@ -1270,7 +1324,10 @@ pub fn to_erlang_datetime(value: Time) -> #(#(Int, Int, Int), #(Int, Int, Int)) 
 pub fn to_erlang_universal_datetime(
   value: Time,
 ) -> #(#(Int, Int, Int), #(Int, Int, Int)) {
-  let assert Ok(value) = set_offset(value, "Z")
+  let value = case set_offset(value, "Z") {
+    Ok(value) -> value
+    Error(_) -> value
+  }
   let #(date, #(hour, minute, second, _), _) = to_parts(value)
   #(date, #(hour, minute, second))
 }
@@ -1283,7 +1340,7 @@ pub fn from_erlang_local_datetime(
   let #(date, time) = erlang_datetime
   let offset_in_minutes = ffi_local_offset()
 
-  let assert Time(wall_time, _, option.None, option.None) =
+  let Time(wall_time, _, _, _) =
     unix_epoch
     |> set_day(Day(date.0, date.1, date.2))
     |> set_time_of_day(TimeOfDay(time.0, time.1, time.2, 0))
@@ -1310,12 +1367,15 @@ pub fn from_erlang_universal_datetime(
   erlang_datetime: #(#(Int, Int, Int), #(Int, Int, Int)),
 ) -> Time {
   let #(date, time) = erlang_datetime
-  let assert Ok(new_value) =
+  case
     unix_epoch
     |> set_day(Day(date.0, date.1, date.2))
     |> set_time_of_day(TimeOfDay(time.0, time.1, time.2, 0))
     |> set_timezone("Etc/UTC")
-  new_value
+  {
+    Ok(new_value) -> new_value
+    Error(_) -> unix_epoch
+  }
 }
 
 fn from_parts(
@@ -1333,15 +1393,27 @@ fn to_parts(value: Time) -> #(#(Int, Int, Int), #(Int, Int, Int, Int), String) {
   case value {
     Time(wall_time: t, offset: o, timezone: _, monotonic_time: _) -> {
       let #(date, time) = ffi_to_parts(t, o)
-      let assert Ok(offset) = generate_offset(o)
+      let offset = case generate_offset(o) {
+        Ok(offset) -> offset
+        Error(_) -> "Z"
+      }
       #(date, time, offset)
     }
   }
 }
 
+fn list3(values: List(Int)) -> Result(#(Int, Int, Int), Nil) {
+  case values {
+    [a, b, c] -> Ok(#(a, b, c))
+    _ -> Error(Nil)
+  }
+}
+
 fn parse_offset(offset: String) -> Result(Int, Nil) {
   use <- bool.guard(list.contains(["Z", "z"], offset), Ok(0))
-  let assert Ok(re) = regexp.from_string("([+-])")
+  use re <- result.try(
+    regexp.from_string("([+-])") |> result.replace_error(Nil),
+  )
 
   use #(sign, offset) <- result.try(case regexp.split(re, offset) {
     ["", "+", offset] -> Ok(#(1, offset))
@@ -1371,7 +1443,7 @@ fn parse_offset(offset: String) -> Result(Int, Nil) {
           }
         }
         3 -> {
-          let assert Ok(hour_str) = string.first(offset)
+          use hour_str <- result.try(string.first(offset))
           let minute_str = string.slice(offset, 1, 2)
           use hour <- result.try(int.parse(hour_str))
           use minute <- result.try(int.parse(minute_str))
@@ -1455,35 +1527,37 @@ fn parse_date_section(date: String) -> Result(List(Int), Nil) {
   use <- bool.guard(is_invalid_date(date), Error(Nil))
 
   case string.contains(date, "-") {
-    True -> {
-      let assert Ok(dash_pattern) =
+    True ->
+      case
         regexp.from_string(
           "(\\d{4})(?:-(1[0-2]|0?[0-9]))?(?:-(3[0-1]|[1-2][0-9]|0?[0-9]))?",
         )
+      {
+        Error(_) -> [Error(Nil)]
+        Ok(dash_pattern) ->
+          case regexp.scan(dash_pattern, date) {
+            [regexp.Match(_, [option.Some(major)])] -> [
+              int.parse(major),
+              Ok(1),
+              Ok(1),
+            ]
 
-      case regexp.scan(dash_pattern, date) {
-        [regexp.Match(_, [option.Some(major)])] -> [
-          int.parse(major),
-          Ok(1),
-          Ok(1),
-        ]
+            [regexp.Match(_, [option.Some(major), option.Some(middle)])] -> [
+              int.parse(major),
+              int.parse(middle),
+              Ok(1),
+            ]
 
-        [regexp.Match(_, [option.Some(major), option.Some(middle)])] -> [
-          int.parse(major),
-          int.parse(middle),
-          Ok(1),
-        ]
+            [
+              regexp.Match(
+                _,
+                [option.Some(major), option.Some(middle), option.Some(minor)],
+              ),
+            ] -> [int.parse(major), int.parse(middle), int.parse(minor)]
 
-        [
-          regexp.Match(
-            _,
-            [option.Some(major), option.Some(middle), option.Some(minor)],
-          ),
-        ] -> [int.parse(major), int.parse(middle), int.parse(minor)]
-
-        _ -> [Error(Nil)]
+            _ -> [Error(Nil)]
+          }
       }
-    }
 
     False ->
       parse_section(
@@ -1536,28 +1610,31 @@ fn parse_section(
   pattern_string: String,
   default: Int,
 ) -> List(Result(Int, Nil)) {
-  let assert Ok(pattern) = regexp.from_string(pattern_string)
-  case regexp.scan(pattern, section) {
-    [regexp.Match(_, [option.Some(major)])] -> [
-      int.parse(major),
-      Ok(default),
-      Ok(default),
-    ]
+  case regexp.from_string(pattern_string) {
+    Error(_) -> [Error(Nil)]
+    Ok(pattern) ->
+      case regexp.scan(pattern, section) {
+        [regexp.Match(_, [option.Some(major)])] -> [
+          int.parse(major),
+          Ok(default),
+          Ok(default),
+        ]
 
-    [regexp.Match(_, [option.Some(major), option.Some(middle)])] -> [
-      int.parse(major),
-      int.parse(middle),
-      Ok(default),
-    ]
+        [regexp.Match(_, [option.Some(major), option.Some(middle)])] -> [
+          int.parse(major),
+          int.parse(middle),
+          Ok(default),
+        ]
 
-    [
-      regexp.Match(
-        _,
-        [option.Some(major), option.Some(middle), option.Some(minor)],
-      ),
-    ] -> [int.parse(major), int.parse(middle), int.parse(minor)]
+        [
+          regexp.Match(
+            _,
+            [option.Some(major), option.Some(middle), option.Some(minor)],
+          ),
+        ] -> [int.parse(major), int.parse(middle), int.parse(minor)]
 
-    _ -> [Error(Nil)]
+        _ -> [Error(Nil)]
+      }
   }
 }
 

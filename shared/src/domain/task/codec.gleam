@@ -3,6 +3,7 @@
 import gleam/dynamic/decode
 import gleam/option
 
+import domain/card/codec as card_codec
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
   type WorkSession, type WorkSessionsPayload, Task, TaskDependency, TaskNote,
@@ -11,7 +12,7 @@ import domain/task.{
 import domain/task_state
 import domain/task_status.{
   type OngoingBy, type WorkState, Available, OngoingBy, WorkAvailable,
-  WorkClaimed, WorkCompleted, WorkOngoing, parse_task_status,
+  parse_task_status, parse_work_state,
 }
 import domain/task_type.{
   type TaskType, type TaskTypeInline, TaskType, TaskTypeInline,
@@ -65,16 +66,11 @@ pub fn ongoing_by_decoder() -> decode.Decoder(OngoingBy) {
 
 /// Decoder for WorkState.
 pub fn work_state_decoder() -> decode.Decoder(WorkState) {
-  decode.string
-  |> decode.map(fn(raw) {
-    case raw {
-      "available" -> WorkAvailable
-      "claimed" -> WorkClaimed
-      "ongoing" -> WorkOngoing
-      "completed" -> WorkCompleted
-      _ -> WorkClaimed
-    }
-  })
+  use raw <- decode.then(decode.string)
+  case parse_work_state(raw) {
+    Ok(state) -> decode.success(state)
+    Error(_) -> decode.failure(WorkAvailable, "WorkState")
+  }
 }
 
 // =============================================================================
@@ -126,18 +122,13 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   )
 
   let is_ongoing = status_raw == "ongoing"
-  let state = case
-    task_state.from_db(
-      status_raw,
-      is_ongoing,
-      claimed_by,
-      claimed_at,
-      completed_at,
-    )
-  {
-    Ok(s) -> s
-    Error(_) -> task_state.Available
-  }
+  use state <- decode.then(task_state_decoder_from_fields(
+    status_raw,
+    is_ongoing,
+    claimed_by,
+    claimed_at,
+    completed_at,
+  ))
   let status = task_state.to_status(state)
   let work_state = task_state.to_work_state(state)
 
@@ -163,7 +154,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use card_color <- decode.optional_field(
     "card_color",
     option.None,
-    decode.optional(decode.string),
+    card_codec.optional_color_decoder(),
   )
 
   // Story 5.4 AC4: has_new_notes indicator
@@ -206,27 +197,57 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   ))
 }
 
+pub fn task_state_decoder_from_fields(
+  status_raw: String,
+  is_ongoing: Bool,
+  claimed_by: option.Option(Int),
+  claimed_at: option.Option(String),
+  completed_at: option.Option(String),
+) -> decode.Decoder(task_state.TaskState) {
+  case
+    task_state.from_db(
+      status_raw,
+      is_ongoing,
+      claimed_by,
+      claimed_at,
+      completed_at,
+    )
+  {
+    Ok(state) -> decode.success(state)
+    Error(_) -> decode.failure(task_state.Available, "TaskState")
+  }
+}
+
 /// Decoder for TaskDependency.
 pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
   use depends_on_task_id <- decode.field("task_id", decode.int)
   use title <- decode.field("title", decode.string)
   use status_raw <- decode.field("status", decode.string)
-  let status = case parse_task_status(status_raw) {
-    Ok(s) -> s
-    Error(_) -> Available
-  }
   use claimed_by <- decode.optional_field(
     "claimed_by",
     option.None,
     decode.optional(decode.string),
   )
 
-  decode.success(TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: title,
-    status: status,
-    claimed_by: claimed_by,
-  ))
+  case parse_task_status(status_raw) {
+    Ok(status) ->
+      decode.success(TaskDependency(
+        depends_on_task_id: depends_on_task_id,
+        title: title,
+        status: status,
+        claimed_by: claimed_by,
+      ))
+    Error(_) ->
+      decode.failure(
+        TaskDependency(
+          depends_on_task_id: depends_on_task_id,
+          title: title,
+          status: Available,
+          claimed_by: claimed_by,
+        ),
+        "TaskDependency.status",
+      )
+  }
 }
 
 // =============================================================================

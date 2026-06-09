@@ -5,11 +5,10 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -39,10 +38,10 @@ pub fn capabilities_list_is_project_scoped_and_sorted_by_name_test() {
     |> request.set_cookie("sb_csrf", admin_csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let names = decode_capability_names(simulate.read_body(res))
-  names |> should.equal(["Alpha", "Zulu"])
+  names |> expect.equal(["Alpha", "Zulu"])
 }
 
 pub fn non_project_manager_cannot_create_capability_test() {
@@ -71,8 +70,8 @@ pub fn non_project_manager_cannot_create_capability_test() {
     |> simulate.json_body(json.object([#("name", json.string("Nope"))]))
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn duplicate_capability_name_in_same_project_is_rejected_test() {
@@ -98,7 +97,7 @@ pub fn duplicate_capability_name_in_same_project_is_rejected_test() {
     |> simulate.json_body(json.object([#("name", json.string("UX"))]))
 
   let first_res = handler(first_req)
-  first_res.status |> should.equal(200)
+  expect.expect_status(first_res, 200)
 
   let second_req =
     simulate.request(
@@ -111,9 +110,9 @@ pub fn duplicate_capability_name_in_same_project_is_rejected_test() {
     |> simulate.json_body(json.object([#("name", json.string("UX"))]))
 
   let second_res = handler(second_req)
-  second_res.status |> should.equal(422)
+  expect.expect_status(second_res, 422)
   string.contains(simulate.read_body(second_res), "VALIDATION_ERROR")
-  |> should.be_true
+  |> expect.is_true
 }
 
 pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
@@ -150,7 +149,7 @@ pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
       member_id,
       [dev_id],
     )
-  put_1 |> should.equal([dev_id])
+  put_1 |> expect.equal([dev_id])
 
   let put_2 =
     put_member_capabilities(
@@ -161,7 +160,7 @@ pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
       member_id,
       [pm_id],
     )
-  put_2 |> should.equal([pm_id])
+  put_2 |> expect.equal([pm_id])
 
   let put_3 =
     put_member_capabilities(
@@ -172,7 +171,7 @@ pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
       member_id,
       [],
     )
-  put_3 |> should.equal([])
+  put_3 |> expect.equal([])
 
   let get_ids =
     get_member_capabilities(
@@ -182,7 +181,7 @@ pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
       project_id,
       member_id,
     )
-  get_ids |> should.equal([])
+  get_ids |> expect.equal([])
 }
 
 pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
@@ -213,7 +212,7 @@ pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
     member_id,
     [dev_id],
   )
-  |> should.equal([dev_id])
+  |> expect.equal([dev_id])
 
   // Create another project with a capability
   let project2_id = insert_project(db, 1, "Project2")
@@ -238,7 +237,7 @@ pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
     )
 
   let invalid_res = handler(invalid_req)
-  invalid_res.status |> should.equal(422)
+  expect.expect_status(invalid_res, 422)
 
   let still_selected =
     get_member_capabilities(
@@ -248,7 +247,7 @@ pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
       project_id,
       member_id,
     )
-  still_selected |> should.equal([dev_id])
+  still_selected |> expect.equal([dev_id])
 }
 
 fn create_capability(
@@ -269,7 +268,7 @@ fn create_capability(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn decode_capability_names(body: String) -> List(String) {
@@ -324,7 +323,7 @@ fn put_member_capabilities(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   decode_member_capabilities(simulate.read_body(res))
 }
@@ -349,7 +348,7 @@ fn get_member_capabilities(
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   decode_member_capabilities(simulate.read_body(res))
 }
@@ -386,7 +385,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -418,7 +417,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -455,11 +454,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -467,7 +465,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

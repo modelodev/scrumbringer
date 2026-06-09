@@ -3,14 +3,15 @@
 //// Tests rule evaluation including matching, inactive rules, and idempotency.
 //// Uses fixtures.gleam for test setup.
 
+import domain/task_status
 import fixtures
 import gleam/option.{None, Some}
 import gleeunit
-import gleeunit/should
 import scrumbringer_server
 import scrumbringer_server/services/rules_engine.{
   Applied, RuleResult, Suppressed,
 }
+import support/assertions as expect
 
 pub fn main() {
   gleeunit.main()
@@ -38,7 +39,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       workflow_id,
       Some(type_id),
       "Bug Complete",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Bug")
@@ -48,20 +49,19 @@ pub fn evaluate_rule_applies_matching_rule_test() {
 
   // When: Fire event that matches rule criteria
   let event =
-    fixtures.task_event(
+    fixtures.task_event_status(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some("claimed"),
-      "completed",
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Completed,
       Some(type_id),
     )
 
   let result = rules_engine.evaluate_rules(db, event)
 
   // Then: Rule is applied
-  result |> should.be_ok()
   let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = result
 }
 
@@ -87,7 +87,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      "completed",
+      task_status.Completed,
     )
 
   // Deactivate the rule
@@ -101,13 +101,13 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event(
+    fixtures.task_event_status(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some("claimed"),
-      "completed",
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Completed,
       Some(type_id),
     )
 
@@ -139,7 +139,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Feature")
@@ -148,13 +148,13 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event(
+    fixtures.task_event_status(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some("claimed"),
-      "completed",
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Completed,
       Some(type_id),
     )
 
@@ -168,7 +168,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
   // Then: Rule is suppressed as idempotent
   let assert Ok([RuleResult(rule_id: rid, outcome: Suppressed("idempotent"))]) =
     result2
-  rid |> should.equal(rule_id)
+  rid |> expect.equal(rule_id)
 }
 
 // =============================================================================
@@ -193,7 +193,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       workflow_id,
       None,
       "Any Done",
-      "completed",
+      task_status.Completed,
     )
 
   // Deactivate workflow
@@ -207,13 +207,13 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event(
+    fixtures.task_event_status(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some("claimed"),
-      "completed",
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Completed,
       Some(type_id),
     )
 

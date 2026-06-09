@@ -3,16 +3,14 @@ import domain/project_role.{Manager}
 import domain/remote.{Loaded}
 import domain/task.{WorkSession, WorkSessionsPayload}
 import gleam/option as opt
-import gleeunit/should
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
-import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/client_state/selectors as state_selectors
 
 pub fn active_projects_returns_empty_when_not_loaded_test() {
   let model = client_state.default_model()
-  helpers_selection.active_projects(model)
-  |> should.equal([])
+  let assert [] = state_selectors.active_projects(model)
 }
 
 pub fn selected_project_returns_selected_project_test() {
@@ -34,8 +32,7 @@ pub fn selected_project_returns_selected_project_test() {
       )
     })
 
-  helpers_selection.selected_project(model)
-  |> should.equal(opt.Some(project))
+  let assert True = state_selectors.selected_project(model) == opt.Some(project)
 }
 
 pub fn ensure_selected_project_picks_first_when_missing_test() {
@@ -47,8 +44,8 @@ pub fn ensure_selected_project_picks_first_when_missing_test() {
       created_at: "2026-01-01",
       members_count: 1,
     )
-  helpers_selection.ensure_selected_project(opt.Some(99), [project])
-  |> should.equal(opt.Some(10))
+  let assert opt.Some(10) =
+    state_selectors.ensure_selected_project(opt.Some(99), [project])
 }
 
 pub fn now_working_active_task_id_from_sessions_test() {
@@ -70,6 +67,5 @@ pub fn now_working_active_task_id_from_sessions_test() {
       )
     })
 
-  helpers_selection.now_working_active_task_id(model)
-  |> should.equal(opt.Some(5))
+  let assert opt.Some(5) = state_selectors.now_working_active_task_id(model)
 }

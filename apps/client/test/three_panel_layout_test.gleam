@@ -1,8 +1,15 @@
 import gleam/string
-import gleeunit/should
 import lustre/element
 import lustre/element/html.{div, text}
 import scrumbringer_client/features/layout/three_panel_layout as layout
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn assert_not_equal(actual: a, unexpected: a) {
+  let assert False = actual == unexpected
+}
 
 // =============================================================================
 // Builder tests
@@ -12,7 +19,7 @@ pub fn config_creates_empty_config_test() {
   let config = layout.config()
   // Config should exist and be usable
   let rendered = layout.render(config)
-  rendered |> element.to_document_string |> should.not_equal("")
+  rendered |> element.to_document_string |> assert_not_equal("")
 }
 
 pub fn with_left_panel_sets_content_test() {
@@ -24,7 +31,7 @@ pub fn with_left_panel_sets_content_test() {
   let rendered = layout.render(config)
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "Left") |> should.be_true
+  assert_contains(html, "Left")
 }
 
 pub fn with_center_panel_sets_content_test() {
@@ -36,7 +43,7 @@ pub fn with_center_panel_sets_content_test() {
   let rendered = layout.render(config)
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "Center") |> should.be_true
+  assert_contains(html, "Center")
 }
 
 pub fn with_right_panel_sets_content_test() {
@@ -48,7 +55,7 @@ pub fn with_right_panel_sets_content_test() {
   let rendered = layout.render(config)
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "Right") |> should.be_true
+  assert_contains(html, "Right")
 }
 
 // =============================================================================
@@ -60,7 +67,7 @@ pub fn render_includes_nav_element_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "<nav") |> should.be_true
+  assert_contains(html, "<nav")
 }
 
 pub fn render_includes_main_element_test() {
@@ -68,7 +75,7 @@ pub fn render_includes_main_element_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "<main") |> should.be_true
+  assert_contains(html, "<main")
 }
 
 pub fn render_includes_aside_element_test() {
@@ -76,7 +83,7 @@ pub fn render_includes_aside_element_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "<aside") |> should.be_true
+  assert_contains(html, "<aside")
 }
 
 // =============================================================================
@@ -88,7 +95,7 @@ pub fn render_includes_left_panel_testid_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"left-panel\"") |> should.be_true
+  assert_contains(html, "data-testid=\"left-panel\"")
 }
 
 pub fn render_includes_center_panel_testid_test() {
@@ -96,7 +103,7 @@ pub fn render_includes_center_panel_testid_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"center-panel\"") |> should.be_true
+  assert_contains(html, "data-testid=\"center-panel\"")
 }
 
 pub fn render_includes_right_panel_testid_test() {
@@ -104,7 +111,7 @@ pub fn render_includes_right_panel_testid_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"right-panel\"") |> should.be_true
+  assert_contains(html, "data-testid=\"right-panel\"")
 }
 
 // =============================================================================
@@ -116,7 +123,7 @@ pub fn render_includes_main_content_id_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "id=\"main-content\"") |> should.be_true
+  assert_contains(html, "id=\"main-content\"")
 }
 
 pub fn render_includes_aria_labels_test() {
@@ -125,7 +132,7 @@ pub fn render_includes_aria_labels_test() {
     |> element.to_document_string
 
   // Should have aria-label on nav and aside
-  string.contains(html, "aria-label=") |> should.be_true
+  assert_contains(html, "aria-label=")
 }
 
 pub fn render_with_labels_uses_custom_labels_test() {
@@ -139,7 +146,7 @@ pub fn render_with_labels_uses_custom_labels_test() {
     )
     |> element.to_document_string
 
-  string.contains(html, "Navegacion principal") |> should.be_true
+  assert_contains(html, "Navegacion principal")
 }
 
 // =============================================================================
@@ -151,7 +158,7 @@ pub fn render_includes_layout_class_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "three-panel-layout") |> should.be_true
+  assert_contains(html, "three-panel-layout")
 }
 
 pub fn render_includes_panel_classes_test() {
@@ -159,7 +166,7 @@ pub fn render_includes_panel_classes_test() {
     layout.view(element.none(), element.none(), element.none())
     |> element.to_document_string
 
-  string.contains(html, "panel-left") |> should.be_true
-  string.contains(html, "panel-center") |> should.be_true
-  string.contains(html, "panel-right") |> should.be_true
+  assert_contains(html, "panel-left")
+  assert_contains(html, "panel-center")
+  assert_contains(html, "panel-right")
 }

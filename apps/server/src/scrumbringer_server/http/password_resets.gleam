@@ -16,18 +16,15 @@
 //// - Password hashing (see `services/password.gleam`)
 ////
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/http/request
-import gleam/json
-import gleam/list
 import gleam/option as opt
 import gleam/result
-import gleam/string
 import pog
 
 import scrumbringer_server/http/api
+import scrumbringer_server/http/client_ip
+import scrumbringer_server/http/password_resets/payloads as reset_payloads
+import scrumbringer_server/http/password_resets/presenters as reset_presenters
 import scrumbringer_server/services/password
 import scrumbringer_server/services/password_resets_db
 import scrumbringer_server/services/rate_limit
@@ -50,33 +47,8 @@ type ConsumeTxError {
   ConsumeDbError(pog.QueryError)
 }
 
-fn client_ip(req: wisp.Request) -> opt.Option(String) {
-  let xff =
-    request.get_header(req, "x-forwarded-for")
-    |> result.unwrap("")
-
-  let x_real = request.get_header(req, "x-real-ip") |> result.unwrap("")
-
-  let raw = case xff {
-    "" -> x_real
-    _ -> xff
-  }
-
-  raw
-  |> string.split(",")
-  |> list.first
-  |> result.unwrap("")
-  |> string.trim
-  |> fn(value) {
-    case value {
-      "" -> opt.None
-      _ -> opt.Some(value)
-    }
-  }
-}
-
 fn rate_limit_key(prefix: String, req: wisp.Request) -> opt.Option(String) {
-  client_ip(req)
+  client_ip.from_request(req)
   |> opt.map(fn(ip) { prefix <> ":" <> ip })
 }
 
@@ -91,6 +63,16 @@ fn rate_limit_ok(prefix: String, req: wisp.Request) -> Bool {
         password_reset_rate_limit_window_seconds,
         time.now_unix_seconds(),
       )
+  }
+}
+
+fn require_rate_limit(
+  prefix: String,
+  req: wisp.Request,
+) -> Result(Nil, wisp.Response) {
+  case rate_limit_ok(prefix, req) {
+    True -> Ok(Nil)
+    False -> Error(api.error(429, "RATE_LIMITED", "Too many attempts"))
   }
 }
 
@@ -128,127 +110,125 @@ pub fn handle_consume(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_create(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case rate_limit_ok("password_resets_request", req) {
-    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
-
-    True -> {
-      use data <- wisp.require_json(req)
-      // Justified nested case: unwrap Result<Response, Response> into a Response.
-      case create_reset(ctx, data) {
-        Ok(resp) -> resp
-        Error(resp) -> resp
-      }
-    }
-  }
-}
-
-fn ok_reset_payload(token: String, url_path: String) -> wisp.Response {
-  api.ok(
-    json.object([
-      #(
-        "reset",
-        json.object([
-          #("token", json.string(token)),
-          #("url_path", json.string(url_path)),
-        ]),
-      ),
-    ]),
+  with_rate_limited_payload(
+    req,
+    "password_resets_request",
+    decode_reset_request,
+    fn(payload) { create_reset(ctx, payload) },
   )
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn ok_reset_payload(token: String, url_path: String) -> wisp.Response {
+  api.ok(reset_presenters.reset(token, url_path))
+}
+
 fn handle_validate(req: wisp.Request, ctx: Ctx, token: String) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case rate_limit_ok("password_resets_validate", req) {
-    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
+  case require_rate_limit("password_resets_validate", req) {
+    Error(resp) -> resp
+    Ok(Nil) -> validate_token(ctx, token)
+  }
+}
 
-    True -> {
-      let Ctx(db: db) = ctx
+fn handle_consume_post(req: wisp.Request, ctx: Ctx) -> wisp.Response {
+  use <- wisp.require_method(req, http.Post)
 
-      case password_resets_db.token_status(db, token) {
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
+  with_rate_limited_payload(
+    req,
+    "password_resets_consume",
+    decode_consume_payload,
+    fn(payload) { consume_request(ctx, payload) },
+  )
+}
 
-        Ok(password_resets_db.TokenActive(email: email)) ->
-          api.ok(json.object([#("email", json.string(email))]))
-
-        Ok(password_resets_db.TokenUsed) ->
-          api.error(403, "RESET_TOKEN_USED", "Reset token already used")
-
-        Ok(_) -> api.error(403, "RESET_TOKEN_INVALID", "Reset token invalid")
+fn with_rate_limited_payload(
+  req: wisp.Request,
+  prefix: String,
+  decode_payload,
+  handle_payload: fn(payload) -> Result(wisp.Response, wisp.Response),
+) -> wisp.Response {
+  case require_rate_limit(prefix, req) {
+    Error(resp) -> resp
+    Ok(Nil) -> {
+      use data <- wisp.require_json(req)
+      case decode_payload(data) {
+        Error(resp) -> resp
+        Ok(payload) -> response_from_result(handle_payload(payload))
       }
     }
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn handle_consume_post(req: wisp.Request, ctx: Ctx) -> wisp.Response {
-  use <- wisp.require_method(req, http.Post)
+fn response_from_result(
+  result: Result(wisp.Response, wisp.Response),
+) -> wisp.Response {
+  case result {
+    Ok(resp) -> resp
+    Error(resp) -> resp
+  }
+}
 
-  case rate_limit_ok("password_resets_consume", req) {
-    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
+fn validate_token(ctx: Ctx, token: String) -> wisp.Response {
+  let Ctx(db: db) = ctx
 
-    True -> {
-      use data <- wisp.require_json(req)
-      // Justified nested case: unwrap Result<Response, Response> into a Response.
-      case consume_request(ctx, data) {
-        Ok(resp) -> resp
-        Error(resp) -> resp
-      }
-    }
+  case password_resets_db.token_status(db, token) {
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(status) -> token_status_to_response(status)
+  }
+}
+
+fn token_status_to_response(
+  status: password_resets_db.TokenStatus,
+) -> wisp.Response {
+  case status {
+    password_resets_db.TokenActive(email: email) ->
+      api.ok(reset_presenters.token_email(email))
+
+    password_resets_db.TokenUsed ->
+      api.error(403, "RESET_TOKEN_USED", "Reset token already used")
+
+    password_resets_db.TokenMissing
+    | password_resets_db.TokenInvalidated
+    | password_resets_db.TokenExpired ->
+      api.error(403, "RESET_TOKEN_INVALID", "Reset token invalid")
   }
 }
 
 fn create_reset(
   ctx: Ctx,
-  data: dynamic.Dynamic,
+  payload: reset_payloads.ResetRequestPayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use email_raw <- result.try(decode_reset_request(data))
-  use email <- result.try(require_email(email_raw))
-
   let token = password_resets_db.new_reset_token()
   let url_path = "/reset-password?token=" <> token
 
   let Ctx(db: db) = ctx
-  use _ <- result.try(store_reset_token(db, email, token))
+  use _ <- result.try(store_reset_token(db, payload.email, token))
 
   Ok(ok_reset_payload(token, url_path))
 }
 
 fn consume_request(
   ctx: Ctx,
-  data: dynamic.Dynamic,
+  payload: reset_payloads.ConsumePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use #(token, password_raw) <- result.try(decode_consume_payload(data))
-  use _ <- result.try(validate_password(password_raw))
-  use _ <- result.try(consume_password_reset(ctx, token, password_raw))
+  use _ <- result.try(consume_password_reset(
+    ctx,
+    payload.token,
+    payload.password,
+  ))
 
   Ok(api.no_content())
 }
 
-fn decode_reset_request(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
-  let decoder = {
-    use email <- decode.field("email", decode.string)
-    decode.success(email)
-  }
-
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
-}
-
-fn require_email(email_raw: String) -> Result(String, wisp.Response) {
-  let email = string.trim(email_raw)
-
-  case email == "" {
-    True -> Error(api.error(422, "VALIDATION_ERROR", "Email is required"))
-    False -> Ok(email)
-  }
+fn decode_reset_request(
+  data,
+) -> Result(reset_payloads.ResetRequestPayload, wisp.Response) {
+  reset_payloads.decode_reset_request(data)
+  |> result.map_error(payload_error_to_response)
 }
 
 fn store_reset_token(
@@ -288,29 +268,24 @@ fn persist_reset_token(
 }
 
 fn decode_consume_payload(
-  data: dynamic.Dynamic,
-) -> Result(#(String, String), wisp.Response) {
-  let decoder = {
-    use token <- decode.field("token", decode.string)
-    use password <- decode.field("password", decode.string)
-    decode.success(#(token, password))
-  }
-
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
+  data,
+) -> Result(reset_payloads.ConsumePayload, wisp.Response) {
+  reset_payloads.decode_consume(data)
+  |> result.map_error(payload_error_to_response)
 }
 
-fn validate_password(password_raw: String) -> Result(Nil, wisp.Response) {
-  case string.length(password_raw) < 12 {
-    True ->
-      Error(api.error(
+fn payload_error_to_response(error: reset_payloads.DecodeError) -> wisp.Response {
+  case error {
+    reset_payloads.InvalidJson ->
+      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    reset_payloads.EmailRequired ->
+      api.error(422, "VALIDATION_ERROR", "Email is required")
+    reset_payloads.PasswordTooShort ->
+      api.error(
         422,
         "VALIDATION_ERROR",
         "Password must be at least 12 characters",
-      ))
-    False -> Ok(Nil)
+      )
   }
 }
 

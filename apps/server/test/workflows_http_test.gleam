@@ -5,11 +5,10 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -43,7 +42,7 @@ pub fn workflows_project_crud_and_active_cascade_test() {
       ),
     )
 
-  create_res.status |> should.equal(200)
+  expect.expect_status(create_res, 200)
   let workflow_id = decode_workflow_id(simulate.read_body(create_res))
 
   insert_rule(db, workflow_id)
@@ -64,8 +63,8 @@ pub fn workflows_project_crud_and_active_cascade_test() {
       ),
     )
 
-  patch_res.status |> should.equal(200)
-  rule_active(db, workflow_id) |> should.equal(False)
+  expect.expect_status(patch_res, 200)
+  rule_active(db, workflow_id) |> expect.equal(False)
 
   let list_res =
     handler(
@@ -77,9 +76,9 @@ pub fn workflows_project_crud_and_active_cascade_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_res.status |> should.equal(200)
+  expect.expect_status(list_res, 200)
   decode_workflow_names(simulate.read_body(list_res))
-  |> should.equal(["Project Workflow"])
+  |> expect.equal(["Project Workflow"])
 
   let delete_res =
     handler(
@@ -92,7 +91,7 @@ pub fn workflows_project_crud_and_active_cascade_test() {
       |> request.set_header("X-CSRF", csrf),
     )
 
-  delete_res.status |> should.equal(204)
+  expect.expect_status(delete_res, 204)
 }
 
 pub fn workflows_project_scope_requires_project_manager_test() {
@@ -141,7 +140,7 @@ pub fn workflows_project_scope_requires_project_manager_test() {
       |> request.set_cookie("sb_csrf", member_csrf),
     )
 
-  list_res.status |> should.equal(403)
+  expect.expect_status(list_res, 403)
 
   let create_res =
     handler(
@@ -160,7 +159,7 @@ pub fn workflows_project_scope_requires_project_manager_test() {
       ),
     )
 
-  create_res.status |> should.equal(403)
+  expect.expect_status(create_res, 403)
 }
 
 pub fn workflows_project_list_filters_scope_test() {
@@ -225,9 +224,9 @@ pub fn workflows_project_list_filters_scope_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_core_res.status |> should.equal(200)
+  expect.expect_status(list_core_res, 200)
   decode_workflow_names(simulate.read_body(list_core_res))
-  |> should.equal(["Core Workflow"])
+  |> expect.equal(["Core Workflow"])
 }
 
 pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
@@ -275,7 +274,7 @@ pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
       ),
     )
 
-  dup_res.status |> should.equal(422)
+  expect.expect_status(dup_res, 422)
 }
 
 pub fn workflows_invalid_payload_returns_400_test() {
@@ -301,7 +300,7 @@ pub fn workflows_invalid_payload_returns_400_test() {
       |> simulate.json_body(json.object([#("name", json.int(1))])),
     )
 
-  bad_res.status |> should.equal(400)
+  expect.expect_status(bad_res, 400)
 }
 
 fn decode_workflow_id(body: String) -> Int {
@@ -388,7 +387,7 @@ fn create_project(
     |> simulate.json_body(json.object([#("name", json.string(name))]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn add_member(
@@ -415,7 +414,7 @@ fn add_member(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn create_member_user(
@@ -436,7 +435,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -472,7 +471,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -505,11 +504,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -517,7 +515,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

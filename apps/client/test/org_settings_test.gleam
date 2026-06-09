@@ -1,40 +1,21 @@
-//// Tests for org settings handlers.
-////
-//// Specifically tests the fix for:
-//// - When admin changes their own role, model.user should be updated
+//// Tests for org settings local update handlers.
 
 import gleam/option as opt
-import gleeunit/should
 import lustre/effect
 
+import domain/api_error.{ApiError}
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
-import domain/remote.{Loaded}
+import domain/remote.{Failed, Loaded}
 import domain/user.{type User, User}
-import scrumbringer_client/client_state.{
-  type Model, Admin, CoreModel, update_admin, update_core, update_ui,
-}
-import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/client_state/admin/members as admin_members
-import scrumbringer_client/client_state/ui as ui_state
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_settings
-import scrumbringer_client/permissions
-import scrumbringer_client/ui/toast
-
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
-fn base_model() -> Model {
-  update_core(client_state.default_model(), fn(core) {
-    CoreModel(..core, page: Admin)
-  })
-}
 
 fn make_user(id: Int, role: org_role.OrgRole) -> User {
   User(
     id: id,
-    email: "user" <> "@example.com",
+    email: "user@example.com",
     org_id: 1,
     org_role: role,
     created_at: "2024-01-01T00:00:00Z",
@@ -44,313 +25,464 @@ fn make_user(id: Int, role: org_role.OrgRole) -> User {
 fn make_org_user(id: Int, role: org_role.OrgRole) -> OrgUser {
   OrgUser(
     id: id,
-    email: "user" <> "@example.com",
+    email: "user@example.com",
     org_role: role,
     created_at: "2024-01-01T00:00:00Z",
   )
 }
 
-// =============================================================================
-// handle_org_settings_saved_ok: Current User Role Update Tests
-// =============================================================================
+fn context() -> org_settings.Context(String) {
+  org_settings.Context(
+    on_org_settings_saved: fn(_, _) { "saved" },
+    on_org_settings_deleted: fn(_) { "deleted" },
+  )
+}
 
-pub fn saved_ok_updates_current_user_role_to_admin_test() {
-  // Setup: current user is member (id=42)
+fn feedback_context() -> org_settings.FeedbackContext(Nil) {
+  org_settings.FeedbackContext(
+    role_updated: "Role updated",
+    user_deleted: "User deleted",
+    not_permitted: "Not permitted",
+    on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
+    on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
+  )
+}
+
+fn try_feedback_context() -> org_settings.FeedbackContext(String) {
+  org_settings.FeedbackContext(
+    role_updated: "Role updated",
+    user_deleted: "User deleted",
+    not_permitted: "Not permitted",
+    on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
+    on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
+  )
+}
+
+pub fn current_user_after_saved_updates_matching_user_test() {
   let current_user = make_user(42, org_role.Member)
-  let model =
-    update_core(base_model(), fn(core) {
-      CoreModel(
-        ..core,
-        user: opt.Some(current_user),
-        active_section: permissions.OrgSettings,
-      )
-    })
-
-  // Action: admin updates user 42's role to admin
   let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: model.user should now have Admin role
-  case next.core.user {
-    opt.Some(u) -> u.org_role |> should.equal(org_role.Admin)
-    opt.None -> should.fail()
-  }
+  let assert opt.Some(user) =
+    org_settings.current_user_after_saved(
+      opt.Some(current_user),
+      updated_org_user,
+    )
+  let assert org_role.Admin = user.org_role
 }
 
-pub fn saved_ok_updates_current_user_role_to_member_test() {
-  // Setup: current user is admin (id=42)
+pub fn current_user_after_saved_keeps_different_user_test() {
   let current_user = make_user(42, org_role.Admin)
-  let model =
-    update_core(base_model(), fn(core) {
-      CoreModel(
-        ..core,
-        user: opt.Some(current_user),
-        active_section: permissions.OrgSettings,
-      )
-    })
-
-  // Action: admin updates user 42's role to member
-  let updated_org_user = make_org_user(42, org_role.Member)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
-
-  // Assert: model.user should now have Member role
-  case next.core.user {
-    opt.Some(u) -> u.org_role |> should.equal(org_role.Member)
-    opt.None -> should.fail()
-  }
-}
-
-pub fn saved_ok_does_not_change_user_when_different_id_test() {
-  // Setup: current user is admin (id=42)
-  let current_user = make_user(42, org_role.Admin)
-  let model =
-    update_core(base_model(), fn(core) {
-      CoreModel(
-        ..core,
-        user: opt.Some(current_user),
-        active_section: permissions.OrgSettings,
-      )
-    })
-
-  // Action: admin updates a DIFFERENT user (id=99) to member
   let updated_org_user = make_org_user(99, org_role.Member)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: model.user should remain unchanged (still Admin)
-  case next.core.user {
-    opt.Some(u) -> {
-      u.id |> should.equal(42)
-      u.org_role |> should.equal(org_role.Admin)
-    }
-    opt.None -> should.fail()
-  }
+  let assert opt.Some(user) =
+    org_settings.current_user_after_saved(
+      opt.Some(current_user),
+      updated_org_user,
+    )
+  let assert 42 = user.id
+  let assert org_role.Admin = user.org_role
 }
 
-pub fn saved_ok_handles_none_user_gracefully_test() {
-  // Setup: no current user (edge case)
-  let model =
-    update_core(base_model(), fn(core) {
-      CoreModel(..core, user: opt.None, active_section: permissions.OrgSettings)
-    })
-
-  // Action: update some user's role
+pub fn current_user_after_saved_handles_none_user_test() {
   let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: model.user should remain None
-  next.core.user |> should.equal(opt.None)
+  let assert opt.None =
+    org_settings.current_user_after_saved(opt.None, updated_org_user)
 }
-
-pub fn saved_ok_ignores_invalid_role_string_test() {
-  // Setup: current user is member (id=42)
-  let current_user = make_user(42, org_role.Member)
-  let model =
-    update_core(base_model(), fn(core) {
-      CoreModel(
-        ..core,
-        user: opt.Some(current_user),
-        active_section: permissions.OrgSettings,
-      )
-    })
-
-  // Action: update with invalid role string (shouldn't happen, but defensive)
-  let updated_org_user = make_org_user(42, org_role.Member)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
-
-  // Assert: model.user should remain unchanged (still Member)
-  case next.core.user {
-    opt.Some(u) -> u.org_role |> should.equal(org_role.Member)
-    opt.None -> should.fail()
-  }
-}
-
-// =============================================================================
-// handle_org_settings_saved_ok: List Update Tests
-// =============================================================================
 
 pub fn saved_ok_updates_org_settings_users_list_test() {
-  // Setup: org_settings_users has user 42 as member
   let existing_user = make_org_user(42, org_role.Member)
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_settings_users: Loaded([existing_user]),
-        ),
-      )
-    })
-
-  // Action: update user 42 to admin
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_users: Loaded([existing_user]),
+    )
   let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: org_settings_users should have updated role
-  case next.admin.members.org_settings_users {
-    Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
-    _ -> should.fail()
-  }
+  let #(next, fx) =
+    org_settings.handle_org_settings_saved_ok(
+      model,
+      updated_org_user,
+      feedback_context(),
+    )
+
+  let assert Loaded([user]) = next.org_settings_users
+  let assert org_role.Admin = user.org_role
+  let assert True = fx != effect.none()
 }
 
 pub fn saved_ok_updates_org_users_cache_test() {
-  // Setup: org_users_cache has user 42 as member
   let existing_user = make_org_user(42, org_role.Member)
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([existing_user]),
-        ),
-      )
-    })
-
-  // Action: update user 42 to admin
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_users_cache: Loaded([existing_user]),
+    )
   let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: org_users_cache should have updated role
-  case next.admin.members.org_users_cache {
-    Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
-    _ -> should.fail()
-  }
+  let #(next, fx) =
+    org_settings.handle_org_settings_saved_ok(
+      model,
+      updated_org_user,
+      feedback_context(),
+    )
+
+  let assert Loaded([user]) = next.org_users_cache
+  let assert org_role.Admin = user.org_role
+  let assert True = fx != effect.none()
 }
 
 pub fn saved_ok_clears_in_flight_and_error_state_test() {
-  // Setup: in-flight state with error
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_settings_save_in_flight: True,
-          org_settings_error: opt.Some("Previous error"),
-          org_settings_error_user_id: opt.Some(42),
-        ),
-      )
-    })
-
-  // Action: successful save
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_save_in_flight: True,
+      org_settings_error: opt.Some("Previous error"),
+      org_settings_error_user_id: opt.Some(42),
+    )
   let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(next, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: in-flight and error state should be cleared
-  next.admin.members.org_settings_save_in_flight |> should.be_false
-  next.admin.members.org_settings_error |> should.equal(opt.None)
-  next.admin.members.org_settings_error_user_id |> should.equal(opt.None)
+  let #(next, fx) =
+    org_settings.handle_org_settings_saved_ok(
+      model,
+      updated_org_user,
+      feedback_context(),
+    )
+
+  let assert False = next.org_settings_save_in_flight
+  let assert opt.None = next.org_settings_error
+  let assert opt.None = next.org_settings_error_user_id
+  let assert True = fx != effect.none()
 }
-
-pub fn saved_ok_returns_no_effect_test() {
-  let model = base_model()
-  let updated_org_user = make_org_user(42, org_role.Admin)
-  let #(_next, fx) =
-    org_settings.handle_org_settings_saved_ok(model, updated_org_user)
-
-  // Assert: should return a toast effect (not none)
-  should.be_false(fx == effect.none())
-}
-
-// =============================================================================
-// Auto-save Org Role Changes Tests
-// =============================================================================
 
 pub fn role_changed_triggers_save_when_role_diff_test() {
   let user = make_org_user(1, org_role.Member)
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_settings_users: Loaded([user]),
-        ),
-      )
-    })
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_users: Loaded([user]),
+    )
 
-  let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
+  let #(next, fx) =
+    org_settings.handle_org_settings_role_changed_with_context(
+      model,
+      1,
+      org_role.Admin,
+      context(),
+    )
 
-  updated_model.admin.members.org_settings_save_in_flight
-  |> should.equal(True)
-  updated_model.admin.members.org_settings_error |> should.equal(opt.None)
-  updated_model.admin.members.org_settings_error_user_id
-  |> should.equal(opt.None)
-  should.be_false(fx == effect.none())
+  let assert True = next.org_settings_save_in_flight
+  let assert opt.None = next.org_settings_error
+  let assert opt.None = next.org_settings_error_user_id
+  let assert False = fx == effect.none()
 }
 
 pub fn role_changed_noop_when_role_is_same_test() {
   let user = make_org_user(1, org_role.Member)
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_settings_users: Loaded([user]),
-        ),
-      )
-    })
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_users: Loaded([user]),
+    )
 
-  let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, org_role.Member)
+  let #(next, fx) =
+    org_settings.handle_org_settings_role_changed_with_context(
+      model,
+      1,
+      org_role.Member,
+      context(),
+    )
 
-  updated_model.admin.members.org_settings_save_in_flight
-  |> should.equal(False)
-  fx |> should.equal(effect.none())
+  let assert False = next.org_settings_save_in_flight
+  let assert True = fx == effect.none()
 }
 
 pub fn role_changed_ignored_when_in_flight_test() {
   let user = make_org_user(1, org_role.Member)
   let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_settings_users: Loaded([user]),
-          org_settings_save_in_flight: True,
-        ),
-      )
-    })
-
-  let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
-
-  updated_model.admin.members.org_settings_save_in_flight
-  |> should.equal(True)
-  fx |> should.equal(effect.none())
-}
-
-pub fn saved_ok_shows_toast_test() {
-  let user = make_org_user(1, org_role.Admin)
-  let model =
-    update_ui(
-      update_admin(base_model(), fn(admin) {
-        AdminModel(
-          ..admin,
-          members: admin_members.Model(
-            ..admin.members,
-            org_settings_users: Loaded([user]),
-            org_settings_save_in_flight: True,
-          ),
-        )
-      }),
-      fn(ui) { ui_state.UiModel(..ui, toast_state: toast.init()) },
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_users: Loaded([user]),
+      org_settings_save_in_flight: True,
     )
 
-  let #(_updated_model, fx) =
-    org_settings.handle_org_settings_saved_ok(model, user)
+  let #(next, fx) =
+    org_settings.handle_org_settings_role_changed_with_context(
+      model,
+      1,
+      org_role.Admin,
+      context(),
+    )
 
-  should.be_false(fx == effect.none())
+  let assert True = next.org_settings_save_in_flight
+  let assert True = fx == effect.none()
+}
+
+pub fn delete_clicked_uses_cache_or_fallback_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_users_cache: Loaded([make_org_user(9, org_role.Member)]),
+    )
+
+  let #(next, fx) = org_settings.handle_org_settings_delete_clicked(model, 9)
+
+  let assert opt.Some(user) = next.org_settings_delete_confirm
+  let assert 9 = user.id
+  let assert opt.None = next.org_settings_delete_error
+  let assert True = fx == effect.none()
+}
+
+pub fn delete_confirmed_sets_in_flight_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_delete_confirm: opt.Some(make_org_user(9, org_role.Member)),
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_delete_confirmed(model, context())
+
+  let assert True = next.org_settings_delete_in_flight
+  let assert opt.None = next.org_settings_delete_error
+  let assert False = fx == effect.none()
+}
+
+pub fn deleted_ok_removes_user_from_lists_test() {
+  let removed = make_org_user(9, org_role.Member)
+  let kept = make_org_user(10, org_role.Admin)
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_users: Loaded([removed, kept]),
+      org_users_cache: Loaded([removed, kept]),
+      org_settings_delete_confirm: opt.Some(removed),
+      org_settings_delete_in_flight: True,
+      org_settings_delete_error: opt.Some("old error"),
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_deleted_ok(model, feedback_context())
+
+  let assert Loaded([settings_user]) = next.org_settings_users
+  let assert 10 = settings_user.id
+  let assert Loaded([cache_user]) = next.org_users_cache
+  let assert 10 = cache_user.id
+  let assert False = next.org_settings_delete_in_flight
+  let assert opt.None = next.org_settings_delete_confirm
+  let assert opt.None = next.org_settings_delete_error
+  let assert True = fx != effect.none()
+}
+
+pub fn fetched_errors_store_failed_remote_test() {
+  let err = ApiError(status: 500, code: "ERR", message: "failed")
+
+  let #(next_cache, _) =
+    org_settings.handle_org_users_cache_fetched_error(
+      admin_members.default_model(),
+      err,
+    )
+  let #(next_settings, _) =
+    org_settings.handle_org_settings_users_fetched_error(
+      admin_members.default_model(),
+      err,
+      feedback_context(),
+    )
+
+  let assert Failed(_) = next_cache.org_users_cache
+  let assert Failed(_) = next_settings.org_settings_users
+}
+
+pub fn users_fetched_forbidden_error_emits_warning_feedback_test() {
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_users_fetched_error(
+      admin_members.default_model(),
+      err,
+      feedback_context(),
+    )
+
+  let assert Failed(_) = next.org_settings_users
+  let assert True = fx != effect.none()
+}
+
+pub fn saved_forbidden_error_clears_in_flight_and_emits_feedback_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_save_in_flight: True,
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_saved_error(
+      model,
+      42,
+      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
+      feedback_context(),
+    )
+
+  let assert False = next.org_settings_save_in_flight
+  let assert opt.None = next.org_settings_error
+  let assert True = fx != effect.none()
+}
+
+pub fn saved_generic_error_sets_inline_error_without_feedback_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_save_in_flight: True,
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_saved_error(
+      model,
+      42,
+      ApiError(status: 500, code: "ERR", message: "Boom"),
+      feedback_context(),
+    )
+
+  let assert False = next.org_settings_save_in_flight
+  let assert opt.Some(42) = next.org_settings_error_user_id
+  let assert opt.Some("Boom") = next.org_settings_error
+  let assert True = fx == effect.none()
+}
+
+pub fn deleted_forbidden_error_sets_local_message_and_feedback_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_delete_in_flight: True,
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_deleted_error(
+      model,
+      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
+      feedback_context(),
+    )
+
+  let assert False = next.org_settings_delete_in_flight
+  let assert opt.Some("Not permitted") = next.org_settings_delete_error
+  let assert True = fx != effect.none()
+}
+
+pub fn deleted_generic_error_sets_local_message_without_feedback_test() {
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_delete_in_flight: True,
+    )
+
+  let #(next, fx) =
+    org_settings.handle_org_settings_deleted_error(
+      model,
+      ApiError(status: 500, code: "ERR", message: "Boom"),
+      feedback_context(),
+    )
+
+  let assert False = next.org_settings_delete_in_flight
+  let assert opt.Some("Boom") = next.org_settings_delete_error
+  let assert True = fx == effect.none()
+}
+
+pub fn try_update_org_users_cache_ok_requests_assignments_fetch_test() {
+  let users = [make_org_user(42, org_role.Member)]
+
+  let assert opt.Some(org_settings.Update(
+    next,
+    fx,
+    org_settings.NoAuthCheck,
+    org_settings.StartAssignmentsFetch(policy_users),
+  )) =
+    org_settings.try_update(
+      admin_members.default_model(),
+      admin_messages.OrgUsersCacheFetched(Ok(users)),
+      context(),
+      try_feedback_context(),
+    )
+
+  let assert Loaded([user]) = next.org_users_cache
+  let assert 42 = user.id
+  let assert True = policy_users == users
+  let assert True = fx == effect.none()
+}
+
+pub fn try_update_org_users_cache_error_returns_auth_policy_test() {
+  let err = ApiError(status: 401, code: "UNAUTHORIZED", message: "auth")
+
+  let assert opt.Some(org_settings.Update(
+    next,
+    fx,
+    org_settings.CheckAuth(auth_err),
+    org_settings.NoRootPolicy,
+  )) =
+    org_settings.try_update(
+      admin_members.default_model(),
+      admin_messages.OrgUsersCacheFetched(Error(err)),
+      context(),
+      try_feedback_context(),
+    )
+
+  let assert Failed(_) = next.org_users_cache
+  let assert True = auth_err == err
+  let assert True = fx == effect.none()
+}
+
+pub fn try_update_org_settings_saved_ok_requests_current_user_update_test() {
+  let updated = make_org_user(42, org_role.Admin)
+
+  let assert opt.Some(org_settings.Update(
+    next,
+    fx,
+    org_settings.NoAuthCheck,
+    org_settings.UpdateCurrentUser(policy_user),
+  )) =
+    org_settings.try_update(
+      admin_members.default_model(),
+      admin_messages.OrgSettingsSaved(42, Ok(updated)),
+      context(),
+      try_feedback_context(),
+    )
+
+  let assert False = next.org_settings_save_in_flight
+  let assert True = policy_user == updated
+  let assert True = fx != effect.none()
+}
+
+pub fn try_update_org_settings_deleted_error_returns_auth_policy_test() {
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
+  let model =
+    admin_members.Model(
+      ..admin_members.default_model(),
+      org_settings_delete_in_flight: True,
+    )
+
+  let assert opt.Some(org_settings.Update(
+    next,
+    fx,
+    org_settings.CheckAuth(auth_err),
+    org_settings.NoRootPolicy,
+  )) =
+    org_settings.try_update(
+      model,
+      admin_messages.OrgSettingsDeleted(Error(err)),
+      context(),
+      try_feedback_context(),
+    )
+
+  let assert False = next.org_settings_delete_in_flight
+  let assert opt.Some("Not permitted") = next.org_settings_delete_error
+  let assert True = auth_err == err
+  let assert True = fx != effect.none()
+}
+
+pub fn try_update_ignores_non_org_settings_messages_test() {
+  let assert opt.None =
+    org_settings.try_update(
+      admin_members.default_model(),
+      admin_messages.InviteCreateDialogOpened,
+      context(),
+      try_feedback_context(),
+    )
 }

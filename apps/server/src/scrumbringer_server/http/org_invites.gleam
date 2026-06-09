@@ -21,21 +21,17 @@
 //// - Uses `http/auth` and `http/csrf` for auth and CSRF validation
 
 import domain/org_role
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/json
 import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/org_invites/payloads as invite_payloads
+import scrumbringer_server/http/org_invites/presenters as invite_presenters
 import scrumbringer_server/services/org_invites_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
-
-/// Default invite expiration (7 days).
-const default_expires_in_hours = 168
 
 /// Handles POST /api/org-invites to create a new invite code.
 ///
@@ -43,43 +39,56 @@ const default_expires_in_hours = 168
 /// Example: handle_create(req, ctx)
 pub fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
-  use data <- wisp.require_json(req)
 
-  case create_invite(req, ctx, data) {
-    Ok(resp) -> resp
+  case require_create_access(req, ctx) {
     Error(resp) -> resp
+    Ok(#(db, user)) -> {
+      use data <- wisp.require_json(req)
+      create_invite_from_json(db, user, data)
+    }
+  }
+}
+
+fn require_create_access(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(#(pog.Connection, StoredUser), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(csrf.require_csrf(req))
+  let auth.Ctx(db: db, ..) = ctx
+
+  Ok(#(db, user))
+}
+
+fn create_invite_from_json(
+  db: pog.Connection,
+  user: StoredUser,
+  data,
+) -> wisp.Response {
+  case decode_create_invite(data) {
+    Error(resp) -> resp
+    Ok(payload) ->
+      case create_invite(db, user, payload) {
+        Ok(resp) -> resp
+        Error(resp) -> resp
+      }
   }
 }
 
 fn create_invite(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  data: dynamic.Dynamic,
+  db: pog.Connection,
+  user: StoredUser,
+  payload: invite_payloads.CreateInvitePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use user <- result.try(require_current_user(req, ctx))
-  use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(csrf.require_csrf(req))
-  use expires_in_hours <- result.try(decode_expires_in_hours(data))
-  let auth.Ctx(db: db, ..) = ctx
   use invite <- result.try(create_invite_db(
     db,
     user.org_id,
     user.id,
-    expires_in_hours,
+    payload.expires_in_hours,
   ))
 
-  Ok(api.ok(json.object([#("invite", invite_json(invite))])))
-}
-
-fn require_current_user(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-) -> Result(StoredUser, wisp.Response) {
-  case auth.require_current_user(req, ctx) {
-    Ok(user) -> Ok(user)
-    Error(_) ->
-      Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
-  }
+  Ok(api.ok(invite_presenters.invite_response(invite)))
 }
 
 fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
@@ -89,20 +98,20 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
   }
 }
 
-fn decode_expires_in_hours(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
-  let decoder = {
-    use hours <- decode.optional_field(
-      "expires_in_hours",
-      default_expires_in_hours,
-      decode.int,
-    )
-    decode.success(hours)
-  }
+fn decode_create_invite(
+  data,
+) -> Result(invite_payloads.CreateInvitePayload, wisp.Response) {
+  invite_payloads.decode_create(data)
+  |> result.map_error(invite_payload_error_to_response)
+}
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
+fn invite_payload_error_to_response(
+  error: invite_payloads.DecodeError,
+) -> wisp.Response {
+  case error {
+    invite_payloads.InvalidJson ->
+      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  }
 }
 
 fn create_invite_db(
@@ -113,29 +122,16 @@ fn create_invite_db(
 ) -> Result(org_invites_db.OrgInvite, wisp.Response) {
   case org_invites_db.create_invite(db, org_id, user_id, expires_in_hours) {
     Ok(invite) -> Ok(invite)
-    Error(org_invites_db.ExpiryHoursInvalid) ->
-      Error(api.error(
-        422,
-        "VALIDATION_ERROR",
-        "expires_in_hours must be positive",
-      ))
-    Error(org_invites_db.NoRowReturned) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(org_invites_db.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
+    Error(error) -> Error(create_invite_error_to_response(error))
   }
 }
 
-fn invite_json(invite: org_invites_db.OrgInvite) -> json.Json {
-  let org_invites_db.OrgInvite(
-    code: code,
-    created_at: created_at,
-    expires_at: expires_at,
-  ) = invite
-
-  json.object([
-    #("code", json.string(code)),
-    #("created_at", json.string(created_at)),
-    #("expires_at", json.string(expires_at)),
-  ])
+fn create_invite_error_to_response(
+  error: org_invites_db.CreateInviteError,
+) -> wisp.Response {
+  case error {
+    org_invites_db.ExpiryHoursInvalid ->
+      api.error(422, "VALIDATION_ERROR", "expires_in_hours must be positive")
+    org_invites_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
+  }
 }

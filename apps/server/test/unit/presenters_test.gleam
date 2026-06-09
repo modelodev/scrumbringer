@@ -1,13 +1,13 @@
 //// Unit tests for JSON presenter functions.
 ////
-//// Tests option_int_json and option_string_json helper functions from
-//// the presenters module.
+//// Tests shared optional JSON helpers and presenter-specific fallback logic.
 
 import gleam/json
 import gleam/option.{None, Some}
 import gleeunit
-import gleeunit/should
-import scrumbringer_server/http/tasks/presenters
+import helpers/json as json_helpers
+import scrumbringer_server/http/metrics_presenters
+import support/assertions as expect
 
 pub fn main() {
   gleeunit.main()
@@ -22,12 +22,12 @@ pub fn option_int_json_returns_null_for_none_test() {
   let value = None
 
   // When: Convert to JSON
-  let result = presenters.option_int_json(value)
+  let result = json_helpers.option_int_json(value)
 
   // Then: Returns json.null()
   result
   |> json.to_string()
-  |> should.equal("null")
+  |> expect.equal("null")
 }
 
 // =============================================================================
@@ -39,12 +39,12 @@ pub fn option_int_json_returns_int_for_some_test() {
   let value = Some(42)
 
   // When: Convert to JSON
-  let result = presenters.option_int_json(value)
+  let result = json_helpers.option_int_json(value)
 
   // Then: Returns json.int(42)
   result
   |> json.to_string()
-  |> should.equal("42")
+  |> expect.equal("42")
 }
 
 // =============================================================================
@@ -56,12 +56,12 @@ pub fn option_string_json_returns_null_for_none_test() {
   let value = None
 
   // When: Convert to JSON
-  let result = presenters.option_string_json(value)
+  let result = json_helpers.option_string_json(value)
 
   // Then: Returns json.null()
   result
   |> json.to_string()
-  |> should.equal("null")
+  |> expect.equal("null")
 }
 
 // =============================================================================
@@ -73,10 +73,20 @@ pub fn option_string_json_returns_string_for_some_test() {
   let value = Some("hello")
 
   // When: Convert to JSON
-  let result = presenters.option_string_json(value)
+  let result = json_helpers.option_string_json(value)
 
   // Then: Returns json.string("hello")
   result
   |> json.to_string()
-  |> should.equal("\"hello\"")
+  |> expect.equal("\"hello\"")
+}
+
+pub fn workflow_name_or_default_preserves_existing_name_test() {
+  metrics_presenters.workflow_name_or_default(Some("Review flow"))
+  |> expect.equal("Review flow")
+}
+
+pub fn workflow_name_or_default_uses_api_fallback_test() {
+  metrics_presenters.workflow_name_or_default(None)
+  |> expect.equal("sin_workflow")
 }

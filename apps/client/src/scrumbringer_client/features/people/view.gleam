@@ -10,42 +10,59 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h3, li, p, section, span, text, ul}
 import lustre/event
 
+import domain/card.{type CardColor}
 import domain/org.{type OrgUser}
 import domain/project.{type ProjectMember}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_state
-import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
 import scrumbringer_client/features/people/state as people_state
-import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
-import scrumbringer_client/utils/card_queries
 
-pub fn view(model: Model) -> Element(Msg) {
-  case model.member.pool.people_roster {
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    people_roster: Remote(List(ProjectMember)),
+    member_tasks: Remote(List(Task)),
+    org_users: Remote(List(OrgUser)),
+    people_expansions: dict.Dict(Int, people_state.RowExpansion),
+    search_query: String,
+    task_card_color: fn(Task) -> Option(CardColor),
+    on_person_toggle: fn(Int) -> msg,
+    on_task_click: fn(Int) -> msg,
+  )
+}
+
+pub fn view(config: Config(msg)) -> Element(msg) {
+  case config.people_roster {
     NotAsked | Loading ->
       div([attribute.class("people-state people-loading")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.PeopleLoading)),
+        text(i18n.t(config.locale, i18n_text.PeopleLoading)),
       ])
 
     Failed(_err) ->
       div([attribute.class("people-state people-error")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.PeopleLoadError)),
+        text(i18n.t(config.locale, i18n_text.PeopleLoadError)),
       ])
 
-    Loaded(members) -> view_loaded(model, members)
+    Loaded(members) -> view_loaded(config, members)
   }
 }
 
-fn view_loaded(model: Model, members: List(ProjectMember)) -> Element(Msg) {
+fn view_loaded(
+  config: Config(msg),
+  members: List(ProjectMember),
+) -> Element(msg) {
   case members {
     [] ->
       div([attribute.class("people-state people-empty")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.PeopleEmpty)),
+        text(i18n.t(config.locale, i18n_text.PeopleEmpty)),
       ])
 
     _ -> {
@@ -53,17 +70,17 @@ fn view_loaded(model: Model, members: List(ProjectMember)) -> Element(Msg) {
         list.map(members, fn(member) {
           people_state.derive_status(
             member.user_id,
-            resolve_user_label(model, member.user_id),
-            tasks_for_member(model, member.user_id),
+            resolve_user_label(config, member.user_id),
+            tasks_for_member(config, member.user_id),
           )
         })
 
-      let filtered = filter_people(people, model.member.pool.member_filters_q)
+      let filtered = filter_people(people, config.search_query)
 
       case filtered {
         [] ->
           div([attribute.class("people-state people-no-results")], [
-            text(helpers_i18n.i18n_t(model, i18n_text.PeopleNoResults)),
+            text(i18n.t(config.locale, i18n_text.PeopleNoResults)),
           ])
 
         _ ->
@@ -74,11 +91,13 @@ fn view_loaded(model: Model, members: List(ProjectMember)) -> Element(Msg) {
             ],
             [
               h3([attribute.class("people-title")], [
-                text(helpers_i18n.i18n_t(model, i18n_text.People)),
+                text(i18n.t(config.locale, i18n_text.People)),
               ]),
               ul(
                 [attribute.class("people-items")],
-                list.map(filtered, fn(person) { view_person_row(model, person) }),
+                list.map(filtered, fn(person) {
+                  view_person_row(config, person)
+                }),
               ),
             ],
           )
@@ -88,9 +107,9 @@ fn view_loaded(model: Model, members: List(ProjectMember)) -> Element(Msg) {
 }
 
 fn view_person_row(
-  model: Model,
+  config: Config(msg),
   person: people_state.PersonStatus,
-) -> Element(Msg) {
+) -> Element(msg) {
   let people_state.PersonStatus(
     user_id: user_id,
     label: label,
@@ -99,14 +118,14 @@ fn view_person_row(
     claimed_tasks: claimed_tasks,
   ) = person
 
-  let expanded = is_expanded(model.member.pool.people_expansions, user_id)
+  let expanded = is_expanded(config.people_expansions, user_id)
   let details_id = "person-details-" <> int.to_string(user_id)
   let toggle_label = case expanded {
-    True -> helpers_i18n.i18n_t(model, i18n_text.CollapsePerson(name: label))
-    False -> helpers_i18n.i18n_t(model, i18n_text.ExpandPerson(name: label))
+    True -> i18n.t(config.locale, i18n_text.CollapsePerson(name: label))
+    False -> i18n.t(config.locale, i18n_text.ExpandPerson(name: label))
   }
 
-  let badge_text = availability_label(model, availability)
+  let badge_text = availability_label(config, availability)
   let badge_variant = people_state.badge_variant(availability)
   let availability_chip =
     badge.new_unchecked(badge_text, badge_variant)
@@ -117,12 +136,13 @@ fn view_person_row(
       button(
         [
           attribute.class("people-row-toggle"),
-          attribute.attribute("aria-expanded", bool_to_string(expanded)),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(expanded),
+          ),
           attribute.attribute("aria-controls", details_id),
           attribute.attribute("aria-label", toggle_label),
-          event.on_click(
-            pool_msg(pool_messages.MemberPeopleRowToggled(user_id)),
-          ),
+          event.on_click(config.on_person_toggle(user_id)),
         ],
         [
           span([attribute.class("people-row-caret")], [
@@ -144,8 +164,8 @@ fn view_person_row(
             attribute.attribute("id", details_id),
           ],
           [
-            view_active_section(model, active_tasks),
-            view_claimed_section(model, claimed_tasks),
+            view_active_section(config, active_tasks),
+            view_claimed_section(config, claimed_tasks),
           ],
         )
       False -> element.none()
@@ -153,20 +173,23 @@ fn view_person_row(
   ])
 }
 
-fn view_active_section(model: Model, active_tasks: List(Task)) -> Element(Msg) {
+fn view_active_section(
+  config: Config(msg),
+  active_tasks: List(Task),
+) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.PeopleActiveSection)),
+      text(i18n.t(config.locale, i18n_text.PeopleActiveSection)),
     ]),
     case active_tasks {
       [] -> p([attribute.class("section-empty-hint")], [text("-")])
-      [task] -> view_task_item(model, task)
+      [task] -> view_task_item(config, task)
       _ ->
         ul(
           [attribute.class("people-claimed-list")],
           list.map(active_tasks, fn(task) {
             li([attribute.class("people-task-item")], [
-              view_task_item(model, task),
+              view_task_item(config, task),
             ])
           }),
         )
@@ -174,10 +197,13 @@ fn view_active_section(model: Model, active_tasks: List(Task)) -> Element(Msg) {
   ])
 }
 
-fn view_claimed_section(model: Model, claimed_tasks: List(Task)) -> Element(Msg) {
+fn view_claimed_section(
+  config: Config(msg),
+  claimed_tasks: List(Task),
+) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.PeopleClaimedSection)),
+      text(i18n.t(config.locale, i18n_text.PeopleClaimedSection)),
     ]),
     case claimed_tasks {
       [] -> p([attribute.class("section-empty-hint")], [text("-")])
@@ -186,7 +212,7 @@ fn view_claimed_section(model: Model, claimed_tasks: List(Task)) -> Element(Msg)
           [attribute.class("people-claimed-list")],
           list.map(claimed_tasks, fn(task) {
             li([attribute.class("people-task-item")], [
-              view_task_item(model, task),
+              view_task_item(config, task),
             ])
           }),
         )
@@ -194,17 +220,15 @@ fn view_claimed_section(model: Model, claimed_tasks: List(Task)) -> Element(Msg)
   ])
 }
 
-fn view_task_item(model: Model, task: Task) -> Element(Msg) {
-  let #(_card_title_opt, resolved_color) =
-    card_queries.resolve_task_card_info(model, task)
-
+fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
+  let resolved_color = config.task_card_color(task)
   let border_class = task_color.card_border_class(resolved_color)
 
   task_item.view(
     task_item.Config(
       container_class: "task-item " <> border_class,
       content_class: "task-item-content",
-      on_click: Some(pool_msg(pool_messages.MemberTaskDetailsOpened(task.id))),
+      on_click: Some(config.on_task_click(task.id)),
       icon: None,
       icon_class: None,
       title: task.title,
@@ -219,8 +243,8 @@ fn view_task_item(model: Model, task: Task) -> Element(Msg) {
   )
 }
 
-fn tasks_for_member(model: Model, user_id: Int) -> List(Task) {
-  case model.member.pool.member_tasks {
+fn tasks_for_member(config: Config(msg), user_id: Int) -> List(Task) {
+  case config.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(task) {
         case task.state {
@@ -233,15 +257,15 @@ fn tasks_for_member(model: Model, user_id: Int) -> List(Task) {
   }
 }
 
-fn resolve_user_label(model: Model, user_id: Int) -> String {
-  case find_org_user(model, user_id) {
+fn resolve_user_label(config: Config(msg), user_id: Int) -> String {
+  case find_org_user(config, user_id) {
     Some(user) -> user.email
-    None -> helpers_i18n.i18n_t(model, i18n_text.UserNumber(user_id))
+    None -> i18n.t(config.locale, i18n_text.UserNumber(user_id))
   }
 }
 
-fn find_org_user(model: Model, user_id: Int) -> Option(OrgUser) {
-  case model.admin.members.org_users_cache {
+fn find_org_user(config: Config(msg), user_id: Int) -> Option(OrgUser) {
+  case config.org_users {
     Loaded(users) ->
       list.find(users, fn(user) { user.id == user_id }) |> from_result
     _ -> None
@@ -273,19 +297,12 @@ fn is_expanded(
 }
 
 fn availability_label(
-  model: Model,
+  config: Config(msg),
   availability: people_state.Availability,
 ) -> String {
   case availability {
-    people_state.Working -> helpers_i18n.i18n_t(model, i18n_text.Working)
-    people_state.Busy -> helpers_i18n.i18n_t(model, i18n_text.Busy)
-    people_state.Free -> helpers_i18n.i18n_t(model, i18n_text.Free)
-  }
-}
-
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
+    people_state.Working -> i18n.t(config.locale, i18n_text.Working)
+    people_state.Busy -> i18n.t(config.locale, i18n_text.Busy)
+    people_state.Free -> i18n.t(config.locale, i18n_text.Free)
   }
 }

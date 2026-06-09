@@ -4,11 +4,10 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -23,7 +22,7 @@ pub fn non_admin_cannot_create_invite_test() {
 
   let member_login_res =
     login_as(handler, "member@example.com", "passwordpassword")
-  member_login_res.status |> should.equal(200)
+  expect.expect_status(member_login_res, 200)
 
   let session = find_cookie_value(member_login_res.headers, "sb_session")
   let csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
@@ -36,8 +35,8 @@ pub fn non_admin_cannot_create_invite_test() {
     |> simulate.json_body(json.object([]))
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn missing_csrf_is_rejected_test() {
@@ -45,7 +44,7 @@ pub fn missing_csrf_is_rejected_test() {
   let handler = scrumbringer_server.handler(app)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -57,8 +56,8 @@ pub fn missing_csrf_is_rejected_test() {
     |> simulate.json_body(json.object([]))
 
   let res = handler(req)
-  res.status |> should.equal(403)
-  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+  expect.expect_status(res, 403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
 pub fn create_invite_defaults_expiry_to_168_hours_test() {
@@ -67,7 +66,7 @@ pub fn create_invite_defaults_expiry_to_168_hours_test() {
   let scrumbringer_server.App(db: db, ..) = app
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  login_res.status |> should.equal(200)
+  expect.expect_status(login_res, 200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
@@ -80,7 +79,7 @@ pub fn create_invite_defaults_expiry_to_168_hours_test() {
     |> simulate.json_body(json.object([]))
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   let invite_code =
     single_text(
@@ -95,14 +94,14 @@ pub fn create_invite_defaults_expiry_to_168_hours_test() {
       [pog.text(invite_code)],
     )
 
-  hours |> should.equal(168)
+  hours |> expect.equal(168)
 
   let body = simulate.read_body(res)
-  string.contains(body, "\"data\"") |> should.be_true
-  string.contains(body, "\"invite\"") |> should.be_true
-  string.contains(body, invite_code) |> should.be_true
-  string.contains(body, "created_at") |> should.be_true
-  string.contains(body, "expires_at") |> should.be_true
+  string.contains(body, "\"data\"") |> expect.is_true
+  string.contains(body, "\"invite\"") |> expect.is_true
+  string.contains(body, invite_code) |> expect.is_true
+  string.contains(body, "created_at") |> expect.is_true
+  string.contains(body, "expires_at") |> expect.is_true
 }
 
 fn new_test_app() -> scrumbringer_server.App {
@@ -120,7 +119,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   app
 }
@@ -152,7 +151,7 @@ fn create_member_user(
     )
 
   let res = handler(req)
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 }
 
 fn login_as(
@@ -189,11 +188,10 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
     set_cookie_headers(headers)
     |> list.find(fn(h) { string.starts_with(h, target) })
 
-  let #(value, _) =
+  let assert Ok(#(value, _)) =
     header
     |> string.drop_start(string.length(target))
     |> string.split_once(";")
-    |> result.unwrap(#("", ""))
 
   value
 }
@@ -201,7 +199,7 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
 fn require_database_url() -> String {
   case getenv("DATABASE_URL", "") {
     "" -> {
-      should.fail()
+      expect.fail()
       ""
     }
 

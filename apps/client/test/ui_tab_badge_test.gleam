@@ -1,7 +1,6 @@
 //// Tests for tab badge tooltip (AC21).
 
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/tooltips/tab_badge
@@ -19,10 +18,10 @@ pub fn shows_total_and_new_count_test() {
 
   let html = tab_badge.view(config) |> element.to_document_string
 
-  string.contains(html, "5") |> should.be_true
-  string.contains(html, "notas en total") |> should.be_true
-  string.contains(html, "2") |> should.be_true
-  string.contains(html, "nuevas para ti") |> should.be_true
+  let assert True = string.contains(html, "5")
+  let assert True = string.contains(html, "notas en total")
+  let assert True = string.contains(html, "2")
+  let assert True = string.contains(html, "nuevas para ti")
 }
 
 pub fn hides_new_when_zero_test() {
@@ -37,7 +36,7 @@ pub fn hides_new_when_zero_test() {
 
   let html = tab_badge.view(config) |> element.to_document_string
 
-  string.contains(html, "3") |> should.be_true
-  string.contains(html, "notas en total") |> should.be_true
-  string.contains(html, "nuevas para ti") |> should.be_false
+  let assert True = string.contains(html, "3")
+  let assert True = string.contains(html, "notas en total")
+  let assert False = string.contains(html, "nuevas para ti")
 }

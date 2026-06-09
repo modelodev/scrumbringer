@@ -211,13 +211,6 @@ pub type Msg {
   RuleCrudCreated(Rule)
   RuleCrudUpdated(Rule)
   RuleCrudDeleted(Int)
-  RuleTemplatesClicked(Int)
-  RuleTemplatesFetched(ApiResult(List(RuleTemplate)))
-  RuleAttachTemplateSelected(String)
-  RuleAttachTemplateSubmitted
-  RuleTemplateAttached(ApiResult(List(RuleTemplate)))
-  RuleTemplateDetachClicked(Int)
-  RuleTemplateDetached(ApiResult(Nil))
   RuleExpandToggled(Int)
   AttachTemplateModalOpened(Int)
   AttachTemplateModalClosed

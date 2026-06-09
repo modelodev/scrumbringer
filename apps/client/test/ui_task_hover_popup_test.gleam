@@ -1,9 +1,16 @@
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/task_hover_popup
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
 
 pub fn task_hover_popup_hides_card_and_description_when_empty_test() {
   let html =
@@ -24,10 +31,10 @@ pub fn task_hover_popup_hides_card_and_description_when_empty_test() {
     ))
     |> element.to_document_string
 
-  string.contains(html, "Tarjeta") |> should.be_false
-  string.contains(html, "Descripción") |> should.be_false
-  string.contains(html, "Antigüedad") |> should.be_true
-  string.contains(html, "Abrir tarea") |> should.be_true
+  assert_not_contains(html, "Tarjeta")
+  assert_not_contains(html, "Descripción")
+  assert_contains(html, "Antigüedad")
+  assert_contains(html, "Abrir tarea")
 }
 
 pub fn task_hover_popup_renders_card_and_description_test() {
@@ -49,6 +56,6 @@ pub fn task_hover_popup_renders_card_and_description_test() {
     ))
     |> element.to_document_string
 
-  string.contains(html, "Sprint Planning") |> should.be_true
-  string.contains(html, "Revisar cambios") |> should.be_true
+  assert_contains(html, "Sprint Planning")
+  assert_contains(html, "Revisar cambios")
 }

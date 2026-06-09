@@ -14,16 +14,17 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Domain-specific types (see `api/tasks.gleam`, etc.)
+//// - Domain-specific types (see split API modules such as `api/tasks/operations.gleam`)
 //// - Business logic
 ////
 //// ## Usage
 ////
 //// ```gleam
 //// import scrumbringer_client/api/core
+//// import domain/api_error.{type ApiResult}
 ////
-//// pub fn fetch_items(to_msg: fn(core.ApiResult(List(Item))) -> msg) -> Effect(msg) {
-////   core.request("GET", "/api/v1/items", None, items_decoder(), to_msg)
+//// pub fn fetch_items(to_msg: fn(ApiResult(List(Item))) -> msg) -> Effect(msg) {
+////   core.request(core.Get, "/api/v1/items", None, items_decoder(), to_msg)
 //// }
 //// ```
 
@@ -42,16 +43,18 @@ import lustre_http as http_client
 
 import scrumbringer_client/client_ffi
 
-// Import types from shared domain
-import domain/api_error.{
-  type ApiError, type ApiResult as SharedApiResult, ApiError,
-}
+import domain/api_error.{type ApiError, type ApiResult, ApiError}
 import domain/api_error/codec as api_error_codec
 
-// Re-export ApiResult for backwards compatibility
-/// Represents ApiResult.
-pub type ApiResult(a) =
-  SharedApiResult(a)
+pub type Method {
+  Get
+  Post
+  Put
+  Patch
+  Delete
+  Head
+  Options
+}
 
 // =============================================================================
 // CSRF Handling
@@ -62,13 +65,13 @@ pub type ApiResult(a) =
 /// ## Example
 ///
 /// ```gleam
-/// should_attach_csrf("POST")  // True
-/// should_attach_csrf("GET")   // False
+/// should_attach_csrf(Post)  // True
+/// should_attach_csrf(Get)   // False
 /// ```
-pub fn should_attach_csrf(method: String) -> Bool {
-  case string.uppercase(method) {
-    "POST" | "PUT" | "PATCH" | "DELETE" -> True
-    _ -> False
+pub fn should_attach_csrf(method: Method) -> Bool {
+  case method {
+    Post | Put | Patch | Delete -> True
+    Get | Head | Options -> False
   }
 }
 
@@ -77,11 +80,11 @@ pub fn should_attach_csrf(method: String) -> Bool {
 /// ## Example
 ///
 /// ```gleam
-/// let headers = build_csrf_headers("POST", Some("token123"))
+/// let headers = build_csrf_headers(Post, Some("token123"))
 /// // [#("X-CSRF", "token123")]
 /// ```
 pub fn build_csrf_headers(
-  method: String,
+  method: Method,
   csrf: option.Option(String),
 ) -> List(#(String, String)) {
   case should_attach_csrf(method), csrf {
@@ -163,20 +166,20 @@ fn normalize_url(url: String) -> String {
   }
 }
 
-fn method_from_string(method: String) -> http.Method {
-  case string.uppercase(method) {
-    "POST" -> http.Post
-    "PUT" -> http.Put
-    "PATCH" -> http.Patch
-    "DELETE" -> http.Delete
-    "HEAD" -> http.Head
-    "OPTIONS" -> http.Options
-    _ -> http.Get
+fn to_http_method(method: Method) -> http.Method {
+  case method {
+    Get -> http.Get
+    Post -> http.Post
+    Put -> http.Put
+    Patch -> http.Patch
+    Delete -> http.Delete
+    Head -> http.Head
+    Options -> http.Options
   }
 }
 
 fn build_request(
-  method: String,
+  method: Method,
   url: String,
   headers: List(#(String, String)),
   body: option.Option(String),
@@ -186,7 +189,7 @@ fn build_request(
     Error(_) -> request.new() |> request.set_path(url)
   }
 
-  let req = request.set_method(req, method_from_string(method))
+  let req = request.set_method(req, to_http_method(method))
 
   let req =
     list.fold(headers, req, fn(req, header) {
@@ -224,10 +227,10 @@ fn http_error_to_api_error(err: http_client.HttpError) -> ApiError {
 /// ## Example
 ///
 /// ```gleam
-/// request("GET", "/api/v1/users", None, users_decoder(), UsersFetched)
+/// request(Get, "/api/v1/users", None, users_decoder(), UsersFetched)
 /// ```
 pub fn request(
-  method: String,
+  method: Method,
   url: String,
   body: option.Option(json.Json),
   decoder: decode.Decoder(a),
@@ -280,10 +283,10 @@ pub fn request(
 /// ## Example
 ///
 /// ```gleam
-/// request_nil("DELETE", "/api/v1/users/123", None, UserDeleted)
+/// request_nil(Delete, "/api/v1/users/123", None, UserDeleted)
 /// ```
 pub fn request_nil(
-  method: String,
+  method: Method,
   url: String,
   body: option.Option(json.Json),
   to_msg: fn(ApiResult(Nil)) -> msg,

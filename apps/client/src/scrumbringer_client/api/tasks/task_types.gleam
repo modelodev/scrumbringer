@@ -11,7 +11,7 @@
 ////
 //// ## Relations
 ////
-//// - **decoders.gleam**: Provides task type decoder
+//// - **domain/task/codec.gleam**: Provides task type decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -22,9 +22,10 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
+import domain/task/codec as decoders
 import domain/task_type.{type TaskType}
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 
 // =============================================================================
 // Task Type API Functions
@@ -33,7 +34,7 @@ import scrumbringer_client/api/tasks/decoders
 /// List task types for a project.
 pub fn list_task_types(
   project_id: Int,
-  to_msg: fn(core.ApiResult(List(TaskType))) -> msg,
+  to_msg: fn(ApiResult(List(TaskType))) -> msg,
 ) -> Effect(msg) {
   let decoder =
     decode.field(
@@ -42,7 +43,7 @@ pub fn list_task_types(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     option.None,
     decoder,
@@ -56,7 +57,7 @@ pub fn create_task_type(
   name: String,
   icon: String,
   capability_id: option.Option(Int),
-  to_msg: fn(core.ApiResult(TaskType)) -> msg,
+  to_msg: fn(ApiResult(TaskType)) -> msg,
 ) -> Effect(msg) {
   let base = [#("name", json.string(name)), #("icon", json.string(icon))]
 
@@ -70,7 +71,7 @@ pub fn create_task_type(
     decode.field("task_type", decoders.task_type_decoder(), decode.success)
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     option.Some(body),
     decoder,
@@ -84,7 +85,7 @@ pub fn update_task_type(
   name: String,
   icon: String,
   capability_id: option.Option(Int),
-  to_msg: fn(core.ApiResult(TaskType)) -> msg,
+  to_msg: fn(ApiResult(TaskType)) -> msg,
 ) -> Effect(msg) {
   let base = [#("name", json.string(name)), #("icon", json.string(icon))]
 
@@ -98,7 +99,7 @@ pub fn update_task_type(
     decode.field("task_type", decoders.task_type_decoder(), decode.success)
 
   core.request(
-    "PATCH",
+    core.Patch,
     "/api/v1/task-types/" <> int.to_string(type_id),
     option.Some(body),
     decoder,
@@ -109,12 +110,12 @@ pub fn update_task_type(
 /// Story 4.9 AC14: Delete a task type (only if no tasks use it).
 pub fn delete_task_type(
   type_id: Int,
-  to_msg: fn(core.ApiResult(Int)) -> msg,
+  to_msg: fn(ApiResult(Int)) -> msg,
 ) -> Effect(msg) {
   let decoder = decode.field("id", decode.int, decode.success)
 
   core.request(
-    "DELETE",
+    core.Delete,
     "/api/v1/task-types/" <> int.to_string(type_id),
     option.None,
     decoder,

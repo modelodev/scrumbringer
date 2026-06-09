@@ -1,7 +1,7 @@
 //// HTTP handler for card view tracking.
 
 import gleam/http
-import gleam/int
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -31,66 +31,86 @@ fn handle_put(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Put)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> mark_view_for_user(req, ctx, user, card_id)
+  case mark_view_payload(req, ctx, card_id) {
+    Ok(Nil) -> api.no_content()
+    Error(resp) -> resp
   }
 }
 
-fn mark_view_for_user(
+fn mark_view_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   card_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> mark_view_with_csrf(ctx, user, card_id)
-  }
+) -> Result(Nil, wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use card_id <- result.try(api.parse_id(card_id))
+
+  mark_view(ctx, user, card_id)
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn mark_view_with_csrf(
+fn mark_view(
   ctx: auth.Ctx,
   user: StoredUser,
-  card_id: String,
-) -> wisp.Response {
-  case parse_card_id(card_id) {
-    Error(resp) -> resp
-    Ok(card_id) -> mark_view(ctx, user, card_id)
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn mark_view(ctx: auth.Ctx, user: StoredUser, card_id: Int) -> wisp.Response {
+  card_id: Int,
+) -> Result(Nil, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.get_card(db, card_id, user.id) {
-    Error(cards_db.CardNotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(cards_db.DbError(_)) -> api.error(500, "INTERNAL", "Database error")
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-    Ok(card) ->
-      case authorization.is_project_member(db, user.id, card.project_id) {
-        False -> api.error(404, "NOT_FOUND", "Not found")
-        True -> mark_view_in_db(db, user.id, card_id)
-      }
-  }
+  use card <- result.try(fetch_card(db, card_id, user.id))
+  use Nil <- result.try(require_project_member(db, user.id, card.project_id))
+
+  mark_view_in_db(db, user.id, card_id)
 }
 
 fn mark_view_in_db(
   db: pog.Connection,
   user_id: Int,
   card_id: Int,
-) -> wisp.Response {
+) -> Result(Nil, wisp.Response) {
   case user_card_views_db.touch_card_view(db, user_id, card_id) {
-    Ok(_) -> api.no_content()
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(_) -> Ok(Nil)
+    Error(_) -> Error(database_error_response())
   }
 }
 
-fn parse_card_id(card_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(card_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+fn fetch_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(cards_db.Card, wisp.Response) {
+  case cards_db.get_card(db, card_id, user_id) {
+    Ok(card) -> Ok(card)
+    Error(error) -> Error(card_error_response(error))
   }
+}
+
+fn require_project_member(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case authorization.is_project_member(db, user_id, project_id) {
+    True -> Ok(Nil)
+    False -> Error(not_found_response())
+  }
+}
+
+fn card_error_response(error: cards_db.CardError) -> wisp.Response {
+  case error {
+    cards_db.CardNotFound -> not_found_response()
+    cards_db.CardHasTasks(_) -> database_error_response()
+    cards_db.InvalidMilestone -> database_error_response()
+    cards_db.InvalidMilestoneState(_) -> database_error_response()
+    cards_db.InvalidColor(_) -> database_error_response()
+    cards_db.InvalidMovePoolToMilestone -> database_error_response()
+    cards_db.DbError(_) -> database_error_response()
+  }
+}
+
+fn not_found_response() -> wisp.Response {
+  api.error(404, "NOT_FOUND", "Not found")
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }

@@ -32,7 +32,6 @@ pub type ValidationIssue {
 
 const max_task_title_chars = 56
 
-// Justification: nested case improves clarity for branching logic.
 /// Validates a task title value and returns the trimmed string.
 ///
 /// Example:
@@ -45,7 +44,6 @@ pub fn validate_task_title_value(
   case title == "" {
     True -> Error(ValidationError("Title is required"))
     False ->
-      // Justification: nested case enforces max length only when non-empty.
       case string.length(title) <= max_task_title_chars {
         True -> Ok(title)
         False -> Error(ValidationError("Title too long (max 56 characters)"))
@@ -80,7 +78,6 @@ pub fn validate_task_type_in_project(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Validates that a capability id belongs to a project.
 ///
 /// Example:
@@ -93,7 +90,6 @@ pub fn validate_capability_in_project(
   case capability_id {
     None -> Ok(Nil)
     Some(id) ->
-      // Justification: nested case performs DB validation only when provided.
       case capabilities_db.capability_is_in_project(db, id, project_id) {
         Ok(True) -> Ok(Nil)
         Ok(False) -> Error(ValidationError("Invalid capability_id"))

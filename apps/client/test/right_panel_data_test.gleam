@@ -1,0 +1,152 @@
+import gleam/option.{None, Some}
+
+import domain/card.{Blue, Card, EnCurso, Gray}
+import domain/remote.{Loaded, NotAsked}
+import domain/task.{Task, WorkSession}
+import domain/task_state
+import domain/task_status.{Taken, WorkAvailable}
+import domain/task_type.{TaskTypeInline}
+import scrumbringer_client/features/layout/right_panel
+import scrumbringer_client/features/layout/right_panel_data
+
+pub fn loaded_tasks_or_empty_returns_loaded_tasks_and_defaults_empty_test() {
+  let loaded = Loaded([task(1, task_state.Available)])
+
+  let assert [loaded_task] = right_panel_data.loaded_tasks_or_empty(loaded)
+  let assert 1 = loaded_task.id
+  let assert [] = right_panel_data.loaded_tasks_or_empty(NotAsked)
+}
+
+pub fn find_loaded_task_returns_task_only_when_loaded_and_present_test() {
+  let tasks =
+    Loaded([
+      task(1, task_state.Available),
+      task(2, task_state.Available),
+    ])
+
+  let assert Some(found) = right_panel_data.find_loaded_task(tasks, 2)
+  let assert 2 = found.id
+  let assert None = right_panel_data.find_loaded_task(tasks, 99)
+  let assert None = right_panel_data.find_loaded_task(NotAsked, 1)
+}
+
+pub fn claimed_tasks_keeps_only_taken_tasks_for_user_test() {
+  let tasks = [
+    task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", Taken)),
+    task(2, task_state.Claimed(8, "2026-06-01T10:00:00Z", Taken)),
+    task(3, task_state.Available),
+  ]
+
+  let assert [claimed] = right_panel_data.claimed_tasks(tasks, 7)
+  let assert 1 = claimed.id
+}
+
+pub fn my_cards_returns_cards_with_user_claimed_tasks_and_progress_test() {
+  let cards = [
+    card(1, "Release", Some(Blue)),
+    card(2, "Backlog", Some(Gray)),
+  ]
+  let tasks = [
+    Task(
+      ..task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", Taken)),
+      card_id: Some(1),
+    ),
+    Task(
+      ..task(2, task_state.Completed("2026-06-02T10:00:00Z")),
+      card_id: Some(1),
+    ),
+    Task(
+      ..task(3, task_state.Claimed(8, "2026-06-01T10:00:00Z", Taken)),
+      card_id: Some(2),
+    ),
+  ]
+
+  let assert [progress] = right_panel_data.my_cards(cards, tasks, 7)
+  let assert right_panel.MyCardProgress(
+    card_id: 1,
+    card_title: "Release",
+    card_color: Some(Blue),
+    completed: 1,
+    total: 2,
+  ) = progress
+}
+
+pub fn active_tasks_uses_task_metadata_and_missing_task_fallback_test() {
+  let sessions = [
+    WorkSession(
+      task_id: 1,
+      started_at: "2026-06-01T10:00:00Z",
+      accumulated_s: 60,
+    ),
+    WorkSession(
+      task_id: 99,
+      started_at: "2026-06-01T10:00:00Z",
+      accumulated_s: 0,
+    ),
+  ]
+  let tasks = [Task(..task(1, task_state.Available), title: "Fix login")]
+
+  let assert [known, missing] =
+    right_panel_data.active_tasks(
+      sessions,
+      tasks,
+      0,
+      120_000,
+      fn(_) { 0 },
+      fn(_) { Some(Blue) },
+    )
+
+  let assert "Fix login" = known.task_title
+  let assert "sparkles" = known.task_type_icon
+  let assert Some(Blue) = known.card_color
+  let assert "Task #99" = missing.task_title
+  let assert "clipboard-document" = missing.task_type_icon
+  let assert None = missing.card_color
+}
+
+fn card(id: Int, title: String, color) {
+  Card(
+    id: id,
+    project_id: 1,
+    milestone_id: None,
+    title: title,
+    description: "",
+    color: color,
+    state: EnCurso,
+    task_count: 0,
+    completed_count: 0,
+    created_by: 7,
+    created_at: "2026-06-01T10:00:00Z",
+    has_new_notes: False,
+  )
+}
+
+fn task(id: Int, state: task_state.TaskState) {
+  Task(
+    id: id,
+    project_id: 1,
+    type_id: 1,
+    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
+    ongoing_by: None,
+    title: "Task",
+    description: None,
+    priority: 2,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: case state {
+      task_state.Available -> WorkAvailable
+      task_state.Claimed(..) -> task_state.to_work_state(state)
+      task_state.Completed(..) -> task_state.to_work_state(state)
+    },
+    created_by: 7,
+    created_at: "2026-06-01T10:00:00Z",
+    version: 1,
+    milestone_id: None,
+    card_id: None,
+    card_title: None,
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
+  )
+}

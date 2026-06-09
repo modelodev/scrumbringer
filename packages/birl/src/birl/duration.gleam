@@ -330,15 +330,15 @@ const units = [
 /// numbers with no unit are considered as microseconds.
 /// specifying `accurate:` is equivalent to using `accurate_new`.
 pub fn parse(expression: String) -> Result(Duration, Nil) {
-  let assert Ok(re) = regexp.from_string("([+|\\-])?\\s*(\\d+)\\s*(\\w+)?")
+  use re <- result.try(
+    regexp.from_string("([+|\\-])?\\s*(\\d+)\\s*(\\w+)?")
+    |> result.replace_error(Nil),
+  )
 
   let #(constructor, expression) = case
     string.starts_with(expression, "accurate:")
   {
-    True -> {
-      let assert [_, expression] = string.split(expression, ":")
-      #(accurate_new, expression)
-    }
+    True -> #(accurate_new, string.drop_start(expression, 9))
     False -> #(new, expression)
   }
 

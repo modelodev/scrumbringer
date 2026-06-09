@@ -2,21 +2,20 @@
 //// Task dependencies HTTP handlers.
 ////
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
 import gleam/list
 import gleam/result
 import pog
 
-import domain/task.{TaskDependency}
+import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_status.{Completed}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/service_error_response
+import scrumbringer_server/http/tasks/payload_responses
+import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
 import scrumbringer_server/persistence/tasks/mappers.{type Task}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
@@ -45,9 +44,9 @@ pub fn handle_task_dependency(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Delete)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> delete_dependency(req, ctx, user, task_id, depends_on_task_id)
+  case delete_dependency_payload(req, ctx, task_id, depends_on_task_id) {
+    Ok(Nil) -> api.no_content()
+    Error(resp) -> resp
   }
 }
 
@@ -58,9 +57,9 @@ fn handle_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> list_dependencies(req, ctx, user, task_id)
+  case list_dependencies_payload(req, ctx, task_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -71,226 +70,87 @@ fn handle_create(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> create_dependency(req, ctx, user, task_id)
-  }
-}
-
-fn list_dependencies(
-  _req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: String,
-) -> wisp.Response {
-  case parse_task_id(task_id) {
+  case require_create_context(req, ctx, task_id) {
     Error(resp) -> resp
-    Ok(task_id) -> list_dependencies_for_task(ctx, user, task_id)
-  }
-}
-
-fn list_dependencies_for_task(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: Int,
-) -> wisp.Response {
-  let auth.Ctx(db: db, ..) = ctx
-
-  case require_task_access(db, task_id, user.id) {
-    Error(resp) -> resp
-    Ok(Nil) ->
-      case task_dependencies_db.list_dependencies_for_task(db, task_id) {
-        Ok(deps) ->
-          api.ok(
-            json.object([
-              #(
-                "dependencies",
-                json.array(deps, of: presenters.dependency_json),
-              ),
-            ]),
-          )
-        Error(service_error.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.NotFound) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(service_error.ValidationError(msg)) ->
-          api.error(422, "VALIDATION_ERROR", msg)
-        Error(service_error.InvalidReference(_)) ->
-          api.error(422, "VALIDATION_ERROR", "Invalid reference")
-        Error(service_error.Conflict(_)) ->
-          api.error(409, "CONFLICT", "Conflict")
-        Error(service_error.Unexpected(_)) ->
-          api.error(500, "INTERNAL", "Unexpected error")
-        Error(service_error.AlreadyExists) ->
-          api.error(409, "CONFLICT", "Conflict")
-      }
-  }
-}
-
-fn create_dependency(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> create_dependency_with_csrf(req, ctx, user, task_id)
-  }
-}
-
-fn create_dependency_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: String,
-) -> wisp.Response {
-  case parse_task_id(task_id) {
-    Error(resp) -> resp
-    Ok(task_id) -> {
+    Ok(#(user, task_id)) -> {
       use data <- wisp.require_json(req)
       case decode_dependency_payload(data) {
         Error(resp) -> resp
-        Ok(depends_on_task_id) ->
-          create_dependency_for_task(ctx, user, task_id, depends_on_task_id)
+        Ok(payload) ->
+          case create_dependency_payload(ctx, user, task_id, payload) {
+            Ok(resp) -> resp
+            Error(resp) -> resp
+          }
       }
     }
   }
 }
 
-fn create_dependency_for_task(
+fn require_create_context(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+) -> Result(#(StoredUser, Int), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use task_id <- result.try(api.parse_id(task_id))
+
+  Ok(#(user, task_id))
+}
+
+fn list_dependencies_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+) -> Result(wisp.Response, wisp.Response) {
+  let auth.Ctx(db: db, ..) = ctx
+
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use task_id <- result.try(api.parse_id(task_id))
+  use Nil <- result.try(require_task_access(db, task_id, user.id))
+  use deps <- result.try(fetch_dependencies(db, task_id))
+
+  Ok(api.ok(presenters.dependencies_response(deps)))
+}
+
+fn create_dependency_payload(
   ctx: auth.Ctx,
   user: StoredUser,
   task_id: Int,
-  depends_on_task_id: Int,
-) -> wisp.Response {
+  payload: payloads.DependencyPayload,
+) -> Result(wisp.Response, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
+  let payloads.DependencyPayload(depends_on_task_id: depends_on_task_id) =
+    payload
 
-  case task_id == depends_on_task_id {
-    True -> api.error(422, "VALIDATION_ERROR", "Task cannot depend on itself")
-    False ->
-      case require_task_access(db, task_id, user.id) {
-        Error(resp) -> resp
-        Ok(Nil) ->
-          create_dependency_checked(db, user, task_id, depends_on_task_id)
-      }
-  }
-}
+  use Nil <- result.try(require_not_self_dependency(task_id, depends_on_task_id))
+  use task <- result.try(fetch_task_database_response(db, task_id, user.id))
+  use Nil <- result.try(authorization.require_project_manager_with_org_bypass(
+    db,
+    user,
+    task.project_id,
+  ))
+  use depends_on_task <- result.try(fetch_task(db, depends_on_task_id, user.id))
+  use Nil <- result.try(require_same_project(task, depends_on_task))
+  use Nil <- result.try(require_dependency_not_completed(depends_on_task))
+  use Nil <- result.try(require_dependency_absent(
+    db,
+    task.id,
+    depends_on_task_id,
+  ))
+  use Nil <- result.try(require_no_dependency_cycle(
+    db,
+    task_id,
+    depends_on_task_id,
+  ))
+  use dependency <- result.try(create_dependency_row(
+    db,
+    task_id,
+    depends_on_task_id,
+    user.id,
+  ))
 
-fn create_dependency_checked(
-  db: pog.Connection,
-  user: StoredUser,
-  task_id: Int,
-  depends_on_task_id: Int,
-) -> wisp.Response {
-  case tasks_queries.get_task_for_user(db, task_id, user.id) {
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid reference")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
-
-    Ok(task) ->
-      case
-        authorization.require_project_manager_with_org_bypass(
-          db,
-          user,
-          task.project_id,
-        )
-      {
-        Error(resp) -> resp
-        Ok(Nil) ->
-          validate_dependency_target(db, user, task, depends_on_task_id)
-      }
-  }
-}
-
-fn validate_dependency_target(
-  db: pog.Connection,
-  user: StoredUser,
-  task: Task,
-  depends_on_task_id: Int,
-) -> wisp.Response {
-  case tasks_queries.get_task_for_user(db, depends_on_task_id, user.id) {
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid reference")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
-    Ok(depends_on_task) ->
-      case depends_on_task.project_id != task.project_id {
-        True ->
-          api.error(
-            422,
-            "VALIDATION_ERROR",
-            "Dependency must be in same project",
-          )
-        False ->
-          case depends_on_task.status {
-            Completed ->
-              api.error(
-                422,
-                "VALIDATION_ERROR",
-                "Dependency task is already completed",
-              )
-            _ ->
-              validate_dependency_exists(
-                db,
-                task.id,
-                depends_on_task_id,
-                user.id,
-              )
-          }
-      }
-  }
-}
-
-fn validate_dependency_exists(
-  db: pog.Connection,
-  task_id: Int,
-  depends_on_task_id: Int,
-  user_id: Int,
-) -> wisp.Response {
-  case task_dependencies_db.list_dependencies_for_task(db, task_id) {
-    Ok(deps) ->
-      case
-        list.any(deps, fn(dep) {
-          let TaskDependency(depends_on_task_id: dep_id, ..) = dep
-          dep_id == depends_on_task_id
-        })
-      {
-        True -> api.error(422, "VALIDATION_ERROR", "Dependency already exists")
-        False ->
-          validate_dependency_cycle(db, task_id, depends_on_task_id, user_id)
-      }
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-  }
-}
-
-fn validate_dependency_cycle(
-  db: pog.Connection,
-  task_id: Int,
-  depends_on_task_id: Int,
-  user_id: Int,
-) -> wisp.Response {
-  case would_create_cycle(db, task_id, depends_on_task_id) {
-    Ok(True) ->
-      api.error(422, "VALIDATION_ERROR", "Circular dependency detected")
-    Ok(False) -> create_dependency_row(db, task_id, depends_on_task_id, user_id)
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-  }
+  Ok(api.ok(presenters.dependency_response(dependency)))
 }
 
 fn create_dependency_row(
@@ -298,7 +158,7 @@ fn create_dependency_row(
   task_id: Int,
   depends_on_task_id: Int,
   user_id: Int,
-) -> wisp.Response {
+) -> Result(TaskDependency, wisp.Response) {
   case
     task_dependencies_db.create_dependency(
       db,
@@ -307,123 +167,38 @@ fn create_dependency_row(
       user_id,
     )
   {
-    Ok(dep) ->
-      api.ok(json.object([#("dependency", presenters.dependency_json(dep))]))
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid reference")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
+    Ok(dep) -> Ok(dep)
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
 
-fn delete_dependency(
+fn delete_dependency_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user: StoredUser,
   task_id: String,
   depends_on_task_id: String,
-) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) ->
-      delete_dependency_with_csrf(ctx, user, task_id, depends_on_task_id)
-  }
-}
+) -> Result(Nil, wisp.Response) {
+  let auth.Ctx(db: db, ..) = ctx
 
-fn delete_dependency_with_csrf(
-  ctx: auth.Ctx,
-  user: StoredUser,
-  task_id: String,
-  depends_on_task_id: String,
-) -> wisp.Response {
-  case parse_task_id(task_id) {
-    Error(resp) -> resp
-    Ok(task_id) ->
-      case parse_task_id(depends_on_task_id) {
-        Error(resp) -> resp
-        Ok(depends_on_task_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-          case tasks_queries.get_task_for_user(db, task_id, user.id) {
-            Error(service_error.NotFound) ->
-              api.error(404, "NOT_FOUND", "Not found")
-            Error(service_error.DbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
-            Error(service_error.ValidationError(msg)) ->
-              api.error(422, "VALIDATION_ERROR", msg)
-            Error(service_error.InvalidReference(_)) ->
-              api.error(422, "VALIDATION_ERROR", "Invalid reference")
-            Error(service_error.Conflict(_)) ->
-              api.error(409, "CONFLICT", "Conflict")
-            Error(service_error.Unexpected(_)) ->
-              api.error(500, "INTERNAL", "Unexpected error")
-            Error(service_error.AlreadyExists) ->
-              api.error(409, "CONFLICT", "Conflict")
-            Ok(task) ->
-              case
-                authorization.require_project_manager_with_org_bypass(
-                  db,
-                  user,
-                  task.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(Nil) ->
-                  case
-                    task_dependencies_db.delete_dependency(
-                      db,
-                      task_id,
-                      depends_on_task_id,
-                    )
-                  {
-                    Ok(Nil) -> api.no_content()
-                    Error(service_error.NotFound) ->
-                      api.error(404, "NOT_FOUND", "Not found")
-                    Error(service_error.DbError(_)) ->
-                      api.error(500, "INTERNAL", "Database error")
-                    Error(service_error.ValidationError(msg)) ->
-                      api.error(422, "VALIDATION_ERROR", msg)
-                    Error(service_error.InvalidReference(_)) ->
-                      api.error(422, "VALIDATION_ERROR", "Invalid reference")
-                    Error(service_error.Conflict(_)) ->
-                      api.error(409, "CONFLICT", "Conflict")
-                    Error(service_error.Unexpected(_)) ->
-                      api.error(500, "INTERNAL", "Unexpected error")
-                    Error(service_error.AlreadyExists) ->
-                      api.error(409, "CONFLICT", "Conflict")
-                  }
-              }
-          }
-        }
-      }
-  }
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use Nil <- result.try(csrf.require_csrf(req))
+  use task_id <- result.try(api.parse_id(task_id))
+  use depends_on_task_id <- result.try(api.parse_id(depends_on_task_id))
+  use task <- result.try(fetch_task(db, task_id, user.id))
+  use Nil <- result.try(authorization.require_project_manager_with_org_bypass(
+    db,
+    user,
+    task.project_id,
+  ))
+
+  delete_dependency_row(db, task_id, depends_on_task_id)
 }
 
 fn decode_dependency_payload(
-  data: dynamic.Dynamic,
-) -> Result(Int, wisp.Response) {
-  let decoder = {
-    use depends_on_task_id <- decode.field("depends_on_task_id", decode.int)
-    decode.success(depends_on_task_id)
-  }
-
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
-}
-
-fn parse_task_id(value: String) -> Result(Int, wisp.Response) {
-  case int.parse(value) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
+  data,
+) -> Result(payloads.DependencyPayload, wisp.Response) {
+  payloads.decode_dependency(data)
+  |> result.map_error(payload_responses.decode_error)
 }
 
 fn require_task_access(
@@ -433,12 +208,137 @@ fn require_task_access(
 ) -> Result(Nil, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
+}
+
+fn fetch_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Task, wisp.Response) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Ok(task) -> Ok(task)
+    Error(error) -> Error(service_error_response.to_response(error))
+  }
+}
+
+fn fetch_task_database_response(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Task, wisp.Response) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Ok(task) -> Ok(task)
+    Error(error) -> Error(service_error_response.to_database_response(error))
+  }
+}
+
+fn fetch_dependencies(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(List(TaskDependency), wisp.Response) {
+  case task_dependencies_db.list_dependencies_for_task(db, task_id) {
+    Ok(deps) -> Ok(deps)
+    Error(error) -> Error(service_error_response.to_response(error))
+  }
+}
+
+fn require_not_self_dependency(
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case task_id == depends_on_task_id {
+    True ->
+      Error(api.error(422, "VALIDATION_ERROR", "Task cannot depend on itself"))
+    False -> Ok(Nil)
+  }
+}
+
+fn require_same_project(
+  task: Task,
+  depends_on_task: Task,
+) -> Result(Nil, wisp.Response) {
+  case depends_on_task.project_id != task.project_id {
+    True ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Dependency must be in same project",
+      ))
+    False -> Ok(Nil)
+  }
+}
+
+fn require_dependency_not_completed(
+  depends_on_task: Task,
+) -> Result(Nil, wisp.Response) {
+  case depends_on_task.status {
+    Completed ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Dependency task is already completed",
+      ))
+    _ -> Ok(Nil)
+  }
+}
+
+fn require_dependency_absent(
+  db: pog.Connection,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Result(Nil, wisp.Response) {
+  use deps <- result.try(fetch_dependencies_for_validation(db, task_id))
+
+  case
+    list.any(deps, fn(dep) {
+      let TaskDependency(depends_on_task_id: dep_id, ..) = dep
+      dep_id == depends_on_task_id
+    })
+  {
+    True ->
+      Error(api.error(422, "VALIDATION_ERROR", "Dependency already exists"))
+    False -> Ok(Nil)
+  }
+}
+
+fn fetch_dependencies_for_validation(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(List(TaskDependency), wisp.Response) {
+  case task_dependencies_db.list_dependencies_for_task(db, task_id) {
+    Ok(deps) -> Ok(deps)
+    Error(_) -> Error(database_error_response())
+  }
+}
+
+fn require_no_dependency_cycle(
+  db: pog.Connection,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case would_create_cycle(db, task_id, depends_on_task_id) {
+    Ok(True) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Circular dependency detected"))
+    Ok(False) -> Ok(Nil)
+    Error(_) -> Error(database_error_response())
+  }
+}
+
+fn delete_dependency_row(
+  db: pog.Connection,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case task_dependencies_db.delete_dependency(db, task_id, depends_on_task_id) {
+    Ok(Nil) -> Ok(Nil)
+    Error(error) -> Error(service_error_response.to_response(error))
+  }
+}
+
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }
 
 fn would_create_cycle(

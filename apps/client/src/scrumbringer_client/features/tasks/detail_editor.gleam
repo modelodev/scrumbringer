@@ -10,126 +10,133 @@ import lustre/event
 import domain/task.{type Task}
 import domain/task_state
 
-import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
-import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/form_field
-import scrumbringer_client/utils/card_queries
 
-pub fn can_edit_task(model: Model, current_task: Task) -> Bool {
-  case model.core.user, task_state.claimed_by(current_task.state) {
-    opt.Some(user), opt.Some(claimed_by) -> user.id == claimed_by
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    current_user_id: opt.Option(Int),
+    editing: Bool,
+    edit_title: String,
+    edit_description: String,
+    edit_error: opt.Option(String),
+    edit_in_flight: Bool,
+    parent_card_title: opt.Option(String),
+    on_edit_started: msg,
+    on_edit_cancelled: msg,
+    on_title_changed: fn(String) -> msg,
+    on_description_changed: fn(String) -> msg,
+    on_submitted: msg,
+  )
+}
+
+pub fn can_edit_task(config: Config(msg), current_task: Task) -> Bool {
+  case config.current_user_id, task_state.claimed_by(current_task.state) {
+    opt.Some(user_id), opt.Some(claimed_by) -> user_id == claimed_by
     opt.Some(_), opt.None -> True
     _, _ -> False
   }
 }
 
-pub fn permission_hint(model: Model, current_task: Task) -> opt.Option(String) {
-  case can_edit_task(model, current_task) {
+pub fn permission_hint(
+  config: Config(msg),
+  current_task: Task,
+) -> opt.Option(String) {
+  case can_edit_task(config, current_task) {
     True -> opt.None
-    False ->
-      opt.Some(helpers_i18n.i18n_t(model, i18n_text.TaskEditRequiresClaim))
+    False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
   }
 }
 
 pub fn task_description_text(current_task: Task) -> String {
-  opt.unwrap(current_task.description, "")
+  case current_task.description {
+    opt.None -> ""
+    opt.Some(description) -> description
+  }
 }
 
-pub fn is_dirty(model: Model, current_task: Task) -> Bool {
-  string.trim(model.member.pool.member_task_detail_edit_title)
-  != current_task.title
-  || normalize_description(
-    model.member.pool.member_task_detail_edit_description,
-  )
+pub fn is_dirty(config: Config(msg), current_task: Task) -> Bool {
+  string.trim(config.edit_title) != current_task.title
+  || normalize_description(config.edit_description)
   != task_description_text(current_task)
 }
 
-pub fn view_form(model: Model, current_task: Task) -> Element(Msg) {
-  let is_saving = model.member.pool.member_task_detail_edit_in_flight
-
+pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
   form(
     [
       attribute.class("task-detail-edit-form"),
       attribute.id("task-detail-edit-form"),
-      event.on_submit(fn(_) {
-        pool_msg(pool_messages.MemberTaskDetailEditSubmitted)
-      }),
+      event.on_submit(fn(_) { config.on_submitted }),
     ],
     [
       form_field.with_error(
-        helpers_i18n.i18n_t(model, i18n_text.Title),
+        i18n.t(config.locale, i18n_text.Title),
         input([
           attribute.type_("text"),
           attribute.class("task-detail-edit-input"),
           attribute.attribute("maxlength", "56"),
-          attribute.value(model.member.pool.member_task_detail_edit_title),
+          attribute.value(config.edit_title),
           attribute.autofocus(True),
-          event.on_input(fn(value) {
-            pool_msg(pool_messages.MemberTaskDetailEditTitleChanged(value))
-          }),
-          on_escape(pool_msg(pool_messages.MemberTaskDetailEditCancelled)),
+          event.on_input(config.on_title_changed),
+          on_escape(config.on_edit_cancelled),
         ]),
-        model.member.pool.member_task_detail_edit_error,
+        config.edit_error,
       ),
       form_field.view(
-        helpers_i18n.i18n_t(model, i18n_text.Description),
+        i18n.t(config.locale, i18n_text.Description),
         textarea(
           [
             attribute.class("task-detail-edit-textarea"),
             attribute.rows(5),
-            attribute.value(
-              model.member.pool.member_task_detail_edit_description,
-            ),
-            event.on_input(fn(value) {
-              pool_msg(pool_messages.MemberTaskDetailEditDescriptionChanged(
-                value,
-              ))
-            }),
-            on_ctrl_enter(pool_msg(pool_messages.MemberTaskDetailEditSubmitted)),
-            on_escape(pool_msg(pool_messages.MemberTaskDetailEditCancelled)),
+            attribute.value(config.edit_description),
+            event.on_input(config.on_description_changed),
+            on_ctrl_enter(config.on_submitted),
+            on_escape(config.on_edit_cancelled),
           ],
           "",
         ),
       ),
-      form_field.hint(helpers_i18n.i18n_t(model, i18n_text.TaskEditKeyboardHint)),
+      form_field.hint(i18n.t(config.locale, i18n_text.TaskEditKeyboardHint)),
       div([attribute.class("task-detail-edit-actions")], [
         button(
           [
             attribute.type_("button"),
             attribute.class("btn btn-secondary"),
-            event.on_click(pool_msg(pool_messages.MemberTaskDetailEditCancelled)),
-            attribute.disabled(is_saving),
+            event.on_click(config.on_edit_cancelled),
+            attribute.disabled(config.edit_in_flight),
           ],
-          [text(helpers_i18n.i18n_t(model, i18n_text.Cancel))],
+          [text(i18n.t(config.locale, i18n_text.Cancel))],
         ),
         button(
           [
             attribute.type_("submit"),
-            attribute.class(case is_saving {
+            attribute.class(case config.edit_in_flight {
               True -> "btn btn-primary btn-loading"
               False -> "btn btn-primary"
             }),
-            attribute.disabled(is_saving || !is_dirty(model, current_task)),
+            attribute.disabled(
+              config.edit_in_flight || !is_dirty(config, current_task),
+            ),
           ],
-          [text(helpers_i18n.i18n_t(model, i18n_text.Save))],
+          [text(i18n.t(config.locale, i18n_text.Save))],
         ),
       ]),
     ],
   )
 }
 
-pub fn view_intro(model: Model, current_task: Task) -> Element(Msg) {
-  let can_edit = can_edit_task(model, current_task)
-  let is_editing = model.member.pool.member_task_detail_editing
+pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
+  let can_edit = can_edit_task(config, current_task)
 
   div([attribute.class("task-details-intro")], [
     div([attribute.class("task-details-intro-row")], [
       div([attribute.class("task-details-title")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.TabDetails)),
+        text(i18n.t(config.locale, i18n_text.TabDetails)),
       ]),
-      case is_editing {
+      case config.editing {
         True -> element.none()
         False ->
           case can_edit {
@@ -140,20 +147,18 @@ pub fn view_intro(model: Model, current_task: Task) -> Element(Msg) {
                   attribute.class(
                     "btn btn-sm btn-secondary task-detail-edit-toggle",
                   ),
-                  event.on_click(pool_msg(
-                    pool_messages.MemberTaskDetailEditStarted,
-                  )),
+                  event.on_click(config.on_edit_started),
                 ],
-                [text(helpers_i18n.i18n_t(model, i18n_text.EditTask))],
+                [text(i18n.t(config.locale, i18n_text.EditTask))],
               )
             False -> element.none()
           }
       },
     ]),
-    case is_editing {
+    case config.editing {
       True -> element.none()
       False ->
-        case permission_hint(model, current_task) {
+        case permission_hint(config, current_task) {
           opt.Some(hint) ->
             div(
               [attribute.class("task-section-hint task-edit-permission-hint")],
@@ -166,7 +171,10 @@ pub fn view_intro(model: Model, current_task: Task) -> Element(Msg) {
   ])
 }
 
-pub fn view_readonly_fields(model: Model, current_task: Task) -> Element(Msg) {
+pub fn view_readonly_fields(
+  config: Config(msg),
+  current_task: Task,
+) -> Element(msg) {
   let desc = case current_task.description {
     opt.Some(value) -> value
     opt.None -> "-"
@@ -174,21 +182,21 @@ pub fn view_readonly_fields(model: Model, current_task: Task) -> Element(Msg) {
   let desc_empty = desc == "-"
 
   div([attribute.class("task-details-stack")], [
-    view_intro(model, current_task),
-    case model.member.pool.member_task_detail_editing {
-      True -> view_form(model, current_task)
+    view_intro(config, current_task),
+    case config.editing {
+      True -> view_form(config, current_task)
       False -> element.none()
     },
     view_value_field(
-      helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel),
-      parent_card_label(model, current_task),
-      parent_card_is_empty(model, current_task),
+      i18n.t(config.locale, i18n_text.ParentCardLabel),
+      parent_card_label(config),
+      parent_card_is_empty(config),
     ),
-    case model.member.pool.member_task_detail_editing {
+    case config.editing {
       True -> element.none()
       False ->
         view_value_field(
-          helpers_i18n.i18n_t(model, i18n_text.Description),
+          i18n.t(config.locale, i18n_text.Description),
           desc,
           desc_empty,
         )
@@ -196,7 +204,7 @@ pub fn view_readonly_fields(model: Model, current_task: Task) -> Element(Msg) {
   ])
 }
 
-fn view_value_field(label: String, value: String, muted: Bool) -> Element(Msg) {
+fn view_value_field(label: String, value: String, muted: Bool) -> Element(msg) {
   div([attribute.class("task-detail-field")], [
     div([attribute.class("task-detail-field-label")], [text(label)]),
     div(
@@ -211,21 +219,15 @@ fn view_value_field(label: String, value: String, muted: Bool) -> Element(Msg) {
   ])
 }
 
-fn parent_card_label(model: Model, current_task: Task) -> String {
-  let #(resolved_card_title, _resolved_card_color) =
-    card_queries.resolve_task_card_info(model, current_task)
-  let no_card_label = helpers_i18n.i18n_t(model, i18n_text.NoCard)
-
-  case resolved_card_title {
+fn parent_card_label(config: Config(msg)) -> String {
+  case config.parent_card_title {
     opt.Some(title) -> title
-    opt.None -> no_card_label
+    opt.None -> i18n.t(config.locale, i18n_text.NoCard)
   }
 }
 
-fn parent_card_is_empty(model: Model, current_task: Task) -> Bool {
-  let #(resolved_card_title, _resolved_card_color) =
-    card_queries.resolve_task_card_info(model, current_task)
-  resolved_card_title == opt.None
+fn parent_card_is_empty(config: Config(msg)) -> Bool {
+  config.parent_card_title == opt.None
 }
 
 fn normalize_description(description: String) -> String {
@@ -235,7 +237,7 @@ fn normalize_description(description: String) -> String {
   }
 }
 
-fn on_ctrl_enter(submit_msg: Msg) -> attribute.Attribute(Msg) {
+fn on_ctrl_enter(submit_msg: msg) -> attribute.Attribute(msg) {
   event.advanced("keydown", {
     use key <- decode.field("key", decode.string)
     use ctrl_key <- decode.field("ctrlKey", decode.bool)
@@ -273,7 +275,7 @@ fn on_ctrl_enter(submit_msg: Msg) -> attribute.Attribute(Msg) {
   })
 }
 
-fn on_escape(cancel_msg: Msg) -> attribute.Attribute(Msg) {
+fn on_escape(cancel_msg: msg) -> attribute.Attribute(msg) {
   event.advanced("keydown", {
     use key <- decode.field("key", decode.string)
 

@@ -35,16 +35,16 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import domain/card.{type Card, type CardNote, CardNote}
+import domain/card/codec as card_codec
 import domain/metrics.{type CardModalMetrics}
 import domain/task.{type Task, claimed_by}
+import domain/task/codec as task_codec
 import domain/task_state
 import domain/task_status.{Available, Completed}
 
+import domain/api_error.{type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/api/tasks/decoders as task_decoders
-import scrumbringer_client/decoders
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -147,7 +147,9 @@ fn decode_card_id(value: String) -> Result(Msg, Nil) {
 }
 
 fn decode_locale(value: String) -> Result(Msg, Nil) {
-  Ok(LocaleReceived(locale.deserialize(value)))
+  locale.parse(value)
+  |> result.map(LocaleReceived)
+  |> result.replace_error(Nil)
 }
 
 fn decode_project_id(value: String) -> Result(Msg, Nil) {
@@ -168,42 +170,8 @@ fn decode_can_manage_notes(value: String) -> Result(Msg, Nil) {
 }
 
 fn card_property_decoder() -> Decoder(Msg) {
-  use id <- decode.field("id", decode.int)
-  use project_id <- decode.field("project_id", decode.int)
-  use milestone_id <- decode.optional_field(
-    "milestone_id",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use title <- decode.field("title", decode.string)
-  use description <- decode.field("description", decode.string)
-  use color <- decode.field("color", decode.optional(decode.string))
-  use state <- decode.field("state", decoders.card_state_decoder())
-  use task_count <- decode.field("task_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
-  use created_by <- decode.field("created_by", decode.int)
-  use created_at <- decode.field("created_at", decode.string)
-  use has_new_notes <- decode.optional_field(
-    "has_new_notes",
-    False,
-    decode.bool,
-  )
-  decode.success(
-    CardReceived(card.Card(
-      id: id,
-      project_id: project_id,
-      milestone_id: milestone_id,
-      title: title,
-      description: description,
-      color: color,
-      state: state,
-      task_count: task_count,
-      completed_count: completed_count,
-      created_by: created_by,
-      created_at: created_at,
-      has_new_notes: has_new_notes,
-    )),
-  )
+  card_codec.card_decoder()
+  |> decode.map(CardReceived)
 }
 
 fn tasks_property_decoder() -> Decoder(Msg) {
@@ -217,12 +185,12 @@ fn task_decoder() -> Decoder(Task) {
   use type_id <- decode.field("type_id", decode.int)
   use task_type <- decode.field(
     "task_type",
-    task_decoders.task_type_inline_decoder(),
+    task_codec.task_type_inline_decoder(),
   )
   use ongoing_by <- decode.optional_field(
     "ongoing_by",
     option.None,
-    decode.optional(task_decoders.ongoing_by_decoder()),
+    decode.optional(task_codec.ongoing_by_decoder()),
   )
   use title <- decode.field("title", decode.string)
   use description <- decode.optional_field(
@@ -268,28 +236,23 @@ fn task_decoder() -> Decoder(Task) {
   use card_color <- decode.optional_field(
     "card_color",
     option.None,
-    decode.optional(decode.string),
+    card_codec.optional_color_decoder(),
   )
   use blocked_count <- decode.optional_field("blocked_count", 0, decode.int)
   use dependencies <- decode.optional_field(
     "dependencies",
     [],
-    decode.list(task_decoders.task_dependency_decoder()),
+    decode.list(task_codec.task_dependency_decoder()),
   )
 
   let is_ongoing = status_raw == "ongoing"
-  let state = case
-    task_state.from_db(
-      status_raw,
-      is_ongoing,
-      claimed_by,
-      claimed_at,
-      completed_at,
-    )
-  {
-    Ok(s) -> s
-    Error(_) -> task_state.Available
-  }
+  use state <- decode.then(task_codec.task_state_decoder_from_fields(
+    status_raw,
+    is_ongoing,
+    claimed_by,
+    claimed_at,
+    completed_at,
+  ))
   let status = task_state.to_status(state)
   let work_state = task_state.to_work_state(state)
 
@@ -759,8 +722,7 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     author_org_role: author_org_role,
     ..,
   ) = note
-  let current_user_id = option.unwrap(model.current_user_id, 0)
-  let is_own_note = user_id == current_user_id
+  let is_own_note = note_belongs_to_current_user(model.current_user_id, user_id)
   let author_label = case is_own_note {
     True -> t(model.locale, i18n_text.You)
     False -> t(model.locale, i18n_text.UserNumber(user_id))
@@ -782,6 +744,16 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     author_project_role: author_project_role,
     author_org_role: author_org_role,
   )
+}
+
+fn note_belongs_to_current_user(
+  current_user_id: Option(Int),
+  note_user_id: Int,
+) -> Bool {
+  case current_user_id {
+    option.Some(user_id) -> user_id == note_user_id
+    option.None -> False
+  }
 }
 
 fn view_card_tasks_section(model: Model) -> Element(Msg) {
@@ -950,7 +922,7 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
             view_metrics_row(
               t(model.locale, i18n_text.MetricsMostActivated),
               metrics.most_activated
-                |> option.unwrap(t(model.locale, i18n_text.MetricsNotAvailable)),
+                |> metrics_text_or_not_available(model),
             ),
             detail_metrics.view_workflows(
               t(model.locale, i18n_text.MetricsWorkflows),
@@ -964,6 +936,13 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
 
 fn view_metrics_row(label: String, value: String) -> Element(Msg) {
   detail_metrics.view_row(label, value)
+}
+
+fn metrics_text_or_not_available(value: Option(String), model: Model) -> String {
+  case value {
+    option.Some(text) -> text
+    option.None -> t(model.locale, i18n_text.MetricsNotAvailable)
+  }
 }
 
 fn card_tabpanel_id(tab: card_tabs.Tab) -> String {

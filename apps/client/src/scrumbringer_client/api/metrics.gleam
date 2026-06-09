@@ -21,7 +21,8 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
+import domain/api_error.{type ApiResult}
+import scrumbringer_client/api/core
 
 // Import types from shared domain
 import domain/metrics.{
@@ -63,7 +64,7 @@ pub fn get_me_metrics(
 ) -> Effect(msg) {
   let decoder = decode.field("metrics", my_metrics_decoder(), decode.success)
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/me/metrics?window_days=" <> int.to_string(window_days),
     option.None,
     decoder,
@@ -80,7 +81,7 @@ pub fn get_org_metrics_overview(
     decode.field("overview", org_metrics_overview_decoder(), decode.success)
 
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/metrics/overview?window_days=" <> int.to_string(window_days),
     option.None,
     decoder,
@@ -95,7 +96,7 @@ pub fn get_org_metrics_project_tasks(
   to_msg: fn(ApiResult(OrgMetricsProjectTasksPayload)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/metrics/projects/"
       <> int.to_string(project_id)
       <> "/tasks?window_days="
@@ -118,7 +119,7 @@ pub fn get_org_metrics_users(
       decode.success,
     )
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/org/metrics/users?window_days=" <> int.to_string(window_days),
     option.None,
     decoder,

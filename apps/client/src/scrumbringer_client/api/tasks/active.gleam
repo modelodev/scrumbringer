@@ -13,7 +13,7 @@
 ////
 //// ## Relations
 ////
-//// - **decoders.gleam**: Provides work sessions payload decoder
+//// - **domain/task/codec.gleam**: Provides work sessions payload decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/json
@@ -21,9 +21,10 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/task.{type WorkSessionsPayload}
+import domain/task/codec as decoders
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 
 // =============================================================================
 // Work Sessions API Functions
@@ -31,10 +32,10 @@ import scrumbringer_client/api/tasks/decoders
 
 /// Get current user's active work sessions.
 pub fn get_work_sessions(
-  to_msg: fn(core.ApiResult(WorkSessionsPayload)) -> msg,
+  to_msg: fn(ApiResult(WorkSessionsPayload)) -> msg,
 ) -> Effect(msg) {
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/me/work-sessions/active",
     option.None,
     decoders.work_sessions_payload_decoder(),
@@ -45,11 +46,11 @@ pub fn get_work_sessions(
 /// Start working on a task.
 pub fn start_work_session(
   task_id: Int,
-  to_msg: fn(core.ApiResult(WorkSessionsPayload)) -> msg,
+  to_msg: fn(ApiResult(WorkSessionsPayload)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("task_id", json.int(task_id))])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/me/work-sessions/start",
     option.Some(body),
     decoders.work_sessions_payload_decoder(),
@@ -60,11 +61,11 @@ pub fn start_work_session(
 /// Pause working on a task.
 pub fn pause_work_session(
   task_id: Int,
-  to_msg: fn(core.ApiResult(WorkSessionsPayload)) -> msg,
+  to_msg: fn(ApiResult(WorkSessionsPayload)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("task_id", json.int(task_id))])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/me/work-sessions/pause",
     option.Some(body),
     decoders.work_sessions_payload_decoder(),
@@ -75,11 +76,11 @@ pub fn pause_work_session(
 /// Send heartbeat for a specific task session.
 pub fn heartbeat_work_session(
   task_id: Int,
-  to_msg: fn(core.ApiResult(WorkSessionsPayload)) -> msg,
+  to_msg: fn(ApiResult(WorkSessionsPayload)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("task_id", json.int(task_id))])
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/me/work-sessions/heartbeat",
     option.Some(body),
     decoders.work_sessions_payload_decoder(),

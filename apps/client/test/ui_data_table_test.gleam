@@ -1,10 +1,13 @@
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, NotAsked}
 import gleam/string
-import gleeunit/should
 import lustre/element
 import lustre/element/html.{text}
 import scrumbringer_client/ui/data_table
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 fn base_config() -> data_table.DataTableConfig(String, msg) {
   data_table.new()
@@ -24,7 +27,7 @@ pub fn view_remote_renders_loading_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Loading...") |> should.be_true
+  assert_contains(html, "Loading...")
 }
 
 pub fn view_remote_renders_error_state_test() {
@@ -39,7 +42,7 @@ pub fn view_remote_renders_error_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Boom") |> should.be_true
+  assert_contains(html, "Boom")
 }
 
 pub fn view_remote_renders_empty_state_test() {
@@ -52,7 +55,7 @@ pub fn view_remote_renders_empty_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "No rows") |> should.be_true
+  assert_contains(html, "No rows")
 }
 
 pub fn view_remote_renders_table_rows_test() {
@@ -65,7 +68,7 @@ pub fn view_remote_renders_table_rows_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Alice") |> should.be_true
+  assert_contains(html, "Alice")
 }
 
 pub fn view_remote_renders_table_headers_with_class_test() {
@@ -78,5 +81,5 @@ pub fn view_remote_renders_table_headers_with_class_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "table-header") |> should.be_true
+  assert_contains(html, "table-header")
 }

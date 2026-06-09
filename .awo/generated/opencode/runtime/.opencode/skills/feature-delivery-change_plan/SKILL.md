@@ -12,6 +12,7 @@ Use this skill only for workflow `feature_delivery` step `change_plan`.
 
 **Observability fields** (include in step-report JSON):
 - `declared_skill_refs`: `[".opencode/skills/feature-delivery-change_plan/SKILL.md"]`
+- `materialized_skill_refs`: `[".opencode/skills/feature-delivery-change_plan/SKILL.md"]` (exact runtime skill file AWO materialized for this step)
 - `observed_skill_refs`: list of all files you actually read during this step
 - `commands_run`: list of shell commands executed, each as `{"cmd": "...", "workdir": ".", "result": "ok|error"}`
 - `artifacts_materialized`: list of file paths created or modified by this step

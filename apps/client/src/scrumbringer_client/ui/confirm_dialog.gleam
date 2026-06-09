@@ -9,17 +9,16 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, text}
 import lustre/event
 
-import scrumbringer_client/client_state.{type Msg}
 import scrumbringer_client/ui/dialog
 
-pub type ConfirmConfig {
+pub type ConfirmConfig(msg) {
   ConfirmConfig(
     title: String,
-    body: List(Element(Msg)),
+    body: List(Element(msg)),
     confirm_label: String,
     cancel_label: String,
-    on_confirm: Msg,
-    on_cancel: Msg,
+    on_confirm: msg,
+    on_cancel: msg,
     is_open: Bool,
     is_loading: Bool,
     error: Option(String),
@@ -27,7 +26,7 @@ pub type ConfirmConfig {
   )
 }
 
-pub fn view(config: ConfirmConfig) -> Element(Msg) {
+pub fn view(config: ConfirmConfig(msg)) -> Element(msg) {
   let ConfirmConfig(
     title: title,
     body: body,

@@ -21,7 +21,7 @@
 //// ## Relations
 ////
 //// - **client_view.gleam**: Main view dispatches to these functions
-//// - **client_state.gleam**: Provides Model and Msg types
+//// - **client_state/auth.gleam**: Provides AuthModel state
 //// - **token_flow.gleam**: Provides accept invite sub-model types
 //// - **token_flow.gleam**: Provides reset password sub-model types
 ////
@@ -38,48 +38,68 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, form, h1, h2, input, p, text}
 import lustre/event
 
-import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{type Model, type Msg, auth_msg}
-import scrumbringer_client/features/auth/msg as auth_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/accept_invite
+import scrumbringer_client/client_state/auth.{type AuthModel}
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/reset_password
 import scrumbringer_client/token_flow
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/loading
 
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    auth: AuthModel,
+    origin: String,
+    on_login_email_changed: fn(String) -> msg,
+    on_login_password_changed: fn(String) -> msg,
+    on_login_submitted: msg,
+    on_forgot_password_clicked: msg,
+    on_forgot_password_email_changed: fn(String) -> msg,
+    on_forgot_password_submitted: msg,
+    on_forgot_password_copy_clicked: msg,
+    on_forgot_password_dismissed: msg,
+    on_accept_invite: fn(accept_invite.Msg) -> msg,
+    on_reset_password: fn(reset_password.Msg) -> msg,
+  )
+}
+
 /// Renders the login page with email/password form.
-pub fn view_login(model: Model) -> Element(Msg) {
-  let submit_label = case model.auth.login_in_flight {
-    True -> helpers_i18n.i18n_t(model, i18n_text.LoggingIn)
-    False -> helpers_i18n.i18n_t(model, i18n_text.LoginTitle)
+pub fn view_login(config: Config(msg)) -> Element(msg) {
+  let auth = config.auth
+  let t = fn(key) { i18n.t(config.locale, key) }
+
+  let submit_label = case auth.login_in_flight {
+    True -> t(i18n_text.LoggingIn)
+    False -> t(i18n_text.LoginTitle)
   }
 
   // L01: Button class with loading state
-  let btn_class = case model.auth.login_in_flight {
+  let btn_class = case auth.login_in_flight {
     True -> "btn-loading"
     False -> ""
   }
 
   div([attribute.class("page")], [
-    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
-    p([], [text(helpers_i18n.i18n_t(model, i18n_text.LoginSubtitle))]),
+    h1([], [text(t(i18n_text.AppName))]),
+    p([], [text(t(i18n_text.LoginSubtitle))]),
     // L03: Error banner with icon
-    case model.auth.login_error {
+    case auth.login_error {
       opt.Some(err) -> error_notice.view(err)
       opt.None -> element.none()
     },
-    form([event.on_submit(fn(_) { auth_msg(auth_messages.LoginSubmitted) })], [
+    form([event.on_submit(fn(_) { config.on_login_submitted })], [
       form_field.view_required(
-        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+        t(i18n_text.EmailLabel),
         input([
           attribute.attribute("id", "login-email"),
           attribute.type_("email"),
-          attribute.value(model.auth.login_email),
-          event.on_input(fn(value) {
-            auth_msg(auth_messages.LoginEmailChanged(value))
-          }),
+          attribute.value(auth.login_email),
+          event.on_input(fn(value) { config.on_login_email_changed(value) }),
           attribute.required(True),
           // L02: Autofocus on first field
           attribute.autofocus(True),
@@ -87,14 +107,12 @@ pub fn view_login(model: Model) -> Element(Msg) {
         ]),
       ),
       form_field.view_required(
-        helpers_i18n.i18n_t(model, i18n_text.PasswordLabel),
+        t(i18n_text.PasswordLabel),
         input([
           attribute.attribute("id", "login-password"),
           attribute.type_("password"),
-          attribute.value(model.auth.login_password),
-          event.on_input(fn(value) {
-            auth_msg(auth_messages.LoginPasswordChanged(value))
-          }),
+          attribute.value(auth.login_password),
+          event.on_input(fn(value) { config.on_login_password_changed(value) }),
           attribute.required(True),
           attribute.attribute("aria-label", "Password"),
         ]),
@@ -103,67 +121,65 @@ pub fn view_login(model: Model) -> Element(Msg) {
       button(
         [
           attribute.type_("submit"),
-          attribute.disabled(model.auth.login_in_flight),
+          attribute.disabled(auth.login_in_flight),
           attribute.class(btn_class),
         ],
         [text(submit_label)],
       ),
     ]),
-    button([event.on_click(auth_msg(auth_messages.ForgotPasswordClicked))], [
-      text(helpers_i18n.i18n_t(model, i18n_text.ForgotPassword)),
+    button([event.on_click(config.on_forgot_password_clicked)], [
+      text(t(i18n_text.ForgotPassword)),
     ]),
-    case model.auth.forgot_password_open {
-      True -> view_forgot_password(model)
+    case auth.forgot_password_open {
+      True -> view_forgot_password(config)
       False -> element.none()
     },
   ])
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Renders the forgot password form with email input and reset link display.
-pub fn view_forgot_password(model: Model) -> Element(Msg) {
-  let submit_label = case model.auth.forgot_password_in_flight {
-    True -> helpers_i18n.i18n_t(model, i18n_text.Working)
-    False -> helpers_i18n.i18n_t(model, i18n_text.GenerateResetLink)
+pub fn view_forgot_password(config: Config(msg)) -> Element(msg) {
+  let auth = config.auth
+  let t = fn(key) { i18n.t(config.locale, key) }
+
+  let submit_label = case auth.forgot_password_in_flight {
+    True -> t(i18n_text.Working)
+    False -> t(i18n_text.GenerateResetLink)
   }
 
-  let btn_class = case model.auth.forgot_password_in_flight {
+  let btn_class = case auth.forgot_password_in_flight {
     True -> "btn-loading"
     False -> ""
   }
 
-  let origin = client_ffi.location_origin()
-
-  let link = case model.auth.forgot_password_result {
-    opt.Some(reset) -> origin <> reset.url_path
+  let link = case auth.forgot_password_result {
+    opt.Some(reset) -> config.origin <> reset.url_path
     opt.None -> ""
   }
 
   div([attribute.class("section")], [
-    p([], [text(helpers_i18n.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
-    case model.auth.forgot_password_error {
+    p([], [text(t(i18n_text.NoEmailIntegrationNote))]),
+    case auth.forgot_password_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
-          auth_msg(auth_messages.ForgotPasswordDismissed),
+          t(i18n_text.Dismiss),
+          config.on_forgot_password_dismissed,
         )
       opt.None -> element.none()
     },
     form(
       [
-        event.on_submit(fn(_) {
-          auth_msg(auth_messages.ForgotPasswordSubmitted)
-        }),
+        event.on_submit(fn(_) { config.on_forgot_password_submitted }),
       ],
       [
         form_field.view_required(
-          helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+          t(i18n_text.EmailLabel),
           input([
             attribute.type_("email"),
-            attribute.value(model.auth.forgot_password_email),
+            attribute.value(auth.forgot_password_email),
             event.on_input(fn(value) {
-              auth_msg(auth_messages.ForgotPasswordEmailChanged(value))
+              config.on_forgot_password_email_changed(value)
             }),
             attribute.required(True),
           ]),
@@ -171,7 +187,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
         button(
           [
             attribute.type_("submit"),
-            attribute.disabled(model.auth.forgot_password_in_flight),
+            attribute.disabled(auth.forgot_password_in_flight),
             attribute.class(btn_class),
           ],
           [text(submit_label)],
@@ -183,54 +199,52 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
 
       False ->
         copyable_input.view(
-          helpers_i18n.i18n_t(model, i18n_text.ResetLink),
+          t(i18n_text.ResetLink),
           link,
-          auth_msg(auth_messages.ForgotPasswordCopyClicked),
-          helpers_i18n.i18n_t(model, i18n_text.Copy),
-          model.auth.forgot_password_copy_status,
+          config.on_forgot_password_copy_clicked,
+          t(i18n_text.Copy),
+          auth.forgot_password_copy_status,
         )
     },
   ])
 }
 
 /// Renders the accept invite page for new user registration.
-pub fn view_accept_invite(model: Model) -> Element(Msg) {
+pub fn view_accept_invite(config: Config(msg)) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   let token_flow.Model(
     state: state,
     password: password,
     password_error: password_error,
     submit_error: submit_error,
     ..,
-  ) = model.auth.accept_invite
+  ) = config.auth.accept_invite
 
   let content = case state {
-    token_flow.NoToken ->
-      error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingInviteToken))
+    token_flow.NoToken -> error_notice.view(t(i18n_text.MissingInviteToken))
 
-    token_flow.Validating ->
-      loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingInvite))
+    token_flow.Validating -> loading.loading(t(i18n_text.ValidatingInvite))
 
     token_flow.Invalid(code: _, message: message) -> error_notice.view(message)
 
     token_flow.Ready(email) ->
-      view_accept_invite_form(model, email, password, False, password_error)
+      view_accept_invite_form(config, email, password, False, password_error)
 
     token_flow.Submitting(email) ->
-      view_accept_invite_form(model, email, password, True, password_error)
+      view_accept_invite_form(config, email, password, True, password_error)
 
-    token_flow.Done ->
-      loading.loading(helpers_i18n.i18n_t(model, i18n_text.SignedIn))
+    token_flow.Done -> loading.loading(t(i18n_text.SignedIn))
   }
 
   div([attribute.class("page")], [
-    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(helpers_i18n.i18n_t(model, i18n_text.AcceptInviteTitle))]),
+    h1([], [text(t(i18n_text.AppName))]),
+    h2([], [text(t(i18n_text.AcceptInviteTitle))]),
     case submit_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
-          auth_msg(auth_messages.AcceptInvite(token_flow.ErrorDismissed)),
+          t(i18n_text.Dismiss),
+          config.on_accept_invite(token_flow.ErrorDismissed),
         )
       opt.None -> element.none()
     },
@@ -239,26 +253,26 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
 }
 
 fn view_accept_invite_form(
-  model: Model,
+  config: Config(msg),
   email: String,
   password: String,
   in_flight: Bool,
   password_error: opt.Option(String),
-) -> Element(Msg) {
+) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+
   let submit_label = case in_flight {
-    True -> helpers_i18n.i18n_t(model, i18n_text.Registering)
-    False -> helpers_i18n.i18n_t(model, i18n_text.Register)
+    True -> t(i18n_text.Registering)
+    False -> t(i18n_text.Register)
   }
 
   form(
     [
-      event.on_submit(fn(_) {
-        auth_msg(auth_messages.AcceptInvite(token_flow.Submitted))
-      }),
+      event.on_submit(fn(_) { config.on_accept_invite(token_flow.Submitted) }),
     ],
     [
       form_field.view(
-        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+        t(i18n_text.EmailLabel),
         input([
           attribute.type_("email"),
           attribute.value(email),
@@ -266,21 +280,19 @@ fn view_accept_invite_form(
         ]),
       ),
       form_field.with_error(
-        helpers_i18n.i18n_t(model, i18n_text.PasswordLabel),
+        t(i18n_text.PasswordLabel),
         input([
           attribute.type_("password"),
           attribute.value(password),
           event.on_input(fn(value) {
-            auth_msg(
-              auth_messages.AcceptInvite(token_flow.PasswordChanged(value)),
-            )
+            config.on_accept_invite(token_flow.PasswordChanged(value))
           }),
           attribute.required(True),
         ]),
         password_error,
       ),
       p([], [
-        text(helpers_i18n.i18n_t(model, i18n_text.MinimumPasswordLength)),
+        text(t(i18n_text.MinimumPasswordLength)),
       ]),
       button(
         [
@@ -298,43 +310,41 @@ fn view_accept_invite_form(
 }
 
 /// Renders the reset password page for existing users.
-pub fn view_reset_password(model: Model) -> Element(Msg) {
+pub fn view_reset_password(config: Config(msg)) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   let token_flow.Model(
     state: state,
     password: password,
     password_error: password_error,
     submit_error: submit_error,
     ..,
-  ) = model.auth.reset_password
+  ) = config.auth.reset_password
 
   let content = case state {
-    token_flow.NoToken ->
-      error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingResetToken))
+    token_flow.NoToken -> error_notice.view(t(i18n_text.MissingResetToken))
 
-    token_flow.Validating ->
-      loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingResetToken))
+    token_flow.Validating -> loading.loading(t(i18n_text.ValidatingResetToken))
 
     token_flow.Invalid(code: _, message: message) -> error_notice.view(message)
 
     token_flow.Ready(email) ->
-      view_reset_password_form(model, email, password, False, password_error)
+      view_reset_password_form(config, email, password, False, password_error)
 
     token_flow.Submitting(email) ->
-      view_reset_password_form(model, email, password, True, password_error)
+      view_reset_password_form(config, email, password, True, password_error)
 
-    token_flow.Done ->
-      loading.loading(helpers_i18n.i18n_t(model, i18n_text.PasswordUpdated))
+    token_flow.Done -> loading.loading(t(i18n_text.PasswordUpdated))
   }
 
   div([attribute.class("page")], [
-    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(helpers_i18n.i18n_t(model, i18n_text.ResetPasswordTitle))]),
+    h1([], [text(t(i18n_text.AppName))]),
+    h2([], [text(t(i18n_text.ResetPasswordTitle))]),
     case submit_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
-          auth_msg(auth_messages.ResetPassword(token_flow.ErrorDismissed)),
+          t(i18n_text.Dismiss),
+          config.on_reset_password(token_flow.ErrorDismissed),
         )
       opt.None -> element.none()
     },
@@ -343,26 +353,26 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
 }
 
 fn view_reset_password_form(
-  model: Model,
+  config: Config(msg),
   email: String,
   password: String,
   in_flight: Bool,
   password_error: opt.Option(String),
-) -> Element(Msg) {
+) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+
   let submit_label = case in_flight {
-    True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
-    False -> helpers_i18n.i18n_t(model, i18n_text.SaveNewPassword)
+    True -> t(i18n_text.Saving)
+    False -> t(i18n_text.SaveNewPassword)
   }
 
   form(
     [
-      event.on_submit(fn(_) {
-        auth_msg(auth_messages.ResetPassword(token_flow.Submitted))
-      }),
+      event.on_submit(fn(_) { config.on_reset_password(token_flow.Submitted) }),
     ],
     [
       form_field.view(
-        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+        t(i18n_text.EmailLabel),
         input([
           attribute.type_("email"),
           attribute.value(email),
@@ -370,21 +380,19 @@ fn view_reset_password_form(
         ]),
       ),
       form_field.with_error(
-        helpers_i18n.i18n_t(model, i18n_text.NewPasswordLabel),
+        t(i18n_text.NewPasswordLabel),
         input([
           attribute.type_("password"),
           attribute.value(password),
           event.on_input(fn(value) {
-            auth_msg(
-              auth_messages.ResetPassword(token_flow.PasswordChanged(value)),
-            )
+            config.on_reset_password(token_flow.PasswordChanged(value))
           }),
           attribute.required(True),
         ]),
         password_error,
       ),
       p([], [
-        text(helpers_i18n.i18n_t(model, i18n_text.MinimumPasswordLength)),
+        text(t(i18n_text.MinimumPasswordLength)),
       ]),
       button(
         [

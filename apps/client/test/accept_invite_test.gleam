@@ -1,5 +1,4 @@
 import gleam/option
-import gleeunit/should
 
 import domain/api_error.{ApiError}
 import domain/org_role
@@ -7,14 +6,18 @@ import domain/user
 import scrumbringer_client/accept_invite
 import scrumbringer_client/token_flow
 
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
+
 pub fn init_with_missing_token_stays_in_no_token_state_test() {
   let #(model, action) = accept_invite.init("")
 
   let token_flow.Model(token: token, state: state, ..) = model
 
-  token |> should.equal("")
-  state |> should.equal(token_flow.NoToken)
-  action |> should.equal(accept_invite.NoOp)
+  token |> assert_equal("")
+  state |> assert_equal(token_flow.NoToken)
+  action |> assert_equal(accept_invite.NoOp)
 }
 
 pub fn init_with_token_triggers_validation_test() {
@@ -22,9 +25,9 @@ pub fn init_with_token_triggers_validation_test() {
 
   let token_flow.Model(token: token, state: state, ..) = model
 
-  token |> should.equal("il_token")
-  state |> should.equal(token_flow.Validating)
-  action |> should.equal(accept_invite.ValidateToken("il_token"))
+  token |> assert_equal("il_token")
+  state |> assert_equal(token_flow.Validating)
+  action |> assert_equal(accept_invite.ValidateToken("il_token"))
 }
 
 pub fn token_validation_success_moves_to_ready_test() {
@@ -38,8 +41,8 @@ pub fn token_validation_success_moves_to_ready_test() {
 
   let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(token_flow.Ready("member@example.com"))
-  action |> should.equal(accept_invite.NoOp)
+  state |> assert_equal(token_flow.Ready("member@example.com"))
+  action |> assert_equal(accept_invite.NoOp)
 }
 
 pub fn token_validation_failure_moves_to_invalid_test() {
@@ -53,8 +56,8 @@ pub fn token_validation_failure_moves_to_invalid_test() {
   let token_flow.Model(state: state, ..) = next
 
   state
-  |> should.equal(token_flow.Invalid(code: "INVITE_INVALID", message: "Nope"))
-  action |> should.equal(accept_invite.NoOp)
+  |> assert_equal(token_flow.Invalid(code: "INVITE_INVALID", message: "Nope"))
+  action |> assert_equal(accept_invite.NoOp)
 }
 
 pub fn submit_requires_min_password_length_test() {
@@ -74,8 +77,8 @@ pub fn submit_requires_min_password_length_test() {
   let token_flow.Model(password_error: password_error, ..) = next
 
   password_error
-  |> should.equal(option.Some("Password must be at least 12 characters"))
-  action |> should.equal(accept_invite.NoOp)
+  |> assert_equal(option.Some("Password must be at least 12 characters"))
+  action |> assert_equal(accept_invite.NoOp)
 }
 
 pub fn submit_with_valid_password_triggers_register_action_test() {
@@ -94,9 +97,9 @@ pub fn submit_with_valid_password_triggers_register_action_test() {
 
   let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(token_flow.Submitting("member@example.com"))
+  state |> assert_equal(token_flow.Submitting("member@example.com"))
   action
-  |> should.equal(accept_invite.Register(
+  |> assert_equal(accept_invite.Register(
     token: "il_token",
     password: "passwordpassword",
   ))
@@ -130,8 +133,8 @@ pub fn registration_success_emits_authed_action_test() {
 
   let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(token_flow.Done)
-  action |> should.equal(accept_invite.Authed(authed_user))
+  state |> assert_equal(token_flow.Done)
+  action |> assert_equal(accept_invite.Authed(authed_user))
 }
 
 pub fn registration_invite_error_sets_invalid_state_test() {
@@ -156,7 +159,7 @@ pub fn registration_invite_error_sets_invalid_state_test() {
   let token_flow.Model(state: state, submit_error: submit_error, ..) = next
 
   state
-  |> should.equal(token_flow.Invalid(code: "INVITE_USED", message: "Used"))
-  submit_error |> should.equal(option.Some("Used"))
-  action |> should.equal(accept_invite.NoOp)
+  |> assert_equal(token_flow.Invalid(code: "INVITE_USED", message: "Used"))
+  submit_error |> assert_equal(option.Some("Used"))
+  action |> assert_equal(accept_invite.NoOp)
 }

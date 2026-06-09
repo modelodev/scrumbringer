@@ -1,10 +1,13 @@
 import domain/api_error.{type ApiError, ApiError}
 import domain/remote as remote_state
 import gleam/string
-import gleeunit/should
 import lustre/element
 import lustre/element/html.{div, text}
 import scrumbringer_client/ui/remote
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 pub fn view_remote_renders_loading_for_not_asked_test() {
   let rendered =
@@ -16,7 +19,7 @@ pub fn view_remote_renders_loading_for_not_asked_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Loading") |> should.be_true
+  assert_contains(html, "Loading")
 }
 
 pub fn view_remote_renders_error_for_failed_test() {
@@ -31,7 +34,7 @@ pub fn view_remote_renders_error_for_failed_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Boom") |> should.be_true
+  assert_contains(html, "Boom")
 }
 
 pub fn view_remote_renders_loaded_for_loaded_test() {
@@ -44,7 +47,7 @@ pub fn view_remote_renders_loaded_for_loaded_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Loaded") |> should.be_true
+  assert_contains(html, "Loaded")
 }
 
 pub fn view_remote_panel_uses_loading_panel_test() {
@@ -57,8 +60,8 @@ pub fn view_remote_panel_uses_loading_panel_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Metrics") |> should.be_true
-  string.contains(html, "Loading metrics...") |> should.be_true
+  assert_contains(html, "Metrics")
+  assert_contains(html, "Loading metrics...")
 }
 
 pub fn view_remote_inline_uses_error_view_test() {
@@ -72,5 +75,5 @@ pub fn view_remote_inline_uses_error_view_test() {
     )
 
   let html = element.to_document_string(rendered)
-  string.contains(html, "Oops") |> should.be_true
+  assert_contains(html, "Oops")
 }

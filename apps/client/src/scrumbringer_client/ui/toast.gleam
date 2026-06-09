@@ -28,6 +28,7 @@
 //// - **client_view.gleam**: Renders toasts
 //// - **client_update.gleam**: Integrates with main update
 
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
@@ -216,7 +217,7 @@ fn view_toast(
       attribute.attribute("aria-live", "polite"),
       attribute.attribute(
         "data-toast-id",
-        toast_id_to_int(toast.id) |> int_to_string,
+        toast_id_to_int(toast.id) |> int.to_string,
       ),
     ],
     [
@@ -252,35 +253,5 @@ fn variant_icon(variant: ToastVariant) -> String {
     Error -> "✕"
     Info -> "ℹ"
     Warning -> "⚠"
-  }
-}
-
-// Helper for int to string (avoiding gleam/int import for simplicity)
-fn int_to_string(n: Int) -> String {
-  case n {
-    0 -> "0"
-    _ -> do_int_to_string(n, "")
-  }
-}
-
-fn do_int_to_string(n: Int, acc: String) -> String {
-  case n {
-    0 -> acc
-    _ -> {
-      let digit = n % 10
-      let char = case digit {
-        0 -> "0"
-        1 -> "1"
-        2 -> "2"
-        3 -> "3"
-        4 -> "4"
-        5 -> "5"
-        6 -> "6"
-        7 -> "7"
-        8 -> "8"
-        _ -> "9"
-      }
-      do_int_to_string(n / 10, char <> acc)
-    }
   }
 }

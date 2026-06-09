@@ -1,8 +1,8 @@
 import gleam/dynamic/decode
-import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
+import scrumbringer_server/services/persisted_field
 
 pub type MetricsError {
   DbError(pog.QueryError)
@@ -154,7 +154,7 @@ pub fn get_task_metrics(
       coalesce(ec.unique_executors, 0) as unique_executors,
       coalesce(ec.first_claim_at, '') as first_claim_at,
       greatest(0, extract(epoch from (now() - ts.last_state_change_at))::int) as current_state_duration_s,
-      ts.pool_lifetime_s,
+      ts.pool_lifetime_s::int as pool_lifetime_s,
       ss.session_count,
       ss.total_work_time_s
     from task_scope ts
@@ -162,31 +162,10 @@ pub fn get_task_metrics(
     cross join sessions ss
   "
 
-  let decoder = {
-    use claim_count <- decode.field(0, decode.int)
-    use release_count <- decode.field(1, decode.int)
-    use unique_executors <- decode.field(2, decode.int)
-    use first_claim_at <- decode.field(3, decode.string)
-    use current_state_duration_s <- decode.field(4, decode.int)
-    use pool_lifetime_s <- decode.field(5, decode.int)
-    use session_count <- decode.field(6, decode.int)
-    use total_work_time_s <- decode.field(7, decode.int)
-    decode.success(TaskMetrics(
-      claim_count:,
-      release_count:,
-      unique_executors:,
-      first_claim_at: string_to_option(first_claim_at),
-      current_state_duration_s:,
-      pool_lifetime_s:,
-      session_count:,
-      total_work_time_s:,
-    ))
-  }
-
   case
     pog.query(query)
     |> pog.parameter(pog.int(task_id))
-    |> pog.returning(decoder)
+    |> pog.returning(task_metrics_decoder())
     |> pog.execute(db)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row)
@@ -276,35 +255,10 @@ fn fetch_milestone_summary(
       coalesce((select round(avg(unique_executors))::int from event_stats), 0) as avg_executors
   "
 
-  let decoder = {
-    use cards_total <- decode.field(0, decode.int)
-    use cards_completed <- decode.field(1, decode.int)
-    use tasks_total <- decode.field(2, decode.int)
-    use tasks_completed <- decode.field(3, decode.int)
-    use tasks_available <- decode.field(4, decode.int)
-    use tasks_claimed <- decode.field(5, decode.int)
-    use tasks_ongoing <- decode.field(6, decode.int)
-    use avg_rebotes <- decode.field(7, decode.int)
-    use avg_pool_lifetime_s <- decode.field(8, decode.int)
-    use avg_executors <- decode.field(9, decode.int)
-    decode.success(MilestoneSummary(
-      cards_total:,
-      cards_completed:,
-      tasks_total:,
-      tasks_completed:,
-      tasks_available:,
-      tasks_claimed:,
-      tasks_ongoing:,
-      avg_rebotes:,
-      avg_pool_lifetime_s:,
-      avg_executors:,
-    ))
-  }
-
   case
     pog.query(query)
     |> pog.parameter(pog.int(milestone_id))
-    |> pog.returning(decoder)
+    |> pog.returning(milestone_summary_decoder())
     |> pog.execute(db)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -357,31 +311,10 @@ fn fetch_card_summary(
       coalesce((select round(avg(unique_executors))::int from event_stats), 0) as avg_executors
   "
 
-  let decoder = {
-    use tasks_total <- decode.field(0, decode.int)
-    use tasks_completed <- decode.field(1, decode.int)
-    use tasks_available <- decode.field(2, decode.int)
-    use tasks_claimed <- decode.field(3, decode.int)
-    use tasks_ongoing <- decode.field(4, decode.int)
-    use avg_rebotes <- decode.field(5, decode.int)
-    use avg_pool_lifetime_s <- decode.field(6, decode.int)
-    use avg_executors <- decode.field(7, decode.int)
-    decode.success(CardSummary(
-      tasks_total:,
-      tasks_completed:,
-      tasks_available:,
-      tasks_claimed:,
-      tasks_ongoing:,
-      avg_rebotes:,
-      avg_pool_lifetime_s:,
-      avg_executors:,
-    ))
-  }
-
   case
     pog.query(query)
     |> pog.parameter(pog.int(card_id))
-    |> pog.returning(decoder)
+    |> pog.returning(card_summary_decoder())
     |> pog.execute(db)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -446,18 +379,9 @@ fn query_workflows(
   query: String,
   id: Int,
 ) -> Result(List(WorkflowCount), MetricsError) {
-  let decoder = {
-    use workflow_name <- decode.field(0, decode.string)
-    use count <- decode.field(1, decode.int)
-    decode.success(WorkflowCount(
-      name: string_to_option(workflow_name),
-      count: count,
-    ))
-  }
-
   pog.query(query)
   |> pog.parameter(pog.int(id))
-  |> pog.returning(decoder)
+  |> pog.returning(workflow_count_decoder())
   |> pog.execute(db)
   |> result.map(fn(returned) { returned.rows })
   |> result.map_error(DbError)
@@ -472,12 +396,11 @@ fn require_metrics_columns(db: pog.Connection) -> Result(Nil, MetricsError) {
       and column_name in ('pool_lifetime_s', 'last_entered_pool_at', 'created_from_rule_id')
   "
 
-  let decoder = {
-    use present <- decode.field(0, decode.int)
-    decode.success(present)
-  }
-
-  case pog.query(query) |> pog.returning(decoder) |> pog.execute(db) {
+  case
+    pog.query(query)
+    |> pog.returning(persisted_field.int_decoder())
+    |> pog.execute(db)
+  {
     Ok(pog.Returned(rows: [present, ..], ..)) ->
       case present == 3 {
         True -> Ok(Nil)
@@ -508,21 +431,90 @@ fn exists_query(
   query: String,
   id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use value <- decode.field(0, decode.bool)
-    decode.success(value)
-  }
+  use returned <- result.try(
+    pog.query(query)
+    |> pog.parameter(pog.int(id))
+    |> pog.returning(persisted_field.bool_decoder())
+    |> pog.execute(db),
+  )
 
-  pog.query(query)
-  |> pog.parameter(pog.int(id))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-  |> result.map(fn(returned) {
-    case returned.rows {
-      [value, ..] -> value
-      [] -> False
-    }
-  })
+  persisted_field.query_row(returned.rows)
+}
+
+fn task_metrics_decoder() -> decode.Decoder(TaskMetrics) {
+  use claim_count <- decode.field(0, decode.int)
+  use release_count <- decode.field(1, decode.int)
+  use unique_executors <- decode.field(2, decode.int)
+  use first_claim_at <- decode.field(3, decode.string)
+  use current_state_duration_s <- decode.field(4, decode.int)
+  use pool_lifetime_s <- decode.field(5, decode.int)
+  use session_count <- decode.field(6, decode.int)
+  use total_work_time_s <- decode.field(7, decode.int)
+  decode.success(TaskMetrics(
+    claim_count:,
+    release_count:,
+    unique_executors:,
+    first_claim_at: string_to_option(first_claim_at),
+    current_state_duration_s:,
+    pool_lifetime_s:,
+    session_count:,
+    total_work_time_s:,
+  ))
+}
+
+fn milestone_summary_decoder() -> decode.Decoder(MilestoneSummary) {
+  use cards_total <- decode.field(0, decode.int)
+  use cards_completed <- decode.field(1, decode.int)
+  use tasks_total <- decode.field(2, decode.int)
+  use tasks_completed <- decode.field(3, decode.int)
+  use tasks_available <- decode.field(4, decode.int)
+  use tasks_claimed <- decode.field(5, decode.int)
+  use tasks_ongoing <- decode.field(6, decode.int)
+  use avg_rebotes <- decode.field(7, decode.int)
+  use avg_pool_lifetime_s <- decode.field(8, decode.int)
+  use avg_executors <- decode.field(9, decode.int)
+  decode.success(MilestoneSummary(
+    cards_total:,
+    cards_completed:,
+    tasks_total:,
+    tasks_completed:,
+    tasks_available:,
+    tasks_claimed:,
+    tasks_ongoing:,
+    avg_rebotes:,
+    avg_pool_lifetime_s:,
+    avg_executors:,
+  ))
+}
+
+fn card_summary_decoder() -> decode.Decoder(CardSummary) {
+  use tasks_total <- decode.field(0, decode.int)
+  use tasks_completed <- decode.field(1, decode.int)
+  use tasks_available <- decode.field(2, decode.int)
+  use tasks_claimed <- decode.field(3, decode.int)
+  use tasks_ongoing <- decode.field(4, decode.int)
+  use avg_rebotes <- decode.field(5, decode.int)
+  use avg_pool_lifetime_s <- decode.field(6, decode.int)
+  use avg_executors <- decode.field(7, decode.int)
+  decode.success(CardSummary(
+    tasks_total:,
+    tasks_completed:,
+    tasks_available:,
+    tasks_claimed:,
+    tasks_ongoing:,
+    avg_rebotes:,
+    avg_pool_lifetime_s:,
+    avg_executors:,
+  ))
+}
+
+fn workflow_count_decoder() -> decode.Decoder(WorkflowCount) {
+  use workflow_name <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(WorkflowCount(
+    name: string_to_option(workflow_name),
+    count: count,
+  ))
 }
 
 fn most_activated_workflow(workflows: List(WorkflowCount)) -> Option(String) {
@@ -544,15 +536,4 @@ pub fn percent(completed: Int, total: Int) -> Int {
     0 -> 0
     _ -> completed * 100 / total
   }
-}
-
-pub fn workflow_name_or_default(name: Option(String)) -> String {
-  case name {
-    Some(value) -> value
-    None -> "sin_workflow"
-  }
-}
-
-pub fn id_to_string(id: Int) -> String {
-  int.to_string(id)
 }

@@ -8,6 +8,10 @@ pub type MilestoneState {
   Completed
 }
 
+pub type MilestoneStateParseError {
+  UnknownMilestoneState(String)
+}
+
 pub type Milestone {
   Milestone(
     id: Int,
@@ -49,10 +53,19 @@ pub fn state_to_string(state: MilestoneState) -> String {
   }
 }
 
-pub fn state_from_string(state: String) -> MilestoneState {
+pub fn parse_state(
+  state: String,
+) -> Result(MilestoneState, MilestoneStateParseError) {
   case state {
-    "active" -> Active
-    "completed" -> Completed
-    _ -> Ready
+    "ready" -> Ok(Ready)
+    "active" -> Ok(Active)
+    "completed" -> Ok(Completed)
+    other -> Error(UnknownMilestoneState(other))
   }
+}
+
+pub fn state_from_string(
+  state: String,
+) -> Result(MilestoneState, MilestoneStateParseError) {
+  parse_state(state)
 }

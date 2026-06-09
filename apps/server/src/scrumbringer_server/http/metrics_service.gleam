@@ -20,6 +20,7 @@
 import domain/task_status
 import gleam/int
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import pog
 
 import scrumbringer_server/sql
@@ -100,7 +101,7 @@ pub type ProjectTask {
     title: String,
     description: String,
     priority: Int,
-    status: String,
+    status: task_status.TaskStatus,
     work_state: WorkState,
     created_by: Int,
     claimed_by: Option(Int),
@@ -122,6 +123,7 @@ pub type WorkState =
 /// Error type for metrics operations.
 pub type MetricsError {
   DbError(pog.QueryError)
+  InvalidTaskStatus(String)
   NotFound
 }
 
@@ -227,7 +229,7 @@ pub fn get_project_tasks(
   window_days: Int,
 ) -> Result(List(ProjectTask), MetricsError) {
   case sql.metrics_project_tasks(db, project_id, int.to_string(window_days)) {
-    Ok(pog.Returned(rows: rows, ..)) -> Ok(rows |> map_project_tasks)
+    Ok(pog.Returned(rows: rows, ..)) -> map_project_tasks(rows)
     Error(e) -> Error(DbError(e))
   }
 }
@@ -377,7 +379,7 @@ fn do_map_user_rows(
 
 fn map_project_tasks(
   rows: List(sql.MetricsProjectTasksRow),
-) -> List(ProjectTask) {
+) -> Result(List(ProjectTask), MetricsError) {
   rows
   |> do_map_project_tasks([])
 }
@@ -385,54 +387,63 @@ fn map_project_tasks(
 fn do_map_project_tasks(
   rows: List(sql.MetricsProjectTasksRow),
   acc: List(ProjectTask),
-) -> List(ProjectTask) {
+) -> Result(List(ProjectTask), MetricsError) {
   case rows {
-    [] -> reverse(acc)
+    [] -> Ok(reverse(acc))
     [row, ..rest] -> {
-      let claimed_by = case row.claimed_by {
-        0 -> None
-        other -> Some(other)
-      }
+      use task <- result.try(project_task_from_row(row))
 
-      let ongoing_by_user_id = case row.ongoing_by_user_id {
-        0 -> None
-        other -> Some(other)
-      }
-
-      let claimed_at = empty_string_to_option(row.claimed_at)
-      let completed_at = empty_string_to_option(row.completed_at)
-      let first_claim_at = empty_string_to_option(row.first_claim_at)
-
-      let work_state = work_state_from(row.status, row.is_ongoing)
-
-      do_map_project_tasks(rest, [
-        ProjectTask(
-          id: row.id,
-          project_id: row.project_id,
-          type_id: row.type_id,
-          type_name: row.type_name,
-          type_icon: row.type_icon,
-          ongoing_by_user_id: ongoing_by_user_id,
-          title: row.title,
-          description: row.description,
-          priority: row.priority,
-          status: row.status,
-          work_state: work_state,
-          created_by: row.created_by,
-          claimed_by: claimed_by,
-          claimed_at: claimed_at,
-          completed_at: completed_at,
-          created_at: row.created_at,
-          version: row.version,
-          claim_count: row.claim_count,
-          release_count: row.release_count,
-          complete_count: row.complete_count,
-          first_claim_at: first_claim_at,
-        ),
-        ..acc
-      ])
+      do_map_project_tasks(rest, [task, ..acc])
     }
   }
+}
+
+fn project_task_from_row(
+  row: sql.MetricsProjectTasksRow,
+) -> Result(ProjectTask, MetricsError) {
+  let claimed_by = case row.claimed_by {
+    0 -> None
+    other -> Some(other)
+  }
+
+  let ongoing_by_user_id = case row.ongoing_by_user_id {
+    0 -> None
+    other -> Some(other)
+  }
+
+  let claimed_at = empty_string_to_option(row.claimed_at)
+  let completed_at = empty_string_to_option(row.completed_at)
+  let first_claim_at = empty_string_to_option(row.first_claim_at)
+
+  use status <- result.try(
+    task_status.parse_task_status(row.status)
+    |> result.map_error(fn(_) { InvalidTaskStatus(row.status) }),
+  )
+  let work_state = work_state_from_status(status, row.is_ongoing)
+
+  Ok(ProjectTask(
+    id: row.id,
+    project_id: row.project_id,
+    type_id: row.type_id,
+    type_name: row.type_name,
+    type_icon: row.type_icon,
+    ongoing_by_user_id: ongoing_by_user_id,
+    title: row.title,
+    description: row.description,
+    priority: row.priority,
+    status: status,
+    work_state: work_state,
+    created_by: row.created_by,
+    claimed_by: claimed_by,
+    claimed_at: claimed_at,
+    completed_at: completed_at,
+    created_at: row.created_at,
+    version: row.version,
+    claim_count: row.claim_count,
+    release_count: row.release_count,
+    complete_count: row.complete_count,
+    first_claim_at: first_claim_at,
+  ))
 }
 
 fn reverse(list: List(a)) -> List(a) {
@@ -460,31 +471,32 @@ fn empty_string_to_option(value: String) -> Option(String) {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Derive work state from status and ongoing flag.
-pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
+pub fn work_state_from(
+  status: String,
+  is_ongoing: Bool,
+) -> Result(WorkState, MetricsError) {
+  use parsed <- result.try(
+    task_status.parse_task_status(status)
+    |> result.map_error(fn(_) { InvalidTaskStatus(status) }),
+  )
+
+  Ok(work_state_from_status(parsed, is_ongoing))
+}
+
+fn work_state_from_status(
+  status: task_status.TaskStatus,
+  is_ongoing: Bool,
+) -> WorkState {
   case status {
-    "available" -> task_status.WorkAvailable
-    "completed" -> task_status.WorkCompleted
-    "claimed" ->
+    task_status.Available -> task_status.WorkAvailable
+    task_status.Completed -> task_status.WorkCompleted
+    task_status.Claimed(task_status.Ongoing) -> task_status.WorkOngoing
+    task_status.Claimed(task_status.Taken) ->
       // Justification: nested case disambiguates claimed vs ongoing states.
       case is_ongoing {
         True -> task_status.WorkOngoing
         False -> task_status.WorkClaimed
       }
-    _ -> task_status.WorkClaimed
-  }
-}
-
-/// Converts a work state to its wire/string representation.
-///
-/// Example:
-///   work_state_to_string(task_status.WorkAvailable)
-pub fn work_state_to_string(state: WorkState) -> String {
-  case state {
-    task_status.WorkAvailable -> "available"
-    task_status.WorkClaimed -> "claimed"
-    task_status.WorkOngoing -> "ongoing"
-    task_status.WorkCompleted -> "completed"
   }
 }

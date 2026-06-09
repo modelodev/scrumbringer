@@ -7,9 +7,8 @@
 
 import gleam/list
 import gleam/option
-import gleeunit/should
 
-import domain/card.{Cerrada, EnCurso, Pendiente}
+import domain/card.{Cerrada, EnCurso, Pendiente, all_colors}
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 
@@ -18,34 +17,28 @@ import scrumbringer_client/ui/color_picker
 // =============================================================================
 
 pub fn generate_initials_two_words_test() {
-  let initials = card_badge.generate_initials("Hello World")
-  initials |> should.equal("HW")
+  let assert "HW" = card_badge.generate_initials("Hello World")
 }
 
 pub fn generate_initials_single_word_test() {
-  let initials = card_badge.generate_initials("Hello")
-  initials |> should.equal("HE")
+  let assert "HE" = card_badge.generate_initials("Hello")
 }
 
 pub fn generate_initials_three_words_test() {
-  let initials = card_badge.generate_initials("Auth Login Flow")
-  initials |> should.equal("AL")
+  let assert "AL" = card_badge.generate_initials("Auth Login Flow")
 }
 
 pub fn generate_initials_single_char_test() {
-  let initials = card_badge.generate_initials("X")
-  initials |> should.equal("X")
+  let assert "X" = card_badge.generate_initials("X")
 }
 
 pub fn generate_initials_empty_test() {
   // Empty string returns "??" fallback
-  let initials = card_badge.generate_initials("")
-  initials |> should.equal("??")
+  let assert "??" = card_badge.generate_initials("")
 }
 
 pub fn generate_initials_lowercase_test() {
-  let initials = card_badge.generate_initials("test card")
-  initials |> should.equal("TC")
+  let assert "TC" = card_badge.generate_initials("test card")
 }
 
 // =============================================================================
@@ -53,65 +46,58 @@ pub fn generate_initials_lowercase_test() {
 // =============================================================================
 
 pub fn all_colors_has_8_colors_test() {
-  let colors = color_picker.all_colors
-  list.length(colors) |> should.equal(8)
+  let assert 8 = list.length(all_colors)
 }
 
 pub fn color_to_string_gray_test() {
-  color_picker.color_to_string(color_picker.Gray) |> should.equal("gray")
+  let assert "gray" = card.color_to_string(card.Gray)
 }
 
 pub fn color_to_string_red_test() {
-  color_picker.color_to_string(color_picker.Red) |> should.equal("red")
+  let assert "red" = card.color_to_string(card.Red)
 }
 
 pub fn color_to_string_blue_test() {
-  color_picker.color_to_string(color_picker.Blue) |> should.equal("blue")
+  let assert "blue" = card.color_to_string(card.Blue)
 }
 
 pub fn string_to_color_gray_test() {
-  color_picker.string_to_color("gray")
-  |> should.equal(option.Some(color_picker.Gray))
+  let assert option.Some(card.Gray) = color_picker.string_to_color("gray")
 }
 
 pub fn string_to_color_red_test() {
-  color_picker.string_to_color("red")
-  |> should.equal(option.Some(color_picker.Red))
+  let assert option.Some(card.Red) = color_picker.string_to_color("red")
 }
 
 pub fn string_to_color_invalid_test() {
-  color_picker.string_to_color("invalid")
-  |> should.equal(option.None)
+  let assert option.None = color_picker.string_to_color("invalid")
 }
 
 pub fn string_to_color_empty_test() {
-  color_picker.string_to_color("")
-  |> should.equal(option.None)
+  let assert option.None = color_picker.string_to_color("")
 }
 
 pub fn border_class_gray_test() {
-  color_picker.border_class(option.Some(color_picker.Gray))
-  |> should.equal("card-border-gray")
+  let assert "card-border-gray" =
+    color_picker.border_class(option.Some(card.Gray))
 }
 
 pub fn border_class_red_test() {
-  color_picker.border_class(option.Some(color_picker.Red))
-  |> should.equal("card-border-red")
+  let assert "card-border-red" =
+    color_picker.border_class(option.Some(card.Red))
 }
 
 pub fn border_class_none_test() {
-  color_picker.border_class(option.None)
-  |> should.equal("")
+  let assert "" = color_picker.border_class(option.None)
 }
 
 pub fn initials_class_blue_test() {
-  color_picker.initials_class(option.Some(color_picker.Blue))
-  |> should.equal("card-initials-blue")
+  let assert "card-initials-blue" =
+    color_picker.initials_class(option.Some(card.Blue))
 }
 
 pub fn initials_class_none_test() {
-  color_picker.initials_class(option.None)
-  |> should.equal("card-initials-none")
+  let assert "card-initials-none" = color_picker.initials_class(option.None)
 }
 
 // =============================================================================
@@ -119,26 +105,26 @@ pub fn initials_class_none_test() {
 // =============================================================================
 
 pub fn derive_state_no_tasks_pendiente_test() {
-  card.derive_state(0, 0, 0) |> should.equal(Pendiente)
+  let assert Pendiente = card.derive_state(0, 0, 0)
 }
 
 pub fn derive_state_all_completed_cerrada_test() {
-  card.derive_state(3, 3, 0) |> should.equal(Cerrada)
+  let assert Cerrada = card.derive_state(3, 3, 0)
 }
 
 pub fn derive_state_some_claimed_en_curso_test() {
   // 3 tasks, 1 completed, 1 available (means 1 claimed/ongoing)
-  card.derive_state(3, 1, 1) |> should.equal(EnCurso)
+  let assert EnCurso = card.derive_state(3, 1, 1)
 }
 
 pub fn derive_state_all_available_pendiente_test() {
   // 3 tasks, 0 completed, 3 available
-  card.derive_state(3, 0, 3) |> should.equal(Pendiente)
+  let assert Pendiente = card.derive_state(3, 0, 3)
 }
 
 pub fn derive_state_one_completed_en_curso_test() {
   // 5 tasks, 1 completed, 2 available (means 2 claimed/ongoing)
-  card.derive_state(5, 1, 2) |> should.equal(EnCurso)
+  let assert EnCurso = card.derive_state(5, 1, 2)
 }
 
 // =============================================================================
@@ -146,29 +132,30 @@ pub fn derive_state_one_completed_en_curso_test() {
 // =============================================================================
 
 pub fn state_to_string_pendiente_test() {
-  card.state_to_string(Pendiente) |> should.equal("pendiente")
+  let assert "pendiente" = card.state_to_string(Pendiente)
 }
 
 pub fn state_to_string_en_curso_test() {
-  card.state_to_string(EnCurso) |> should.equal("en_curso")
+  let assert "en_curso" = card.state_to_string(EnCurso)
 }
 
 pub fn state_to_string_cerrada_test() {
-  card.state_to_string(Cerrada) |> should.equal("cerrada")
+  let assert "cerrada" = card.state_to_string(Cerrada)
 }
 
 pub fn state_from_string_pendiente_test() {
-  card.state_from_string("pendiente") |> should.equal(Pendiente)
+  let assert Ok(Pendiente) = card.state_from_string("pendiente")
 }
 
 pub fn state_from_string_en_curso_test() {
-  card.state_from_string("en_curso") |> should.equal(EnCurso)
+  let assert Ok(EnCurso) = card.state_from_string("en_curso")
 }
 
 pub fn state_from_string_cerrada_test() {
-  card.state_from_string("cerrada") |> should.equal(Cerrada)
+  let assert Ok(Cerrada) = card.state_from_string("cerrada")
 }
 
-pub fn state_from_string_invalid_defaults_pendiente_test() {
-  card.state_from_string("invalid") |> should.equal(Pendiente)
+pub fn state_from_string_invalid_returns_error_test() {
+  let assert Error(card.UnknownCardState("invalid")) =
+    card.state_from_string("invalid")
 }

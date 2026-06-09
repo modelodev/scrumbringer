@@ -35,7 +35,6 @@ import lustre/element/html.{img, span}
 
 import gleroglero/outline
 
-import scrumbringer_client/client_state.{type Msg}
 import scrumbringer_client/permissions
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/icon_catalog
@@ -113,7 +112,7 @@ pub fn view_heroicon_inline(
   name: String,
   size: Int,
   theme: Theme,
-) -> Element(Msg) {
+) -> Element(msg) {
   let filter = case theme {
     theme.Dark -> "invert(1)"
     theme.Default -> ""
@@ -135,7 +134,6 @@ pub fn view_heroicon_inline(
 // Task Type Icon Utilities
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
 /// Render a task type icon inline with theme awareness.
 ///
 /// Uses the curated icon catalog for embedded SVG rendering.
@@ -144,7 +142,7 @@ pub fn view_task_type_icon_inline(
   icon_name: String,
   size: Int,
   theme: Theme,
-) -> Element(Msg) {
+) -> Element(msg) {
   case string.is_empty(icon_name) {
     True -> element.none()
     False ->

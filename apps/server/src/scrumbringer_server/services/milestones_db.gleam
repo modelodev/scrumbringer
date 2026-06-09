@@ -3,6 +3,7 @@
 import domain/milestone as milestone_domain
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
@@ -28,6 +29,7 @@ pub type ActivationSnapshot {
 pub type MilestoneError {
   NotFound
   DeleteNotAllowed
+  InvalidState(String)
   DbError(pog.QueryError)
 }
 
@@ -50,8 +52,7 @@ pub fn list_milestones(
     Error(e) -> Error(DbError(e))
     Ok(returned) ->
       returned.rows
-      |> list.map(from_list_row)
-      |> Ok
+      |> list.try_map(from_list_row)
   }
 }
 
@@ -62,7 +63,7 @@ pub fn get_milestone(
   case sql.milestones_get(db, milestone_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_base_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_base_row(row)
   }
 }
 
@@ -78,13 +79,13 @@ pub fn create_milestone(
       db,
       project_id,
       name,
-      option.unwrap(description, ""),
+      description_text(description),
       created_by,
     )
   {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_create_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_create_row(row)
   }
 }
 
@@ -97,8 +98,9 @@ pub fn activate_milestone(
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      use milestone <- result.try(from_activate_row(row))
       Ok(ActivationSnapshot(
-        milestone: from_activate_row(row),
+        milestone: milestone,
         cards_released: row.cards_released,
         tasks_released: row.tasks_released,
       ))
@@ -112,14 +114,22 @@ pub fn update_milestone(
   name: Option(String),
   description: Option(String),
 ) -> Result(milestone_domain.Milestone, MilestoneError) {
-  let name_value = option.unwrap(name, "__unset__")
-  let description_value = option.unwrap(description, "__unset__")
+  let name_value = text_update_value(name)
+  let description_value = text_update_value(description)
 
   case sql.milestones_update(db, milestone_id, name_value, description_value) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_update_row(row))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> from_update_row(row)
   }
+}
+
+fn description_text(description: Option(String)) -> String {
+  option_helpers.option_to_value(description, "")
+}
+
+fn text_update_value(value: Option(String)) -> String {
+  option_helpers.option_to_value(value, "__unset__")
 }
 
 pub fn delete_milestone(
@@ -129,6 +139,7 @@ pub fn delete_milestone(
   case get_milestone(db, milestone_id) {
     Error(NotFound) -> Error(NotFound)
     Error(DeleteNotAllowed) -> Error(DeleteNotAllowed)
+    Error(InvalidState(state)) -> Error(InvalidState(state))
     Error(DbError(e)) -> Error(DbError(e))
     Ok(_) ->
       case sql.milestones_delete(db, milestone_id) {
@@ -146,7 +157,10 @@ pub fn recompute_completion(
   case sql.milestones_recompute_completion(db, milestone_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Ok(None)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(Some(from_recompute_row(row)))
+    Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      use milestone <- result.try(from_recompute_row(row))
+      Ok(Some(milestone))
+    }
   }
 }
 
@@ -162,102 +176,148 @@ pub fn get_effective_milestone_for_task(
   }
 }
 
-fn from_list_row(row: sql.MilestonesListRow) -> MilestoneWithProgress {
-  MilestoneWithProgress(
-    milestone: milestone_domain.Milestone(
-      id: row.id,
-      project_id: row.project_id,
-      name: row.name,
-      description: option_helpers.string_to_option(row.description),
-      state: milestone_domain.state_from_string(row.state),
-      position: row.position,
-      created_by: row.created_by,
-      created_at: row.created_at,
-      activated_at: option_helpers.string_to_option(row.activated_at),
-      completed_at: option_helpers.string_to_option(row.completed_at),
-    ),
+fn parse_state(
+  state: String,
+) -> Result(milestone_domain.MilestoneState, MilestoneError) {
+  case milestone_domain.state_from_string(state) {
+    Ok(parsed) -> Ok(parsed)
+    Error(milestone_domain.UnknownMilestoneState(raw)) ->
+      Error(InvalidState(raw))
+  }
+}
+
+fn milestone_from_fields(
+  id: Int,
+  project_id: Int,
+  name: String,
+  description: String,
+  state: String,
+  position: Int,
+  created_by: Int,
+  created_at: String,
+  activated_at: String,
+  completed_at: String,
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  use parsed_state <- result.try(parse_state(state))
+  Ok(milestone_domain.Milestone(
+    id: id,
+    project_id: project_id,
+    name: name,
+    description: option_helpers.string_to_option(description),
+    state: parsed_state,
+    position: position,
+    created_by: created_by,
+    created_at: created_at,
+    activated_at: option_helpers.string_to_option(activated_at),
+    completed_at: option_helpers.string_to_option(completed_at),
+  ))
+}
+
+fn from_list_row(
+  row: sql.MilestonesListRow,
+) -> Result(MilestoneWithProgress, MilestoneError) {
+  use milestone <- result.try(milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
+  ))
+  Ok(MilestoneWithProgress(
+    milestone: milestone,
     cards_total: row.cards_total,
     cards_completed: row.cards_completed,
     tasks_total: row.tasks_total,
     tasks_completed: row.tasks_completed,
+  ))
+}
+
+fn from_base_row(
+  row: sql.MilestonesGetRow,
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
   )
 }
 
-fn from_base_row(row: sql.MilestonesGetRow) -> milestone_domain.Milestone {
-  milestone_domain.Milestone(
-    id: row.id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    state: milestone_domain.state_from_string(row.state),
-    position: row.position,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    activated_at: option_helpers.string_to_option(row.activated_at),
-    completed_at: option_helpers.string_to_option(row.completed_at),
+fn from_create_row(
+  row: sql.MilestonesCreateRow,
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
   )
 }
 
-fn from_create_row(row: sql.MilestonesCreateRow) -> milestone_domain.Milestone {
-  milestone_domain.Milestone(
-    id: row.id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    state: milestone_domain.state_from_string(row.state),
-    position: row.position,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    activated_at: option_helpers.string_to_option(row.activated_at),
-    completed_at: option_helpers.string_to_option(row.completed_at),
-  )
-}
-
-fn from_update_row(row: sql.MilestonesUpdateRow) -> milestone_domain.Milestone {
-  milestone_domain.Milestone(
-    id: row.id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    state: milestone_domain.state_from_string(row.state),
-    position: row.position,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    activated_at: option_helpers.string_to_option(row.activated_at),
-    completed_at: option_helpers.string_to_option(row.completed_at),
+fn from_update_row(
+  row: sql.MilestonesUpdateRow,
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
   )
 }
 
 fn from_activate_row(
   row: sql.MilestonesActivateRow,
-) -> milestone_domain.Milestone {
-  milestone_domain.Milestone(
-    id: row.id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    state: milestone_domain.state_from_string(row.state),
-    position: row.position,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    activated_at: option_helpers.string_to_option(row.activated_at),
-    completed_at: option_helpers.string_to_option(row.completed_at),
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
   )
 }
 
 fn from_recompute_row(
   row: sql.MilestonesRecomputeCompletionRow,
-) -> milestone_domain.Milestone {
-  milestone_domain.Milestone(
-    id: row.id,
-    project_id: row.project_id,
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    state: milestone_domain.state_from_string(row.state),
-    position: row.position,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    activated_at: option_helpers.string_to_option(row.activated_at),
-    completed_at: option_helpers.string_to_option(row.completed_at),
+) -> Result(milestone_domain.Milestone, MilestoneError) {
+  milestone_from_fields(
+    row.id,
+    row.project_id,
+    row.name,
+    row.description,
+    row.state,
+    row.position,
+    row.created_by,
+    row.created_at,
+    row.activated_at,
+    row.completed_at,
   )
 }

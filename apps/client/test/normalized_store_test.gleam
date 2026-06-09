@@ -1,6 +1,5 @@
 import gleam/list
 import gleam/option
-import gleeunit/should
 
 import domain/card.{type Card, Card, Pendiente}
 import scrumbringer_client/state/normalized_store
@@ -36,7 +35,7 @@ pub fn upsert_deduplicates_by_id_test() {
     |> normalized_store.upsert(10, [card_a, card_b], card_id)
 
   let cards = normalized_store.get_by_project(store, 10)
-  list.length(cards) |> should.equal(1)
+  let assert 1 = list.length(cards)
 }
 
 pub fn upsert_empty_list_no_changes_test() {
@@ -48,8 +47,9 @@ pub fn upsert_empty_list_no_changes_test() {
 
   let next = normalized_store.upsert(store, 10, [], card_id)
 
-  normalized_store.get_by_project(next, 10)
-  |> should.equal(normalized_store.get_by_project(store, 10))
+  let assert True =
+    normalized_store.get_by_project(next, 10)
+    == normalized_store.get_by_project(store, 10)
 }
 
 pub fn to_list_preserves_project_order_test() {
@@ -62,15 +62,15 @@ pub fn to_list_preserves_project_order_test() {
     |> normalized_store.upsert(10, [card_a, card_b], card_id)
     |> normalized_store.upsert(20, [card_c], card_id)
 
-  normalized_store.to_list(store) |> should.equal([card_a, card_b, card_c])
+  let assert True = normalized_store.to_list(store) == [card_a, card_b, card_c]
 }
 
 pub fn to_list_skips_missing_ids_test() {
   let store = normalized_store.new()
-  normalized_store.to_list(store) |> should.equal([])
+  let assert [] = normalized_store.to_list(store)
 }
 
 pub fn get_by_project_ignores_missing_ids_test() {
   let store = normalized_store.new()
-  normalized_store.get_by_project(store, 999) |> should.equal([])
+  let assert [] = normalized_store.get_by_project(store, 999)
 }

@@ -1,15 +1,15 @@
 import gleam/string
-import gleeunit/should
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text
 
 fn assert_non_empty(value: String) {
-  value
-  |> string.trim
-  |> string.length
-  |> should.not_equal(0)
+  let assert True =
+    value
+    |> string.trim
+    |> string.length
+    |> fn(length) { length > 0 }
 }
 
 pub fn i18n_smoke_selected_texts_en_test() {

@@ -5,6 +5,10 @@
 //// - Extract IDs from API responses (not raw SQL)
 //// - Reduce duplication across test modules
 
+import domain/card as domain_card
+import domain/org_role
+import domain/project_role
+import domain/task_status
 import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
@@ -20,6 +24,7 @@ import scrumbringer_server
 import scrumbringer_server/seed_db
 import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/rules_engine
+import scrumbringer_server/services/workflows/validation_core
 import wisp
 import wisp/simulate
 
@@ -307,9 +312,15 @@ pub fn create_rule(
   workflow_id: Int,
   task_type_id: Option(Int),
   name: String,
-  to_state: String,
+  to_state: task_status.TaskStatus,
 ) -> Result(Int, String) {
-  let payload = build_rule_payload(TaskResource, name, to_state, task_type_id)
+  let payload =
+    build_rule_payload(
+      TaskResource,
+      name,
+      task_status.task_status_to_string(to_state),
+      task_type_id,
+    )
   do_create_rule(handler, session, workflow_id, name, payload)
 }
 
@@ -319,9 +330,15 @@ pub fn create_rule_card(
   session: Session,
   workflow_id: Int,
   name: String,
-  to_state: String,
+  to_state: domain_card.CardState,
 ) -> Result(Int, String) {
-  let payload = build_rule_payload(CardResource, name, to_state, None)
+  let payload =
+    build_rule_payload(
+      CardResource,
+      name,
+      domain_card.state_to_string(to_state),
+      None,
+    )
   do_create_rule(handler, session, workflow_id, name, payload)
 }
 
@@ -404,7 +421,7 @@ pub fn create_template(
     type_id,
     name,
     "Auto-created task",
-    None,
+    3,
   )
 }
 
@@ -424,7 +441,27 @@ pub fn create_template_with_desc(
     type_id,
     name,
     description,
-    None,
+    3,
+  )
+}
+
+/// Create a task template with a validated explicit priority.
+pub fn create_template_with_priority(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  type_id: Int,
+  name: String,
+  priority: Int,
+) -> Result(Int, String) {
+  create_template_full(
+    handler,
+    session,
+    project_id,
+    type_id,
+    name,
+    "Auto-created task",
+    priority,
   )
 }
 
@@ -436,9 +473,9 @@ pub fn create_template_full(
   type_id: Int,
   name: String,
   description: String,
-  priority: Option(Int),
+  priority: Int,
 ) -> Result(Int, String) {
-  let priority_val = option.unwrap(priority, 3)
+  use _ <- result.try(validate_template_priority(priority))
   let res =
     handler(
       simulate.request(
@@ -451,7 +488,7 @@ pub fn create_template_full(
           #("name", json.string(name)),
           #("description", json.string(description)),
           #("type_id", json.int(type_id)),
-          #("priority", json.int(priority_val)),
+          #("priority", json.int(priority)),
         ]),
       ),
     )
@@ -468,6 +505,13 @@ pub fn create_template_full(
         <> simulate.read_body(res),
       )
   }
+}
+
+fn validate_template_priority(priority: Int) -> Result(Nil, String) {
+  validation_core.validate_priority_value(priority)
+  |> result.map_error(fn(_) {
+    "Invalid task template priority: " <> int.to_string(priority)
+  })
 }
 
 /// Create a task and return its ID.
@@ -862,16 +906,16 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
 }
 
 /// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
-pub fn task_event(
+pub fn task_event_status(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
-  to_state: String,
+  from_state: Option(task_status.TaskStatus),
+  to_state: task_status.TaskStatus,
   task_type_id: Option(Int),
 ) -> rules_engine.StateChange {
-  task_event_with_card(
+  task_event_status_with_card(
     task_id,
     project_id,
     org_id,
@@ -884,17 +928,17 @@ pub fn task_event(
 }
 
 /// Create a StateChange for a task resource with card_id.
-pub fn task_event_with_card(
+pub fn task_event_status_with_card(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
-  to_state: String,
+  from_state: Option(task_status.TaskStatus),
+  to_state: task_status.TaskStatus,
   task_type_id: Option(Int),
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
-  task_event_full(
+  task_event_status_full(
     task_id,
     project_id,
     org_id,
@@ -908,13 +952,13 @@ pub fn task_event_with_card(
 }
 
 /// Create a StateChange for a task with full control (user_triggered, card_id).
-pub fn task_event_full(
+pub fn task_event_status_full(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
-  to_state: String,
+  from_state: Option(task_status.TaskStatus),
+  to_state: task_status.TaskStatus,
   task_type_id: Option(Int),
   user_triggered: Bool,
   card_id: Option(Int),
@@ -938,15 +982,15 @@ pub fn task_event_full(
 }
 
 /// Create a StateChange for a card resource (user_triggered defaults to True).
-pub fn card_event(
+pub fn card_event_state(
   card_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
-  to_state: String,
+  from_state: Option(domain_card.CardState),
+  to_state: domain_card.CardState,
 ) -> rules_engine.StateChange {
-  card_event_full(
+  card_event_state_full(
     card_id,
     project_id,
     org_id,
@@ -958,13 +1002,13 @@ pub fn card_event(
 }
 
 /// Create a StateChange for a card resource with explicit user_triggered.
-pub fn card_event_full(
+pub fn card_event_state_full(
   card_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
-  to_state: String,
+  from_state: Option(domain_card.CardState),
+  to_state: domain_card.CardState,
   user_triggered: Bool,
 ) -> rules_engine.StateChange {
   rules_engine.CardChange(
@@ -1117,7 +1161,7 @@ pub fn insert_card_db(
   db: pog.Connection,
   project_id: Int,
   title: String,
-  color: Option(String),
+  color: Option(domain_card.CardColor),
   created_by: Int,
 ) -> Result(Int, String) {
   seed_db.insert_card_simple(db, project_id, title, color, created_by)
@@ -1128,7 +1172,7 @@ pub fn insert_user_db(
   db: pog.Connection,
   org_id: Int,
   email: String,
-  org_role: String,
+  org_role: org_role.OrgRole,
 ) -> Result(Int, String) {
   seed_db.insert_user_simple(db, org_id, email, org_role)
 }
@@ -1157,7 +1201,7 @@ pub fn insert_member_db(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  role: String,
+  role: project_role.ProjectRole,
 ) -> Result(Nil, String) {
   seed_db.insert_member(db, project_id, user_id, role)
 }
@@ -1202,11 +1246,11 @@ fn find_cookie_value(
 
   case list.find(cookies, fn(h) { string.starts_with(h, target) }) {
     Ok(header) -> {
-      let #(value, _) =
+      let assert Ok(#(value, _)) =
         header
         |> string.drop_start(string.length(target))
         |> string.split_once(";")
-        |> result.unwrap(#("", ""))
+
       Some(value)
     }
     Error(_) -> None

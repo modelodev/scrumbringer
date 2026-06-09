@@ -10,40 +10,251 @@ import gleam/set
 
 import lustre/effect.{type Effect}
 
-import domain/api_error.{type ApiError}
+import domain/api_error.{type ApiError, type ApiResult}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
-import domain/project_role.{type ProjectRole, Member, parse}
-import domain/remote.{
-  type Remote, Failed, Loaded, Loading, NotAsked, from_result,
-}
+import domain/project_role.{type ProjectRole, Member}
+import domain/remote.{type Remote, Loaded, Loading, from_result, should_fetch}
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state
-import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
-import scrumbringer_client/router
 
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
-import scrumbringer_client/helpers/auth as helpers_auth
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/toast as helpers_toast
+import scrumbringer_client/features/admin/msg as admin_messages
+
+pub type Context(parent_msg) {
+  Context(
+    active_section: permissions.AdminSection,
+    on_project_members_fetched: fn(Int, ApiResult(List(ProjectMember))) ->
+      parent_msg,
+    on_user_projects_fetched: fn(Int, ApiResult(List(Project))) -> parent_msg,
+    on_project_member_added: fn(Int, ApiResult(ProjectMember)) -> parent_msg,
+    on_user_project_added: fn(Int, ApiResult(Project)) -> parent_msg,
+    on_remove_completed: fn(Int, Int, ApiResult(Nil)) -> parent_msg,
+    on_role_change_completed: fn(
+      Int,
+      Int,
+      ApiResult(api_projects.RoleChangeResult),
+    ) ->
+      parent_msg,
+  )
+}
+
+pub type FeedbackContext(parent_msg) {
+  FeedbackContext(on_error_toast: fn(String) -> Effect(parent_msg))
+}
+
+pub type AuthPolicy {
+  NoAuthCheck
+  CheckAuth(ApiError)
+  CheckAuthAfterUpdate(ApiError)
+}
+
+pub type RootPolicy {
+  NoRootPolicy
+  ReplaceAssignmentsView(assignments_view_mode.AssignmentsViewMode)
+  MemberRoleSuccessFeedback
+  MemberRoleErrorFeedback(ApiError)
+}
+
+pub type Update(parent_msg) {
+  Update(
+    state_types.AssignmentsModel,
+    Effect(parent_msg),
+    AuthPolicy,
+    RootPolicy,
+  )
+}
+
+pub fn try_update(
+  model: state_types.AssignmentsModel,
+  inner: admin_messages.Msg,
+  context: Context(parent_msg),
+  feedback: FeedbackContext(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  case inner {
+    admin_messages.AssignmentsViewModeChanged(view_mode) ->
+      handle_assignments_view_mode_changed(model, view_mode)
+      |> without_auth_check_with_root(ReplaceAssignmentsView(view_mode))
+
+    admin_messages.AssignmentsSearchChanged(value) ->
+      handle_assignments_search_changed(model, value)
+      |> without_auth_check
+
+    admin_messages.AssignmentsSearchDebounced(value) ->
+      handle_assignments_search_debounced(model, value)
+      |> without_auth_check
+
+    admin_messages.AssignmentsProjectToggled(project_id) ->
+      handle_assignments_project_toggled(model, project_id)
+      |> without_auth_check
+
+    admin_messages.AssignmentsUserToggled(user_id) ->
+      handle_assignments_user_toggled(model, user_id)
+      |> without_auth_check
+
+    admin_messages.AssignmentsProjectMembersFetched(project_id, Ok(members)) ->
+      handle_assignments_project_members_fetched(model, project_id, Ok(members))
+      |> without_auth_check
+
+    admin_messages.AssignmentsProjectMembersFetched(project_id, Error(err)) ->
+      handle_assignments_project_members_fetched(model, project_id, Error(err))
+      |> with_auth_check(err)
+
+    admin_messages.AssignmentsUserProjectsFetched(user_id, Ok(projects)) ->
+      handle_assignments_user_projects_fetched(model, user_id, Ok(projects))
+      |> without_auth_check
+
+    admin_messages.AssignmentsUserProjectsFetched(user_id, Error(err)) ->
+      handle_assignments_user_projects_fetched(model, user_id, Error(err))
+      |> with_auth_check(err)
+
+    admin_messages.AssignmentsInlineAddStarted(context) ->
+      handle_assignments_inline_add_started(model, context)
+      |> without_auth_check
+
+    admin_messages.AssignmentsInlineAddSearchChanged(value) ->
+      handle_assignments_inline_add_search_changed(model, value)
+      |> without_auth_check
+
+    admin_messages.AssignmentsInlineAddSelectionChanged(value) ->
+      handle_assignments_inline_add_selection_changed(model, value)
+      |> without_auth_check
+
+    admin_messages.AssignmentsInlineAddRoleChanged(role) ->
+      handle_assignments_inline_add_role_changed(model, role)
+      |> without_auth_check
+
+    admin_messages.AssignmentsInlineAddSubmitted ->
+      handle_assignments_inline_add_submitted(model, context)
+      |> without_auth_check
+
+    admin_messages.AssignmentsInlineAddCancelled ->
+      handle_assignments_inline_add_cancelled(model)
+      |> without_auth_check
+
+    admin_messages.AssignmentsProjectMemberAdded(project_id, Ok(member)) ->
+      handle_assignments_project_member_added_ok(
+        model,
+        project_id,
+        member,
+        context,
+      )
+      |> without_auth_check
+
+    admin_messages.AssignmentsProjectMemberAdded(_project_id, Error(err)) ->
+      handle_assignments_project_member_added_error(model, err, feedback)
+      |> with_auth_check(err)
+
+    admin_messages.AssignmentsUserProjectAdded(user_id, Ok(project)) ->
+      handle_assignments_user_project_added_ok(model, user_id, project, context)
+      |> without_auth_check
+
+    admin_messages.AssignmentsUserProjectAdded(_user_id, Error(err)) ->
+      handle_assignments_user_project_added_error(model, err, feedback)
+      |> with_auth_check(err)
+
+    admin_messages.AssignmentsRemoveClicked(project_id, user_id) ->
+      handle_assignments_remove_clicked(model, project_id, user_id)
+      |> without_auth_check
+
+    admin_messages.AssignmentsRemoveCancelled ->
+      handle_assignments_remove_cancelled(model)
+      |> without_auth_check
+
+    admin_messages.AssignmentsRemoveConfirmed ->
+      handle_assignments_remove_confirmed(model, context)
+      |> without_auth_check
+
+    admin_messages.AssignmentsRemoveCompleted(project_id, user_id, Ok(_)) ->
+      handle_assignments_remove_completed_ok(model, project_id, user_id)
+      |> without_auth_check
+
+    admin_messages.AssignmentsRemoveCompleted(_project_id, _user_id, Error(err)) ->
+      handle_assignments_remove_completed_error(model, err, feedback)
+      |> with_auth_check(err)
+
+    admin_messages.AssignmentsRoleChanged(project_id, user_id, new_role) ->
+      handle_assignments_role_changed(
+        model,
+        project_id,
+        user_id,
+        new_role,
+        context,
+      )
+      |> without_auth_check
+
+    admin_messages.AssignmentsRoleChangeCompleted(
+      project_id,
+      user_id,
+      Ok(result),
+    ) ->
+      handle_assignments_role_change_completed_ok(
+        model,
+        project_id,
+        user_id,
+        result,
+      )
+      |> without_auth_check_with_root(MemberRoleSuccessFeedback)
+
+    admin_messages.AssignmentsRoleChangeCompleted(
+      project_id,
+      user_id,
+      Error(err),
+    ) ->
+      handle_assignments_role_change_completed_error(
+        model,
+        project_id,
+        user_id,
+        err,
+      )
+      |> with_auth_check_after_update(err, MemberRoleErrorFeedback(err))
+
+    _ -> opt.None
+  }
+}
+
+fn without_auth_check(
+  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+) -> opt.Option(Update(parent_msg)) {
+  without_auth_check_with_root(result, NoRootPolicy)
+}
+
+fn without_auth_check_with_root(
+  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  root_policy: RootPolicy,
+) -> opt.Option(Update(parent_msg)) {
+  with_policy(result, NoAuthCheck, root_policy)
+}
+
+fn with_auth_check(
+  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  err: ApiError,
+) -> opt.Option(Update(parent_msg)) {
+  with_policy(result, CheckAuth(err), NoRootPolicy)
+}
+
+fn with_auth_check_after_update(
+  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  err: ApiError,
+  root_policy: RootPolicy,
+) -> opt.Option(Update(parent_msg)) {
+  with_policy(result, CheckAuthAfterUpdate(err), root_policy)
+}
+
+fn with_policy(
+  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  auth_policy: AuthPolicy,
+  root_policy: RootPolicy,
+) -> opt.Option(Update(parent_msg)) {
+  let #(model, fx) = result
+  opt.Some(Update(model, fx, auth_policy, root_policy))
+}
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-fn update_assignments(
-  model: client_state.Model,
-  updater: fn(state_types.AssignmentsModel) -> state_types.AssignmentsModel,
-) -> client_state.Model {
-  client_state.update_admin(model, fn(admin) {
-    admin_state.AdminModel(..admin, assignments: updater(admin.assignments))
-  })
-}
 
 fn set_project_members_state(
   assignments: state_types.AssignmentsModel,
@@ -215,85 +426,39 @@ fn apply_role_change(
   )
 }
 
-fn handle_role_change_error(
-  model: client_state.Model,
-  err: ApiError,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    case err.status {
-      422 -> #(
-        model,
-        helpers_toast.toast_warning(helpers_i18n.i18n_t(
-          model,
-          i18n_text.CannotDemoteLastManager,
-        )),
-      )
-      _ -> #(model, helpers_toast.toast_error(err.message))
-    }
-  })
-}
-
-// =============================================================================
-// View Mode + Search
-// =============================================================================
-
 pub fn handle_assignments_view_mode_changed(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   view_mode: assignments_view_mode.AssignmentsViewMode,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model =
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(..assignments, view_mode: view_mode)
-    })
-  #(model, router.replace_assignments_view(view_mode))
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(state_types.AssignmentsModel(..model, view_mode: view_mode), effect.none())
 }
 
 pub fn handle_assignments_search_changed(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   value: String,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(..assignments, search_input: value)
-    }),
-    effect.none(),
-  )
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(state_types.AssignmentsModel(..model, search_input: value), effect.none())
 }
 
 pub fn handle_assignments_search_debounced(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   value: String,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(..assignments, search_query: value)
-    }),
-    effect.none(),
-  )
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(state_types.AssignmentsModel(..model, search_query: value), effect.none())
 }
 
 pub fn handle_assignments_project_toggled(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(
-    update_assignments(model, fn(assignments) {
-      toggle_expanded_project(assignments, project_id)
-    }),
-    effect.none(),
-  )
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(toggle_expanded_project(model, project_id), effect.none())
 }
 
 pub fn handle_assignments_user_toggled(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   user_id: Int,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(
-    update_assignments(model, fn(assignments) {
-      toggle_expanded_user(assignments, user_id)
-    }),
-    effect.none(),
-  )
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(toggle_expanded_user(model, user_id), effect.none())
 }
 
 // =============================================================================
@@ -301,55 +466,21 @@ pub fn handle_assignments_user_toggled(
 // =============================================================================
 
 pub fn handle_assignments_project_members_fetched(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   result: Result(List(ProjectMember), ApiError),
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   let remote_state = from_result(result)
-  case result {
-    Ok(_members) -> #(
-      update_assignments(model, fn(assignments) {
-        set_project_members_state(assignments, project_id, remote_state)
-      }),
-      effect.none(),
-    )
-
-    Error(err) ->
-      helpers_auth.handle_401_or(model, err, fn() {
-        #(
-          update_assignments(model, fn(assignments) {
-            set_project_members_state(assignments, project_id, remote_state)
-          }),
-          effect.none(),
-        )
-      })
-  }
+  #(set_project_members_state(model, project_id, remote_state), effect.none())
 }
 
 pub fn handle_assignments_user_projects_fetched(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   user_id: Int,
   result: Result(List(Project), ApiError),
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   let remote_state = from_result(result)
-  case result {
-    Ok(_projects) -> #(
-      update_assignments(model, fn(assignments) {
-        set_user_projects_state(assignments, user_id, remote_state)
-      }),
-      effect.none(),
-    )
-
-    Error(err) ->
-      helpers_auth.handle_401_or(model, err, fn() {
-        #(
-          update_assignments(model, fn(assignments) {
-            set_user_projects_state(assignments, user_id, remote_state)
-          }),
-          effect.none(),
-        )
-      })
-  }
+  #(set_user_projects_state(model, user_id, remote_state), effect.none())
 }
 
 // =============================================================================
@@ -357,81 +488,64 @@ pub fn handle_assignments_user_projects_fetched(
 // =============================================================================
 
 pub fn handle_assignments_inline_add_started(
-  model: client_state.Model,
-  context: client_state.AssignmentsAddContext,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model =
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(
-        ..assignments,
-        inline_add_context: opt.Some(context),
-        inline_add_selection: opt.None,
-        inline_add_search: "",
-        inline_add_role: Member,
-        inline_add_in_flight: False,
-      )
-    })
-  #(model, effect.none())
+  model: state_types.AssignmentsModel,
+  context: state_types.AssignmentsAddContext,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(
+    state_types.AssignmentsModel(
+      ..model,
+      inline_add_context: opt.Some(context),
+      inline_add_selection: opt.None,
+      inline_add_search: "",
+      inline_add_role: Member,
+      inline_add_in_flight: False,
+    ),
+    effect.none(),
+  )
 }
 
 pub fn handle_assignments_inline_add_search_changed(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   value: String,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(..assignments, inline_add_search: value)
-    }),
+    state_types.AssignmentsModel(..model, inline_add_search: value),
     effect.none(),
   )
 }
 
 pub fn handle_assignments_inline_add_selection_changed(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   value: String,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   let selection = case int.parse(value) {
     Ok(id) -> opt.Some(id)
     Error(_) -> opt.None
   }
   #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(
-        ..assignments,
-        inline_add_selection: selection,
-      )
-    }),
+    state_types.AssignmentsModel(..model, inline_add_selection: selection),
     effect.none(),
   )
 }
 
 pub fn handle_assignments_inline_add_role_changed(
-  model: client_state.Model,
-  value: String,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let role = case parse(value) {
-    Ok(parsed) -> parsed
-    Error(_) -> Member
-  }
-  #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(..assignments, inline_add_role: role)
-    }),
-    effect.none(),
-  )
+  model: state_types.AssignmentsModel,
+  role: ProjectRole,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(state_types.AssignmentsModel(..model, inline_add_role: role), effect.none())
 }
 
 pub fn handle_assignments_inline_add_submitted(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let assignments = model.admin.assignments
+  model: state_types.AssignmentsModel,
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   let state_types.AssignmentsModel(
     inline_add_context: context,
     inline_add_selection: selection,
     inline_add_role: role,
     inline_add_in_flight: in_flight,
     ..,
-  ) = assignments
+  ) = model
 
   case in_flight {
     True -> #(model, effect.none())
@@ -439,24 +553,14 @@ pub fn handle_assignments_inline_add_submitted(
       case context, selection {
         opt.Some(state_types.AddUserToProject(project_id)), opt.Some(user_id) -> {
           let model =
-            update_assignments(model, fn(assignments) {
-              state_types.AssignmentsModel(
-                ..assignments,
-                inline_add_in_flight: True,
-              )
-            })
+            state_types.AssignmentsModel(..model, inline_add_in_flight: True)
           let fx =
             api_projects.add_project_member(
               project_id,
               user_id,
               role,
               fn(result) {
-                client_state.admin_msg(
-                  admin_messages.AssignmentsProjectMemberAdded(
-                    project_id,
-                    result,
-                  ),
-                )
+                callbacks.on_project_member_added(project_id, result)
               },
             )
           #(model, fx)
@@ -464,23 +568,11 @@ pub fn handle_assignments_inline_add_submitted(
 
         opt.Some(state_types.AddProjectToUser(user_id)), opt.Some(project_id) -> {
           let model =
-            update_assignments(model, fn(assignments) {
-              state_types.AssignmentsModel(
-                ..assignments,
-                inline_add_in_flight: True,
-              )
-            })
+            state_types.AssignmentsModel(..model, inline_add_in_flight: True)
           let fx =
-            api_org.add_user_to_project(
-              user_id,
-              project_id,
-              project_role.to_string(role),
-              fn(result) {
-                client_state.admin_msg(
-                  admin_messages.AssignmentsUserProjectAdded(user_id, result),
-                )
-              },
-            )
+            api_org.add_user_to_project(user_id, project_id, role, fn(result) {
+              callbacks.on_user_project_added(user_id, result)
+            })
           #(model, fx)
         }
 
@@ -490,36 +582,29 @@ pub fn handle_assignments_inline_add_submitted(
 }
 
 pub fn handle_assignments_inline_add_cancelled(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(update_assignments(model, clear_inline_add), effect.none())
+  model: state_types.AssignmentsModel,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(clear_inline_add(model), effect.none())
 }
 
 pub fn handle_assignments_project_member_added_ok(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   member: ProjectMember,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model = update_assignments(model, clear_inline_add)
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let model = clear_inline_add(model)
   let model =
-    update_assignments(model, fn(assignments) {
-      assignments
-      |> set_project_members_state(project_id, Loading)
-      |> set_user_projects_state(member.user_id, Loading)
-    })
+    model
+    |> set_project_members_state(project_id, Loading)
+    |> set_user_projects_state(member.user_id, Loading)
 
   let effects = [
     api_projects.list_project_members(project_id, fn(result) {
-      client_state.admin_msg(admin_messages.AssignmentsProjectMembersFetched(
-        project_id,
-        result,
-      ))
+      callbacks.on_project_members_fetched(project_id, result)
     }),
     api_org.list_user_projects(member.user_id, fn(result) {
-      client_state.admin_msg(admin_messages.AssignmentsUserProjectsFetched(
-        member.user_id,
-        result,
-      ))
+      callbacks.on_user_projects_fetched(member.user_id, result)
     }),
   ]
 
@@ -527,40 +612,31 @@ pub fn handle_assignments_project_member_added_ok(
 }
 
 pub fn handle_assignments_project_member_added_error(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   err: ApiError,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    let model = update_assignments(model, clear_inline_add)
-    #(model, helpers_toast.toast_error(err.message))
-  })
+  feedback: FeedbackContext(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(clear_inline_add(model), error_effect(err, feedback))
 }
 
 pub fn handle_assignments_user_project_added_ok(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   user_id: Int,
   project: Project,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model = update_assignments(model, clear_inline_add)
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let model = clear_inline_add(model)
   let model =
-    update_assignments(model, fn(assignments) {
-      assignments
-      |> set_user_projects_state(user_id, Loading)
-      |> set_project_members_state(project.id, Loading)
-    })
+    model
+    |> set_user_projects_state(user_id, Loading)
+    |> set_project_members_state(project.id, Loading)
 
   let effects = [
     api_org.list_user_projects(user_id, fn(result) {
-      client_state.admin_msg(admin_messages.AssignmentsUserProjectsFetched(
-        user_id,
-        result,
-      ))
+      callbacks.on_user_projects_fetched(user_id, result)
     }),
     api_projects.list_project_members(project.id, fn(result) {
-      client_state.admin_msg(admin_messages.AssignmentsProjectMembersFetched(
-        project.id,
-        result,
-      ))
+      callbacks.on_project_members_fetched(project.id, result)
     }),
   ]
 
@@ -568,13 +644,11 @@ pub fn handle_assignments_user_project_added_ok(
 }
 
 pub fn handle_assignments_user_project_added_error(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   err: ApiError,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    let model = update_assignments(model, clear_inline_add)
-    #(model, helpers_toast.toast_error(err.message))
-  })
+  feedback: FeedbackContext(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(clear_inline_add(model), error_effect(err, feedback))
 }
 
 // =============================================================================
@@ -582,54 +656,39 @@ pub fn handle_assignments_user_project_added_error(
 // =============================================================================
 
 pub fn handle_assignments_remove_clicked(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(
-        ..assignments,
-        inline_remove_confirm: opt.Some(#(project_id, user_id)),
-      )
-    }),
+    state_types.AssignmentsModel(
+      ..model,
+      inline_remove_confirm: opt.Some(#(project_id, user_id)),
+    ),
     effect.none(),
   )
 }
 
 pub fn handle_assignments_remove_cancelled(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
+  model: state_types.AssignmentsModel,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   #(
-    update_assignments(model, fn(assignments) {
-      state_types.AssignmentsModel(
-        ..assignments,
-        inline_remove_confirm: opt.None,
-      )
-    }),
+    state_types.AssignmentsModel(..model, inline_remove_confirm: opt.None),
     effect.none(),
   )
 }
 
 pub fn handle_assignments_remove_confirmed(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.admin.assignments.inline_remove_confirm {
+  model: state_types.AssignmentsModel,
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  case model.inline_remove_confirm {
     opt.Some(#(project_id, user_id)) -> {
       let model =
-        update_assignments(model, fn(assignments) {
-          state_types.AssignmentsModel(
-            ..assignments,
-            inline_remove_confirm: opt.None,
-          )
-        })
+        state_types.AssignmentsModel(..model, inline_remove_confirm: opt.None)
       let fx =
         api_projects.remove_project_member(project_id, user_id, fn(result) {
-          client_state.admin_msg(admin_messages.AssignmentsRemoveCompleted(
-            project_id,
-            user_id,
-            result,
-          ))
+          callbacks.on_remove_completed(project_id, user_id, result)
         })
       #(model, fx)
     }
@@ -638,139 +697,124 @@ pub fn handle_assignments_remove_confirmed(
 }
 
 pub fn handle_assignments_remove_completed_ok(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model =
-    update_assignments(model, fn(assignments) {
-      let state_types.AssignmentsModel(
-        project_members: project_members,
-        user_projects: user_projects,
-        ..,
-      ) = assignments
-      let updated_project_members = case dict.get(project_members, project_id) {
-        Ok(Loaded(members)) ->
-          dict.insert(
-            project_members,
-            project_id,
-            Loaded(
-              list.filter(members, fn(member) { member.user_id != user_id }),
-            ),
-          )
-        _ -> project_members
-      }
-      let updated_user_projects = case dict.get(user_projects, user_id) {
-        Ok(Loaded(projects)) ->
-          dict.insert(
-            user_projects,
-            user_id,
-            Loaded(
-              list.filter(projects, fn(project) { project.id != project_id }),
-            ),
-          )
-        _ -> user_projects
-      }
-      state_types.AssignmentsModel(
-        ..assignments,
-        project_members: updated_project_members,
-        user_projects: updated_user_projects,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let state_types.AssignmentsModel(
+    project_members: project_members,
+    user_projects: user_projects,
+    ..,
+  ) = model
+  let updated_project_members = case dict.get(project_members, project_id) {
+    Ok(Loaded(members)) ->
+      dict.insert(
+        project_members,
+        project_id,
+        Loaded(list.filter(members, fn(member) { member.user_id != user_id })),
       )
-    })
-  #(model, effect.none())
+    _ -> project_members
+  }
+  let updated_user_projects = case dict.get(user_projects, user_id) {
+    Ok(Loaded(projects)) ->
+      dict.insert(
+        user_projects,
+        user_id,
+        Loaded(list.filter(projects, fn(project) { project.id != project_id })),
+      )
+    _ -> user_projects
+  }
+  #(
+    state_types.AssignmentsModel(
+      ..model,
+      project_members: updated_project_members,
+      user_projects: updated_user_projects,
+    ),
+    effect.none(),
+  )
 }
 
 pub fn handle_assignments_remove_completed_error(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   err: ApiError,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(model, helpers_toast.toast_error(err.message))
-  })
+  feedback: FeedbackContext(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  #(model, error_effect(err, feedback))
+}
+
+pub fn error_effect(
+  err: ApiError,
+  feedback: FeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  feedback.on_error_toast(err.message)
 }
 
 pub fn handle_assignments_role_changed(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   new_role: ProjectRole,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let assignments = model.admin.assignments
-  let previous_role =
-    current_role_for_assignment(assignments, project_id, user_id)
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let previous_role = current_role_for_assignment(model, project_id, user_id)
   let model =
-    update_assignments(model, fn(assignments) {
-      assignments
-      |> apply_role_change(project_id, user_id, new_role)
-      |> fn(updated) {
-        state_types.AssignmentsModel(
-          ..updated,
-          role_change_in_flight: opt.Some(#(project_id, user_id)),
-          role_change_previous: case previous_role {
-            opt.Some(role) -> opt.Some(#(project_id, user_id, role))
-            opt.None -> opt.None
-          },
-        )
-      }
-    })
+    model
+    |> apply_role_change(project_id, user_id, new_role)
+    |> fn(updated) {
+      state_types.AssignmentsModel(
+        ..updated,
+        role_change_in_flight: opt.Some(#(project_id, user_id)),
+        role_change_previous: case previous_role {
+          opt.Some(role) -> opt.Some(#(project_id, user_id, role))
+          opt.None -> opt.None
+        },
+      )
+    }
 
   let fx =
     api_projects.update_member_role(project_id, user_id, new_role, fn(result) {
-      client_state.admin_msg(admin_messages.AssignmentsRoleChangeCompleted(
-        project_id,
-        user_id,
-        result,
-      ))
+      callbacks.on_role_change_completed(project_id, user_id, result)
     })
 
   #(model, fx)
 }
 
 pub fn handle_assignments_role_change_completed_ok(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   result: api_projects.RoleChangeResult,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let model =
-    update_assignments(model, fn(assignments) {
-      let updated =
-        apply_role_change(assignments, project_id, user_id, result.role)
-      state_types.AssignmentsModel(
-        ..updated,
-        role_change_in_flight: opt.None,
-        role_change_previous: opt.None,
-      )
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.RoleUpdated,
-    ))
-  #(model, toast_fx)
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let updated = apply_role_change(model, project_id, user_id, result.role)
+  #(
+    state_types.AssignmentsModel(
+      ..updated,
+      role_change_in_flight: opt.None,
+      role_change_previous: opt.None,
+    ),
+    effect.none(),
+  )
 }
 
 pub fn handle_assignments_role_change_completed_error(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
-  err: ApiError,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let assignments = model.admin.assignments
-  let updated = case assignments.role_change_previous {
+  _err: ApiError,
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  let updated = case model.role_change_previous {
     opt.Some(#(pid, uid, previous)) if pid == project_id && uid == user_id ->
-      apply_role_change(assignments, project_id, user_id, previous)
-    _ -> assignments
+      apply_role_change(model, project_id, user_id, previous)
+    _ -> model
   }
-  let model =
-    update_assignments(model, fn(_) {
-      state_types.AssignmentsModel(
-        ..updated,
-        role_change_in_flight: opt.None,
-        role_change_previous: opt.None,
-      )
-    })
-  handle_role_change_error(model, err)
+  #(
+    state_types.AssignmentsModel(
+      ..updated,
+      role_change_in_flight: opt.None,
+      role_change_previous: opt.None,
+    ),
+    effect.none(),
+  )
 }
 
 // =============================================================================
@@ -778,44 +822,35 @@ pub fn handle_assignments_role_change_completed_error(
 // =============================================================================
 
 pub fn start_user_projects_fetch(
-  model: client_state.Model,
+  model: state_types.AssignmentsModel,
   users: List(OrgUser),
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.core.active_section {
+  callbacks: Context(parent_msg),
+) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+  case callbacks.active_section {
     permissions.Assignments -> {
-      let assignments = model.admin.assignments
       let #(next_assignments, effects) =
-        list.fold(users, #(assignments, []), fn(state, user) {
+        list.fold(users, #(model, []), fn(state, user) {
           let #(current, fx) = state
           let state_types.AssignmentsModel(user_projects: projects, ..) =
             current
-          let should_fetch = case dict.get(projects, user.id) {
-            Ok(Loading) -> False
-            Ok(Loaded(_)) -> False
-            Ok(NotAsked) -> True
-            Ok(Failed(_)) -> True
+          let needs_fetch = case dict.get(projects, user.id) {
+            Ok(remote) -> should_fetch(remote)
             Error(_) -> True
           }
-          case should_fetch {
+          case needs_fetch {
             False -> #(current, fx)
             True -> {
               let updated = set_user_projects_state(current, user.id, Loading)
               let effect =
                 api_org.list_user_projects(user.id, fn(result) {
-                  client_state.admin_msg(
-                    admin_messages.AssignmentsUserProjectsFetched(
-                      user.id,
-                      result,
-                    ),
-                  )
+                  callbacks.on_user_projects_fetched(user.id, result)
                 })
               #(updated, [effect, ..fx])
             }
           }
         })
 
-      let model = update_assignments(model, fn(_) { next_assignments })
-      #(model, effect.batch(list.reverse(effects)))
+      #(next_assignments, effect.batch(list.reverse(effects)))
     }
 
     _ -> #(model, effect.none())

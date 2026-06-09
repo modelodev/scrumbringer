@@ -10,16 +10,21 @@ import lustre/element/html.{button, div, h4, input, label, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
-import scrumbringer_client/client_state
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/features/milestones/queries as milestone_queries
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 
 pub type Config(msg) {
   Config(
-    model: client_state.Model,
+    locale: Locale,
     items: List(MilestoneProgress),
     selected_id: option.Option(Int),
+    search_query: String,
+    show_completed: Bool,
+    show_empty: Bool,
     on_search_change: fn(String) -> msg,
     on_toggle_completed: msg,
     on_toggle_empty: msg,
@@ -40,7 +45,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     view_filters(config),
     view_section(config, i18n_text.MilestonesActive, active_items),
     view_section(config, i18n_text.MilestonesReady, ready_items),
-    case config.model.member.pool.member_milestones_show_completed {
+    case config.show_completed {
       True ->
         view_section(config, i18n_text.MilestonesCompleted, completed_items)
       False -> none()
@@ -59,11 +64,11 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
         attribute.type_("search"),
         attribute.class("milestones-search"),
         attribute.attribute("data-testid", "milestones-search"),
-        attribute.placeholder(helpers_i18n.i18n_t(
-          config.model,
+        attribute.placeholder(i18n.t(
+          config.locale,
           i18n_text.MilestoneSearchPlaceholder,
         )),
-        attribute.value(config.model.member.pool.member_milestones_search_query),
+        attribute.value(config.search_query),
         event.on_input(config.on_search_change),
       ]),
       div([attribute.class("milestones-filter-row")], [
@@ -72,33 +77,20 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
             attribute.type_("checkbox"),
             attribute.class("milestones-filter-checkbox"),
             attribute.attribute("data-testid", "milestones-filter-completed"),
-            attribute.checked(
-              config.model.member.pool.member_milestones_show_completed,
-            ),
+            attribute.checked(config.show_completed),
             event.on_check(fn(_) { config.on_toggle_completed }),
           ]),
-          text(
-            " "
-            <> helpers_i18n.i18n_t(
-              config.model,
-              i18n_text.ShowCompletedMilestones,
-            ),
-          ),
+          text(" " <> i18n.t(config.locale, i18n_text.ShowCompletedMilestones)),
         ]),
         label([attribute.class("milestones-filter-chip")], [
           input([
             attribute.type_("checkbox"),
             attribute.class("milestones-filter-checkbox"),
             attribute.attribute("data-testid", "milestones-filter-empty"),
-            attribute.checked(
-              config.model.member.pool.member_milestones_show_empty,
-            ),
+            attribute.checked(config.show_empty),
             event.on_check(fn(_) { config.on_toggle_empty }),
           ]),
-          text(
-            " "
-            <> helpers_i18n.i18n_t(config.model, i18n_text.ShowEmptyMilestones),
-          ),
+          text(" " <> i18n.t(config.locale, i18n_text.ShowEmptyMilestones)),
         ]),
       ]),
     ],
@@ -115,7 +107,7 @@ fn view_section(
     _ ->
       div([attribute.class("milestones-list-section")], [
         h4([attribute.class("milestones-section-title")], [
-          text(helpers_i18n.i18n_t(config.model, title)),
+          text(i18n.t(config.locale, title)),
         ]),
         keyed.div(
           [attribute.class("milestones-items")],
@@ -153,10 +145,7 @@ fn view_item(
         "data-testid",
         "milestone-row:" <> int.to_string(milestone_id),
       ),
-      attribute.attribute("aria-pressed", case selected {
-        True -> "true"
-        False -> "false"
-      }),
+      attribute.attribute("aria-pressed", attribute_value.boolean(selected)),
       event.on_click(config.on_select(milestone_id)),
     ],
     [
@@ -172,14 +161,17 @@ fn view_item(
             config.milestone_state_variant(progress.milestone.state),
           ),
           span([attribute.class("milestone-progress-percent")], [
-            text(int.to_string(progress_percentage(progress)) <> "%"),
+            text(
+              int.to_string(milestone_queries.progress_percentage(progress))
+              <> "%",
+            ),
           ]),
         ]),
       ]),
       div([attribute.class("milestone-item-stats")], [
-        pill(config.model, i18n_text.MilestoneCardsCount(progress.cards_total)),
+        pill(config.locale, i18n_text.MilestoneCardsCount(progress.cards_total)),
         pill(
-          config.model,
+          config.locale,
           i18n_text.MilestoneLooseTasksCount(config.loose_tasks_count(
             milestone_id,
           )),
@@ -202,21 +194,14 @@ fn health_hint(config: Config(msg), progress: MilestoneProgress) -> String {
     loose_tasks,
     empty_cards
   {
-    Ready, 0, 0, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneEmptyHint)
+    Ready, 0, 0, _ -> i18n.t(config.locale, i18n_text.MilestoneEmptyHint)
     _, _, loose_count, _ if loose_count > 0 ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneLooseTasksHint)
+      i18n.t(config.locale, i18n_text.MilestoneLooseTasksHint)
     _, _, _, empty_count if empty_count > 0 ->
-      helpers_i18n.i18n_t(
-        config.model,
-        i18n_text.MilestoneEmptyCardsCount(empty_count),
-      )
-    Active, _, _, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneStateActive)
-    Completed, _, _, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MetricsTasksCompleted)
-    _, _, _, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneStructureSummary)
+      i18n.t(config.locale, i18n_text.MilestoneEmptyCardsCount(empty_count))
+    Active, _, _, _ -> i18n.t(config.locale, i18n_text.MilestoneStateActive)
+    Completed, _, _, _ -> i18n.t(config.locale, i18n_text.MetricsTasksCompleted)
+    _, _, _, _ -> i18n.t(config.locale, i18n_text.MilestoneStructureSummary)
   }
 }
 
@@ -227,18 +212,8 @@ fn by_state(
   list.filter(items, fn(progress) { progress.milestone.state == state })
 }
 
-fn progress_percentage(progress: MilestoneProgress) -> Int {
-  let total = progress.cards_total + progress.tasks_total
-  let done = progress.cards_completed + progress.tasks_completed
-
-  case total <= 0 {
-    True -> 0
-    False -> done * 100 / total
-  }
-}
-
-fn pill(model: client_state.Model, label: i18n_text.Text) -> Element(msg) {
+fn pill(locale: Locale, label: i18n_text.Text) -> Element(msg) {
   span([attribute.class("milestone-stat-pill")], [
-    text(helpers_i18n.i18n_t(model, label)),
+    text(i18n.t(locale, label)),
   ])
 }

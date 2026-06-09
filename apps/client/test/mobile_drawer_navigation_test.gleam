@@ -1,10 +1,12 @@
-import gleeunit/should
-
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
 import scrumbringer_client/permissions
 import scrumbringer_client/router
+
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
 
 pub fn navigate_to_closes_mobile_drawers_test() {
   let model =
@@ -23,5 +25,5 @@ pub fn navigate_to_closes_mobile_drawers_test() {
     )
 
   next_model.ui.mobile_drawer
-  |> should.equal(ui_state.DrawerClosed)
+  |> assert_equal(ui_state.DrawerClosed)
 }

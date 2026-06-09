@@ -1,8 +1,8 @@
 //// Milestone JSON decoders.
 
 import domain/milestone.{
-  type Milestone, type MilestoneProgress, Milestone, MilestoneProgress,
-  state_from_string,
+  type Milestone, type MilestoneProgress, type MilestoneState, Milestone,
+  MilestoneProgress, Ready, parse_state,
 }
 import gleam/dynamic/decode
 import gleam/option
@@ -17,6 +17,7 @@ pub fn milestone_decoder() -> decode.Decoder(Milestone) {
     decode.optional(decode.string),
   )
   use state_raw <- decode.field("state", decode.string)
+  use state <- decode.then(milestone_state_decoder(state_raw))
   use position <- decode.field("position", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
@@ -36,13 +37,20 @@ pub fn milestone_decoder() -> decode.Decoder(Milestone) {
     project_id: project_id,
     name: name,
     description: description,
-    state: state_from_string(state_raw),
+    state: state,
     position: position,
     created_by: created_by,
     created_at: created_at,
     activated_at: activated_at,
     completed_at: completed_at,
   ))
+}
+
+fn milestone_state_decoder(raw: String) -> decode.Decoder(MilestoneState) {
+  case parse_state(raw) {
+    Ok(state) -> decode.success(state)
+    Error(_) -> decode.failure(Ready, "MilestoneState")
+  }
 }
 
 pub fn milestone_progress_decoder() -> decode.Decoder(MilestoneProgress) {

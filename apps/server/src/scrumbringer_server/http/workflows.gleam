@@ -20,19 +20,18 @@
 //// - Uses `services/projects_db` for access checks
 //// - Uses `services/workflows_db` for persistence
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/json_payload
+import scrumbringer_server/http/service_error_response
+import scrumbringer_server/http/workflows/payloads as workflow_payloads
+import scrumbringer_server/http/workflows/presenters as workflow_presenters
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
@@ -81,11 +80,7 @@ fn handle_list_project(
   project_id: String,
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
-
-  case list_project_workflows(req, ctx, project_id) {
-    Ok(resp) -> resp
-    Error(resp) -> resp
-  }
+  response_from_result(list_project_workflows(req, ctx, project_id))
 }
 
 fn handle_create_project(
@@ -93,11 +88,17 @@ fn handle_create_project(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-  // Justified nested case: unwrap Result<Response, Response> into a Response.
-  case create_project_workflow(req, ctx, project_id, data) {
-    Ok(resp) -> resp
+  case require_project_workflow_create_access(req, ctx, project_id) {
     Error(resp) -> resp
+    Ok(#(db, user, project_id)) ->
+      json_payload.with_response(req, decode_create_payload, fn(payload) {
+        response_from_result(create_project_workflow(
+          db,
+          user,
+          project_id,
+          payload,
+        ))
+      })
   }
 }
 
@@ -106,11 +107,17 @@ fn handle_update(
   ctx: auth.Ctx,
   workflow_id: String,
 ) -> wisp.Response {
-  use data <- wisp.require_json(req)
-  // Justified nested case: unwrap Result<Response, Response> into a Response.
-  case update_project_workflow(req, ctx, workflow_id, data) {
-    Ok(resp) -> resp
+  case require_workflow_update_access(req, ctx, workflow_id) {
     Error(resp) -> resp
+    Ok(#(db, workflow_id, workflow)) ->
+      json_payload.with_response(req, decode_update_payload, fn(payload) {
+        response_from_result(update_project_workflow(
+          db,
+          workflow_id,
+          workflow,
+          payload,
+        ))
+      })
   }
 }
 
@@ -119,26 +126,16 @@ fn handle_delete(
   ctx: auth.Ctx,
   workflow_id: String,
 ) -> wisp.Response {
-  case delete_project_workflow(req, ctx, workflow_id) {
+  response_from_result(delete_project_workflow(req, ctx, workflow_id))
+}
+
+fn response_from_result(
+  result: Result(wisp.Response, wisp.Response),
+) -> wisp.Response {
+  case result {
     Ok(resp) -> resp
     Error(resp) -> resp
   }
-}
-
-// =============================================================================
-// Shared helpers
-// =============================================================================
-
-type CreatePayload {
-  CreatePayload(name: String, description: String, active: Bool)
-}
-
-type UpdatePayload {
-  UpdatePayload(
-    name: Option(String),
-    description: Option(String),
-    active: Option(Int),
-  )
 }
 
 fn list_project_workflows(
@@ -146,32 +143,34 @@ fn list_project_workflows(
   ctx: auth.Ctx,
   project_id_str: String,
 ) -> Result(wisp.Response, wisp.Response) {
-  use user <- result.try(require_current_user(req, ctx))
-  use project_id <- result.try(parse_id(project_id_str))
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id_str))
   let auth.Ctx(db: db, ..) = ctx
   use _ <- result.try(require_project_manager(db, project_id, user.id))
   use workflows <- result.try(list_workflows_db(db, project_id))
 
-  Ok(
-    api.ok(
-      json.object([#("workflows", json.array(workflows, of: workflow_json))]),
-    ),
-  )
+  Ok(api.ok(workflow_presenters.workflows_response(workflows)))
 }
 
-fn create_project_workflow(
+fn require_project_workflow_create_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   project_id_str: String,
-  data: dynamic.Dynamic,
-) -> Result(wisp.Response, wisp.Response) {
-  use user <- result.try(require_current_user(req, ctx))
-  use project_id <- result.try(parse_id(project_id_str))
+) -> Result(#(pog.Connection, StoredUser, Int), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id_str))
   let auth.Ctx(db: db, ..) = ctx
   use _ <- result.try(require_project_manager(db, project_id, user.id))
   use _ <- result.try(csrf.require_csrf(req))
-  use payload <- result.try(decode_create_payload(data))
+  Ok(#(db, user, project_id))
+}
 
+fn create_project_workflow(
+  db: pog.Connection,
+  user: StoredUser,
+  project_id: Int,
+  payload: workflow_payloads.CreatePayload,
+) -> Result(wisp.Response, wisp.Response) {
   case
     workflows_db.create_workflow(
       db,
@@ -183,38 +182,34 @@ fn create_project_workflow(
       user.id,
     )
   {
-    Ok(workflow) ->
-      Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
-    Error(service_error.AlreadyExists) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.ValidationError(msg)) ->
-      Error(api.error(422, "VALIDATION_ERROR", msg))
-    Error(service_error.InvalidReference(_)) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-    Error(service_error.Conflict(_)) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-    Error(service_error.Unexpected(_)) ->
-      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Ok(workflow) -> Ok(api.ok(workflow_presenters.workflow_response(workflow)))
+    Error(error) -> Error(workflow_error_response(error))
   }
 }
 
-fn update_project_workflow(
+fn require_workflow_update_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-  data: dynamic.Dynamic,
-) -> Result(wisp.Response, wisp.Response) {
-  use user <- result.try(require_current_user(req, ctx))
-  use workflow_id <- result.try(parse_id(workflow_id_str))
+) -> Result(#(pog.Connection, Int, workflows_db.Workflow), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use workflow_id <- result.try(api.parse_id(workflow_id_str))
   let auth.Ctx(db: db, ..) = ctx
-  use workflow <- result.try(get_workflow(db, workflow_id))
-  use _ <- result.try(require_workflow_manager(db, user, workflow))
+  use workflow <- result.try(require_workflow_manager_access(
+    db,
+    user,
+    workflow_id,
+  ))
   use _ <- result.try(csrf.require_csrf(req))
-  use payload <- result.try(decode_update_payload(data))
+  Ok(#(db, workflow_id, workflow))
+}
+
+fn update_project_workflow(
+  db: pog.Connection,
+  workflow_id: Int,
+  workflow: workflows_db.Workflow,
+  payload: workflow_payloads.UpdatePayload,
+) -> Result(wisp.Response, wisp.Response) {
   use active_value <- result.try(normalize_active(payload.active))
   use _ <- result.try(update_metadata_if_needed(
     db,
@@ -239,11 +234,14 @@ fn delete_project_workflow(
   ctx: auth.Ctx,
   workflow_id_str: String,
 ) -> Result(wisp.Response, wisp.Response) {
-  use user <- result.try(require_current_user(req, ctx))
-  use workflow_id <- result.try(parse_id(workflow_id_str))
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use workflow_id <- result.try(api.parse_id(workflow_id_str))
   let auth.Ctx(db: db, ..) = ctx
-  use workflow <- result.try(get_workflow(db, workflow_id))
-  use _ <- result.try(require_workflow_manager(db, user, workflow))
+  use workflow <- result.try(require_workflow_manager_access(
+    db,
+    user,
+    workflow_id,
+  ))
   use _ <- result.try(csrf.require_csrf(req))
   use _ <- result.try(delete_workflow_db(
     db,
@@ -255,17 +253,6 @@ fn delete_project_workflow(
   Ok(api.no_content())
 }
 
-fn require_current_user(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-) -> Result(StoredUser, wisp.Response) {
-  case auth.require_current_user(req, ctx) {
-    Ok(user) -> Ok(user)
-    Error(_) ->
-      Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
-  }
-}
-
 fn require_project_manager(
   db: pog.Connection,
   project_id: Int,
@@ -274,8 +261,18 @@ fn require_project_manager(
   case projects_db.is_project_manager(db, project_id, user_id) {
     Ok(True) -> Ok(Nil)
     Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(_) -> Error(database_error_response())
   }
+}
+
+fn require_workflow_manager_access(
+  db: pog.Connection,
+  user: StoredUser,
+  workflow_id: Int,
+) -> Result(workflows_db.Workflow, wisp.Response) {
+  use workflow <- result.try(get_workflow(db, workflow_id))
+  use _ <- result.try(require_workflow_manager(db, user, workflow))
+  Ok(workflow)
 }
 
 fn require_workflow_manager(
@@ -296,20 +293,13 @@ fn require_workflow_manager(
   }
 }
 
-fn parse_id(value: String) -> Result(Int, wisp.Response) {
-  case int.parse(value) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
-}
-
 fn list_workflows_db(
   db: pog.Connection,
   project_id: Int,
 ) -> Result(List(workflows_db.Workflow), wisp.Response) {
   case workflows_db.list_project_workflows(db, project_id) {
     Ok(workflows) -> Ok(workflows)
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(_) -> Error(database_error_response())
   }
 }
 
@@ -319,70 +309,23 @@ fn get_workflow(
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.AlreadyExists) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(service_error.ValidationError(msg)) ->
-      Error(api.error(422, "VALIDATION_ERROR", msg))
-    Error(service_error.InvalidReference(_)) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-    Error(service_error.Conflict(_)) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-    Error(service_error.Unexpected(_)) ->
-      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(error) -> Error(workflow_error_response(error))
   }
 }
 
 fn decode_create_payload(
-  data: dynamic.Dynamic,
-) -> Result(CreatePayload, wisp.Response) {
-  let decoder = {
-    use name <- decode.field("name", decode.string)
-    use description <- decode.optional_field("description", "", decode.string)
-    use active <- decode.optional_field("active", False, decode.bool)
-    decode.success(CreatePayload(
-      name: name,
-      description: description,
-      active: active,
-    ))
-  }
-
-  decode.run(data, decoder)
+  data,
+) -> Result(workflow_payloads.CreatePayload, wisp.Response) {
+  workflow_payloads.decode_create(data)
   |> result.map_error(fn(_) {
     api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   })
 }
 
 fn decode_update_payload(
-  data: dynamic.Dynamic,
-) -> Result(UpdatePayload, wisp.Response) {
-  let decoder = {
-    use name <- decode.optional_field(
-      "name",
-      None,
-      decode.optional(decode.string),
-    )
-    use description <- decode.optional_field(
-      "description",
-      None,
-      decode.optional(decode.string),
-    )
-    use active <- decode.optional_field(
-      "active",
-      None,
-      decode.optional(decode.int),
-    )
-    decode.success(UpdatePayload(
-      name: name,
-      description: description,
-      active: active,
-    ))
-  }
-
-  decode.run(data, decoder)
+  data,
+) -> Result(workflow_payloads.UpdatePayload, wisp.Response) {
+  workflow_payloads.decode_update(data)
   |> result.map_error(fn(_) {
     api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   })
@@ -397,13 +340,12 @@ fn normalize_active(active: Option(Int)) -> Result(Option(Bool), wisp.Response) 
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn update_metadata_if_needed(
   db: pog.Connection,
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
-  payload: UpdatePayload,
+  payload: workflow_payloads.UpdatePayload,
 ) -> Result(Nil, wisp.Response) {
   let has_updates = case payload.name, payload.description {
     None, None -> False
@@ -424,29 +366,11 @@ fn update_metadata_if_needed(
         )
       {
         Ok(_) -> Ok(Nil)
-        Error(service_error.NotFound) ->
-          Error(api.error(404, "NOT_FOUND", "Not found"))
-        Error(service_error.AlreadyExists) ->
-          Error(api.error(
-            422,
-            "VALIDATION_ERROR",
-            "Workflow name already exists",
-          ))
-        Error(service_error.DbError(_)) ->
-          Error(api.error(500, "INTERNAL", "Database error"))
-        Error(service_error.ValidationError(msg)) ->
-          Error(api.error(422, "VALIDATION_ERROR", msg))
-        Error(service_error.InvalidReference(_)) ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-        Error(service_error.Conflict(_)) ->
-          Error(api.error(409, "CONFLICT", "Conflict"))
-        Error(service_error.Unexpected(_)) ->
-          Error(api.error(500, "INTERNAL", "Unexpected error"))
+        Error(error) -> Error(workflow_error_response(error))
       }
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn update_active_if_needed(
   db: pog.Connection,
   workflow_id: Int,
@@ -467,24 +391,7 @@ fn update_active_if_needed(
         )
       {
         Ok(Nil) -> Ok(Nil)
-        Error(service_error.NotFound) ->
-          Error(api.error(404, "NOT_FOUND", "Not found"))
-        Error(service_error.AlreadyExists) ->
-          Error(api.error(
-            422,
-            "VALIDATION_ERROR",
-            "Workflow name already exists",
-          ))
-        Error(service_error.DbError(_)) ->
-          Error(api.error(500, "INTERNAL", "Database error"))
-        Error(service_error.ValidationError(msg)) ->
-          Error(api.error(422, "VALIDATION_ERROR", msg))
-        Error(service_error.InvalidReference(_)) ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-        Error(service_error.Conflict(_)) ->
-          Error(api.error(409, "CONFLICT", "Conflict"))
-        Error(service_error.Unexpected(_)) ->
-          Error(api.error(500, "INTERNAL", "Unexpected error"))
+        Error(error) -> Error(workflow_error_response(error))
       }
   }
 }
@@ -497,20 +404,7 @@ fn delete_workflow_db(
 ) -> Result(Nil, wisp.Response) {
   case workflows_db.delete_workflow(db, workflow_id, org_id, project_id) {
     Ok(Nil) -> Ok(Nil)
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(service_error.ValidationError(msg)) ->
-      Error(api.error(422, "VALIDATION_ERROR", msg))
-    Error(service_error.InvalidReference(_)) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-    Error(service_error.Conflict(_)) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-    Error(service_error.Unexpected(_)) ->
-      Error(api.error(500, "INTERNAL", "Unexpected error"))
-    Error(service_error.AlreadyExists) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(error) -> Error(service_error_response.to_response(error))
   }
 }
 
@@ -519,47 +413,19 @@ fn get_workflow_response(
   workflow_id: Int,
 ) -> Result(wisp.Response, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
-    Ok(workflow) ->
-      Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
-    Error(service_error.NotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(service_error.AlreadyExists) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(service_error.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(service_error.ValidationError(msg)) ->
-      Error(api.error(422, "VALIDATION_ERROR", msg))
-    Error(service_error.InvalidReference(_)) ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
-    Error(service_error.Conflict(_)) ->
-      Error(api.error(409, "CONFLICT", "Conflict"))
-    Error(service_error.Unexpected(_)) ->
-      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Ok(workflow) -> Ok(api.ok(workflow_presenters.workflow_response(workflow)))
+    Error(error) -> Error(workflow_error_response(error))
   }
 }
 
-fn workflow_json(workflow: workflows_db.Workflow) -> json.Json {
-  let workflows_db.Workflow(
-    id: id,
-    org_id: org_id,
-    project_id: project_id,
-    name: name,
-    description: description,
-    active: active,
-    rule_count: rule_count,
-    created_by: created_by,
-    created_at: created_at,
-  ) = workflow
+fn workflow_error_response(error: service_error.ServiceError) -> wisp.Response {
+  case error {
+    service_error.AlreadyExists ->
+      api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
+    _ -> service_error_response.to_response(error)
+  }
+}
 
-  json.object([
-    #("id", json.int(id)),
-    #("org_id", json.int(org_id)),
-    #("project_id", json.int(project_id)),
-    #("name", json.string(name)),
-    #("description", json_helpers.option_string_json(description)),
-    #("active", json.bool(active)),
-    #("rule_count", json.int(rule_count)),
-    #("created_by", json.int(created_by)),
-    #("created_at", json.string(created_at)),
-  ])
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }

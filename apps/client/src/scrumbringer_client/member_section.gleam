@@ -19,24 +19,30 @@ pub type MemberSection {
   Fichas
 }
 
-/// Parses a URL slug into a MemberSection (defaults to Pool).
+pub type MemberSectionParseError {
+  UnknownMemberSection(String)
+}
+
+/// Parses a URL slug into a MemberSection.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// from_slug("fichas")
-/// // -> Fichas
+/// parse_slug("fichas")
+/// // -> Ok(Fichas)
 ///
-/// from_slug("my-bar")
-/// // -> MyBar
+/// parse_slug("my-bar")
+/// // -> Ok(MyBar)
 /// ```
-pub fn from_slug(slug: String) -> MemberSection {
+pub fn parse_slug(
+  slug: String,
+) -> Result(MemberSection, MemberSectionParseError) {
   case slug {
-    "fichas" -> Fichas
-    "pool" -> Pool
-    "my-bar" -> MyBar
-    "my-skills" -> MySkills
-    _ -> Pool
+    "" | "pool" -> Ok(Pool)
+    "fichas" -> Ok(Fichas)
+    "my-bar" -> Ok(MyBar)
+    "my-skills" -> Ok(MySkills)
+    other -> Error(UnknownMemberSection(other))
   }
 }
 

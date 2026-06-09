@@ -2,22 +2,16 @@ import domain/org_role
 import domain/project.{Project}
 import domain/project_role.{Manager, Member}
 import gleam/option
-import gleeunit/should
 import scrumbringer_client/permissions
 
-pub fn visible_sections_org_admin_test() {
-  let projects = [
-    Project(
-      id: 1,
-      name: "P1",
-      my_role: Member,
-      created_at: "",
-      members_count: 0,
-    ),
-  ]
+fn project_with_role(role) {
+  Project(id: 1, name: "P1", my_role: role, created_at: "", members_count: 0)
+}
 
-  permissions.visible_sections(org_role.Admin, projects)
-  |> should.equal([
+pub fn visible_sections_org_admin_test() {
+  let projects = [project_with_role(Member)]
+
+  let assert [
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
@@ -27,22 +21,13 @@ pub fn visible_sections_org_admin_test() {
     permissions.Capabilities,
     permissions.Workflows,
     permissions.TaskTemplates,
-  ])
+  ] = permissions.visible_sections(org_role.Admin, projects)
 }
 
 pub fn visible_sections_org_admin_and_project_admin_test() {
-  let projects = [
-    Project(
-      id: 1,
-      name: "P1",
-      my_role: Manager,
-      created_at: "",
-      members_count: 0,
-    ),
-  ]
+  let projects = [project_with_role(Manager)]
 
-  permissions.visible_sections(org_role.Admin, projects)
-  |> should.equal([
+  let assert [
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
@@ -55,23 +40,14 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Cards,
     permissions.Workflows,
     permissions.TaskTemplates,
-  ])
+  ] = permissions.visible_sections(org_role.Admin, projects)
 }
 
 pub fn visible_sections_project_manager_only_test() {
-  let projects = [
-    Project(
-      id: 1,
-      name: "P1",
-      my_role: Manager,
-      created_at: "",
-      members_count: 0,
-    ),
-  ]
+  let projects = [project_with_role(Manager)]
 
   // Project managers get access to project-scoped sections including capabilities
-  permissions.visible_sections(org_role.Member, projects)
-  |> should.equal([
+  let assert [
     permissions.RuleMetrics,
     permissions.Members,
     permissions.Capabilities,
@@ -79,67 +55,89 @@ pub fn visible_sections_project_manager_only_test() {
     permissions.Cards,
     permissions.Workflows,
     permissions.TaskTemplates,
-  ])
+  ] = permissions.visible_sections(org_role.Member, projects)
 }
 
 pub fn can_access_members_requires_selected_project_or_any_admin_test() {
-  let projects = [
-    Project(
-      id: 1,
-      name: "P1",
-      my_role: Manager,
-      created_at: "",
-      members_count: 0,
-    ),
-  ]
+  let projects = [project_with_role(Manager)]
 
-  permissions.can_access_section(
-    permissions.Members,
-    org_role.Member,
-    projects,
-    option.None,
-  )
-  |> should.equal(True)
+  let assert True =
+    permissions.can_access_section(
+      permissions.Members,
+      org_role.Member,
+      projects,
+      option.None,
+    )
 
-  permissions.can_access_section(
-    permissions.Members,
-    org_role.Member,
-    projects,
-    option.Some(Project(
-      id: 2,
-      name: "P2",
-      my_role: Member,
-      created_at: "",
-      members_count: 0,
-    )),
-  )
-  |> should.equal(False)
+  let assert False =
+    permissions.can_access_section(
+      permissions.Members,
+      org_role.Member,
+      projects,
+      option.Some(Project(
+        id: 2,
+        name: "P2",
+        my_role: Member,
+        created_at: "",
+        members_count: 0,
+      )),
+    )
 }
 
 pub fn can_access_assignments_admin_only_test() {
-  let projects = [
-    Project(
-      id: 1,
-      name: "P1",
-      my_role: Manager,
-      created_at: "",
-      members_count: 0,
-    ),
-  ]
+  let projects = [project_with_role(Manager)]
 
-  permissions.can_access_section(
-    permissions.Assignments,
-    org_role.Admin,
-    projects,
-    option.None,
-  )
-  |> should.equal(True)
+  let assert True =
+    permissions.can_access_section(
+      permissions.Assignments,
+      org_role.Admin,
+      projects,
+      option.None,
+    )
 
-  permissions.can_access_section(
-    permissions.Assignments,
-    org_role.Member,
-    projects,
-    option.None,
-  )
-  |> should.equal(False)
+  let assert False =
+    permissions.can_access_section(
+      permissions.Assignments,
+      org_role.Member,
+      projects,
+      option.None,
+    )
+}
+
+pub fn can_manage_project_content_allows_org_admin_without_project_test() {
+  let assert True =
+    permissions.can_manage_project_content(org_role.Admin, option.None)
+}
+
+pub fn is_selected_project_manager_requires_manager_project_test() {
+  let assert True =
+    permissions.is_selected_project_manager(
+      option.Some(project_with_role(Manager)),
+    )
+
+  let assert False =
+    permissions.is_selected_project_manager(
+      option.Some(project_with_role(Member)),
+    )
+
+  let assert False = permissions.is_selected_project_manager(option.None)
+}
+
+pub fn can_manage_project_content_allows_selected_project_manager_test() {
+  let assert True =
+    permissions.can_manage_project_content(
+      org_role.Member,
+      option.Some(project_with_role(Manager)),
+    )
+}
+
+pub fn can_manage_project_content_rejects_member_and_absent_project_test() {
+  let assert False =
+    permissions.can_manage_project_content(
+      org_role.Member,
+      option.Some(project_with_role(Member)),
+    )
+
+  let assert False =
+    permissions.can_manage_project_content(org_role.Member, option.None)
 }

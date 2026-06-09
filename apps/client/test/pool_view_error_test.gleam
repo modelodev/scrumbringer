@@ -1,5 +1,6 @@
+import gleam/list
+import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/api_error as domain_api_error
@@ -14,10 +15,56 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/pool/view as pool_view
+import scrumbringer_client/features/pool/view_config as pool_view
 
 fn base_model() -> Model {
   default_model()
+}
+
+fn pool_callbacks() -> pool_view.Callbacks(String) {
+  pool_view.Callbacks(
+    on_drag_moved: fn(_, _) { "drag-moved" },
+    on_drag_ended: "drag-ended",
+    on_create_opened: "create-open",
+    on_now_working_pause: "pause",
+    on_now_working_start: fn(_) { "start" },
+    on_claim: fn(_, _) { "claim" },
+    on_release: fn(_, _) { "release" },
+    on_complete: fn(_, _) { "complete" },
+    on_open: fn(_) { "open" },
+    on_hover_opened: fn(_) { "hover-open" },
+    on_hover_closed: "hover-close",
+    on_focused: fn(_) { "focus" },
+    on_blurred: "blur",
+    on_drag_started: fn(_, _, _) { "drag-start" },
+    on_touch_started: fn(_, _, _) { "touch-start" },
+    on_touch_ended: fn(_) { "touch-end" },
+  )
+}
+
+fn pool_context(model: Model) {
+  pool_view.Context(
+    locale: model.ui.locale,
+    theme: model.ui.theme,
+    has_active_projects: has_active_projects(model),
+    current_user_id: 1,
+    active_task_id: opt.None,
+    now_working_sessions: [],
+    cards: [],
+    pool: model.member.pool,
+    now_working: model.member.now_working,
+    skills: model.member.skills,
+    notes: model.member.notes,
+    positions: model.member.positions,
+    callbacks: pool_callbacks(),
+  )
+}
+
+fn has_active_projects(model: Model) -> Bool {
+  case model.core.projects {
+    Loaded(projects) -> !list.is_empty(projects)
+    _ -> False
+  }
 }
 
 fn test_user() -> User {
@@ -32,10 +79,10 @@ fn test_user() -> User {
 
 pub fn view_pool_main_shows_no_projects_empty_state_test() {
   let html =
-    pool_view.view_pool_main(base_model(), test_user())
+    pool_view.view_pool_main(pool_context(base_model()), test_user())
     |> element.to_document_string
 
-  string.contains(html, "No projects yet") |> should.be_true
+  let assert True = string.contains(html, "No projects yet")
 }
 
 pub fn view_pool_main_shows_tasks_error_test() {
@@ -68,8 +115,9 @@ pub fn view_pool_main_shows_tasks_error_test() {
     })
 
   let html =
-    pool_view.view_pool_main(model, test_user()) |> element.to_document_string
+    pool_view.view_pool_main(pool_context(model), test_user())
+    |> element.to_document_string
 
-  string.contains(html, "class=\"error\"") |> should.be_true
-  string.contains(html, "Boom") |> should.be_true
+  let assert True = string.contains(html, "class=\"error\"")
+  let assert True = string.contains(html, "Boom")
 }

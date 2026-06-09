@@ -171,10 +171,3 @@ pub type Error {
   /// Database error.
   DbError(pog.QueryError)
 }
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/// Maximum allowed characters for task title.
-pub const max_task_title_chars = 56

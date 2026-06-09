@@ -26,7 +26,9 @@ import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/api/metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
-import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/api/tasks/active as active_api
+import scrumbringer_client/api/tasks/capabilities as capabilities_api
+import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
@@ -37,9 +39,9 @@ import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/member/skills as member_skills
+import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/hydration
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -68,7 +70,6 @@ fn remote_state(remote: Remote(a)) -> hydration.ResourceState {
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn auth_state(model: client_state.Model) -> hydration.AuthState {
   case model.core.user {
     opt.Some(user) -> hydration.Authed(user.org_role)
@@ -82,7 +83,7 @@ fn auth_state(model: client_state.Model) -> hydration.AuthState {
 }
 
 fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
-  let projects = helpers_selection.active_projects(model)
+  let projects = state_selectors.active_projects(model)
   hydration.Snapshot(
     auth: auth_state(model),
     projects: remote_state(model.core.projects),
@@ -133,7 +134,6 @@ pub fn hydrate_model(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn redirect_from_commands(
   commands: List(hydration.Command),
 ) -> opt.Option(router.Route) {
@@ -342,7 +342,7 @@ fn hydrate_me_capability_ids_request(
     })
 
   #(model, [
-    api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
+    capabilities_api.get_member_capability_ids(project_id, user.id, fn(result) {
       client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(result))
     }),
     ..fx
@@ -373,7 +373,7 @@ fn hydrate_work_sessions_request(
     })
 
   #(model, [
-    api_tasks.get_work_sessions(fn(result) {
+    active_api.get_work_sessions(fn(result) {
       client_state.pool_msg(pool_messages.MemberWorkSessionsFetched(result))
     }),
     ..fx
@@ -658,7 +658,7 @@ fn hydrate_task_types_request(
     })
 
   #(model, [
-    api_tasks.list_task_types(project_id, fn(result) {
+    task_types_api.list_task_types(project_id, fn(result) {
       client_state.admin_msg(admin_messages.TaskTypesFetched(result))
     }),
     ..fx

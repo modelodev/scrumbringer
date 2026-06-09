@@ -376,120 +376,6 @@ pub fn update_ui(model: Model, f: fn(UiModel) -> UiModel) -> Model {
   Model(..model, ui: f(model.ui))
 }
 
-/// Provides sidebar collapse from bools.
-///
-/// Example:
-///   sidebar_collapse_from_bools(...)
-pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
-  case config, org {
-    True, True -> ui_state.BothCollapsed
-    True, False -> ui_state.ConfigCollapsed
-    False, True -> ui_state.OrgCollapsed
-    False, False -> ui_state.NoneCollapsed
-  }
-}
-
-/// Provides sidebar collapse to bools.
-///
-/// Example:
-///   sidebar_collapse_to_bools(...)
-pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
-  case state {
-    ui_state.NoneCollapsed -> #(False, False)
-    ui_state.ConfigCollapsed -> #(True, False)
-    ui_state.OrgCollapsed -> #(False, True)
-    ui_state.BothCollapsed -> #(True, True)
-  }
-}
-
-/// Provides sidebar config collapsed.
-///
-/// Example:
-///   sidebar_config_collapsed(...)
-pub fn sidebar_config_collapsed(state: SidebarCollapse) -> Bool {
-  let #(config, _org) = sidebar_collapse_to_bools(state)
-  config
-}
-
-/// Provides sidebar org collapsed.
-///
-/// Example:
-///   sidebar_org_collapsed(...)
-pub fn sidebar_org_collapsed(state: SidebarCollapse) -> Bool {
-  let #(_config, org) = sidebar_collapse_to_bools(state)
-  org
-}
-
-/// Toggles sidebar config.
-///
-/// Example:
-///   toggle_sidebar_config(...)
-pub fn toggle_sidebar_config(state: SidebarCollapse) -> SidebarCollapse {
-  let #(config, org) = sidebar_collapse_to_bools(state)
-  sidebar_collapse_from_bools(!config, org)
-}
-
-/// Toggles sidebar org.
-///
-/// Example:
-///   toggle_sidebar_org(...)
-pub fn toggle_sidebar_org(state: SidebarCollapse) -> SidebarCollapse {
-  let #(config, org) = sidebar_collapse_to_bools(state)
-  sidebar_collapse_from_bools(config, !org)
-}
-
-/// Provides mobile drawer left open.
-///
-/// Example:
-///   mobile_drawer_left_open(...)
-pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
-  case state {
-    ui_state.DrawerLeftOpen -> True
-    _ -> False
-  }
-}
-
-/// Provides mobile drawer right open.
-///
-/// Example:
-///   mobile_drawer_right_open(...)
-pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
-  case state {
-    ui_state.DrawerRightOpen -> True
-    _ -> False
-  }
-}
-
-/// Toggles left drawer.
-///
-/// Example:
-///   toggle_left_drawer(...)
-pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
-  case state {
-    ui_state.DrawerLeftOpen -> ui_state.DrawerClosed
-    _ -> ui_state.DrawerLeftOpen
-  }
-}
-
-/// Toggles right drawer.
-///
-/// Example:
-///   toggle_right_drawer(...)
-pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
-  case state {
-    ui_state.DrawerRightOpen -> ui_state.DrawerClosed
-    _ -> ui_state.DrawerRightOpen
-  }
-}
-
-/// Closes drawers.
-///
-/// Example:
-///   close_drawers(...)
-pub fn close_drawers(_state: MobileDrawerState) -> MobileDrawerState {
-  ui_state.DrawerClosed
-}
-
 // ----------------------------------------------------------------------------
 // Helper functions
 // ----------------------------------------------------------------------------
@@ -551,7 +437,6 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// - `page` defaults to `Login`
 /// - `member_create_priority` defaults to `"3"` (medium)
 /// - `members_add_role` defaults to `Member`
-/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn default_model() -> Model {
   Model(
     core: CoreModel(

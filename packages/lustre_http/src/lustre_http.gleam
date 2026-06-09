@@ -5,6 +5,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/json.{type Json}
+import gleam/result
 import lustre/effect.{type Effect}
 
 // SENDING REQUESTS ------------------------------------------------------------
@@ -281,18 +282,20 @@ pub fn expect_json(
 ) -> Expect(msg) {
   ExpectTextResponse(fn(response) {
     case response {
-      Ok(res) ->
-        case response_to_result(res) {
-          Ok(body) ->
-            case json.parse(from: body, using: decoder) {
-              Ok(value) -> to_msg(Ok(value))
-              Error(json_error) -> to_msg(Error(JsonError(json_error)))
-            }
-          Error(err) -> to_msg(Error(err))
-        }
+      Ok(res) -> to_msg(json_response_to_result(res, decoder))
       Error(err) -> to_msg(Error(err))
     }
   })
+}
+
+fn json_response_to_result(
+  response: Response(String),
+  decoder: Decoder(a),
+) -> Result(a, HttpError) {
+  use body <- result.try(response_to_result(response))
+
+  json.parse(from: body, using: decoder)
+  |> result.map_error(JsonError)
 }
 
 /// Expect a [gleam_http `Response`](https://hexdocs.pm/gleam_http/gleam/http/response.html#Response)

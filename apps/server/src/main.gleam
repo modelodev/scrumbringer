@@ -9,42 +9,64 @@ import gleam/erlang/charlist
 import gleam/erlang/process
 import gleam/int
 import gleam/io
+import gleam/result
 import mist
 import scrumbringer_server
 import wisp
 import wisp/wisp_mist
 
-// Justification: nested case improves clarity for branching logic.
+type StartupError {
+  MissingDatabaseUrl
+  InvalidDatabaseUrl
+  DbPoolStartFailed
+  HttpServerStartFailed
+}
+
 /// Starts the ScrumBringer server.
 pub fn main() {
   wisp.configure_logger()
 
+  case start() {
+    Ok(_) -> Nil
+    Error(error) -> io.println(startup_error_message(error))
+  }
+}
+
+fn start() -> Result(Nil, StartupError) {
   let secret_key_base = secret_key_base()
   let port = port()
 
-  case database_url() {
-    Error(_) -> io.println("DATABASE_URL is required to start the server")
+  use database_url <- result.try(database_url())
+  use app <- result.try(
+    scrumbringer_server.new_app(secret_key_base, database_url)
+    |> result.map_error(app_startup_error),
+  )
+  use _ <- result.try(
+    scrumbringer_server.handler(app)
+    |> wisp_mist.handler(secret_key_base)
+    |> mist.new
+    |> mist.port(port)
+    |> mist.start
+    |> result.map_error(fn(_) { HttpServerStartFailed }),
+  )
 
-    Ok(database_url) -> {
-      case scrumbringer_server.new_app(secret_key_base, database_url) {
-        Ok(app) -> {
-          let assert Ok(_) =
-            scrumbringer_server.handler(app)
-            |> wisp_mist.handler(secret_key_base)
-            |> mist.new
-            |> mist.port(port)
-            |> mist.start
+  process.sleep_forever()
+  Ok(Nil)
+}
 
-          process.sleep_forever()
-        }
+fn app_startup_error(error: scrumbringer_server.StartupError) -> StartupError {
+  case error {
+    scrumbringer_server.InvalidDatabaseUrl -> InvalidDatabaseUrl
+    scrumbringer_server.DbPoolStartFailed -> DbPoolStartFailed
+  }
+}
 
-        Error(scrumbringer_server.InvalidDatabaseUrl) ->
-          io.println("DATABASE_URL is invalid")
-
-        Error(scrumbringer_server.DbPoolStartFailed) ->
-          io.println("Failed to start PostgreSQL pool")
-      }
-    }
+fn startup_error_message(error: StartupError) -> String {
+  case error {
+    MissingDatabaseUrl -> "DATABASE_URL is required to start the server"
+    InvalidDatabaseUrl -> "DATABASE_URL is invalid"
+    DbPoolStartFailed -> "Failed to start PostgreSQL pool"
+    HttpServerStartFailed -> "Failed to start HTTP server"
   }
 }
 
@@ -64,9 +86,9 @@ fn port() -> Int {
   }
 }
 
-fn database_url() -> Result(String, Nil) {
+fn database_url() -> Result(String, StartupError) {
   case getenv("DATABASE_URL", "") {
-    "" -> Error(Nil)
+    "" -> Error(MissingDatabaseUrl)
     url -> Ok(url)
   }
 }

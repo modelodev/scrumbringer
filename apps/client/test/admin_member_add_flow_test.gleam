@@ -3,9 +3,9 @@ import domain/org_role
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role
 import domain/remote.{Loaded}
+import gleam/int
 import gleam/option as opt
 import gleam/string
-import gleeunit/should
 import lustre/effect
 import lustre/element
 
@@ -17,6 +17,15 @@ import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/member_add
 import scrumbringer_client/features/admin/search
 import scrumbringer_client/features/admin/views/members
+import scrumbringer_client/i18n/locale
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
 
 fn sample_user(id: Int, email: String) -> OrgUser {
   OrgUser(
@@ -62,6 +71,56 @@ fn with_members_state(
   })
 }
 
+fn member_add_context(model: client_state.Model) -> member_add.Context(String) {
+  member_add.Context(
+    selected_project_id: model.core.selected_project_id,
+    select_user_first: "Select a user first",
+    on_member_added: fn(_) { "member-added" },
+  )
+}
+
+fn members_config(
+  model: client_state.Model,
+  selected_project: opt.Option(Project),
+) -> members.Config(String) {
+  members.Config(
+    locale: locale.En,
+    selected_project: selected_project,
+    members: model.admin.members,
+    capabilities: model.admin.capabilities,
+    current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
+    is_org_admin: True,
+    on_add_dialog_opened: "add-open",
+    on_add_dialog_closed: "add-close",
+    on_org_users_search_changed: fn(value) { "search-" <> value },
+    on_member_add_user_selected: fn(id) { "select-user-" <> int.to_string(id) },
+    on_member_add_role_changed: fn(role) {
+      "role-" <> project_role.to_string(role)
+    },
+    on_member_add_submitted: "add-submit",
+    on_member_remove_clicked: fn(id) { "remove-" <> int.to_string(id) },
+    on_member_remove_confirmed: "remove-confirm",
+    on_member_remove_cancelled: "remove-cancel",
+    on_member_release_all_clicked: fn(id, count) {
+      "release-" <> int.to_string(id) <> "-" <> int.to_string(count)
+    },
+    on_member_release_all_confirmed: "release-confirm",
+    on_member_release_all_cancelled: "release-cancel",
+    on_member_role_change_requested: fn(id, role) {
+      "change-role-" <> int.to_string(id) <> "-" <> project_role.to_string(role)
+    },
+    on_member_capabilities_opened: fn(id) {
+      "capabilities-" <> int.to_string(id)
+    },
+    on_member_capabilities_closed: "capabilities-close",
+    on_member_capabilities_toggled: fn(id) {
+      "toggle-capability-" <> int.to_string(id)
+    },
+    on_member_capabilities_save_clicked: "capabilities-save",
+    on_invalid_role: "invalid-role",
+  )
+}
+
 pub fn org_users_search_exact_email_auto_selects_user_test() {
   let model =
     base_model()
@@ -77,14 +136,12 @@ pub fn org_users_search_exact_email_auto_selects_user_test() {
     sample_user(9, "qa@example.com"),
   ]
 
-  let #(next, _fx) = search.handle_org_users_search_results_ok(model, 2, users)
+  let #(next, _fx) =
+    search.handle_org_users_search_results_ok(model.admin.members, 2, users)
 
-  let is_selected = case next.admin.members.members_add_selected_user {
-    opt.Some(user) -> user.id == 9 && user.email == "qa@example.com"
-    opt.None -> False
-  }
-
-  is_selected |> should.be_true
+  let assert opt.Some(user) = next.members_add_selected_user
+  let assert 9 = user.id
+  let assert "qa@example.com" = user.email
 }
 
 pub fn org_users_search_without_exact_match_clears_selection_test() {
@@ -103,9 +160,10 @@ pub fn org_users_search_without_exact_match_clears_selection_test() {
     sample_user(4, "pm@example.com"),
   ]
 
-  let #(next, _fx) = search.handle_org_users_search_results_ok(model, 3, users)
+  let #(next, _fx) =
+    search.handle_org_users_search_results_ok(model.admin.members, 3, users)
 
-  next.admin.members.members_add_selected_user |> should.equal(opt.None)
+  let assert opt.None = next.members_add_selected_user
 }
 
 pub fn submit_without_selected_user_keeps_add_disabled_state_test() {
@@ -115,11 +173,15 @@ pub fn submit_without_selected_user_keeps_add_disabled_state_test() {
       admin_members.Model(..members_state, members_add_selected_user: opt.None)
     })
 
-  let #(next, fx) = member_add.handle_member_add_submitted(model)
+  let #(next, fx) =
+    member_add.handle_member_add_submitted(
+      model.admin.members,
+      member_add_context(model),
+    )
 
-  next.admin.members.members_add_in_flight |> should.equal(False)
-  next.admin.members.members_add_error |> should.not_equal(opt.None)
-  fx |> should.equal(effect.none())
+  let assert False = next.members_add_in_flight
+  let assert False = next.members_add_error == opt.None
+  let assert True = fx == effect.none()
 }
 
 pub fn members_dialog_shows_selected_user_feedback_test() {
@@ -133,11 +195,12 @@ pub fn members_dialog_shows_selected_user_feedback_test() {
       )
     })
 
-  let rendered = members.view_members(model, opt.Some(sample_project()))
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  string.contains(html, "member-add-selected-user") |> should.be_true
-  string.contains(html, "qa@example.com") |> should.be_true
+  assert_contains(html, "member-add-selected-user")
+  assert_contains(html, "qa@example.com")
 }
 
 pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
@@ -155,14 +218,15 @@ pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
       )
     })
 
-  let rendered = members.view_members(model, opt.Some(sample_project()))
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
   let has_no_results =
     string.contains(html, "Sin resultados")
     || string.contains(html, "No results")
 
-  has_no_results |> should.be_true
+  let assert True = has_no_results
 }
 
 pub fn members_dialog_filters_out_existing_project_members_from_search_results_test() {
@@ -179,13 +243,14 @@ pub fn members_dialog_filters_out_existing_project_members_from_search_results_t
       )
     })
 
-  let rendered = members.view_members(model, opt.Some(sample_project()))
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
   let has_no_results =
     string.contains(html, "Sin resultados")
     || string.contains(html, "No results")
 
-  has_no_results |> should.be_true
-  string.contains(html, "Seleccionar") |> should.be_false
+  let assert True = has_no_results
+  assert_not_contains(html, "Seleccionar")
 }

@@ -4,7 +4,8 @@ import gleam/dynamic/decode
 import gleam/option
 
 import domain/org.{
-  type InviteLink, type OrgInvite, type OrgUser, InviteLink, OrgInvite, OrgUser,
+  type InviteLink, type InviteLinkState, type OrgInvite, type OrgUser, Active,
+  InviteLink, OrgInvite, OrgUser, parse_invite_link_state,
 }
 import domain/org_role/codec as org_role_codec
 
@@ -42,7 +43,7 @@ pub fn invite_link_decoder() -> decode.Decoder(InviteLink) {
   use email <- decode.field("email", decode.string)
   use token <- decode.field("token", decode.string)
   use url_path <- decode.field("url_path", decode.string)
-  use state <- decode.field("state", decode.string)
+  use state <- decode.field("state", invite_link_state_decoder())
   use created_at <- decode.field("created_at", decode.string)
 
   use used_at <- decode.optional_field(
@@ -66,4 +67,12 @@ pub fn invite_link_decoder() -> decode.Decoder(InviteLink) {
     used_at: used_at,
     invalidated_at: invalidated_at,
   ))
+}
+
+fn invite_link_state_decoder() -> decode.Decoder(InviteLinkState) {
+  use raw <- decode.then(decode.string)
+  case parse_invite_link_state(raw) {
+    Ok(state) -> decode.success(state)
+    Error(_) -> decode.failure(Active, "InviteLinkState")
+  }
 }

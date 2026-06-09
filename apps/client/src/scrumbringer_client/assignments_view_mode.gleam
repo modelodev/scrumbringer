@@ -2,8 +2,6 @@
 //// Assignments view mode helpers.
 ////
 
-import gleam/option
-
 pub type AssignmentsViewMode {
   ByProject
   ByUser
@@ -16,10 +14,10 @@ pub fn to_param(mode: AssignmentsViewMode) -> String {
   }
 }
 
-pub fn from_param(raw: String) -> option.Option(AssignmentsViewMode) {
+pub fn parse(raw: String) -> Result(AssignmentsViewMode, Nil) {
   case raw {
-    "projects" -> option.Some(ByProject)
-    "users" -> option.Some(ByUser)
-    _ -> option.None
+    "projects" -> Ok(ByProject)
+    "users" -> Ok(ByUser)
+    _ -> Error(Nil)
   }
 }

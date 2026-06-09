@@ -6,7 +6,7 @@
 import fixtures
 import gleam/http
 import gleeunit
-import gleeunit/should
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -29,11 +29,11 @@ pub fn require_current_user_returns_user_for_valid_session_test() {
     )
 
   // Then: Returns 200 with user data
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify response contains user email
   let body = simulate.read_body(res)
-  body |> should.not_equal("")
+  body |> expect.not_equal("")
 }
 
 // =============================================================================
@@ -48,7 +48,7 @@ pub fn require_current_user_returns_error_for_invalid_session_test() {
   let res = handler(simulate.request(http.Get, "/api/v1/auth/me"))
 
   // Then: Returns 401 AUTH_REQUIRED
-  res.status |> should.equal(401)
+  expect.expect_status(res, 401)
 }
 
 pub fn require_current_user_returns_error_for_expired_token_test() {
@@ -66,5 +66,5 @@ pub fn require_current_user_returns_error_for_expired_token_test() {
     )
 
   // Then: Returns 401 AUTH_REQUIRED
-  res.status |> should.equal(401)
+  expect.expect_status(res, 401)
 }

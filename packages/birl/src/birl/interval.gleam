@@ -29,26 +29,34 @@ pub fn shift(interval: Interval, duration: duration.Duration) {
 }
 
 pub fn scale_up(interval: Interval, factor: Int) {
+  case try_scale_up(interval, factor) {
+    Ok(scaled) -> scaled
+    Error(_) -> interval
+  }
+}
+
+pub fn try_scale_up(interval: Interval, factor: Int) -> Result(Interval, Nil) {
   case interval {
-    Interval(start, end) -> {
-      let assert Ok(interval) =
-        birl.difference(end, start)
-        |> duration.scale_up(factor)
-        |> from_start_and_duration(start, _)
-      interval
-    }
+    Interval(start, end) ->
+      birl.difference(end, start)
+      |> duration.scale_up(factor)
+      |> from_start_and_duration(start, _)
   }
 }
 
 pub fn scale_down(interval: Interval, factor: Int) {
+  case try_scale_down(interval, factor) {
+    Ok(scaled) -> scaled
+    Error(_) -> interval
+  }
+}
+
+pub fn try_scale_down(interval: Interval, factor: Int) -> Result(Interval, Nil) {
   case interval {
-    Interval(start, end) -> {
-      let assert Ok(interval) =
-        birl.difference(end, start)
-        |> duration.scale_down(factor)
-        |> from_start_and_duration(start, _)
-      interval
-    }
+    Interval(start, end) ->
+      birl.difference(end, start)
+      |> duration.scale_down(factor)
+      |> from_start_and_duration(start, _)
   }
 }
 

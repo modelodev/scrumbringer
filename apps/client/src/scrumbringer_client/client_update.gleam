@@ -21,9 +21,11 @@
 //// Admin/Pool subtrees are delegated to feature update modules
 //// to keep this file focused on top-level orchestration.
 
+import domain/api_error.{type ApiError, type ApiResult}
 import domain/org_role
 import domain/project.{type Project}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/remote.{Failed, Loaded, Loading, NotAsked, should_fetch}
+import domain/user.{type User}
 import domain/view_mode
 import gleam/dict
 import gleam/int
@@ -42,7 +44,12 @@ import scrumbringer_client/api/metrics as api_metrics
 import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
-import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/api/tasks/active as active_api
+import scrumbringer_client/api/tasks/capabilities as capabilities_api
+import scrumbringer_client/api/tasks/operations as task_operations_api
+import scrumbringer_client/api/tasks/positions as task_positions_api
+import scrumbringer_client/api/tasks/task_types as task_types_api
+import scrumbringer_client/api/workflows as api_workflows
 
 // Domain types
 import domain/task.{type TaskFilters, TaskFilters}
@@ -66,6 +73,7 @@ import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -74,27 +82,191 @@ import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
 
-// Story 4.10: Rule template attachment UI
-
-// Workflows
-// Rules
-// Rule templates
-// Task templates
-
+import scrumbringer_client/client_state/selectors as state_selectors
+import scrumbringer_client/features/admin/cards as admin_cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/features/admin/rule_metrics as rule_metrics_workflow
+import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/update as admin_workflow
+import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
+import scrumbringer_client/features/milestones/refresh as milestone_refresh
+import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
-import scrumbringer_client/features/workflows/update as workflows_workflow
 import scrumbringer_client/helpers/options as helpers_options
-import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/text as i18n_text
 
 // ---------------------------------------------------------------------------
 // Routing helpers
 // ---------------------------------------------------------------------------
+
+fn rule_metrics_context() -> rule_metrics_workflow.Context(client_state.Msg) {
+  rule_metrics_workflow.Context(
+    on_rule_metrics_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminRuleMetricsFetched(result))
+    },
+    on_workflow_details_fetched: fn(result) {
+      client_state.pool_msg(
+        pool_messages.AdminRuleMetricsWorkflowDetailsFetched(result),
+      )
+    },
+    on_rule_details_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminRuleMetricsRuleDetailsFetched(
+        result,
+      ))
+    },
+    on_executions_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminRuleMetricsExecutionsFetched(
+        result,
+      ))
+    },
+  )
+}
+
+fn admin_cards_context(
+  model: client_state.Model,
+) -> admin_cards_workflow.Context(client_state.Msg) {
+  admin_cards_workflow.Context(
+    selected_project_id: model.core.selected_project_id,
+    on_cards_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.CardsFetched(result))
+    },
+  )
+}
+
+fn update_admin_cards(
+  model: client_state.Model,
+  f: fn(admin_cards.Model) -> admin_cards.Model,
+) -> client_state.Model {
+  client_state.update_admin(model, fn(admin) {
+    let cards = admin.cards
+    admin_state.AdminModel(..admin, cards: f(cards))
+  })
+}
+
+fn fetch_cards_for_project(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(cards, fx) =
+    admin_cards_workflow.fetch_cards_for_project(
+      model.admin.cards,
+      admin_cards_context(model),
+    )
+
+  #(update_admin_cards(model, fn(_) { cards }), fx)
+}
+
+fn handle_projects_fetched(
+  model: client_state.Model,
+  result: ApiResult(List(Project)),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case result {
+    Ok(projects) -> handle_projects_fetched_ok(model, projects)
+    Error(err) -> handle_projects_fetched_error(model, err)
+  }
+}
+
+fn handle_projects_fetched_ok(
+  model: client_state.Model,
+  projects: List(Project),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let selected =
+    state_selectors.ensure_selected_project(
+      model.core.selected_project_id,
+      projects,
+    )
+  let model =
+    client_state.update_core(model, fn(core) {
+      client_state.CoreModel(
+        ..core,
+        projects: Loaded(projects),
+        selected_project_id: selected,
+      )
+    })
+    |> state_selectors.ensure_default_section
+
+  case model.core.page {
+    client_state.Member -> {
+      let #(model, fx) = member_refresh(model)
+      let #(model, hyd_fx) = hydrate_model(model)
+      #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+    }
+
+    client_state.Admin -> {
+      let #(model, fx) = refresh_section_for_test(model)
+      let #(model, hyd_fx) = hydrate_model(model)
+      #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+    }
+
+    _ -> {
+      let #(model, hyd_fx) = hydrate_model(model)
+      #(model, effect.batch([hyd_fx, replace_url(model)]))
+    }
+  }
+}
+
+fn handle_projects_fetched_error(
+  model: client_state.Model,
+  err: ApiError,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case err.status == 401 {
+    True -> {
+      let model =
+        client_state.update_member(
+          client_state.update_core(model, fn(core) {
+            client_state.CoreModel(
+              ..core,
+              page: client_state.Login,
+              user: opt.None,
+            )
+          }),
+          member_state.reset_drag_state,
+        )
+      #(model, replace_url(model))
+    }
+
+    False -> #(
+      client_state.update_core(model, fn(core) {
+        client_state.CoreModel(..core, projects: Failed(err))
+      }),
+      effect.none(),
+    )
+  }
+}
+
+fn apply_admin_metrics_transition(
+  model: client_state.Model,
+  transition: fn(admin_metrics.Model) ->
+    #(admin_metrics.Model, Effect(client_state.Msg)),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(metrics, fx) = transition(model.admin.metrics)
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      admin_state.AdminModel(..admin, metrics: metrics)
+    })
+  #(model, fx)
+}
+
+fn route_view_or_current(
+  view: opt.Option(view_mode.ViewMode),
+  current: view_mode.ViewMode,
+) -> view_mode.ViewMode {
+  case view {
+    opt.None -> current
+    opt.Some(next) -> next
+  }
+}
+
+fn route_search_or_empty(search: opt.Option(String)) -> String {
+  case search {
+    opt.None -> ""
+    opt.Some(value) -> value
+  }
+}
 
 fn current_route(model: client_state.Model) -> router.Route {
   case model.core.page {
@@ -110,7 +282,6 @@ fn current_route(model: client_state.Model) -> router.Route {
       router.ResetPassword(token)
     }
 
-    // Story 4.5: Use Config or Org routes based on section type
     client_state.Admin ->
       case model.core.active_section {
         permissions.Invites
@@ -207,7 +378,6 @@ pub fn write_url(
   }
 }
 
-// Justification: large function kept intact to preserve cohesive UI logic.
 fn apply_route_fields(
   model: client_state.Model,
   route: router.Route,
@@ -223,17 +393,7 @@ fn apply_route_fields(
               selected_project_id: opt.None,
             )
           }),
-          fn(member) {
-            let pool = member.pool
-            member_state.MemberModel(
-              ..member,
-              pool: member_pool.Model(
-                ..pool,
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
-              ),
-            )
-          },
+          member_state.reset_drag_state,
         )
       #(model, effect.none())
     }
@@ -254,20 +414,10 @@ fn apply_route_fields(
               auth_state.AuthModel(..auth, accept_invite: new_accept_model)
             },
           ),
-          fn(member) {
-            let pool = member.pool
-            member_state.MemberModel(
-              ..member,
-              pool: member_pool.Model(
-                ..pool,
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
-              ),
-            )
-          },
+          member_state.reset_drag_state,
         )
 
-      #(model, auth_workflow.accept_invite_effect(action))
+      #(model, auth_workflow.accept_invite_effect(action, auth_context(model)))
     }
 
     router.ResetPassword(token) -> {
@@ -286,23 +436,12 @@ fn apply_route_fields(
               auth_state.AuthModel(..auth, reset_password: new_reset_model)
             },
           ),
-          fn(member) {
-            let pool = member.pool
-            member_state.MemberModel(
-              ..member,
-              pool: member_pool.Model(
-                ..pool,
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
-              ),
-            )
-          },
+          member_state.reset_drag_state,
         )
 
-      #(model, auth_workflow.reset_password_effect(action))
+      #(model, auth_workflow.reset_password_effect(action, auth_context(model)))
     }
 
-    // Story 4.5: Config routes - project-scoped configuration
     router.Config(section, project_id) -> {
       let model =
         client_state.update_member(
@@ -314,23 +453,12 @@ fn apply_route_fields(
               selected_project_id: project_id,
             )
           }),
-          fn(member) {
-            let pool = member.pool
-            member_state.MemberModel(
-              ..member,
-              pool: member_pool.Model(
-                ..pool,
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
-              ),
-            )
-          },
+          member_state.reset_drag_state,
         )
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
     }
 
-    // Story 4.5: Org routes - org-scoped administration
     router.Org(section) -> {
       let model =
         client_state.update_member(
@@ -342,17 +470,7 @@ fn apply_route_fields(
               selected_project_id: opt.None,
             )
           }),
-          fn(member) {
-            let pool = member.pool
-            member_state.MemberModel(
-              ..member,
-              pool: member_pool.Model(
-                ..pool,
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
-              ),
-            )
-          },
+          member_state.reset_drag_state,
         )
 
       let model = case section {
@@ -414,7 +532,10 @@ fn apply_route_fields(
 
       // Update view mode if provided in URL
       let new_view =
-        opt.unwrap(url_state.view_param(state), model.member.pool.view_mode)
+        route_view_or_current(
+          url_state.view_param(state),
+          model.member.pool.view_mode,
+        )
 
       let next_model =
         client_state.update_member(
@@ -426,6 +547,7 @@ fn apply_route_fields(
             )
           }),
           fn(member) {
+            let member = member_state.reset_drag_state(member)
             let pool = member.pool
             member_state.MemberModel(
               ..member,
@@ -436,9 +558,7 @@ fn apply_route_fields(
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),
-                member_filters_q: url_state.search(state) |> opt.unwrap(""),
-                member_drag: state_types.DragIdle,
-                member_pool_drag: state_types.PoolDragIdle,
+                member_filters_q: route_search_or_empty(url_state.search(state)),
               ),
             )
           },
@@ -477,7 +597,197 @@ fn hydrate_model(
   )
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn auth_context(
+  model: client_state.Model,
+) -> auth_workflow.Context(client_state.Msg) {
+  auth_workflow.Context(
+    on_login_dom_values_read: fn(email, password) {
+      client_state.auth_msg(auth_messages.LoginDomValuesRead(email, password))
+    },
+    on_login_finished: fn(result) {
+      client_state.auth_msg(auth_messages.LoginFinished(result))
+    },
+    on_forgot_password_finished: fn(result) {
+      client_state.auth_msg(auth_messages.ForgotPasswordFinished(result))
+    },
+    on_forgot_password_copy_finished: fn(ok) {
+      client_state.auth_msg(auth_messages.ForgotPasswordCopyFinished(ok))
+    },
+    on_logout_finished: fn(result) {
+      client_state.auth_msg(auth_messages.LogoutFinished(result))
+    },
+    on_accept_invite: fn(inner) {
+      client_state.auth_msg(auth_messages.AcceptInvite(inner))
+    },
+    on_reset_password: fn(inner) {
+      client_state.auth_msg(auth_messages.ResetPassword(inner))
+    },
+    email_and_password_required: i18n.t(
+      model.ui.locale,
+      i18n_text.EmailAndPasswordRequired,
+    ),
+    email_required: i18n.t(model.ui.locale, i18n_text.EmailRequired),
+    invalid_credentials: i18n.t(model.ui.locale, i18n_text.InvalidCredentials),
+    copying: i18n.t(model.ui.locale, i18n_text.Copying),
+    copied: i18n.t(model.ui.locale, i18n_text.Copied),
+    copy_failed: i18n.t(model.ui.locale, i18n_text.CopyFailed),
+  )
+}
+
+fn auth_toast_effect(
+  message: String,
+  variant: toast.ToastVariant,
+) -> Effect(client_state.Msg) {
+  effect.from(fn(dispatch) {
+    dispatch(client_state.ToastShow(message, variant))
+    Nil
+  })
+}
+
+fn auth_page_for_org_role(role: org_role.OrgRole) -> client_state.Page {
+  case role {
+    org_role.Admin -> client_state.Admin
+    _ -> client_state.Member
+  }
+}
+
+fn show_login_without_user(
+  model: client_state.Model,
+  auth_checked: Bool,
+) -> client_state.Model {
+  client_state.update_core(model, fn(core) {
+    client_state.CoreModel(
+      ..core,
+      page: client_state.Login,
+      user: opt.None,
+      auth_checked: auth_checked,
+    )
+  })
+}
+
+fn finish_authenticated_session(
+  model: client_state.Model,
+  user: User,
+  page: client_state.Page,
+  local_fx: Effect(client_state.Msg),
+  success_text: i18n_text.Text,
+  bootstrap_fn: fn(client_state.Model) ->
+    #(client_state.Model, Effect(client_state.Msg)),
+  hydrate_fn: fn(client_state.Model) ->
+    #(client_state.Model, Effect(client_state.Msg)),
+  replace_url_fn: fn(client_state.Model) -> Effect(client_state.Msg),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let model =
+    client_state.update_core(model, fn(core) {
+      client_state.CoreModel(
+        ..core,
+        page: page,
+        user: opt.Some(user),
+        auth_checked: True,
+      )
+    })
+  let #(model, boot) = bootstrap_fn(model)
+  let #(model, hyd_fx) = hydrate_fn(model)
+  #(
+    model,
+    effect.batch([
+      local_fx,
+      boot,
+      hyd_fx,
+      replace_url_fn(model),
+      auth_toast_effect(i18n.t(model.ui.locale, success_text), toast.Success),
+    ]),
+  )
+}
+
+fn handle_auth_action(
+  model: client_state.Model,
+  action: auth_workflow.Action,
+  local_fx: Effect(client_state.Msg),
+  bootstrap_fn: fn(client_state.Model) ->
+    #(client_state.Model, Effect(client_state.Msg)),
+  hydrate_fn: fn(client_state.Model) ->
+    #(client_state.Model, Effect(client_state.Msg)),
+  replace_url_fn: fn(client_state.Model) -> Effect(client_state.Msg),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case action {
+    auth_workflow.NoAction -> #(model, local_fx)
+
+    auth_workflow.LoginSucceeded(user) ->
+      finish_authenticated_session(
+        model,
+        user,
+        client_state.Member,
+        local_fx,
+        i18n_text.LoggedIn,
+        bootstrap_fn,
+        hydrate_fn,
+        replace_url_fn,
+      )
+
+    auth_workflow.LogoutSucceeded -> {
+      let model = show_login_without_user(model, False)
+      #(
+        model,
+        effect.batch([
+          local_fx,
+          replace_url_fn(model),
+          auth_toast_effect(
+            i18n.t(model.ui.locale, i18n_text.LoggedOut),
+            toast.Success,
+          ),
+        ]),
+      )
+    }
+
+    auth_workflow.LogoutUnauthorized -> {
+      let model = show_login_without_user(model, False)
+      #(model, effect.batch([local_fx, replace_url_fn(model)]))
+    }
+
+    auth_workflow.LogoutFailed -> #(
+      model,
+      effect.batch([
+        local_fx,
+        auth_toast_effect(
+          i18n.t(model.ui.locale, i18n_text.LogoutFailed),
+          toast.Error,
+        ),
+      ]),
+    )
+
+    auth_workflow.AcceptInviteAuthed(user) ->
+      finish_authenticated_session(
+        model,
+        user,
+        auth_page_for_org_role(user.org_role),
+        local_fx,
+        i18n_text.Welcome,
+        bootstrap_fn,
+        hydrate_fn,
+        replace_url_fn,
+      )
+
+    auth_workflow.PasswordResetCompleted -> {
+      let model =
+        client_state.update_core(model, fn(core) {
+          client_state.CoreModel(..core, page: client_state.Login)
+        })
+      #(
+        model,
+        effect.batch([
+          local_fx,
+          replace_url_fn(model),
+          auth_toast_effect(
+            i18n.t(model.ui.locale, i18n_text.PasswordUpdated),
+            toast.Success,
+          ),
+        ]),
+      )
+    }
+  }
+}
+
 fn handle_url_changed(
   model: client_state.Model,
   uri: Uri,
@@ -489,9 +799,7 @@ fn handle_url_changed(
       ui_state.UiModel(..ui, is_mobile: is_mobile)
     })
 
-  let parsed =
-    router.parse_uri(uri)
-    |> router.apply_mobile_rules(is_mobile)
+  let parsed = router.parse_uri(uri)
 
   let route = case parsed {
     router.Parsed(route) -> route
@@ -679,9 +987,15 @@ fn bootstrap_admin(
   // Fetch member capability IDs if project and user are available
   let effects = case model.core.selected_project_id, model.core.user {
     opt.Some(project_id), opt.Some(user) -> [
-      api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(result))
-      }),
+      capabilities_api.get_member_capability_ids(
+        project_id,
+        user.id,
+        fn(result) {
+          client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(
+            result,
+          ))
+        },
+      ),
       ..effects
     ]
     _, _ -> effects
@@ -704,7 +1018,6 @@ fn bootstrap_admin(
 ///
 /// Example:
 ///   refresh_section_for_test(...)
-/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn refresh_section_for_test(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
@@ -809,34 +1122,27 @@ pub fn refresh_section_for_test(
               },
             )
 
-          let #(model, right_panel_fx) = fetch_right_panel_data(model)
-          #(model, effect.batch([overview_fx, tasks_fx, ..right_panel_fx]))
+          with_right_panel_data(model, [overview_fx, tasks_fx])
         }
       }
     }
 
     permissions.RuleMetrics -> {
-      // Initialize with default date range (last 30 days)
-      let #(model, fx) = workflows_workflow.handle_rule_metrics_tab_init(model)
-      let #(model, right_panel_fx) = fetch_right_panel_data(model)
-      #(model, effect.batch([fx, ..right_panel_fx]))
+      let #(model, fx) =
+        apply_admin_metrics_transition(model, fn(metrics) {
+          rule_metrics_workflow.init_tab(metrics, rule_metrics_context())
+        })
+      with_right_panel_data(model, [fx])
     }
 
     permissions.Capabilities ->
       case model.core.selected_project_id {
         opt.Some(project_id) -> {
-          let #(model, right_panel_fx) = fetch_right_panel_data(model)
-          #(
-            model,
-            effect.batch([
-              api_org.list_project_capabilities(project_id, fn(result) {
-                client_state.admin_msg(admin_messages.CapabilitiesFetched(
-                  result,
-                ))
-              }),
-              ..right_panel_fx
-            ]),
-          )
+          with_right_panel_data(model, [
+            api_org.list_project_capabilities(project_id, fn(result) {
+              client_state.admin_msg(admin_messages.CapabilitiesFetched(result))
+            }),
+          ])
         }
         opt.None -> #(model, effect.none())
       }
@@ -858,21 +1164,14 @@ pub fn refresh_section_for_test(
                 ),
               )
             })
-          let #(model, right_panel_fx) = fetch_right_panel_data(model)
-          #(
-            model,
-            effect.batch([
-              api_projects.list_project_members(project_id, fn(result) {
-                client_state.admin_msg(admin_messages.MembersFetched(result))
-              }),
-              api_org.list_org_users("", fn(result) {
-                client_state.admin_msg(admin_messages.OrgUsersCacheFetched(
-                  result,
-                ))
-              }),
-              ..right_panel_fx
-            ]),
-          )
+          with_right_panel_data(model, [
+            api_projects.list_project_members(project_id, fn(result) {
+              client_state.admin_msg(admin_messages.MembersFetched(result))
+            }),
+            api_org.list_org_users("", fn(result) {
+              client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
+            }),
+          ])
         }
       }
 
@@ -892,50 +1191,42 @@ pub fn refresh_section_for_test(
                 ),
               )
             })
-          let #(model, right_panel_fx) = fetch_right_panel_data(model)
-          #(
-            model,
-            effect.batch([
-              api_tasks.list_task_types(project_id, fn(result) {
-                client_state.admin_msg(admin_messages.TaskTypesFetched(result))
-              }),
-              ..right_panel_fx
-            ]),
-          )
+          with_right_panel_data(model, [
+            task_types_api.list_task_types(project_id, fn(result) {
+              client_state.admin_msg(admin_messages.TaskTypesFetched(result))
+            }),
+          ])
         }
       }
 
     permissions.Cards -> {
-      let #(model, fx) = admin_workflow.fetch_cards_for_project(model)
-      let #(model, right_panel_fx) = fetch_right_panel_data(model)
-      #(model, effect.batch([fx, ..right_panel_fx]))
+      let #(model, fx) = fetch_cards_for_project(model)
+      with_right_panel_data(model, [fx])
     }
 
     permissions.Workflows -> {
-      let #(model, fx) = admin_workflow.fetch_workflows(model)
-      let #(model, right_panel_fx) = fetch_right_panel_data(model)
-      #(model, effect.batch([fx, ..right_panel_fx]))
+      let #(model, fx) = fetch_workflows(model)
+      with_right_panel_data(model, [fx])
     }
 
     permissions.TaskTemplates -> {
-      let #(model, fx) = admin_workflow.fetch_task_templates(model)
-      let #(model, right_panel_fx) = fetch_right_panel_data(model)
+      let #(model, fx) = task_templates_workflow.fetch_task_templates(model)
       // Also fetch task types for the template dialog type selector
       let task_types_fx = case
         model.core.selected_project_id,
         model.admin.task_types.task_types
       {
         opt.Some(project_id), NotAsked ->
-          api_tasks.list_task_types(project_id, fn(result) {
+          task_types_api.list_task_types(project_id, fn(result) {
             client_state.admin_msg(admin_messages.TaskTypesFetched(result))
           })
         opt.Some(project_id), Failed(_) ->
-          api_tasks.list_task_types(project_id, fn(result) {
+          task_types_api.list_task_types(project_id, fn(result) {
             client_state.admin_msg(admin_messages.TaskTypesFetched(result))
           })
         _, _ -> effect.none()
       }
-      #(model, effect.batch([fx, task_types_fx, ..right_panel_fx]))
+      with_right_panel_data(model, [fx, task_types_fx])
     }
   }
 }
@@ -965,9 +1256,9 @@ fn refresh_assignments(
 fn refresh_assignments_metrics(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.admin.metrics.admin_metrics_overview {
-    Loading | Loaded(_) -> #(model, effect.none())
-    _ -> {
+  case should_fetch(model.admin.metrics.admin_metrics_overview) {
+    False -> #(model, effect.none())
+    True -> {
       let model =
         client_state.update_admin(model, fn(admin) {
           let metrics = admin.metrics
@@ -993,9 +1284,9 @@ fn refresh_assignments_metrics(
 fn refresh_assignments_metrics_users(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.admin.metrics.admin_metrics_users {
-    Loading | Loaded(_) -> #(model, effect.none())
-    _ -> {
+  case should_fetch(model.admin.metrics.admin_metrics_users) {
+    False -> #(model, effect.none())
+    True -> {
       let model =
         client_state.update_admin(model, fn(admin) {
           let metrics = admin.metrics
@@ -1019,9 +1310,9 @@ fn refresh_assignments_metrics_users(
 fn refresh_assignments_projects(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.core.projects {
-    Loading | Loaded(_) -> #(model, effect.none())
-    _ -> {
+  case should_fetch(model.core.projects) {
+    False -> #(model, effect.none())
+    True -> {
       let model =
         client_state.update_core(model, fn(core) {
           client_state.CoreModel(..core, projects: Loading)
@@ -1038,9 +1329,9 @@ fn refresh_assignments_projects(
 fn refresh_assignments_org_users(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.admin.members.org_users_cache {
-    Loading | Loaded(_) -> #(model, effect.none())
-    _ -> {
+  case should_fetch(model.admin.members.org_users_cache) {
+    False -> #(model, effect.none())
+    True -> {
       let model =
         client_state.update_admin(model, fn(admin) {
           let members = admin.members
@@ -1061,7 +1352,7 @@ fn refresh_assignments_org_users(
 fn refresh_assignments_project_members(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let projects = helpers_selection.active_projects(model)
+  let projects = state_selectors.active_projects(model)
   case projects {
     [] -> #(model, effect.none())
     _ -> {
@@ -1072,14 +1363,11 @@ fn refresh_assignments_project_members(
           let #(current, fx) = state
           let state_types.AssignmentsModel(project_members: members, ..) =
             current
-          let should_fetch = case dict.get(members, project.id) {
-            Ok(Loading) -> False
-            Ok(Loaded(_)) -> False
-            Ok(NotAsked) -> True
-            Ok(Failed(_)) -> True
+          let needs_fetch = case dict.get(members, project.id) {
+            Ok(remote) -> should_fetch(remote)
             Error(_) -> True
           }
-          case should_fetch {
+          case needs_fetch {
             False -> #(current, fx)
             True -> {
               let updated =
@@ -1122,14 +1410,11 @@ fn refresh_assignments_user_projects(
           let #(current, fx) = state
           let state_types.AssignmentsModel(user_projects: projects, ..) =
             current
-          let should_fetch = case dict.get(projects, user.id) {
-            Ok(Loading) -> False
-            Ok(Loaded(_)) -> False
-            Ok(NotAsked) -> True
-            Ok(Failed(_)) -> True
+          let needs_fetch = case dict.get(projects, user.id) {
+            Ok(remote) -> should_fetch(remote)
             Error(_) -> True
           }
-          case should_fetch {
+          case needs_fetch {
             False -> #(current, fx)
             True -> {
               let updated =
@@ -1173,7 +1458,7 @@ fn fetch_right_panel_data(
     opt.Some(project_id) -> {
       // Fetch tasks with no filter to get all tasks
       let tasks_effect =
-        api_tasks.list_project_tasks(
+        task_operations_api.list_project_tasks(
           project_id,
           TaskFilters(
             status: opt.None,
@@ -1228,6 +1513,41 @@ fn fetch_right_panel_data(
   }
 }
 
+fn with_right_panel_data(
+  model: client_state.Model,
+  effects: List(Effect(client_state.Msg)),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(model, right_panel_fx) = fetch_right_panel_data(model)
+  #(model, effect.batch(list.append(effects, right_panel_fx)))
+}
+
+fn fetch_workflows(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.core.selected_project_id {
+    opt.Some(project_id) -> {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          admin_state.AdminModel(
+            ..admin,
+            workflows: admin_workflows.Model(
+              ..admin.workflows,
+              workflows_project: Loading,
+            ),
+          )
+        })
+      let fx =
+        api_workflows.list_project_workflows(project_id, fn(result) {
+          client_state.pool_msg(pool_messages.WorkflowsProjectFetched(result))
+        })
+
+      #(model, fx)
+    }
+
+    opt.None -> #(model, effect.none())
+  }
+}
+
 /// Refresh member section data (tasks, types, positions, active task, metrics).
 ///
 /// ## Size Justification (105 lines)
@@ -1241,7 +1561,6 @@ fn fetch_right_panel_data(
 ///
 /// The batched fetching logic and state updates are tightly coupled
 /// and splitting would complicate the refresh coordination.
-/// Justification: large function kept intact to preserve cohesive UI logic.
 fn member_refresh(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
@@ -1286,7 +1605,7 @@ fn refresh_member_capabilities(
 fn refresh_member_cards(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let projects = helpers_selection.active_projects(model)
+  let projects = state_selectors.active_projects(model)
   let project_ids = project_ids_for_member_refresh(model, projects)
 
   case project_ids {
@@ -1332,14 +1651,12 @@ fn refresh_member_cards_for_projects(
     client_state.update_member(model, fn(member) {
       let pool = member.pool
       let next_store =
-        normalized_store.with_pending(
+        card_refresh.mark_pending(
           pool.member_cards_store,
           list.length(project_ids),
         )
-      let next_member_cards = case pool.member_cards {
-        Loaded(_) -> pool.member_cards
-        _ -> Loading
-      }
+      let next_member_cards =
+        card_refresh.loading_unless_loaded(pool.member_cards)
       member_state.MemberModel(
         ..member,
         pool: member_pool.Model(
@@ -1356,7 +1673,7 @@ fn refresh_member_cards_for_projects(
 fn refresh_member_tasks(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let projects = helpers_selection.active_projects(model)
+  let projects = state_selectors.active_projects(model)
   let project_ids = project_ids_for_member_refresh(model, projects)
 
   case project_ids {
@@ -1410,13 +1727,16 @@ fn refresh_member_data(
   let filters = task_filters_for_member_section(model)
 
   let positions_effect =
-    api_tasks.list_me_task_positions(model.core.selected_project_id, fn(result) {
-      client_state.pool_msg(pool_messages.MemberPositionsFetched(result))
-    })
+    task_positions_api.list_me_task_positions(
+      model.core.selected_project_id,
+      fn(result) {
+        client_state.pool_msg(pool_messages.MemberPositionsFetched(result))
+      },
+    )
 
   let task_effects =
     list.map(project_ids, fn(project_id) {
-      api_tasks.list_project_tasks(project_id, filters, fn(result) {
+      task_operations_api.list_project_tasks(project_id, filters, fn(result) {
         client_state.pool_msg(pool_messages.MemberProjectTasksFetched(
           project_id,
           result,
@@ -1426,7 +1746,7 @@ fn refresh_member_data(
 
   let task_type_effects =
     list.map(project_ids, fn(project_id) {
-      api_tasks.list_task_types(project_id, fn(result) {
+      task_types_api.list_task_types(project_id, fn(result) {
         client_state.pool_msg(pool_messages.MemberTaskTypesFetched(
           project_id,
           result,
@@ -1468,10 +1788,7 @@ fn refresh_member_data(
     opt.None -> effect.none()
   }
 
-  let should_fetch_org_users = case model.admin.members.org_users_cache {
-    Loading | Loaded(_) -> False
-    _ -> True
-  }
+  let should_fetch_org_users = should_fetch(model.admin.members.org_users_cache)
 
   let org_users_effect = case should_fetch_org_users {
     True ->
@@ -1514,22 +1831,18 @@ fn refresh_member_data(
             opt.Some(_) -> pool.people_expansions
             opt.None -> dict.new()
           },
-          member_cards_store: normalized_store.with_pending(
+          member_cards_store: card_refresh.mark_pending(
             pool.member_cards_store,
             list.length(project_ids),
           ),
-          member_cards: case pool.member_cards {
-            Loaded(_) -> pool.member_cards
-            _ -> Loading
-          },
-          member_milestones_store: normalized_store.with_pending(
+          member_cards: card_refresh.loading_unless_loaded(pool.member_cards),
+          member_milestones_store: milestone_refresh.mark_pending(
             pool.member_milestones_store,
             list.length(project_ids),
           ),
-          member_milestones: case pool.member_milestones {
-            Loaded(_) -> pool.member_milestones
-            _ -> Loading
-          },
+          member_milestones: milestone_refresh.loading_unless_loaded(
+            pool.member_milestones,
+          ),
           member_milestone_activate_in_flight_id: opt.None,
         ),
       )
@@ -1630,13 +1943,11 @@ pub fn should_pause_active_task_on_project_change(
 /// ```gleam
 /// let #(new_model, effects) = update(model, LoginSubmit)
 /// ```
-/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn update(
   model: client_state.Model,
   msg: client_state.Msg,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case msg {
-    // No operation - used for placeholder handlers
     client_state.NoOp -> #(model, effect.none())
 
     client_state.UrlChanged(uri) -> handle_url_changed(model, uri)
@@ -1645,11 +1956,8 @@ pub fn update(
       handle_navigate_to(model, route, mode)
 
     client_state.MeFetched(Ok(user)) -> {
-      // Default landing for authenticated users is member pool.
       let default_page = client_state.Member
 
-      // Keep client_state.Admin page if user requested it - hydration will check access
-      // after projects load (to determine if user is a project manager)
       let resolved_page = case model.core.page {
         client_state.Member -> client_state.Member
         client_state.Admin -> client_state.Admin
@@ -1681,29 +1989,14 @@ pub fn update(
     client_state.MeFetched(Error(err)) -> {
       case err.status == 401 {
         True -> {
-          let model =
-            client_state.update_core(model, fn(core) {
-              client_state.CoreModel(
-                ..core,
-                page: client_state.Login,
-                user: opt.None,
-                auth_checked: True,
-              )
-            })
+          let model = show_login_without_user(model, True)
           #(model, replace_url(model))
         }
 
         False -> {
           let model =
             client_state.update_auth(
-              client_state.update_core(model, fn(core) {
-                client_state.CoreModel(
-                  ..core,
-                  page: client_state.Login,
-                  user: opt.None,
-                  auth_checked: True,
-                )
-              }),
+              show_login_without_user(model, True),
               fn(auth) {
                 auth_state.AuthModel(..auth, login_error: opt.Some(err.message))
               },
@@ -1714,20 +2007,23 @@ pub fn update(
       }
     }
 
-    client_state.AuthMsg(inner) ->
-      auth_workflow.update(
+    client_state.AuthMsg(inner) -> {
+      let #(auth, fx, action) =
+        auth_workflow.update(model.auth, inner, auth_context(model))
+      let model = client_state.update_auth(model, fn(_) { auth })
+      handle_auth_action(
         model,
-        inner,
+        action,
+        fx,
         bootstrap_admin,
         hydrate_model,
         replace_url,
       )
+    }
 
-    // New toast system (Story 4.8)
     client_state.ToastShow(message, variant) -> {
       let now = client_ffi.now_ms()
       let next_state = toast.show(model.ui.toast_state, message, variant, now)
-      // Schedule tick for auto-dismiss
       let tick_effect =
         app_effects.schedule_timeout(toast.auto_dismiss_ms, fn() {
           client_state.ToastTick(client_ffi.now_ms())
@@ -1796,22 +2092,63 @@ pub fn update(
     }
 
     client_state.ThemeSelected(value) -> {
-      let next_theme = theme.deserialize(value)
+      case theme.parse(value) {
+        Ok(next_theme) -> {
+          case next_theme == model.ui.theme {
+            True -> #(model, effect.none())
 
-      case next_theme == model.ui.theme {
-        True -> #(model, effect.none())
+            False -> #(
+              client_state.update_ui(model, fn(ui) {
+                ui_state.UiModel(..ui, theme: next_theme)
+              }),
+              effect.from(fn(_dispatch) { theme.save_to_storage(next_theme) }),
+            )
+          }
+        }
+
+        Error(_) -> #(model, effect.none())
+      }
+    }
+
+    client_state.I18nMsg(inner) -> {
+      let #(next_locale, fx) = i18n_workflow.update(model.ui.locale, inner)
+
+      case next_locale == model.ui.locale {
+        True -> #(model, fx)
 
         False -> #(
           client_state.update_ui(model, fn(ui) {
-            ui_state.UiModel(..ui, theme: next_theme)
+            ui_state.UiModel(..ui, locale: next_locale)
           }),
-          effect.from(fn(_dispatch) { theme.save_to_storage(next_theme) }),
+          fx,
         )
       }
     }
 
-    client_state.I18nMsg(inner) -> i18n_workflow.update(model, inner)
-    client_state.LayoutMsg(inner) -> layout_workflow.update(model, inner)
+    client_state.LayoutMsg(inner) -> {
+      let layout_model =
+        layout_workflow.Model(
+          ui: model.ui,
+          member_panel_expanded: model.member.pool.member_panel_expanded,
+        )
+      let #(next_layout, fx) = layout_workflow.update(layout_model, inner)
+      let next_model =
+        client_state.update_member(
+          client_state.update_ui(model, fn(_ui) { next_layout.ui }),
+          fn(member) {
+            let pool = member.pool
+            member_state.MemberModel(
+              ..member,
+              pool: member_pool.Model(
+                ..pool,
+                member_panel_expanded: next_layout.member_panel_expanded,
+              ),
+            )
+          },
+        )
+
+      #(next_model, fx)
+    }
 
     client_state.ProjectSelected(project_id) -> {
       let selected = case int.parse(project_id) {
@@ -1859,16 +2196,19 @@ pub fn update(
     }
 
     client_state.AdminMsg(inner) ->
-      admin_workflow.update(
-        model,
-        inner,
-        admin_workflow.Context(
-          member_refresh: member_refresh,
-          refresh_section_for_test: refresh_section_for_test,
-          hydrate_model: hydrate_model,
-          replace_url: replace_url,
-        ),
-      )
+      case inner {
+        admin_messages.ProjectsFetched(result) ->
+          handle_projects_fetched(model, result)
+
+        _ ->
+          admin_workflow.update(
+            model,
+            inner,
+            admin_workflow.Context(
+              refresh_section_for_test: refresh_section_for_test,
+            ),
+          )
+      }
 
     client_state.PoolMsg(inner) ->
       pool_workflow.update(
@@ -1899,9 +2239,9 @@ fn pause_fx_for_project_change(
 }
 
 fn pause_active_task_fx(model: client_state.Model) -> Effect(client_state.Msg) {
-  case helpers_selection.now_working_active_task_id(model) {
+  case state_selectors.now_working_active_task_id(model) {
     opt.Some(task_id) ->
-      api_tasks.pause_work_session(task_id, fn(result) {
+      active_api.pause_work_session(task_id, fn(result) {
         client_state.pool_msg(pool_messages.MemberWorkSessionPaused(result))
       })
     opt.None -> effect.none()
@@ -1914,6 +2254,3 @@ fn refresh_admin_after_project_change(
   let #(next, fx) = refresh_section_for_test(model)
   #(next, effect.batch([fx, replace_url(next)]))
 }
-// =============================================================================
-// Card Add Task Handler
-// Card add task functionality moved to card_detail_modal component

@@ -1,6 +1,5 @@
 import gleam/option
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/card.{type Card, Card, Pendiente}
@@ -8,10 +7,17 @@ import domain/remote.{Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/fichas/view as fichas_view
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/features/fichas/view_config as fichas_view_config
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
+import scrumbringer_client/utils/card_queries
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -33,6 +39,43 @@ fn make_card(id: Int, project_id: Int, title: String) -> Card {
 fn card_id(card: Card) -> Int {
   let Card(id: id, ..) = card
   id
+}
+
+fn fichas_config(model: client_state.Model) {
+  fichas_view_config.from_state(
+    model.ui.locale,
+    project_cards(model),
+    model.member.pool,
+    selected_detail_card(model),
+    model.core.user,
+    state_selectors.selected_project(model),
+    fn(_) { "open" },
+    fn(_) { "create" },
+    "close",
+  )
+}
+
+fn selected_detail_card(model: client_state.Model) {
+  case model.member.pool.card_detail_open {
+    option.Some(card_id) -> find_card(model, card_id)
+    option.None -> option.None
+  }
+}
+
+fn find_card(model: client_state.Model, card_id: Int) {
+  card_queries.find_card(
+    model.member.pool.member_cards_store,
+    model.admin.cards.cards,
+    card_id,
+  )
+}
+
+fn project_cards(model: client_state.Model) {
+  card_queries.get_project_cards(
+    model.member.pool.member_cards_store,
+    model.admin.cards.cards,
+    model.core.selected_project_id,
+  )
 }
 
 pub fn fichas_uses_cache_when_available_test() {
@@ -60,10 +103,12 @@ pub fn fichas_uses_cache_when_available_test() {
     })
 
   let html =
-    fichas_view.view_fichas(model)
+    model
+    |> fichas_config
+    |> fichas_view.view_fichas
     |> element.to_document_string
 
-  string.contains(html, "Ficha A") |> should.be_true
+  assert_contains(html, "Ficha A")
 }
 
 pub fn fichas_shows_loading_only_without_cache_test() {
@@ -84,11 +129,13 @@ pub fn fichas_shows_loading_only_without_cache_test() {
     })
 
   let html =
-    fichas_view.view_fichas(model)
+    model
+    |> fichas_config
+    |> fichas_view.view_fichas
     |> element.to_document_string
 
-  let expected = helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)
-  string.contains(html, expected) |> should.be_true
+  let expected = i18n.t(model.ui.locale, i18n_text.LoadingEllipsis)
+  assert_contains(html, expected)
 }
 
 pub fn fichas_shows_empty_without_cache_or_pending_test() {
@@ -110,9 +157,11 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
     })
 
   let html =
-    fichas_view.view_fichas(model)
+    model
+    |> fichas_config
+    |> fichas_view.view_fichas
     |> element.to_document_string
 
-  let expected = helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmpty)
-  string.contains(html, expected) |> should.be_true
+  let expected = i18n.t(model.ui.locale, i18n_text.MemberFichasEmpty)
+  assert_contains(html, expected)
 }

@@ -4,18 +4,25 @@
 //// Admin-only operations requiring CSRF protection.
 
 import domain/org_role
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/json
-import gleam/string
-import helpers/json as json_helpers
+import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/org_invite_links/payloads as invite_link_payloads
+import scrumbringer_server/http/org_invite_links/presenters as invite_link_presenters
 import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
+
+fn require_admin_context(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(StoredUser, wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use _ <- result.try(require_admin(user))
+  Ok(user)
+}
 
 /// Routes /api/org/invite-links requests (GET list, POST upsert).
 ///
@@ -46,25 +53,18 @@ pub fn handle_regenerate(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> list_for_user(ctx, user)
+  case require_admin_context(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) -> list_invite_links(ctx, user.org_id)
   }
 }
 
 fn handle_upsert(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> upsert_for_user(req, ctx, user)
-  }
-}
-
-fn list_for_user(ctx: auth.Ctx, user: StoredUser) -> wisp.Response {
-  case require_admin(user) {
+  case require_admin_context(req, ctx) {
     Error(resp) -> resp
-    Ok(Nil) -> list_invite_links(ctx, user.org_id)
+    Ok(user) -> upsert_as_admin(req, ctx, user.id, user.org_id)
   }
 }
 
@@ -72,24 +72,8 @@ fn list_invite_links(ctx: auth.Ctx, org_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case org_invite_links_db.list_invite_links(db, org_id) {
-    Ok(links) ->
-      api.ok(
-        json.object([
-          #("invite_links", json.array(links, of: invite_link_json)),
-        ]),
-      )
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
-  }
-}
-
-fn upsert_for_user(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-) -> wisp.Response {
-  case require_admin(user) {
-    Error(resp) -> resp
-    Ok(Nil) -> upsert_as_admin(req, ctx, user.id, user.org_id)
+    Ok(links) -> api.ok(invite_link_presenters.links_response(links))
+    Error(error) -> invite_link_error_to_response(error)
   }
 }
 
@@ -105,7 +89,6 @@ fn upsert_as_admin(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn upsert_with_csrf(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -116,16 +99,8 @@ fn upsert_with_csrf(
 
   case decode_email_payload(data) {
     Error(resp) -> resp
-
-    Ok(email_raw) -> {
-      let email = normalize_email(email_raw)
-
-      // Justification: nested case validates email before persistence.
-      case validate_email(email) {
-        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid email")
-        Ok(Nil) -> upsert_invite_link(ctx, org_id, user_id, email)
-      }
-    }
+    Ok(invite_link_payloads.EmailPayload(email: email)) ->
+      upsert_invite_link(ctx, org_id, user_id, email)
   }
 }
 
@@ -138,13 +113,19 @@ fn upsert_invite_link(
   let auth.Ctx(db: db, ..) = ctx
 
   case org_invite_links_db.upsert_invite_link(db, org_id, user_id, email) {
-    Ok(link) -> api.ok(json.object([#("invite_link", invite_link_json(link))]))
+    Ok(link) -> api.ok(invite_link_presenters.link_response(link))
+    Error(error) -> invite_link_error_to_response(error)
+  }
+}
 
-    Error(org_invite_links_db.NoRowReturned) ->
+fn invite_link_error_to_response(
+  error: org_invite_links_db.InviteLinkError,
+) -> wisp.Response {
+  case error {
+    org_invite_links_db.DbError(_) ->
       api.error(500, "INTERNAL", "Database error")
-
-    Error(org_invite_links_db.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
+    org_invite_links_db.InvalidLifecycle(_) ->
+      api.error(500, "INTERNAL", "Invalid persisted invite link")
   }
 }
 
@@ -155,65 +136,20 @@ fn require_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
   }
 }
 
-fn normalize_email(email: String) -> String {
-  email
-  |> string.trim
-  |> string.lowercase
+fn decode_email_payload(
+  data,
+) -> Result(invite_link_payloads.EmailPayload, wisp.Response) {
+  invite_link_payloads.decode_email(data)
+  |> result.map_error(invite_link_payload_error_to_response)
 }
 
-fn validate_email(email: String) -> Result(Nil, Nil) {
-  case string.split_once(email, "@") {
-    Error(_) -> Error(Nil)
-    Ok(#(local, domain)) -> validate_email_parts(local, domain)
+fn invite_link_payload_error_to_response(
+  error: invite_link_payloads.DecodeError,
+) -> wisp.Response {
+  case error {
+    invite_link_payloads.InvalidJson ->
+      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    invite_link_payloads.InvalidEmail ->
+      api.error(422, "VALIDATION_ERROR", "Invalid email")
   }
-}
-
-fn validate_email_parts(local: String, domain: String) -> Result(Nil, Nil) {
-  case local == "" || domain == "" {
-    True -> Error(Nil)
-    False -> validate_domain(domain)
-  }
-}
-
-fn validate_domain(domain: String) -> Result(Nil, Nil) {
-  case string.contains(domain, ".") {
-    True -> Ok(Nil)
-    False -> Error(Nil)
-  }
-}
-
-fn decode_email_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
-  let decoder = {
-    use email <- decode.field("email", decode.string)
-    decode.success(email)
-  }
-
-  case decode.run(data, decoder) {
-    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
-    Ok(email) -> Ok(email)
-  }
-}
-
-fn invite_link_json(link: org_invite_links_db.OrgInviteLink) -> json.Json {
-  let org_invite_links_db.OrgInviteLink(
-    email: email,
-    token: token,
-    lifecycle: lifecycle,
-  ) = link
-  let created_at = org_invite_links_db.lifecycle_created_at(lifecycle)
-  let used_at = org_invite_links_db.lifecycle_used_at(lifecycle)
-  let invalidated_at = org_invite_links_db.lifecycle_invalidated_at(lifecycle)
-
-  json.object([
-    #("email", json.string(email)),
-    #("token", json.string(token)),
-    #("url_path", json.string(org_invite_links_db.url_path(token))),
-    #(
-      "state",
-      json.string(org_invite_links_db.lifecycle_state_to_string(lifecycle)),
-    ),
-    #("created_at", json.string(created_at)),
-    #("used_at", json_helpers.option_string_json(used_at)),
-    #("invalidated_at", json_helpers.option_string_json(invalidated_at)),
-  ])
 }

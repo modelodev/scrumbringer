@@ -7705,9 +7705,11 @@ set
   milestone_id = case when $7 = -1 then milestone_id else nullif($7, 0) end,
   version = version + 1
 where id = $1
-  and claimed_by = $2
-    and status = 'claimed'
-    and version = $8
+  and (
+    status = 'available'
+    or (status = 'claimed' and claimed_by = $2)
+  )
+  and version = $8
   returning
     id,
     project_id,

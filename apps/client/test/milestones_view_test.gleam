@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import domain/api_error.{ApiError}
@@ -22,9 +21,19 @@ import domain/user.{User}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/client_state/ui as ui_state
-import scrumbringer_client/features/milestones/view as milestones_view
+import scrumbringer_client/features/milestones/access as milestone_access
+import scrumbringer_client/features/milestones/view_config as milestones_view
 import scrumbringer_client/i18n/locale as i18n_locale
+
+fn assert_true(value: Bool) {
+  let assert True = value
+}
+
+fn assert_false(value: Bool) {
+  let assert False = value
+}
 
 fn sample_progress(id: Int, state: MilestoneState) -> MilestoneProgress {
   MilestoneProgress(
@@ -49,6 +58,82 @@ fn sample_progress(id: Int, state: MilestoneState) -> MilestoneProgress {
 
 fn base_model() -> client_state.Model {
   client_state.default_model()
+}
+
+fn milestone_callbacks() -> milestones_view.Callbacks(String) {
+  milestones_view.Callbacks(
+    on_create_milestone: "create-milestone",
+    on_dialog_close: "dialog-close",
+    on_activate_clicked: fn(id) { "activate:" <> int.to_string(id) },
+    on_create_submitted: "create-submitted",
+    on_edit_submitted: fn(id) { "edit-submitted:" <> int.to_string(id) },
+    on_delete_submitted: fn(id) { "delete-submitted:" <> int.to_string(id) },
+    on_name_changed: fn(value) { "name:" <> value },
+    on_description_changed: fn(value) { "description:" <> value },
+    on_search_change: fn(value) { "search:" <> value },
+    on_toggle_completed: "toggle-completed",
+    on_toggle_empty: "toggle-empty",
+    on_select: fn(id) { "select:" <> int.to_string(id) },
+    on_summary_toggle: "summary-toggle",
+    on_quick_create_card: fn(id) { "quick-card:" <> int.to_string(id) },
+    on_quick_create_task: fn(id) { "quick-task:" <> int.to_string(id) },
+    on_activate_prompt: fn(id) { "activate-prompt:" <> int.to_string(id) },
+    on_edit: fn(id) { "edit:" <> int.to_string(id) },
+    on_delete: fn(id) { "delete:" <> int.to_string(id) },
+    on_task_open: fn(id) { "task-open:" <> int.to_string(id) },
+    on_task_claim: fn(id, version) {
+      "claim:" <> int.to_string(id) <> ":" <> int.to_string(version)
+    },
+    on_card_drag_started: fn(card_id, milestone_id) {
+      "card-drag:"
+      <> int.to_string(card_id)
+      <> ":"
+      <> int.to_string(milestone_id)
+    },
+    on_task_drag_started: fn(task_id, milestone_id) {
+      "task-drag:"
+      <> int.to_string(task_id)
+      <> ":"
+      <> int.to_string(milestone_id)
+    },
+    on_drag_ended: "drag-ended",
+    on_card_move: fn(card_id, milestone_id, destination_id) {
+      "card-move:"
+      <> int.to_string(card_id)
+      <> ":"
+      <> int.to_string(milestone_id)
+      <> ":"
+      <> int.to_string(destination_id)
+    },
+    on_task_move: fn(task_id, milestone_id, destination_id) {
+      "task-move:"
+      <> int.to_string(task_id)
+      <> ":"
+      <> int.to_string(milestone_id)
+      <> ":"
+      <> int.to_string(destination_id)
+    },
+    on_card_create_task: fn(card_id) {
+      "card-create-task:" <> int.to_string(card_id)
+    },
+    on_card_edit: fn(card_id) { "card-edit:" <> int.to_string(card_id) },
+    on_card_delete: fn(card_id) { "card-delete:" <> int.to_string(card_id) },
+  )
+}
+
+fn view_milestones(model: client_state.Model) {
+  milestones_view.view(
+    model.ui.locale,
+    model.ui.theme,
+    model.core.selected_project_id,
+    model.member.pool,
+    model.admin.members.org_users_cache,
+    milestone_access.can_manage(
+      model.core.user,
+      state_selectors.selected_project(model),
+    ),
+    milestone_callbacks(),
+  )
 }
 
 fn with_milestones(
@@ -265,10 +350,10 @@ pub fn milestones_view_loading_state_test() {
   let html =
     base_model()
     |> with_milestones(remote.Loading)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestones-loading") |> should.be_true
+  string.contains(html, "milestones-loading") |> assert_true
 }
 
 pub fn milestones_view_error_state_test() {
@@ -277,21 +362,21 @@ pub fn milestones_view_error_state_test() {
     |> with_milestones(
       remote.Failed(ApiError(status: 500, code: "E_M", message: "boom")),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Could not load milestones") |> should.be_true
+  string.contains(html, "Could not load milestones") |> assert_true
 }
 
 pub fn milestones_view_empty_state_test() {
   let html =
     base_model()
     |> with_milestones(remote.Loaded([]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "No milestones yet") |> should.be_true
-  string.contains(html, "class=\"empty-state\"") |> should.be_true
+  string.contains(html, "No milestones yet") |> assert_true
+  string.contains(html, "class=\"empty-state\"") |> assert_true
 }
 
 pub fn milestones_view_shows_create_button_for_managers_test() {
@@ -299,23 +384,23 @@ pub fn milestones_view_shows_create_button_for_managers_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestones-create-button\"")
-  |> should.be_true
-  string.contains(html, "+ Create milestone") |> should.be_true
+  |> assert_true
+  string.contains(html, "+ Create milestone") |> assert_true
 }
 
 pub fn milestones_view_hides_create_button_for_non_managers_test() {
   let html =
     base_model()
     |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestones-create-button\"")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_empty_state_shows_create_first_cta_for_manager_test() {
@@ -323,11 +408,11 @@ pub fn milestones_view_empty_state_shows_create_first_cta_for_manager_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestones-create-empty\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_renders_create_dialog_test() {
@@ -348,11 +433,11 @@ pub fn milestones_view_renders_create_dialog_test() {
         ),
       )
     })
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-create-form") |> should.be_true
-  string.contains(html, "Create milestone") |> should.be_true
+  string.contains(html, "milestone-create-form") |> assert_true
+  string.contains(html, "Create milestone") |> assert_true
 }
 
 pub fn milestones_view_rows_include_stable_testids_test() {
@@ -360,26 +445,26 @@ pub fn milestones_view_rows_include_stable_testids_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"milestone-row:12\"") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-row:12\"") |> assert_true
   string.contains(html, "data-testid=\"milestone-detail-pane\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestones-search\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_hides_actions_for_non_managers_test() {
   let html =
     base_model()
     |> with_milestones(remote.Loaded([sample_progress(7, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-activate-button:7") |> should.be_false
-  string.contains(html, "milestone-edit-button:7") |> should.be_false
-  string.contains(html, "milestone-delete-button:7") |> should.be_false
+  string.contains(html, "milestone-activate-button:7") |> assert_false
+  string.contains(html, "milestone-edit-button:7") |> assert_false
+  string.contains(html, "milestone-delete-button:7") |> assert_false
 }
 
 pub fn milestones_view_delete_button_only_for_ready_test() {
@@ -394,12 +479,12 @@ pub fn milestones_view_delete_button_only_for_ready_test() {
       ]),
     )
     |> with_selected_milestone(1)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-delete-button:1") |> should.be_true
-  string.contains(html, "milestone-delete-button:2") |> should.be_false
-  string.contains(html, "milestone-delete-button:3") |> should.be_false
+  string.contains(html, "milestone-delete-button:1") |> assert_true
+  string.contains(html, "milestone-delete-button:2") |> assert_false
+  string.contains(html, "milestone-delete-button:3") |> assert_false
 }
 
 pub fn milestones_view_blocks_activate_when_another_active_exists_test() {
@@ -409,10 +494,10 @@ pub fn milestones_view_blocks_activate_when_another_active_exists_test() {
     |> with_milestones(
       remote.Loaded([sample_progress(11, Ready), sample_progress(99, Active)]),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-activate-button:11") |> should.be_false
+  string.contains(html, "milestone-activate-button:11") |> assert_false
 }
 
 pub fn milestones_view_disables_activate_button_while_in_flight_test() {
@@ -431,12 +516,12 @@ pub fn milestones_view_disables_activate_button_while_in_flight_test() {
         ),
       )
     })
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-activate-button:22\"")
-  |> should.be_true
-  string.contains(html, "disabled") |> should.be_true
+  |> assert_true
+  string.contains(html, "disabled") |> assert_true
 }
 
 pub fn milestones_view_renders_detail_progress_and_tabs_test() {
@@ -445,12 +530,12 @@ pub fn milestones_view_renders_detail_progress_and_tabs_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(33, Ready)]))
     |> with_summary_expanded(True)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-detail-pane") |> should.be_true
-  string.contains(html, "Health") |> should.be_true
-  string.contains(html, "Metrics") |> should.be_true
+  string.contains(html, "milestone-detail-pane") |> assert_true
+  string.contains(html, "Health") |> assert_true
+  string.contains(html, "Metrics") |> assert_true
 }
 
 pub fn milestones_view_marks_selected_row_with_aria_pressed_test() {
@@ -458,10 +543,10 @@ pub fn milestones_view_marks_selected_row_with_aria_pressed_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(44, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "aria-pressed=\"true\"") |> should.be_true
+  string.contains(html, "aria-pressed=\"true\"") |> assert_true
 }
 
 pub fn milestones_view_filter_toggles_present_and_default_unchecked_test() {
@@ -469,17 +554,17 @@ pub fn milestones_view_filter_toggles_present_and_default_unchecked_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(55, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestones-filter-completed\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestones-filter-empty\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestones-filter-completed\" checked")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestones-filter-empty\" checked")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_hides_completed_section_when_filter_unchecked_test() {
@@ -489,10 +574,10 @@ pub fn milestones_view_hides_completed_section_when_filter_unchecked_test() {
     |> with_milestones(
       remote.Loaded([sample_progress(71, Ready), sample_progress(72, Completed)]),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Completed") |> should.be_false
+  string.contains(html, "Completed") |> assert_false
 }
 
 pub fn milestones_view_shows_completed_section_when_filter_checked_test() {
@@ -503,10 +588,10 @@ pub fn milestones_view_shows_completed_section_when_filter_checked_test() {
     |> with_milestones(
       remote.Loaded([sample_progress(81, Ready), sample_progress(82, Completed)]),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Completed") |> should.be_true
+  string.contains(html, "Completed") |> assert_true
 }
 
 pub fn milestones_view_hides_active_section_when_empty_test() {
@@ -514,11 +599,11 @@ pub fn milestones_view_hides_active_section_when_empty_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(91, Ready)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "<h4 class=\"milestones-section-title\">Active</h4>")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_hides_ready_section_when_empty_test() {
@@ -527,11 +612,11 @@ pub fn milestones_view_hides_ready_section_when_empty_test() {
     |> with_admin_user
     |> with_show_completed(True)
     |> with_milestones(remote.Loaded([sample_progress(92, Active)]))
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "<h4 class=\"milestones-section-title\">Ready</h4>")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_activate_button_opens_prompt_dialog_contract_test() {
@@ -540,12 +625,12 @@ pub fn milestones_view_activate_button_opens_prompt_dialog_contract_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(66, Ready)]))
     |> with_activate_dialog(66)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Activate milestone") |> should.be_true
-  string.contains(html, "This action is irreversible") |> should.be_true
-  string.contains(html, "autofocus") |> should.be_true
+  string.contains(html, "Activate milestone") |> assert_true
+  string.contains(html, "This action is irreversible") |> assert_true
+  string.contains(html, "autofocus") |> assert_true
 }
 
 pub fn milestones_view_legacy_expand_state_does_not_change_selection_test() {
@@ -554,12 +639,12 @@ pub fn milestones_view_legacy_expand_state_does_not_change_selection_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(77, Ready)]))
     |> with_selected_milestone(77)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "milestone-detail-pane") |> should.be_true
+  string.contains(html, "milestone-detail-pane") |> assert_true
   string.contains(html, "data-testid=\"milestone-activate-button:77\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_open_dialog_does_not_expand_row_test() {
@@ -568,11 +653,11 @@ pub fn milestones_view_open_dialog_does_not_expand_row_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(88, Ready)]))
     |> with_activate_dialog(88)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Activate milestone") |> should.be_true
-  string.contains(html, "data-testid=\"milestone-row-toggle") |> should.be_false
+  string.contains(html, "Activate milestone") |> assert_true
+  string.contains(html, "data-testid=\"milestone-row-toggle") |> assert_false
 }
 
 pub fn milestones_view_expanded_row_renders_milestone_cards_test() {
@@ -582,11 +667,11 @@ pub fn milestones_view_expanded_row_renders_milestone_cards_test() {
     |> with_milestones(remote.Loaded([sample_progress(90, Ready)]))
     |> with_cards([sample_card(501, 90)])
     |> with_selected_milestone(90)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-card-row:90:501\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_expanded_row_renders_loose_tasks_test() {
@@ -596,11 +681,11 @@ pub fn milestones_view_expanded_row_renders_loose_tasks_test() {
     |> with_milestones(remote.Loaded([sample_progress(91, Ready)]))
     |> with_tasks([sample_loose_task(601, 91)])
     |> with_selected_milestone(91)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-task-row:91:601\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_detail_renders_quick_new_card_cta_test() {
@@ -609,12 +694,12 @@ pub fn milestones_view_detail_renders_quick_new_card_cta_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(92, Ready)]))
     |> with_selected_milestone(92)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-quick-new-card:92\"")
-  |> should.be_true
-  string.contains(html, "aria-label=\"Card\"") |> should.be_true
+  |> assert_true
+  string.contains(html, "aria-label=\"New card\"") |> assert_true
 }
 
 pub fn milestones_view_detail_renders_quick_new_task_cta_test() {
@@ -623,12 +708,12 @@ pub fn milestones_view_detail_renders_quick_new_task_cta_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(98, Ready)]))
     |> with_selected_milestone(98)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-quick-new-task:98\"")
-  |> should.be_true
-  string.contains(html, "aria-label=\"Task\"") |> should.be_true
+  |> assert_true
+  string.contains(html, "aria-label=\"New task\"") |> assert_true
 }
 
 pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_strategy_test() {
@@ -637,12 +722,12 @@ pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_stra
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(99, Ready)]))
     |> with_selected_milestone(99)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   // AC5: entrypoint should remain available even when layout adapts on small screens.
   string.contains(html, "data-testid=\"milestone-quick-new-card:99\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_detail_pane_renders_progress_and_content_test() {
@@ -653,17 +738,17 @@ pub fn milestones_view_detail_pane_renders_progress_and_content_test() {
     |> with_cards([sample_card(701, 93)])
     |> with_tasks([sample_loose_task(801, 93), sample_card_task(802, 93, 701)])
     |> with_selected_milestone(93)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-detail-pane\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-card-row:93:701\"")
-  |> should.be_true
-  string.contains(html, "Card task 802") |> should.be_true
+  |> assert_true
+  string.contains(html, "Card task 802") |> assert_true
   string.contains(html, "data-testid=\"milestone-task-row:93:801\"")
-  |> should.be_true
-  string.contains(html, "tasks in cards") |> should.be_true
+  |> assert_true
+  string.contains(html, "tasks in cards") |> assert_true
 }
 
 pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
@@ -680,17 +765,17 @@ pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
     |> with_tasks([sample_loose_task(951, 142)])
     |> with_selected_milestone(142)
     |> with_summary_expanded(True)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Health") |> should.be_true
+  string.contains(html, "Health") |> assert_true
   string.contains(html, "data-testid=\"milestone-quick-new-card:142\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-move-card:142:950:143\"")
-  |> should.be_true
-  string.contains(html, "Loose tasks") |> should.be_true
+  |> assert_true
+  string.contains(html, "Loose tasks") |> assert_true
   string.contains(html, "data-testid=\"milestone-task-row:142:951\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_detail_shows_move_actions_only_for_ready_destinations_test() {
@@ -707,27 +792,27 @@ pub fn milestones_view_detail_shows_move_actions_only_for_ready_destinations_tes
     |> with_cards([sample_card(901, 94)])
     |> with_tasks([sample_loose_task(902, 94)])
     |> with_selected_milestone(94)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-move-card:94:901:95\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-move-task:94:902:95\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-move-menu-card:94:901\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-move-menu-task:94:902\"")
-  |> should.be_true
+  |> assert_true
   string.contains(html, "data-testid=\"milestone-move-card:94:901:94\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-task:94:902:94\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-card:94:901:96\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-task:94:902:96\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "class=\"move-menu\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_uses_header_action_cluster_layout_test() {
@@ -736,11 +821,11 @@ pub fn milestones_view_uses_header_action_cluster_layout_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(122, Ready)]))
     |> with_selected_milestone(122)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "class=\"milestone-detail-actions\"")
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_hides_move_actions_for_non_managers_test() {
@@ -752,17 +837,17 @@ pub fn milestones_view_hides_move_actions_for_non_managers_test() {
     |> with_cards([sample_card(903, 97)])
     |> with_tasks([sample_loose_task(904, 97)])
     |> with_selected_milestone(97)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-move-card:97:903:98\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-task:97:904:98\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-menu-card:97:903\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-menu-task:97:904\"")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_hides_move_actions_when_source_is_not_ready_test() {
@@ -775,13 +860,13 @@ pub fn milestones_view_hides_move_actions_when_source_is_not_ready_test() {
     |> with_cards([sample_card(905, 99)])
     |> with_tasks([sample_loose_task(906, 99)])
     |> with_selected_milestone(99)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-move-card:99:905:100\"")
-  |> should.be_false
+  |> assert_false
   string.contains(html, "data-testid=\"milestone-move-task:99:906:100\"")
-  |> should.be_false
+  |> assert_false
 }
 
 pub fn milestones_view_ready_rows_render_as_selectable_master_items_test() {
@@ -791,11 +876,11 @@ pub fn milestones_view_ready_rows_render_as_selectable_master_items_test() {
     |> with_milestones(
       remote.Loaded([sample_progress(101, Ready), sample_progress(102, Active)]),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"milestone-row:101\"") |> should.be_true
-  string.contains(html, "data-testid=\"milestone-row:102\"") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-row:101\"") |> assert_true
+  string.contains(html, "data-testid=\"milestone-row:102\"") |> assert_true
 }
 
 pub fn milestones_view_rows_are_draggable_only_when_move_is_possible_test() {
@@ -808,19 +893,19 @@ pub fn milestones_view_rows_are_draggable_only_when_move_is_possible_test() {
     |> with_cards([sample_card(907, 103)])
     |> with_tasks([sample_loose_task(908, 103)])
     |> with_selected_milestone(103)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
   string.contains(
     html,
     "data-testid=\"milestone-card-row:103:907\" draggable=\"true\"",
   )
-  |> should.be_true
+  |> assert_true
   string.contains(
     html,
     "data-testid=\"milestone-task-row:103:908\" draggable=\"true\"",
   )
-  |> should.be_true
+  |> assert_true
 }
 
 pub fn milestones_view_uses_es_i18n_labels_and_statuses_test() {
@@ -832,12 +917,12 @@ pub fn milestones_view_uses_es_i18n_labels_and_statuses_test() {
     |> with_cards([sample_card(920, 120)])
     |> with_tasks([sample_loose_task(921, 120)])
     |> with_selected_milestone(120)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, ">Tarjetas<") |> should.be_true
-  string.contains(html, ">Tareas<") |> should.be_true
-  string.contains(html, "disponible") |> should.be_true
+  string.contains(html, ">Tarjetas<") |> assert_true
+  string.contains(html, ">Tareas<") |> assert_true
+  string.contains(html, "disponible") |> assert_true
 }
 
 pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
@@ -849,12 +934,12 @@ pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
     |> with_cards([sample_card(930, 121)])
     |> with_tasks([sample_loose_task(931, 121)])
     |> with_selected_milestone(121)
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, ">Cards<") |> should.be_true
-  string.contains(html, ">Tasks<") |> should.be_true
-  string.contains(html, "available") |> should.be_true
+  string.contains(html, ">Cards<") |> assert_true
+  string.contains(html, ">Tasks<") |> assert_true
+  string.contains(html, "available") |> assert_true
 }
 
 pub fn milestone_metrics_error_copy_i18n_test() {
@@ -872,10 +957,10 @@ pub fn milestone_metrics_error_copy_i18n_test() {
         message: "x",
       )),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "No se pudieron cargar métricas") |> should.be_true
+  string.contains(html, "No se pudieron cargar métricas") |> assert_true
 }
 
 pub fn milestone_metrics_empty_copy_i18n_test() {
@@ -906,9 +991,9 @@ pub fn milestone_metrics_empty_copy_i18n_test() {
         most_activated: None,
       )),
     )
-    |> milestones_view.view
+    |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Metrics") |> should.be_true
-  string.contains(html, "0/0") |> should.be_true
+  string.contains(html, "Metrics") |> assert_true
+  string.contains(html, "0/0") |> assert_true
 }

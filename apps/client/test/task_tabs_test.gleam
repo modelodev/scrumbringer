@@ -1,7 +1,6 @@
 //// Tests for task tabs component.
 
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/task_tabs.{
@@ -14,6 +13,10 @@ import scrumbringer_client/ui/task_tabs.{
 
 fn render_to_string(config: Config(msg)) -> String {
   task_tabs.view(config) |> element.to_string()
+}
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
 }
 
 // =============================================================================
@@ -35,10 +38,10 @@ pub fn renders_tasks_notes_and_metrics_tabs_test() {
   let html = render_to_string(config)
 
   // Then: Contains both tab labels
-  html |> string.contains("Tareas") |> should.be_true()
-  html |> string.contains("Notas") |> should.be_true()
-  html |> string.contains("Metricas") |> should.be_true()
-  html |> string.contains("(3)") |> should.be_true()
+  assert_contains(html, "Tareas")
+  assert_contains(html, "Notas")
+  assert_contains(html, "Metricas")
+  assert_contains(html, "(3)")
 }
 
 pub fn active_tab_has_active_class_test() {
@@ -56,7 +59,7 @@ pub fn active_tab_has_active_class_test() {
   let html = render_to_string(config)
 
   // Then: Contains tab-active class
-  html |> string.contains("tab-active") |> should.be_true()
+  assert_contains(html, "tab-active")
 }
 
 pub fn shows_new_notes_indicator_test() {
@@ -74,7 +77,7 @@ pub fn shows_new_notes_indicator_test() {
   let html = render_to_string(config)
 
   // Then: Contains indicator
-  html |> string.contains("new-notes-indicator") |> should.be_true()
+  assert_contains(html, "new-notes-indicator")
 }
 
 pub fn uses_task_tabs_class_test() {
@@ -92,5 +95,5 @@ pub fn uses_task_tabs_class_test() {
   let html = render_to_string(config)
 
   // Then: Uses task-tabs container class
-  html |> string.contains("task-tabs") |> should.be_true()
+  assert_contains(html, "task-tabs")
 }

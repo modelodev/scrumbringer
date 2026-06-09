@@ -18,6 +18,7 @@
 //// - **login.gleam**: Uses these queries for login flow
 
 import domain/org_role
+import domain/project_role
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -25,6 +26,8 @@ import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server/services/auth_logic
+import scrumbringer_server/services/persisted_field
+import scrumbringer_server/services/persisted_role
 import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
 
 // =============================================================================
@@ -68,14 +71,8 @@ pub fn find_user_by_id(
 /// Convert UserRow to StoredUser.
 pub fn user_from_row(row: UserRow) -> Result(StoredUser, auth_logic.AuthError) {
   use parsed_role <- result.try(
-    org_role.parse(row.org_role)
-    |> result.replace_error(
-      auth_logic.DbError(pog.PostgresqlError(
-        code: "DATA",
-        name: "corrupt_data",
-        message: "Invalid org_role",
-      )),
-    ),
+    persisted_role.org_role(row.org_role)
+    |> result.map_error(auth_logic.DbError),
   )
 
   Ok(StoredUser(
@@ -93,17 +90,12 @@ pub fn set_first_login_at_if_missing(
   db: pog.Connection,
   user_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use ok <- decode.field(0, decode.int)
-    decode.success(ok)
-  }
-
   use returned <- result.try(
     pog.query(
       "update users set first_login_at = coalesce(first_login_at, now()) where id = $1 returning 1",
     )
     |> pog.parameter(pog.int(user_id))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
@@ -119,21 +111,13 @@ pub fn set_first_login_at_if_missing(
 
 /// Check if any organization exists.
 pub fn organization_exists(db: pog.Connection) -> Result(Bool, pog.QueryError) {
-  let decoder = {
-    use exists <- decode.field(0, decode.bool)
-    decode.success(exists)
-  }
-
   use returned <- result.try(
     pog.query("select exists(select 1 from organizations)")
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.bool_decoder())
     |> pog.execute(db),
   )
 
-  case returned.rows {
-    [exists, ..] -> Ok(exists)
-    _ -> Ok(False)
-  }
+  persisted_field.query_row(returned.rows)
 }
 
 /// Insert a new organization.
@@ -141,20 +125,14 @@ pub fn insert_organization(
   db: pog.Connection,
   name: String,
 ) -> Result(Int, pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
   use returned <- result.try(
     pog.query("insert into organizations (name) values ($1) returning id")
     |> pog.parameter(pog.text(name))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
-  let assert [id] = returned.rows
-  Ok(id)
+  persisted_field.query_row(returned.rows)
 }
 
 // =============================================================================
@@ -166,22 +144,16 @@ pub fn insert_default_project(
   db: pog.Connection,
   org_id: Int,
 ) -> Result(Int, pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
   use returned <- result.try(
     pog.query(
       "insert into projects (org_id, name) values ($1, 'Default') returning id",
     )
     |> pog.parameter(pog.int(org_id))
-    |> pog.returning(decoder)
+    |> pog.returning(persisted_field.int_decoder())
     |> pog.execute(db),
   )
 
-  let assert [id] = returned.rows
-  Ok(id)
+  persisted_field.query_row(returned.rows)
 }
 
 /// Insert project member.
@@ -189,14 +161,14 @@ pub fn insert_project_member(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  role: String,
+  role: project_role.ProjectRole,
 ) -> Result(Nil, pog.QueryError) {
   pog.query(
     "insert into project_members (project_id, user_id, role) values ($1, $2, $3)",
   )
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(user_id))
-  |> pog.parameter(pog.text(role))
+  |> pog.parameter(pog.text(project_role.to_string(role)))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
 }
@@ -211,7 +183,7 @@ pub fn insert_user(
   email: String,
   password_hash: String,
   org_id: Int,
-  org_role: String,
+  org_role: org_role.OrgRole,
 ) -> Result(#(Int, String), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -226,16 +198,14 @@ pub fn insert_user(
     |> pog.parameter(pog.text(email))
     |> pog.parameter(pog.text(password_hash))
     |> pog.parameter(pog.int(org_id))
-    |> pog.parameter(pog.text(org_role))
+    |> pog.parameter(pog.text(org_role.to_string(org_role)))
     |> pog.returning(decoder)
     |> pog.execute(db),
   )
 
-  let assert [row] = returned.rows
-  Ok(row)
+  persisted_field.query_row(returned.rows)
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Map user insert error to auth error.
 pub fn map_user_insert_error(error: pog.QueryError) -> auth_logic.AuthError {
   case error {

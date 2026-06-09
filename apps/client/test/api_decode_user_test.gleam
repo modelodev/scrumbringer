@@ -1,6 +1,5 @@
 import gleam/dynamic/decode
 import gleam/json
-import gleeunit/should
 import scrumbringer_client/api/auth as api_auth
 
 pub fn user_payload_decoder_decodes_enveloped_user_test() {
@@ -12,8 +11,7 @@ pub fn user_payload_decoder_decodes_enveloped_user_test() {
 
   let result = json.parse(from: body, using: decoder)
 
-  result
-  |> should.be_ok
+  let assert Ok(_) = result
 }
 
 pub fn user_payload_decoder_rejects_missing_email_test() {
@@ -25,6 +23,5 @@ pub fn user_payload_decoder_rejects_missing_email_test() {
 
   let result = json.parse(from: body, using: decoder)
 
-  result
-  |> should.be_error
+  let assert Error(_) = result
 }

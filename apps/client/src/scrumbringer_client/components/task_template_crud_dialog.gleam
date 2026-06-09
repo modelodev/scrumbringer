@@ -22,7 +22,6 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
-import gleam/result
 
 import lustre
 import lustre/attribute
@@ -30,16 +29,16 @@ import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, input, option as html_option, p, select, span, text,
-  textarea,
+  div, form, input, option as html_option, p, select, span, text, textarea,
 }
 import lustre/event
 
-import domain/api_error.{type ApiError}
-import domain/task_type.{type TaskType, TaskType}
-import domain/workflow.{type TaskTemplate, TaskTemplate}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/task/codec as task_codec
+import domain/task_type.{type TaskType}
+import domain/workflow.{type TaskTemplate}
+import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
@@ -54,10 +53,11 @@ import scrumbringer_client/ui/modal_header
 // =============================================================================
 
 /// Dialog mode determines which view to show.
-pub type DialogMode {
-  ModeCreate
-  ModeEdit(TaskTemplate)
-  ModeDelete(TaskTemplate)
+pub type DialogMode =
+  crud_dialog_base.DialogLifecycle(TaskTemplate)
+
+pub type TaskTemplateFormError {
+  InvalidPriority(String)
 }
 
 /// Internal component model - encapsulates all 17 task template CRUD fields.
@@ -66,7 +66,7 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     project_id: Option(Int),
-    mode: Option(DialogMode),
+    mode: DialogMode,
     task_types: List(TaskType),
     // Create dialog fields
     create_name: String,
@@ -151,59 +151,28 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
   // edit and delete modes need template data from property
-  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
+  crud_dialog_base.decode_create_mode(
+    value,
+    crud_dialog_base.Creating,
+    ModeReceived,
+  )
 }
 
 fn template_property_decoder() -> Decoder(Msg) {
-  use id <- decode.field("id", decode.int)
-  use org_id <- decode.field("org_id", decode.int)
-  use project_id <- decode.field("project_id", decode.optional(decode.int))
-  use name <- decode.field("name", decode.string)
-  use description <- decode.field("description", decode.optional(decode.string))
-  use type_id <- decode.field("type_id", decode.int)
-  use type_name <- decode.field("type_name", decode.string)
-  use priority <- decode.field("priority", decode.int)
-  use _created_by <- decode.field("created_by", decode.int)
-  use _created_at <- decode.field("created_at", decode.string)
-  use rules_count <- decode.optional_field("rules_count", 0, decode.int)
+  use template <- decode.then(workflow_codec.task_template_decoder())
   use mode <- decode.field("_mode", decode.string)
-  let template =
-    TaskTemplate(
-      id: id,
-      org_id: org_id,
-      project_id: project_id,
-      name: name,
-      description: description,
-      type_id: type_id,
-      type_name: type_name,
-      priority: priority,
-      created_by: 0,
-      created_at: "",
-      rules_count: rules_count,
-    )
-  case mode {
-    "edit" -> decode.success(ModeReceived(ModeEdit(template)))
-    "delete" -> decode.success(ModeReceived(ModeDelete(template)))
-    _ -> decode.success(ModeReceived(ModeEdit(template)))
-  }
+  crud_dialog_base.decode_entity_mode(
+    mode,
+    template,
+    crud_dialog_base.Editing,
+    crud_dialog_base.Deleting,
+    ModeReceived,
+  )
 }
 
 fn task_types_property_decoder() -> Decoder(Msg) {
-  use types <- decode.then(decode.list(task_type_decoder()))
+  use types <- decode.then(decode.list(task_codec.task_type_decoder()))
   decode.success(TaskTypesReceived(types))
-}
-
-fn task_type_decoder() -> Decoder(TaskType) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  decode.success(TaskType(
-    id: id,
-    name: name,
-    icon: icon,
-    capability_id: option.None,
-    tasks_count: 0,
-  ))
 }
 
 // =============================================================================
@@ -218,7 +187,7 @@ fn default_model() -> Model {
   Model(
     locale: En,
     project_id: option.None,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     task_types: [],
     create_name: "",
     create_description: "",
@@ -266,7 +235,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     CreateTypeIdChanged(type_id_str) -> #(
-      Model(..model, create_type_id: parse_optional_int(type_id_str)),
+      Model(
+        ..model,
+        create_type_id: crud_dialog_base.optional_int_or_none(type_id_str),
+      ),
       effect.none(),
     )
 
@@ -297,7 +269,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     EditTypeIdChanged(type_id_str) -> #(
-      Model(..model, edit_type_id: parse_optional_int(type_id_str)),
+      Model(
+        ..model,
+        edit_type_id: crud_dialog_base.optional_int_or_none(type_id_str),
+      ),
       effect.none(),
     )
 
@@ -334,22 +309,24 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn parse_optional_int(value: String) -> Option(Int) {
-  case value {
-    "" | "null" | "undefined" -> option.None
-    _ ->
-      int.parse(value)
-      |> result.map(option.Some)
-      |> result.unwrap(option.None)
+pub fn parse_priority(value: String) -> Result(Int, TaskTemplateFormError) {
+  case int.parse(value) {
+    Ok(priority) if priority >= 1 && priority <= 5 -> Ok(priority)
+    _ -> Error(InvalidPriority(value))
   }
 }
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate -> #(
+    crud_dialog_base.Closed -> #(
+      Model(..model, mode: crud_dialog_base.Closed),
+      effect.none(),
+    )
+
+    crud_dialog_base.Creating -> #(
       Model(
         ..model,
-        mode: option.Some(ModeCreate),
+        mode: crud_dialog_base.Creating,
         create_name: "",
         create_description: "",
         create_type_id: option.None,
@@ -360,12 +337,14 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeEdit(template) -> #(
+    crud_dialog_base.Editing(template) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeEdit(template)),
+        mode: crud_dialog_base.Editing(template),
         edit_name: template.name,
-        edit_description: option.unwrap(template.description, ""),
+        edit_description: crud_dialog_base.optional_text_input_value(
+          template.description,
+        ),
         edit_type_id: option.Some(template.type_id),
         edit_priority: int.to_string(template.priority),
         edit_in_flight: False,
@@ -374,10 +353,10 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       effect.none(),
     )
 
-    ModeDelete(template) -> #(
+    crud_dialog_base.Deleting(template) -> #(
       Model(
         ..model,
-        mode: option.Some(ModeDelete(template)),
+        mode: crud_dialog_base.Deleting(template),
         delete_in_flight: False,
         delete_error: option.None,
       ),
@@ -387,15 +366,16 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
 }
 
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.create_in_flight {
-    True -> #(model, effect.none())
-    False -> submit_template_create(model)
-  }
+  crud_dialog_base.submit_if_idle(
+    model,
+    model.create_in_flight,
+    submit_template_create,
+  )
 }
 
 fn submit_template_create(model: Model) -> #(Model, Effect(Msg)) {
-  case model.create_name, model.create_type_id {
-    "", _ -> #(
+  case crud_dialog_base.required_text(model.create_name), model.create_type_id {
+    Error(_), _ -> #(
       Model(
         ..model,
         create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
@@ -409,7 +389,7 @@ fn submit_template_create(model: Model) -> #(Model, Effect(Msg)) {
       ),
       effect.none(),
     )
-    name, option.Some(type_id) ->
+    Ok(name), option.Some(type_id) ->
       submit_template_with_type(model, name, type_id)
   }
 }
@@ -419,10 +399,22 @@ fn submit_template_with_type(
   name: String,
   type_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let priority = int.parse(model.create_priority) |> result.unwrap(3)
-
-  case model.project_id {
-    option.Some(project_id) -> #(
+  case parse_priority(model.create_priority), model.project_id {
+    Error(_), _ -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.PriorityMustBe1To5)),
+      ),
+      effect.none(),
+    )
+    _, option.None -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
+      ),
+      effect.none(),
+    )
+    Ok(priority), option.Some(project_id) -> #(
       Model(..model, create_in_flight: True, create_error: option.None),
       api_workflows.create_project_template(
         project_id,
@@ -432,13 +424,6 @@ fn submit_template_with_type(
         priority,
         CreateResult,
       ),
-    )
-    option.None -> #(
-      Model(
-        ..model,
-        create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
-      ),
-      effect.none(),
     )
   }
 }
@@ -450,7 +435,7 @@ fn handle_create_success(
   #(
     Model(
       ..model,
-      mode: option.None,
+      mode: crud_dialog_base.Closed,
       create_name: "",
       create_description: "",
       create_type_id: option.None,
@@ -463,15 +448,12 @@ fn handle_create_success(
 }
 
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_in_flight {
-    True -> #(model, effect.none())
-    False -> submit_edit(model)
-  }
+  crud_dialog_base.submit_if_idle(model, model.edit_in_flight, submit_edit)
 }
 
 fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
-  case model.edit_name, model.edit_type_id {
-    "", _ -> #(
+  case crud_dialog_base.required_text(model.edit_name), model.edit_type_id {
+    Error(_), _ -> #(
       Model(
         ..model,
         edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
@@ -485,7 +467,8 @@ fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
       ),
       effect.none(),
     )
-    name, option.Some(type_id) -> submit_edit_with_fields(model, name, type_id)
+    Ok(name), option.Some(type_id) ->
+      submit_edit_with_fields(model, name, type_id)
   }
 }
 
@@ -495,20 +478,30 @@ fn submit_edit_with_fields(
   type_id: Int,
 ) -> #(Model, Effect(Msg)) {
   case model.mode {
-    option.Some(ModeEdit(template)) -> {
-      let priority = int.parse(model.edit_priority) |> result.unwrap(3)
-      #(
-        Model(..model, edit_in_flight: True, edit_error: option.None),
-        api_workflows.update_template(
-          template.id,
-          name,
-          model.edit_description,
-          type_id,
-          priority,
-          EditResult,
-        ),
-      )
-    }
+    crud_dialog_base.Editing(template) ->
+      case parse_priority(model.edit_priority) {
+        Error(_) -> #(
+          Model(
+            ..model,
+            edit_error: option.Some(t(
+              model.locale,
+              i18n_text.PriorityMustBe1To5,
+            )),
+          ),
+          effect.none(),
+        )
+        Ok(priority) -> #(
+          Model(..model, edit_in_flight: True, edit_error: option.None),
+          api_workflows.update_template(
+            template.id,
+            name,
+            model.edit_description,
+            type_id,
+            priority,
+            EditResult,
+          ),
+        )
+      }
     _ -> #(model, effect.none())
   }
 }
@@ -520,24 +513,23 @@ fn handle_edit_success(
   #(reset_edit_fields(model), emit_template_updated(template))
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.delete_in_flight {
-    True -> #(model, effect.none())
-    False ->
-      case model.mode {
-        option.Some(ModeDelete(template)) -> #(
-          Model(..model, delete_in_flight: True, delete_error: option.None),
-          api_workflows.delete_template(template.id, DeleteResult),
-        )
-        _ -> #(model, effect.none())
-      }
+  crud_dialog_base.submit_if_idle(model, model.delete_in_flight, submit_delete)
+}
+
+fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    crud_dialog_base.Deleting(template) -> #(
+      Model(..model, delete_in_flight: True, delete_error: option.None),
+      api_workflows.delete_template(template.id, DeleteResult),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
 fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
   let template_id = case model.mode {
-    option.Some(ModeDelete(template)) -> template.id
+    crud_dialog_base.Deleting(template) -> template.id
     _ -> 0
   }
   #(reset_delete_fields(model), emit_template_deleted(template_id))
@@ -557,7 +549,7 @@ fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
 fn reset_edit_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     edit_name: "",
     edit_description: "",
     edit_type_id: option.None,
@@ -570,7 +562,7 @@ fn reset_edit_fields(model: Model) -> Model {
 fn reset_delete_fields(model: Model) -> Model {
   Model(
     ..model,
-    mode: option.None,
+    mode: crud_dialog_base.Closed,
     delete_in_flight: False,
     delete_error: option.None,
   )
@@ -653,293 +645,199 @@ fn append_fields(
 
 fn view(model: Model) -> Element(Msg) {
   case model.mode {
-    option.None -> element.none()
-    option.Some(ModeCreate) -> view_create_dialog(model)
-    option.Some(ModeEdit(_template)) -> view_edit_dialog(model)
-    option.Some(ModeDelete(template)) -> view_delete_dialog(model, template)
+    crud_dialog_base.Closed -> element.none()
+    crud_dialog_base.Creating -> view_create_dialog(model)
+    crud_dialog_base.Editing(_template) -> view_edit_dialog(model)
+    crud_dialog_base.Deleting(template) -> view_delete_dialog(model, template)
   }
 }
 
-// Justification: large function kept intact to preserve cohesive UI logic.
-fn view_create_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-md"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.CreateTaskTemplate),
-          text("\u{1F4DD}"),
-          CloseRequested,
-        ),
-        // Error
-        view_error(model.create_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { CreateSubmitted }),
-              attribute.id("template-create-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_name),
-                  event.on_input(CreateNameChanged),
-                  attribute.required(True),
-                  attribute.attribute("aria-label", "Template name"),
-                ]),
-              ),
-              // Description field (textarea with variables hint)
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateDescription),
-                div([], [
-                  textarea(
-                    [
-                      attribute.rows(4),
-                      attribute.value(model.create_description),
-                      event.on_input(CreateDescriptionChanged),
-                      attribute.attribute("aria-label", "Template description"),
-                    ],
-                    model.create_description,
-                  ),
-                  div([attribute.class("field-variables-hint")], [
-                    span([attribute.class("field-variables-label")], [
-                      text(
-                        t(model.locale, i18n_text.AvailableVariables) <> ": ",
-                      ),
-                    ]),
-                    span([attribute.class("field-variables-list")], [
-                      text(
-                        "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
-                      ),
-                    ]),
-                  ]),
-                ]),
-              ),
-              // Task Type selector
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateType),
-                view_task_type_selector(
-                  model.locale,
-                  model.task_types,
-                  model.create_type_id,
-                  CreateTypeIdChanged,
-                ),
-              ),
-              // Priority selector
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplatePriority),
-                view_priority_selector(
-                  model.create_priority,
-                  CreatePriorityChanged,
-                ),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, CloseRequested),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("template-create-form"),
-              attribute.disabled(model.create_in_flight),
-              attribute.class(case model.create_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.create_in_flight {
-                True -> t(model.locale, i18n_text.Creating)
-                False -> t(model.locale, i18n_text.Create)
-              }),
-            ],
-          ),
-        ]),
-      ],
+fn view_template_fields(
+  model: Model,
+  name: String,
+  description: String,
+  type_id: Option(Int),
+  priority: String,
+  on_name_changed: fn(String) -> Msg,
+  on_description_changed: fn(String) -> Msg,
+  on_type_changed: fn(String) -> Msg,
+  on_priority_changed: fn(String) -> Msg,
+  name_aria_label: Option(String),
+  description_aria_label: Option(String),
+) -> List(Element(Msg)) {
+  [
+    form_field.view(
+      t(model.locale, i18n_text.TaskTemplateName),
+      input(
+        [
+          attribute.type_("text"),
+          attribute.value(name),
+          event.on_input(on_name_changed),
+          attribute.required(True),
+        ]
+        |> maybe_add_aria_label(name_aria_label),
+      ),
     ),
+    form_field.view(
+      t(model.locale, i18n_text.TaskTemplateDescription),
+      div([], [
+        textarea(
+          [
+            attribute.rows(4),
+            attribute.value(description),
+            event.on_input(on_description_changed),
+          ]
+            |> maybe_add_aria_label(description_aria_label),
+          description,
+        ),
+        view_template_variables_hint(model),
+      ]),
+    ),
+    form_field.view(
+      t(model.locale, i18n_text.TaskTemplateType),
+      view_task_type_selector(
+        model.locale,
+        model.task_types,
+        type_id,
+        on_type_changed,
+      ),
+    ),
+    form_field.view(
+      t(model.locale, i18n_text.TaskTemplatePriority),
+      view_priority_selector(priority, on_priority_changed),
+    ),
+  ]
+}
+
+fn maybe_add_aria_label(
+  attrs: List(attribute.Attribute(Msg)),
+  label: Option(String),
+) -> List(attribute.Attribute(Msg)) {
+  case label {
+    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
+    option.None -> attrs
+  }
+}
+
+fn view_template_variables_hint(model: Model) -> Element(Msg) {
+  div([attribute.class("field-variables-hint")], [
+    span([attribute.class("field-variables-label")], [
+      text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
+    ]),
+    span([attribute.class("field-variables-list")], [
+      text("{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"),
+    ]),
   ])
 }
 
-// Justification: large function kept intact to preserve cohesive UI logic.
-fn view_edit_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-md"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.EditTaskTemplate),
-          text("\u{270F}"),
-          EditCancelled,
-        ),
-        // Error
-        view_error(model.edit_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          form(
-            [
-              event.on_submit(fn(_) { EditSubmitted }),
-              attribute.id("template-edit-form"),
-            ],
-            [
-              // Name field
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateName),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_name),
-                  event.on_input(EditNameChanged),
-                  attribute.required(True),
-                ]),
-              ),
-              // Description field (textarea with variables hint)
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateDescription),
-                div([], [
-                  textarea(
-                    [
-                      attribute.rows(4),
-                      attribute.value(model.edit_description),
-                      event.on_input(EditDescriptionChanged),
-                    ],
-                    model.edit_description,
-                  ),
-                  div([attribute.class("field-variables-hint")], [
-                    span([attribute.class("field-variables-label")], [
-                      text(
-                        t(model.locale, i18n_text.AvailableVariables) <> ": ",
-                      ),
-                    ]),
-                    span([attribute.class("field-variables-list")], [
-                      text(
-                        "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
-                      ),
-                    ]),
-                  ]),
-                ]),
-              ),
-              // Task Type selector
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplateType),
-                view_task_type_selector(
-                  model.locale,
-                  model.task_types,
-                  model.edit_type_id,
-                  EditTypeIdChanged,
-                ),
-              ),
-              // Priority selector
-              form_field.view(
-                t(model.locale, i18n_text.TaskTemplatePriority),
-                view_priority_selector(model.edit_priority, EditPriorityChanged),
-              ),
-            ],
-          ),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, EditCancelled),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.form("template-edit-form"),
-              attribute.disabled(model.edit_in_flight),
-              attribute.class(case model.edit_in_flight {
-                True -> "btn-loading"
-                False -> ""
-              }),
-            ],
-            [
-              text(case model.edit_in_flight {
-                True -> t(model.locale, i18n_text.Working)
-                False -> t(model.locale, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ],
+fn view_create_dialog(model: Model) -> Element(Msg) {
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-md",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.CreateTaskTemplate),
+      text("\u{1F4DD}"),
+      CloseRequested,
     ),
-  ])
+    model.create_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { CreateSubmitted }),
+          attribute.id("template-create-form"),
+        ],
+        view_template_fields(
+          model,
+          model.create_name,
+          model.create_description,
+          model.create_type_id,
+          model.create_priority,
+          CreateNameChanged,
+          CreateDescriptionChanged,
+          CreateTypeIdChanged,
+          CreatePriorityChanged,
+          option.Some("Template name"),
+          option.Some("Template description"),
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, CloseRequested),
+      crud_dialog_base.view_submit_button(
+        "template-create-form",
+        model.create_in_flight,
+        t(model.locale, i18n_text.Create),
+        t(model.locale, i18n_text.Creating),
+      ),
+    ],
+  )
+}
+
+fn view_edit_dialog(model: Model) -> Element(Msg) {
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-md",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.EditTaskTemplate),
+      text("\u{270F}"),
+      EditCancelled,
+    ),
+    model.edit_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { EditSubmitted }),
+          attribute.id("template-edit-form"),
+        ],
+        view_template_fields(
+          model,
+          model.edit_name,
+          model.edit_description,
+          model.edit_type_id,
+          model.edit_priority,
+          EditNameChanged,
+          EditDescriptionChanged,
+          EditTypeIdChanged,
+          EditPriorityChanged,
+          option.None,
+          option.None,
+        ),
+      ),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, EditCancelled),
+      crud_dialog_base.view_submit_button(
+        "template-edit-form",
+        model.edit_in_flight,
+        t(model.locale, i18n_text.Save),
+        t(model.locale, i18n_text.Working),
+      ),
+    ],
+  )
 }
 
 fn view_delete_dialog(model: Model, template: TaskTemplate) -> Element(Msg) {
-  div([attribute.class("dialog-overlay")], [
-    div(
-      [
-        attribute.class("dialog dialog-sm"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-      ],
-      [
-        // Header
-        modal_header.view_dialog_with_icon(
-          t(model.locale, i18n_text.DeleteTaskTemplate),
-          text("\u{1F5D1}"),
-          DeleteCancelled,
-        ),
-        // Error
-        view_error(model.delete_error),
-        // Body
-        div([attribute.class("dialog-body")], [
-          p([], [
-            text(t(
-              model.locale,
-              i18n_text.TaskTemplateDeleteConfirm(template.name),
-            )),
-          ]),
-        ]),
-        // Footer
-        div([attribute.class("dialog-footer")], [
-          view_cancel_button(model.locale, DeleteCancelled),
-          button(
-            [
-              event.on_click(DeleteConfirmed),
-              attribute.disabled(model.delete_in_flight),
-              attribute.class("btn-danger"),
-            ],
-            [
-              text(case model.delete_in_flight {
-                True -> t(model.locale, i18n_text.Removing)
-                False -> t(model.locale, i18n_text.DeleteTaskTemplate)
-              }),
-            ],
-          ),
-        ]),
-      ],
+  crud_dialog_base.view_dialog_shell(
+    "dialog dialog-sm",
+    modal_header.view_dialog_with_icon(
+      t(model.locale, i18n_text.DeleteTaskTemplate),
+      text("\u{1F5D1}"),
+      DeleteCancelled,
     ),
-  ])
-}
-
-fn view_error(error: Option(String)) -> Element(Msg) {
-  case error {
-    option.Some(msg) ->
-      div([attribute.class("dialog-error")], [
-        span([], [text("\u{26A0}")]),
-        text(" " <> msg),
-      ])
-    option.None -> element.none()
-  }
-}
-
-fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button([attribute.type_("button"), event.on_click(on_click_msg)], [
-    text(t(locale, i18n_text.Cancel)),
-  ])
+    model.delete_error,
+    [
+      p([], [
+        text(t(model.locale, i18n_text.TaskTemplateDeleteConfirm(template.name))),
+      ]),
+    ],
+    [
+      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
+      crud_dialog_base.view_danger_button(
+        DeleteConfirmed,
+        model.delete_in_flight,
+        t(model.locale, i18n_text.DeleteTaskTemplate),
+        t(model.locale, i18n_text.Removing),
+      ),
+    ],
+  )
 }
 
 fn view_task_type_selector(
@@ -1000,6 +898,41 @@ fn view_priority_selector(
       )
     }),
   )
+}
+
+pub fn view_create_dialog_for_test(
+  locale: Locale,
+  task_types: List(TaskType),
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Creating,
+      task_types: task_types,
+    )
+  view_create_dialog(model)
+}
+
+pub fn view_edit_dialog_for_test(
+  locale: Locale,
+  template: TaskTemplate,
+  task_types: List(TaskType),
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Editing(template),
+      task_types: task_types,
+      edit_name: template.name,
+      edit_description: crud_dialog_base.optional_text_input_value(
+        template.description,
+      ),
+      edit_type_id: option.Some(template.type_id),
+      edit_priority: int.to_string(template.priority),
+    )
+  view_edit_dialog(model)
 }
 
 // =============================================================================

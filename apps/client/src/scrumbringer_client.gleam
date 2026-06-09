@@ -76,12 +76,15 @@ import scrumbringer_client/ui/toast
 import scrumbringer_client/url_state
 
 import scrumbringer_client/app/effects as app_effects
+import scrumbringer_client/features/auth/msg as auth_messages
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/i18n/text as i18n_text
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, CoreModel,
   Login, MeFetched, Member, Replace, ResetPassword as ResetPasswordPage,
-  update_auth, update_core, update_member, update_ui,
+  auth_msg, update_auth, update_core, update_member, update_ui,
 }
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member.{MemberModel}
@@ -150,7 +153,8 @@ pub fn main() {
     Error(_) -> Nil
   }
 
-  let flags = Flags(theme: storage.load_theme(), locale: storage.load_locale())
+  let flags =
+    Flags(theme: theme.load_from_storage(), locale: i18n_locale.load())
 
   // Start the main application
   case lustre.start(app(), "#app", flags) {
@@ -159,11 +163,43 @@ pub fn main() {
   }
 }
 
+fn auth_context(model: Model) -> auth_workflow.Context(Msg) {
+  auth_workflow.Context(
+    on_login_dom_values_read: fn(email, password) {
+      auth_msg(auth_messages.LoginDomValuesRead(email, password))
+    },
+    on_login_finished: fn(result) {
+      auth_msg(auth_messages.LoginFinished(result))
+    },
+    on_forgot_password_finished: fn(result) {
+      auth_msg(auth_messages.ForgotPasswordFinished(result))
+    },
+    on_forgot_password_copy_finished: fn(ok) {
+      auth_msg(auth_messages.ForgotPasswordCopyFinished(ok))
+    },
+    on_logout_finished: fn(result) {
+      auth_msg(auth_messages.LogoutFinished(result))
+    },
+    on_accept_invite: fn(inner) { auth_msg(auth_messages.AcceptInvite(inner)) },
+    on_reset_password: fn(inner) {
+      auth_msg(auth_messages.ResetPassword(inner))
+    },
+    email_and_password_required: i18n.t(
+      model.ui.locale,
+      i18n_text.EmailAndPasswordRequired,
+    ),
+    email_required: i18n.t(model.ui.locale, i18n_text.EmailRequired),
+    invalid_credentials: i18n.t(model.ui.locale, i18n_text.InvalidCredentials),
+    copying: i18n.t(model.ui.locale, i18n_text.Copying),
+    copied: i18n.t(model.ui.locale, i18n_text.Copied),
+    copy_failed: i18n.t(model.ui.locale, i18n_text.CopyFailed),
+  )
+}
+
 // =============================================================================
 // Initialization
 // =============================================================================
 
-// Justification: large function kept intact to preserve cohesive UI logic.
 /// Initialize the application state from browser context.
 ///
 /// ## Size Justification (~200 lines)
@@ -186,10 +222,7 @@ pub fn main() {
 /// patterns that add indirection without clarity.
 fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   let is_mobile = client_ffi.is_mobile()
-
-  let parsed =
-    router.parse_uri(initial_uri())
-    |> router.apply_mobile_rules(is_mobile)
+  let parsed = router.parse_uri(initial_uri())
 
   let route = case parsed {
     router.Parsed(route) -> route
@@ -297,9 +330,12 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
       )
     })
 
+  let auth_ctx = auth_context(model)
   let base_effect = case page {
-    AcceptInvitePage -> auth_workflow.accept_invite_effect(accept_action)
-    ResetPasswordPage -> auth_workflow.reset_password_effect(reset_action)
+    AcceptInvitePage ->
+      auth_workflow.accept_invite_effect(accept_action, auth_ctx)
+    ResetPasswordPage ->
+      auth_workflow.reset_password_effect(reset_action, auth_ctx)
     _ -> api_auth.fetch_me(MeFetched)
   }
 

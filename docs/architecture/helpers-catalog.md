@@ -12,7 +12,7 @@ facilitar el reuso.
 ## Criterios de modularizacion
 
 Reusar un modulo existente si:
-- El helper es generico y ya hay un modulo del dominio (ej: time, validation).
+- El helper es generico y ya hay un modulo del dominio (ej: time, lookup).
 - Evita crear dependencias entre features.
 
 Crear modulo nuevo si:
@@ -56,50 +56,26 @@ Proposito: helpers de tiempo y formato.
 - format_seconds(value: Int) -> String
 - now_working_elapsed_from_ms(accumulated_s: Int, started_ms: Int, server_now_ms: Int) -> String
 
-### scrumbringer_client/helpers/validation.gleam
+### scrumbringer_client/features/auth/helpers.gleam
 
-Proposito: validaciones comunes y wrappers.
+Proposito: transiciones root-aware de auth y errores.
 
-- NonEmptyString (opaque)
-- non_empty_string_value(value: NonEmptyString) -> String
-- validate_required_string(model: Model, value: String, error_text: Text) -> Result(NonEmptyString, String)
-- validate_required_string_raw(model: Model, value: String, error_text: Text) -> Result(NonEmptyString, String)
-- validate_required_fields(model: Model, fields: List(#(String, Text))) -> Result(List(NonEmptyString), String)
+- clear_drag_state(model: Model) -> Model
+- reset_to_login(model: Model) -> #(Model, Effect(Msg))
+- handle_auth_error(model: Model, err: ApiError) -> Option(#(Model, Effect(Msg)))
+- handle_401_or(model: Model, err: ApiError, fallback: fn() -> #(Model, Effect(Msg))) -> #(Model, Effect(Msg))
 
-### scrumbringer_client/helpers/selection.gleam
+### scrumbringer_client/client_state/selectors.gleam
 
-Proposito: selection helpers del Model.
+Proposito: selectores del root `Model` y politicas pequenas de seleccion.
 
 - active_projects(model: Model) -> List(Project)
 - selected_project(model: Model) -> Option(Project)
-- now_working_active_task(model: Model) -> Option(ActiveTask)
+- now_working_active_session(model: Model) -> Option(WorkSession)
 - now_working_active_task_id(model: Model) -> Option(Int)
 - now_working_all_sessions(model: Model) -> List(WorkSession)
 - ensure_selected_project(selected: Option(Int), projects: List(Project)) -> Option(Int)
 - ensure_default_section(model: Model) -> Model
-
-### scrumbringer_client/helpers/toast.gleam
-
-Proposito: helpers de effects para toasts.
-
-- toast_effect(message: String, variant: ToastVariant) -> Effect(Msg)
-- toast_success(message: String) -> Effect(Msg)
-- toast_error(message: String) -> Effect(Msg)
-- toast_warning(message: String) -> Effect(Msg)
-
-### scrumbringer_client/helpers/i18n.gleam
-
-Proposito: traduccion.
-
-- i18n_t(model: Model, text: Text) -> String
-
-### scrumbringer_client/helpers/auth.gleam
-
-Proposito: wrappers de auth y errores.
-
-- reset_to_login(model: Model) -> #(Model, Effect(Msg))
-- handle_auth_error(model: Model, err: ApiError) -> Option(#(Model, Effect(Msg)))
-- handle_401_or(model: Model, err: ApiError, fallback: fn() -> #(Model, Effect(Msg))) -> #(Model, Effect(Msg))
 
 ## Politica de actualizacion
 

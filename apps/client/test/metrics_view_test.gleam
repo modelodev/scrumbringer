@@ -1,23 +1,20 @@
 import gleam/string
 import gleeunit
-import gleeunit/should
 import lustre/element
 
 import domain/metrics.{NoSample, OrgMetricsOverview, WindowDays}
-import domain/remote.{Loaded}
+import domain/remote.{Loaded, NotAsked}
 import gleam/option as opt
 
-import scrumbringer_client/client_state
-import scrumbringer_client/client_state/admin as admin_state
-import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/metrics/view as metrics_view
+import scrumbringer_client/i18n/locale
 
 pub fn main() {
   gleeunit.main()
 }
 
-fn base_model() -> client_state.Model {
-  client_state.default_model()
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
 }
 
 pub fn overview_no_sample_renders_label_test() {
@@ -41,22 +38,18 @@ pub fn overview_no_sample_renders_label_test() {
       by_project: [],
     )
 
-  let model =
-    base_model()
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        metrics: admin_metrics.Model(
-          ..admin.metrics,
-          admin_metrics_overview: Loaded(overview),
-        ),
-      )
-    })
+  let config =
+    metrics_view.Config(
+      locale: locale.En,
+      overview: Loaded(overview),
+      project_tasks: NotAsked,
+      selected_project: opt.None,
+      on_project_selected: fn(project_id) { project_id },
+    )
 
-  let html =
-    metrics_view.view_metrics(model, opt.None) |> element.to_document_string
+  let html = metrics_view.view_metrics(config) |> element.to_document_string
 
-  string.contains(html, "Flow health") |> should.be_true
-  string.contains(html, "No sample (n=0)") |> should.be_true
-  string.contains(html, "Time to first claim") |> should.be_true
+  assert_contains(html, "Flow health")
+  assert_contains(html, "No sample (n=0)")
+  assert_contains(html, "Time to first claim")
 }

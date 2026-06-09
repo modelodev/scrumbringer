@@ -8,12 +8,15 @@ import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
 
 fn base_config(
   tasks: List(Task),
@@ -48,7 +51,7 @@ fn sample_card() -> Card {
     milestone_id: None,
     title: "Sprint",
     description: "",
-    color: Some("blue"),
+    color: Some(card.Blue),
     state: EnCurso,
     task_count: 1,
     completed_count: 0,
@@ -84,7 +87,7 @@ fn claimed_task() -> Task {
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -112,7 +115,7 @@ fn available_task() -> Task {
     milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
-    card_color: Some("blue"),
+    card_color: Some(card.Blue),
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
@@ -125,10 +128,10 @@ pub fn grouped_list_renders_claimed_by_and_border_class_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  string.contains(html, "Claimed by admin@example.com") |> should.be_true
-  string.contains(html, "task-claimed-icon") |> should.be_true
-  string.contains(html, "task-item card-border-blue") |> should.be_true
-  string.contains(html, "task-type-icon") |> should.be_true
+  assert_contains(html, "Claimed by admin@example.com")
+  assert_contains(html, "task-claimed-icon")
+  assert_contains(html, "task-item card-border-blue")
+  assert_contains(html, "task-type-icon")
 }
 
 pub fn grouped_list_renders_available_label_and_claim_button_test() {
@@ -137,8 +140,8 @@ pub fn grouped_list_renders_available_label_and_claim_button_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  string.contains(html, "Available") |> should.be_true
-  string.contains(html, "task-claim-btn") |> should.be_true
+  assert_contains(html, "Available")
+  assert_contains(html, "task-claim-btn")
 }
 
 pub fn grouped_list_shows_notes_indicator_test() {
@@ -149,5 +152,5 @@ pub fn grouped_list_shows_notes_indicator_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  string.contains(html, "card-notes-indicator") |> should.be_true
+  assert_contains(html, "card-notes-indicator")
 }

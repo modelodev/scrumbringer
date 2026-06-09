@@ -26,15 +26,19 @@ pub type ViewMode {
   Milestones
 }
 
-/// Convierte string de URL a ViewMode
-/// Devuelve Pool como default para strings no reconocidos
-pub fn from_string(s: String) -> ViewMode {
+pub type ViewModeParseError {
+  UnknownViewMode(String)
+}
+
+/// Parsea string de URL a ViewMode.
+pub fn parse(s: String) -> Result(ViewMode, ViewModeParseError) {
   case s {
-    "cards" -> Cards
-    "capabilities" -> Capabilities
-    "people" -> People
-    "milestones" -> Milestones
-    _ -> Pool
+    "pool" -> Ok(Pool)
+    "cards" -> Ok(Cards)
+    "capabilities" -> Ok(Capabilities)
+    "people" -> Ok(People)
+    "milestones" -> Ok(Milestones)
+    other -> Error(UnknownViewMode(other))
   }
 }
 

@@ -68,8 +68,10 @@ type UrlQueryParams {
 }
 
 type QueryError {
+  InvalidEncoding(String)
   InvalidProject(String)
   InvalidView(String)
+  InvalidScope(String)
   InvalidType(String)
   InvalidCapability(String)
   InvalidCard(String)
@@ -101,8 +103,15 @@ pub fn empty() -> UrlState {
 ///
 /// Este es el punto de entrada principal para crear UrlState.
 pub fn parse(uri: Uri, context: QueryContext) -> QueryParseResult {
-  let query = uri.query |> option.unwrap("")
+  let query = uri_query_string(uri)
   parse_query(query, context)
+}
+
+fn uri_query_string(uri: Uri) -> String {
+  case uri.query {
+    option.None -> ""
+    option.Some(query) -> query
+  }
 }
 
 /// Parsea un query string directamente según el contexto.
@@ -233,7 +242,16 @@ pub fn assignments_view_param(
 ///   view(...)
 pub fn view(state: UrlState) -> view_mode.ViewMode {
   view_param(state)
-  |> option.unwrap(view_mode.Pool)
+  |> member_view_or_default
+}
+
+fn member_view_or_default(
+  view: option.Option(view_mode.ViewMode),
+) -> view_mode.ViewMode {
+  case view {
+    option.None -> view_mode.Pool
+    option.Some(mode) -> mode
+  }
 }
 
 /// Provides assignments view (default ByProject).
@@ -241,7 +259,16 @@ pub fn assignments_view(
   state: UrlState,
 ) -> assignments_view_mode.AssignmentsViewMode {
   assignments_view_param(state)
-  |> option.unwrap(assignments_view_mode.ByProject)
+  |> assignments_view_or_default
+}
+
+fn assignments_view_or_default(
+  view: option.Option(assignments_view_mode.AssignmentsViewMode),
+) -> assignments_view_mode.AssignmentsViewMode {
+  case view {
+    option.None -> assignments_view_mode.ByProject
+    option.Some(mode) -> mode
+  }
 }
 
 /// Provides type filter.
@@ -378,10 +405,7 @@ fn context_errors(
       list.filter_map(
         [
           #(has("view"), "view"),
-          #(
-            has("scope") && capability_scope.is_default(params.capability_scope),
-            "scope",
-          ),
+          #(has("scope"), "scope"),
           #(has("type"), "type"),
           #(has("cap"), "cap"),
           #(has("search"), "search"),
@@ -436,7 +460,7 @@ fn context_errors(
 }
 
 fn parse_query_params(query: String) -> ParsedParams {
-  let params = parse_query_pairs(query)
+  let #(params, pair_errors) = parse_query_pairs(query)
   let present_keys = params |> list.map(fn(p) { p.0 })
 
   let #(project, project_error) =
@@ -481,22 +505,50 @@ fn parse_query_params(query: String) -> ParsedParams {
     [project_error, view_error, scope_error, type_error, cap_error, card_error]
     |> list.filter_map(fn(err) { option.to_result(err, Nil) })
 
-  ParsedParams(query_params, present_keys, list.append(errors, unknown_keys))
+  ParsedParams(
+    query_params,
+    present_keys,
+    list.append(list.append(pair_errors, errors), unknown_keys),
+  )
 }
 
-fn parse_query_pairs(query: String) -> List(#(String, String)) {
-  query
-  |> string.split("&")
-  |> list.filter_map(fn(pair) {
-    case string.split(pair, "=") {
-      [key, value] ->
-        Ok(#(key, uri.percent_decode(value) |> result.unwrap(value)))
-      _ -> Error(Nil)
+fn parse_query_pairs(
+  query: String,
+) -> #(List(#(String, String)), List(QueryError)) {
+  case query {
+    "" -> #([], [])
+    _ -> {
+      let #(pairs, errors) =
+        query
+        |> string.split("&")
+        |> list.fold(#([], []), fn(acc, pair) {
+          let #(pairs, errors) = acc
+          case pair {
+            "" -> #(pairs, errors)
+            _ ->
+              case parse_query_pair(pair) {
+                Ok(parsed_pair) -> #([parsed_pair, ..pairs], errors)
+                Error(error) -> #(pairs, [error, ..errors])
+              }
+          }
+        })
+
+      #(list.reverse(pairs), list.reverse(errors))
     }
-  })
+  }
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn parse_query_pair(pair: String) -> Result(#(String, String), QueryError) {
+  case string.split(pair, "=") {
+    [raw_key, raw_value] ->
+      case uri.percent_decode(raw_key), uri.percent_decode(raw_value) {
+        Ok(key), Ok(value) -> Ok(#(key, value))
+        _, _ -> Error(InvalidEncoding(pair))
+      }
+    _ -> Error(UnexpectedParam(pair))
+  }
+}
+
 fn parse_optional_int_param(
   params: List(#(String, String)),
   key: String,
@@ -512,7 +564,6 @@ fn parse_optional_int_param(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn parse_optional_view_param(
   params: List(#(String, String)),
   key: String,
@@ -534,26 +585,24 @@ fn parse_optional_capability_scope(
   case get_string(params, key) {
     option.None -> #(capability_scope.default(), option.None)
     option.Some(raw) ->
-      case capability_scope.from_string_option(raw) {
-        option.Some(scope) -> #(scope, option.None)
-        option.None -> #(
+      case capability_scope.parse(raw) {
+        Ok(scope) -> #(scope, option.None)
+        Error(_) -> #(
           capability_scope.default(),
-          option.Some(UnexpectedParam(key)),
+          option.Some(InvalidScope(raw)),
         )
       }
   }
 }
 
 fn view_param_from_raw(raw: String) -> option.Option(ViewParam) {
-  case raw {
-    "pool" -> option.Some(MemberView(view_mode.Pool))
-    "cards" -> option.Some(MemberView(view_mode.Cards))
-    "capabilities" -> option.Some(MemberView(view_mode.Capabilities))
-    "people" -> option.Some(MemberView(view_mode.People))
-    "milestones" -> option.Some(MemberView(view_mode.Milestones))
-    _ ->
-      assignments_view_mode.from_param(raw)
-      |> option.map(AssignmentsView)
+  case view_mode.parse(raw) {
+    Ok(mode) -> option.Some(MemberView(mode))
+    Error(_) ->
+      case assignments_view_mode.parse(raw) {
+        Ok(mode) -> option.Some(AssignmentsView(mode))
+        Error(_) -> option.None
+      }
   }
 }
 

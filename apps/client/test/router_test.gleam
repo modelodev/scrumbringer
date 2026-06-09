@@ -1,9 +1,7 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 import gleam/uri
-import gleeunit/should
 
 import domain/view_mode
 import scrumbringer_client/capability_scope
@@ -12,35 +10,73 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
 
+fn assert_equal(actual: a, expected: a) {
+  let assert True = actual == expected
+}
+
 // Story 4.5: New /config/* routes
 pub fn parse_config_members_with_project_test() {
   let parsed = router.parse_uri(build_uri("/config/members", "?project=2"))
 
-  parsed
-  |> should.equal(router.Parsed(router.Config(permissions.Members, Some(2))))
+  assert_equal(
+    parsed,
+    router.Parsed(router.Config(permissions.Members, Some(2))),
+  )
+}
+
+pub fn parse_config_unknown_section_redirects_to_members_test() {
+  let parsed = router.parse_uri(build_uri("/config/unknown", "?project=2"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Members, Some(2))),
+  )
+}
+
+pub fn parse_config_member_scope_redirects_to_canonical_config_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/members", "?project=2&scope=mine"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Members, Some(2))),
+  )
 }
 
 pub fn parse_member_pool_with_project_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?project=2"))
 
-  parsed
-  |> should.equal(
+  assert_equal(
+    parsed,
     router.Parsed(member_route(member_section.Pool, Some(2), None)),
+  )
+}
+
+pub fn parse_member_unknown_section_redirects_to_pool_test() {
+  let parsed = router.parse_uri(build_uri("/app/unknown", "?project=2"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(member_route(member_section.Pool, Some(2), None)),
   )
 }
 
 pub fn parse_accept_invite_token_test() {
   let parsed = router.parse_uri(build_uri("/accept-invite", "?token=il_token"))
 
-  parsed
-  |> should.equal(router.Parsed(router.AcceptInvite("il_token")))
+  assert_equal(parsed, router.Parsed(router.AcceptInvite("il_token")))
 }
 
 pub fn parse_org_assignments_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", ""))
 
-  parsed
-  |> should.equal(router.Parsed(router.Org(permissions.Assignments)))
+  assert_equal(parsed, router.Parsed(router.Org(permissions.Assignments)))
+}
+
+pub fn parse_org_unknown_section_redirects_to_invites_test() {
+  let parsed = router.parse_uri(build_uri("/org/unknown", ""))
+
+  assert_equal(parsed, router.Redirect(router.Org(permissions.Invites)))
 }
 
 // Story 4.5: Invalid project redirects to Config with None
@@ -48,15 +84,17 @@ pub fn parse_invalid_project_redirects_and_drops_project_test() {
   let parsed = router.parse_uri(build_uri("/config/members", "?project=nope"))
 
   // Invalid project is dropped via redirect
-  parsed
-  |> should.equal(router.Redirect(router.Config(permissions.Members, None)))
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Members, None)),
+  )
 }
 
 pub fn parse_member_invalid_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=nope"))
 
-  parsed
-  |> should.equal(
+  assert_equal(
+    parsed,
     router.Redirect(member_route(member_section.Pool, None, None)),
   )
 }
@@ -64,8 +102,8 @@ pub fn parse_member_invalid_view_redirects_test() {
 pub fn parse_member_legacy_list_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
 
-  parsed
-  |> should.equal(
+  assert_equal(
+    parsed,
     router.Redirect(member_route(member_section.Pool, None, None)),
   )
 }
@@ -73,30 +111,27 @@ pub fn parse_member_legacy_list_view_redirects_test() {
 pub fn parse_org_assignments_invalid_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", "?view=pool"))
 
-  parsed
-  |> should.equal(router.Redirect(router.Org(permissions.Assignments)))
+  assert_equal(parsed, router.Redirect(router.Org(permissions.Assignments)))
 }
 
 // Story 4.4: Mobile keeps pool route in 3-panel layout
 pub fn mobile_keeps_pool_route_test() {
-  router.parse_uri(build_uri("/app/pool", "?project=2"))
-  |> router.apply_mobile_rules(True)
-  |> should.equal(
+  assert_equal(
+    router.parse_uri(build_uri("/app/pool", "?project=2")),
     router.Parsed(member_route(member_section.Pool, Some(2), None)),
   )
 }
 
 pub fn desktop_keeps_pool_route_test() {
-  router.parse_uri(build_uri("/app/pool", "?project=2"))
-  |> router.apply_mobile_rules(False)
-  |> should.equal(
+  assert_equal(
+    router.parse_uri(build_uri("/app/pool", "?project=2")),
     router.Parsed(member_route(member_section.Pool, Some(2), None)),
   )
 }
 
 fn parse_formatted(url: String) -> router.ParseResult {
   let parts = string.split(url, "?")
-  let pathname = parts |> list.first |> result.unwrap("/")
+  let assert Ok(pathname) = list.first(parts)
   let search = case list.drop(parts, 1) {
     [] -> ""
     [q, ..] -> "?" <> q
@@ -106,56 +141,67 @@ fn parse_formatted(url: String) -> router.ParseResult {
 }
 
 pub fn format_login_test() {
-  router.format(router.Login) |> should.equal("/")
+  assert_equal(router.format(router.Login), "/")
 }
 
 // Story 4.5: Config routes format correctly
 pub fn format_config_with_project_test() {
-  router.format(router.Config(permissions.Members, Some(2)))
-  |> should.equal("/config/members?project=2")
+  assert_equal(
+    router.format(router.Config(permissions.Members, Some(2))),
+    "/config/members?project=2",
+  )
 }
 
 // Story 4.5: Org routes format correctly
 pub fn format_org_invites_test() {
-  router.format(router.Org(permissions.Invites))
-  |> should.equal("/org/invites")
+  assert_equal(router.format(router.Org(permissions.Invites)), "/org/invites")
 }
 
 pub fn format_org_assignments_test() {
-  router.format(router.Org(permissions.Assignments))
-  |> should.equal("/org/assignments")
+  assert_equal(
+    router.format(router.Org(permissions.Assignments)),
+    "/org/assignments",
+  )
 }
 
 pub fn format_member_pool_with_project_test() {
-  router.format(member_route(member_section.Pool, Some(2), None))
-  |> should.equal("/app/pool?project=2")
+  assert_equal(
+    router.format(member_route(member_section.Pool, Some(2), None)),
+    "/app/pool?project=2",
+  )
 }
 
 pub fn format_member_milestones_with_project_test() {
-  router.format(member_route(
-    member_section.Pool,
-    Some(2),
-    Some(view_mode.Milestones),
-  ))
-  |> should.equal("/app/pool?project=2&view=milestones")
+  assert_equal(
+    router.format(member_route(
+      member_section.Pool,
+      Some(2),
+      Some(view_mode.Milestones),
+    )),
+    "/app/pool?project=2&view=milestones",
+  )
 }
 
 pub fn format_member_people_with_project_test() {
-  router.format(member_route(
-    member_section.Pool,
-    Some(2),
-    Some(view_mode.People),
-  ))
-  |> should.equal("/app/pool?project=2&view=people")
+  assert_equal(
+    router.format(member_route(
+      member_section.Pool,
+      Some(2),
+      Some(view_mode.People),
+    )),
+    "/app/pool?project=2&view=people",
+  )
 }
 
 pub fn format_member_capabilities_with_project_test() {
-  router.format(member_route(
-    member_section.Pool,
-    Some(2),
-    Some(view_mode.Capabilities),
-  ))
-  |> should.equal("/app/pool?project=2&view=capabilities")
+  assert_equal(
+    router.format(member_route(
+      member_section.Pool,
+      Some(2),
+      Some(view_mode.Capabilities),
+    )),
+    "/app/pool?project=2&view=capabilities",
+  )
 }
 
 pub fn format_member_cards_with_scope_test() {
@@ -165,35 +211,39 @@ pub fn format_member_cards_with_scope_test() {
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
 
-  router.format(router.Member(member_section.Pool, state))
-  |> should.equal("/app/pool?project=2&view=cards&scope=mine")
+  assert_equal(
+    router.format(router.Member(member_section.Pool, state)),
+    "/app/pool?project=2&view=cards&scope=mine",
+  )
 }
 
 // Story 4.5: Config routes roundtrip correctly
 pub fn roundtrip_config_members_test() {
   let route = router.Config(permissions.Members, Some(2))
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 // Story 4.5: Org routes roundtrip correctly
 pub fn roundtrip_org_invites_test() {
   let route = router.Org(permissions.Invites)
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_org_assignments_test() {
   let route = router.Org(permissions.Assignments)
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn parse_my_bar_route_test() {
-  router.parse_uri(build_uri("/app/my-bar", ""))
-  |> should.equal(router.Parsed(member_route(member_section.MyBar, None, None)))
+  assert_equal(
+    router.parse_uri(build_uri("/app/my-bar", "")),
+    router.Parsed(member_route(member_section.MyBar, None, None)),
+  )
 }
 
 pub fn parse_my_skills_route_test() {
-  router.parse_uri(build_uri("/app/my-skills", ""))
-  |> should.equal(
+  assert_equal(
+    router.parse_uri(build_uri("/app/my-skills", "")),
     router.Parsed(member_route(member_section.MySkills, None, None)),
   )
 }
@@ -201,24 +251,24 @@ pub fn parse_my_skills_route_test() {
 // Fichas is still valid
 pub fn roundtrip_member_fichas_without_project_test() {
   let route = member_route(member_section.Fichas, None, None)
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_milestones_with_project_test() {
   let route =
     member_route(member_section.Pool, Some(2), Some(view_mode.Milestones))
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_people_with_project_test() {
   let route = member_route(member_section.Pool, Some(2), Some(view_mode.People))
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_capabilities_with_project_test() {
   let route =
     member_route(member_section.Pool, Some(2), Some(view_mode.Capabilities))
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_cards_with_scope_test() {
@@ -229,17 +279,17 @@ pub fn roundtrip_member_cards_with_scope_test() {
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
 
   let route = router.Member(member_section.Pool, state)
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_accept_invite_test() {
   let route = router.AcceptInvite("il_token")
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_reset_password_test() {
   let route = router.ResetPassword("rp_token")
-  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 fn build_uri(pathname: String, search: String) -> uri.Uri {

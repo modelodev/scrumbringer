@@ -21,20 +21,18 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/card_notes_db.gleam` for persistence
 
-import gleam/dynamic
-import gleam/dynamic/decode
 import gleam/http
-import gleam/int
-import gleam/json
-import helpers/json as json_helpers
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/card_notes/presenters as note_presenters
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/notes/mutations as note_mutations
+import scrumbringer_server/http/service_error_response
 import scrumbringer_server/services/authorization
 import scrumbringer_server/services/card_notes_db
 import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
@@ -71,8 +69,8 @@ fn handle_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> list_notes_for_user(ctx, user, card_id)
   }
 }
@@ -84,8 +82,8 @@ fn handle_create(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> create_note_for_user(req, ctx, user, card_id)
   }
 }
@@ -98,8 +96,8 @@ fn handle_delete(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Delete)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
     Ok(user) -> delete_note_for_user(req, ctx, user, card_id, note_id)
   }
 }
@@ -109,25 +107,31 @@ fn list_notes_for_user(
   user: StoredUser,
   card_id: String,
 ) -> wisp.Response {
-  case parse_card_id(card_id) {
+  case api.parse_id(card_id) {
     Error(resp) -> resp
     Ok(card_id) -> list_notes(ctx, user.id, card_id)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn list_notes(ctx: auth.Ctx, user_id: Int, card_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case require_card_access(db, card_id, user_id) {
+  case list_notes_payload(db, user_id, card_id) {
+    Ok(resp) -> resp
     Error(resp) -> resp
+  }
+}
 
-    Ok(_card) ->
-      case card_notes_db.list_notes_for_card(db, card_id) {
-        Ok(notes) ->
-          api.ok(json.object([#("notes", json.array(notes, of: note_json))]))
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
+fn list_notes_payload(
+  db: pog.Connection,
+  user_id: Int,
+  card_id: Int,
+) -> Result(wisp.Response, wisp.Response) {
+  use _card <- result.try(require_card_access(db, card_id, user_id))
+
+  case card_notes_db.list_notes_for_card(db, card_id) {
+    Ok(notes) -> Ok(api.ok(note_presenters.notes_response(notes)))
+    Error(_) -> Error(database_error_response())
   }
 }
 
@@ -137,34 +141,11 @@ fn create_note_for_user(
   user: StoredUser,
   card_id: String,
 ) -> wisp.Response {
-  case csrf.require_csrf(req) {
-    Error(resp) -> resp
-    Ok(Nil) -> create_note_with_csrf(req, ctx, user, card_id)
-  }
+  note_mutations.with_note_payload(req, card_id, fn(card_id, payload) {
+    create_note(ctx, user, card_id, payload.content)
+  })
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn create_note_with_csrf(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  user: StoredUser,
-  card_id: String,
-) -> wisp.Response {
-  case parse_card_id(card_id) {
-    Error(resp) -> resp
-
-    Ok(card_id) -> {
-      use data <- wisp.require_json(req)
-
-      case decode_note_payload(data) {
-        Error(resp) -> resp
-        Ok(content) -> create_note(ctx, user, card_id, content)
-      }
-    }
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
 fn create_note(
   ctx: auth.Ctx,
   user: StoredUser,
@@ -173,27 +154,23 @@ fn create_note(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case require_card_access(db, card_id, user.id) {
+  case create_note_payload(db, user, card_id, content) {
+    Ok(resp) -> resp
     Error(resp) -> resp
+  }
+}
 
-    Ok(_card) ->
-      case card_notes_db.create_note(db, card_id, user.id, content) {
-        Ok(note) -> api.ok(json.object([#("note", note_json(note))]))
-        Error(service_error.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.Unexpected(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.NotFound) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(service_error.ValidationError(msg)) ->
-          api.error(422, "VALIDATION_ERROR", msg)
-        Error(service_error.InvalidReference(_)) ->
-          api.error(422, "VALIDATION_ERROR", "Invalid reference")
-        Error(service_error.Conflict(_)) ->
-          api.error(409, "CONFLICT", "Conflict")
-        Error(service_error.AlreadyExists) ->
-          api.error(409, "CONFLICT", "Conflict")
-      }
+fn create_note_payload(
+  db: pog.Connection,
+  user: StoredUser,
+  card_id: Int,
+  content: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use _card <- result.try(require_card_access(db, card_id, user.id))
+
+  case card_notes_db.create_note(db, card_id, user.id, content) {
+    Ok(note) -> Ok(api.ok(note_presenters.note_response(note)))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
 
@@ -210,21 +187,19 @@ fn delete_note_for_user(
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn delete_note_with_csrf(
   ctx: auth.Ctx,
   user: StoredUser,
   card_id: String,
   note_id: String,
 ) -> wisp.Response {
-  case parse_card_id(card_id), parse_note_id(note_id) {
+  case api.parse_id(card_id), api.parse_id(note_id) {
     Error(resp), _ -> resp
     _, Error(resp) -> resp
     Ok(card_id), Ok(note_id) -> delete_note(ctx, user, card_id, note_id)
   }
 }
 
-// Justification: nested case improves clarity for branching logic.
 fn delete_note(
   ctx: auth.Ctx,
   user: StoredUser,
@@ -233,31 +208,35 @@ fn delete_note(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case require_card_access(db, card_id, user.id) {
+  case authorize_note_delete(db, user, card_id, note_id) {
+    Ok(Nil) -> delete_note_in_db(db, card_id, note_id)
     Error(resp) -> resp
+  }
+}
 
-    Ok(card) ->
-      case card_notes_db.get_note(db, card_id, note_id) {
-        Error(service_error.NotFound) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(service_error.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(service_error.ValidationError(msg)) ->
-          api.error(422, "VALIDATION_ERROR", msg)
-        Error(service_error.InvalidReference(_)) ->
-          api.error(422, "VALIDATION_ERROR", "Invalid reference")
-        Error(service_error.Conflict(_)) ->
-          api.error(409, "CONFLICT", "Conflict")
-        Error(service_error.Unexpected(_)) ->
-          api.error(500, "INTERNAL", "Unexpected error")
-        Error(service_error.AlreadyExists) ->
-          api.error(409, "CONFLICT", "Conflict")
-        Ok(note) ->
-          case can_delete_note(db, user, card.project_id, note) {
-            False -> api.error(403, "FORBIDDEN", "Forbidden")
-            True -> delete_note_in_db(db, card_id, note_id)
-          }
-      }
+fn authorize_note_delete(
+  db: pog.Connection,
+  user: StoredUser,
+  card_id: Int,
+  note_id: Int,
+) -> Result(Nil, wisp.Response) {
+  use card <- result.try(require_card_access(db, card_id, user.id))
+  use note <- result.try(get_note(db, card_id, note_id))
+
+  case can_delete_note(db, user, card.project_id, note) {
+    True -> Ok(Nil)
+    False -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
+  }
+}
+
+fn get_note(
+  db: pog.Connection,
+  card_id: Int,
+  note_id: Int,
+) -> Result(card_notes_db.CardNote, wisp.Response) {
+  case card_notes_db.get_note(db, card_id, note_id) {
+    Ok(note) -> Ok(note)
+    Error(error) -> Error(service_error_response.to_response(error))
   }
 }
 
@@ -268,17 +247,7 @@ fn delete_note_in_db(
 ) -> wisp.Response {
   case card_notes_db.delete_note(db, card_id, note_id) {
     Ok(Nil) -> api.no_content()
-    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(service_error.DbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
-    Error(service_error.ValidationError(msg)) ->
-      api.error(422, "VALIDATION_ERROR", msg)
-    Error(service_error.InvalidReference(_)) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid reference")
-    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
-    Error(service_error.Unexpected(_)) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
+    Error(error) -> service_error_response.to_response(error)
   }
 }
 
@@ -298,75 +267,27 @@ fn can_delete_note(
   }
 }
 
-fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
-  let decoder = {
-    use content <- decode.field("content", decode.string)
-    decode.success(content)
-  }
-
-  case decode.run(data, decoder) {
-    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
-    Ok(content) -> Ok(content)
-  }
-}
-
-fn parse_card_id(card_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(card_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
-}
-
-fn parse_note_id(note_id: String) -> Result(Int, wisp.Response) {
-  case int.parse(note_id) {
-    Ok(id) -> Ok(id)
-    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-  }
-}
-
 fn require_card_access(
   db: pog.Connection,
   card_id: Int,
   user_id: Int,
 ) -> Result(cards_db.Card, wisp.Response) {
   case cards_db.get_card(db, card_id, user_id) {
-    Error(cards_db.CardNotFound) ->
-      Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(cards_db.DbError(_)) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(cards_db.CardNotFound) -> Error(not_found_response())
+    Error(cards_db.DbError(_)) -> Error(database_error_response())
+    Error(_) -> Error(database_error_response())
     Ok(card) ->
       case authorization.is_project_member(db, user_id, card.project_id) {
-        False -> Error(api.error(404, "NOT_FOUND", "Not found"))
+        False -> Error(not_found_response())
         True -> Ok(card)
       }
   }
 }
 
-fn note_json(note: card_notes_db.CardNote) -> json.Json {
-  let card_notes_db.CardNote(
-    id: id,
-    card_id: card_id,
-    user_id: user_id,
-    content: content,
-    created_at: created_at,
-    author_email: author_email,
-    author_project_role: author_project_role,
-    author_org_role: author_org_role,
-  ) = note
+fn not_found_response() -> wisp.Response {
+  api.error(404, "NOT_FOUND", "Not found")
+}
 
-  json.object([
-    #("id", json.int(id)),
-    #("card_id", json.int(card_id)),
-    #("user_id", json.int(user_id)),
-    #("content", json.string(content)),
-    #("created_at", json.string(created_at)),
-    // AC20: Author info for tooltip
-    #("author_email", json.string(author_email)),
-    #(
-      "author_project_role",
-      json_helpers.option_string_json(author_project_role),
-    ),
-    #("author_org_role", json.string(author_org_role)),
-  ])
+fn database_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Database error")
 }

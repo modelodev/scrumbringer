@@ -2,7 +2,6 @@
 
 import gleam/option.{None, Some}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/tabs.{TabItem}
@@ -18,6 +17,14 @@ type TestTab {
 
 fn render_to_string(cfg: tabs.Config(id, msg)) -> String {
   tabs.view(cfg) |> element.to_string()
+}
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
+
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
 }
 
 // =============================================================================
@@ -47,8 +54,8 @@ pub fn renders_all_tabs_test() {
   let html = render_to_string(cfg)
 
   // Then: Contains both labels
-  html |> string.contains("First") |> should.be_true()
-  html |> string.contains("Second") |> should.be_true()
+  assert_contains(html, "First")
+  assert_contains(html, "Second")
 }
 
 pub fn active_tab_has_correct_class_test() {
@@ -74,7 +81,7 @@ pub fn active_tab_has_correct_class_test() {
   let html = render_to_string(cfg)
 
   // Then: Contains tab-active class
-  html |> string.contains("tab-active") |> should.be_true()
+  assert_contains(html, "tab-active")
 }
 
 pub fn count_hidden_when_zero_test() {
@@ -99,7 +106,7 @@ pub fn count_hidden_when_zero_test() {
   let html = render_to_string(cfg)
 
   // Then: Should NOT contain "(0)"
-  html |> string.contains("(0)") |> should.be_false()
+  assert_not_contains(html, "(0)")
 }
 
 pub fn count_shows_when_positive_test() {
@@ -124,7 +131,7 @@ pub fn count_shows_when_positive_test() {
   let html = render_to_string(cfg)
 
   // Then: Contains "(7)"
-  html |> string.contains("(7)") |> should.be_true()
+  assert_contains(html, "(7)")
 }
 
 pub fn indicator_shows_when_enabled_test() {
@@ -144,7 +151,7 @@ pub fn indicator_shows_when_enabled_test() {
   let html = render_to_string(cfg)
 
   // Then: Contains indicator
-  html |> string.contains("new-notes-indicator") |> should.be_true()
+  assert_contains(html, "new-notes-indicator")
 }
 
 pub fn aria_attributes_correct_test() {
@@ -175,21 +182,17 @@ pub fn aria_attributes_correct_test() {
   let html = render_to_string(cfg)
 
   // Then: Container has tablist role
-  html |> string.contains("role=\"tablist\"") |> should.be_true()
+  assert_contains(html, "role=\"tablist\"")
   // Tabs have tab role
-  html |> string.contains("role=\"tab\"") |> should.be_true()
+  assert_contains(html, "role=\"tab\"")
   // Active tab has aria-selected="true"
-  html |> string.contains("aria-selected=\"true\"") |> should.be_true()
+  assert_contains(html, "aria-selected=\"true\"")
   // Tabs are linked to tabpanels
-  html |> string.contains("id=\"modal-tab-0\"") |> should.be_true()
-  html
-  |> string.contains("aria-controls=\"modal-tabpanel-0\"")
-  |> should.be_true()
-  html |> string.contains("id=\"modal-tab-1\"") |> should.be_true()
-  html
-  |> string.contains("aria-controls=\"modal-tabpanel-1\"")
-  |> should.be_true()
+  assert_contains(html, "id=\"modal-tab-0\"")
+  assert_contains(html, "aria-controls=\"modal-tabpanel-0\"")
+  assert_contains(html, "id=\"modal-tab-1\"")
+  assert_contains(html, "aria-controls=\"modal-tabpanel-1\"")
   // Roving tabindex contract
-  html |> string.contains("tabindex=\"0\"") |> should.be_true()
-  html |> string.contains("tabindex=\"-1\"") |> should.be_true()
+  assert_contains(html, "tabindex=\"0\"")
+  assert_contains(html, "tabindex=\"-1\"")
 }

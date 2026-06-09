@@ -17,6 +17,8 @@
 //// Uses seed_builder with a metrics-focused configuration that ensures
 //// good coverage of edge cases and realistic data distribution.
 
+import domain/card as domain_card
+import domain/task_status
 import fixtures
 import gleam/int
 import gleam/io
@@ -190,7 +192,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Resolved",
-    "completed",
+    task_status.Completed,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -206,7 +208,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Closed",
-    "completed",
+    task_status.Completed,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -230,7 +232,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_feature_id,
     Some(alpha_feature_type),
     "On Feature Done",
-    "completed",
+    task_status.Completed,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -251,7 +253,7 @@ pub fn seed() -> Result(SeedResult, String) {
     session,
     wf_card_id,
     "On Card Archived",
-    "cerrada",
+    domain_card.Cerrada,
   ))
   io.println("[OK] Created Card Automation workflow")
 
@@ -291,7 +293,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_beta,
     Some(beta_bug_type),
     "On Beta Bug Resolved",
-    "completed",
+    task_status.Completed,
   ))
   io.println("[OK] Created workflow for Beta")
 
@@ -356,13 +358,13 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(resolved_bugs, fn(bug_id) {
       let event =
-        fixtures.task_event(
+        fixtures.task_event_status(
           bug_id,
           alpha_id,
           org_id,
           admin_user_id,
-          Some("in_progress"),
-          "completed",
+          Some(task_status.Claimed(task_status.Ongoing)),
+          task_status.Completed,
           Some(alpha_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -381,13 +383,13 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(closed_bugs, fn(bug_id) {
       let event =
-        fixtures.task_event(
+        fixtures.task_event_status(
           bug_id,
           alpha_id,
           org_id,
           admin_user_id,
-          Some("completed"),
-          "completed",
+          Some(task_status.Completed),
+          task_status.Completed,
           Some(alpha_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -406,13 +408,13 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(done_features, fn(feature_id) {
       let event =
-        fixtures.task_event(
+        fixtures.task_event_status(
           feature_id,
           alpha_id,
           org_id,
           dev_user_id,
-          Some("in_progress"),
-          "completed",
+          Some(task_status.Claimed(task_status.Ongoing)),
+          task_status.Completed,
           Some(alpha_feature_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -431,13 +433,13 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(archived_cards, fn(card_id) {
       let event =
-        fixtures.card_event(
+        fixtures.card_event_state(
           card_id,
           alpha_id,
           org_id,
           admin_user_id,
-          Some("active"),
-          "cerrada",
+          Some(domain_card.EnCurso),
+          domain_card.Cerrada,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -455,13 +457,13 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(beta_bug_ids, fn(bug_id) {
       let event =
-        fixtures.task_event(
+        fixtures.task_event_status(
           bug_id,
           beta_id,
           org_id,
           admin_user_id,
-          Some("in_progress"),
-          "completed",
+          Some(task_status.Claimed(task_status.Ongoing)),
+          task_status.Completed,
           Some(beta_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -476,13 +478,13 @@ pub fn seed() -> Result(SeedResult, String) {
   io.println("\n--- Testing Suppression ---")
   let assert [first_bug, ..] = bug_ids
   let event_idem =
-    fixtures.task_event(
+    fixtures.task_event_status(
       first_bug,
       alpha_id,
       org_id,
       admin_user_id,
-      Some("claimed"),
-      "completed",
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Completed,
       Some(alpha_bug_type),
     )
   use _ <- result.try(

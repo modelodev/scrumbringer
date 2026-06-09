@@ -7,11 +7,12 @@ import lustre/attribute
 import lustre/element
 import lustre/event
 
-import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card, color_to_string, state_to_string}
 import domain/task as task_domain
 import domain/task_status as domain_task_status
 
 import scrumbringer_client/i18n/locale
+import scrumbringer_client/ui/attribute_value
 
 pub type Config(msg) {
   Config(
@@ -43,7 +44,10 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
       attribute.attribute("locale", locale.serialize(loc)),
       attribute.attribute("current-user-id", int.to_string(current_user_id)),
       attribute.attribute("project-id", int.to_string(card.project_id)),
-      attribute.attribute("can-manage-notes", bool_to_string(can_manage_notes)),
+      attribute.attribute(
+        "can-manage-notes",
+        attribute_value.boolean(can_manage_notes),
+      ),
       attribute.property("card", card_to_json(card)),
       attribute.property("tasks", tasks_to_json(tasks)),
       event.on("create-task-requested", on_create_task),
@@ -60,24 +64,16 @@ fn card_to_json(card: Card) -> json.Json {
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
     #("color", case card.color {
-      opt.Some(c) -> json.string(c)
+      opt.Some(c) -> json.string(color_to_string(c))
       opt.None -> json.null()
     }),
-    #("state", json.string(card_state_to_string(card.state))),
+    #("state", json.string(state_to_string(card.state))),
     #("task_count", json.int(card.task_count)),
     #("completed_count", json.int(card.completed_count)),
     #("created_by", json.int(card.created_by)),
     #("created_at", json.string(card.created_at)),
     #("has_new_notes", json.bool(card.has_new_notes)),
   ])
-}
-
-fn card_state_to_string(state: CardState) -> String {
-  case state {
-    Pendiente -> "pendiente"
-    EnCurso -> "en_curso"
-    Cerrada -> "cerrada"
-  }
 }
 
 fn tasks_to_json(tasks: List(task_domain.Task)) -> json.Json {
@@ -111,7 +107,10 @@ fn task_to_json(task: task_domain.Task) -> json.Json {
       "status",
       json.string(domain_task_status.task_status_to_string(task.status)),
     ),
-    #("work_state", json.string(work_state_to_string(task.work_state))),
+    #(
+      "work_state",
+      json.string(domain_task_status.work_state_to_string(task.work_state)),
+    ),
     #("created_by", json.int(task.created_by)),
     #("claimed_by", case task_domain.claimed_by(task) {
       opt.Some(id) -> json.int(id)
@@ -136,24 +135,8 @@ fn task_to_json(task: task_domain.Task) -> json.Json {
       opt.None -> json.null()
     }),
     #("card_color", case task.card_color {
-      opt.Some(c) -> json.string(c)
+      opt.Some(c) -> json.string(color_to_string(c))
       opt.None -> json.null()
     }),
   ])
-}
-
-fn work_state_to_string(state: domain_task_status.WorkState) -> String {
-  case state {
-    domain_task_status.WorkAvailable -> "available"
-    domain_task_status.WorkClaimed -> "claimed"
-    domain_task_status.WorkOngoing -> "ongoing"
-    domain_task_status.WorkCompleted -> "completed"
-  }
-}
-
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
 }

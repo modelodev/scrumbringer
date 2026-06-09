@@ -2,207 +2,199 @@
 ////
 //// ## Mission
 ////
-//// Handles project creation and selection flows.
+//// Handles project CRUD dialog state.
 ////
 //// ## Responsibilities
 ////
-//// - Project create form state and submission
-//// - Project selection handling
-//// - Project fetch responses
+//// - Project create/edit/delete form state and submission
+//// - Dialog operation states and validation
 ////
 //// ## Non-responsibilities
 ////
-//// - API calls (see `api/projects.gleam`, `api/tasks.gleam`)
+//// - Root model assembly for project CRUD dialogs (see `features/admin/update.gleam`)
 //// - Navigation (see `client_update.gleam`)
 ////
 //// ## Relations
 ////
-//// - **client_update.gleam**: Dispatches project messages to handlers here
+//// - **features/admin/update.gleam**: Assembles root state and toasts
 //// - **api/projects.gleam**: Provides API effects for project operations
 
-import gleam/int
-import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/effect.{type Effect}
 
 // API modules
 import scrumbringer_client/api/projects as api_projects
-import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
-import domain/api_error.{type ApiError}
+import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type Project}
-import domain/remote.{Failed, Loaded, NotAsked}
-import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, CoreModel, Login, Member, admin_msg, pool_msg,
-  update_admin, update_core, update_member,
-}
-import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/projects as admin_projects
-import scrumbringer_client/client_state/member.{MemberModel}
-import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types.{
   type DialogState, type OperationState, type ProjectDialogForm, DialogClosed,
   DialogOpen, Error as OpError, Idle, InFlight, ProjectDialogCreate,
   ProjectDialogDelete, ProjectDialogEdit,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/helpers/auth as helpers_auth
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/selection as helpers_selection
-import scrumbringer_client/helpers/toast as helpers_toast
-import scrumbringer_client/helpers/validation as helpers_validation
-import scrumbringer_client/i18n/text as i18n_text
 
-// =============================================================================
-// Projects Fetch Handlers
-// =============================================================================
+pub type Context(parent_msg) {
+  Context(
+    on_project_created: fn(ApiResult(Project)) -> parent_msg,
+    on_project_updated: fn(ApiResult(Project)) -> parent_msg,
+    on_project_deleted: fn(ApiResult(Nil)) -> parent_msg,
+    name_required: String,
+  )
+}
 
-/// Handle projects fetch success.
-pub fn handle_projects_fetched_ok(
-  model: Model,
-  projects: List(Project),
-  member_refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
-  admin_refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
-  hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
-  replace_url_fn: fn(Model) -> Effect(Msg),
-) -> #(Model, Effect(Msg)) {
-  let selected =
-    helpers_selection.ensure_selected_project(
-      model.core.selected_project_id,
-      projects,
-    )
-  let model =
-    update_core(model, fn(core) {
-      CoreModel(
-        ..core,
-        projects: Loaded(projects),
-        selected_project_id: selected,
+pub type Success {
+  ProjectCreated
+  ProjectUpdated
+  ProjectDeleted
+}
+
+pub type FeedbackContext(parent_msg) {
+  FeedbackContext(
+    project_created: String,
+    project_updated: String,
+    project_deleted: String,
+    on_success_toast: fn(String) -> Effect(parent_msg),
+  )
+}
+
+pub type ErrorFeedbackContext(parent_msg) {
+  ErrorFeedbackContext(
+    not_permitted: String,
+    on_warning_toast: fn(String) -> Effect(parent_msg),
+    on_error_toast: fn(String) -> Effect(parent_msg),
+  )
+}
+
+pub type AuthPolicy {
+  NoAuthCheck
+  CheckAuth(ApiError)
+}
+
+pub type CorePolicy {
+  NoCoreChange
+  CoreProjectCreated(Project)
+  CoreProjectUpdated(Project)
+  CoreProjectDeleted(opt.Option(Int))
+}
+
+pub type Update(parent_msg) {
+  Update(admin_projects.Model, Effect(parent_msg), AuthPolicy, CorePolicy)
+}
+
+pub fn try_update(
+  model: admin_projects.Model,
+  inner: admin_messages.Msg,
+  context: Context(parent_msg),
+  feedback: FeedbackContext(parent_msg),
+  error_feedback: ErrorFeedbackContext(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  case inner {
+    admin_messages.ProjectCreateDialogOpened ->
+      handle_project_create_dialog_opened(model)
+      |> without_policies
+
+    admin_messages.ProjectCreateDialogClosed ->
+      handle_project_create_dialog_closed(model)
+      |> without_policies
+
+    admin_messages.ProjectCreateNameChanged(name) ->
+      handle_project_create_name_changed(model, name)
+      |> without_policies
+
+    admin_messages.ProjectCreateSubmitted ->
+      handle_project_create_submitted(model, context)
+      |> without_policies
+
+    admin_messages.ProjectCreated(Ok(project)) ->
+      handle_project_created_ok(model, feedback)
+      |> with_core_policy(CoreProjectCreated(project))
+
+    admin_messages.ProjectCreated(Error(err)) ->
+      handle_project_created_error(model, err, error_feedback)
+      |> with_auth_policy(CheckAuth(err))
+
+    admin_messages.ProjectEditDialogOpened(project_id, project_name) ->
+      handle_project_edit_dialog_opened(model, project_id, project_name)
+      |> without_policies
+
+    admin_messages.ProjectEditDialogClosed ->
+      handle_project_edit_dialog_closed(model)
+      |> without_policies
+
+    admin_messages.ProjectEditNameChanged(name) ->
+      handle_project_edit_name_changed(model, name)
+      |> without_policies
+
+    admin_messages.ProjectEditSubmitted ->
+      handle_project_edit_submitted(model, context)
+      |> without_policies
+
+    admin_messages.ProjectUpdated(Ok(project)) ->
+      handle_project_updated_ok(model, feedback)
+      |> with_core_policy(CoreProjectUpdated(project))
+
+    admin_messages.ProjectUpdated(Error(err)) ->
+      handle_project_updated_error(model, err, error_feedback)
+      |> with_auth_policy(CheckAuth(err))
+
+    admin_messages.ProjectDeleteConfirmOpened(project_id, project_name) ->
+      handle_project_delete_confirm_opened(model, project_id, project_name)
+      |> without_policies
+
+    admin_messages.ProjectDeleteConfirmClosed ->
+      handle_project_delete_confirm_closed(model)
+      |> without_policies
+
+    admin_messages.ProjectDeleteSubmitted ->
+      handle_project_delete_submitted(model, context)
+      |> without_policies
+
+    admin_messages.ProjectDeleted(Ok(_)) ->
+      handle_project_deleted_ok(model, feedback)
+      |> with_core_policy(
+        CoreProjectDeleted(project_dialog_delete_id(model.projects_dialog)),
       )
-    })
 
-  let model = helpers_selection.ensure_default_section(model)
+    admin_messages.ProjectDeleted(Error(err)) ->
+      handle_project_deleted_error(model, err, error_feedback)
+      |> with_auth_policy(CheckAuth(err))
 
-  case model.core.page {
-    Member -> {
-      let #(model, fx) = member_refresh_fn(model)
-      let #(model, hyd_fx) = hydrate_fn(model)
-      #(model, effect.batch([fx, hyd_fx, replace_url_fn(model)]))
-    }
-
-    Admin -> {
-      let #(model, fx) = admin_refresh_fn(model)
-      let #(model, hyd_fx) = hydrate_fn(model)
-      #(model, effect.batch([fx, hyd_fx, replace_url_fn(model)]))
-    }
-
-    _ -> {
-      let #(model, hyd_fx) = hydrate_fn(model)
-      #(model, effect.batch([hyd_fx, replace_url_fn(model)]))
-    }
+    _ -> opt.None
   }
 }
 
-/// Handle projects fetch error.
-pub fn handle_projects_fetched_error(
-  model: Model,
-  err: ApiError,
-  replace_url_fn: fn(Model) -> Effect(Msg),
-) -> #(Model, Effect(Msg)) {
-  case err.status == 401 {
-    True -> {
-      let model =
-        helpers_auth.clear_drag_state(
-          update_core(model, fn(core) {
-            CoreModel(..core, page: Login, user: opt.None)
-          }),
-        )
-      #(model, replace_url_fn(model))
-    }
-
-    False -> #(
-      update_core(model, fn(core) { CoreModel(..core, projects: Failed(err)) }),
-      effect.none(),
-    )
-  }
+fn without_policies(
+  result: #(admin_projects.Model, Effect(parent_msg)),
+) -> opt.Option(Update(parent_msg)) {
+  with_policies(result, NoAuthCheck, NoCoreChange)
 }
 
-// =============================================================================
-// Project Selection Handlers
-// =============================================================================
+fn with_auth_policy(
+  result: #(admin_projects.Model, Effect(parent_msg)),
+  auth_policy: AuthPolicy,
+) -> opt.Option(Update(parent_msg)) {
+  with_policies(result, auth_policy, NoCoreChange)
+}
 
-// Justification: nested case improves clarity for branching logic.
-/// Handle project selection.
-pub fn handle_project_selected(
-  model: Model,
-  project_id: String,
-  member_refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
-  admin_refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
-  replace_url_fn: fn(Model) -> Effect(Msg),
-  should_pause_fn: fn(Bool, opt.Option(Int), opt.Option(Int)) -> Bool,
-) -> #(Model, Effect(Msg)) {
-  let selected = case int.parse(project_id) {
-    Ok(id) -> opt.Some(id)
-    Error(_) -> opt.None
-  }
+fn with_core_policy(
+  result: #(admin_projects.Model, Effect(parent_msg)),
+  core_policy: CorePolicy,
+) -> opt.Option(Update(parent_msg)) {
+  with_policies(result, NoAuthCheck, core_policy)
+}
 
-  let should_pause =
-    should_pause_fn(
-      model.core.page == Member,
-      model.core.selected_project_id,
-      selected,
-    )
-
-  let model = case selected {
-    opt.None ->
-      update_member(
-        update_core(model, fn(core) {
-          CoreModel(..core, selected_project_id: selected)
-        }),
-        fn(member) {
-          let pool = member.pool
-          MemberModel(
-            ..member,
-            pool: member_pool.Model(
-              ..pool,
-              member_filters_type_id: opt.None,
-              member_task_types: NotAsked,
-            ),
-          )
-        },
-      )
-    _ ->
-      update_core(model, fn(core) {
-        CoreModel(..core, selected_project_id: selected)
-      })
-  }
-
-  case model.core.page {
-    Member -> {
-      let #(model, fx) = member_refresh_fn(model)
-
-      let pause_fx = case should_pause {
-        True ->
-          case helpers_selection.now_working_active_task_id(model) {
-            opt.Some(task_id) ->
-              api_tasks.pause_work_session(task_id, fn(result) {
-                pool_msg(pool_messages.MemberWorkSessionPaused(result))
-              })
-            opt.None -> effect.none()
-          }
-        False -> effect.none()
-      }
-
-      #(model, effect.batch([fx, pause_fx, replace_url_fn(model)]))
-    }
-
-    _ -> {
-      let #(model, fx) = admin_refresh_fn(model)
-      #(model, effect.batch([fx, replace_url_fn(model)]))
-    }
-  }
+fn with_policies(
+  result: #(admin_projects.Model, Effect(parent_msg)),
+  auth_policy: AuthPolicy,
+  core_policy: CorePolicy,
+) -> opt.Option(Update(parent_msg)) {
+  let #(model, fx) = result
+  opt.Some(Update(model, fx, auth_policy, core_policy))
 }
 
 // =============================================================================
@@ -211,187 +203,119 @@ pub fn handle_project_selected(
 
 /// Handle project create dialog opened.
 pub fn handle_project_create_dialog_opened(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(
-        admin,
-        DialogOpen(form: ProjectDialogCreate(name: ""), operation: Idle),
-      )
-    }),
+    set_projects_dialog(
+      model,
+      DialogOpen(form: ProjectDialogCreate(name: ""), operation: Idle),
+    ),
     effect.none(),
   )
 }
 
 /// Handle project create dialog closed.
 pub fn handle_project_create_dialog_closed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(admin, DialogClosed(operation: Idle))
-    }),
-    effect.none(),
-  )
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
 /// Handle project create name input change.
 pub fn handle_project_create_name_changed(
-  model: Model,
+  model: admin_projects.Model,
   name: String,
-) -> #(Model, Effect(Msg)) {
-  let next_state = case model.admin.projects.projects_dialog {
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
     DialogOpen(form: ProjectDialogCreate(name: _), operation: op) ->
       DialogOpen(form: ProjectDialogCreate(name: name), operation: op)
     other -> other
   }
 
-  #(
-    update_admin(model, fn(admin) { set_projects_dialog(admin, next_state) }),
-    effect.none(),
-  )
+  #(set_projects_dialog(model, next_state), effect.none())
 }
 
 /// Handle project create form submission.
-pub fn handle_project_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.projects.projects_dialog {
+pub fn handle_project_create_submitted(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
     DialogOpen(form: ProjectDialogCreate(name: name), operation: op) ->
-      submit_project_create(model, name, operation_in_flight(op))
+      submit_project_create(model, name, operation_in_flight(op), context)
     _ -> #(model, effect.none())
   }
 }
 
 fn submit_project_create(
-  model: Model,
+  model: admin_projects.Model,
   name: String,
   in_flight: Bool,
-) -> #(Model, Effect(Msg)) {
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   case in_flight {
     True -> #(model, effect.none())
-    False -> validate_project_create_name(model, name)
-  }
-}
-
-fn validate_project_create_name(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  case
-    helpers_validation.validate_required_string(
-      model,
-      name,
-      i18n_text.NameRequired,
-    )
-  {
-    Error(err) -> #(
-      update_admin(model, fn(admin) {
-        set_projects_dialog(
-          admin,
-          update_project_dialog_error(model.admin.projects.projects_dialog, err),
+    False -> {
+      let trimmed = string.trim(name)
+      case trimmed == "" {
+        True -> #(
+          set_projects_dialog(
+            model,
+            update_project_dialog_error(
+              model.projects_dialog,
+              context.name_required,
+            ),
+          ),
+          effect.none(),
         )
-      }),
-      effect.none(),
-    )
-    Ok(non_empty) -> submit_project_create_valid(model, name, non_empty)
+        False -> submit_project_create_valid(model, trimmed, context)
+      }
+    }
   }
 }
 
 fn submit_project_create_valid(
-  model: Model,
-  _name: String,
-  non_empty: helpers_validation.NonEmptyString,
-) -> #(Model, Effect(Msg)) {
-  let trimmed = helpers_validation.non_empty_string_value(non_empty)
+  model: admin_projects.Model,
+  name: String,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   let model =
-    update_admin(model, fn(admin) {
-      set_projects_dialog(
-        admin,
-        update_project_dialog_in_flight(model.admin.projects.projects_dialog),
-      )
-    })
-  #(
-    model,
-    api_projects.create_project(trimmed, fn(result) {
-      admin_msg(admin_messages.ProjectCreated(result))
-    }),
-  )
+    set_projects_dialog(
+      model,
+      update_project_dialog_in_flight(model.projects_dialog),
+    )
+  #(model, api_projects.create_project(name, context.on_project_created))
 }
 
 /// Handle project created success.
 pub fn handle_project_created_ok(
-  model: Model,
-  project: Project,
-) -> #(Model, Effect(Msg)) {
-  let updated_projects = case model.core.projects {
-    Loaded(projects) -> [project, ..projects]
-    _ -> [project]
-  }
-
-  let model =
-    update_admin(
-      update_core(model, fn(core) {
-        CoreModel(
-          ..core,
-          projects: Loaded(updated_projects),
-          selected_project_id: opt.Some(project.id),
-        )
-      }),
-      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
-    )
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.ProjectCreated,
-    ))
-  #(model, toast_fx)
+  model: admin_projects.Model,
+  feedback: FeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(
+    set_projects_dialog(model, DialogClosed(operation: Idle)),
+    success_effect(ProjectCreated, feedback),
+  )
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Handle project created error.
 pub fn handle_project_created_error(
-  model: Model,
+  model: admin_projects.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    case err.status {
-      403 ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogCreate(name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_error(
-                  model.admin.projects.projects_dialog,
-                  helpers_i18n.i18n_t(model, i18n_text.NotPermitted),
-                ),
-              )
-            }),
-            helpers_toast.toast_warning(helpers_i18n.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-          _ -> #(model, effect.none())
-        }
-      _ ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogCreate(name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_error(
-                  model.admin.projects.projects_dialog,
-                  err.message,
-                ),
-              )
-            }),
-            effect.none(),
-          )
-          _ -> #(model, effect.none())
-        }
-    }
-  })
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let message = error_message(err, feedback)
+
+  case model.projects_dialog {
+    DialogOpen(form: ProjectDialogCreate(name: _), ..) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(model.projects_dialog, message),
+      ),
+      forbidden_warning_effect(err, message, feedback),
+    )
+    _ -> #(model, effect.none())
+  }
 }
 
 // =============================================================================
@@ -400,194 +324,138 @@ pub fn handle_project_created_error(
 
 /// Handle project edit dialog opened.
 pub fn handle_project_edit_dialog_opened(
-  model: Model,
+  model: admin_projects.Model,
   project_id: Int,
   project_name: String,
-) -> #(Model, Effect(Msg)) {
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(
-        admin,
-        DialogOpen(
-          form: ProjectDialogEdit(id: project_id, name: project_name),
-          operation: Idle,
-        ),
-      )
-    }),
+    set_projects_dialog(
+      model,
+      DialogOpen(
+        form: ProjectDialogEdit(id: project_id, name: project_name),
+        operation: Idle,
+      ),
+    ),
     effect.none(),
   )
 }
 
 /// Handle project edit dialog closed.
-pub fn handle_project_edit_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(admin, DialogClosed(operation: Idle))
-    }),
-    effect.none(),
-  )
+pub fn handle_project_edit_dialog_closed(
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
 /// Handle project edit name input change.
 pub fn handle_project_edit_name_changed(
-  model: Model,
+  model: admin_projects.Model,
   name: String,
-) -> #(Model, Effect(Msg)) {
-  let next_state = case model.admin.projects.projects_dialog {
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
     DialogOpen(form: ProjectDialogEdit(id: id, name: _), operation: op) ->
       DialogOpen(form: ProjectDialogEdit(id: id, name: name), operation: op)
     other -> other
   }
 
-  #(
-    update_admin(model, fn(admin) { set_projects_dialog(admin, next_state) }),
-    effect.none(),
-  )
+  #(set_projects_dialog(model, next_state), effect.none())
 }
 
 /// Handle project edit form submission.
-pub fn handle_project_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.projects.projects_dialog {
+pub fn handle_project_edit_submitted(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
     DialogOpen(
       form: ProjectDialogEdit(id: project_id, name: name),
       operation: op,
-    ) -> submit_project_edit(model, project_id, name, operation_in_flight(op))
+    ) ->
+      submit_project_edit(
+        model,
+        project_id,
+        name,
+        operation_in_flight(op),
+        context,
+      )
     _ -> #(model, effect.none())
   }
 }
 
 fn submit_project_edit(
-  model: Model,
+  model: admin_projects.Model,
   project_id: Int,
   name: String,
   in_flight: Bool,
-) -> #(Model, Effect(Msg)) {
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   case in_flight {
     True -> #(model, effect.none())
-    False -> validate_project_edit_name(model, project_id, name)
-  }
-}
-
-fn validate_project_edit_name(
-  model: Model,
-  project_id: Int,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  case
-    helpers_validation.validate_required_string(
-      model,
-      name,
-      i18n_text.NameRequired,
-    )
-  {
-    Error(err) -> #(
-      update_admin(model, fn(admin) {
-        set_projects_dialog(
-          admin,
-          update_project_dialog_error(model.admin.projects.projects_dialog, err),
+    False -> {
+      let trimmed = string.trim(name)
+      case trimmed == "" {
+        True -> #(
+          set_projects_dialog(
+            model,
+            update_project_dialog_error(
+              model.projects_dialog,
+              context.name_required,
+            ),
+          ),
+          effect.none(),
         )
-      }),
-      effect.none(),
-    )
-    Ok(non_empty) ->
-      submit_project_edit_valid(model, project_id, name, non_empty)
+        False -> submit_project_edit_valid(model, project_id, trimmed, context)
+      }
+    }
   }
 }
 
 fn submit_project_edit_valid(
-  model: Model,
+  model: admin_projects.Model,
   project_id: Int,
-  _name: String,
-  non_empty: helpers_validation.NonEmptyString,
-) -> #(Model, Effect(Msg)) {
-  let trimmed = helpers_validation.non_empty_string_value(non_empty)
+  name: String,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   let model =
-    update_admin(model, fn(admin) {
-      set_projects_dialog(
-        admin,
-        update_project_dialog_in_flight(model.admin.projects.projects_dialog),
-      )
-    })
+    set_projects_dialog(
+      model,
+      update_project_dialog_in_flight(model.projects_dialog),
+    )
   #(
     model,
-    api_projects.update_project(project_id, trimmed, fn(result) {
-      admin_msg(admin_messages.ProjectUpdated(result))
-    }),
+    api_projects.update_project(project_id, name, context.on_project_updated),
   )
 }
 
 /// Handle project updated success.
 pub fn handle_project_updated_ok(
-  model: Model,
-  project: Project,
-) -> #(Model, Effect(Msg)) {
-  // Update the project in the list
-  let updated_projects = case model.core.projects {
-    Loaded(projects) ->
-      projects
-      |> list.map(fn(p) {
-        case p.id == project.id {
-          True -> project.Project(..p, name: project.name)
-          False -> p
-        }
-      })
-    _ -> []
-  }
-
-  let model =
-    update_admin(
-      update_core(model, fn(core) {
-        CoreModel(..core, projects: Loaded(updated_projects))
-      }),
-      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
-    )
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.Saved))
-  #(model, toast_fx)
+  model: admin_projects.Model,
+  feedback: FeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(
+    set_projects_dialog(model, DialogClosed(operation: Idle)),
+    success_effect(ProjectUpdated, feedback),
+  )
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Handle project updated error.
 pub fn handle_project_updated_error(
-  model: Model,
+  model: admin_projects.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    case err.status {
-      403 ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogEdit(id: _, name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_error(
-                  model.admin.projects.projects_dialog,
-                  helpers_i18n.i18n_t(model, i18n_text.NotPermitted),
-                ),
-              )
-            }),
-            effect.none(),
-          )
-          _ -> #(model, effect.none())
-        }
-      _ ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogEdit(id: _, name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_error(
-                  model.admin.projects.projects_dialog,
-                  err.message,
-                ),
-              )
-            }),
-            effect.none(),
-          )
-          _ -> #(model, effect.none())
-        }
-    }
-  })
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let message = error_message(err, feedback)
+
+  case model.projects_dialog {
+    DialogOpen(form: ProjectDialogEdit(id: _, name: _), ..) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(model.projects_dialog, message),
+      ),
+      effect.none(),
+    )
+    _ -> #(model, effect.none())
+  }
 }
 
 // =============================================================================
@@ -596,40 +464,35 @@ pub fn handle_project_updated_error(
 
 /// Handle project delete confirm opened.
 pub fn handle_project_delete_confirm_opened(
-  model: Model,
+  model: admin_projects.Model,
   project_id: Int,
   project_name: String,
-) -> #(Model, Effect(Msg)) {
+) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(
-        admin,
-        DialogOpen(
-          form: ProjectDialogDelete(id: project_id, name: project_name),
-          operation: Idle,
-        ),
-      )
-    }),
+    set_projects_dialog(
+      model,
+      DialogOpen(
+        form: ProjectDialogDelete(id: project_id, name: project_name),
+        operation: Idle,
+      ),
+    ),
     effect.none(),
   )
 }
 
 /// Handle project delete confirm closed.
 pub fn handle_project_delete_confirm_closed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(admin, DialogClosed(operation: Idle))
-    }),
-    effect.none(),
-  )
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Handle project delete submission.
-pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.projects.projects_dialog {
+pub fn handle_project_delete_submitted(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
     DialogOpen(
       form: ProjectDialogDelete(id: project_id, name: _name),
       operation: op,
@@ -638,19 +501,13 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
         True -> #(model, effect.none())
         False -> {
           let model =
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_in_flight(
-                  model.admin.projects.projects_dialog,
-                ),
-              )
-            })
+            set_projects_dialog(
+              model,
+              update_project_dialog_in_flight(model.projects_dialog),
+            )
           #(
             model,
-            api_projects.delete_project(project_id, fn(result) {
-              admin_msg(admin_messages.ProjectDeleted(result))
-            }),
+            api_projects.delete_project(project_id, context.on_project_deleted),
           )
         }
       }
@@ -659,84 +516,34 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 /// Handle project deleted success.
-pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id =
-    project_dialog_delete_id(model.admin.projects.projects_dialog)
-
-  // Remove the project from the list
-  let updated_projects = case model.core.projects {
-    Loaded(projects) ->
-      projects
-      |> list.filter(fn(p) {
-        case deleted_id {
-          opt.Some(id) -> p.id != id
-          opt.None -> True
-        }
-      })
-    _ -> []
-  }
-
-  // Clear selection if the deleted project was selected
-  let selected = case model.core.selected_project_id, deleted_id {
-    opt.Some(sel), opt.Some(del) if sel == del -> opt.None
-    _, _ -> model.core.selected_project_id
-  }
-
-  let model =
-    update_admin(
-      update_core(model, fn(core) {
-        CoreModel(
-          ..core,
-          projects: Loaded(updated_projects),
-          selected_project_id: selected,
-        )
-      }),
-      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
-    )
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.Deleted))
-  #(model, toast_fx)
+pub fn handle_project_deleted_ok(
+  model: admin_projects.Model,
+  feedback: FeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  #(
+    set_projects_dialog(model, DialogClosed(operation: Idle)),
+    success_effect(ProjectDeleted, feedback),
+  )
 }
 
-// Justification: nested case improves clarity for branching logic.
 /// Handle project deleted error.
 pub fn handle_project_deleted_error(
-  model: Model,
+  model: admin_projects.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    case err.status {
-      403 ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogDelete(id: _, name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_idle(model.admin.projects.projects_dialog),
-              )
-            }),
-            helpers_toast.toast_warning(helpers_i18n.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-          _ -> #(model, effect.none())
-        }
-      _ ->
-        case model.admin.projects.projects_dialog {
-          DialogOpen(form: ProjectDialogDelete(id: _, name: _), ..) -> #(
-            update_admin(model, fn(admin) {
-              set_projects_dialog(
-                admin,
-                update_project_dialog_idle(model.admin.projects.projects_dialog),
-              )
-            }),
-            helpers_toast.toast_error(err.message),
-          )
-          _ -> #(model, effect.none())
-        }
-    }
-  })
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let message = error_message(err, feedback)
+
+  case model.projects_dialog {
+    DialogOpen(form: ProjectDialogDelete(id: _, name: _), ..) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_idle(model.projects_dialog),
+      ),
+      delete_error_effect(err, message, feedback),
+    )
+    _ -> #(model, effect.none())
+  }
 }
 
 // =============================================================================
@@ -751,13 +558,10 @@ fn operation_in_flight(operation: OperationState) -> Bool {
 }
 
 fn set_projects_dialog(
-  admin: admin_state.AdminModel,
+  _model: admin_projects.Model,
   dialog: DialogState(ProjectDialogForm),
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(
-    ..admin,
-    projects: admin_projects.Model(projects_dialog: dialog),
-  )
+) -> admin_projects.Model {
+  admin_projects.Model(projects_dialog: dialog)
 }
 
 fn update_project_dialog_error(
@@ -789,7 +593,54 @@ fn update_project_dialog_idle(
   }
 }
 
-fn project_dialog_delete_id(
+pub fn success_effect(
+  success: Success,
+  context: FeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  context.on_success_toast(success_message(success, context))
+}
+
+pub fn error_message(
+  err: ApiError,
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> String {
+  case err.status {
+    403 -> feedback.not_permitted
+    _ -> err.message
+  }
+}
+
+fn forbidden_warning_effect(
+  err: ApiError,
+  message: String,
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  case err.status {
+    403 -> feedback.on_warning_toast(message)
+    _ -> effect.none()
+  }
+}
+
+fn delete_error_effect(
+  err: ApiError,
+  message: String,
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  case err.status {
+    403 -> feedback.on_warning_toast(message)
+    _ -> feedback.on_error_toast(message)
+  }
+}
+
+fn success_message(success: Success, context: FeedbackContext(parent_msg)) {
+  case success {
+    ProjectCreated -> context.project_created
+    ProjectUpdated -> context.project_updated
+    ProjectDeleted -> context.project_deleted
+  }
+}
+
+pub fn project_dialog_delete_id(
   dialog: DialogState(ProjectDialogForm),
 ) -> opt.Option(Int) {
   case dialog {

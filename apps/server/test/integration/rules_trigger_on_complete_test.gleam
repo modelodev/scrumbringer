@@ -6,6 +6,7 @@
 //// This is critical because the rules engine is called "fire and forget"
 //// in handlers.gleam, so errors could be silently swallowed.
 
+import domain/task_status
 import fixtures
 import gleam/http
 import gleam/int
@@ -13,9 +14,9 @@ import gleam/json
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit
-import gleeunit/should
 import pog
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -66,7 +67,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -95,8 +96,8 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       [pog.int(rule_id)],
     )
 
-  task_count_before |> should.equal(0)
-  exec_count_before |> should.equal(0)
+  task_count_before |> expect.equal(0)
+  exec_count_before |> expect.equal(0)
 
   // When: Claim and complete the task via HTTP API
   let claim_res =
@@ -108,7 +109,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let complete_res =
     handler(
@@ -121,7 +122,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
     )
 
   // Then: Task is completed
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // And: Rule was executed
   let assert Ok(exec_count_after) =
@@ -130,7 +131,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       "SELECT count(*)::int FROM rule_executions WHERE rule_id = $1",
       [pog.int(rule_id)],
     )
-  exec_count_after |> should.equal(1)
+  exec_count_after |> expect.equal(1)
 
   // And: Review task was created from template
   let assert Ok(task_count_after) =
@@ -139,7 +140,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  task_count_after |> should.equal(1)
+  task_count_after |> expect.equal(1)
 
   // And: The created task title contains the father link
   let assert Ok(created_title) =
@@ -149,7 +150,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       [pog.int(review_type_id)],
     )
   string.contains(created_title, "[Task #" <> int.to_string(bug_task_id))
-  |> should.be_true
+  |> expect.is_true
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -213,7 +214,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       workflow_id,
       Some(feature_type_id),
       "Feature Done",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template1_id)
@@ -238,7 +239,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(qa_type_id)],
     )
-  qa_count_before |> should.equal(0)
+  qa_count_before |> expect.equal(0)
 
   // Claim and complete
   let _ =
@@ -261,7 +262,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // Then: 3 QA tasks were created
   let assert Ok(qa_count_after) =
@@ -270,7 +271,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(qa_type_id)],
     )
-  qa_count_after |> should.equal(3)
+  qa_count_after |> expect.equal(3)
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -309,7 +310,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -350,7 +351,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  review_count_after_first |> should.equal(1)
+  review_count_after_first |> expect.equal(1)
 
   // Try to complete again (should fail because task is already completed)
   let complete_again_res =
@@ -364,7 +365,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
     )
 
   // Should return 422 (invalid transition or version conflict) not create more tasks
-  complete_again_res.status |> should.equal(422)
+  expect.expect_status(complete_again_res, 422)
 
   // Count should still be 1
   let assert Ok(review_count_after_second) =
@@ -373,7 +374,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  review_count_after_second |> should.equal(1)
+  review_count_after_second |> expect.equal(1)
 }
 
 /// Verifies that inactive rules don't create tasks when task is completed via API.
@@ -411,7 +412,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       workflow_id,
       Some(type_id),
       "Task Done",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -443,7 +444,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // No review tasks should be created (rule is inactive)
   let assert Ok(review_count) =
@@ -452,7 +453,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  review_count |> should.equal(0)
+  review_count |> expect.equal(0)
 
   // No rule execution should be logged
   let assert Ok(exec_count) =
@@ -461,7 +462,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       "SELECT count(*)::int FROM rule_executions WHERE rule_id = $1",
       [pog.int(rule_id)],
     )
-  exec_count |> should.equal(0)
+  exec_count |> expect.equal(0)
 }
 
 // =============================================================================
@@ -508,7 +509,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -529,7 +530,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
     fixtures.query_nullable_int(db, "SELECT card_id FROM tasks WHERE id = $1", [
       pog.int(bug_task_id),
     ])
-  bug_card_id |> should.equal(Some(card_id))
+  bug_card_id |> expect.equal(Some(card_id))
 
   // Claim and complete the task
   let claim_res =
@@ -541,7 +542,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let complete_res =
     handler(
@@ -552,7 +553,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // Verify rule was executed
   let assert Ok(exec_count) =
@@ -561,7 +562,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       "SELECT count(*)::int FROM rule_executions WHERE rule_id = $1",
       [pog.int(rule_id)],
     )
-  exec_count |> should.equal(1)
+  exec_count |> expect.equal(1)
 
   // Verify review task was created
   let assert Ok(review_count) =
@@ -570,7 +571,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  review_count |> should.equal(1)
+  review_count |> expect.equal(1)
 
   // CRITICAL: Verify the created review task has the SAME card_id as the parent
   let assert Ok(created_card_id) =
@@ -579,7 +580,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       "SELECT card_id FROM tasks WHERE type_id = $1 ORDER BY id DESC LIMIT 1",
       [pog.int(review_type_id)],
     )
-  created_card_id |> should.equal(Some(card_id))
+  created_card_id |> expect.equal(Some(card_id))
 }
 
 /// Verifies that completing a task without a card creates child tasks without a card.
@@ -619,7 +620,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      "completed",
+      task_status.Completed,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -639,7 +640,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
     fixtures.query_nullable_int(db, "SELECT card_id FROM tasks WHERE id = $1", [
       pog.int(bug_task_id),
     ])
-  bug_card_id |> should.equal(None)
+  bug_card_id |> expect.equal(None)
 
   // Claim and complete the task
   let claim_res =
@@ -651,7 +652,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   let complete_res =
     handler(
@@ -662,7 +663,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 
   // Verify review task was created
   let assert Ok(review_count) =
@@ -671,7 +672,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(review_type_id)],
     )
-  review_count |> should.equal(1)
+  review_count |> expect.equal(1)
 
   // CRITICAL: Verify the created review task has NO card
   let assert Ok(created_card_id) =
@@ -680,5 +681,5 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       "SELECT card_id FROM tasks WHERE type_id = $1 ORDER BY id DESC LIMIT 1",
       [pog.int(review_type_id)],
     )
-  created_card_id |> should.equal(None)
+  created_card_id |> expect.equal(None)
 }

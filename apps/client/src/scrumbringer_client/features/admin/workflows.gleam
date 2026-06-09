@@ -2,13 +2,12 @@
 ////
 //// ## Mission
 ////
-//// Handles workflow, rule, and task template CRUD operations in the admin panel.
+//// Handles workflow and rule CRUD operations in the admin panel.
 ////
 //// ## Responsibilities
 ////
 //// - Workflow list fetch and CRUD
 //// - Rule list fetch and CRUD within workflows
-//// - Task template list fetch and CRUD
 //// - Rule-template attachment management
 ////
 //// ## Relations
@@ -16,1210 +15,876 @@
 //// - **update.gleam**: Main update module that delegates to handlers here
 //// - **view.gleam**: Renders the workflows UI using model state
 
-import gleam/int
 import gleam/list
 import gleam/option as opt
 import gleam/set
 
 import lustre/effect.{type Effect}
 
-import domain/api_error.{type ApiError}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import domain/task_type.{type TaskType}
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
-import scrumbringer_client/client_state.{
-  type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
-  admin_msg, pool_msg, update_admin,
-}
-import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
-import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/i18n/text as i18n_text
 
-import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/api/workflows as api_workflows
-import scrumbringer_client/helpers/auth as helpers_auth
-import scrumbringer_client/helpers/i18n as helpers_i18n
-import scrumbringer_client/helpers/toast as helpers_toast
 
-// =============================================================================
-// Workflow Fetch Handlers
-// =============================================================================
+pub type WorkflowSuccess {
+  WorkflowCreated
+  WorkflowUpdated
+  WorkflowDeleted
+}
 
-/// Handle project workflows fetch success.
-pub fn handle_workflows_project_fetched_ok(
-  model: Model,
-  workflows: List(Workflow),
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(workflows_state) {
-        admin_workflows.Model(
-          ..workflows_state,
-          workflows_project: Loaded(workflows),
-        )
-      })
-    }),
-    effect.none(),
+pub type WorkflowFeedbackContext(parent_msg) {
+  WorkflowFeedbackContext(
+    workflow_created: String,
+    workflow_updated: String,
+    workflow_deleted: String,
+    on_success_toast: fn(String) -> Effect(parent_msg),
   )
 }
 
-/// Handle project workflows fetch error.
-pub fn handle_workflows_project_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_workflows(admin, fn(workflows_state) {
-          admin_workflows.Model(
-            ..workflows_state,
-            workflows_project: Failed(err),
-          )
-        })
-      }),
-      effect.none(),
-    )
-  })
+pub type RuleSuccess {
+  RuleCreated
+  RuleUpdated
+  RuleDeleted
 }
 
-// =============================================================================
-// Workflow Dialog Handlers (Component Pattern)
-// =============================================================================
-
-/// Handle opening a workflow dialog (create, edit, or delete).
-pub fn handle_open_workflow_dialog(
-  model: Model,
-  mode: WorkflowDialogMode,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(workflows_state) {
-        admin_workflows.Model(
-          ..workflows_state,
-          workflows_dialog_mode: opt.Some(mode),
-        )
-      })
-    }),
-    effect.none(),
+pub type RuleFeedbackContext(parent_msg) {
+  RuleFeedbackContext(
+    rule_created: String,
+    rule_updated: String,
+    rule_deleted: String,
+    on_success_toast: fn(String) -> Effect(parent_msg),
   )
 }
 
-/// Handle closing any open workflow dialog.
-pub fn handle_close_workflow_dialog(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(workflows_state) {
-        admin_workflows.Model(
-          ..workflows_state,
-          workflows_dialog_mode: opt.None,
-        )
-      })
-    }),
-    effect.none(),
+pub type RulesContext(parent_msg) {
+  RulesContext(
+    selected_project_id: opt.Option(Int),
+    on_rules_fetched: fn(ApiResult(List(Rule))) -> parent_msg,
+    on_rule_metrics_fetched: fn(ApiResult(api_workflows.WorkflowMetrics)) ->
+      parent_msg,
+    on_task_types_fetched: fn(ApiResult(List(TaskType))) -> parent_msg,
   )
 }
 
-// =============================================================================
-// Workflow Component Event Handlers
-// =============================================================================
-
-/// Handle workflow created event from component.
-/// Adds the new workflow to the list and shows a toast.
-pub fn handle_workflow_crud_created(
-  model: Model,
-  workflow: Workflow,
-) -> #(Model, Effect(Msg)) {
-  // Add to org or project list based on project_id
-  let #(org, project) = case workflow.project_id {
-    opt.Some(_) -> {
-      let project = case model.admin.workflows.workflows_project {
-        Loaded(existing) -> Loaded([workflow, ..existing])
-        _ -> Loaded([workflow])
-      }
-      #(model.admin.workflows.workflows_org, project)
-    }
-    opt.None -> {
-      let org = case model.admin.workflows.workflows_org {
-        Loaded(existing) -> Loaded([workflow, ..existing])
-        _ -> Loaded([workflow])
-      }
-      #(org, model.admin.workflows.workflows_project)
-    }
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(_workflows_state) {
-        admin_workflows.Model(
-          workflows_org: org,
-          workflows_project: project,
-          workflows_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.WorkflowCreated,
-    ))
-  #(model, toast_fx)
+pub type RulesAuthPolicy {
+  NoRulesAuthCheck
+  CheckRulesAuth(ApiError)
 }
 
-/// Handle workflow updated event from component.
-/// Updates the workflow in the list and shows a toast.
-pub fn handle_workflow_crud_updated(
-  model: Model,
-  updated_workflow: Workflow,
-) -> #(Model, Effect(Msg)) {
-  let update_list = fn(workflows: List(Workflow)) {
-    list.map(workflows, fn(w: Workflow) {
-      case w.id == updated_workflow.id {
-        True -> updated_workflow
-        False -> w
-      }
-    })
-  }
-  let org = case model.admin.workflows.workflows_org {
-    Loaded(existing) -> Loaded(update_list(existing))
-    other -> other
-  }
-  let project = case model.admin.workflows.workflows_project {
-    Loaded(existing) -> Loaded(update_list(existing))
-    other -> other
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(_workflows_state) {
-        admin_workflows.Model(
-          workflows_org: org,
-          workflows_project: project,
-          workflows_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.WorkflowUpdated,
-    ))
-  #(model, toast_fx)
+pub type RulesUpdate(parent_msg) {
+  RulesUpdate(admin_rules.Model, Effect(parent_msg), RulesAuthPolicy)
 }
 
-/// Handle workflow deleted event from component.
-/// Removes the workflow from the list and shows a toast.
-pub fn handle_workflow_crud_deleted(
-  model: Model,
+pub type TemplateAttachmentModel {
+  TemplateAttachmentModel(
+    rules: admin_rules.Model,
+    task_templates: admin_task_templates.Model,
+  )
+}
+
+pub type TemplateAttachmentContext(parent_msg) {
+  TemplateAttachmentContext(
+    selected_project_id: opt.Option(Int),
+    on_task_templates_fetched: fn(ApiResult(List(TaskTemplate))) -> parent_msg,
+    on_attach_template_succeeded: fn(Int, List(RuleTemplate)) -> parent_msg,
+    on_attach_template_failed: fn(ApiError) -> parent_msg,
+    on_template_detach_succeeded: fn(Int, Int) -> parent_msg,
+    on_template_detach_failed: fn(Int, Int, ApiError) -> parent_msg,
+  )
+}
+
+pub type TemplateAttachmentAuthPolicy {
+  NoTemplateAttachmentAuthCheck
+  CheckTemplateAttachmentAuth(ApiError)
+}
+
+pub type TemplateAttachmentUpdate(parent_msg) {
+  TemplateAttachmentUpdate(
+    TemplateAttachmentModel,
+    Effect(parent_msg),
+    TemplateAttachmentAuthPolicy,
+  )
+}
+
+pub fn try_rules_update(
+  state: admin_rules.Model,
+  inner: pool_messages.Msg,
+  context: RulesContext(parent_msg),
+  feedback: RuleFeedbackContext(parent_msg),
+) -> opt.Option(RulesUpdate(parent_msg)) {
+  case inner {
+    pool_messages.WorkflowRulesClicked(workflow_id) ->
+      workflow_rules_clicked(state, workflow_id, context)
+      |> without_rules_auth_check
+
+    pool_messages.RulesFetched(Ok(rules)) ->
+      #(rules_fetched_ok(state, rules), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RulesFetched(Error(err)) ->
+      #(rules_fetched_error(state, err), effect.none())
+      |> with_rules_auth_check(err)
+
+    pool_messages.RulesBackClicked ->
+      #(rules_back_clicked(state), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleMetricsFetched(Ok(metrics)) ->
+      #(rule_metrics_fetched_ok(state, metrics), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleMetricsFetched(Error(err)) ->
+      #(rule_metrics_fetched_error(state, err), effect.none())
+      |> with_rules_auth_check(err)
+
+    pool_messages.OpenRuleDialog(mode) ->
+      #(open_rule_dialog(state, mode), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.CloseRuleDialog ->
+      #(close_rule_dialog(state), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleCrudCreated(rule) ->
+      #(rule_created(state, rule), rule_success_effect(RuleCreated, feedback))
+      |> without_rules_auth_check
+
+    pool_messages.RuleCrudUpdated(rule) ->
+      #(rule_updated(state, rule), rule_success_effect(RuleUpdated, feedback))
+      |> without_rules_auth_check
+
+    pool_messages.RuleCrudDeleted(rule_id) ->
+      #(
+        rule_deleted(state, rule_id),
+        rule_success_effect(RuleDeleted, feedback),
+      )
+      |> without_rules_auth_check
+
+    _ -> opt.None
+  }
+}
+
+pub fn try_template_attachment_update(
+  state: TemplateAttachmentModel,
+  inner: pool_messages.Msg,
+  context: TemplateAttachmentContext(parent_msg),
+  feedback: TemplateAttachmentFeedbackContext(parent_msg),
+) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
+  case inner {
+    pool_messages.RuleExpandToggled(rule_id) ->
+      #(rule_expand_toggled(state, rule_id), effect.none())
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateModalOpened(rule_id) ->
+      attach_template_modal_opened(state, rule_id, context)
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateModalClosed ->
+      #(attach_template_modal_closed(state), effect.none())
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateSelected(template_id) ->
+      #(attach_template_selected(state, template_id), effect.none())
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateSubmitted ->
+      attach_template_submitted(state, context)
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateSucceeded(rule_id, templates) ->
+      #(
+        attach_template_success_local(state, rule_id, templates),
+        template_attachment_success_effect(TemplateAttached, feedback),
+      )
+      |> without_template_attachment_auth_check
+
+    pool_messages.AttachTemplateFailed(err) ->
+      #(
+        attach_template_failed_local(state),
+        feedback.on_error_toast(err.message),
+      )
+      |> with_template_attachment_auth_check(err)
+
+    pool_messages.TemplateDetachClicked(rule_id, template_id) ->
+      template_detach_clicked(state, rule_id, template_id, context)
+      |> without_template_attachment_auth_check
+
+    pool_messages.TemplateDetachSucceeded(rule_id, template_id) ->
+      #(
+        template_detach_success_local(state, rule_id, template_id),
+        template_attachment_success_effect(TemplateDetached, feedback),
+      )
+      |> without_template_attachment_auth_check
+
+    pool_messages.TemplateDetachFailed(rule_id, template_id, err) ->
+      #(
+        template_detach_failed_local(state, rule_id, template_id),
+        feedback.on_error_toast(err.message),
+      )
+      |> with_template_attachment_auth_check(err)
+
+    _ -> opt.None
+  }
+}
+
+fn workflow_rules_clicked(
+  state: admin_rules.Model,
   workflow_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let filter_list = fn(workflows: List(Workflow)) {
-    list.filter(workflows, fn(w: Workflow) { w.id != workflow_id })
-  }
-  let org = case model.admin.workflows.workflows_org {
-    Loaded(existing) -> Loaded(filter_list(existing))
-    other -> other
-  }
-  let project = case model.admin.workflows.workflows_project {
-    Loaded(existing) -> Loaded(filter_list(existing))
-    other -> other
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_workflows(admin, fn(_workflows_state) {
-        admin_workflows.Model(
-          workflows_org: org,
-          workflows_project: project,
-          workflows_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.WorkflowDeleted,
-    ))
-  #(model, toast_fx)
-}
-
-/// Handle workflow rules clicked (navigate to rules view).
-pub fn handle_workflow_rules_clicked(
-  model: Model,
-  workflow_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let model =
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_workflow_id: opt.Some(workflow_id),
-          rules: Loading,
-          rules_metrics: Loading,
-        )
-      })
-    })
-
-  let task_types_effect = case model.core.selected_project_id {
+  context: RulesContext(parent_msg),
+) -> #(admin_rules.Model, Effect(parent_msg)) {
+  let state = workflow_rules_opened(state, workflow_id)
+  let task_types_effect = case context.selected_project_id {
     opt.Some(project_id) ->
-      api_tasks.list_task_types(project_id, fn(result) {
-        admin_msg(admin_messages.TaskTypesFetched(result))
-      })
+      task_types_api.list_task_types(project_id, context.on_task_types_fetched)
     opt.None -> effect.none()
   }
 
   #(
-    model,
+    state,
     effect.batch([
-      api_workflows.list_rules(workflow_id, fn(result) {
-        pool_msg(pool_messages.RulesFetched(result))
-      }),
-      api_workflows.get_workflow_metrics(workflow_id, fn(result) {
-        pool_msg(pool_messages.RuleMetricsFetched(result))
-      }),
+      api_workflows.list_rules(workflow_id, context.on_rules_fetched),
+      api_workflows.get_workflow_metrics(
+        workflow_id,
+        context.on_rule_metrics_fetched,
+      ),
       task_types_effect,
     ]),
   )
 }
 
-// =============================================================================
-// Rules Fetch Handlers
-// =============================================================================
-
-/// Handle rules fetch success.
-pub fn handle_rules_fetched_ok(
-  model: Model,
-  rules: List(Rule),
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules: Loaded(rules))
-      })
-    }),
-    effect.none(),
-  )
+fn without_rules_auth_check(
+  result: #(admin_rules.Model, Effect(parent_msg)),
+) -> opt.Option(RulesUpdate(parent_msg)) {
+  let #(state, fx) = result
+  opt.Some(RulesUpdate(state, fx, NoRulesAuthCheck))
 }
 
-/// Handle rules fetch error.
-pub fn handle_rules_fetched_error(
-  model: Model,
+fn with_rules_auth_check(
+  result: #(admin_rules.Model, Effect(parent_msg)),
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(..rules_state, rules: Failed(err))
-        })
-      }),
-      effect.none(),
-    )
-  })
+) -> opt.Option(RulesUpdate(parent_msg)) {
+  let #(state, fx) = result
+  opt.Some(RulesUpdate(state, fx, CheckRulesAuth(err)))
 }
 
-/// Handle rule metrics fetch success.
-pub fn handle_rule_metrics_fetched_ok(
-  model: Model,
-  metrics: api_workflows.WorkflowMetrics,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_metrics: Loaded(metrics))
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Handle rule metrics fetch error.
-pub fn handle_rule_metrics_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(..rules_state, rules_metrics: Failed(err))
-        })
-      }),
-      effect.none(),
-    )
-  })
-}
-
-/// Handle rules back clicked (return to workflows view).
-pub fn handle_rules_back_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_workflow_id: opt.None,
-          rules: NotAsked,
-          rules_metrics: NotAsked,
-        )
-      })
-    }),
-    effect.none(),
-  )
-}
-
-// =============================================================================
-// Rule Dialog Handlers (Component Pattern)
-// =============================================================================
-
-/// Handle opening a rule dialog (create, edit, or delete).
-pub fn handle_open_rule_dialog(
-  model: Model,
-  mode: client_state.RuleDialogMode,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_dialog_mode: opt.Some(mode))
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Handle closing any open rule dialog.
-pub fn handle_close_rule_dialog(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_dialog_mode: opt.None)
-      })
-    }),
-    effect.none(),
-  )
-}
-
-// =============================================================================
-// Rule Component Event Handlers
-// =============================================================================
-
-/// Handle rule created event from component.
-/// Adds the new rule to the list and shows a toast.
-pub fn handle_rule_crud_created(
-  model: Model,
-  rule: Rule,
-) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules.rules {
-    Loaded(existing) -> Loaded([rule, ..existing])
-    _ -> Loaded([rule])
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules: rules,
-          rules_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.RuleCreated,
-    ))
-  #(model, toast_fx)
-}
-
-/// Handle rule updated event from component.
-/// Updates the rule in the list and shows a toast.
-pub fn handle_rule_crud_updated(
-  model: Model,
-  updated_rule: Rule,
-) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules.rules {
-    Loaded(existing) ->
-      Loaded(
-        list.map(existing, fn(r: Rule) {
-          case r.id == updated_rule.id {
-            True -> updated_rule
-            False -> r
-          }
-        }),
-      )
-    other -> other
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules: rules,
-          rules_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.RuleUpdated,
-    ))
-  #(model, toast_fx)
-}
-
-/// Handle rule deleted event from component.
-/// Removes the rule from the list and shows a toast.
-pub fn handle_rule_crud_deleted(
-  model: Model,
+fn rule_expand_toggled(
+  state: TemplateAttachmentModel,
   rule_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules.rules {
-    Loaded(existing) ->
-      Loaded(list.filter(existing, fn(r: Rule) { r.id != rule_id }))
-    other -> other
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  let expanded = case set.contains(rules.rules_expanded, rule_id) {
+    True -> set.delete(rules.rules_expanded, rule_id)
+    False -> set.insert(rules.rules_expanded, rule_id)
   }
-  let model =
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules: rules,
-          rules_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.RuleDeleted,
-    ))
-  #(model, toast_fx)
-}
 
-// =============================================================================
-// Rule Templates Handlers
-// =============================================================================
-
-/// Handle rule templates fetch success.
-pub fn handle_rule_templates_fetched_ok(
-  model: Model,
-  templates: List(RuleTemplate),
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_templates: Loaded(templates))
-      })
-    }),
-    effect.none(),
+  TemplateAttachmentModel(
+    rules: admin_rules.Model(..rules, rules_expanded: expanded),
+    task_templates: task_templates,
   )
 }
 
-/// Handle rule templates fetch error.
-pub fn handle_rule_templates_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(..rules_state, rules_templates: Failed(err))
-        })
-      }),
-      effect.none(),
-    )
-  })
-}
-
-/// Handle rule attach template selected.
-pub fn handle_rule_attach_template_selected(
-  model: Model,
-  template_id_str: String,
-) -> #(Model, Effect(Msg)) {
-  let template_id = case template_id_str {
-    "" -> opt.None
-    s ->
-      case int.parse(s) {
-        Ok(id) -> opt.Some(id)
-        Error(_) -> opt.None
-      }
-  }
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_attach_template_id: template_id)
-      })
-    }),
-    effect.none(),
-  )
-}
-
-// Justification: nested case improves clarity for branching logic.
-/// Handle rule attach template submitted.
-pub fn handle_rule_attach_template_submitted(
-  model: Model,
+fn attach_template_modal_opened(
+  state: TemplateAttachmentModel,
   rule_id: Int,
-) -> #(Model, Effect(Msg)) {
-  case model.admin.rules.rules_attach_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.admin.rules.rules_attach_template_id {
-        opt.Some(template_id) -> {
-          let model =
-            update_admin(model, fn(admin) {
-              update_rules(admin, fn(rules_state) {
-                admin_rules.Model(
-                  ..rules_state,
-                  rules_attach_in_flight: True,
-                  rules_attach_error: opt.None,
-                )
-              })
-            })
-          // Use execution_order = 0 (will be appended at end on server)
-          #(
-            model,
-            api_workflows.attach_template(rule_id, template_id, 0, fn(result) {
-              pool_msg(pool_messages.RuleTemplateAttached(result))
-            }),
-          )
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
+  context: TemplateAttachmentContext(parent_msg),
+) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
 
-/// Handle rule template attached success.
-pub fn handle_rule_template_attached_ok(
-  model: Model,
-  templates: List(RuleTemplate),
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_templates: Loaded(templates),
-          rules_attach_template_id: opt.None,
-          rules_attach_in_flight: False,
-          rules_attach_error: opt.None,
-        )
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Handle rule template attached error.
-pub fn handle_rule_template_attached_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(
-            ..rules_state,
-            rules_attach_in_flight: False,
-            rules_attach_error: opt.Some(err.message),
-          )
-        })
-      }),
-      effect.none(),
-    )
-  })
-}
-
-/// Handle rule template detach clicked.
-pub fn handle_rule_template_detach_clicked(
-  model: Model,
-  rule_id: Int,
-  template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  case model.admin.rules.rules_attach_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      let model =
-        update_admin(model, fn(admin) {
-          update_rules(admin, fn(rules_state) {
-            admin_rules.Model(
-              ..rules_state,
-              rules_attach_in_flight: True,
-              rules_attach_error: opt.None,
-            )
-          })
-        })
-      #(
-        model,
-        api_workflows.detach_template(rule_id, template_id, fn(result) {
-          pool_msg(pool_messages.RuleTemplateDetached(result))
-        }),
-      )
-    }
-  }
-}
-
-/// Handle rule template detached success.
-pub fn handle_rule_template_detached_ok(
-  model: Model,
-  template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let templates = case model.admin.rules.rules_templates {
-    Loaded(existing) ->
-      Loaded(list.filter(existing, fn(t) { t.id != template_id }))
-    other -> other
-  }
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_templates: templates,
-          rules_attach_in_flight: False,
-          rules_attach_error: opt.None,
-        )
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Handle rule template detached error.
-pub fn handle_rule_template_detached_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(
-            ..rules_state,
-            rules_attach_in_flight: False,
-            rules_attach_error: opt.Some(err.message),
-          )
-        })
-      }),
-      effect.none(),
-    )
-  })
-}
-
-// =============================================================================
-// Story 4.10: Rule Template Attachment UI Handlers
-// =============================================================================
-
-/// Toggle rule expansion to show/hide attached templates.
-pub fn handle_rule_expand_toggled(
-  model: Model,
-  rule_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let expanded = case set.contains(model.admin.rules.rules_expanded, rule_id) {
-    True -> set.delete(model.admin.rules.rules_expanded, rule_id)
-    False -> set.insert(model.admin.rules.rules_expanded, rule_id)
-  }
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, rules_expanded: expanded)
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Open the attach template modal for a specific rule.
-/// Also fetches templates if not already loaded.
-pub fn handle_attach_template_modal_opened(
-  model: Model,
-  rule_id: Int,
-) -> #(Model, Effect(Msg)) {
-  // Check if we need to fetch templates
   let fetch_effect = case
-    model.admin.task_templates.task_templates_project,
-    model.core.selected_project_id
+    task_templates.task_templates_project,
+    context.selected_project_id
   {
-    // Already loaded or loading - no need to fetch
     Loaded(_), _ -> effect.none()
     Loading, _ -> effect.none()
-    // Need to fetch templates for the project
     _, opt.Some(project_id) ->
-      api_workflows.list_project_templates(project_id, fn(result) {
-        pool_msg(pool_messages.TaskTemplatesProjectFetched(result))
-      })
-    // No project selected - can't fetch
+      api_workflows.list_project_templates(
+        project_id,
+        context.on_task_templates_fetched,
+      )
     _, opt.None -> effect.none()
   }
 
   let task_templates_project = case
-    model.admin.task_templates.task_templates_project,
-    model.core.selected_project_id
+    task_templates.task_templates_project,
+    context.selected_project_id
   {
-    Loaded(_), _ -> model.admin.task_templates.task_templates_project
-    Loading, _ -> model.admin.task_templates.task_templates_project
+    Loaded(_), _ -> task_templates.task_templates_project
+    Loading, _ -> task_templates.task_templates_project
     _, opt.Some(_) -> Loading
-    _, opt.None -> model.admin.task_templates.task_templates_project
+    _, opt.None -> task_templates.task_templates_project
   }
 
-  let new_model =
-    update_admin(model, fn(admin) {
-      let rules =
-        admin_rules.Model(
-          ..admin.rules,
-          attach_template_modal: opt.Some(rule_id),
-          attach_template_selected: opt.None,
-          attach_template_loading: False,
-        )
-
-      let task_templates =
-        admin_task_templates.Model(
-          ..admin.task_templates,
-          task_templates_project: task_templates_project,
-        )
-
-      admin_state.AdminModel(
-        ..admin,
-        rules: rules,
-        task_templates: task_templates,
-      )
-    })
-
-  #(new_model, fetch_effect)
-}
-
-/// Close the attach template modal.
-pub fn handle_attach_template_modal_closed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
   #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          attach_template_modal: opt.None,
-          attach_template_selected: opt.None,
-          attach_template_loading: False,
-        )
-      })
-    }),
-    effect.none(),
+    TemplateAttachmentModel(
+      rules: admin_rules.Model(
+        ..rules,
+        attach_template_modal: opt.Some(rule_id),
+        attach_template_selected: opt.None,
+        attach_template_loading: False,
+      ),
+      task_templates: admin_task_templates.Model(
+        ..task_templates,
+        task_templates_project: task_templates_project,
+      ),
+    ),
+    fetch_effect,
   )
 }
 
-/// Handle template selection in the attach modal.
-pub fn handle_attach_template_selected(
-  model: Model,
+fn attach_template_modal_closed(
+  state: TemplateAttachmentModel,
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: admin_rules.Model(
+      ..rules,
+      attach_template_modal: opt.None,
+      attach_template_selected: opt.None,
+      attach_template_loading: False,
+    ),
+    task_templates: task_templates,
+  )
+}
+
+fn attach_template_selected(
+  state: TemplateAttachmentModel,
   template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          attach_template_selected: opt.Some(template_id),
-        )
-      })
-    }),
-    effect.none(),
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: admin_rules.Model(
+      ..rules,
+      attach_template_selected: opt.Some(template_id),
+    ),
+    task_templates: task_templates,
   )
 }
 
-// Justification: nested case improves clarity for branching logic.
-/// Handle submit of template attachment.
-pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case
-    model.admin.rules.attach_template_modal,
-    model.admin.rules.attach_template_selected
-  {
+fn attach_template_submitted(
+  state: TemplateAttachmentModel,
+  context: TemplateAttachmentContext(parent_msg),
+) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+
+  case rules.attach_template_modal, rules.attach_template_selected {
     opt.Some(rule_id), opt.Some(template_id) -> {
-      // Calculate execution_order based on current templates
-      let order = case model.admin.rules.rules {
-        Loaded(rules) -> {
-          case list.find(rules, fn(r) { r.id == rule_id }) {
-            Ok(rule) -> list.length(rule.templates) + 1
-            Error(_) -> 1
-          }
-        }
-        _ -> 1
-      }
+      let order = next_template_order(rules, rule_id)
       #(
-        update_admin(model, fn(admin) {
-          update_rules(admin, fn(rules_state) {
-            admin_rules.Model(..rules_state, attach_template_loading: True)
-          })
-        }),
+        TemplateAttachmentModel(
+          rules: admin_rules.Model(..rules, attach_template_loading: True),
+          task_templates: task_templates,
+        ),
         api_workflows.attach_template(rule_id, template_id, order, fn(result) {
           case result {
             Ok(templates) ->
-              pool_msg(pool_messages.AttachTemplateSucceeded(rule_id, templates))
-            Error(err) -> pool_msg(pool_messages.AttachTemplateFailed(err))
+              context.on_attach_template_succeeded(rule_id, templates)
+            Error(err) -> context.on_attach_template_failed(err)
           }
         }),
       )
     }
-    _, _ -> #(model, effect.none())
+    _, _ -> #(state, effect.none())
   }
 }
 
-/// Handle successful template attachment.
-/// AC18: Toast "Plantilla asociada" after success.
-pub fn handle_attach_template_succeeded(
-  model: Model,
+fn next_template_order(rules_state: admin_rules.Model, rule_id: Int) -> Int {
+  case rules_state.rules {
+    Loaded(rules) ->
+      case list.find(rules, fn(rule) { rule.id == rule_id }) {
+        Ok(rule) -> list.length(rule.templates) + 1
+        Error(_) -> 1
+      }
+    _ -> 1
+  }
+}
+
+fn attach_template_success_local(
+  state: TemplateAttachmentModel,
   rule_id: Int,
   templates: List(RuleTemplate),
-) -> #(Model, Effect(Msg)) {
-  // Update the rule's templates in the rules list
-  let updated_rules = case model.admin.rules.rules {
-    Loaded(rules) -> {
-      Loaded(
-        list.map(rules, fn(r) {
-          case r.id == rule_id {
-            True -> workflow.Rule(..r, templates: templates)
-            False -> r
-          }
-        }),
-      )
-    }
-    other -> other
-  }
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules: updated_rules,
-          attach_template_modal: opt.None,
-          attach_template_selected: opt.None,
-          attach_template_loading: False,
-        )
-      })
-    }),
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TemplateAttached,
-    )),
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: attach_template_succeeded(rules, rule_id, templates),
+    task_templates: task_templates,
   )
 }
 
-/// Handle failed template attachment.
-/// AC22: Error toast if operation fails.
-pub fn handle_attach_template_failed(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(
-            ..rules_state,
-            attach_template_loading: False,
-            rules_attach_error: opt.Some(err.message),
-          )
-        })
-      }),
-      helpers_toast.toast_error(err.message),
-    )
-  })
+fn attach_template_failed_local(
+  state: TemplateAttachmentModel,
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: attach_template_failed(rules),
+    task_templates: task_templates,
+  )
 }
 
-/// Handle template detach click.
-pub fn handle_template_detach_clicked(
-  model: Model,
+fn template_detach_clicked(
+  state: TemplateAttachmentModel,
   rule_id: Int,
   template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let detaching =
-    set.insert(model.admin.rules.detaching_templates, #(rule_id, template_id))
+  context: TemplateAttachmentContext(parent_msg),
+) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
   #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(..rules_state, detaching_templates: detaching)
-      })
-    }),
+    TemplateAttachmentModel(
+      rules: template_detach_started(rules, rule_id, template_id),
+      task_templates: task_templates,
+    ),
     api_workflows.detach_template(rule_id, template_id, fn(result) {
       case result {
-        Ok(_) ->
-          pool_msg(pool_messages.TemplateDetachSucceeded(rule_id, template_id))
+        Ok(_) -> context.on_template_detach_succeeded(rule_id, template_id)
         Error(err) ->
-          pool_msg(pool_messages.TemplateDetachFailed(rule_id, template_id, err))
+          context.on_template_detach_failed(rule_id, template_id, err)
       }
     }),
   )
 }
 
-/// Handle successful template detachment.
-/// AC19: Toast "Plantilla desasociada" after success.
-pub fn handle_template_detach_succeeded(
-  model: Model,
+fn template_detach_success_local(
+  state: TemplateAttachmentModel,
   rule_id: Int,
   template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let detaching =
-    set.delete(model.admin.rules.detaching_templates, #(rule_id, template_id))
-  // Remove template from rule's templates list
-  let updated_rules = case model.admin.rules.rules {
-    Loaded(rules) -> {
-      Loaded(
-        list.map(rules, fn(r) {
-          case r.id == rule_id {
-            True ->
-              workflow.Rule(
-                ..r,
-                templates: list.filter(r.templates, fn(t) {
-                  t.id != template_id
-                }),
-              )
-            False -> r
-          }
-        }),
-      )
-    }
-    other -> other
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: template_detach_succeeded(rules, rule_id, template_id),
+    task_templates: task_templates,
+  )
+}
+
+fn template_detach_failed_local(
+  state: TemplateAttachmentModel,
+  rule_id: Int,
+  template_id: Int,
+) -> TemplateAttachmentModel {
+  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
+    state
+  TemplateAttachmentModel(
+    rules: template_detach_failed(rules, rule_id, template_id),
+    task_templates: task_templates,
+  )
+}
+
+fn without_template_attachment_auth_check(
+  result: #(TemplateAttachmentModel, Effect(parent_msg)),
+) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
+  let #(state, fx) = result
+  opt.Some(TemplateAttachmentUpdate(state, fx, NoTemplateAttachmentAuthCheck))
+}
+
+fn with_template_attachment_auth_check(
+  result: #(TemplateAttachmentModel, Effect(parent_msg)),
+  err: ApiError,
+) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
+  let #(state, fx) = result
+  opt.Some(TemplateAttachmentUpdate(state, fx, CheckTemplateAttachmentAuth(err)))
+}
+
+pub type TemplateAttachmentSuccess {
+  TemplateAttached
+  TemplateDetached
+}
+
+pub type TemplateAttachmentFeedbackContext(parent_msg) {
+  TemplateAttachmentFeedbackContext(
+    template_attached: String,
+    template_detached: String,
+    on_success_toast: fn(String) -> Effect(parent_msg),
+    on_error_toast: fn(String) -> Effect(parent_msg),
+  )
+}
+
+pub type WorkflowAuthPolicy {
+  NoWorkflowAuthCheck
+  CheckWorkflowAuth(ApiError)
+}
+
+pub type WorkflowUpdate(parent_msg) {
+  WorkflowUpdate(admin_workflows.Model, Effect(parent_msg), WorkflowAuthPolicy)
+}
+
+pub fn try_workflows_update(
+  state: admin_workflows.Model,
+  inner: pool_messages.Msg,
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> opt.Option(WorkflowUpdate(parent_msg)) {
+  case inner {
+    pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
+      workflows_project_fetched_ok(state, workflows)
+      |> without_workflow_auth_check
+
+    pool_messages.WorkflowsProjectFetched(Error(err)) ->
+      workflows_project_fetched_error(state, err)
+      |> with_workflow_auth_check(err)
+
+    pool_messages.OpenWorkflowDialog(mode) ->
+      open_workflow_dialog(state, mode)
+      |> without_workflow_auth_check
+
+    pool_messages.CloseWorkflowDialog ->
+      close_workflow_dialog(state)
+      |> without_workflow_auth_check
+
+    pool_messages.WorkflowCrudCreated(workflow) ->
+      workflow_created(state, workflow)
+      |> with_workflow_effect(workflow_success_effect(WorkflowCreated, feedback))
+
+    pool_messages.WorkflowCrudUpdated(workflow) ->
+      workflow_updated(state, workflow)
+      |> with_workflow_effect(workflow_success_effect(WorkflowUpdated, feedback))
+
+    pool_messages.WorkflowCrudDeleted(workflow_id) ->
+      workflow_deleted(state, workflow_id)
+      |> with_workflow_effect(workflow_success_effect(WorkflowDeleted, feedback))
+
+    _ -> opt.None
   }
-  #(
-    update_admin(model, fn(admin) {
-      update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules: updated_rules,
-          detaching_templates: detaching,
-        )
+}
+
+fn without_workflow_auth_check(
+  state: admin_workflows.Model,
+) -> opt.Option(WorkflowUpdate(parent_msg)) {
+  with_workflow_effect(state, effect.none())
+}
+
+fn with_workflow_auth_check(
+  state: admin_workflows.Model,
+  err: ApiError,
+) -> opt.Option(WorkflowUpdate(parent_msg)) {
+  opt.Some(WorkflowUpdate(state, effect.none(), CheckWorkflowAuth(err)))
+}
+
+fn with_workflow_effect(
+  state: admin_workflows.Model,
+  fx: Effect(parent_msg),
+) -> opt.Option(WorkflowUpdate(parent_msg)) {
+  opt.Some(WorkflowUpdate(state, fx, NoWorkflowAuthCheck))
+}
+
+pub fn workflows_project_fetched_ok(
+  state: admin_workflows.Model,
+  workflows: List(Workflow),
+) -> admin_workflows.Model {
+  admin_workflows.Model(..state, workflows_project: Loaded(workflows))
+}
+
+pub fn workflows_project_fetched_error(
+  state: admin_workflows.Model,
+  err: ApiError,
+) -> admin_workflows.Model {
+  admin_workflows.Model(..state, workflows_project: Failed(err))
+}
+
+pub fn open_workflow_dialog(
+  state: admin_workflows.Model,
+  mode: state_types.WorkflowDialogMode,
+) -> admin_workflows.Model {
+  admin_workflows.Model(..state, workflows_dialog_mode: opt.Some(mode))
+}
+
+pub fn close_workflow_dialog(
+  state: admin_workflows.Model,
+) -> admin_workflows.Model {
+  admin_workflows.Model(..state, workflows_dialog_mode: opt.None)
+}
+
+pub fn workflow_created(
+  state: admin_workflows.Model,
+  workflow: Workflow,
+) -> admin_workflows.Model {
+  let #(org, project) =
+    prepend_for_scope(
+      state.workflows_org,
+      state.workflows_project,
+      workflow.project_id,
+      workflow,
+    )
+
+  admin_workflows.Model(
+    workflows_org: org,
+    workflows_project: project,
+    workflows_dialog_mode: opt.None,
+  )
+}
+
+pub fn workflow_updated(
+  state: admin_workflows.Model,
+  updated_workflow: Workflow,
+) -> admin_workflows.Model {
+  let org =
+    replace_loaded_by_id(
+      state.workflows_org,
+      updated_workflow,
+      fn(workflow: Workflow) { workflow.id },
+    )
+  let project =
+    replace_loaded_by_id(
+      state.workflows_project,
+      updated_workflow,
+      fn(workflow: Workflow) { workflow.id },
+    )
+
+  admin_workflows.Model(
+    workflows_org: org,
+    workflows_project: project,
+    workflows_dialog_mode: opt.None,
+  )
+}
+
+pub fn workflow_deleted(
+  state: admin_workflows.Model,
+  workflow_id: Int,
+) -> admin_workflows.Model {
+  let org =
+    remove_loaded_by_id(
+      state.workflows_org,
+      workflow_id,
+      fn(workflow: Workflow) { workflow.id },
+    )
+  let project =
+    remove_loaded_by_id(
+      state.workflows_project,
+      workflow_id,
+      fn(workflow: Workflow) { workflow.id },
+    )
+
+  admin_workflows.Model(
+    workflows_org: org,
+    workflows_project: project,
+    workflows_dialog_mode: opt.None,
+  )
+}
+
+pub fn rule_created(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
+  let rules = case state.rules {
+    Loaded(existing) -> Loaded([rule, ..existing])
+    _ -> Loaded([rule])
+  }
+
+  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+}
+
+pub fn rule_updated(
+  state: admin_rules.Model,
+  updated_rule: Rule,
+) -> admin_rules.Model {
+  let rules =
+    replace_loaded_by_id(state.rules, updated_rule, fn(rule: Rule) { rule.id })
+
+  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+}
+
+pub fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
+  let rules =
+    remove_loaded_by_id(state.rules, rule_id, fn(rule: Rule) { rule.id })
+
+  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+}
+
+pub fn workflow_rules_opened(
+  state: admin_rules.Model,
+  workflow_id: Int,
+) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    rules_workflow_id: opt.Some(workflow_id),
+    rules: Loading,
+    rules_metrics: Loading,
+  )
+}
+
+pub fn rules_fetched_ok(
+  state: admin_rules.Model,
+  rules: List(Rule),
+) -> admin_rules.Model {
+  admin_rules.Model(..state, rules: Loaded(rules))
+}
+
+pub fn rules_fetched_error(
+  state: admin_rules.Model,
+  err: ApiError,
+) -> admin_rules.Model {
+  admin_rules.Model(..state, rules: Failed(err))
+}
+
+pub fn rule_metrics_fetched_ok(
+  state: admin_rules.Model,
+  metrics: api_workflows.WorkflowMetrics,
+) -> admin_rules.Model {
+  admin_rules.Model(..state, rules_metrics: Loaded(metrics))
+}
+
+pub fn rule_metrics_fetched_error(
+  state: admin_rules.Model,
+  err: ApiError,
+) -> admin_rules.Model {
+  admin_rules.Model(..state, rules_metrics: Failed(err))
+}
+
+pub fn rules_back_clicked(state: admin_rules.Model) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    rules_workflow_id: opt.None,
+    rules: NotAsked,
+    rules_metrics: NotAsked,
+  )
+}
+
+pub fn open_rule_dialog(
+  state: admin_rules.Model,
+  mode: state_types.RuleDialogMode,
+) -> admin_rules.Model {
+  admin_rules.Model(..state, rules_dialog_mode: opt.Some(mode))
+}
+
+pub fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
+  admin_rules.Model(..state, rules_dialog_mode: opt.None)
+}
+
+pub fn attach_template_succeeded(
+  state: admin_rules.Model,
+  rule_id: Int,
+  templates: List(RuleTemplate),
+) -> admin_rules.Model {
+  let rules =
+    map_loaded(state.rules, fn(rules) {
+      list.map(rules, fn(rule) {
+        case rule.id == rule_id {
+          True -> workflow.Rule(..rule, templates: templates)
+          False -> rule
+        }
       })
-    }),
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TemplateDetached,
+    })
+
+  admin_rules.Model(
+    ..state,
+    rules: rules,
+    attach_template_modal: opt.None,
+    attach_template_selected: opt.None,
+    attach_template_loading: False,
+  )
+}
+
+pub fn attach_template_failed(state: admin_rules.Model) -> admin_rules.Model {
+  admin_rules.Model(..state, attach_template_loading: False)
+}
+
+pub fn template_detach_started(
+  state: admin_rules.Model,
+  rule_id: Int,
+  template_id: Int,
+) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    detaching_templates: set.insert(state.detaching_templates, #(
+      rule_id,
+      template_id,
     )),
   )
 }
 
-/// Handle failed template detachment.
-/// AC22: Error toast if operation fails.
-pub fn handle_template_detach_failed(
-  model: Model,
+pub fn template_detach_succeeded(
+  state: admin_rules.Model,
   rule_id: Int,
   template_id: Int,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  let detaching =
-    set.delete(model.admin.rules.detaching_templates, #(rule_id, template_id))
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_rules(admin, fn(rules_state) {
-          admin_rules.Model(
-            ..rules_state,
-            detaching_templates: detaching,
-            rules_attach_error: opt.Some(err.message),
-          )
-        })
-      }),
-      helpers_toast.toast_error(err.message),
-    )
-  })
-}
-
-// =============================================================================
-// Task Template Fetch Handlers
-// =============================================================================
-
-/// Handle project task templates fetch success.
-pub fn handle_task_templates_project_fetched_ok(
-  model: Model,
-  templates: List(TaskTemplate),
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(task_templates_state) {
-        admin_task_templates.Model(
-          ..task_templates_state,
-          task_templates_project: Loaded(templates),
-        )
+) -> admin_rules.Model {
+  let rules =
+    map_loaded(state.rules, fn(rules) {
+      list.map(rules, fn(rule) {
+        case rule.id == rule_id {
+          True ->
+            workflow.Rule(
+              ..rule,
+              templates: list.filter(rule.templates, fn(template) {
+                template.id != template_id
+              }),
+            )
+          False -> rule
+        }
       })
-    }),
-    effect.none(),
+    })
+
+  admin_rules.Model(
+    ..state,
+    rules: rules,
+    detaching_templates: set.delete(state.detaching_templates, #(
+      rule_id,
+      template_id,
+    )),
   )
 }
 
-/// Handle project task templates fetch error.
-pub fn handle_task_templates_project_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  helpers_auth.handle_401_or(model, err, fn() {
-    #(
-      update_admin(model, fn(admin) {
-        update_task_templates(admin, fn(task_templates_state) {
-          admin_task_templates.Model(
-            ..task_templates_state,
-            task_templates_project: Failed(err),
-          )
-        })
-      }),
-      effect.none(),
-    )
-  })
-}
-
-// =============================================================================
-// Task Template Dialog Handlers (Component Pattern)
-// =============================================================================
-
-/// Handle opening a task template dialog (create, edit, or delete).
-pub fn handle_open_task_template_dialog(
-  model: Model,
-  mode: TaskTemplateDialogMode,
-) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(task_templates_state) {
-        admin_task_templates.Model(
-          ..task_templates_state,
-          task_templates_dialog_mode: opt.Some(mode),
-        )
-      })
-    }),
-    effect.none(),
-  )
-}
-
-/// Handle closing any open task template dialog.
-pub fn handle_close_task_template_dialog(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(task_templates_state) {
-        admin_task_templates.Model(
-          ..task_templates_state,
-          task_templates_dialog_mode: opt.None,
-        )
-      })
-    }),
-    effect.none(),
-  )
-}
-
-// =============================================================================
-// Task Template Component Event Handlers
-// =============================================================================
-
-/// Handle task template created event from component.
-/// Adds the new template to the list and shows a toast.
-pub fn handle_task_template_crud_created(
-  model: Model,
-  template: TaskTemplate,
-) -> #(Model, Effect(Msg)) {
-  // Add to org or project list based on project_id
-  let #(org, project) = case template.project_id {
-    opt.Some(_) -> {
-      let project = case model.admin.task_templates.task_templates_project {
-        Loaded(existing) -> Loaded([template, ..existing])
-        _ -> Loaded([template])
-      }
-      #(model.admin.task_templates.task_templates_org, project)
-    }
-    opt.None -> {
-      let org = case model.admin.task_templates.task_templates_org {
-        Loaded(existing) -> Loaded([template, ..existing])
-        _ -> Loaded([template])
-      }
-      #(org, model.admin.task_templates.task_templates_project)
-    }
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(_task_templates_state) {
-        admin_task_templates.Model(
-          task_templates_org: org,
-          task_templates_project: project,
-          task_templates_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TaskTemplateCreated,
-    ))
-  #(model, toast_fx)
-}
-
-/// Handle task template updated event from component.
-/// Updates the template in the list and shows a toast.
-pub fn handle_task_template_crud_updated(
-  model: Model,
-  updated_template: TaskTemplate,
-) -> #(Model, Effect(Msg)) {
-  let update_list = fn(templates: List(TaskTemplate)) {
-    list.map(templates, fn(t: TaskTemplate) {
-      case t.id == updated_template.id {
-        True -> updated_template
-        False -> t
-      }
-    })
-  }
-  let org = case model.admin.task_templates.task_templates_org {
-    Loaded(existing) -> Loaded(update_list(existing))
-    other -> other
-  }
-  let project = case model.admin.task_templates.task_templates_project {
-    Loaded(existing) -> Loaded(update_list(existing))
-    other -> other
-  }
-  let model =
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(_task_templates_state) {
-        admin_task_templates.Model(
-          task_templates_org: org,
-          task_templates_project: project,
-          task_templates_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TaskTemplateUpdated,
-    ))
-  #(model, toast_fx)
-}
-
-/// Handle task template deleted event from component.
-/// Removes the template from the list and shows a toast.
-pub fn handle_task_template_crud_deleted(
-  model: Model,
+pub fn template_detach_failed(
+  state: admin_rules.Model,
+  rule_id: Int,
   template_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let filter_list = fn(templates: List(TaskTemplate)) {
-    list.filter(templates, fn(t: TaskTemplate) { t.id != template_id })
+) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    detaching_templates: set.delete(state.detaching_templates, #(
+      rule_id,
+      template_id,
+    )),
+  )
+}
+
+pub fn workflow_success_effect(
+  success: WorkflowSuccess,
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  let message = case success {
+    WorkflowCreated -> feedback.workflow_created
+    WorkflowUpdated -> feedback.workflow_updated
+    WorkflowDeleted -> feedback.workflow_deleted
   }
-  let org = case model.admin.task_templates.task_templates_org {
-    Loaded(existing) -> Loaded(filter_list(existing))
-    other -> other
+
+  feedback.on_success_toast(message)
+}
+
+pub fn rule_success_effect(
+  success: RuleSuccess,
+  feedback: RuleFeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  let message = case success {
+    RuleCreated -> feedback.rule_created
+    RuleUpdated -> feedback.rule_updated
+    RuleDeleted -> feedback.rule_deleted
   }
-  let project = case model.admin.task_templates.task_templates_project {
-    Loaded(existing) -> Loaded(filter_list(existing))
-    other -> other
+
+  feedback.on_success_toast(message)
+}
+
+pub fn template_attachment_success_effect(
+  success: TemplateAttachmentSuccess,
+  feedback: TemplateAttachmentFeedbackContext(parent_msg),
+) -> Effect(parent_msg) {
+  let message = case success {
+    TemplateAttached -> feedback.template_attached
+    TemplateDetached -> feedback.template_detached
   }
-  let model =
-    update_admin(model, fn(admin) {
-      update_task_templates(admin, fn(_task_templates_state) {
-        admin_task_templates.Model(
-          task_templates_org: org,
-          task_templates_project: project,
-          task_templates_dialog_mode: opt.None,
-        )
-      })
-    })
-  let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TaskTemplateDeleted,
-    ))
-  #(model, toast_fx)
+
+  feedback.on_success_toast(message)
 }
 
 // =============================================================================
@@ -1227,65 +892,56 @@ pub fn handle_task_template_crud_deleted(
 // =============================================================================
 
 /// Fetch workflows for admin panel (project-scoped only).
-pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
-  case model.core.selected_project_id {
-    opt.Some(project_id) -> {
-      let fetch_effect =
-        api_workflows.list_project_workflows(project_id, fn(result) {
-          pool_msg(pool_messages.WorkflowsProjectFetched(result))
-        })
-      let model =
-        update_admin(model, fn(admin) {
-          update_workflows(admin, fn(workflows_state) {
-            admin_workflows.Model(..workflows_state, workflows_project: Loading)
-          })
-        })
-      #(model, fetch_effect)
-    }
-    opt.None -> #(model, effect.none())
+fn prepend_for_scope(
+  org: Remote(List(a)),
+  project: Remote(List(a)),
+  project_id: opt.Option(Int),
+  item: a,
+) -> #(Remote(List(a)), Remote(List(a))) {
+  case project_id {
+    opt.Some(_) -> #(org, prepend_loaded_or_new(project, item))
+    opt.None -> #(prepend_loaded_or_new(org, item), project)
   }
 }
 
-/// Fetch task templates for admin panel (project-scoped only).
-pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
-  case model.core.selected_project_id {
-    opt.Some(project_id) -> {
-      let fetch_effect =
-        api_workflows.list_project_templates(project_id, fn(result) {
-          pool_msg(pool_messages.TaskTemplatesProjectFetched(result))
-        })
-      let model =
-        update_admin(model, fn(admin) {
-          update_task_templates(admin, fn(task_templates_state) {
-            admin_task_templates.Model(
-              ..task_templates_state,
-              task_templates_project: Loading,
-            )
-          })
-        })
-      #(model, fetch_effect)
-    }
-    opt.None -> #(model, effect.none())
+fn prepend_loaded_or_new(remote: Remote(List(a)), item: a) -> Remote(List(a)) {
+  case remote {
+    Loaded(existing) -> Loaded([item, ..existing])
+    _ -> Loaded([item])
   }
 }
 
-fn update_workflows(
-  admin: admin_state.AdminModel,
-  f: fn(admin_workflows.Model) -> admin_workflows.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, workflows: f(admin.workflows))
+fn replace_loaded_by_id(
+  remote: Remote(List(a)),
+  updated: a,
+  id: fn(a) -> Int,
+) -> Remote(List(a)) {
+  map_loaded(remote, fn(items) {
+    list.map(items, fn(item) {
+      case id(item) == id(updated) {
+        True -> updated
+        False -> item
+      }
+    })
+  })
 }
 
-fn update_rules(
-  admin: admin_state.AdminModel,
-  f: fn(admin_rules.Model) -> admin_rules.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, rules: f(admin.rules))
+fn remove_loaded_by_id(
+  remote: Remote(List(a)),
+  target_id: Int,
+  id: fn(a) -> Int,
+) -> Remote(List(a)) {
+  map_loaded(remote, fn(items) {
+    list.filter(items, fn(item) { id(item) != target_id })
+  })
 }
 
-fn update_task_templates(
-  admin: admin_state.AdminModel,
-  f: fn(admin_task_templates.Model) -> admin_task_templates.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, task_templates: f(admin.task_templates))
+fn map_loaded(
+  remote: Remote(List(a)),
+  f: fn(List(a)) -> List(a),
+) -> Remote(List(a)) {
+  case remote {
+    Loaded(items) -> Loaded(f(items))
+    other -> other
+  }
 }

@@ -8,6 +8,8 @@ import domain/link_detection.{
   type DetectedLink, type TextSegment, DetectedLink, GenericUrl, GitHubCommit,
   GitHubIssue, GitHubPR, Link, PlainText,
 }
+import domain/org_role
+import domain/project_role
 import gleam/list
 import gleam/option
 import lustre/attribute.{type Attribute}
@@ -29,8 +31,8 @@ pub type NoteView {
     can_delete: Bool,
     delete_context: DeleteNoteContext,
     author_email: String,
-    author_project_role: option.Option(String),
-    author_org_role: String,
+    author_project_role: option.Option(project_role.ProjectRole),
+    author_org_role: org_role.OrgRole,
   )
 }
 
@@ -72,8 +74,8 @@ fn view_note(
   }
 
   let author_role_label = case author_project_role {
-    option.Some(role) -> role
-    option.None -> author_org_role
+    option.Some(role) -> project_role.to_string(role)
+    option.None -> org_role.to_string(author_org_role)
   }
 
   // AC20: Tooltip text shows full email and role

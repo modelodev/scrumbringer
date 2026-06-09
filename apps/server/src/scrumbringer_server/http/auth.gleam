@@ -18,20 +18,20 @@
 //// - JWT operations (see `services/jwt.gleam`)
 //// - Database operations (see `persistence/auth/`)
 
-import domain/org_role
 import gleam/bit_array
 import gleam/crypto
-import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
-import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/result
-import gleam/string
 import pog
 import scrumbringer_server/http/api
+import scrumbringer_server/http/auth/payloads as auth_payloads
+import scrumbringer_server/http/auth/presenters as auth_presenters
+import scrumbringer_server/http/client_ip
 import scrumbringer_server/http/csrf
+import scrumbringer_server/http/json_payload
 import scrumbringer_server/persistence/auth/login as auth_login
 import scrumbringer_server/persistence/auth/registration as auth_registration
 import scrumbringer_server/services/auth_logic
@@ -51,45 +51,11 @@ const invite_rate_limit_window_seconds = 60
 
 const invite_rate_limit_limit = 30
 
-type RegistrationPayload {
-  RegistrationPayload(
-    email_raw: String,
-    password: String,
-    org_name_raw: String,
-    invite_token_raw: String,
-  )
-}
-
-fn client_ip(req: wisp.Request) -> opt.Option(String) {
-  let xff =
-    request.get_header(req, "x-forwarded-for")
-    |> result.unwrap("")
-
-  let x_real = request.get_header(req, "x-real-ip") |> result.unwrap("")
-
-  let raw = case xff {
-    "" -> x_real
-    _ -> xff
-  }
-
-  raw
-  |> string.split(",")
-  |> list.first
-  |> result.unwrap("")
-  |> string.trim
-  |> fn(value) {
-    case value {
-      "" -> opt.None
-      _ -> opt.Some(value)
-    }
-  }
-}
-
 fn invite_rate_limit_key(
   prefix: String,
   req: wisp.Request,
 ) -> opt.Option(String) {
-  client_ip(req)
+  client_ip.from_request(req)
   |> opt.map(fn(ip) { prefix <> ":" <> ip })
 }
 
@@ -107,36 +73,13 @@ fn invite_rate_limit_ok(prefix: String, req: wisp.Request) -> Bool {
   }
 }
 
-fn empty_to_option(value: String) -> opt.Option(String) {
-  case value {
-    "" -> opt.None
-    _ -> opt.Some(value)
-  }
-}
-
-fn register_decoder() -> decode.Decoder(RegistrationPayload) {
-  use email <- decode.optional_field("email", "", decode.string)
-  use password <- decode.field("password", decode.string)
-  use org_name <- decode.optional_field("org_name", "", decode.string)
-  use invite_token <- decode.optional_field("invite_token", "", decode.string)
-  decode.success(RegistrationPayload(
-    email_raw: email,
-    password: password,
-    org_name_raw: org_name,
-    invite_token_raw: invite_token,
-  ))
-}
-
-fn validate_password(password: String) -> Result(Nil, wisp.Response) {
-  case string.length(password) < 12 {
-    True ->
-      Error(api.error(
-        422,
-        "VALIDATION_ERROR",
-        "Password must be at least 12 characters",
-      ))
-
-    False -> Ok(Nil)
+fn require_invite_rate_limit(
+  prefix: String,
+  req: wisp.Request,
+) -> Result(Nil, wisp.Response) {
+  case invite_rate_limit_ok(prefix, req) {
+    True -> Ok(Nil)
+    False -> Error(api.error(429, "RATE_LIMITED", "Too many attempts"))
   }
 }
 
@@ -147,51 +90,34 @@ fn validate_password(password: String) -> Result(Nil, wisp.Response) {
 pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
-  case invite_rate_limit_ok("register_invite", req) {
-    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
-
-    True -> register_with_payload(req, ctx)
+  case require_invite_rate_limit("register_invite", req) {
+    Error(resp) -> resp
+    Ok(Nil) -> register_with_payload(req, ctx)
   }
 }
 
 fn register_with_payload(req: wisp.Request, ctx: Ctx) -> wisp.Response {
-  use data <- wisp.require_json(req)
-
-  case decode.run(data, register_decoder()) {
-    Ok(payload) -> register_with_payload_value(ctx, payload)
-    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  }
-}
-
-fn register_with_payload_value(
-  ctx: Ctx,
-  payload: RegistrationPayload,
-) -> wisp.Response {
-  case validate_password(payload.password) {
-    Error(response) -> response
-    Ok(Nil) -> register_valid_payload(ctx, payload)
-  }
+  json_payload.with_response(req, decode_registration_payload, fn(payload) {
+    register_valid_payload(ctx, payload)
+  })
 }
 
 fn register_valid_payload(
   ctx: Ctx,
-  payload: RegistrationPayload,
+  payload: auth_payloads.RegistrationPayload,
 ) -> wisp.Response {
   let Ctx(db: db, jwt_secret: jwt_secret) = ctx
 
-  let org_name = empty_to_option(payload.org_name_raw)
-  let email = empty_to_option(payload.email_raw)
-  let invite_token = empty_to_option(payload.invite_token_raw)
   let now_iso = time.now_iso8601()
   let now_unix = time.now_unix_seconds()
 
   case
     auth_registration.register(
       db,
-      email,
+      payload.email,
       payload.password,
-      org_name,
-      invite_token,
+      payload.org_name,
+      payload.invite_token,
       now_iso,
       now_unix,
     )
@@ -212,9 +138,9 @@ pub fn handle_invite_link_validate(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case invite_rate_limit_ok("invite_links", req) {
-    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
-    True -> invite_link_status(ctx, token)
+  case require_invite_rate_limit("invite_links", req) {
+    Error(resp) -> resp
+    Ok(Nil) -> invite_link_status(ctx, token)
   }
 }
 
@@ -234,7 +160,7 @@ fn invite_link_status(ctx: Ctx, token: String) -> wisp.Response {
       api.error(403, "INVITE_USED", "Invite token already used")
 
     Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
-      api.ok(json.object([#("email", json.string(email))]))
+      api.ok(auth_presenters.token_email(email))
   }
 }
 
@@ -244,19 +170,11 @@ fn invite_link_status(ctx: Ctx, token: String) -> wisp.Response {
 ///   handle_login(req, ctx)
 pub fn handle_login(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
-  use data <- wisp.require_json(req)
 
-  let decoder = {
-    use email <- decode.field("email", decode.string)
-    use password <- decode.field("password", decode.string)
-    decode.success(#(email, password))
-  }
-
-  case decode.run(data, decoder) {
-    Ok(#(email, password)) -> login_with_credentials(ctx, email, password)
-
-    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  }
+  json_payload.with_response(req, decode_login_payload, fn(payload) {
+    let auth_payloads.LoginPayload(email: email, password: password) = payload
+    login_with_credentials(ctx, email, password)
+  })
 }
 
 fn login_with_credentials(
@@ -280,8 +198,8 @@ pub fn handle_me(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
   case require_current_user(req, ctx) {
-    Ok(user) -> api.ok(json.object([#("user", user_json(user))]))
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> api.ok(auth_presenters.user_response(user))
+    Error(_) -> auth_required_response()
   }
 }
 
@@ -293,19 +211,19 @@ pub fn handle_logout(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
   case require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Error(_) -> auth_required_response()
 
     Ok(_user) -> logout_with_csrf(req)
   }
 }
 
 fn logout_with_csrf(req: wisp.Request) -> wisp.Response {
-  case csrf.require_double_submit(req) {
+  case csrf.require_csrf(req) {
     Ok(Nil) ->
       api.no_content()
       |> api.clear_auth_cookies
 
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Error(resp) -> resp
   }
 }
 
@@ -316,14 +234,14 @@ fn ok_with_auth(user: StoredUser, jwt_secret: BitArray) -> wisp.Response {
 
   let csrf = new_csrf_token()
 
-  api.ok(json.object([#("user", user_json(user))]))
+  api.ok(auth_presenters.user_response(user))
   |> api.set_auth_cookies(session_jwt, csrf)
 }
 
 /// Extracts the current user or returns an auth error.
 ///
 /// Example:
-///   case require_current_user(req, ctx) { Ok(user) -> user, Error(_) -> todo }
+///   case require_current_user(req, ctx) { Ok(user) -> user, Error(_) -> fallback }
 pub fn require_current_user(
   req: wisp.Request,
   ctx: Ctx,
@@ -340,20 +258,22 @@ pub fn require_current_user(
   auth_login.get_user(db, claims.user_id)
 }
 
+pub fn require_current_user_response(
+  req: wisp.Request,
+  ctx: Ctx,
+) -> Result(StoredUser, wisp.Response) {
+  require_current_user(req, ctx)
+  |> result.map_error(fn(_) { auth_required_response() })
+}
+
+pub fn auth_required_response() -> wisp.Response {
+  api.error(401, "AUTH_REQUIRED", "Authentication required")
+}
+
 fn get_cookie(req: wisp.Request, name: String) -> Result(String, Nil) {
   req
   |> request.get_cookies
   |> list.key_find(name)
-}
-
-fn user_json(user: StoredUser) -> json.Json {
-  json.object([
-    #("id", json.int(user.id)),
-    #("email", json.string(user.email)),
-    #("org_id", json.int(user.org_id)),
-    #("org_role", json.string(org_role.to_string(user.org_role))),
-    #("created_at", json.string(user.created_at)),
-  ])
 }
 
 fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
@@ -373,11 +293,39 @@ fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
     auth_logic.PasswordError(_) ->
       api.error(500, "INTERNAL", "Password hashing failed")
     auth_logic.DbError(_) -> api.error(500, "INTERNAL", "Database error")
-    _ -> api.error(422, "VALIDATION_ERROR", "Invalid registration")
+    auth_logic.InvalidCredentials ->
+      api.error(422, "VALIDATION_ERROR", "Invalid registration")
   }
 }
 
 fn new_csrf_token() -> String {
   crypto.strong_random_bytes(32)
   |> bit_array.base64_url_encode(False)
+}
+
+fn decode_registration_payload(
+  data,
+) -> Result(auth_payloads.RegistrationPayload, wisp.Response) {
+  auth_payloads.decode_registration(data)
+  |> result.map_error(payload_error_to_response)
+}
+
+fn decode_login_payload(
+  data,
+) -> Result(auth_payloads.LoginPayload, wisp.Response) {
+  auth_payloads.decode_login(data)
+  |> result.map_error(payload_error_to_response)
+}
+
+fn payload_error_to_response(error: auth_payloads.DecodeError) -> wisp.Response {
+  case error {
+    auth_payloads.InvalidJson ->
+      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    auth_payloads.PasswordTooShort ->
+      api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Password must be at least 12 characters",
+      )
+  }
 }

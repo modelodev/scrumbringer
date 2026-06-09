@@ -7,7 +7,6 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
-import gleam/result
 import gleam/string
 
 import lustre/attribute
@@ -221,14 +220,17 @@ fn icon_registry() -> Dict(String, fn() -> Element(a)) {
 // Render Functions
 // =============================================================================
 
+fn icon_element(icon_id: String) -> Element(a) {
+  case icon_registry() |> dict.get(icon_id) {
+    Ok(icon_fn) -> icon_fn()
+    Error(_) -> outline.question_mark_circle()
+  }
+}
+
 /// Render an icon by its ID with specified size.
 /// Returns a fallback icon if the ID is not found.
 pub fn render(icon_id: String, size: Int) -> Element(a) {
-  let icon_el =
-    icon_registry()
-    |> dict.get(icon_id)
-    |> result.map(fn(icon_fn) { icon_fn() })
-    |> result.unwrap(outline.question_mark_circle())
+  let icon_el = icon_element(icon_id)
 
   html.span(
     [
@@ -263,11 +265,7 @@ pub fn render_with_class(
   size: Int,
   class: String,
 ) -> Element(a) {
-  let icon_el =
-    icon_registry()
-    |> dict.get(icon_id)
-    |> result.map(fn(icon_fn) { icon_fn() })
-    |> result.unwrap(outline.question_mark_circle())
+  let icon_el = icon_element(icon_id)
 
   html.span(
     [

@@ -8,8 +8,8 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleeunit
-import gleeunit/should
 import scrumbringer_server
+import support/assertions as expect
 import wisp/simulate
 
 pub fn main() {
@@ -44,14 +44,14 @@ pub fn claim_task_succeeds_for_available_task_test() {
     )
 
   // Then: Claim succeeds
-  res.status |> should.equal(200)
+  expect.expect_status(res, 200)
 
   // Verify task is now claimed
   let assert Ok(status) =
     fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
       pog.int(task_id),
     ])
-  status |> should.equal("claimed")
+  status |> expect.equal("claimed")
 }
 
 // =============================================================================
@@ -88,7 +88,7 @@ pub fn claim_task_fails_for_already_claimed_task_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim1_res.status |> should.equal(200)
+  expect.expect_status(claim1_res, 200)
 
   // When: Second user tries to claim the same task
   let claim2_res =
@@ -102,7 +102,7 @@ pub fn claim_task_fails_for_already_claimed_task_test() {
     )
 
   // Then: Claim fails with conflict
-  claim2_res.status |> should.equal(409)
+  expect.expect_status(claim2_res, 409)
 }
 
 // =============================================================================
@@ -132,7 +132,7 @@ pub fn claim_task_fails_with_version_mismatch_test() {
     )
 
   // Then: Claim fails with conflict (version mismatch)
-  res.status |> should.equal(409)
+  expect.expect_status(res, 409)
 }
 
 // Import pog for query parameters
@@ -163,7 +163,7 @@ pub fn release_task_succeeds_for_claimer_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   // When: Same user releases the task (version is now 2 after claim)
   let release_res =
@@ -177,7 +177,7 @@ pub fn release_task_succeeds_for_claimer_test() {
     )
 
   // Then: Release succeeds
-  release_res.status |> should.equal(200)
+  expect.expect_status(release_res, 200)
 }
 
 // =============================================================================
@@ -214,7 +214,7 @@ pub fn release_task_fails_for_non_claimer_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   // When: Second user (non-claimer) tries to release
   let release_res =
@@ -228,7 +228,7 @@ pub fn release_task_fails_for_non_claimer_test() {
     )
 
   // Then: Release fails with 403 Forbidden
-  release_res.status |> should.equal(403)
+  expect.expect_status(release_res, 403)
 }
 
 // =============================================================================
@@ -256,7 +256,7 @@ pub fn complete_task_succeeds_for_claimer_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   // When: Same user completes the task (version is now 2 after claim)
   let complete_res =
@@ -270,7 +270,7 @@ pub fn complete_task_succeeds_for_claimer_test() {
     )
 
   // Then: Complete succeeds
-  complete_res.status |> should.equal(200)
+  expect.expect_status(complete_res, 200)
 }
 
 // =============================================================================
@@ -307,7 +307,7 @@ pub fn complete_task_fails_for_non_claimer_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
-  claim_res.status |> should.equal(200)
+  expect.expect_status(claim_res, 200)
 
   // When: Second user (non-claimer) tries to complete
   let complete_res =
@@ -321,5 +321,5 @@ pub fn complete_task_fails_for_non_claimer_test() {
     )
 
   // Then: Complete fails with 403 Forbidden
-  complete_res.status |> should.equal(403)
+  expect.expect_status(complete_res, 403)
 }

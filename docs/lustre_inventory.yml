@@ -80,19 +80,16 @@ module_index:
   - { module: "workspace_state", path: "apps/client/src/scrumbringer_client/workspace_state.gleam" }
   - { module: "router", path: "apps/client/src/scrumbringer_client/router.gleam" }
   - { module: "theme", path: "apps/client/src/scrumbringer_client/theme.gleam" }
-  - { module: "update_helpers", path: "apps/client/src/scrumbringer_client/update_helpers.gleam" }
   - { module: "state/normalized_store", path: "apps/client/src/scrumbringer_client/state/normalized_store.gleam" }
   - { module: "client_ffi", path: "apps/client/src/scrumbringer_client/client_ffi.gleam" }
   - { module: "member_section", path: "apps/client/src/scrumbringer_client/member_section.gleam" }
   - { module: "assignments_view_mode", path: "apps/client/src/scrumbringer_client/assignments_view_mode.gleam" }
-  - { module: "decoders", path: "apps/client/src/scrumbringer_client/decoders.gleam" }
   - { module: "api/tasks/notes", path: "apps/client/src/scrumbringer_client/api/tasks/notes.gleam" }
   - { module: "api/tasks/positions", path: "apps/client/src/scrumbringer_client/api/tasks/positions.gleam" }
   - { module: "api/tasks/capabilities", path: "apps/client/src/scrumbringer_client/api/tasks/capabilities.gleam" }
   - { module: "api/tasks/operations", path: "apps/client/src/scrumbringer_client/api/tasks/operations.gleam" }
   - { module: "api/tasks/task_types", path: "apps/client/src/scrumbringer_client/api/tasks/task_types.gleam" }
   - { module: "api/tasks/active", path: "apps/client/src/scrumbringer_client/api/tasks/active.gleam" }
-  - { module: "api/tasks/decoders", path: "apps/client/src/scrumbringer_client/api/tasks/decoders.gleam" }
   - { module: "api/tasks/dependencies", path: "apps/client/src/scrumbringer_client/api/tasks/dependencies.gleam" }
   - { module: "api/auth", path: "apps/client/src/scrumbringer_client/api/auth.gleam" }
   - { module: "api/core", path: "apps/client/src/scrumbringer_client/api/core.gleam" }
@@ -128,7 +125,6 @@ module_index:
   - { module: "features/now_working/update", path: "apps/client/src/scrumbringer_client/features/now_working/update.gleam" }
   - { module: "features/now_working/mobile", path: "apps/client/src/scrumbringer_client/features/now_working/mobile.gleam" }
   - { module: "features/now_working/panel", path: "apps/client/src/scrumbringer_client/features/now_working/panel.gleam" }
-  - { module: "features/pool/filters", path: "apps/client/src/scrumbringer_client/features/pool/filters.gleam" }
   - { module: "features/pool/dialogs", path: "apps/client/src/scrumbringer_client/features/pool/dialogs.gleam" }
   - { module: "features/pool/update", path: "apps/client/src/scrumbringer_client/features/pool/update.gleam" }
   - { module: "features/pool/view", path: "apps/client/src/scrumbringer_client/features/pool/view.gleam" }
@@ -141,7 +137,6 @@ module_index:
   - { module: "features/tasks/update", path: "apps/client/src/scrumbringer_client/features/tasks/update.gleam" }
   - { module: "features/fichas/view", path: "apps/client/src/scrumbringer_client/features/fichas/view.gleam" }
   - { module: "features/layout/responsive_drawer", path: "apps/client/src/scrumbringer_client/features/layout/responsive_drawer.gleam" }
-  - { module: "features/layout/sidebar_state", path: "apps/client/src/scrumbringer_client/features/layout/sidebar_state.gleam" }
   - { module: "features/layout/three_panel_layout", path: "apps/client/src/scrumbringer_client/features/layout/three_panel_layout.gleam" }
   - { module: "features/layout/view_mode_toggle", path: "apps/client/src/scrumbringer_client/features/layout/view_mode_toggle.gleam" }
   - { module: "features/layout/center_panel", path: "apps/client/src/scrumbringer_client/features/layout/center_panel.gleam" }
@@ -516,7 +511,7 @@ cross_module_analysis:
 
 type_safety_inventory:
   domain_modules: ["shared/src/domain/*"]
-  codec_modules: ["shared/src/helpers/json", "scrumbringer_client/decoders"]
+  codec_modules: ["shared/src/helpers/json", "shared/src/domain/*/codec"]
   adapters_mappers_modules: ["scrumbringer_client/hydration", "scrumbringer_client/url_state"]
   edge_boundaries:
     - boundary: local-storage

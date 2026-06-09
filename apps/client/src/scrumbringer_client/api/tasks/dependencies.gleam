@@ -9,13 +9,14 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import domain/api_error.{type ApiResult}
 import domain/task.{type TaskDependency}
+import domain/task/codec as decoders
 import scrumbringer_client/api/core
-import scrumbringer_client/api/tasks/decoders
 
 pub fn list_task_dependencies(
   task_id: Int,
-  to_msg: fn(core.ApiResult(List(TaskDependency))) -> msg,
+  to_msg: fn(ApiResult(List(TaskDependency))) -> msg,
 ) -> Effect(msg) {
   let decoder =
     decode.field(
@@ -25,7 +26,7 @@ pub fn list_task_dependencies(
     )
 
   core.request(
-    "GET",
+    core.Get,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
     option.None,
     decoder,
@@ -36,7 +37,7 @@ pub fn list_task_dependencies(
 pub fn add_task_dependency(
   task_id: Int,
   depends_on_task_id: Int,
-  to_msg: fn(core.ApiResult(TaskDependency)) -> msg,
+  to_msg: fn(ApiResult(TaskDependency)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([#("depends_on_task_id", json.int(depends_on_task_id))])
@@ -48,7 +49,7 @@ pub fn add_task_dependency(
     )
 
   core.request(
-    "POST",
+    core.Post,
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
     option.Some(body),
     decoder,
@@ -59,10 +60,10 @@ pub fn add_task_dependency(
 pub fn delete_task_dependency(
   task_id: Int,
   depends_on_task_id: Int,
-  to_msg: fn(core.ApiResult(Nil)) -> msg,
+  to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
   core.request_nil(
-    "DELETE",
+    core.Delete,
     "/api/v1/tasks/"
       <> int.to_string(task_id)
       <> "/dependencies/"

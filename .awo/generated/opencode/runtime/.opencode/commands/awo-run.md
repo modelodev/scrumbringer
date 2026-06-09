@@ -42,14 +42,15 @@ Run this command as an isolated runtime subtask with agent `awo-runtime`. Do not
    c. **AFTER finishing all work on the step**, record the current UTC timestamp as `ended_at`.
    d. Write the step-report with the real `started_at` and `ended_at` values captured in (a) and (c).
    This timing contract is critical: `started_at` must reflect when the step began, not when the report was written.
-5. For each executed step, write `.awo/runs/<run_id>/steps/<step_id>.step-report.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `started_at`, `ended_at`, and `budget_used` (`tokens` int >= 0, `cost_usd` number >= 0).
+5. For each executed step, write `.awo/runs/<run_id>/steps/<step_id>.step-report.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `next_command`, `started_at`, `ended_at`, and `budget_used` (`tokens` int >= 0, `cost_usd` number >= 0).
    Additionally, include these observability fields when available:
    - `declared_skill_refs`: list of skill file paths loaded for this step (from compiled_workflow.json `runtime_skill` and `skill_refs`)
+   - `materialized_skill_refs`: exact runtime skill files AWO materialized for this step when known from generated/apply state
    - `observed_skill_refs`: list of skill/reference files actually read during execution
    - `commands_run`: list of shell commands executed, each as `{"cmd": "...", "workdir": "...", "result": "ok|error"}`
    - `artifacts_materialized`: list of file paths created or modified by this step
    - `interruption_events`: list of interruptions, each as `{"kind": "...", "severity": "info|warning|error"}`
-6. After the run completes, write `.awo/runs/<run_id>/run-envelope.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `status`, `started_at`, `ended_at`, `step_reports`, `next_step`, `execution_mode` (set to `native_slash_command` for all native executions), and run-level budget telemetry `budget_run_level` (`tokens_total`, `cost_usd_total`, `quality`=`target_native|adapter_estimated`).
+6. After the run completes, write `.awo/runs/<run_id>/run-envelope.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `status`, `started_at`, `ended_at`, `step_reports`, `next_step`, `next_command`, `execution_mode` (set to `native_slash_command` for all native executions), and run-level budget telemetry `budget_run_level` (`tokens_total`, `cost_usd_total`, `quality`=`target_native|adapter_estimated`).
 7. Write `.awo/runs/index/opencode/$1.breadcrumbs.json` with JSON containing at least `latest_run` set to the new run id.
 8. Use RFC3339 UTC timestamps and coherent envelopes: success => run `status=ok`, failure/block => run `status=failed|blocked` with actionable `next_step`.
 
@@ -60,15 +61,15 @@ Use `$2` only when it is present. Treat an empty `$2` as valid no-context execut
 ## JSON examples
 
 ```json
-{"schema_version":"awo.run_envelope/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","status":"ok","execution_mode":"native_slash_command","started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z","step_reports":[".awo/runs/run_20260306_100000/steps/draft.step-report.json"],"budget_run_level":{"tokens_total":1200,"cost_usd_total":0.036,"quality":"target_native"},"next_step":"Run /awo-step $1 <step_id> for spot checks"}
+{"schema_version":"awo.run_envelope/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","status":"ok","execution_mode":"native_slash_command","started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z","step_reports":[".awo/runs/run_20260306_100000/steps/draft.step-report.json"],"budget_run_level":{"tokens_total":1200,"cost_usd_total":0.036,"quality":"target_native"},"next_step":"Run /awo-step $1 <step_id> for spot checks","next_command":"/awo-step $1 draft"}
 ```
 
 ```json
-{"schema_version":"awo.step_report/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","step_id":"draft","status":"ok","policy_outcome":"pass","executive_summary":"Draft completed","artifacts_in":[],"artifacts_out":[],"next_recommended":["review"],"risks":[],"budget_used":{"tokens":1200,"cost_usd":0.036},"started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z"}
+{"schema_version":"awo.step_report/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","step_id":"draft","status":"ok","policy_outcome":"pass","executive_summary":"Draft completed","artifacts_in":[],"artifacts_out":[],"next_recommended":["review"],"risks":[],"materialized_skill_refs":[".opencode/skills/$1-draft/SKILL.md"],"budget_used":{"tokens":1200,"cost_usd":0.036},"started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z"}
 ```
 
 ```json
-{"schema_version":"awo.run_envelope/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","status":"failed","started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z","step_reports":[".awo/runs/run_20260306_100000/steps/draft.step-report.json"],"next_step":"Inspect failed step-report and re-run /awo-run $1"}
+{"schema_version":"awo.run_envelope/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","status":"failed","started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z","step_reports":[".awo/runs/run_20260306_100000/steps/draft.step-report.json"],"next_step":"Inspect failed step-report and re-run /awo-run $1","next_command":"/awo-run $1"}
 ```
 
 ```json

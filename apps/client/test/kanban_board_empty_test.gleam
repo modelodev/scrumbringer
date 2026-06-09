@@ -1,12 +1,15 @@
 import gleam/option.{None}
 import gleam/string
-import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
+
+fn assert_contains(html: String, text: String) {
+  let assert True = string.contains(html, text)
+}
 
 pub fn kanban_board_renders_empty_column_texts_test() {
   let config =
@@ -33,8 +36,8 @@ pub fn kanban_board_renders_empty_column_texts_test() {
 
   let html = kanban_board.view(config) |> element.to_document_string
 
-  string.contains(html, "kanban-empty-column") |> should.be_true
-  string.contains(html, "No pending cards") |> should.be_true
-  string.contains(html, "No cards in progress") |> should.be_true
-  string.contains(html, "No closed cards") |> should.be_true
+  assert_contains(html, "kanban-empty-column")
+  assert_contains(html, "No pending cards")
+  assert_contains(html, "No cards in progress")
+  assert_contains(html, "No closed cards")
 }

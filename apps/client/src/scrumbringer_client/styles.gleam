@@ -6,9 +6,7 @@
 import gleam/list
 import gleam/string
 
-import scrumbringer_client/styles/assignments as styles_assignments
 import scrumbringer_client/styles/base as styles_base
-import scrumbringer_client/theme
 import scrumbringer_client/styles/components as styles_components
 import scrumbringer_client/styles/dialogs as styles_dialogs
 import scrumbringer_client/styles/layout as styles_layout
@@ -17,6 +15,7 @@ import scrumbringer_client/styles/notes as styles_notes
 import scrumbringer_client/styles/pool as styles_pool
 import scrumbringer_client/styles/tables as styles_tables
 import scrumbringer_client/styles/ux as styles_ux
+import scrumbringer_client/theme
 
 /// Provides base css.
 ///
@@ -27,20 +26,18 @@ import scrumbringer_client/styles/ux as styles_ux
 /// 0) design tokens (theme-independent)
 /// 1) base
 /// 2) tables
-/// 3) assignments
-/// 4) modals
-/// 5) components
-/// 6) pool
-/// 7) ux
-/// 8) dialogs
-/// 9) layout
-/// 10) notes
+/// 3) modals
+/// 4) components
+/// 5) pool
+/// 6) ux
+/// 7) dialogs
+/// 8) layout
+/// 9) notes
 pub fn base_css() -> String {
   [
     [theme.design_tokens()],
     styles_base.css(),
     styles_tables.css(),
-    styles_assignments.css(),
     styles_modals.css(),
     styles_components.css(),
     styles_pool.css(),

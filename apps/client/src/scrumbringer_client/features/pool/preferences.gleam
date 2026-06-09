@@ -1,0 +1,94 @@
+//// Member pool display preferences.
+
+import gleam/dict
+import gleam/option as opt
+
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/pool_prefs
+
+pub type Persistence {
+  NoPersistence
+  SaveFiltersVisible(Bool)
+  SaveViewMode(pool_prefs.ViewMode)
+}
+
+pub fn try_update(
+  model: member_pool.Model,
+  inner: pool_messages.Msg,
+) -> opt.Option(#(member_pool.Model, Persistence)) {
+  case inner {
+    pool_messages.MemberPoolFiltersToggled -> {
+      let #(pool, visible) = handle_filters_toggled(model)
+      opt.Some(#(pool, SaveFiltersVisible(visible)))
+    }
+    pool_messages.MemberPoolViewModeSet(mode) ->
+      opt.Some(#(handle_view_mode_set(model, mode), SaveViewMode(mode)))
+    pool_messages.MemberListHideCompletedToggled ->
+      opt.Some(#(handle_hide_completed_toggled(model), NoPersistence))
+    pool_messages.MemberListCardToggled(card_id) ->
+      opt.Some(#(handle_list_card_toggled(model, card_id), NoPersistence))
+    _ -> opt.None
+  }
+}
+
+pub fn handle_filters_toggled(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Bool) {
+  let visible = !model.member_pool_filters_visible
+  #(member_pool.Model(..model, member_pool_filters_visible: visible), visible)
+}
+
+pub fn handle_filters_shown(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Bool) {
+  case model.member_pool_filters_visible {
+    True -> #(model, False)
+    False -> #(
+      member_pool.Model(..model, member_pool_filters_visible: True),
+      True,
+    )
+  }
+}
+
+pub fn handle_view_mode_set(
+  model: member_pool.Model,
+  mode: pool_prefs.ViewMode,
+) -> member_pool.Model {
+  member_pool.Model(..model, member_pool_view_mode: mode)
+}
+
+pub fn handle_hide_completed_toggled(
+  model: member_pool.Model,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_list_hide_completed: !model.member_list_hide_completed,
+  )
+}
+
+pub fn handle_list_card_toggled(
+  model: member_pool.Model,
+  card_id: Int,
+) -> member_pool.Model {
+  let current =
+    dict.get(model.member_list_expanded_cards, card_id)
+    |> opt.from_result
+    |> list_card_expanded_or_default
+
+  member_pool.Model(
+    ..model,
+    member_list_expanded_cards: dict.insert(
+      model.member_list_expanded_cards,
+      card_id,
+      !current,
+    ),
+  )
+}
+
+fn list_card_expanded_or_default(expanded: opt.Option(Bool)) -> Bool {
+  case expanded {
+    opt.None -> True
+    opt.Some(value) -> value
+  }
+}

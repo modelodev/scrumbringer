@@ -16,21 +16,21 @@
 //// - **features/invites/update.gleam**: Handles invite link messages
 
 import gleam/option as opt
-import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, form, h3, input, text}
 import lustre/event
 
-import domain/org.{type InviteLink}
-import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{type Model, type Msg, admin_msg}
+import domain/org.{
+  type InviteLink, type InviteLinkState, Active, Invalidated, Used,
+}
+import scrumbringer_client/client_state/admin/invites as invites_state
 import scrumbringer_client/client_state/types.{
   DialogClosed, DialogOpen, Error, InFlight, InviteLinkForm,
 }
-import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
@@ -46,27 +46,39 @@ import scrumbringer_client/utils/format_date
 // Public API
 // =============================================================================
 
-/// Main invite links section view.
-pub fn view_invites(model: Model) -> Element(Msg) {
-  let origin = client_ffi.location_origin()
+pub type Config(msg) {
+  Config(
+    locale: Locale,
+    invites: invites_state.Model,
+    origin: String,
+    on_create_dialog_opened: msg,
+    on_create_dialog_closed: msg,
+    on_create_submitted: msg,
+    on_email_changed: fn(String) -> msg,
+    on_link_copy_clicked: fn(String) -> msg,
+    on_link_regenerate_clicked: fn(String) -> msg,
+  )
+}
 
+/// Main invite links section view.
+pub fn view_invites(config: Config(msg)) -> Element(msg) {
   div([attribute.class("section")], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Invites,
-      helpers_i18n.i18n_t(model, i18n_text.InvitesTitle),
-      dialog.add_button(
-        model,
+      t(config, i18n_text.InvitesTitle),
+      dialog.add_button_with_locale(
+        config.locale,
         i18n_text.CreateInviteLink,
-        admin_msg(admin_messages.InviteCreateDialogOpened),
+        config.on_create_dialog_opened,
       ),
     ),
     // Latest invite link result (if any)
-    view_latest_invite(model, origin),
+    view_latest_invite(config),
     // Invite links list
-    view_invite_links_list(model, origin),
+    view_invite_links_list(config),
     // Create dialog
-    view_create_dialog(model),
+    view_create_dialog(config),
   ])
 }
 
@@ -74,20 +86,19 @@ pub fn view_invites(model: Model) -> Element(Msg) {
 // Private Helpers
 // =============================================================================
 
-// Justification: nested case improves clarity for branching logic.
-fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
-  case model.admin.invites.invite_link_last {
+fn view_latest_invite(config: Config(msg)) -> Element(msg) {
+  case config.invites.invite_link_last {
     opt.None -> element.none()
 
     opt.Some(link) -> {
-      let full = build_full_url(origin, link.url_path)
+      let full = build_full_url(config.origin, link.url_path)
 
       div([attribute.class("invite-result")], [
         h3([], [
-          text(helpers_i18n.i18n_t(model, i18n_text.LatestInviteLink)),
+          text(t(config, i18n_text.LatestInviteLink)),
         ]),
         form_field.view_required(
-          helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+          t(config, i18n_text.EmailLabel),
           input([
             attribute.type_("text"),
             attribute.value(link.email),
@@ -95,44 +106,46 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
           ]),
         ),
         copyable_input.view(
-          helpers_i18n.i18n_t(model, i18n_text.Link),
+          t(config, i18n_text.Link),
           full,
-          admin_msg(admin_messages.InviteLinkCopyClicked(full)),
-          helpers_i18n.i18n_t(model, i18n_text.Copy),
-          model.admin.invites.invite_link_copy_status,
+          config.on_link_copy_clicked(full),
+          t(config, i18n_text.Copy),
+          config.invites.invite_link_copy_status,
         ),
       ])
     }
   }
 }
 
-fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
-  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
-  let #(_open, _email, _error, in_flight) = invite_dialog_info(model)
+fn view_invite_links_list(config: Config(msg)) -> Element(msg) {
+  let translate = fn(key) { t(config, key) }
+  let #(_open, _email, _error, in_flight) = invite_dialog_info(config.invites)
 
   data_table.view_remote(
-    model.admin.invites.invite_links,
-    loading_msg: t(i18n_text.LoadingEllipsis),
-    empty_msg: t(i18n_text.NoInviteLinksYet),
+    config.invites.invite_links,
+    loading_msg: translate(i18n_text.LoadingEllipsis),
+    empty_msg: translate(i18n_text.NoInviteLinksYet),
     config: data_table.new()
-      |> data_table.with_error_prefix(t(i18n_text.FailedToLoadInviteLinksPrefix))
+      |> data_table.with_error_prefix(translate(
+        i18n_text.FailedToLoadInviteLinksPrefix,
+      ))
       |> data_table.with_columns([
-        data_table.column(t(i18n_text.EmailLabel), fn(link: InviteLink) {
+        data_table.column(translate(i18n_text.EmailLabel), fn(link: InviteLink) {
           text(link.email)
         }),
-        data_table.column(t(i18n_text.State), fn(link: InviteLink) {
-          badge.status(translate_invite_state(model, link.state))
+        data_table.column(translate(i18n_text.State), fn(link: InviteLink) {
+          badge.status(translate_invite_state(config.locale, link.state))
         }),
-        data_table.column(t(i18n_text.CreatedAt), fn(link: InviteLink) {
+        data_table.column(translate(i18n_text.CreatedAt), fn(link: InviteLink) {
           text(format_date.date_only(link.created_at))
         }),
         data_table.column_with_class(
-          t(i18n_text.Link),
+          translate(i18n_text.Link),
           fn(link: InviteLink) {
-            let full = build_full_url(origin, link.url_path)
+            let full = build_full_url(config.origin, link.url_path)
             action_buttons.task_icon_button(
-              t(i18n_text.CopyLink),
-              admin_msg(admin_messages.InviteLinkCopyClicked(full)),
+              translate(i18n_text.CopyLink),
+              config.on_link_copy_clicked(full),
               icons.Copy,
               action_buttons.SizeXs,
               in_flight,
@@ -145,11 +158,11 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
           "cell-actions",
         ),
         data_table.column_with_class(
-          t(i18n_text.Actions),
+          translate(i18n_text.Actions),
           fn(link: InviteLink) {
             action_buttons.task_icon_button(
-              t(i18n_text.Regenerate),
-              admin_msg(admin_messages.InviteLinkRegenerateClicked(link.email)),
+              translate(i18n_text.Regenerate),
+              config.on_link_regenerate_clicked(link.email),
               icons.Refresh,
               action_buttons.SizeXs,
               in_flight,
@@ -166,47 +179,40 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
   )
 }
 
-fn view_create_dialog(model: Model) -> Element(Msg) {
-  let #(open, email, error, in_flight) = invite_dialog_info(model)
+fn view_create_dialog(config: Config(msg)) -> Element(msg) {
+  let #(open, email, error, in_flight) = invite_dialog_info(config.invites)
   dialog.view(
     dialog.DialogConfig(
-      title: helpers_i18n.i18n_t(model, i18n_text.CreateInviteLink),
+      title: t(config, i18n_text.CreateInviteLink),
       icon: opt.None,
       size: dialog.DialogMd,
-      on_close: admin_msg(admin_messages.InviteCreateDialogClosed),
+      on_close: config.on_create_dialog_closed,
     ),
     open,
     error,
     [
       form(
         [
-          event.on_submit(fn(_) {
-            admin_msg(admin_messages.InviteLinkCreateSubmitted)
-          }),
+          event.on_submit(fn(_) { config.on_create_submitted }),
         ],
         [
           form_field.view(
-            helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+            t(config, i18n_text.EmailLabel),
             input([
               attribute.type_("email"),
               attribute.value(email),
-              event.on_input(fn(value) {
-                admin_msg(admin_messages.InviteLinkEmailChanged(value))
-              }),
+              event.on_input(fn(value) { config.on_email_changed(value) }),
               attribute.required(True),
-              attribute.placeholder(helpers_i18n.i18n_t(
-                model,
-                i18n_text.EmailPlaceholderExample,
-              )),
+              attribute.placeholder(t(config, i18n_text.EmailPlaceholderExample)),
             ]),
           ),
           div([attribute.class("dialog-footer")], [
-            dialog.cancel_button(
-              model,
-              admin_msg(admin_messages.InviteCreateDialogClosed),
+            dialog.cancel_button_with_locale(
+              config.locale,
+              config.on_create_dialog_closed,
             ),
-            dialog.submit_button(
-              model,
+            dialog.submit_button_with_locale(
+              config.locale,
               in_flight,
               False,
               i18n_text.Create,
@@ -220,8 +226,10 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
   )
 }
 
-fn invite_dialog_info(model: Model) -> #(Bool, String, opt.Option(String), Bool) {
-  let #(open, email, operation) = case model.admin.invites.invite_link_dialog {
+fn invite_dialog_info(
+  invites: invites_state.Model,
+) -> #(Bool, String, opt.Option(String), Bool) {
+  let #(open, email, operation) = case invites.invite_link_dialog {
     DialogOpen(form: InviteLinkForm(email: email), operation: operation) -> #(
       True,
       email,
@@ -252,13 +260,14 @@ fn build_full_url(origin: String, url_path: String) -> String {
 // =============================================================================
 
 /// Translate invite link state to current locale.
-fn translate_invite_state(model: Model, state: String) -> String {
-  case string.lowercase(state) {
-    "active" -> helpers_i18n.i18n_t(model, i18n_text.InviteStateActive)
-    "used" -> helpers_i18n.i18n_t(model, i18n_text.InviteStateUsed)
-    "invalidated" | "expired" ->
-      helpers_i18n.i18n_t(model, i18n_text.InviteStateExpired)
-    _ -> state
+fn translate_invite_state(locale: Locale, state: InviteLinkState) -> String {
+  case state {
+    Active -> i18n.t(locale, i18n_text.InviteStateActive)
+    Used -> i18n.t(locale, i18n_text.InviteStateUsed)
+    Invalidated -> i18n.t(locale, i18n_text.InviteStateExpired)
   }
 }
-/// Get badge class variant based on state.
+
+fn t(config: Config(msg), text: i18n_text.Text) -> String {
+  i18n.t(config.locale, text)
+}
