@@ -1,8 +1,10 @@
 import gleam/dynamic/decode.{type Decoder}
+@target(javascript)
 import gleam/fetch
 import gleam/http
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response, Response}
+@target(javascript)
 import gleam/javascript/promise
 import gleam/json.{type Json}
 import gleam/result
@@ -131,9 +133,9 @@ fn do_send(
 
 @target(erlang)
 fn do_send(
-  req: Request(String),
-  expect: Expect(msg),
-  dispatch: fn(msg) -> Nil,
+  _req: Request(String),
+  _expect: Expect(msg),
+  _dispatch: fn(msg) -> Nil,
 ) -> Nil {
   // By providing an Erlang implementation of this function, even if it does
   // nothing, we can still compile Lustre apps that use lustre_http as server
