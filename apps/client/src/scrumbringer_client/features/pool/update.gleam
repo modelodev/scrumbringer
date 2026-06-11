@@ -1631,6 +1631,7 @@ fn update_without_view_mode(
     | pool_messages.MemberMilestonesShowEmptyToggled
     | pool_messages.MemberMilestoneSearchChanged(_)
     | pool_messages.MemberMilestoneSummaryToggled
+    | pool_messages.MemberMilestoneCardToggled(_)
     | pool_messages.MemberMilestoneDetailsClicked(_)
     | pool_messages.MemberMilestoneCreateTaskClicked(_)
     | pool_messages.MemberMilestoneCreateCardClicked(_)

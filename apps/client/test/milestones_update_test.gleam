@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/int
 import gleam/option.{None, Some}
 import lustre/effect
@@ -687,6 +688,32 @@ pub fn milestone_card_drag_started_sets_drag_item_test() {
 
   next.member.pool.member_milestone_drag_item
   |> assert_equal(Some(member_pool.MilestoneDragCard(401, 12)))
+}
+
+pub fn milestone_card_toggled_updates_expansion_state_test() {
+  let model = client_state.default_model()
+
+  let #(expanded, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCardToggled(401),
+      test_context(),
+    )
+
+  case dict.get(expanded.member.pool.member_milestone_expanded_cards, 401) {
+    Ok(value) -> value |> assert_equal(True)
+    Error(_) -> panic as "expected card expansion state"
+  }
+
+  let #(collapsed, _fx) =
+    pool_update.update(
+      expanded,
+      pool_messages.MemberMilestoneCardToggled(401),
+      test_context(),
+    )
+
+  let assert Error(_) =
+    dict.get(collapsed.member.pool.member_milestone_expanded_cards, 401)
 }
 
 pub fn milestone_drag_ended_clears_drag_item_test() {

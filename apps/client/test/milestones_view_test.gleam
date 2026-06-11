@@ -73,6 +73,7 @@ fn milestone_callbacks() -> milestones_view.Callbacks(String) {
     on_view_kanban: "view-kanban",
     on_select: fn(id) { "select:" <> int.to_string(id) },
     on_summary_toggle: "summary-toggle",
+    on_card_toggle: fn(id) { "card-toggle:" <> int.to_string(id) },
     on_quick_create_card: fn(id) { "quick-card:" <> int.to_string(id) },
     on_quick_create_task: fn(id) { "quick-task:" <> int.to_string(id) },
     on_activate_prompt: fn(id) { "activate-prompt:" <> int.to_string(id) },
@@ -764,8 +765,8 @@ pub fn milestones_view_detail_surfaces_phase4_structure_summary_test() {
   string.contains(html, "1 blocked tasks") |> assert_true
   string.contains(html, "milestone-card-status-chip") |> assert_true
   string.contains(html, "milestone-card-health-chip") |> assert_false
-  string.contains(html, "Loose tasks") |> assert_true
-  string.contains(html, "not grouped inside a card yet") |> assert_true
+  string.contains(html, "Tasks without card") |> assert_true
+  string.contains(html, "milestone-content-note") |> assert_false
 }
 
 pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
@@ -790,7 +791,7 @@ pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
   |> assert_true
   string.contains(html, "data-testid=\"milestone-move-card:142:950:143\"")
   |> assert_true
-  string.contains(html, "Loose tasks") |> assert_true
+  string.contains(html, "Tasks without card") |> assert_true
   string.contains(html, "data-testid=\"milestone-task-row:142:951\"")
   |> assert_true
 }
@@ -938,7 +939,7 @@ pub fn milestones_view_uses_es_i18n_labels_and_statuses_test() {
     |> element.to_document_string
 
   string.contains(html, ">Tarjetas<") |> assert_true
-  string.contains(html, ">Tareas<") |> assert_true
+  string.contains(html, ">Tareas sin card<") |> assert_true
   string.contains(html, "disponible") |> assert_true
 }
 
@@ -955,7 +956,7 @@ pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
     |> element.to_document_string
 
   string.contains(html, ">Cards<") |> assert_true
-  string.contains(html, ">Tasks<") |> assert_true
+  string.contains(html, ">Tasks without card<") |> assert_true
   string.contains(html, "available") |> assert_true
 }
 

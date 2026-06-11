@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/list
 import gleam/option as opt
 import gleam/string
@@ -495,6 +496,35 @@ pub fn handle_milestone_summary_toggled(
   )
 }
 
+pub fn handle_milestone_card_toggled(
+  model: member_pool.Model,
+  card_id: Int,
+) -> #(member_pool.Model, effect.Effect(parent_msg)) {
+  let current =
+    dict.get(model.member_milestone_expanded_cards, card_id)
+    |> opt.from_result
+    |> milestone_card_expanded_or_default
+  let next_expanded_cards = case current {
+    True -> dict.delete(model.member_milestone_expanded_cards, card_id)
+    False -> dict.insert(model.member_milestone_expanded_cards, card_id, True)
+  }
+
+  #(
+    member_pool.Model(
+      ..model,
+      member_milestone_expanded_cards: next_expanded_cards,
+    ),
+    effect.none(),
+  )
+}
+
+fn milestone_card_expanded_or_default(expanded: opt.Option(Bool)) -> Bool {
+  case expanded {
+    opt.None -> False
+    opt.Some(value) -> value
+  }
+}
+
 pub fn handle_milestone_details_clicked(
   model: member_pool.Model,
   milestone_id: Int,
@@ -674,6 +704,11 @@ pub fn try_member_pool_update(
 
     pool_messages.MemberMilestoneSummaryToggled ->
       try_local_transition(model, handle_milestone_summary_toggled)
+
+    pool_messages.MemberMilestoneCardToggled(card_id) ->
+      try_local_transition(model, fn(pool) {
+        handle_milestone_card_toggled(pool, card_id)
+      })
 
     pool_messages.MemberMilestoneDetailsClicked(milestone_id) -> {
       let #(next, local_fx) =

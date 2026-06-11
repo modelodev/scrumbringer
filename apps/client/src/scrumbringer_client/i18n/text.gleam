@@ -287,6 +287,8 @@ pub type Text {
   MilestoneSearchPlaceholder
   MilestoneLooseTasksNotice
   MilestoneLooseTasksHint
+  MilestoneCardTasksEmpty
+  MilestoneCardTasksRegion(name: String)
   MilestoneNoSelection
   MilestoneNoSelectionHint
   MilestoneCardsCount(cards_count: Int)
@@ -308,6 +310,8 @@ pub type Text {
   MilestoneTaskStatusAvailable
   MilestoneTaskStatusClaimed
   MilestoneTaskStatusCompleted
+  ExpandMilestoneCard(name: String)
+  CollapseMilestoneCard(name: String)
   ExpandMilestone(name: String)
   CollapseMilestone(name: String)
   ExpandPerson(name: String)

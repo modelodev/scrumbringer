@@ -9,7 +9,7 @@ import gleam/list
 import gleam/option
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element, none}
-import lustre/element/html.{div, p, span, text}
+import lustre/element/html.{button, div, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
@@ -17,6 +17,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/move_menu
@@ -36,6 +37,9 @@ pub type Config(msg) {
     destinations: List(Milestone),
     can_move: Bool,
     can_drag: Bool,
+    is_card_expanded: fn(Int) -> Bool,
+    on_card_toggle: fn(Int) -> msg,
+    on_view_kanban: msg,
     card_header_actions: fn(Card) -> List(Element(msg)),
     on_task_open: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
@@ -72,32 +76,25 @@ pub fn view_loose_tasks_panel(config: Config(msg)) -> Element(msg) {
     [] -> none()
     _ ->
       div([attribute.class("milestone-loose-tasks-panel")], [
-        div([attribute.class("milestone-content-note")], [
-          p([attribute.class("milestone-subsection-title")], [
-            text(i18n.t(config.locale, i18n_text.MilestoneLooseTasksNotice)),
-          ]),
-          p([attribute.class("milestone-item-description")], [
-            text(i18n.t(config.locale, i18n_text.MilestoneLooseTasksHint)),
-          ]),
-        ]),
         view_loose_tasks_section(config),
       ])
   }
 }
 
 fn view_card_row(config: Config(msg), card: Card, card_id: Int) -> Element(msg) {
-  let row_testid =
-    "milestone-card-row:"
-    <> int.to_string(config.milestone_id)
-    <> ":"
-    <> int.to_string(card_id)
+  let row_testid = milestone_card_testid("milestone-card-row:", config, card_id)
   let card_tasks = config.tasks_for_card(card_id)
+  let is_expanded = config.is_card_expanded(card_id)
   let actions = case config.can_move {
     True ->
       list.append(config.card_header_actions(card), [
+        view_card_kanban_action(config, card_id),
         view_move_card_actions(config, card_id),
       ])
-    False -> config.card_header_actions(card)
+    False ->
+      list.append(config.card_header_actions(card), [
+        view_card_kanban_action(config, card_id),
+      ])
   }
 
   let attrs = [
@@ -110,22 +107,64 @@ fn view_card_row(config: Config(msg), card: Card, card_id: Int) -> Element(msg) 
       attrs,
       drag_attrs(config.can_drag, config.on_card_drag_started(card_id), config),
     ),
-    [view_delivery_card_row(config, card, card_tasks, actions)],
+    [
+      view_delivery_card_row(
+        config,
+        card,
+        card_id,
+        card_tasks,
+        actions,
+        is_expanded,
+      ),
+      case is_expanded {
+        True -> view_card_tasks_panel(config, card_id, card.title, card_tasks)
+        False -> none()
+      },
+    ],
   )
 }
 
 fn view_delivery_card_row(
   config: Config(msg),
   card: Card,
+  card_id: Int,
   tasks: List(Task),
   actions: List(Element(msg)),
+  is_expanded: Bool,
 ) -> Element(msg) {
+  let details_id = card_tasks_panel_id(config.milestone_id, card_id)
+
   div(
     [
       attribute.class("milestone-delivery-card"),
       attribute.attribute("data-testid", "milestone-delivery-card"),
     ],
     [
+      button(
+        [
+          attribute.class("milestone-card-toggle"),
+          attribute.type_("button"),
+          attribute.attribute(
+            "data-testid",
+            milestone_card_testid("milestone-card-toggle:", config, card_id),
+          ),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(is_expanded),
+          ),
+          attribute.attribute("aria-controls", details_id),
+          attribute.attribute(
+            "aria-label",
+            card_toggle_label(config, card.title, is_expanded),
+          ),
+          event.on_click(config.on_card_toggle(card_id)),
+        ],
+        [
+          span([attribute.class("milestone-card-toggle-icon")], [
+            text("▾"),
+          ]),
+        ],
+      ),
       span(
         [
           attribute.class(
@@ -154,6 +193,91 @@ fn view_delivery_card_row(
         ]),
       ]),
       view_card_actions(actions),
+    ],
+  )
+}
+
+fn card_toggle_label(
+  config: Config(msg),
+  title: String,
+  is_expanded: Bool,
+) -> String {
+  case is_expanded {
+    True -> i18n.t(config.locale, i18n_text.CollapseMilestoneCard(title))
+    False -> i18n.t(config.locale, i18n_text.ExpandMilestoneCard(title))
+  }
+}
+
+fn card_tasks_panel_id(milestone_id: Int, card_id: Int) -> String {
+  "milestone-card-tasks-"
+  <> int.to_string(milestone_id)
+  <> "-"
+  <> int.to_string(card_id)
+}
+
+fn milestone_card_testid(
+  prefix: String,
+  config: Config(msg),
+  card_id: Int,
+) -> String {
+  prefix <> int.to_string(config.milestone_id) <> ":" <> int.to_string(card_id)
+}
+
+fn view_card_kanban_action(config: Config(msg), card_id: Int) -> Element(msg) {
+  button(
+    [
+      attribute.class("btn btn-secondary btn-xs milestone-card-kanban"),
+      attribute.type_("button"),
+      attribute.attribute(
+        "data-testid",
+        milestone_card_testid("milestone-card-kanban:", config, card_id),
+      ),
+      event.on_click(config.on_view_kanban),
+    ],
+    [text(i18n.t(config.locale, i18n_text.ViewInKanban))],
+  )
+}
+
+fn view_card_tasks_panel(
+  config: Config(msg),
+  card_id: Int,
+  card_title: String,
+  tasks: List(Task),
+) -> Element(msg) {
+  div(
+    [
+      attribute.class("milestone-card-tasks-panel"),
+      attribute.id(card_tasks_panel_id(config.milestone_id, card_id)),
+      attribute.role("region"),
+      attribute.attribute(
+        "aria-label",
+        i18n.t(config.locale, i18n_text.MilestoneCardTasksRegion(card_title)),
+      ),
+    ],
+    [
+      case tasks {
+        [] ->
+          p([attribute.class("milestone-card-tasks-empty")], [
+            text(i18n.t(config.locale, i18n_text.MilestoneCardTasksEmpty)),
+          ])
+        _ ->
+          keyed.div(
+            [attribute.class("milestone-card-tasks-list")],
+            list.map(tasks, fn(task) {
+              let Task(id: task_id, ..) = task
+              #(
+                int.to_string(task_id),
+                view_task_row(
+                  config,
+                  task,
+                  task_id,
+                  "milestone-card-task-row",
+                  "milestone-card-task-row:",
+                ),
+              )
+            }),
+          )
+      },
     ],
   )
 }
@@ -219,30 +343,41 @@ fn view_card_actions(actions: List(Element(msg))) -> Element(msg) {
 fn view_loose_tasks_section(config: Config(msg)) -> Element(msg) {
   div([attribute.class("milestone-content-section detail-section")], [
     p([attribute.class("milestone-subsection-title detail-section-title")], [
-      text(i18n.t(config.locale, i18n_text.MilestoneTasksLabel)),
+      text(i18n.t(config.locale, i18n_text.MilestoneLooseTasksNotice)),
     ]),
     keyed.div(
       [attribute.class("milestone-cards-list")],
       list.map(config.loose_tasks, fn(task) {
         let Task(id: task_id, ..) = task
-        #(int.to_string(task_id), view_loose_task_row(config, task, task_id))
+        #(
+          int.to_string(task_id),
+          view_task_row(
+            config,
+            task,
+            task_id,
+            "milestone-loose-task-row",
+            "milestone-task-row:",
+          ),
+        )
       }),
     ),
   ])
 }
 
-fn view_loose_task_row(
+fn view_task_row(
   config: Config(msg),
   task: Task,
   task_id: Int,
+  row_class: String,
+  testid_prefix: String,
 ) -> Element(msg) {
   let Task(title: title, status: status, ..) = task
 
   let attrs = [
-    attribute.class("milestone-task-row detail-item-row"),
+    attribute.class("milestone-task-row detail-item-row " <> row_class),
     attribute.attribute(
       "data-testid",
-      "milestone-task-row:"
+      testid_prefix
         <> int.to_string(config.milestone_id)
         <> ":"
         <> int.to_string(task_id),

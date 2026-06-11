@@ -3,6 +3,7 @@ import domain/milestone.{type MilestoneProgress, Active, Completed, Ready}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked, unwrap}
 import domain/task as task_domain
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option
@@ -42,6 +43,7 @@ pub type Config(msg) {
     show_empty: Bool,
     selected_milestone_id: option.Option(Int),
     summary_expanded: Bool,
+    expanded_cards: dict.Dict(Int, Bool),
     dialog: member_pool.MilestoneDialog,
     dialog_in_flight: Bool,
     dialog_error: option.Option(String),
@@ -64,6 +66,7 @@ pub type Config(msg) {
     on_view_kanban: msg,
     on_select: fn(Int) -> msg,
     on_summary_toggle: msg,
+    on_card_toggle: fn(Int) -> msg,
     on_quick_create_card: fn(Int) -> msg,
     on_quick_create_task: fn(Int) -> msg,
     on_activate_prompt: fn(Int) -> msg,
@@ -348,6 +351,13 @@ fn work_items_config(
     destinations: destinations,
     can_move: can_move,
     can_drag: can_move && destinations != [],
+    is_card_expanded: fn(card_id) {
+      dict.get(config.expanded_cards, card_id)
+      |> option.from_result
+      |> bool_or_false
+    },
+    on_card_toggle: config.on_card_toggle,
+    on_view_kanban: config.on_view_kanban,
     card_header_actions: fn(card) {
       let card_domain.Card(id: card_id, title: card_title, ..) = card
       card_header_actions(config, card_id, card_title)
@@ -371,6 +381,13 @@ fn work_items_config(
       milestone_labels.task_status_to_short(config.locale, status)
     },
   )
+}
+
+fn bool_or_false(value: option.Option(Bool)) -> Bool {
+  case value {
+    option.None -> False
+    option.Some(is_true) -> is_true
+  }
 }
 
 fn member_milestones(config: Config(msg)) -> List(MilestoneProgress) {

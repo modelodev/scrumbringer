@@ -325,9 +325,11 @@ pub fn translate(text: Text) -> String {
     text.MilestoneStructureSummary -> "Structure summary"
     text.MilestoneActions -> "Actions"
     text.MilestoneSearchPlaceholder -> "Search milestones"
-    text.MilestoneLooseTasksNotice -> "Loose tasks"
+    text.MilestoneLooseTasksNotice -> "Tasks without card"
     text.MilestoneLooseTasksHint ->
       "These tasks are not grouped inside a card yet"
+    text.MilestoneCardTasksEmpty -> "This card has no tasks yet"
+    text.MilestoneCardTasksRegion(name) -> "Tasks for " <> name
     text.MilestoneNoSelection -> "Select a milestone"
     text.MilestoneNoSelectionHint ->
       "Choose a milestone from the list to inspect its content"
@@ -360,6 +362,8 @@ pub fn translate(text: Text) -> String {
     text.MilestoneTaskStatusAvailable -> "available"
     text.MilestoneTaskStatusClaimed -> "claimed"
     text.MilestoneTaskStatusCompleted -> "completed"
+    text.ExpandMilestoneCard(name) -> "Show tasks for " <> name
+    text.CollapseMilestoneCard(name) -> "Hide tasks for " <> name
     text.ExpandMilestone(name) -> "Expand milestone " <> name
     text.CollapseMilestone(name) -> "Collapse milestone " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name

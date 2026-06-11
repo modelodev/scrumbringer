@@ -212,6 +212,15 @@ Estado de implementacion, 2026-06-11:
 - Las tareas sueltas se presentan como trabajo estructural pendiente de agrupar, con una llamada visible sin convertirlo en alarma.
 - Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas desktop/mobile.
 
+Ajuste de detalle, 2026-06-11:
+
+- Hitos se consolida como `Delivery Plan`: estructura de entrega primero, seguimiento operativo despues.
+- Las cards del hito son filas compactas con swatch, titulo, progreso, estado estructural y acciones; no muestran previews de tareas por defecto.
+- Cada card puede desplegar sus tareas inline para inspeccion contextual sin convertir la vista en un segundo Kanban.
+- La seccion de tareas sueltas se llama `Tareas sin card`; al no mostrar tareas dentro de cards por defecto, no necesita callout adicional.
+- El CTA `Ver en Kanban` queda como navegacion simple en esta fase para continuar el seguimiento operativo de la card.
+- El estado expandido de cards se guarda como presencia de ID: ausencia significa colapsada, evitando acumular estados falsos.
+
 Comando sugerido:
 
 ```bash

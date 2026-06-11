@@ -1445,6 +1445,9 @@ fn milestone_callbacks() -> milestones_view.Callbacks(client_state.Msg) {
     on_summary_toggle: client_state.pool_msg(
       pool_messages.MemberMilestoneSummaryToggled,
     ),
+    on_card_toggle: fn(id) {
+      client_state.pool_msg(pool_messages.MemberMilestoneCardToggled(id))
+    },
     on_quick_create_card: fn(id) {
       client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(id))
     },

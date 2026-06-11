@@ -38,7 +38,7 @@ fn card(id: Int) -> Card {
   )
 }
 
-fn task(id: Int, card_id: opt.Option(Int)) -> Task {
+fn task(id: Int, title: String, card_id: opt.Option(Int)) -> Task {
   let state = task_state.Available
 
   Task(
@@ -47,7 +47,7 @@ fn task(id: Int, card_id: opt.Option(Int)) -> Task {
     type_id: 1,
     task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
     ongoing_by: opt.None,
-    title: "Loose Task " <> int.to_string(id),
+    title: title,
     description: opt.None,
     priority: 1,
     state: state,
@@ -94,12 +94,15 @@ fn config() -> work_items.Config(String) {
     theme: theme.Default,
     milestone_id: 1,
     cards: [card(10)],
-    loose_tasks: [task(20, opt.None)],
+    loose_tasks: [task(20, "Loose Task 20", opt.None)],
     org_users: [],
-    tasks_for_card: fn(_) { [task(30, opt.Some(10))] },
+    tasks_for_card: fn(_) { [task(30, "Card Task 30", opt.Some(10))] },
     destinations: [destination(2)],
     can_move: True,
     can_drag: True,
+    is_card_expanded: fn(_) { False },
+    on_card_toggle: fn(id) { "toggle-card:" <> int.to_string(id) },
+    on_view_kanban: "view-kanban",
     card_header_actions: fn(_) { [] },
     on_task_open: fn(id) { "open:" <> int.to_string(id) },
     on_task_claim: fn(id, _) { "claim:" <> int.to_string(id) },
@@ -122,6 +125,18 @@ fn config() -> work_items.Config(String) {
   )
 }
 
+fn expanded_config() -> work_items.Config(String) {
+  work_items.Config(..config(), is_card_expanded: fn(id) { id == 10 })
+}
+
+fn empty_expanded_config() -> work_items.Config(String) {
+  work_items.Config(
+    ..expanded_config(),
+    cards: [Card(..card(10), task_count: 0)],
+    tasks_for_card: fn(_) { [] },
+  )
+}
+
 pub fn work_items_renders_cards_from_config_without_root_model_test() {
   let html =
     work_items.view_cards_section(config())
@@ -131,12 +146,38 @@ pub fn work_items_renders_cards_from_config_without_root_model_test() {
   assert_contains(html, "milestone-card-row:1:10")
   assert_contains(html, "milestone-delivery-card")
   assert_contains(html, "milestone-card-status-chip")
+  assert_contains(html, "milestone-card-toggle:1:10")
+  assert_contains(html, "aria-expanded=\"false\"")
+  assert_contains(html, "aria-controls=\"milestone-card-tasks-1-10\"")
   assert_contains(html, "Blocked")
   assert_contains(html, "0/1")
-  assert_not_contains(html, "Loose Task 30")
+  assert_not_contains(html, "Card Task 30")
   assert_not_contains(html, "milestone-card-health-chip")
+  assert_contains(html, "View in Kanban")
+  assert_contains(html, "milestone-card-kanban:1:10")
   assert_contains(html, "milestone-move-menu-card:1:10")
   assert_contains(html, "draggable=\"true\"")
+}
+
+pub fn work_items_renders_expanded_card_tasks_inline_test() {
+  let html =
+    work_items.view_cards_section(expanded_config())
+    |> element.to_document_string
+
+  assert_contains(html, "aria-expanded=\"true\"")
+  assert_contains(html, "aria-label=\"Tasks for Planning Card 10\"")
+  assert_contains(html, "Card Task 30")
+  assert_contains(html, "milestone-card-task-row:1:30")
+  assert_contains(html, "milestone-card-tasks-panel")
+}
+
+pub fn work_items_renders_expanded_empty_card_state_test() {
+  let html =
+    work_items.view_cards_section(empty_expanded_config())
+    |> element.to_document_string
+
+  assert_contains(html, "This card has no tasks yet")
+  assert_contains(html, "milestone-card-tasks-panel")
 }
 
 pub fn work_items_renders_loose_tasks_from_config_without_root_model_test() {
@@ -146,8 +187,8 @@ pub fn work_items_renders_loose_tasks_from_config_without_root_model_test() {
 
   assert_contains(html, "Loose Task 20")
   assert_contains(html, "Available")
-  assert_contains(html, "Loose tasks")
-  assert_contains(html, "These tasks are not grouped inside a card yet")
+  assert_contains(html, "Tasks without card")
+  assert_not_contains(html, "These tasks are not grouped inside a card yet")
   assert_contains(html, "milestone-task-row:1:20")
   assert_contains(html, "milestone-move-menu-task:1:20")
   assert_contains(html, "draggable=\"true\"")

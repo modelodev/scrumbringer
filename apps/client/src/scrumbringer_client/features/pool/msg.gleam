@@ -97,6 +97,7 @@ pub type Msg {
   MemberMilestonesShowEmptyToggled
   MemberMilestoneSearchChanged(String)
   MemberMilestoneSummaryToggled
+  MemberMilestoneCardToggled(Int)
   MemberMilestoneDetailsClicked(Int)
   MemberMilestoneCreateTaskClicked(Int)
   MemberMilestoneCreateCardClicked(Int)

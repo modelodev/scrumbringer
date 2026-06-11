@@ -328,9 +328,11 @@ pub fn translate(text: Text) -> String {
     text.MilestoneStructureSummary -> "Resumen estructural"
     text.MilestoneActions -> "Acciones"
     text.MilestoneSearchPlaceholder -> "Buscar hitos"
-    text.MilestoneLooseTasksNotice -> "Trabajo suelto"
+    text.MilestoneLooseTasksNotice -> "Tareas sin card"
     text.MilestoneLooseTasksHint ->
       "Estas tareas todavía no están agrupadas dentro de una tarjeta"
+    text.MilestoneCardTasksEmpty -> "Esta card todavía no tiene tareas"
+    text.MilestoneCardTasksRegion(name) -> "Tareas de " <> name
     text.MilestoneNoSelection -> "Selecciona un hito"
     text.MilestoneNoSelectionHint ->
       "Elige un hito de la lista para inspeccionar su contenido"
@@ -365,6 +367,8 @@ pub fn translate(text: Text) -> String {
     text.MilestoneTaskStatusAvailable -> "disponible"
     text.MilestoneTaskStatusClaimed -> "reclamada"
     text.MilestoneTaskStatusCompleted -> "completada"
+    text.ExpandMilestoneCard(name) -> "Mostrar tareas de " <> name
+    text.CollapseMilestoneCard(name) -> "Ocultar tareas de " <> name
     text.ExpandMilestone(name) -> "Expandir hito " <> name
     text.CollapseMilestone(name) -> "Colapsar hito " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name
