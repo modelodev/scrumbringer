@@ -20,7 +20,7 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h3, h4, p, span, text}
+import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
@@ -29,6 +29,7 @@ import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -156,64 +157,40 @@ fn view_surface_header(
   config: KanbanConfig(msg),
   summary: BoardSummary,
 ) -> Element(msg) {
-  div(
-    [
-      attribute.class("kanban-surface-header"),
-      attribute.attribute("data-testid", "kanban-surface-header"),
+  work_surface.header(work_surface.HeaderConfig(
+    title: i18n.t(config.locale, i18n_text.Kanban),
+    purpose: i18n.t(config.locale, i18n_text.KanbanSurfacePurpose),
+    summary: [
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.KanbanSummaryCards),
+        int.to_string(summary.cards),
+        work_surface.Neutral,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.MetricsAvailable),
+        int.to_string(summary.available),
+        work_surface.Available,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.MetricsClaimed),
+        int.to_string(summary.claimed),
+        work_surface.Claimed,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
+        int.to_string(summary.ongoing),
+        work_surface.Ongoing,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.Blocked),
+        int.to_string(summary.blocked),
+        work_surface.Blocked,
+      ),
     ],
-    [
-      div([attribute.class("kanban-surface-copy")], [
-        h3([attribute.class("kanban-surface-title")], [
-          text(i18n.t(config.locale, i18n_text.Kanban)),
-        ]),
-        p([attribute.class("kanban-surface-purpose")], [
-          text(i18n.t(config.locale, i18n_text.KanbanSurfacePurpose)),
-        ]),
-      ]),
-      div([attribute.class("kanban-board-summary")], [
-        view_summary_chip(
-          i18n.t(config.locale, i18n_text.KanbanSummaryCards),
-          summary.cards,
-          "neutral",
-        ),
-        view_summary_chip(
-          i18n.t(config.locale, i18n_text.MetricsAvailable),
-          summary.available,
-          "available",
-        ),
-        view_summary_chip(
-          i18n.t(config.locale, i18n_text.MetricsClaimed),
-          summary.claimed,
-          "claimed",
-        ),
-        view_summary_chip(
-          i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
-          summary.ongoing,
-          "ongoing",
-        ),
-        view_summary_chip(
-          i18n.t(config.locale, i18n_text.Blocked),
-          summary.blocked,
-          "blocked",
-        ),
-      ]),
-    ],
-  )
-}
-
-fn view_summary_chip(label: String, value: Int, tone: String) -> Element(msg) {
-  span(
-    [
-      attribute.class("kanban-summary-chip " <> tone),
-      attribute.attribute("data-testid", "kanban-summary-chip"),
-    ],
-    [
-      span([attribute.class("kanban-summary-value")], [
-        text(int.to_string(value)),
-      ]),
-      span([attribute.class("kanban-summary-label")], [text(label)]),
-    ],
-  )
+    actions: [],
+    extra_class: option.Some("kanban-surface-header"),
+    testid: option.Some("kanban-surface-header"),
+  ))
 }
 
 fn view_column(

@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-11
 
-Estado: Fases 1-4 implementadas y verificadas; fase 5 pendiente.
+Estado: Fases 1-5 implementadas y verificadas.
 
 ## Objetivo
 
@@ -246,6 +246,17 @@ Criterios de aceptacion:
 - Los filtros no compiten con el titulo ni con la accion contextual.
 - Cada vista declara su pregunta principal sin meter texto explicativo largo.
 - La implementacion reduce duplicacion y conserva patrones existentes.
+
+Estado de implementacion, 2026-06-11:
+
+- Aplicada mediante `features/layout/work_surface.gleam` como contrato comun de header de superficie.
+- Pool, Kanban, Capacidades, Personas e Hitos usan el mismo patron de titulo, proposito breve, summary chips, acciones contextuales y contenido principal.
+- Pool conserva la accion contextual `Nueva tarea`, mantiene Canvas/List y resume vista activa y disponibles.
+- Kanban conserva su lectura de cards por estado y reutiliza el summary operativo comun sin convertirse en Pool.
+- Capacidades, Personas e Hitos conservan su pregunta propia y reducen duplicacion de header/summary local.
+- Los estados loading, empty, no-results y error existentes se mantienen con copy especifico por superficie.
+- Tests de contrato y vistas actualizados para cubrir el componente comun y evitar aserciones fragiles de texto global.
+- Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas browser desktop/mobile.
 
 Comando sugerido:
 

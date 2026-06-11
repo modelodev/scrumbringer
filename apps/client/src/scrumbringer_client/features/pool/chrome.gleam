@@ -1,8 +1,10 @@
+import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h2, h3, p, text}
 import lustre/event
 
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -15,25 +17,31 @@ pub fn no_projects(locale: Locale) -> Element(msg) {
   ])
 }
 
-pub fn header(locale: Locale, on_new_task: msg) -> Element(msg) {
-  div([attribute.class("pool-header")], [
-    div([attribute.class("pool-header-main")], [
-      h3([attribute.class("pool-title")], [
-        text(i18n.t(locale, i18n_text.Pool)),
-      ]),
-    ]),
-    button(
-      [
-        attribute.class("btn-sm btn-primary pool-header-action"),
-        attribute.attribute("data-testid", "btn-new-task-pool-header"),
-        event.on_click(on_new_task),
-      ],
-      [
-        text("+ "),
-        text(i18n.t(locale, i18n_text.NewTask)),
-      ],
-    ),
-  ])
+pub fn header(
+  locale: Locale,
+  on_new_task: msg,
+  summary: List(work_surface.SummaryChip),
+) -> Element(msg) {
+  work_surface.header(work_surface.HeaderConfig(
+    title: i18n.t(locale, i18n_text.Pool),
+    purpose: i18n.t(locale, i18n_text.PoolPurpose),
+    summary: summary,
+    actions: [
+      button(
+        [
+          attribute.class("btn-sm btn-primary pool-header-action"),
+          attribute.attribute("data-testid", "btn-new-task-pool-header"),
+          event.on_click(on_new_task),
+        ],
+        [
+          text("+ "),
+          text(i18n.t(locale, i18n_text.NewTask)),
+        ],
+      ),
+    ],
+    extra_class: option.Some("pool-header"),
+    testid: option.Some("pool-surface-header"),
+  ))
 }
 
 pub fn tasks_loading(locale: Locale) -> Element(msg) {

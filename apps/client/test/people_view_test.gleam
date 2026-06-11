@@ -336,7 +336,8 @@ pub fn people_view_availability_prefers_ongoing_by_test() {
     people_view.view(people_config(model)) |> element.to_document_string
 
   assert_contains(html, "Working")
-  assert_not_contains(html, "Busy")
+  assert_contains(html, "badge badge-primary people-status-chip")
+  assert_not_contains(html, "badge badge-warning people-status-chip")
 }
 
 pub fn people_view_surface_summary_and_collapsed_balance_test() {
@@ -405,10 +406,16 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
     people_view.view(people_config(model)) |> element.to_document_string
 
   assert_contains(html, "Team load by current work and claimed tasks.")
-  assert_contains(html, "1 free")
-  assert_contains(html, "1 busy")
-  assert_contains(html, "1 working now")
-  assert_contains(html, "5 claimed")
+  assert_contains(html, "work-surface-chip success")
+  assert_contains(html, ">1<")
+  assert_contains(html, ">Free<")
+  assert_contains(html, "work-surface-chip warning")
+  assert_contains(html, ">Busy<")
+  assert_contains(html, "work-surface-chip ongoing")
+  assert_contains(html, ">Working<")
+  assert_contains(html, "work-surface-chip claimed")
+  assert_contains(html, ">5<")
+  assert_contains(html, ">Claimed<")
   assert_contains(html, "1 ongoing")
   assert_contains(html, "4 claimed")
   assert_contains(html, "2 cards")

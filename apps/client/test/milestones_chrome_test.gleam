@@ -2,6 +2,7 @@ import gleam/string
 import lustre/element
 import lustre/element/html.{button, text}
 
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/milestones/chrome
 import scrumbringer_client/i18n/locale
 
@@ -29,11 +30,18 @@ pub fn milestones_chrome_renders_error_without_root_model_test() {
 
 pub fn milestones_chrome_renders_header_without_root_model_test() {
   let html =
-    chrome.header(locale.En, button([], [text("Create")]))
+    chrome.header(locale.En, button([], [text("Create")]), [
+      work_surface.summary_chip("Active", "1", work_surface.Primary),
+    ])
     |> element.to_document_string
 
+  assert_contains(html, "work-surface-header")
   assert_contains(html, "milestones-header")
-  assert_contains(html, "milestones-toolbar-actions")
+  assert_contains(html, "work-surface-actions")
+  assert_contains(html, "Delivery structure by objective")
+  assert_contains(html, "work-surface-chip primary")
   assert_contains(html, ">Milestones<")
+  assert_contains(html, ">1<")
+  assert_contains(html, ">Active<")
   assert_contains(html, ">Create<")
 }

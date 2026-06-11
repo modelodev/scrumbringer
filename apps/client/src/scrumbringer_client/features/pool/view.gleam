@@ -26,6 +26,7 @@ import lustre/event
 
 import domain/task.{type Task, Task}
 
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
@@ -33,7 +34,9 @@ import scrumbringer_client/features/pool/chrome as pool_chrome
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
@@ -74,11 +77,17 @@ pub type BodyConfig(msg) {
 pub fn view_pool_main(config: MainConfig(msg)) -> Element(msg) {
   case config.has_active_projects {
     False -> pool_chrome.no_projects(config.locale)
-    True ->
+    True -> {
+      let task_state = available_tasks.state(config.available_tasks)
       div([attribute.class("section pool-view")], [
-        pool_chrome.header(config.locale, config.on_create_opened),
-        view_tasks(config),
+        pool_chrome.header(
+          config.locale,
+          config.on_create_opened,
+          pool_summary(config, task_state),
+        ),
+        view_tasks(config, task_state),
       ])
+    }
   }
 }
 
@@ -136,8 +145,11 @@ pub fn view_task_card(config: task_card.Config(msg)) -> Element(msg) {
 }
 
 /// Renders the task list/canvas based on loading state and view mode.
-fn view_tasks(config: MainConfig(msg)) -> Element(msg) {
-  case available_tasks.state(config.available_tasks) {
+fn view_tasks(
+  config: MainConfig(msg),
+  task_state: available_tasks.State,
+) -> Element(msg) {
+  case task_state {
     available_tasks.Loading -> pool_chrome.tasks_loading(config.locale)
     available_tasks.Error(message) -> error_notice.view(message)
     available_tasks.Empty(has_filters: True) ->
@@ -145,6 +157,34 @@ fn view_tasks(config: MainConfig(msg)) -> Element(msg) {
     available_tasks.Empty(has_filters: False) ->
       pool_chrome.tasks_onboarding(config.locale, config.on_create_opened)
     available_tasks.Ready(tasks) -> view_tasks_collection(config, tasks)
+  }
+}
+
+fn pool_summary(
+  config: MainConfig(msg),
+  task_state: available_tasks.State,
+) -> List(work_surface.SummaryChip) {
+  let view_label = case config.view_mode {
+    pool_prefs.Canvas -> i18n.t(config.locale, i18n_text.Canvas)
+    pool_prefs.List -> i18n.t(config.locale, i18n_text.List)
+  }
+  let view_chip =
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.WorkSurfaceView),
+      view_label,
+      work_surface.Neutral,
+    )
+
+  case task_state {
+    available_tasks.Ready(tasks) -> [
+      view_chip,
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.AvailableCount),
+        int.to_string(list.length(tasks)),
+        work_surface.Available,
+      ),
+    ]
+    _ -> [view_chip]
   }
 }
 

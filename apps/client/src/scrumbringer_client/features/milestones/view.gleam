@@ -1,8 +1,10 @@
 import domain/card as card_domain
-import domain/milestone.{type MilestoneProgress}
+import domain/milestone.{type MilestoneProgress, Active, Completed, Ready}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked, unwrap}
 import domain/task as task_domain
+import gleam/int
+import gleam/list
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
@@ -10,6 +12,7 @@ import lustre/element/html.{button, div, text}
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/milestones/actions as milestone_actions
 import scrumbringer_client/features/milestones/card_actions as milestone_card_actions
 import scrumbringer_client/features/milestones/chrome as milestone_chrome
@@ -149,13 +152,46 @@ fn view_master_detail(
       attribute.attribute("data-testid", "milestones-view"),
     ],
     [
-      milestone_chrome.header(config.locale, view_create_button(config)),
+      milestone_chrome.header(
+        config.locale,
+        view_create_button(config),
+        milestone_summary(config.locale, items),
+      ),
       div([attribute.class("milestones-shell")], [
         view_milestone_list_pane(config, items, selected),
         view_milestone_detail_pane(config, selected),
       ]),
     ],
   )
+}
+
+fn milestone_summary(
+  locale: Locale,
+  items: List(MilestoneProgress),
+) -> List(work_surface.SummaryChip) {
+  [
+    work_surface.summary_chip(
+      i18n.t(locale, i18n_text.MilestonesActive),
+      int.to_string(
+        list.count(items, fn(progress) { progress.milestone.state == Active }),
+      ),
+      work_surface.Primary,
+    ),
+    work_surface.summary_chip(
+      i18n.t(locale, i18n_text.MilestonesReady),
+      int.to_string(
+        list.count(items, fn(progress) { progress.milestone.state == Ready }),
+      ),
+      work_surface.Neutral,
+    ),
+    work_surface.summary_chip(
+      i18n.t(locale, i18n_text.MilestonesCompleted),
+      int.to_string(
+        list.count(items, fn(progress) { progress.milestone.state == Completed }),
+      ),
+      work_surface.Success,
+    ),
+  ]
 }
 
 fn view_milestone_list_pane(

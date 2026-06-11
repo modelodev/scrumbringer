@@ -13,11 +13,12 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h3, h4, p, section, span, text}
+import lustre/element/html.{div, h4, p, section, span, text}
 import lustre/element/keyed
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_ffi
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -81,7 +82,8 @@ type LaneState {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let content = case derive_state(config) {
+  let state = derive_state(config)
+  let content = case state {
     LoadingState ->
       view_state_message(
         "capability-board-state capability-board-loading",
@@ -111,15 +113,56 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "capability-board"),
     ],
     [
-      h3([attribute.class("capability-board-title")], [
-        text(i18n.t(config.locale, i18n_text.CapabilitiesBoard)),
-      ]),
-      p([attribute.class("capability-board-purpose")], [
-        text(i18n.t(config.locale, i18n_text.CapabilityBoardPurpose)),
-      ]),
+      view_surface_header(config, state),
       content,
     ],
   )
+}
+
+fn view_surface_header(config: Config(msg), state: ViewState) -> Element(msg) {
+  work_surface.header(work_surface.HeaderConfig(
+    title: i18n.t(config.locale, i18n_text.CapabilitiesBoard),
+    purpose: i18n.t(config.locale, i18n_text.CapabilityBoardPurpose),
+    summary: capability_summary(config, state),
+    actions: [],
+    extra_class: Some("capability-board-header"),
+    testid: Some("capability-board-header"),
+  ))
+}
+
+fn capability_summary(
+  config: Config(msg),
+  state: ViewState,
+) -> List(work_surface.SummaryChip) {
+  case state {
+    ReadyState(rows) -> [
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.MetricsAvailable),
+        int.to_string(sum_rows(rows, fn(row) { list.length(row.pending) })),
+        work_surface.Available,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.MetricsClaimed),
+        int.to_string(sum_rows(rows, fn(row) { list.length(row.claimed) })),
+        work_surface.Claimed,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.MetricsOngoing),
+        int.to_string(sum_rows(rows, fn(row) { list.length(row.ongoing) })),
+        work_surface.Ongoing,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.Blocked),
+        int.to_string(sum_rows(rows, fn(row) { row.blocked_count })),
+        work_surface.Blocked,
+      ),
+    ]
+    _ -> []
+  }
+}
+
+fn sum_rows(rows: List(CapabilityRow), value: fn(CapabilityRow) -> Int) -> Int {
+  list.fold(rows, 0, fn(total, row) { total + value(row) })
 }
 
 fn derive_state(config: Config(msg)) -> ViewState {

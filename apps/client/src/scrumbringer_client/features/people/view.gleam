@@ -7,7 +7,7 @@ import gleam/option.{type Option, None, Some, from_result}
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h3, li, p, section, span, text, ul}
+import lustre/element/html.{button, div, li, p, section, span, text, ul}
 import lustre/event
 
 import domain/card.{type CardColor}
@@ -16,6 +16,7 @@ import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_state
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/people/state as people_state
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -214,40 +215,35 @@ fn view_surface_header(
 ) -> Element(msg) {
   let summary = summarize_people(people)
 
-  div([attribute.class("people-surface-header")], [
-    div([attribute.class("people-surface-copy")], [
-      h3([attribute.class("people-title")], [
-        text(i18n.t(config.locale, i18n_text.People)),
-      ]),
-      p([attribute.class("people-purpose")], [
-        text(i18n.t(config.locale, i18n_text.PeoplePurpose)),
-      ]),
-    ]),
-    div([attribute.class("people-summary-chips")], [
-      view_row_metric(
-        i18n.t(config.locale, i18n_text.PeopleFreeCount(summary.free_count)),
-        badge.Success,
+  work_surface.header(work_surface.HeaderConfig(
+    title: i18n.t(config.locale, i18n_text.People),
+    purpose: i18n.t(config.locale, i18n_text.PeoplePurpose),
+    summary: [
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.PeopleFreeLabel),
+        int.to_string(summary.free_count),
+        work_surface.Success,
       ),
-      view_row_metric(
-        i18n.t(config.locale, i18n_text.PeopleBusyCount(summary.busy_count)),
-        badge.Warning,
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.PeopleBusyLabel),
+        int.to_string(summary.busy_count),
+        work_surface.Warning,
       ),
-      view_row_metric(
-        i18n.t(
-          config.locale,
-          i18n_text.PeopleWorkingCount(summary.working_count),
-        ),
-        badge.Primary,
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.PeopleWorkingLabel),
+        int.to_string(summary.working_count),
+        work_surface.Ongoing,
       ),
-      view_row_metric(
-        i18n.t(
-          config.locale,
-          i18n_text.PeopleClaimedTotal(summary.claimed_total),
-        ),
-        badge.Neutral,
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.PeopleClaimedLabel),
+        int.to_string(summary.claimed_total),
+        work_surface.Claimed,
       ),
-    ]),
-  ])
+    ],
+    actions: [],
+    extra_class: Some("people-surface-header"),
+    testid: Some("people-surface-header"),
+  ))
 }
 
 fn summarize_people(people: List(people_state.PersonStatus)) -> PeopleSummary {

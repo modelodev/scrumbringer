@@ -567,7 +567,8 @@ pub fn milestones_view_hides_completed_section_when_filter_unchecked_test() {
     |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Completed") |> assert_false
+  string.contains(html, "<h4 class=\"milestones-section-title\">Completed</h4>")
+  |> assert_false
 }
 
 pub fn milestones_view_shows_completed_section_when_filter_checked_test() {

@@ -183,6 +183,8 @@ pub fn translate(text: Text) -> String {
     text.CapabilitiesBoard -> "Capacidades"
     text.People -> "Personas"
     text.Milestones -> "Hitos"
+    text.WorkSurfaceView -> "Vista"
+    text.PoolPurpose -> "Elige la próxima tarea personal a reclamar."
     text.ShowFilters -> "Mostrar filtros"
     text.HideFilters -> "Ocultar filtros"
     text.NewTask -> "Nueva tarea"
@@ -235,6 +237,10 @@ pub fn translate(text: Text) -> String {
     text.PeopleLoadError -> "No se pudieron cargar las personas"
     text.PeoplePurpose ->
       "Carga del equipo por trabajo en curso y tareas reclamadas."
+    text.PeopleFreeLabel -> "Libres"
+    text.PeopleBusyLabel -> "Ocupadas"
+    text.PeopleWorkingLabel -> "En curso"
+    text.PeopleClaimedLabel -> "Reclamadas"
     text.PeopleFreeCount(count) -> int.to_string(count) <> " libres"
     text.PeopleBusyCount(count) -> int.to_string(count) <> " ocupadas"
     text.PeopleWorkingCount(count) -> int.to_string(count) <> " en curso"
@@ -265,6 +271,8 @@ pub fn translate(text: Text) -> String {
     text.MilestonesEmpty -> "Aun no hay hitos"
     text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
     text.MilestonesLoadError -> "No se pudieron cargar los hitos"
+    text.MilestonesPurpose ->
+      "Estructura de entrega por objetivo, trabajo suelto y avance de cards."
     text.CreateMilestone -> "Crear hito"
     text.CreateFirstMilestone -> "Crear primer hito"
     text.MilestoneCreated -> "Hito creado"

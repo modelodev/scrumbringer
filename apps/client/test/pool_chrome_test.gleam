@@ -1,6 +1,7 @@
 import gleam/string
 import lustre/element
 
+import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/pool/chrome
 import scrumbringer_client/i18n/locale
 
@@ -19,13 +20,20 @@ pub fn pool_chrome_renders_no_projects_without_root_model_test() {
 
 pub fn pool_chrome_renders_header_without_root_model_test() {
   let html =
-    chrome.header(locale.En, "new-task")
+    chrome.header(locale.En, "new-task", [
+      work_surface.summary_chip("Available", "2", work_surface.Available),
+    ])
     |> element.to_document_string
 
+  assert_contains(html, "work-surface-header")
   assert_contains(html, "pool-header")
+  assert_contains(html, "Choose the next personal task to claim.")
+  assert_contains(html, "work-surface-chip available")
   assert_contains(html, "btn-primary pool-header-action")
   assert_contains(html, "btn-new-task-pool-header")
   assert_contains(html, ">Pool<")
+  assert_contains(html, ">2<")
+  assert_contains(html, ">Available<")
   assert_contains(html, "New task")
 }
 

@@ -242,7 +242,7 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
 
   assert_contains(html, "kanban-surface-header")
   assert_contains(html, "Card flow by state")
-  assert_contains(html, "kanban-summary-chip")
+  assert_contains(html, "work-surface-chip")
   assert_contains(html, "Cards")
   assert_contains(html, "Available")
   assert_contains(html, "Claimed")

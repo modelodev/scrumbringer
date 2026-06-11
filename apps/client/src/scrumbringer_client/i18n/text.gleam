@@ -162,6 +162,8 @@ pub type Text {
   CapabilitiesBoard
   People
   Milestones
+  WorkSurfaceView
+  PoolPurpose
   ShowFilters
   HideFilters
   NewTask
@@ -205,6 +207,10 @@ pub type Text {
   PeopleLoading
   PeopleLoadError
   PeoplePurpose
+  PeopleFreeLabel
+  PeopleBusyLabel
+  PeopleWorkingLabel
+  PeopleClaimedLabel
   PeopleFreeCount(count: Int)
   PeopleBusyCount(count: Int)
   PeopleWorkingCount(count: Int)
@@ -232,6 +238,7 @@ pub type Text {
   MilestonesEmpty
   MilestonesNoResults
   MilestonesLoadError
+  MilestonesPurpose
   CreateMilestone
   CreateFirstMilestone
   MilestoneCreated
