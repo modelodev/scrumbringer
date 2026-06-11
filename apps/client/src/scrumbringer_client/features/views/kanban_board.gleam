@@ -275,8 +275,6 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
     tasks: next_relevant_tasks(cwp.tasks),
     org_users: config.org_users,
     preview_limit: 3,
-    surface_variant: card_with_tasks_surface.Kanban,
-    task_density: card_with_tasks_surface.Compact,
     progress_completed: cwp.completed,
     progress_total: cwp.total,
     description: option.Some(cwp.card.description),

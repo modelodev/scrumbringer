@@ -3,22 +3,14 @@
 /// Provides layout CSS chunk.
 pub fn css() -> List(String) {
   [
-    // Three-panel layout (Story 4.4)
-    // ======================================================================    // Base layout - desktop 3 columns
     ".three-panel-layout { display: grid; grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(280px, 320px); gap: var(--sb-space-lg); min-height: calc(100vh - 48px); align-items: start; }",
-    // Left panel (navigation)
     ".panel-left { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-xl); padding: var(--sb-space-lg); display: flex; flex-direction: column; gap: var(--sb-space-md); position: sticky; top: var(--sb-space-lg); max-height: calc(100vh - 48px); overflow-y: auto; }",
-    // Center panel (main content)
     ".panel-center { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-xl); padding: var(--sb-space-lg); min-width: 0; width: 100%; animation: view-fade-in 0.15s ease; }",
     "@keyframes view-fade-in { from { opacity: 0.6; } to { opacity: 1; } }",
-    // Right panel (activity/profile)
     ".panel-right { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-xl); padding: var(--sb-space-lg); display: flex; flex-direction: column; gap: var(--sb-space-lg); position: sticky; top: var(--sb-space-lg); max-height: calc(100vh - 48px); overflow-y: auto; }",
-    // Tablet: 2 columns (left + center, right as drawer)
     "@media (max-width: 1180px) { .three-panel-layout { grid-template-columns: minmax(200px, 220px) minmax(0, 1fr); } .panel-right { display: none; } }",
-    // Mobile: 1 column (center only, both panels as drawers)
     "@media (max-width: 768px) { .three-panel-layout { grid-template-columns: 1fr; min-height: 0; } .panel-left { display: none; } .panel-right { display: none; } .panel-center { padding: var(--sb-space-md); } }",
-    // ======================================================================    // Left Panel Components (Story 4.4)
-    // ======================================================================    ".left-panel-content { display: flex; flex-direction: column; gap: var(--sb-gap-section); }",
+    ".left-panel-content { display: flex; flex-direction: column; gap: var(--sb-gap-section); }",
     ".project-selector-section { margin-bottom: var(--sb-gap-related); }",
     ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: var(--sb-radius-lg); border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: var(--sb-weight-semibold); font-size: var(--sb-font-md); line-height: var(--sb-line-tight); color: var(--sb-text-strong); }",
     ".panel-section { display: flex; flex-direction: column; gap: var(--sb-gap-related); }",
@@ -29,7 +21,6 @@ pub fn css() -> List(String) {
     ".btn-action:hover { background: var(--sb-elevated); }",
     ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
     ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
-    // Primary action buttons (Story 4.8 UX: solid button for clear affordance)
     ".btn-action-primary { background: var(--sb-primary); border: 1px solid var(--sb-primary); color: var(--sb-inverse); font-weight: var(--sb-weight-semibold); border-radius: var(--sb-radius-lg); }",
     ".btn-action-primary:hover { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }",
     ".btn-action-primary .btn-icon-prefix { color: inherit; }",
@@ -38,7 +29,6 @@ pub fn css() -> List(String) {
     ".btn-action-shortcut:focus-visible { outline: 2px solid var(--sb-primary); outline-offset: 2px; }",
     ".btn-action-shortcut .btn-icon-prefix { color: var(--sb-primary); }",
     ".btn-primary .btn-icon-prefix { color: inherit; }",
-    // Navigation links within TRABAJO section (Story 4.7 AC2, AC3)
     ".nav-links { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sb-gap-group); padding-top: var(--sb-gap-group); border-top: 1px solid color-mix(in oklab, var(--sb-border) 72%, transparent); }",
     ".nav-link { display: flex; align-items: center; gap: var(--sb-gap-related); width: 100%; padding: var(--sb-gap-related) var(--sb-gap-group); text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".nav-link:hover { background: var(--sb-elevated); }",
@@ -47,8 +37,6 @@ pub fn css() -> List(String) {
     ".nav-icon { font-size: 14px; }",
     ".nav-label { flex: 1; }",
     ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
-    // ======================================================================    // Right Panel Components (Story 4.4)
-    // ======================================================================
     ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; min-width: 0; }",
     ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }",
     ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; position: relative; }",
@@ -79,7 +67,6 @@ pub fn css() -> List(String) {
     ".scope-toggle-btn.is-active { background: var(--sb-primary); color: var(--sb-inverse); }",
     ".active-task-card .task-title-row { justify-content: center; }",
     ".active-task-card .task-title { text-align: center; font-weight: var(--sb-weight-medium); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
-    // My cards list (right panel)
     ".my-cards-list { display: flex; flex-direction: column; gap: 6px; min-width: 0; }",
     ".my-card-item { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; padding: 10px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; text-align: left; }",
     ".my-card-item.card-border-gray, .my-card-item.card-border-red, .my-card-item.card-border-orange, .my-card-item.card-border-yellow, .my-card-item.card-border-green, .my-card-item.card-border-blue, .my-card-item.card-border-purple, .my-card-item.card-border-pink { border-color: color-mix(in oklab, var(--sb-card-accent, var(--sb-border)) 34%, var(--sb-border)); background: color-mix(in oklab, var(--sb-card-accent, var(--sb-elevated)) 4%, var(--sb-elevated)); }",
@@ -89,14 +76,10 @@ pub fn css() -> List(String) {
     ".progress-bar-mini { flex: 1; height: 4px; background: var(--sb-border); border-radius: 2px; overflow: hidden; }",
     ".progress-bar-mini .progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 2px; }",
     ".card-progress { font-size: var(--sb-font-sm); color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
-    // My Metrics section (Story 4.7 Task 6.1)
-    // Right panel layout (Story 4.8 UX)
     ".right-panel-activity { display: flex; flex-direction: column; gap: 16px; flex: 1; }",
     ".right-panel-footer { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); }",
-    // Section titles with icons (Story 4.8 UX)
     ".section-title-with-icon { display: flex; align-items: center; gap: 8px; }",
     ".section-title-with-icon .nav-icon { color: var(--sb-muted); }",
-    // Preferences popup (Story 4.8 UX: moved from inline to popup)
     ".preferences-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }",
     ".preferences-popup { background: var(--sb-surface); border-radius: 12px; padding: 16px; width: min(320px, 100%); max-height: min(420px, calc(100vh - 32px)); overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }",
     ".popup-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }",
@@ -107,12 +90,8 @@ pub fn css() -> List(String) {
     ".preference-icon { display: flex; align-items: center; color: var(--sb-muted); }",
     ".preference-select { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: var(--sb-font-md); cursor: pointer; }",
     ".preference-select:hover { border-color: var(--sb-primary); }",
-    // Empty section hints (right panel - inline contextual hints)
-    // padding-left: 24px aligns with title text after icon (16px icon + 8px gap)
     ".section-empty-hint { color: var(--sb-link); font-size: var(--sb-font-sm); font-style: italic; padding: 10px 12px; margin: 4px 0; border: 1px dashed color-mix(in oklab, var(--sb-link) 40%, var(--sb-border)); border-radius: var(--sb-radius-md); background: color-mix(in oklab, var(--sb-link) 6%, var(--sb-surface)); text-align: center; }",
-    // Inside dropzone (has 8px padding), reduce hint padding to maintain alignment
     ".pool-my-tasks-dropzone .section-empty-hint { padding-left: 16px; }",
-    // Profile section (Story 4.8 UX: compact with icon buttons)
     ".profile-section { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; }",
     ".profile-section .user-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
     ".profile-section .user-info .nav-icon { color: var(--sb-muted); flex-shrink: 0; }",
@@ -121,16 +100,14 @@ pub fn css() -> List(String) {
     ".btn-icon-only { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-muted); transition: all 0.15s ease; }",
     ".btn-icon-only:hover { background: var(--sb-elevated); color: var(--sb-text); border-color: var(--sb-border); }",
     ".btn-icon-only.btn-logout:hover { color: var(--sb-error); border-color: var(--sb-error); }",
-    // ======================================================================    // View Mode Toggle (Story 4.4)
-    // ======================================================================    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
+    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
     ".view-mode-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; border: none; border-radius: 8px; cursor: pointer; color: var(--sb-text); transition: all 0.15s ease; }",
     ".view-mode-btn:hover { background: var(--sb-surface); }",
     ".view-mode-btn.active { background: var(--sb-primary); color: var(--sb-inverse); }",
     ".view-mode-icon { font-size: 16px; }",
     ".view-mode-label { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); }",
     "@media (max-width: 768px) { .view-mode-label { display: none; } }",
-    // ======================================================================    // Center Panel / Toolbar (Story 4.4)
-    // ======================================================================    ".center-panel-content { display: flex; flex-direction: column; gap: var(--sb-gap-section); height: 100%; }",
+    ".center-panel-content { display: flex; flex-direction: column; gap: var(--sb-gap-section); height: 100%; }",
     ".center-toolbar { display: flex; align-items: center; gap: var(--sb-gap-group); flex-wrap: wrap; }",
     ".center-filters { display: flex; gap: var(--sb-gap-related) var(--sb-gap-group); align-items: center; flex-wrap: wrap; margin-left: auto; }",
     ".center-filters-work { margin-left: 0; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: var(--sb-gap-related) var(--sb-gap-group); width: 100%; }",
@@ -181,8 +158,7 @@ pub fn css() -> List(String) {
     "@media (max-width: 768px) { .center-panel-content { gap: var(--sb-gap-group); } .center-filters-work { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: var(--sb-gap-related) var(--sb-gap-group); padding: var(--sb-gap-related); border-radius: 10px; background: color-mix(in oklab, var(--sb-elevated) 62%, transparent); } .center-filters-work .filter-field { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--sb-gap-related); min-width: 0; width: 100%; } .center-filters-work .filter-field label { font-size: var(--sb-font-xs); line-height: var(--sb-line-tight); white-space: nowrap; } .center-filters-work .filter-field-scope, .center-filters-work .filter-search { grid-column: 1 / -1; } .center-filters-work .filter-field-scope { grid-template-columns: minmax(88px, auto) minmax(0, 1fr); } .center-filters-work .filter-search { grid-template-columns: minmax(48px, auto) minmax(0, 1fr); } .center-filters-work .filter-field select, .center-filters-work .filter-field input { width: 100%; min-width: 0; min-height: 44px; } .center-filters-work .scope-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .center-filters-work .scope-toggle-btn { min-height: 44px; padding-inline: var(--sb-gap-related); } }",
     "@media (max-width: 380px) { .center-filters-work { grid-template-columns: 1fr; } }",
     "@media (max-width: 768px) { .people-row-header { grid-template-columns: 1fr; align-items: start; } .people-row-balance { justify-content: flex-start; } }",
-    // ======================================================================    // Milestones View
-    // ======================================================================    ".milestones-view { display: flex; flex-direction: column; gap: 14px; }",
+    ".milestones-view { display: flex; flex-direction: column; gap: 14px; }",
     ".milestones-shell { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }",
     ".milestones-list-pane { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px; }",
     ".milestones-list-section { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px 14px; }",
@@ -260,20 +236,19 @@ pub fn css() -> List(String) {
     ".milestone-content-section { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }",
     ".milestone-content-section + .milestone-content-section { border-top: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); padding-top: 12px; }",
     ".milestone-content-note { border: 1px solid color-mix(in oklab, var(--sb-warning) 45%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 8%, var(--sb-surface)); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }",
-    ".card-surface, .card-preview, .kanban-card { width: 100%; box-sizing: border-box; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }",
-    ".card-surface-header, .card-preview-header, .kanban-card-header { display: flex; flex-direction: column; gap: 8px; }",
+    ".card-surface, .kanban-card { width: 100%; box-sizing: border-box; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }",
+    ".card-surface-header, .kanban-card-header { display: flex; flex-direction: column; gap: 8px; }",
     ".card-surface-title-row { display: flex; align-items: flex-start; gap: 8px; }",
     ".card-surface-header-actions { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }",
-    ".card-surface-title, .card-preview-title, .kanban-card-title { flex: 1; display: flex; align-items: center; gap: 6px; text-align: left; border: none; background: transparent; padding: 0; font: inherit; color: inherit; cursor: pointer; min-width: 0; }",
-    ".card-surface-title .card-title, .card-preview-title .card-title, .kanban-card-title .card-title { font-weight: var(--sb-weight-semibold); }",
-    ".card-surface-body, .card-preview-body, .kanban-card-body { display: flex; flex-direction: column; gap: 8px; }",
-    ".card-surface-task-list, .card-preview-tasks, .kanban-card-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }",
+    ".card-surface-title, .kanban-card-title { flex: 1; display: flex; align-items: center; gap: 6px; text-align: left; border: none; background: transparent; padding: 0; font: inherit; color: inherit; cursor: pointer; min-width: 0; }",
+    ".card-surface-title .card-title, .kanban-card-title .card-title { font-weight: var(--sb-weight-semibold); }",
+    ".card-surface-body, .kanban-card-body { display: flex; flex-direction: column; gap: 8px; }",
+    ".card-surface-task-list, .kanban-card-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }",
     ".card-surface-task-row { margin: 0; padding: 0; list-style: none; }",
-    ".card-preview-task { border-radius: 8px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",
-    ".card-surface-overflow, .card-preview-overflow { margin: 0; font-size: var(--sb-font-xs); color: var(--sb-muted); }",
-    ".card-surface-empty, .card-preview-empty { margin: 0; font-size: var(--sb-font-xs); color: var(--sb-muted); }",
+    ".card-surface-overflow { margin: 0; font-size: var(--sb-font-xs); color: var(--sb-muted); }",
+    ".card-surface-empty { margin: 0; font-size: var(--sb-font-xs); color: var(--sb-muted); }",
     ".card-surface-status-items { display: flex; flex-wrap: wrap; gap: 6px; }",
-    ".card-surface-footer, .card-preview-footer { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }",
+    ".card-surface-footer { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }",
     ".milestone-card-wrapper { display: flex; flex-direction: column; gap: 6px; width: 100%; }",
     ".milestone-card-wrapper .card-surface-status-items { gap: 5px; }",
     ".milestone-card-wrapper .card-surface { min-width: 0; max-width: 100%; }",
@@ -325,7 +300,6 @@ pub fn css() -> List(String) {
     ".milestone-badge { font-size: var(--sb-font-xs); border: 1px solid color-mix(in oklab, var(--sb-success) 42%, var(--sb-border)); color: var(--sb-success-text); background: color-mix(in oklab, var(--sb-success) 10%, var(--sb-surface)); border-radius: 999px; padding: 1px 8px; }",
     ".milestones-state { color: var(--sb-muted); padding: 16px 4px; }",
     ".milestones-error { color: var(--sb-error); }",
-    // Milestone-detail specific adjustments over shared detail primitives
     ".milestone-detail-content .detail-header { gap: 8px; }",
     ".milestone-detail-content .detail-title-row { margin-bottom: 6px; }",
     ".milestone-detail-summary { display: flex; flex-direction: column; gap: 8px; }",
@@ -357,8 +331,7 @@ pub fn css() -> List(String) {
     ".pool-view { display: flex; flex-direction: column; gap: var(--sb-gap-section); margin-top: var(--sb-gap-related); }",
     ".pool-header-action { justify-self: end; font-weight: var(--sb-weight-semibold); }",
     "@media (max-width: 768px) { .pool-view { gap: var(--sb-gap-group); margin-top: var(--sb-gap-related); } .work-surface-header { grid-template-columns: 1fr; align-items: start; gap: var(--sb-gap-related); padding-bottom: var(--sb-gap-related); } .work-surface-meta, .work-surface-summary, .work-surface-actions { justify-content: flex-start; } .pool-header-action { min-height: 44px; } }",
-    // ======================================================================    // Grouped List View (Story 4.4)
-    // ======================================================================    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
+    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
     ".grouped-list-empty { text-align: center; color: var(--sb-muted); padding: 40px 20px; }",
     ".card-group { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; }",
     ".card-group-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: transparent; border: none; cursor: pointer; text-align: left; }",
@@ -372,15 +345,12 @@ pub fn css() -> List(String) {
     ".task-item-content { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0; }",
     ".task-status { font-size: var(--sb-font-sm); color: var(--sb-muted); }",
     ".task-status-muted { font-size: var(--sb-font-sm); color: var(--sb-muted); }",
-    // AC7: Claimed by user display
     ".task-claimed-by { font-size: var(--sb-font-sm); color: var(--sb-muted); font-style: italic; display: inline-flex; align-items: center; gap: 4px; }",
     ".task-claimed-icon { display: inline-flex; align-items: center; }",
-    // AC9: Claim button as icon with tooltip
     ".btn-claim { background: var(--sb-success-fill); color: var(--sb-inverse); border-color: var(--sb-success-fill); }",
     ".btn-claim.btn-icon { padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; }",
     ".btn-claim.btn-icon:hover { background: color-mix(in oklab, var(--sb-success-fill) 86%, oklch(0% 0 0)); }",
-    // ======================================================================    // Kanban Board View (Story 4.4)
-    // ======================================================================    ".kanban-view { display: flex; flex-direction: column; gap: var(--sb-gap-section); min-width: 0; height: 100%; }",
+    ".kanban-view { display: flex; flex-direction: column; gap: var(--sb-gap-section); min-width: 0; height: 100%; }",
     ".kanban-board { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: var(--sb-gap-related); align-items: start; min-height: 400px; overflow-x: auto; padding-bottom: 2px; }",
     ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-width: 0; min-height: 200px; }",
     ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); background: color-mix(in oklab, var(--sb-bg) 94%, var(--sb-muted)); }",
@@ -406,7 +376,6 @@ pub fn css() -> List(String) {
     ".card-notes-indicator { font-weight: var(--sb-weight-semibold); color: var(--sb-warning-text); }",
     ".card-surface-description, .kanban-card-desc { font-size: var(--sb-font-sm); color: var(--sb-muted); line-height: var(--sb-line-body); }",
     ".kanban-card-progress { display: flex; align-items: center; gap: 8px; }",
-    // Note: .progress-bar defined in UX IMPROVEMENTS section (L385). kanban uses flex container for layout.
     ".kanban-card-progress .progress-bar { flex: 1; }",
     ".kanban-card-health { display: flex; flex-wrap: wrap; gap: 5px; }",
     ".kanban-health-chip { display: inline-flex; align-items: baseline; gap: 4px; min-height: 22px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 999px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); padding: 1px 7px; color: var(--sb-muted-strong); }",
@@ -416,8 +385,7 @@ pub fn css() -> List(String) {
     ".kanban-health-label { font-size: 11px; }",
     ".progress-fill { width: 100%; height: 100%; background: var(--sb-success-fill); clip-path: inset(0 calc(100% - var(--progress-width, 0%)) 0 0); transition: clip-path var(--sb-transition-slow); }",
     ".progress-text { font-size: var(--sb-font-sm); color: var(--sb-muted); min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }",
-    // ======================================================================    // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
-    // ======================================================================    ".kanban-card-footer { display: flex; justify-content: flex-end; margin-top: var(--sb-space-md); padding-top: var(--sb-space-md); border-top: 1px solid var(--sb-border); }",
+    ".kanban-card-footer { display: flex; justify-content: flex-end; margin-top: var(--sb-space-md); padding-top: var(--sb-space-md); border-top: 1px solid var(--sb-border); }",
     ".kanban-card-footer .btn-add-task { border-color: color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
     ".kanban-card-footer .btn-add-task:hover { background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); border-color: var(--sb-primary); }",
     ".kanban-card-tasks { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 4px; }",
@@ -429,11 +397,8 @@ pub fn css() -> List(String) {
     ".kanban-task-item .task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }",
     ".kanban-task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sb-text); }",
     ".kanban-task-item .task-claimed-by { font-size: 10px; color: var(--sb-muted); flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
-    // Status-specific colors
     ".kanban-task-item.status-completed .task-title { text-decoration: line-through; color: var(--sb-muted); }",
-    // Status dot for available tasks
     ".status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }",
-    // Mini claim button
     ".btn-claim-mini { background: transparent; border: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--sb-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; }",
     ".kanban-task-item:hover .btn-claim-mini { opacity: 1; }",
     ".btn-claim-mini:hover { color: var(--sb-primary); background: var(--sb-surface); }",
@@ -475,9 +440,6 @@ pub fn css() -> List(String) {
     ".capability-board .btn-claim { background: color-mix(in oklab, var(--sb-success-fill) 12%, var(--sb-surface)); border-color: color-mix(in oklab, var(--sb-success-fill) 34%, var(--sb-border)); color: var(--sb-success); }",
     ".capability-board .btn-claim:hover, .capability-board .btn-claim:focus-visible { background: color-mix(in oklab, var(--sb-success-fill) 20%, var(--sb-surface)); border-color: var(--sb-success); color: var(--sb-success); }",
     "@media (max-width: 1024px) { .capability-board-row-header { grid-template-columns: 1fr; } .capability-board-row-summary { justify-content: flex-start; } .capability-board-row-grid { grid-template-columns: 1fr; } }",
-    // =============================================================================
-    // Responsive Drawers (Story 4.4 - Phase 6)
-    // =============================================================================
     ".drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 80; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }",
     ".drawer-overlay.open { opacity: 1; pointer-events: auto; }",
     ".drawer { position: fixed; top: 0; bottom: 0; width: min(360px, calc(100vw - 32px)); background: var(--sb-surface); z-index: 81; transform: translateX(-100%); transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); display: flex; flex-direction: column; box-shadow: var(--sb-shadow-modal); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }",
@@ -486,19 +448,12 @@ pub fn css() -> List(String) {
     ".drawer-header { display: flex; align-items: center; justify-content: flex-end; min-height: 56px; padding: 8px 12px; border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".drawer-content { flex: 1; overflow-y: auto; padding: 12px; overscroll-behavior: contain; }",
     ".drawer-close { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--sb-muted); min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }",
-    // =============================================================================
-    // Mobile Mini Task Bar (Story 4.4 - Phase 6)
-    // =============================================================================
     ".mini-task-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sb-primary); color: var(--sb-inverse); padding: 12px 16px; display: none; align-items: center; gap: 12px; z-index: 90; }",
     "@media (max-width: 768px) { .mini-task-bar.visible { display: flex; } }",
     ".mini-task-bar .task-title { flex: 1; font-weight: var(--sb-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
     ".mini-task-bar .task-timer { font-family: var(--sb-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--sb-weight-semibold); }",
-    // =============================================================================
-    // Mobile Header (Story 4.4 - Phase 6)
-    // =============================================================================
     ".mobile-header { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--sb-surface); border-bottom: 1px solid var(--sb-border); }",
     "@media (max-width: 768px) { .mobile-header { display: flex; } }",
     ".menu-hamburger, .menu-user { background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 8px; }",
-    // =============================================================================
   ]
 }
