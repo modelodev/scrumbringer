@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-11
 
-Estado: Fases 1-3 implementadas y verificadas; fases 4-5 pendientes.
+Estado: Fases 1-4 implementadas y verificadas; fase 5 pendiente.
 
 ## Objetivo
 
@@ -202,6 +202,15 @@ Criterios de aceptacion:
 - Las cards dentro del hito se leen igual que en Kanban.
 - Las tareas sueltas tienen una llamada clara sin ser alarmismo.
 - El master-detail sigue siendo usable en desktop y mobile.
+
+Estado de implementacion, 2026-06-11:
+
+- Aplicada en `features/milestones`, `ui/card_with_tasks_preview.gleam`, `styles/layout.gleam` y tests de Hitos.
+- El detalle mantiene master-detail y refuerza una banda de resumen visible con progreso, cards, tasks en cards, tasks sueltas, bloqueos y cards vacias.
+- Las acciones de hito quedan por debajo de estado, descripcion, resumen y progreso para no competir con la lectura de salud.
+- Las cards internas reutilizan la mini-gramatica de Kanban mediante `card_with_tasks_preview` y chips de salud por disponibles, reclamadas, en curso y bloqueadas.
+- Las tareas sueltas se presentan como trabajo estructural pendiente de agrupar, con una llamada visible sin convertirlo en alarma.
+- Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas desktop/mobile.
 
 Comando sugerido:
 

@@ -126,6 +126,9 @@ pub fn work_items_renders_cards_from_config_without_root_model_test() {
   assert_contains(html, "Planning Card 10")
   assert_contains(html, "Loose Task 30")
   assert_contains(html, "milestone-card-row:1:10")
+  assert_contains(html, "milestone-card-health-chip")
+  assert_contains(html, "Available: 1")
+  assert_contains(html, "Blocked: 1")
   assert_contains(html, "milestone-move-menu-card:1:10")
   assert_contains(html, "draggable=\"true\"")
 }
@@ -137,6 +140,8 @@ pub fn work_items_renders_loose_tasks_from_config_without_root_model_test() {
 
   assert_contains(html, "Loose Task 20")
   assert_contains(html, "Available")
+  assert_contains(html, "Loose tasks")
+  assert_contains(html, "These tasks are not grouped inside a card yet")
   assert_contains(html, "milestone-task-row:1:20")
   assert_contains(html, "milestone-move-menu-task:1:20")
   assert_contains(html, "draggable=\"true\"")

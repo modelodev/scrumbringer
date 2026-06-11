@@ -105,6 +105,10 @@ pub fn content_pane_renders_from_config_without_root_model_test() {
 
   assert_contains(html, "Milestone")
   assert_contains(html, "Delivery slice")
+  assert_contains(html, "milestone-structure-strip")
+  assert_contains(html, "Cards 1/2")
+  assert_contains(html, "2 tasks in cards")
   assert_contains(html, "3 loose tasks")
+  assert_contains(html, "1 blocked tasks")
   assert_contains(html, "metrics summary")
 }

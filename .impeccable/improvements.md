@@ -583,3 +583,21 @@ Criterios de aceptación:
 - Las tareas se leen como lista ligera por estado de carga.
 - El color de card sigue presente como contexto secundario y accesible.
 - La fila colapsada sigue mostrando las cards implicadas por persona.
+
+### RB-031 - Convertir Hitos en lectura de estructura y salud de entrega
+
+Prioridad: P1
+
+Estado: aplicado en Fase 4 de `.impeccable/work-surfaces-redesign-phase.md` el 2026-06-11.
+
+Superficies: `features/milestones`, `ui/card_with_tasks_preview.gleam`, `styles/layout.gleam` y tests de Hitos.
+
+Problema: Hitos ya usaba master-detail, pero el detalle podia leerse como una lista de cards/tareas con acciones cercanas al titulo. La informacion de estructura existia, pero no era la primera lectura operativa: progreso, trabajo dentro de cards, tareas sueltas, bloqueos y cards vacias no aparecian como un resumen de salud unico.
+
+Mejora aplicada: el detalle de hito incorpora una banda visible de resumen estructural con progreso, cards totales, tasks en cards, tasks sueltas, bloqueos y cards vacias. Las acciones de hito bajan de prioridad visual y quedan bajo el estado/progreso. Las cards internas reutilizan `card_with_tasks_preview` con chips de salud equivalentes a Kanban, y las tareas sueltas se presentan como trabajo pendiente de estructurar sin tono alarmista.
+
+Criterios de aceptación:
+- Hitos explica estructura y salud de entrega antes de listar contenido.
+- Las cards internas comparten la mini-gramatica de Kanban.
+- Las tareas sueltas tienen una llamada clara como deuda estructural.
+- El master-detail conserva su contrato desktop/mobile.

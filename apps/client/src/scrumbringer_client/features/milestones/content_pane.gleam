@@ -64,43 +64,95 @@ fn view_header(config: Config(msg)) -> Element(msg) {
           ]),
         ]),
       ]),
-      view_header_actions(config),
     ]),
     case progress.milestone.description {
       option.Some(description) if description != "" ->
         p([attribute.class("milestone-item-description")], [text(description)])
       _ -> none()
     },
-    div([attribute.class("milestone-item-stats")], [
-      stat_pill(
-        config.locale,
-        i18n_text.MilestoneCardsCount(progress.cards_total),
-      ),
-      stat_pill(
-        config.locale,
-        i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
-      ),
-      stat_pill(
-        config.locale,
-        i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
-      ),
-    ]),
+    view_structural_summary_strip(config),
     card_progress.view(
       progress.cards_completed + progress.tasks_completed,
       progress.cards_total + progress.tasks_total,
       card_progress.Compact,
     ),
+    view_header_actions(config),
   ])
 }
 
-fn stat_pill(locale: Locale, label: i18n_text.Text) -> Element(msg) {
-  span([attribute.class("milestone-stat-pill")], [
-    text(i18n.t(locale, label)),
-  ])
+fn view_structural_summary_strip(config: Config(msg)) -> Element(msg) {
+  let progress = config.progress
+
+  div(
+    [
+      attribute.class("milestone-structure-strip"),
+      attribute.attribute("data-testid", "milestone-structure-strip"),
+    ],
+    [
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneCardsProgress(
+            progress.cards_completed,
+            progress.cards_total,
+          ),
+        ),
+        "progress",
+      ),
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneCardsCount(progress.cards_total),
+        ),
+        "cards",
+      ),
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
+        ),
+        "tasks",
+      ),
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
+        ),
+        "loose",
+      ),
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
+        ),
+        "blocked",
+      ),
+      summary_chip(
+        i18n.t(
+          config.locale,
+          i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
+        ),
+        "empty",
+      ),
+    ],
+  )
+}
+
+fn summary_chip(label: String, tone: String) -> Element(msg) {
+  span(
+    [
+      attribute.class("milestone-structure-chip " <> tone),
+      attribute.attribute("data-testid", "milestone-structure-chip"),
+    ],
+    [text(label)],
+  )
 }
 
 fn view_header_actions(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("milestone-detail-actions")], config.actions)
+  case config.actions {
+    [] -> none()
+    _ -> div([attribute.class("milestone-detail-actions")], config.actions)
+  }
 }
 
 fn view_summary_block(config: Config(msg)) -> Element(msg) {

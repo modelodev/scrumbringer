@@ -346,6 +346,11 @@ fn sample_card_task(id: Int, _milestone_id: Int, card_id: Int) -> Task {
   )
 }
 
+fn sample_blocked_card_task(id: Int, milestone_id: Int, card_id: Int) -> Task {
+  let task = sample_card_task(id, milestone_id, card_id)
+  Task(..task, blocked_count: 1)
+}
+
 pub fn milestones_view_loading_state_test() {
   let html =
     base_model()
@@ -749,6 +754,31 @@ pub fn milestones_view_detail_pane_renders_progress_and_content_test() {
   string.contains(html, "data-testid=\"milestone-task-row:93:801\"")
   |> assert_true
   string.contains(html, "tasks in cards") |> assert_true
+}
+
+pub fn milestones_view_detail_surfaces_phase4_structure_summary_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(150, Ready)]))
+    |> with_cards([sample_card(960, 150)])
+    |> with_tasks([
+      sample_loose_task(961, 150),
+      sample_blocked_card_task(962, 150, 960),
+    ])
+    |> with_selected_milestone(150)
+    |> view_milestones
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestone-structure-strip\"")
+  |> assert_true
+  string.contains(html, "3 cards") |> assert_true
+  string.contains(html, "1 tasks in cards") |> assert_true
+  string.contains(html, "1 loose tasks") |> assert_true
+  string.contains(html, "1 blocked tasks") |> assert_true
+  string.contains(html, "milestone-card-health-chip") |> assert_true
+  string.contains(html, "Loose tasks") |> assert_true
+  string.contains(html, "not grouped inside a card yet") |> assert_true
 }
 
 pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
