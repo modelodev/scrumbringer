@@ -289,6 +289,7 @@ fn view_task_item(
     task_item.Config(
       container_class: "task-item " <> card_border_class <> blocked_class,
       content_class: "task-item-content",
+      leading: None,
       on_click: Some(config.on_task_click(task.id)),
       icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
       icon_class: None,

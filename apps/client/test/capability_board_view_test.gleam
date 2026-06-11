@@ -212,6 +212,8 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
   assert_contains(html, "Docs refresh")
   assert_not_contains(html, "Completed task")
   assert_contains(html, "task-item card-border-blue")
+  assert_contains(html, "task-card-identity-swatch")
+  assert_contains(html, "title=\"Sprint\"")
   assert_contains(html, "task-claim-btn")
   assert_contains(html, "Claimed by admin@example.com")
 }

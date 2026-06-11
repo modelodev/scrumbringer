@@ -63,6 +63,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         <> blocked_class
         <> config.highlight_class,
       content_class: "task-row-title",
+      leading: opt.None,
       on_click: opt.Some(config.on_open),
       icon: opt.Some(task_type_icon.view(task_type.icon, 16, config.theme)),
       icon_class: opt.None,

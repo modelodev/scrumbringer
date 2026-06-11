@@ -528,3 +528,20 @@ Criterios de aceptación:
 - Los grupos internos se leen como estados dentro de una skill, no como otro Kanban.
 - Claim sigue accesible sin convertirse en accion principal visual.
 - Desktop y mobile no presentan overflow ni grupos comprimidos.
+
+### RB-028 - Reutilizar identidad de card en tareas de Capacidades
+
+Prioridad: P2
+
+Estado: aplicado el 2026-06-11.
+
+Superficies: `features/capability_board/view.gleam`, `styles/layout.gleam` y tests de Capacidades.
+
+Problema: las tareas dentro de Capacidades ya heredaban el color de card en borde/fondo, pero no el mismo simbolo de identidad usado en el sidebar. Esto dificultaba relacionar visualmente una task de Capacidades con su card cuando se escaneaban varias skills.
+
+Mejora aplicada: las tasks de Capacidades reutilizan `task-card-identity-swatch` junto al icono de tipo, con tooltip de card cuando existe. El patron sigue siendo secundario, compacto y no compite con el claim icon-only.
+
+Criterios de aceptación:
+- Una task de Capacidades puede relacionarse visualmente con su card usando el mismo indicador que el sidebar.
+- El swatch no desplaza ni tapa el texto de la task.
+- Las tasks sin card no introducen una marca falsa.

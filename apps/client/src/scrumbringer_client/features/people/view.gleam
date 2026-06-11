@@ -228,6 +228,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
     task_item.Config(
       container_class: "task-item " <> border_class,
       content_class: "task-item-content",
+      leading: None,
       on_click: Some(config.on_task_click(task.id)),
       icon: None,
       icon_class: None,

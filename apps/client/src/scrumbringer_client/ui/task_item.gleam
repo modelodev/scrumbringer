@@ -16,6 +16,7 @@ pub type Config(msg) {
     container_class: String,
     content_class: String,
     on_click: Option(msg),
+    leading: Option(lelement.Element(msg)),
     icon: Option(lelement.Element(msg)),
     icon_class: Option(String),
     title: String,
@@ -33,6 +34,7 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
     container_class: container_class,
     content_class: content_class,
     on_click: on_click,
+    leading: leading,
     icon: icon,
     icon_class: icon_class,
     title: title,
@@ -64,6 +66,11 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
 
   let icon_el = case icon {
     Some(view) -> span([attribute.class(icon_css)], [view])
+    None -> lelement.none()
+  }
+
+  let leading_el = case leading {
+    Some(view) -> view
     None -> lelement.none()
   }
 
@@ -103,7 +110,7 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
     _, _ -> div([attribute.class(slot_class)], actions)
   }
 
-  let children = [content, actions_slot]
+  let children = [leading_el, content, actions_slot]
 
   case wrapper {
     Div -> div(container_attrs, children)

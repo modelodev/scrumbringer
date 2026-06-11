@@ -181,6 +181,7 @@ fn view_loose_task_row(
         task_item.Config(
           container_class: "task-item milestone-task-item",
           content_class: "task-item-content milestone-task-content",
+          leading: option.None,
           on_click: option.Some(config.on_task_open(task_id)),
           icon: option.Some(task_type_icon.view(
             task.task_type.icon,

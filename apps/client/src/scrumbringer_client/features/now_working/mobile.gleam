@@ -247,6 +247,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
     task_item.Config(
       container_class: "session-row",
       content_class: "session-row-content",
+      leading: opt.None,
       on_click: opt.None,
       icon: opt.Some(task_type_icon.view(icon, 18, config.theme)),
       icon_class: opt.Some("session-icon"),
@@ -304,6 +305,7 @@ fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
     task_item.Config(
       container_class: "claimed-row",
       content_class: "claimed-row-content",
+      leading: opt.None,
       on_click: opt.None,
       icon: opt.Some(task_type_icon.view(task_type.icon, 18, config.theme)),
       icon_class: opt.Some("claimed-icon"),

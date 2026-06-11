@@ -155,6 +155,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
     task_item.Config(
       container_class: "now-working-session-item",
       content_class: "now-working-task-title",
+      leading: opt.None,
       on_click: opt.None,
       icon: opt.None,
       icon_class: opt.None,

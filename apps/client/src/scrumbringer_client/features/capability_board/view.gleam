@@ -582,7 +582,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
     Completed -> task_item.empty_secondary()
   }
 
-  let #(_card_title_opt, resolved_color) =
+  let #(card_title_opt, resolved_color) =
     card_queries.resolve_task_card_info(config.cards, task)
   let border_class = task_color.card_border_class(resolved_color)
   let blocked_class = case task.blocked_count > 0 {
@@ -615,6 +615,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
       container_class: "task-item " <> border_class <> blocked_class,
       content_class: "task-item-content",
       on_click: Some(config.on_task_click(task.id)),
+      leading: view_card_identity_swatch(card_title_opt),
       icon: Some(task_type_icon.view(task.task_type.icon, 14, config.theme)),
       icon_class: None,
       title: task.title,
@@ -627,6 +628,23 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
     ),
     task_item.ListItem,
   )
+}
+
+fn view_card_identity_swatch(card_title: Option(String)) -> Option(Element(msg)) {
+  case card_title {
+    Some(title) ->
+      Some(
+        span(
+          [
+            attribute.class("task-card-identity-swatch"),
+            attribute.attribute("aria-hidden", "true"),
+            attribute.attribute("title", title),
+          ],
+          [],
+        ),
+      )
+    None -> None
+  }
 }
 
 fn view_state_message(class_name: String, message: String) -> Element(msg) {

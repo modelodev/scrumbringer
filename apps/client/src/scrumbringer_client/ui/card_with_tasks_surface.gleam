@@ -208,6 +208,7 @@ fn view_task(config: Config(msg), task: Task) -> Element(msg) {
     task_item.Config(
       container_class: task_container_class(config, task) <> blocked_class,
       content_class: task_content_class(config.task_density),
+      leading: option.None,
       on_click: option.Some(config.on_task_click(task.id)),
       icon: option.Some(task_type_icon.view(
         task.task_type.icon,
