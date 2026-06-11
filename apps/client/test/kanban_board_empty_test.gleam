@@ -37,7 +37,7 @@ pub fn kanban_board_renders_empty_column_texts_test() {
   let html = kanban_board.view(config) |> element.to_document_string
 
   assert_contains(html, "kanban-empty-column")
-  assert_contains(html, "No pending cards")
-  assert_contains(html, "No cards in progress")
-  assert_contains(html, "No closed cards")
+  assert_contains(html, "No cards are waiting for work")
+  assert_contains(html, "No active cards need attention")
+  assert_contains(html, "Closed cards will appear here")
 }

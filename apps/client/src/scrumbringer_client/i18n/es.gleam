@@ -700,9 +700,13 @@ pub fn translate(text: Text) -> String {
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "Sin tarjetas aquí"
-    text.KanbanEmptyPendiente -> "Sin tarjetas pendientes"
-    text.KanbanEmptyEnCurso -> "Sin tarjetas en curso"
-    text.KanbanEmptyCerrada -> "Sin tarjetas cerradas"
+    text.KanbanEmptyPendiente -> "No hay tarjetas esperando trabajo"
+    text.KanbanEmptyEnCurso -> "No hay tarjetas activas que revisar"
+    text.KanbanEmptyCerrada -> "Las tarjetas cerradas aparecerán aquí"
+    text.KanbanSurfacePurpose ->
+      "Flujo de cards por estado, con fricción y próximo trabajo visibles."
+    text.KanbanSummaryCards -> "Cards"
+    text.KanbanSummaryOngoing -> "En curso"
 
     // Workflows
     text.AdminWorkflows -> "Automatizaciones"

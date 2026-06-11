@@ -963,11 +963,21 @@ fn view_mobile_shell(
 
 fn member_mobile_title(model: client_state.Model) -> String {
   i18n.t(model.ui.locale, case model.member.pool.member_section {
-    member_section.Pool -> i18n_text.Pool
+    member_section.Pool -> member_mobile_pool_title(model)
     member_section.MyBar -> i18n_text.MyBar
     member_section.MySkills -> i18n_text.MySkills
     member_section.Fichas -> i18n_text.MemberFichas
   })
+}
+
+fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
+  case model.member.pool.view_mode {
+    view_mode.Pool -> i18n_text.Pool
+    view_mode.Cards -> i18n_text.Kanban
+    view_mode.Capabilities -> i18n_text.CapabilitiesBoard
+    view_mode.People -> i18n_text.People
+    view_mode.Milestones -> i18n_text.Milestones
+  }
 }
 
 fn now_working_mobile_config(
@@ -1011,7 +1021,7 @@ fn view_member_section(
   let pool_context = pool_view_context.from_state(model, cards)
 
   case model.member.pool.member_section {
-    member_section.Pool -> pool_view.view_pool_main(pool_context, user)
+    member_section.Pool -> view_mobile_pool_content(model, user, pool_context)
     member_section.MyBar -> my_bar_view.view_bar(my_bar_config(model, user))
     member_section.MySkills ->
       skills_view.view_skills(
@@ -1033,6 +1043,17 @@ fn view_member_section(
       )
     member_section.Fichas ->
       fichas_view.view_fichas(member_fichas_config(model))
+  }
+}
+
+fn view_mobile_pool_content(
+  model: client_state.Model,
+  user: User,
+  pool_context: pool_view.Context(client_state.Msg),
+) -> Element(client_state.Msg) {
+  case model.member.pool.view_mode {
+    view_mode.Pool -> pool_view.view_pool_main(pool_context, user)
+    _ -> build_center_panel(model, user)
   }
 }
 

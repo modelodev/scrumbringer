@@ -16,15 +16,17 @@
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/order
+import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h4, span, text}
+import lustre/element/html.{div, h3, h4, p, span, text}
 import lustre/element/keyed
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
-import domain/task_status.{Completed}
+import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/features/work_filters
@@ -72,6 +74,20 @@ type CardWithProgress {
   CardWithProgress(card: Card, completed: Int, total: Int, tasks: List(Task))
 }
 
+type TaskHealth {
+  TaskHealth(available: Int, claimed: Int, ongoing: Int, blocked: Int)
+}
+
+type BoardSummary {
+  BoardSummary(
+    cards: Int,
+    available: Int,
+    claimed: Int,
+    ongoing: Int,
+    blocked: Int,
+  )
+}
+
 // =============================================================================
 // View
 // =============================================================================
@@ -108,29 +124,96 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
   let cerrada =
     list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Cerrada })
 
-  div([attribute.class("kanban-board")], [
-    view_column(
-      config,
-      i18n.t(config.locale, i18n_text.CardStatePendiente),
-      "pendiente",
-      Pendiente,
-      pendiente,
-    ),
-    view_column(
-      config,
-      i18n.t(config.locale, i18n_text.CardStateEnCurso),
-      "en-curso",
-      EnCurso,
-      en_curso,
-    ),
-    view_column(
-      config,
-      i18n.t(config.locale, i18n_text.CardStateCerrada),
-      "cerrada",
-      Cerrada,
-      cerrada,
-    ),
+  div([attribute.class("kanban-view")], [
+    view_surface_header(config, board_summary(non_empty_cards)),
+    div([attribute.class("kanban-board")], [
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStatePendiente),
+        "pendiente",
+        Pendiente,
+        pendiente,
+      ),
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStateEnCurso),
+        "en-curso",
+        EnCurso,
+        en_curso,
+      ),
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStateCerrada),
+        "cerrada",
+        Cerrada,
+        cerrada,
+      ),
+    ]),
   ])
+}
+
+fn view_surface_header(
+  config: KanbanConfig(msg),
+  summary: BoardSummary,
+) -> Element(msg) {
+  div(
+    [
+      attribute.class("kanban-surface-header"),
+      attribute.attribute("data-testid", "kanban-surface-header"),
+    ],
+    [
+      div([attribute.class("kanban-surface-copy")], [
+        h3([attribute.class("kanban-surface-title")], [
+          text(i18n.t(config.locale, i18n_text.Kanban)),
+        ]),
+        p([attribute.class("kanban-surface-purpose")], [
+          text(i18n.t(config.locale, i18n_text.KanbanSurfacePurpose)),
+        ]),
+      ]),
+      div([attribute.class("kanban-board-summary")], [
+        view_summary_chip(
+          i18n.t(config.locale, i18n_text.KanbanSummaryCards),
+          summary.cards,
+          "neutral",
+        ),
+        view_summary_chip(
+          i18n.t(config.locale, i18n_text.MetricsAvailable),
+          summary.available,
+          "available",
+        ),
+        view_summary_chip(
+          i18n.t(config.locale, i18n_text.MetricsClaimed),
+          summary.claimed,
+          "claimed",
+        ),
+        view_summary_chip(
+          i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
+          summary.ongoing,
+          "ongoing",
+        ),
+        view_summary_chip(
+          i18n.t(config.locale, i18n_text.Blocked),
+          summary.blocked,
+          "blocked",
+        ),
+      ]),
+    ],
+  )
+}
+
+fn view_summary_chip(label: String, value: Int, tone: String) -> Element(msg) {
+  span(
+    [
+      attribute.class("kanban-summary-chip " <> tone),
+      attribute.attribute("data-testid", "kanban-summary-chip"),
+    ],
+    [
+      span([attribute.class("kanban-summary-value")], [
+        text(int.to_string(value)),
+      ]),
+      span([attribute.class("kanban-summary-label")], [text(label)]),
+    ],
+  )
 }
 
 fn view_column(
@@ -206,18 +289,21 @@ fn view_empty_column(
 }
 
 fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
+  let health = task_health(cwp.tasks)
+
   card_with_tasks_surface.view(card_with_tasks_surface.Config(
     locale: config.locale,
     theme: config.theme,
     card: cwp.card,
-    tasks: cwp.tasks,
+    tasks: next_relevant_tasks(cwp.tasks),
     org_users: config.org_users,
-    preview_limit: 5,
+    preview_limit: 3,
     surface_variant: card_with_tasks_surface.Kanban,
     task_density: card_with_tasks_surface.Compact,
     progress_completed: cwp.completed,
     progress_total: cwp.total,
     description: option.Some(cwp.card.description),
+    status_items: view_health_items(config, health),
     on_card_click: option.Some(config.on_card_click(cwp.card.id)),
     on_task_click: config.on_task_click,
     on_task_claim: config.on_task_claim,
@@ -229,6 +315,57 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
     ],
     task_item_testid: option.Some("kanban-task-item"),
   ))
+}
+
+fn view_health_items(
+  config: KanbanConfig(msg),
+  health: TaskHealth,
+) -> List(Element(msg)) {
+  let core_items = [
+    view_health_chip(
+      i18n.t(config.locale, i18n_text.MetricsAvailable),
+      health.available,
+      "available",
+    ),
+    view_health_chip(
+      i18n.t(config.locale, i18n_text.MetricsClaimed),
+      health.claimed,
+      "claimed",
+    ),
+    view_health_chip(
+      i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
+      health.ongoing,
+      "ongoing",
+    ),
+  ]
+
+  case health.blocked > 0 {
+    True ->
+      list.append(core_items, [
+        view_health_chip(
+          i18n.t(config.locale, i18n_text.Blocked),
+          health.blocked,
+          "blocked",
+        ),
+      ])
+    False -> core_items
+  }
+}
+
+fn view_health_chip(label: String, value: Int, tone: String) -> Element(msg) {
+  span(
+    [
+      attribute.class("kanban-health-chip " <> tone),
+      attribute.attribute("data-testid", "kanban-health-chip"),
+      attribute.attribute("title", label <> ": " <> int.to_string(value)),
+    ],
+    [
+      span([attribute.class("kanban-health-value")], [
+        text(int.to_string(value)),
+      ]),
+      span([attribute.class("kanban-health-label")], [text(label)]),
+    ],
+  )
 }
 
 fn header_actions(
@@ -280,4 +417,63 @@ fn compute_progress(
       tasks: card_tasks,
     )
   })
+}
+
+fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
+  let tasks = list.flat_map(cards, fn(cwp) { cwp.tasks })
+  let health = task_health(tasks)
+
+  BoardSummary(
+    cards: list.length(cards),
+    available: health.available,
+    claimed: health.claimed,
+    ongoing: health.ongoing,
+    blocked: health.blocked,
+  )
+}
+
+fn task_health(tasks: List(Task)) -> TaskHealth {
+  TaskHealth(
+    available: list.count(tasks, fn(task) { task.status == Available }),
+    claimed: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
+    ongoing: list.count(tasks, fn(task) { task.status == Claimed(Ongoing) }),
+    blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
+  )
+}
+
+fn next_relevant_tasks(tasks: List(Task)) -> List(Task) {
+  let active =
+    tasks
+    |> list.filter(fn(task) { task.status != Completed })
+    |> list.sort(by: compare_relevant_tasks)
+
+  case active {
+    [] -> list.sort(tasks, by: compare_relevant_tasks)
+    _ -> active
+  }
+}
+
+fn compare_relevant_tasks(a: Task, b: Task) -> order.Order {
+  case int.compare(task_rank(a), task_rank(b)) {
+    order.Eq ->
+      case int.compare(b.priority, a.priority) {
+        order.Eq ->
+          case string.compare(a.created_at, b.created_at) {
+            order.Eq -> int.compare(a.id, b.id)
+            other -> other
+          }
+        other -> other
+      }
+    other -> other
+  }
+}
+
+fn task_rank(task: Task) -> Int {
+  case task.blocked_count > 0, task.status {
+    True, _ -> 0
+    False, Available -> 1
+    False, Claimed(Ongoing) -> 2
+    False, Claimed(Taken) -> 3
+    False, Completed -> 4
+  }
 }

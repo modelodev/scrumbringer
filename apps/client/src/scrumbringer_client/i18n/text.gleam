@@ -586,6 +586,9 @@ pub type Text {
   KanbanEmptyPendiente
   KanbanEmptyEnCurso
   KanbanEmptyCerrada
+  KanbanSurfacePurpose
+  KanbanSummaryCards
+  KanbanSummaryOngoing
 
   // Workflows
   AdminWorkflows

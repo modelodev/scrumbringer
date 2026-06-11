@@ -688,9 +688,13 @@ pub fn translate(text: Text) -> String {
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "No cards here"
-    text.KanbanEmptyPendiente -> "No pending cards"
-    text.KanbanEmptyEnCurso -> "No cards in progress"
-    text.KanbanEmptyCerrada -> "No closed cards"
+    text.KanbanEmptyPendiente -> "No cards are waiting for work"
+    text.KanbanEmptyEnCurso -> "No active cards need attention"
+    text.KanbanEmptyCerrada -> "Closed cards will appear here"
+    text.KanbanSurfacePurpose ->
+      "Card flow by state, with friction and next work visible at a glance."
+    text.KanbanSummaryCards -> "Cards"
+    text.KanbanSummaryOngoing -> "Ongoing"
 
     // Workflows
     text.AdminWorkflows -> "Workflows"

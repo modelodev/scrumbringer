@@ -901,10 +901,14 @@ fn handle_navigate_to(
   mode: client_state.NavMode,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let #(next_route, next_mode) = case model.ui.is_mobile, route {
-    True, router.Member(member_section.Pool, state) -> #(
-      router.Member(member_section.MyBar, state),
-      client_state.Replace,
-    )
+    True, router.Member(member_section.Pool, state) ->
+      case should_redirect_mobile_pool(state) {
+        True -> #(
+          router.Member(member_section.MyBar, state),
+          client_state.Replace,
+        )
+        False -> #(route, mode)
+      }
     _, _ -> #(route, mode)
   }
 
@@ -930,6 +934,14 @@ fn handle_navigate_to(
         ]),
       )
     }
+  }
+}
+
+fn should_redirect_mobile_pool(state: url_state.UrlState) -> Bool {
+  case url_state.view_param(state) {
+    opt.None -> True
+    opt.Some(view_mode.Pool) -> True
+    opt.Some(_) -> False
   }
 }
 

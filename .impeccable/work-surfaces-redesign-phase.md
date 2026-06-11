@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-11
 
-Estado: plan confirmado, pendiente de implementación por fases.
+Estado: Fase 1 implementada y verificada; fases 2-5 pendientes.
 
 ## Objetivo
 
@@ -70,6 +70,16 @@ Criterios de aceptacion:
 - La primera lectura permite detectar cards paradas, bloqueadas o activas.
 - Las cards usan la misma mini-gramatica que Hitos.
 - Desktop y mobile no presentan overflow ni columnas ilegibles.
+
+Estado de implementacion, 2026-06-11:
+
+- Aplicada en `features/views/kanban_board.gleam`, `ui/card_with_tasks_surface.gleam`, `ui/card_with_tasks_preview.gleam`, `styles/layout.gleam`, `client_update.gleam`, `client_view.gleam` e i18n.
+- Kanban incorpora header de superficie, proposito breve y summary chips operativos.
+- Las columnas desktop se mantienen como tablero de tres carriles y en mobile se apilan sin comprimir.
+- Las cards muestran identidad por color, progreso, salud de tasks y proximas tasks relevantes.
+- Editar/borrar bajan de dominancia y crear task se conserva como accion contextual de card.
+- Mobile conserva `/app/pool?view=cards` como Kanban en vez de redirigirlo a MyBar.
+- Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas desktop/mobile.
 
 Comando sugerido:
 

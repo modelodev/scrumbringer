@@ -49,6 +49,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     progress_completed: config.card.completed_count,
     progress_total: config.card.task_count,
     description: option.None,
+    status_items: [],
     on_card_click: config.on_card_click,
     on_task_click: config.on_task_click,
     on_task_claim: config.on_task_claim,

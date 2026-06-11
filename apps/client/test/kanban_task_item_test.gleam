@@ -138,6 +138,48 @@ fn available_task() -> Task {
   )
 }
 
+fn claimed_taken_task() -> Task {
+  let state =
+    task_state.Claimed(
+      claimed_by: 1,
+      claimed_at: "2026-01-02T00:00:00Z",
+      mode: task_status.Taken,
+    )
+
+  Task(
+    ..available_task(),
+    id: 3,
+    title: "Prepare rollout",
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+    priority: 4,
+  )
+}
+
+fn blocked_task() -> Task {
+  Task(
+    ..available_task(),
+    id: 4,
+    title: "Blocked dependency",
+    blocked_count: 1,
+    priority: 5,
+  )
+}
+
+fn completed_task() -> Task {
+  let state = task_state.Completed(completed_at: "2026-01-03T00:00:00Z")
+
+  Task(
+    ..available_task(),
+    id: 5,
+    title: "Done task",
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+  )
+}
+
 pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
   let html =
     base_config([claimed_task()])
@@ -185,4 +227,56 @@ pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
     |> element.to_document_string
 
   assert_not_contains(html, "Review copy")
+}
+
+pub fn kanban_surface_header_summarizes_operational_health_test() {
+  let html =
+    base_config([
+      available_task(),
+      claimed_taken_task(),
+      claimed_task(),
+      blocked_task(),
+    ])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "kanban-surface-header")
+  assert_contains(html, "Card flow by state")
+  assert_contains(html, "kanban-summary-chip")
+  assert_contains(html, "Cards")
+  assert_contains(html, "Available")
+  assert_contains(html, "Claimed")
+  assert_contains(html, "Ongoing")
+  assert_contains(html, "Blocked")
+}
+
+pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
+  let html =
+    base_config([
+      available_task(),
+      claimed_taken_task(),
+      claimed_task(),
+      blocked_task(),
+      completed_task(),
+    ])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "kanban-health-chip")
+  assert_contains(html, "title=\"Available: 2\"")
+  assert_contains(html, "title=\"Claimed: 1\"")
+  assert_contains(html, "title=\"Ongoing: 1\"")
+  assert_contains(html, "title=\"Blocked: 1\"")
+  assert_contains(html, "Blocked dependency")
+  assert_not_contains(html, "Done task")
+}
+
+pub fn kanban_completed_only_card_still_shows_task_context_test() {
+  let html =
+    base_config([completed_task()])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Done task")
+  assert_not_contains(html, "No tasks yet")
 }

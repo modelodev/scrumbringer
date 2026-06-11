@@ -51,6 +51,7 @@ pub type Config(msg) {
     progress_completed: Int,
     progress_total: Int,
     description: option.Option(String),
+    status_items: List(Element(msg)),
     on_card_click: option.Option(msg),
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
@@ -71,6 +72,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     view_header(config),
     view_description(config),
     view_progress(config),
+    view_status_items(config),
     view_task_preview(config),
     view_footer(config),
   ])
@@ -148,6 +150,14 @@ fn view_progress(config: Config(msg)) -> Element(msg) {
       variant,
     ),
   ])
+}
+
+fn view_status_items(config: Config(msg)) -> Element(msg) {
+  case config.status_items {
+    [] -> none()
+    items ->
+      div([attribute.class(status_items_class(config.surface_variant))], items)
+  }
 }
 
 fn view_task_preview(config: Config(msg)) -> Element(msg) {
@@ -417,6 +427,13 @@ fn progress_class(surface_variant: SurfaceVariant) -> String {
   case surface_variant {
     Milestone -> "card-surface-progress card-preview-progress"
     Kanban -> "card-surface-progress kanban-card-progress"
+  }
+}
+
+fn status_items_class(surface_variant: SurfaceVariant) -> String {
+  case surface_variant {
+    Milestone -> "card-surface-status-items card-preview-status-items"
+    Kanban -> "card-surface-status-items kanban-card-health"
   }
 }
 

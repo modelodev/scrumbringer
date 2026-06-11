@@ -488,3 +488,23 @@ Criterios de aceptación:
 - `Acceso` conserva dominancia visual frente a recuperación de contraseña.
 - `/org/api-tokens` mantiene título `Tokens API - Scrumbringer`, contenido admin y sección activa.
 - La corrección queda cubierta por tests de CSS, rutas y derivación del sidebar.
+
+### RB-026 - Convertir Kanban en tablero operativo de cards
+
+Prioridad: P1
+
+Estado: aplicado en Fase 1 de `.impeccable/work-surfaces-redesign-phase.md` el 2026-06-11.
+
+Superficies: `features/views/kanban_board.gleam`, `ui/card_with_tasks_surface.gleam`, `ui/card_with_tasks_preview.gleam`, `styles/layout.gleam`, `client_update.gleam`, `client_view.gleam`, i18n y tests de Kanban.
+
+Problema: la vista Kanban no se leia con suficiente claridad como tablero de cards. Competia con lecturas de lista, no exponia salud compacta de cada card y en mobile el shell podia impedir que `/app/pool?view=cards` se viera como Kanban.
+
+Mejora aplicada: Kanban mantiene su nombre visible y pasa a tener header de superficie, proposito breve, summary chips operativos, tres columnas reales en desktop y columnas apiladas en mobile. Las cards muestran identidad por color, progreso, tasks disponibles, reclamadas, en curso, bloqueadas cuando aplica y proximas tasks relevantes. Editar/borrar bajan de dominancia visual, crear task queda como accion contextual secundaria y los empty states explican el estado de cada carril.
+
+Verificación: `gleam check`, suite de cliente `gleam test` con 1547 tests pasando, detector impeccable limpio (`[]`), y revisión browser con capturas `/tmp/scrumbringer-kanban-phase1-desktop-1440x900-final.png`, `/tmp/scrumbringer-kanban-phase1-mobile-390x844-final.png`, `/tmp/scrumbringer-kanban-phase1-mobile-320x720-final.png` y `/tmp/scrumbringer-kanban-phase1-mobile-320x720-card.png`.
+
+Criterios de aceptación:
+- Kanban se lee como tablero de cards, no como lista vertical.
+- La primera lectura permite detectar cards activas, paradas o bloqueadas.
+- Las cards comparten mini-gramatica con Hitos sin duplicar el Pool.
+- Desktop y mobile no presentan columnas ilegibles ni overflow horizontal operativo.
