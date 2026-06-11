@@ -39,6 +39,7 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/assignments_view_mode
 
 // API modules
+import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/metrics as api_metrics
 import scrumbringer_client/api/milestones as api_milestones
@@ -1069,6 +1070,35 @@ pub fn refresh_section_for_test(
     permissions.Assignments -> {
       let #(model, fx) = refresh_assignments(model)
       #(model, fx)
+    }
+
+    permissions.ApiTokens -> {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          let api_tokens = admin.api_tokens
+          admin_state.AdminModel(
+            ..admin,
+            api_tokens: state_types.ApiTokensModel(
+              ..api_tokens,
+              integration_users: Loading,
+              tokens: Loading,
+            ),
+          )
+        })
+
+      #(
+        model,
+        effect.batch([
+          api_tokens_api.list_integration_users(fn(result) {
+            client_state.admin_msg(admin_messages.IntegrationUsersFetched(
+              result,
+            ))
+          }),
+          api_tokens_api.list_tokens(fn(result) {
+            client_state.admin_msg(admin_messages.ApiTokensFetched(result))
+          }),
+        ]),
+      )
     }
 
     permissions.Metrics -> {

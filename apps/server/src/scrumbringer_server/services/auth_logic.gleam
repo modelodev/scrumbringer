@@ -39,6 +39,7 @@ pub type AuthError {
   InvalidCredentials
   EmailTaken
   OrgNameRequired
+  InvalidPersistedUserKind(String)
   PasswordError(password.PasswordError)
   DbError(pog.QueryError)
 }
@@ -117,9 +118,10 @@ fn bootstrap_register(
     ss.StoredUser(
       id: user_id,
       email: email,
-      password_hash: password_hash,
+      password_hash: Some(password_hash),
       org_id: org_id,
       org_role: Admin,
+      user_kind: ss.Human,
       created_at: now_iso,
     )
   let member =
@@ -181,9 +183,10 @@ fn invite_register(
     ss.StoredUser(
       id: user_id,
       email: email,
-      password_hash: password_hash,
+      password_hash: Some(password_hash),
       org_id: org.id,
       org_role: Member,
+      user_kind: ss.Human,
       created_at: now_iso,
     )
 
@@ -262,14 +265,20 @@ pub fn login(
     |> result.replace_error(InvalidCredentials),
   )
 
-  use matched <- result.try(
-    password.verify(password_raw, user.password_hash)
-    |> result.map_error(PasswordError),
-  )
+  case user.user_kind, user.password_hash {
+    ss.Human, Some(hash) -> {
+      use matched <- result.try(
+        password.verify(password_raw, hash)
+        |> result.map_error(PasswordError),
+      )
 
-  case matched {
-    True -> Ok(user)
-    False -> Error(InvalidCredentials)
+      case matched {
+        True -> Ok(user)
+        False -> Error(InvalidCredentials)
+      }
+    }
+
+    _, _ -> Error(InvalidCredentials)
   }
 }
 

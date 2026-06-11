@@ -22,6 +22,7 @@ import lustre/effect
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/user.{type User}
+import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/api/metrics as api_metrics
 import scrumbringer_client/api/org as api_org
@@ -40,6 +41,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_state/selectors as state_selectors
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/hydration
@@ -95,6 +97,8 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
     ),
     org_settings_users: remote_state(model.admin.members.org_settings_users),
     org_users_cache: remote_state(model.admin.members.org_users_cache),
+    integration_users: remote_state(model.admin.api_tokens.integration_users),
+    api_tokens: remote_state(model.admin.api_tokens.tokens),
     members: remote_state(model.admin.members.members),
     members_project_id: model.admin.members.members_project_id,
     task_types: remote_state(model.admin.task_types.task_types),
@@ -200,6 +204,9 @@ fn apply_hydration_command(
     hydration.FetchOrgSettingsUsers ->
       hydrate_fetch_org_settings_users(model, fx)
     hydration.FetchOrgUsersCache -> hydrate_fetch_org_users_cache(model, fx)
+    hydration.FetchIntegrationUsers ->
+      hydrate_fetch_integration_users(model, fx)
+    hydration.FetchApiTokens -> hydrate_fetch_api_tokens(model, fx)
     hydration.FetchMembers(project_id: project_id) ->
       hydrate_fetch_members(model, fx, project_id)
     hydration.FetchTaskTypes(project_id: project_id) ->
@@ -559,6 +566,71 @@ fn hydrate_org_users_cache_request(
   #(model, [
     api_org.list_org_users("", fn(result) {
       client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
+    }),
+    ..fx
+  ])
+}
+
+fn hydrate_fetch_integration_users(
+  model: client_state.Model,
+  fx: List(effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
+  case model.admin.api_tokens.integration_users {
+    Loading | Loaded(_) -> #(model, fx)
+    _ -> hydrate_integration_users_request(model, fx)
+  }
+}
+
+fn hydrate_integration_users_request(
+  model: client_state.Model,
+  fx: List(effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      let api_tokens = admin.api_tokens
+      admin_state.AdminModel(
+        ..admin,
+        api_tokens: state_types.ApiTokensModel(
+          ..api_tokens,
+          integration_users: Loading,
+        ),
+      )
+    })
+
+  #(model, [
+    api_tokens_api.list_integration_users(fn(result) {
+      client_state.admin_msg(admin_messages.IntegrationUsersFetched(result))
+    }),
+    ..fx
+  ])
+}
+
+fn hydrate_fetch_api_tokens(
+  model: client_state.Model,
+  fx: List(effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
+  case model.admin.api_tokens.tokens {
+    Loading | Loaded(_) -> #(model, fx)
+    _ -> hydrate_api_tokens_request(model, fx)
+  }
+}
+
+fn hydrate_api_tokens_request(
+  model: client_state.Model,
+  fx: List(effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      let api_tokens = admin.api_tokens
+      admin_state.AdminModel(
+        ..admin,
+        api_tokens: state_types.ApiTokensModel(..api_tokens, tokens: Loading),
+      )
+    })
+
+  #(model, [
+    api_tokens_api.list_tokens(fn(result) {
+      client_state.admin_msg(admin_messages.ApiTokensFetched(result))
     }),
     ..fx
   ])

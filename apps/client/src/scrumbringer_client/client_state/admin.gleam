@@ -1,5 +1,6 @@
 //// Admin-specific client state model.
 
+import scrumbringer_client/client_state/admin/api_tokens as admin_api_tokens
 import scrumbringer_client/client_state/admin/assignments as admin_assignments
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/cards as admin_cards
@@ -56,6 +57,10 @@ pub type CardsModel =
 pub type AssignmentsModel =
   admin_assignments.Model
 
+/// Represents API token admin slice.
+pub type ApiTokensModel =
+  admin_api_tokens.Model
+
 /// Represents AdminModel.
 pub type AdminModel {
   AdminModel(
@@ -70,6 +75,7 @@ pub type AdminModel {
     task_types: TaskTypesModel,
     cards: CardsModel,
     assignments: AssignmentsModel,
+    api_tokens: ApiTokensModel,
   )
 }
 
@@ -87,5 +93,6 @@ pub fn default_model() -> AdminModel {
     task_types: admin_task_types.default_model(),
     cards: admin_cards.default_model(),
     assignments: admin_assignments.default_model(),
+    api_tokens: admin_api_tokens.default_model(),
   )
 }

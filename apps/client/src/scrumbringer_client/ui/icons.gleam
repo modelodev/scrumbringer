@@ -83,6 +83,7 @@ pub fn section_icon(section: permissions.AdminSection) -> HeroIcon {
     permissions.Projects -> Folder
     permissions.Metrics -> ChartBar
     permissions.RuleMetrics -> ChartPie
+    permissions.ApiTokens -> Cog6Tooth
     permissions.Members -> Users
     permissions.Capabilities -> PuzzlePiece
     permissions.TaskTypes -> Tag

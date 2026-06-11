@@ -28,7 +28,7 @@ import pog
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/persisted_role
-import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
+import scrumbringer_server/services/store_state
 
 // =============================================================================
 // Types
@@ -39,9 +39,10 @@ pub type UserRow {
   UserRow(
     id: Int,
     email: String,
-    password_hash: String,
+    password_hash: Option(String),
     org_id: Int,
     org_role: String,
+    user_kind: String,
     created_at: String,
   )
 }
@@ -69,18 +70,30 @@ pub fn find_user_by_id(
 }
 
 /// Convert UserRow to StoredUser.
-pub fn user_from_row(row: UserRow) -> Result(StoredUser, auth_logic.AuthError) {
+pub fn user_from_row(
+  row: UserRow,
+) -> Result(store_state.StoredUser, auth_logic.AuthError) {
   use parsed_role <- result.try(
     persisted_role.org_role(row.org_role)
     |> result.map_error(auth_logic.DbError),
   )
+  use user_kind <- result.try(
+    store_state.parse_user_kind(row.user_kind)
+    |> result.map_error(fn(error) {
+      case error {
+        store_state.UnknownUserKind(value) ->
+          auth_logic.InvalidPersistedUserKind(value)
+      }
+    }),
+  )
 
-  Ok(StoredUser(
+  Ok(store_state.StoredUser(
     id: row.id,
     email: row.email,
     password_hash: row.password_hash,
     org_id: row.org_id,
     org_role: parsed_role,
+    user_kind: user_kind,
     created_at: row.created_at,
   ))
 }
@@ -232,23 +245,25 @@ fn query_user_row(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use email <- decode.field(1, decode.string)
-    use password_hash <- decode.field(2, decode.string)
+    use password_hash <- decode.field(2, decode.optional(decode.string))
     use org_id <- decode.field(3, decode.int)
     use org_role <- decode.field(4, decode.string)
-    use created_at <- decode.field(5, decode.string)
+    use user_kind <- decode.field(5, decode.string)
+    use created_at <- decode.field(6, decode.string)
     decode.success(UserRow(
       id:,
       email:,
       password_hash:,
       org_id:,
       org_role:,
+      user_kind:,
       created_at:,
     ))
   }
 
   let query =
     pog.query(
-      "\nselect\n  id,\n  email,\n  password_hash,\n  org_id,\n  org_role,\n  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at\nfrom\n  users\n"
+      "\nselect\n  id,\n  email,\n  password_hash,\n  org_id,\n  org_role,\n  user_kind,\n  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at\nfrom\n  users\n"
       <> where_clause
       <> "\nlimit 1\n",
     )

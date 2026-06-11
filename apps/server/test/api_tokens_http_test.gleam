@@ -1,0 +1,733 @@
+import fixtures
+import gleam/dynamic/decode
+import gleam/http
+import gleam/int
+import gleam/json
+import gleam/option.{type Option, None, Some}
+import gleam/result
+import pog
+import scrumbringer_server
+import support/assertions as expect
+import wisp/simulate
+
+pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
+  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(
+      handler,
+      admin_session,
+      project_id,
+      "Bug",
+      "bug-ant",
+    )
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "ci@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_id,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "ci@example.com",
+      Some(project_id),
+      ["tasks:read", "tasks:write"],
+    )
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+      )
+      |> fixtures.with_bearer(token),
+    )
+  expect.expect_status(list_res, 200)
+
+  let create_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+      )
+      |> fixtures.with_bearer(token)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string("Imported task")),
+          #("description", json.string("Created by integration")),
+          #("type_id", json.int(type_id)),
+          #("priority", json.int(3)),
+        ]),
+      ),
+    )
+  expect.expect_status(create_res, 200)
+
+  let assert Ok(audit_count) =
+    fixtures.query_int(
+      db,
+      "select count(*) from api_token_audit_log where endpoint = $1 and status = 200",
+      [
+        pog.text("/api/v1/projects/" <> int.to_string(project_id) <> "/tasks"),
+      ],
+    )
+  let assert True = audit_count >= 2
+}
+
+pub fn bearer_write_requires_write_scope_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(
+      handler,
+      admin_session,
+      project_id,
+      "Bug",
+      "bug-ant",
+    )
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "reader@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_id,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "reader@example.com",
+      Some(project_id),
+      ["tasks:read"],
+    )
+
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+      )
+      |> fixtures.with_bearer(token)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string("Denied task")),
+          #("type_id", json.int(type_id)),
+          #("priority", json.int(3)),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 403)
+}
+
+pub fn bearer_project_limit_blocks_other_projects_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_a) =
+    fixtures.create_project(handler, admin_session, "A")
+  let assert Ok(project_b) =
+    fixtures.create_project(handler, admin_session, "B")
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "limited@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_a,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_b,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "limited@example.com",
+      Some(project_a),
+      ["tasks:read"],
+    )
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/projects/" <> int.to_string(project_b) <> "/tasks",
+      )
+      |> fixtures.with_bearer(token),
+    )
+
+  expect.expect_status(res, 403)
+}
+
+pub fn invalid_bearer_does_not_fallback_to_cookie_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+
+  let res =
+    handler(
+      simulate.request(http.Get, "/api/v1/projects")
+      |> fixtures.with_auth(admin_session)
+      |> fixtures.with_bearer("sbt_missing_bad"),
+    )
+
+  expect.expect_status(res, 401)
+}
+
+pub fn integration_user_cannot_login_with_password_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(_integration_user_id) =
+    create_integration_user(handler, admin_session, "bot@example.com")
+
+  let res =
+    handler(
+      simulate.request(http.Post, "/api/v1/auth/login")
+      |> simulate.json_body(
+        json.object([
+          #("email", json.string("bot@example.com")),
+          #("password", json.string("passwordpassword")),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 403)
+}
+
+pub fn bearer_can_operate_cards_notes_and_milestones_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(
+      handler,
+      admin_session,
+      project_id,
+      "Bug",
+      "bug-ant",
+    )
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, admin_session, project_id, type_id, "Task")
+  let assert Ok(card_id) =
+    fixtures.create_card(handler, admin_session, project_id, "Card")
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "resources@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_id,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "resources@example.com",
+      Some(project_id),
+      [
+        "cards:read",
+        "cards:write",
+        "notes:read",
+        "notes:write",
+        "milestones:read",
+        "milestones:write",
+      ],
+    )
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+
+  let create_card_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
+      )
+      |> fixtures.with_bearer(token)
+      |> simulate.json_body(json.object([
+        #("title", json.string("Imported card")),
+        #("description", json.string("Created by integration")),
+      ])),
+    )
+  expect.expect_status(create_card_res, 200)
+
+  let assert Ok(created_card_id) =
+    decode_nested_id(simulate.read_body(create_card_res), "card")
+
+  handler(
+    simulate.request(
+      http.Patch,
+      "/api/v1/cards/" <> int.to_string(created_card_id),
+    )
+    |> fixtures.with_bearer(token)
+    |> simulate.json_body(json.object([
+      #("title", json.string("Updated imported card")),
+      #("description", json.string("Updated by integration")),
+    ])),
+  )
+  |> expect.expect_status(200)
+
+  handler(
+    simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(card_id))
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+
+  let card_note_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
+      )
+      |> fixtures.with_bearer(token)
+      |> simulate.json_body(json.object([
+        #("content", json.string("Card note from integration")),
+      ])),
+    )
+  expect.expect_status(card_note_res, 200)
+  let assert Ok(card_note_id) =
+    decode_nested_id(simulate.read_body(card_note_res), "note")
+
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/cards/"
+        <> int.to_string(card_id)
+        <> "/notes/"
+        <> int.to_string(card_note_id),
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(204)
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+    )
+    |> fixtures.with_bearer(token)
+    |> simulate.json_body(json.object([
+      #("content", json.string("Task note from integration")),
+    ])),
+  )
+  |> expect.expect_status(200)
+
+  let milestone_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
+      )
+      |> fixtures.with_bearer(token)
+      |> simulate.json_body(json.object([
+        #("name", json.string("Imported milestone")),
+        #("description", json.string("Created by integration")),
+      ])),
+    )
+  expect.expect_status(milestone_res, 200)
+  let assert Ok(milestone_id) =
+    decode_nested_id(simulate.read_body(milestone_res), "milestone")
+
+  handler(
+    simulate.request(
+      http.Patch,
+      "/api/v1/milestones/" <> int.to_string(milestone_id),
+    )
+    |> fixtures.with_bearer(token)
+    |> simulate.json_body(json.object([
+      #("name", json.string("Updated milestone")),
+      #("description", json.string("Updated by integration")),
+    ])),
+  )
+  |> expect.expect_status(200)
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+}
+
+pub fn api_token_project_create_grants_integration_membership_test() {
+  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+
+  let res =
+    create_api_token_response(
+      handler,
+      admin_session,
+      "outside@example.com",
+      Some(project_id),
+      ["tasks:read"],
+      None,
+    )
+
+  expect.expect_status(res, 200)
+
+  let assert Ok(member_count) =
+    fixtures.query_int(
+      db,
+      "\nselect count(*)\nfrom project_members pm\njoin users u on u.id = pm.user_id\nwhere pm.project_id = $1 and u.email = $2 and pm.role = 'manager'\n",
+      [pog.int(project_id), pog.text("outside@example.com")],
+    )
+  expect.equal(member_count, 1)
+}
+
+pub fn api_token_rejects_invalid_expires_at_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "expires@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_id,
+      integration_user_id,
+      "manager",
+    )
+
+  let res =
+    create_api_token_response(
+      handler,
+      admin_session,
+      "expires@example.com",
+      Some(project_id),
+      ["tasks:read"],
+      Some("not-a-date"),
+    )
+
+  expect.expect_status(res, 422)
+}
+
+pub fn api_token_rejects_project_write_scope_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+
+  let res =
+    create_api_token_response(
+      handler,
+      admin_session,
+      "scope@example.com",
+      Some(project_id),
+      ["projects:write"],
+      None,
+    )
+
+  expect.expect_status(res, 422)
+  expect.expect_json_contains_code(simulate.read_body(res), "VALIDATION_ERROR")
+}
+
+pub fn bearer_revoked_expired_and_unsupported_routes_are_rejected_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "state@example.com")
+  let assert Ok(Nil) =
+    fixtures.add_member(
+      handler,
+      admin_session,
+      project_id,
+      integration_user_id,
+      "manager",
+    )
+  let assert Ok(token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "state@example.com",
+      Some(project_id),
+      ["projects:read", "tasks:read", "tasks:read"],
+    )
+
+  handler(
+    simulate.request(http.Get, "/api/v1/org/users")
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(403)
+
+  let assert Ok(expired_token) =
+    create_api_token_with_expires(
+      handler,
+      admin_session,
+      "state@example.com",
+      Some(project_id),
+      ["tasks:read"],
+      Some("2000-01-01T00:00:00Z"),
+    )
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+    )
+    |> fixtures.with_bearer(expired_token),
+  )
+  |> expect.expect_status(401)
+
+  let assert Ok(#(token_id, token_to_revoke)) =
+    create_api_token_created(
+      handler,
+      admin_session,
+      "state@example.com",
+      Some(project_id),
+      ["tasks:read"],
+    )
+
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/api-tokens/" <> int.to_string(token_id),
+    )
+    |> fixtures.with_auth(admin_session),
+  )
+  |> expect.expect_status(204)
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+    )
+    |> fixtures.with_bearer(token_to_revoke),
+  )
+  |> expect.expect_status(401)
+}
+
+fn create_integration_user(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  email: String,
+) -> Result(Int, String) {
+  let res =
+    handler(
+      simulate.request(http.Post, "/api/v1/integration-users")
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([#("email", json.string(email))])),
+    )
+
+  case res.status {
+    200 -> decode_integration_user_id(simulate.read_body(res))
+    status -> Error("create_integration_user failed: " <> int.to_string(status))
+  }
+}
+
+fn create_api_token(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  integration: String,
+  project_id: Option(Int),
+  scopes: List(String),
+) -> Result(String, String) {
+  create_api_token_with_expires(
+    handler,
+    session,
+    integration,
+    project_id,
+    scopes,
+    None,
+  )
+}
+
+fn create_api_token_with_expires(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  integration: String,
+  project_id: Option(Int),
+  scopes: List(String),
+  expires_at: Option(String),
+) -> Result(String, String) {
+  let res =
+    create_api_token_response(
+      handler,
+      session,
+      integration,
+      project_id,
+      scopes,
+      expires_at,
+    )
+
+  case res.status {
+    200 -> decode_token(simulate.read_body(res))
+    status -> Error("create_api_token failed: " <> int.to_string(status))
+  }
+}
+
+fn create_api_token_created(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  integration: String,
+  project_id: Option(Int),
+  scopes: List(String),
+) -> Result(#(Int, String), String) {
+  let res =
+    create_api_token_response(
+      handler,
+      session,
+      integration,
+      project_id,
+      scopes,
+      None,
+    )
+
+  case res.status {
+    200 -> decode_created_token(simulate.read_body(res))
+    status -> Error("create_api_token_created failed: " <> int.to_string(status))
+  }
+}
+
+fn create_api_token_response(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  integration: String,
+  project_id: Option(Int),
+  scopes: List(String),
+  expires_at: Option(String),
+) {
+  let res =
+    handler(
+      simulate.request(http.Post, "/api/v1/api-tokens")
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("ci-token")),
+          #("integration", json.string(integration)),
+          #("project_id", option_int_json(project_id)),
+          #("scopes", json.array(scopes, of: json.string)),
+          #("expires_at", option_string_json(expires_at)),
+        ]),
+      ),
+    )
+
+  res
+}
+
+fn decode_integration_user_id(body: String) -> Result(Int, String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let user_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+  let data_decoder = {
+    use id <- decode.field("integration_user", user_decoder)
+    decode.success(id)
+  }
+  let decoder = {
+    use id <- decode.field("data", data_decoder)
+    decode.success(id)
+  }
+  decode.run(dynamic, decoder)
+  |> result.map_error(fn(_) { "invalid integration user response" })
+}
+
+fn decode_token(body: String) -> Result(String, String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let data_decoder = {
+    use token <- decode.field("token", decode.string)
+    decode.success(token)
+  }
+  let decoder = {
+    use token <- decode.field("data", data_decoder)
+    decode.success(token)
+  }
+  decode.run(dynamic, decoder)
+  |> result.map_error(fn(_) { "invalid token response" })
+}
+
+fn decode_created_token(body: String) -> Result(#(Int, String), String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let token_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+  let data_decoder = {
+    use id <- decode.field("api_token", token_decoder)
+    use token <- decode.field("token", decode.string)
+    decode.success(#(id, token))
+  }
+  let decoder = {
+    use created <- decode.field("data", data_decoder)
+    decode.success(created)
+  }
+  decode.run(dynamic, decoder)
+  |> result.map_error(fn(_) { "invalid created token response" })
+}
+
+fn decode_nested_id(body: String, field: String) -> Result(Int, String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let entity_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+  let data_decoder = {
+    use id <- decode.field(field, entity_decoder)
+    decode.success(id)
+  }
+  let decoder = {
+    use id <- decode.field("data", data_decoder)
+    decode.success(id)
+  }
+  decode.run(dynamic, decoder)
+  |> result.map_error(fn(_) { "invalid id response" })
+}
+
+fn option_int_json(value: Option(Int)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(id) -> json.int(id)
+  }
+}
+
+fn option_string_json(value: Option(String)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(raw) -> json.string(raw)
+  }
+}

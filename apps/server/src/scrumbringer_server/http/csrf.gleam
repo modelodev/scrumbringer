@@ -57,9 +57,13 @@ pub fn require_double_submit(req: wisp.Request) -> Result(Nil, Nil) {
 /// // Continue with request handling...
 /// ```
 pub fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) -> Error(forbidden_response())
+  case has_bearer(req) {
+    True -> Ok(Nil)
+    False ->
+      case require_double_submit(req) {
+        Ok(Nil) -> Ok(Nil)
+        Error(_) -> Error(forbidden_response())
+      }
   }
 }
 
@@ -75,6 +79,13 @@ fn get_cookie(req: wisp.Request, name: String) -> Result(String, Nil) {
 
 fn get_header(req: wisp.Request, name: String) -> Result(String, Nil) {
   request.get_header(req, string.lowercase(name))
+}
+
+fn has_bearer(req: wisp.Request) -> Bool {
+  case get_header(req, "authorization") {
+    Ok(value) -> string.starts_with(value, "Bearer ")
+    Error(_) -> False
+  }
 }
 
 fn forbidden_response() -> wisp.Response {

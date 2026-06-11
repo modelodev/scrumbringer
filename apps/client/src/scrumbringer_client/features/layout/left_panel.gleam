@@ -84,6 +84,7 @@ pub type LeftPanelConfig(msg) {
     on_navigate_org_users: msg,
     on_navigate_org_projects: msg,
     on_navigate_org_assignments: msg,
+    on_navigate_org_api_tokens: msg,
     on_navigate_org_metrics: msg,
     on_toggle_config: msg,
     on_toggle_org: msg,
@@ -595,6 +596,15 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
             icons.Team,
             i18n_text.Assignments,
             config.on_navigate_org_assignments,
+            None,
+          ),
+          view_org_nav_link(
+            config,
+            permissions.ApiTokens,
+            "nav-api-tokens",
+            icons.Cog,
+            i18n_text.AdminApiTokens,
+            config.on_navigate_org_api_tokens,
             None,
           ),
           view_org_nav_link(

@@ -114,6 +114,24 @@ pub type Msg {
   )
   AssignmentsProjectToggled(Int)
   AssignmentsUserToggled(Int)
+  IntegrationUsersFetched(ApiResult(List(state_types.IntegrationUser)))
+  ApiTokensFetched(ApiResult(List(state_types.ApiToken)))
+  ApiTokenCreateDialogOpened
+  ApiTokenCreateDialogClosed
+  ApiTokenNameChanged(String)
+  ApiTokenIntegrationChanged(String)
+  ApiTokenProjectChanged(String)
+  ApiTokenScopeToggled(String)
+  ApiTokenExpiresAtChanged(String)
+  ApiTokenCreateSubmitted
+  ApiTokenCreated(ApiResult(state_types.CreatedApiToken))
+  ApiTokenCreatedSecretDismissed
+  ApiTokenCreatedSecretCopyClicked(String)
+  ApiTokenCreatedSecretCopyFinished(Bool)
+  ApiTokenRevokeClicked(Int)
+  ApiTokenRevokeCancelled
+  ApiTokenRevokeConfirmed
+  ApiTokenRevoked(Int, ApiResult(Nil))
   TaskTypesFetched(ApiResult(List(TaskType)))
   TaskTypeCreateDialogOpened
   TaskTypeCreateDialogClosed

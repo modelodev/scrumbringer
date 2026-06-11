@@ -58,6 +58,7 @@ fn base_config(
     on_navigate_org_users: "msg",
     on_navigate_org_projects: "msg",
     on_navigate_org_assignments: "msg",
+    on_navigate_org_api_tokens: "msg",
     on_navigate_org_metrics: "msg",
     on_toggle_config: "msg",
     on_toggle_org: "msg",

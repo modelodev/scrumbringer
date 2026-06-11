@@ -417,6 +417,7 @@ fn org_section_from_slug(slug: String) -> Result(permissions.AdminSection, Nil) 
     "users" -> Ok(permissions.OrgSettings)
     "projects" -> Ok(permissions.Projects)
     "assignments" -> Ok(permissions.Assignments)
+    "api-tokens" -> Ok(permissions.ApiTokens)
     "metrics" -> Ok(permissions.Metrics)
     "rule-metrics" -> Ok(permissions.RuleMetrics)
     _ -> Error(Nil)
@@ -430,6 +431,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
     permissions.OrgSettings -> "settings"
     permissions.Projects -> "projects"
     permissions.Assignments -> "assignments"
+    permissions.ApiTokens -> "api-tokens"
     permissions.Metrics -> "metrics"
     permissions.RuleMetrics -> "rule-metrics"
     // Config sections should not use this, but provide fallback
@@ -518,6 +520,7 @@ fn admin_section_title(
     permissions.OrgSettings -> i18n_text.AdminOrgSettings
     permissions.Projects -> i18n_text.AdminProjects
     permissions.Assignments -> i18n_text.Assignments
+    permissions.ApiTokens -> i18n_text.AdminApiTokens
     permissions.Metrics -> i18n_text.AdminMetrics
     permissions.RuleMetrics -> i18n_text.AdminRuleMetrics
     permissions.Members -> i18n_text.AdminMembers

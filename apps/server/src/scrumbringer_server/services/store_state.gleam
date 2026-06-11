@@ -8,6 +8,31 @@ import domain/project_role.{type ProjectRole}
 import gleam/dict
 import gleam/option.{type Option, None}
 
+/// Distinguishes browser users from external integration identities.
+pub type UserKind {
+  Human
+  Integration
+}
+
+pub type UserKindParseError {
+  UnknownUserKind(String)
+}
+
+pub fn user_kind_to_string(kind: UserKind) -> String {
+  case kind {
+    Human -> "human"
+    Integration -> "integration"
+  }
+}
+
+pub fn parse_user_kind(value: String) -> Result(UserKind, UserKindParseError) {
+  case value {
+    "human" -> Ok(Human)
+    "integration" -> Ok(Integration)
+    other -> Error(UnknownUserKind(other))
+  }
+}
+
 /// An organization in the system.
 pub type Organization {
   Organization(id: Int, name: String, created_at: String)
@@ -46,9 +71,10 @@ pub type StoredUser {
   StoredUser(
     id: Int,
     email: String,
-    password_hash: String,
+    password_hash: Option(String),
     org_id: Int,
     org_role: OrgRole,
+    user_kind: UserKind,
     created_at: String,
   )
 }

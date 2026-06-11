@@ -52,6 +52,8 @@ pub type Snapshot {
     my_capability_ids: ResourceState,
     org_settings_users: ResourceState,
     org_users_cache: ResourceState,
+    integration_users: ResourceState,
+    api_tokens: ResourceState,
     members: ResourceState,
     members_project_id: Option(Int),
     task_types: ResourceState,
@@ -75,6 +77,8 @@ pub type Command {
   FetchMeCapabilityIds
   FetchOrgSettingsUsers
   FetchOrgUsersCache
+  FetchIntegrationUsers
+  FetchApiTokens
   FetchMembers(project_id: Int)
   FetchTaskTypes(project_id: Int)
   RefreshMember
@@ -180,7 +184,8 @@ fn plan_admin_authed(
     permissions.Invites
     | permissions.OrgSettings
     | permissions.Projects
-    | permissions.Metrics -> True
+    | permissions.Metrics
+    | permissions.ApiTokens -> True
     _ -> False
   }
 
@@ -313,6 +318,11 @@ fn plan_org_for_admin(snap: Snapshot, section: AdminSection) -> List(Command) {
       ])
     permissions.Assignments ->
       collect([#(needs_fetch(snap.org_users_cache), FetchOrgUsersCache)])
+    permissions.ApiTokens ->
+      collect([
+        #(needs_fetch(snap.integration_users), FetchIntegrationUsers),
+        #(needs_fetch(snap.api_tokens), FetchApiTokens),
+      ])
     permissions.Metrics ->
       collect([
         #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),

@@ -22,6 +22,8 @@
 
 import domain/org_role
 import gleam/http
+import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -306,11 +308,33 @@ fn update_member_role(
 }
 
 fn list_projects(req: wisp.Request, ctx: auth.Ctx) {
-  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use principal <- result.try(auth.require_principal_response(req, ctx))
+  let auth.Principal(user: user, source: source) = principal
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.list_projects_for_user(db, user.id) {
-    Ok(projects) -> Ok(project_presenters.projects_response(projects))
+    Ok(projects) ->
+      Ok(
+        project_presenters.projects_response(filter_projects_for_source(
+          projects,
+          source,
+        )),
+      )
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn filter_projects_for_source(
+  projects: List(projects_db.Project),
+  source: auth.AuthSource,
+) -> List(projects_db.Project) {
+  case source {
+    auth.WebSession -> projects
+    auth.ApiToken(token) ->
+      case token.project_id {
+        Some(project_id) ->
+          list.filter(projects, fn(project) { project.id == project_id })
+        _ -> projects
+      }
   }
 }
 

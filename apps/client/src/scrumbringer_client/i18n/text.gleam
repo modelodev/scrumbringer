@@ -65,6 +65,7 @@ pub type Text {
 
   // Validation
   NameRequired
+  ScopeRequired
   TitleRequired
   TypeRequired
   SelectProjectFirst
@@ -312,6 +313,32 @@ pub type Text {
   AdminMembers
   AdminCapabilities
   AdminTaskTypes
+  AdminApiTokens
+  Integration
+  IntegrationRequired
+  ApiTokens
+  CreateApiToken
+  ApiTokenCreatedSecretNotice
+  ApiTokenSecret
+  NoApiTokensYet
+  FailedToLoadPrefix
+  Project
+  Scopes
+  PermissionRead
+  PermissionWrite
+  ResourceProjects
+  ResourceTasks
+  ResourceCards
+  ResourceNotes
+  ResourceMilestones
+  LastUsed
+  ExpiresAtOptional
+  Revoke
+  Revoked
+  Expired
+  Active
+  RevokeApiToken
+  RevokeApiTokenConfirm
   Assignments
   AssignmentsByProject
   AssignmentsByUser

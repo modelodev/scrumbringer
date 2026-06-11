@@ -905,6 +905,12 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
   |> request.set_header("X-CSRF", session.csrf)
 }
 
+/// Add Bearer token authorization to a request.
+pub fn with_bearer(req: wisp.Request, token: String) -> wisp.Request {
+  req
+  |> request.set_header("Authorization", "Bearer " <> token)
+}
+
 /// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
 pub fn task_event_status(
   task_id: Int,

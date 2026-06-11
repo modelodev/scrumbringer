@@ -6,6 +6,7 @@ import gleam/set
 
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
+import domain/org_role.{type OrgRole}
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{type ProjectRole}
 import domain/remote.{type Remote}
@@ -38,6 +39,57 @@ pub type DialogState(form) {
 /// Form state for invite link dialog.
 pub type InviteLinkForm {
   InviteLinkForm(email: String)
+}
+
+/// User identity used by external systems through API tokens.
+pub type IntegrationUser {
+  IntegrationUser(id: Int, email: String, org_role: OrgRole, created_at: String)
+}
+
+/// API token metadata. The bearer secret is only returned at creation time.
+pub type ApiToken {
+  ApiToken(
+    id: Int,
+    org_id: Int,
+    integration_user_id: Int,
+    project_id: Option(Int),
+    name: String,
+    public_id: String,
+    scopes: List(String),
+    created_at: String,
+    last_used_at: Option(String),
+    expires_at: Option(String),
+    revoked_at: Option(String),
+    expired: Bool,
+  )
+}
+
+/// Response produced when a token is created.
+pub type CreatedApiToken {
+  CreatedApiToken(api_token: ApiToken, token: String)
+}
+
+/// Form state for creating an API token.
+pub type ApiTokenForm {
+  ApiTokenForm(
+    name: String,
+    integration: String,
+    project_id: Option(Int),
+    scopes: List(String),
+    expires_at: String,
+  )
+}
+
+/// State for the integration users and API tokens admin section.
+pub type ApiTokensModel {
+  ApiTokensModel(
+    integration_users: Remote(List(IntegrationUser)),
+    tokens: Remote(List(ApiToken)),
+    token_dialog: DialogState(ApiTokenForm),
+    created_token: Option(String),
+    token_secret_copy_status: Option(String),
+    revoke_confirm: Option(Int),
+  )
 }
 
 /// State during drag-and-drop of a task card.

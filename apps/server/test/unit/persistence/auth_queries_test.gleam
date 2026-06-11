@@ -1,3 +1,4 @@
+import gleam/option.{Some}
 import pog
 import scrumbringer_server/persistence/auth/queries
 import scrumbringer_server/services/auth_logic
@@ -8,9 +9,10 @@ pub fn user_from_row_rejects_invalid_persisted_org_role_test() {
     queries.UserRow(
       id: 1,
       email: "owner@example.com",
-      password_hash: "hash",
+      password_hash: Some("hash"),
       org_id: 1,
       org_role: "owner",
+      user_kind: "human",
       created_at: "2026-06-08T00:00:00Z",
     )
 

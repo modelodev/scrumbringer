@@ -470,6 +470,7 @@ fn view_section(
           projects_view.view_projects(admin_projects_config(model))
         permissions.Assignments ->
           assignments_view.view_assignments(admin_assignments_config(model))
+        permissions.ApiTokens -> admin_view.view_api_tokens(model)
         permissions.Metrics ->
           metrics_view.view_metrics(admin_metrics_config(model, selected))
         permissions.RuleMetrics ->
@@ -1258,6 +1259,10 @@ fn build_left_panel(
     ),
     on_navigate_org_assignments: client_state.NavigateTo(
       router.Org(permissions.Assignments),
+      client_state.Push,
+    ),
+    on_navigate_org_api_tokens: client_state.NavigateTo(
+      router.Org(permissions.ApiTokens),
       client_state.Push,
     ),
     on_navigate_org_metrics: client_state.NavigateTo(

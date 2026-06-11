@@ -22,6 +22,7 @@ pub type AdminSection {
   OrgSettings
   Projects
   Assignments
+  ApiTokens
   Metrics
   RuleMetrics
   Members
@@ -82,7 +83,8 @@ pub fn can_access_section(
 
   case section {
     // Org-level sections: only org admin
-    Invites | OrgSettings | Projects | Assignments | Metrics -> org_admin
+    Invites | OrgSettings | Projects | Assignments | ApiTokens | Metrics ->
+      org_admin
 
     // RuleMetrics: org admin can see org-wide, project managers can see project-level
     RuleMetrics -> org_admin || any_manager
@@ -112,6 +114,7 @@ pub fn visible_sections(
       OrgSettings,
       Projects,
       Assignments,
+      ApiTokens,
       Metrics,
       RuleMetrics,
       Members,
@@ -127,6 +130,7 @@ pub fn visible_sections(
       OrgSettings,
       Projects,
       Assignments,
+      ApiTokens,
       Metrics,
       RuleMetrics,
       Capabilities,

@@ -38,6 +38,7 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, NoOp, admin_msg, pool_msg,
 }
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/features/admin/cards_view
 import scrumbringer_client/features/admin/msg as admin_messages
@@ -74,6 +75,48 @@ import scrumbringer_client/ui/event_decoders
 /// Organization settings view - manage user roles.
 pub fn view_org_settings(model: Model) -> Element(Msg) {
   org_settings_view.view(org_settings_config(model))
+}
+
+/// API token management view.
+pub fn view_api_tokens(model: Model) -> Element(Msg) {
+  api_tokens_view.view(api_tokens_config(model))
+}
+
+fn api_tokens_config(model: Model) -> api_tokens_view.Config(Msg) {
+  api_tokens_view.Config(
+    locale: model.ui.locale,
+    model: model.admin.api_tokens,
+    projects: state_selectors.active_projects(model),
+    on_token_create_opened: admin_msg(admin_messages.ApiTokenCreateDialogOpened),
+    on_token_create_closed: admin_msg(admin_messages.ApiTokenCreateDialogClosed),
+    on_token_name_changed: fn(value) {
+      admin_msg(admin_messages.ApiTokenNameChanged(value))
+    },
+    on_token_integration_changed: fn(value) {
+      admin_msg(admin_messages.ApiTokenIntegrationChanged(value))
+    },
+    on_token_project_changed: fn(value) {
+      admin_msg(admin_messages.ApiTokenProjectChanged(value))
+    },
+    on_token_scope_toggled: fn(scope) {
+      admin_msg(admin_messages.ApiTokenScopeToggled(scope))
+    },
+    on_token_expires_at_changed: fn(value) {
+      admin_msg(admin_messages.ApiTokenExpiresAtChanged(value))
+    },
+    on_token_create_submitted: admin_msg(admin_messages.ApiTokenCreateSubmitted),
+    on_token_secret_dismissed: admin_msg(
+      admin_messages.ApiTokenCreatedSecretDismissed,
+    ),
+    on_token_secret_copy_clicked: fn(secret) {
+      admin_msg(admin_messages.ApiTokenCreatedSecretCopyClicked(secret))
+    },
+    on_token_revoke_clicked: fn(id) {
+      admin_msg(admin_messages.ApiTokenRevokeClicked(id))
+    },
+    on_token_revoke_cancelled: admin_msg(admin_messages.ApiTokenRevokeCancelled),
+    on_token_revoke_confirmed: admin_msg(admin_messages.ApiTokenRevokeConfirmed),
+  )
 }
 
 fn org_settings_config(model: Model) -> org_settings_view.Config(Msg) {

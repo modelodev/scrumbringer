@@ -23,11 +23,13 @@ import gleam/int
 import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/http/api
+import scrumbringer_server/http/api_tokens
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/card_notes
 import scrumbringer_server/http/card_views
 import scrumbringer_server/http/cards
+import scrumbringer_server/http/integration_users
 import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/milestones
 import scrumbringer_server/http/org_invite_links
@@ -67,6 +69,7 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
   let segments = wisp.path_segments(req)
   let routes = [
     route_auth,
+    route_api_tokens,
     route_org,
     route_projects,
     route_task_templates,
@@ -80,10 +83,13 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     route_health,
   ]
 
-  case find_route(routes, segments, req, ctx) {
+  let resp = case find_route(routes, segments, req, ctx) {
     Some(resp) -> resp
     None -> wisp.not_found()
   }
+
+  auth.record_bearer_audit(req, auth_ctx(ctx), resp)
+  resp
 }
 
 type RouteFn =
@@ -103,6 +109,24 @@ fn find_route(
         Some(resp) -> Some(resp)
         None -> find_route(rest, segments, req, ctx)
       }
+  }
+}
+
+fn route_api_tokens(
+  segments: List(String),
+  req: wisp.Request,
+  ctx: RouterCtx,
+) -> Option(wisp.Response) {
+  let auth_ctx = auth_ctx(ctx)
+
+  case segments {
+    ["api", "v1", "integration-users"] ->
+      Some(integration_users.handle_integration_users(req, auth_ctx))
+    ["api", "v1", "api-tokens"] ->
+      Some(api_tokens.handle_api_tokens(req, auth_ctx))
+    ["api", "v1", "api-tokens", token_id] ->
+      Some(api_tokens.handle_api_token(req, auth_ctx, token_id))
+    _ -> None
   }
 }
 

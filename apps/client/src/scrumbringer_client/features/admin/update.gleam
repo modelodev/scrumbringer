@@ -46,6 +46,7 @@ import scrumbringer_client/features/task_types/update as task_types_workflow
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/router
 
+import scrumbringer_client/features/admin/api_tokens_update
 import scrumbringer_client/features/admin/member_add_update
 import scrumbringer_client/features/admin/member_list_update
 import scrumbringer_client/features/admin/member_release_all_update
@@ -254,6 +255,23 @@ fn update_without_org_users_search(
 fn update_without_assignments(
   model: client_state.Model,
   inner: admin_messages.Msg,
+  ctx: Context,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case
+    api_tokens_update.try_update(
+      model.admin.api_tokens,
+      inner,
+      api_tokens_context(model),
+    )
+  {
+    opt.Some(update) -> apply_api_tokens_update(model, update)
+    opt.None -> update_without_api_tokens(model, inner, ctx)
+  }
+}
+
+fn update_without_api_tokens(
+  model: client_state.Model,
+  inner: admin_messages.Msg,
   _ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case inner {
@@ -395,6 +413,26 @@ fn update_without_assignments(
       effect.none(),
     )
 
+    // Handled by api_tokens_update.try_update before this dispatch.
+    admin_messages.IntegrationUsersFetched(_)
+    | admin_messages.ApiTokensFetched(_)
+    | admin_messages.ApiTokenCreateDialogOpened
+    | admin_messages.ApiTokenCreateDialogClosed
+    | admin_messages.ApiTokenNameChanged(_)
+    | admin_messages.ApiTokenIntegrationChanged(_)
+    | admin_messages.ApiTokenProjectChanged(_)
+    | admin_messages.ApiTokenScopeToggled(_)
+    | admin_messages.ApiTokenExpiresAtChanged(_)
+    | admin_messages.ApiTokenCreateSubmitted
+    | admin_messages.ApiTokenCreated(_)
+    | admin_messages.ApiTokenCreatedSecretDismissed
+    | admin_messages.ApiTokenCreatedSecretCopyClicked(_)
+    | admin_messages.ApiTokenCreatedSecretCopyFinished(_)
+    | admin_messages.ApiTokenRevokeClicked(_)
+    | admin_messages.ApiTokenRevokeCancelled
+    | admin_messages.ApiTokenRevokeConfirmed
+    | admin_messages.ApiTokenRevoked(_, _) -> #(model, effect.none())
+
     // Handled by task_types_workflow.try_update before this dispatch.
     admin_messages.TaskTypesFetched(_)
     | admin_messages.TaskTypeCreateDialogOpened
@@ -484,6 +522,60 @@ fn org_settings_auth_error(
     org_settings.NoAuthCheck -> opt.None
     org_settings.CheckAuth(err) -> opt.Some(err)
   }
+}
+
+fn api_tokens_context(
+  model: client_state.Model,
+) -> api_tokens_update.Context(client_state.Msg) {
+  api_tokens_update.Context(
+    on_integration_users_fetched: fn(result) {
+      client_state.admin_msg(admin_messages.IntegrationUsersFetched(result))
+    },
+    on_tokens_fetched: fn(result) {
+      client_state.admin_msg(admin_messages.ApiTokensFetched(result))
+    },
+    on_token_created: fn(result) {
+      client_state.admin_msg(admin_messages.ApiTokenCreated(result))
+    },
+    on_token_revoked: fn(id, result) {
+      client_state.admin_msg(admin_messages.ApiTokenRevoked(id, result))
+    },
+    on_token_secret_copy_finished: fn(ok) {
+      client_state.admin_msg(admin_messages.ApiTokenCreatedSecretCopyFinished(
+        ok,
+      ))
+    },
+    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
+    integration_required: i18n.t(model.ui.locale, i18n_text.IntegrationRequired),
+    scope_required: i18n.t(model.ui.locale, i18n_text.ScopeRequired),
+    copying: i18n.t(model.ui.locale, i18n_text.Copying),
+    copied: i18n.t(model.ui.locale, i18n_text.Copied),
+    copy_failed: i18n.t(model.ui.locale, i18n_text.CopyFailed),
+  )
+}
+
+fn api_tokens_auth_error(
+  policy: api_tokens_update.AuthPolicy,
+) -> opt.Option(ApiError) {
+  case policy {
+    api_tokens_update.NoAuthCheck -> opt.None
+    api_tokens_update.CheckAuth(err) -> opt.Some(err)
+  }
+}
+
+fn apply_api_tokens_update(
+  model: client_state.Model,
+  update: api_tokens_update.Update(client_state.Msg),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  let api_tokens_update.Update(api_tokens, local_fx, auth_policy) = update
+
+  apply_auth_check_before(model, api_tokens_auth_error(auth_policy), fn() {
+    let model =
+      client_state.update_admin(model, fn(admin) {
+        admin_state.AdminModel(..admin, api_tokens: api_tokens)
+      })
+    #(model, local_fx)
+  })
 }
 
 fn update_assignments(

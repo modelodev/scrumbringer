@@ -25,7 +25,9 @@ import scrumbringer_server/persistence/auth/queries
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/password
-import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
+import scrumbringer_server/services/store_state.{
+  type StoredUser, Human, StoredUser,
+}
 
 // =============================================================================
 // Public API
@@ -115,9 +117,10 @@ fn bootstrap_register(
     Ok(StoredUser(
       id: user_id,
       email: email,
-      password_hash: password_hash,
+      password_hash: Some(password_hash),
       org_id: org_id,
       org_role: org_role.Admin,
+      user_kind: Human,
       created_at: created_at,
     ))
   })
@@ -174,9 +177,10 @@ fn invite_register(
             Ok(StoredUser(
               id: user_id,
               email: email,
-              password_hash: password_hash,
+              password_hash: Some(password_hash),
               org_id: org_id,
               org_role: org_role.Member,
+              user_kind: Human,
               created_at: created_at,
             ))
 
