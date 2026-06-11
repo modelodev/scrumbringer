@@ -1,5 +1,6 @@
 import domain/milestone.{type MilestoneProgress, type MilestoneState}
 import gleam/int
+import gleam/list
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element, none}
@@ -12,20 +13,18 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
-import scrumbringer_client/ui/detail_metrics
 
 pub type Config(msg) {
   Config(
     locale: Locale,
     progress: MilestoneProgress,
-    tasks_in_cards: Int,
     loose_tasks: Int,
     blocked_tasks: Int,
     empty_cards: Int,
+    cards_without_progress: Int,
     cards_section: Element(msg),
     loose_tasks_panel: Element(msg),
     actions: List(Element(msg)),
-    metrics_summary: Element(msg),
     summary_expanded: Bool,
     on_summary_toggle: msg,
     milestone_state_label: fn(MilestoneState) -> String,
@@ -88,54 +87,71 @@ fn view_structural_summary_strip(config: Config(msg)) -> Element(msg) {
       attribute.class("milestone-structure-strip"),
       attribute.attribute("data-testid", "milestone-structure-strip"),
     ],
-    [
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneCardsProgress(
-            progress.cards_completed,
-            progress.cards_total,
+    list.append(
+      [
+        summary_chip(
+          i18n.t(
+            config.locale,
+            i18n_text.MilestoneCardsProgress(
+              progress.cards_completed,
+              progress.cards_total,
+            ),
           ),
+          "progress",
         ),
-        "progress",
-      ),
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneCardsCount(progress.cards_total),
+        summary_chip(
+          i18n.t(
+            config.locale,
+            i18n_text.MilestoneCardsCount(progress.cards_total),
+          ),
+          "cards",
         ),
-        "cards",
-      ),
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
-        ),
-        "tasks",
-      ),
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
-        ),
-        "loose",
-      ),
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
-        ),
-        "blocked",
-      ),
-      summary_chip(
-        i18n.t(
-          config.locale,
-          i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
-        ),
-        "empty",
-      ),
-    ],
+      ],
+      summary_signal_chips(config),
+    ),
   )
+}
+
+fn summary_signal_chips(config: Config(msg)) -> List(Element(msg)) {
+  [
+    signal_chip(
+      config.loose_tasks,
+      i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
+      "loose",
+    ),
+    signal_chip(
+      config.blocked_tasks,
+      i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
+      "blocked",
+    ),
+    signal_chip(
+      config.empty_cards,
+      i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
+      "empty",
+    ),
+    signal_chip(
+      config.cards_without_progress,
+      i18n_text.MilestoneCardsWithoutProgressCount(
+        config.cards_without_progress,
+      ),
+      "no-progress",
+    ),
+  ]
+  |> list.filter_map(fn(item) {
+    let #(count, label, tone) = item
+    case count > 0 {
+      True -> Ok(summary_chip(i18n.t(config.locale, label), tone))
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn signal_chip(
+  count: Int,
+  label: i18n_text.Text,
+  tone: String,
+) -> #(Int, i18n_text.Text, String) {
+  #(count, label, tone)
 }
 
 fn summary_chip(label: String, tone: String) -> Element(msg) {
@@ -156,16 +172,7 @@ fn view_header_actions(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_summary_block(config: Config(msg)) -> Element(msg) {
-  let summary_meta =
-    i18n.t(
-      config.locale,
-      i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
-    )
-    <> " · "
-    <> i18n.t(
-      config.locale,
-      i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
-    )
+  let summary_meta = diagnostic_summary(config)
 
   div([attribute.class("milestone-subsection milestone-inline-section")], [
     button(
@@ -187,70 +194,66 @@ fn view_summary_block(config: Config(msg)) -> Element(msg) {
     ),
     case config.summary_expanded {
       True ->
-        div([attribute.class("milestone-summary-grid")], [
-          div([attribute.class("milestone-summary-column")], [
-            p([attribute.class("milestone-summary-heading")], [
-              text(i18n.t(config.locale, i18n_text.MilestoneHealthSummary)),
-            ]),
-            div(
-              [
-                attribute.class(
-                  "milestone-planning-summary milestone-summary-list",
-                ),
-              ],
-              [
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.MilestoneLifecycle),
-                  config.milestone_state_label(config.progress.milestone.state),
-                ),
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.MilestoneCardsLabel),
-                  i18n.t(
-                    config.locale,
-                    i18n_text.MilestoneCardsCount(config.progress.cards_total),
-                  ),
-                ),
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.MilestoneTasksLabel),
-                  i18n.t(
-                    config.locale,
-                    i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
-                  ),
-                ),
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.MilestoneLooseTasksNotice),
-                  i18n.t(
-                    config.locale,
-                    i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
-                  ),
-                ),
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.Blocked),
-                  i18n.t(
-                    config.locale,
-                    i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
-                  ),
-                ),
-                detail_metrics.view_row(
-                  i18n.t(config.locale, i18n_text.MilestoneEmptyCardsLabel),
-                  i18n.t(
-                    config.locale,
-                    i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
-                  ),
-                ),
-              ],
-            ),
-          ]),
-          div([attribute.class("milestone-summary-column")], [
-            p([attribute.class("milestone-summary-heading")], [
-              text(i18n.t(config.locale, i18n_text.MilestoneMetricsSummary)),
-            ]),
-            div([attribute.class("milestone-summary-list")], [
-              config.metrics_summary,
-            ]),
-          ]),
-        ])
+        div(
+          [attribute.class("milestone-diagnostic-list")],
+          diagnostic_items(config),
+        )
       False -> none()
     },
   ])
+}
+
+fn diagnostic_summary(config: Config(msg)) -> String {
+  case diagnostic_texts(config) {
+    [] -> i18n.t(config.locale, i18n_text.MilestoneStructureComplete)
+    [first, ..] -> first
+  }
+}
+
+fn diagnostic_items(config: Config(msg)) -> List(Element(msg)) {
+  case diagnostic_texts(config) {
+    [] -> [
+      p([attribute.class("milestone-diagnostic-item is-complete")], [
+        text(i18n.t(config.locale, i18n_text.MilestoneStructureComplete)),
+      ]),
+    ]
+    items ->
+      list.map(items, fn(item) {
+        p([attribute.class("milestone-diagnostic-item")], [text(item)])
+      })
+  }
+}
+
+fn diagnostic_texts(config: Config(msg)) -> List(String) {
+  [
+    diagnostic_if(
+      config.loose_tasks,
+      i18n_text.MilestoneLooseTasksDiagnostic(config.loose_tasks),
+    ),
+    diagnostic_if(
+      config.blocked_tasks,
+      i18n_text.MilestoneBlockedTasksDiagnostic(config.blocked_tasks),
+    ),
+    diagnostic_if(
+      config.empty_cards,
+      i18n_text.MilestoneEmptyCardsDiagnostic(config.empty_cards),
+    ),
+    diagnostic_if(
+      config.cards_without_progress,
+      i18n_text.MilestoneCardsWithoutProgressDiagnostic(
+        config.cards_without_progress,
+      ),
+    ),
+  ]
+  |> list.filter_map(fn(item) {
+    let #(count, label) = item
+    case count > 0 {
+      True -> Ok(i18n.t(config.locale, label))
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn diagnostic_if(count: Int, label: i18n_text.Text) -> #(Int, i18n_text.Text) {
+  #(count, label)
 }

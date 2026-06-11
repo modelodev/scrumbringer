@@ -4,9 +4,9 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
-  type CardModalMetrics, type MilestoneModalMetrics, type MyMetrics,
-  type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
-  type OrgMetricsUserOverview, type TaskModalMetrics,
+  type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
+  type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
+  type TaskModalMetrics,
 }
 import domain/milestone.{type Milestone, type MilestoneProgress}
 import domain/project.{type ProjectMember}
@@ -98,7 +98,6 @@ pub type Msg {
   MemberMilestoneSearchChanged(String)
   MemberMilestoneSummaryToggled
   MemberMilestoneDetailsClicked(Int)
-  MemberMilestoneMetricsFetched(ApiResult(MilestoneModalMetrics))
   MemberMilestoneCreateTaskClicked(Int)
   MemberMilestoneCreateCardClicked(Int)
   MemberMilestoneCardDragStarted(Int, Int)

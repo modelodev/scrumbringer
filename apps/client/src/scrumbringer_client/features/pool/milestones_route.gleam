@@ -122,9 +122,6 @@ fn context(
         result,
       ))
     },
-    on_milestone_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberMilestoneMetricsFetched(result))
-    },
     on_milestone_card_moved: fn(result) {
       client_state.pool_msg(pool_messages.MemberMilestoneCardMoved(result))
     },

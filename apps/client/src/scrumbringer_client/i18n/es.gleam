@@ -319,8 +319,6 @@ pub fn translate(text: Text) -> String {
       "Tareas " <> int.to_string(completed) <> "/" <> int.to_string(total)
     text.MilestoneStructureSummary -> "Resumen estructural"
     text.MilestoneActions -> "Acciones"
-    text.MilestoneHealthSummary -> "Salud"
-    text.MilestoneMetricsSummary -> "Métricas"
     text.MilestoneSearchPlaceholder -> "Buscar hitos"
     text.MilestoneLooseTasksNotice -> "Trabajo suelto"
     text.MilestoneLooseTasksHint ->
@@ -328,19 +326,32 @@ pub fn translate(text: Text) -> String {
     text.MilestoneNoSelection -> "Selecciona un hito"
     text.MilestoneNoSelectionHint ->
       "Elige un hito de la lista para inspeccionar su contenido"
-    text.MilestonePlanningSummary -> "Resumen de planificación"
-    text.MilestoneLifecycle -> "Ciclo de vida"
     text.MilestoneCardsCount(cards_count) ->
       int.to_string(cards_count) <> " tarjetas"
     text.MilestoneLooseTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas sueltas"
-    text.MilestoneTasksInCardsCount(tasks_count) ->
-      int.to_string(tasks_count) <> " tareas en tarjetas"
     text.MilestoneBlockedTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas bloqueadas"
     text.MilestoneEmptyCardsCount(cards_count) ->
       int.to_string(cards_count) <> " tarjetas vacías"
-    text.MilestoneEmptyCardsLabel -> "Tarjetas vacías"
+    text.MilestoneCardsWithoutProgressCount(cards_count) ->
+      int.to_string(cards_count) <> " tarjetas sin avance"
+    text.MilestoneStructureComplete -> "Estructura completa"
+    text.MilestoneLooseTasksDiagnostic(tasks_count) ->
+      int.to_string(tasks_count)
+      <> " tareas todavía no están agrupadas en tarjetas"
+    text.MilestoneBlockedTasksDiagnostic(tasks_count) ->
+      int.to_string(tasks_count) <> " tareas bloqueadas requieren atención"
+    text.MilestoneEmptyCardsDiagnostic(cards_count) ->
+      int.to_string(cards_count) <> " tarjetas vacías necesitan contenido"
+    text.MilestoneCardsWithoutProgressDiagnostic(cards_count) ->
+      int.to_string(cards_count)
+      <> " tarjetas todavía no han empezado a moverse"
+    text.MilestoneCardEmpty -> "Vacía"
+    text.MilestoneCardNoProgress -> "Sin avance"
+    text.MilestoneCardBlocked -> "Bloqueada"
+    text.MilestoneCardComplete -> "Completa"
+    text.ViewInKanban -> "Ver en Kanban"
     text.MilestoneTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas totales"
     text.MilestoneTaskStatusAvailable -> "disponible"

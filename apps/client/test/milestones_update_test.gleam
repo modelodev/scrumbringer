@@ -8,7 +8,7 @@ import domain/milestone.{
   type Milestone, type MilestoneProgress, type MilestoneState, Active, Milestone,
   MilestoneProgress, Ready,
 }
-import domain/remote.{Failed, Loaded, Loading}
+import domain/remote.{Loaded}
 import domain/task.{Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
@@ -59,7 +59,6 @@ fn local_context(selected_project_id) -> milestones_update.Context(Nil) {
     on_milestone_created: fn(_result) { Nil },
     on_milestone_updated: fn(_result) { Nil },
     on_milestone_deleted: fn(_milestone_id, _result) { Nil },
-    on_milestone_metrics_fetched: fn(_result) { Nil },
     on_milestone_card_moved: fn(_result) { Nil },
     on_milestone_task_moved: fn(_result) { Nil },
     name_required: "Name required",
@@ -884,7 +883,7 @@ pub fn milestone_member_pool_update_toggles_filter_locally_test() {
   root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
-pub fn milestone_member_pool_update_details_fetches_metrics_test() {
+pub fn milestone_member_pool_update_details_selects_without_metrics_effect_test() {
   let pool = client_state.default_model().member.pool
 
   let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
@@ -898,25 +897,6 @@ pub fn milestone_member_pool_update_details_fetches_metrics_test() {
   next.member_selected_milestone_id |> assert_equal(Some(77))
   next.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogClosed)
-  next.member_milestone_metrics |> assert_equal(Loading)
-  let assert True = fx != effect.none()
-  policy |> assert_equal(milestones_update.NoRefresh)
-  root_policy |> assert_equal(milestones_update.NoRootPolicy)
-}
-
-pub fn milestone_member_pool_update_metrics_error_sets_failed_test() {
-  let pool = client_state.default_model().member.pool
-  let err = ApiError(status: 500, code: "SERVER_ERROR", message: "boom")
-
-  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
-      pool,
-      pool_messages.MemberMilestoneMetricsFetched(Error(err)),
-      local_context(Some(1)),
-      feedback_context(),
-    )
-
-  next.member_milestone_metrics |> assert_equal(Failed(err))
   let assert True = fx == effect.none()
   policy |> assert_equal(milestones_update.NoRefresh)
   root_policy |> assert_equal(milestones_update.NoRootPolicy)
@@ -934,8 +914,7 @@ pub fn milestone_member_pool_update_created_ok_requests_refresh_test() {
     )
 
   next.member_selected_milestone_id |> assert_equal(Some(33))
-  next.member_milestone_metrics |> assert_equal(Loading)
-  let assert True = fx != effect.none()
+  let assert True = fx == effect.none()
   policy
   |> assert_equal(milestones_update.RefreshWithSuccess(
     milestones_update.MilestoneCreated,

@@ -1,5 +1,4 @@
 import domain/card as card_domain
-import domain/metrics.{type MilestoneModalMetrics}
 import domain/milestone.{type MilestoneProgress}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked, unwrap}
@@ -7,7 +6,8 @@ import domain/task as task_domain
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div}
+import lustre/element/html.{button, div, text}
+import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/milestones/actions as milestone_actions
@@ -19,11 +19,11 @@ import scrumbringer_client/features/milestones/empty_state as milestone_empty_st
 import scrumbringer_client/features/milestones/filters as milestone_filters
 import scrumbringer_client/features/milestones/labels as milestone_labels
 import scrumbringer_client/features/milestones/list_pane
-import scrumbringer_client/features/milestones/metrics_summary
 import scrumbringer_client/features/milestones/no_selection as milestone_no_selection
 import scrumbringer_client/features/milestones/queries as milestone_queries
 import scrumbringer_client/features/milestones/selection as milestone_selection
 import scrumbringer_client/features/milestones/work_items
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
@@ -39,7 +39,6 @@ pub type Config(msg) {
     show_empty: Bool,
     selected_milestone_id: option.Option(Int),
     summary_expanded: Bool,
-    milestone_metrics: Remote(MilestoneModalMetrics),
     dialog: member_pool.MilestoneDialog,
     dialog_in_flight: Bool,
     dialog_error: option.Option(String),
@@ -59,6 +58,7 @@ pub type Config(msg) {
     on_search_change: fn(String) -> msg,
     on_toggle_completed: msg,
     on_toggle_empty: msg,
+    on_view_kanban: msg,
     on_select: fn(Int) -> msg,
     on_summary_toggle: msg,
     on_quick_create_card: fn(Int) -> msg,
@@ -203,9 +203,10 @@ fn view_selected_milestone_detail(
 ) -> Element(msg) {
   let milestone_id = progress.milestone.id
   let loose_tasks = loose_tasks_count(config, milestone_id)
-  let tasks_in_cards = tasks_in_cards_count(config, milestone_id)
   let blocked_tasks = blocked_tasks_count(config, milestone_id)
   let empty_cards = empty_cards_count(config, milestone_id)
+  let cards_without_progress =
+    cards_without_progress_count(config, milestone_id)
 
   div(
     [
@@ -216,14 +217,13 @@ fn view_selected_milestone_detail(
       content_pane.view(content_pane.Config(
         locale: config.locale,
         progress: progress,
-        tasks_in_cards: tasks_in_cards,
         loose_tasks: loose_tasks,
         blocked_tasks: blocked_tasks,
         empty_cards: empty_cards,
+        cards_without_progress: cards_without_progress,
         cards_section: view_cards_section(config, milestone_id),
         loose_tasks_panel: view_loose_tasks_panel(config, milestone_id),
         actions: detail_header_actions(config, progress, milestone_id),
-        metrics_summary: view_milestone_metrics_summary(config),
         summary_expanded: config.summary_expanded,
         on_summary_toggle: config.on_summary_toggle,
         milestone_state_label: fn(state) {
@@ -234,13 +234,6 @@ fn view_selected_milestone_detail(
       )),
     ],
   )
-}
-
-fn view_milestone_metrics_summary(config: Config(msg)) {
-  metrics_summary.view(metrics_summary.Config(
-    locale: config.locale,
-    metrics: config.milestone_metrics,
-  ))
 }
 
 fn view_empty_state(
@@ -268,19 +261,33 @@ fn detail_header_actions(
   progress: MilestoneProgress,
   milestone_id: Int,
 ) -> List(Element(msg)) {
-  milestone_actions.view(milestone_actions.Config(
-    locale: config.locale,
-    progress: progress,
-    can_manage: config.can_manage,
-    activation_in_flight: config.activation_in_flight_id
-      == option.Some(milestone_id),
-    has_other_active: has_other_active_milestone(config, milestone_id),
-    on_quick_create_card: config.on_quick_create_card,
-    on_quick_create_task: config.on_quick_create_task,
-    on_activate_prompt: config.on_activate_prompt,
-    on_edit: config.on_edit,
-    on_delete: config.on_delete,
-  ))
+  [
+    view_kanban_button(config),
+    ..milestone_actions.view(milestone_actions.Config(
+      locale: config.locale,
+      progress: progress,
+      can_manage: config.can_manage,
+      activation_in_flight: config.activation_in_flight_id
+        == option.Some(milestone_id),
+      has_other_active: has_other_active_milestone(config, milestone_id),
+      on_quick_create_card: config.on_quick_create_card,
+      on_quick_create_task: config.on_quick_create_task,
+      on_activate_prompt: config.on_activate_prompt,
+      on_edit: config.on_edit,
+      on_delete: config.on_delete,
+    ))
+  ]
+}
+
+fn view_kanban_button(config: Config(msg)) -> Element(msg) {
+  button(
+    [
+      attribute.class("btn btn-secondary btn-sm milestone-view-kanban"),
+      attribute.type_("button"),
+      event.on_click(config.on_view_kanban),
+    ],
+    [text(i18n.t(config.locale, i18n_text.ViewInKanban))],
+  )
 }
 
 fn view_cards_section(config: Config(msg), milestone_id: Int) -> Element(msg) {
@@ -363,14 +370,6 @@ fn loose_tasks_count(config: Config(msg), milestone_id: Int) -> Int {
   milestone_queries.loose_tasks_count(config.tasks, milestone_id)
 }
 
-fn tasks_in_cards_count(config: Config(msg), milestone_id: Int) -> Int {
-  milestone_queries.tasks_in_cards_count(
-    config.tasks,
-    config.cards,
-    milestone_id,
-  )
-}
-
 fn blocked_tasks_count(config: Config(msg), milestone_id: Int) -> Int {
   milestone_queries.blocked_tasks_count(
     config.tasks,
@@ -381,6 +380,10 @@ fn blocked_tasks_count(config: Config(msg), milestone_id: Int) -> Int {
 
 fn empty_cards_count(config: Config(msg), milestone_id: Int) -> Int {
   milestone_queries.empty_cards_count(config.cards, milestone_id)
+}
+
+fn cards_without_progress_count(config: Config(msg), milestone_id: Int) -> Int {
+  milestone_queries.cards_without_progress_count(config.cards, milestone_id)
 }
 
 fn ready_destination_milestones(

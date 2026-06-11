@@ -5,9 +5,6 @@ import lustre/element
 
 import domain/api_error.{ApiError}
 import domain/card.{Card, Pendiente}
-import domain/metrics.{
-  MilestoneModalMetrics, ModalExecutionHealth, WorkflowBreakdown,
-}
 import domain/milestone.{
   type MilestoneProgress, type MilestoneState, Active, Completed, Milestone,
   MilestoneProgress, Ready,
@@ -73,6 +70,7 @@ fn milestone_callbacks() -> milestones_view.Callbacks(String) {
     on_search_change: fn(value) { "search:" <> value },
     on_toggle_completed: "toggle-completed",
     on_toggle_empty: "toggle-empty",
+    on_view_kanban: "view-kanban",
     on_select: fn(id) { "select:" <> int.to_string(id) },
     on_summary_toggle: "summary-toggle",
     on_quick_create_card: fn(id) { "quick-card:" <> int.to_string(id) },
@@ -233,19 +231,6 @@ fn with_tasks(
     member_state.MemberModel(
       ..member,
       pool: member_pool.Model(..pool, member_tasks: remote.Loaded(tasks)),
-    )
-  })
-}
-
-fn with_milestone_metrics(
-  model: client_state.Model,
-  metrics,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(..pool, member_milestone_metrics: metrics),
     )
   })
 }
@@ -539,8 +524,8 @@ pub fn milestones_view_renders_detail_progress_and_tabs_test() {
     |> element.to_document_string
 
   string.contains(html, "milestone-detail-pane") |> assert_true
-  string.contains(html, "Health") |> assert_true
-  string.contains(html, "Metrics") |> assert_true
+  string.contains(html, "Structure summary") |> assert_true
+  string.contains(html, "View in Kanban") |> assert_true
 }
 
 pub fn milestones_view_marks_selected_row_with_aria_pressed_test() {
@@ -750,10 +735,11 @@ pub fn milestones_view_detail_pane_renders_progress_and_content_test() {
   |> assert_true
   string.contains(html, "data-testid=\"milestone-card-row:93:701\"")
   |> assert_true
-  string.contains(html, "Card task 802") |> assert_true
+  string.contains(html, "milestone-delivery-card") |> assert_true
+  string.contains(html, "Card task 802") |> assert_false
   string.contains(html, "data-testid=\"milestone-task-row:93:801\"")
   |> assert_true
-  string.contains(html, "tasks in cards") |> assert_true
+  string.contains(html, "tasks in cards") |> assert_false
 }
 
 pub fn milestones_view_detail_surfaces_phase4_structure_summary_test() {
@@ -773,10 +759,10 @@ pub fn milestones_view_detail_surfaces_phase4_structure_summary_test() {
   string.contains(html, "data-testid=\"milestone-structure-strip\"")
   |> assert_true
   string.contains(html, "3 cards") |> assert_true
-  string.contains(html, "1 tasks in cards") |> assert_true
   string.contains(html, "1 loose tasks") |> assert_true
   string.contains(html, "1 blocked tasks") |> assert_true
-  string.contains(html, "milestone-card-health-chip") |> assert_true
+  string.contains(html, "milestone-card-status-chip") |> assert_true
+  string.contains(html, "milestone-card-health-chip") |> assert_false
   string.contains(html, "Loose tasks") |> assert_true
   string.contains(html, "not grouped inside a card yet") |> assert_true
 }
@@ -798,7 +784,7 @@ pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
     |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Health") |> assert_true
+  string.contains(html, "Structure summary") |> assert_true
   string.contains(html, "data-testid=\"milestone-quick-new-card:142\"")
   |> assert_true
   string.contains(html, "data-testid=\"milestone-move-card:142:950:143\"")
@@ -972,7 +958,7 @@ pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
   string.contains(html, "available") |> assert_true
 }
 
-pub fn milestone_metrics_error_copy_i18n_test() {
+pub fn milestones_view_structure_complete_copy_i18n_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -980,20 +966,13 @@ pub fn milestone_metrics_error_copy_i18n_test() {
     |> with_milestones(remote.Loaded([sample_progress(140, Ready)]))
     |> with_selected_milestone(140)
     |> with_summary_expanded(True)
-    |> with_milestone_metrics(
-      remote.Failed(ApiError(
-        status: 409,
-        code: "metrics_unavailable",
-        message: "x",
-      )),
-    )
     |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "No se pudieron cargar métricas") |> assert_true
+  string.contains(html, "Estructura completa") |> assert_true
 }
 
-pub fn milestone_metrics_empty_copy_i18n_test() {
+pub fn milestones_view_delivery_plan_omits_modal_metrics_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -1001,29 +980,9 @@ pub fn milestone_metrics_empty_copy_i18n_test() {
     |> with_milestones(remote.Loaded([sample_progress(141, Ready)]))
     |> with_selected_milestone(141)
     |> with_summary_expanded(True)
-    |> with_milestone_metrics(
-      remote.Loaded(MilestoneModalMetrics(
-        cards_total: 0,
-        cards_completed: 0,
-        cards_percent: 0,
-        tasks_total: 0,
-        tasks_completed: 0,
-        tasks_percent: 0,
-        tasks_available: 0,
-        tasks_claimed: 0,
-        tasks_ongoing: 0,
-        health: ModalExecutionHealth(
-          avg_rebotes: 0,
-          avg_pool_lifetime_s: 0,
-          avg_executors: 0,
-        ),
-        workflows: [WorkflowBreakdown(name: "none", count: 0)],
-        most_activated: None,
-      )),
-    )
     |> view_milestones
     |> element.to_document_string
 
-  string.contains(html, "Metrics") |> assert_true
-  string.contains(html, "0/0") |> assert_true
+  string.contains(html, "Metrics") |> assert_false
+  string.contains(html, "Structure complete") |> assert_true
 }

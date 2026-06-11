@@ -4,9 +4,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/metrics.{
-  type CardModalMetrics, type MilestoneModalMetrics, type TaskModalMetrics,
-}
+import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
 import domain/milestone.{type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
@@ -75,7 +73,6 @@ pub type Model {
     member_milestone_dialog: MilestoneDialog,
     member_milestone_dialog_in_flight: Bool,
     member_milestone_dialog_error: Option(String),
-    member_milestone_metrics: Remote(MilestoneModalMetrics),
     member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
@@ -146,7 +143,6 @@ pub fn default_model() -> Model {
     member_milestone_dialog: MilestoneDialogClosed,
     member_milestone_dialog_in_flight: False,
     member_milestone_dialog_error: option.None,
-    member_milestone_metrics: NotAsked,
     member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,

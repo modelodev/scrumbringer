@@ -29,16 +29,14 @@ pub fn project_fetched_updates_store_and_waits_until_ready_test() {
     milestones_store: next_store,
     milestones: next_milestones,
     selected_milestone_id: selected_id,
-    should_fetch_metrics: should_fetch_metrics,
   ) =
-    milestone_refresh.project_fetched(store, Loading, None, NotAsked, 1, [
+    milestone_refresh.project_fetched(store, Loading, None, 1, [
       progress,
     ])
 
   let assert 1 = normalized_store.pending(next_store)
   let assert Loading = next_milestones
   let assert None = selected_id
-  let assert True = should_fetch_metrics
 }
 
 pub fn project_fetched_selects_active_milestone_when_ready_test() {
@@ -49,36 +47,29 @@ pub fn project_fetched_selects_active_milestone_when_ready_test() {
   let milestone_refresh.ProjectFetched(
     milestones: milestones,
     selected_milestone_id: selected_id,
-    should_fetch_metrics: should_fetch_metrics,
     ..,
   ) =
-    milestone_refresh.project_fetched(store, Loading, None, NotAsked, 1, [
+    milestone_refresh.project_fetched(store, Loading, None, 1, [
       sample_progress(10, Ready),
       sample_progress(20, Active),
     ])
 
   let assert Loaded([_, _]) = milestones
   let assert Some(20) = selected_id
-  let assert True = should_fetch_metrics
 }
 
-pub fn project_fetched_keeps_existing_selection_and_loaded_metrics_test() {
+pub fn project_fetched_keeps_existing_selection_test() {
   let store =
     normalized_store.new()
     |> milestone_refresh.mark_pending(1)
 
-  let milestone_refresh.ProjectFetched(
-    selected_milestone_id: selected_id,
-    should_fetch_metrics: should_fetch_metrics,
-    ..,
-  ) =
-    milestone_refresh.project_fetched(store, Loading, Some(10), Loaded(Nil), 1, [
+  let milestone_refresh.ProjectFetched(selected_milestone_id: selected_id, ..) =
+    milestone_refresh.project_fetched(store, Loading, Some(10), 1, [
       sample_progress(10, Ready),
       sample_progress(20, Active),
     ])
 
   let assert Some(10) = selected_id
-  let assert False = should_fetch_metrics
 }
 
 pub fn project_failed_preserves_loaded_milestones_and_fails_empty_state_test() {

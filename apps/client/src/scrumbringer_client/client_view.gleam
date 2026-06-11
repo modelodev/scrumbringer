@@ -1436,6 +1436,9 @@ fn milestone_callbacks() -> milestones_view.Callbacks(client_state.Msg) {
     on_toggle_empty: client_state.pool_msg(
       pool_messages.MemberMilestonesShowEmptyToggled,
     ),
+    on_view_kanban: client_state.pool_msg(pool_messages.ViewModeChanged(
+      view_mode.Cards,
+    )),
     on_select: fn(id) {
       client_state.pool_msg(pool_messages.MemberMilestoneDetailsClicked(id))
     },

@@ -106,7 +106,7 @@ fn task(
 }
 
 pub fn milestone_queries_count_tasks_and_cards_test() {
-  let cards = [card(10, 1, 0), card(11, 2, 3)]
+  let cards = [card(10, 1, 0), card(11, 2, 3), card(12, 1, 2)]
   let tasks = [
     task(1, opt.Some(1), opt.None, 0),
     task(2, opt.None, opt.Some(10), 1),
@@ -114,9 +114,9 @@ pub fn milestone_queries_count_tasks_and_cards_test() {
   ]
 
   queries.loose_tasks_count(tasks, 1) |> assert_equal(1)
-  queries.tasks_in_cards_count(tasks, cards, 1) |> assert_equal(1)
   queries.blocked_tasks_count(tasks, cards, 1) |> assert_equal(1)
   queries.empty_cards_count(cards, 1) |> assert_equal(1)
+  queries.cards_without_progress_count(cards, 1) |> assert_equal(1)
 }
 
 pub fn milestone_queries_resolve_destination_and_active_state_test() {

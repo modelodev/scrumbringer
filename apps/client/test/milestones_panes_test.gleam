@@ -86,14 +86,13 @@ pub fn content_pane_renders_from_config_without_root_model_test() {
       content_pane.Config(
         locale: locale.En,
         progress: item,
-        tasks_in_cards: 2,
         loose_tasks: 3,
         blocked_tasks: 1,
         empty_cards: 0,
+        cards_without_progress: 1,
         cards_section: html.div([], [html.text("cards section")]),
         loose_tasks_panel: html.div([], [html.text("loose tasks")]),
         actions: [],
-        metrics_summary: html.div([], [html.text("metrics summary")]),
         summary_expanded: True,
         on_summary_toggle: "toggle-summary",
         milestone_state_label: state_label,
@@ -107,8 +106,8 @@ pub fn content_pane_renders_from_config_without_root_model_test() {
   assert_contains(html, "Delivery slice")
   assert_contains(html, "milestone-structure-strip")
   assert_contains(html, "Cards 1/2")
-  assert_contains(html, "2 tasks in cards")
   assert_contains(html, "3 loose tasks")
   assert_contains(html, "1 blocked tasks")
-  assert_contains(html, "metrics summary")
+  assert_contains(html, "1 cards without progress")
+  assert_contains(html, "tasks are not grouped inside cards yet")
 }

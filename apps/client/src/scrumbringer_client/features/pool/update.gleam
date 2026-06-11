@@ -1663,9 +1663,6 @@ fn update_without_view_mode(
     | pool_messages.CloseCardDetail
     | pool_messages.CardMetricsFetched(_) -> #(model, effect.none())
 
-    // Handled by milestones workflow before this dispatch.
-    pool_messages.MemberMilestoneMetricsFetched(_) -> #(model, effect.none())
-
     // Handled by workflows_workflow.try_workflows_update before this dispatch.
     pool_messages.WorkflowsProjectFetched(_)
     | pool_messages.OpenWorkflowDialog(_)

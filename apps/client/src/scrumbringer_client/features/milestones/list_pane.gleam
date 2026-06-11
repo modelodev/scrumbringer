@@ -168,15 +168,21 @@ fn view_item(
           ]),
         ]),
       ]),
-      div([attribute.class("milestone-item-stats")], [
-        pill(config.locale, i18n_text.MilestoneCardsCount(progress.cards_total)),
-        pill(
-          config.locale,
-          i18n_text.MilestoneLooseTasksCount(config.loose_tasks_count(
-            milestone_id,
-          )),
+      div(
+        [attribute.class("milestone-item-stats")],
+        list.append(
+          [
+            pill(
+              config.locale,
+              i18n_text.MilestoneCardsCount(progress.cards_total),
+            ),
+          ],
+          optional_loose_tasks_pill(
+            config.locale,
+            config.loose_tasks_count(milestone_id),
+          ),
         ),
-      ]),
+      ),
       p([attribute.class("milestone-item-description milestone-health-hint")], [
         text(health_hint(config, progress)),
       ]),
@@ -216,4 +222,14 @@ fn pill(locale: Locale, label: i18n_text.Text) -> Element(msg) {
   span([attribute.class("milestone-stat-pill")], [
     text(i18n.t(locale, label)),
   ])
+}
+
+fn optional_loose_tasks_pill(
+  locale: Locale,
+  loose_tasks: Int,
+) -> List(Element(msg)) {
+  case loose_tasks > 0 {
+    True -> [pill(locale, i18n_text.MilestoneLooseTasksCount(loose_tasks))]
+    False -> []
+  }
 }

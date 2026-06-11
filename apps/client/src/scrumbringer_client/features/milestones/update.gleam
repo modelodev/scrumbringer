@@ -6,9 +6,8 @@ import lustre/effect
 
 import domain/api_error.{type ApiError, type ApiResult, ApiError}
 import domain/card.{type Card}
-import domain/metrics.{type MilestoneModalMetrics}
 import domain/milestone
-import domain/remote.{Failed, Loaded, Loading}
+import domain/remote.{Loaded}
 import domain/task.{type Task}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/milestones as api_milestones
@@ -29,8 +28,6 @@ pub type Context(parent_msg) {
     on_milestone_created: fn(ApiResult(milestone.Milestone)) -> parent_msg,
     on_milestone_updated: fn(ApiResult(milestone.Milestone)) -> parent_msg,
     on_milestone_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
-    on_milestone_metrics_fetched: fn(ApiResult(MilestoneModalMetrics)) ->
-      parent_msg,
     on_milestone_card_moved: fn(ApiResult(Card)) -> parent_msg,
     on_milestone_task_moved: fn(ApiResult(Task)) -> parent_msg,
     name_required: String,
@@ -324,7 +321,6 @@ pub fn handle_milestone_created_ok(
       member_milestone_dialog_in_flight: False,
       member_milestone_dialog_error: opt.None,
       member_selected_milestone_id: opt.Some(created.id),
-      member_milestone_metrics: Loading,
     ),
     effect.none(),
   )
@@ -509,7 +505,6 @@ pub fn handle_milestone_details_clicked(
       member_selected_milestone_id: opt.Some(milestone_id),
       member_milestone_dialog_in_flight: False,
       member_milestone_dialog_error: opt.None,
-      member_milestone_metrics: Loading,
     ),
     effect.none(),
   )
@@ -624,24 +619,14 @@ pub fn try_member_pool_update(
         milestones_store: next_store,
         milestones: next_milestones,
         selected_milestone_id: next_selected,
-        should_fetch_metrics: should_fetch_metrics,
       ) =
         milestone_refresh.project_fetched(
           model.member_milestones_store,
           model.member_milestones,
           model.member_selected_milestone_id,
-          model.member_milestone_metrics,
           project_id,
           milestones,
         )
-      let metrics_fx = case next_selected, should_fetch_metrics {
-        opt.Some(milestone_id), True ->
-          api_milestones.get_milestone_metrics(
-            milestone_id,
-            context.on_milestone_metrics_fetched,
-          )
-        _, _ -> effect.none()
-      }
 
       opt.Some(Update(
         member_pool.Model(
@@ -649,12 +634,8 @@ pub fn try_member_pool_update(
           member_milestones_store: next_store,
           member_milestones: next_milestones,
           member_selected_milestone_id: next_selected,
-          member_milestone_metrics: case should_fetch_metrics {
-            True -> Loading
-            False -> model.member_milestone_metrics
-          },
         ),
-        metrics_fx,
+        effect.none(),
         NoRefresh,
         NoRootPolicy,
       ))
@@ -698,35 +679,8 @@ pub fn try_member_pool_update(
       let #(next, local_fx) =
         handle_milestone_details_clicked(model, milestone_id)
 
-      opt.Some(Update(
-        next,
-        effect.batch([
-          local_fx,
-          api_milestones.get_milestone_metrics(
-            milestone_id,
-            context.on_milestone_metrics_fetched,
-          ),
-        ]),
-        NoRefresh,
-        NoRootPolicy,
-      ))
+      opt.Some(Update(next, local_fx, NoRefresh, NoRootPolicy))
     }
-
-    pool_messages.MemberMilestoneMetricsFetched(Ok(metrics)) ->
-      opt.Some(Update(
-        member_pool.Model(..model, member_milestone_metrics: Loaded(metrics)),
-        effect.none(),
-        NoRefresh,
-        NoRootPolicy,
-      ))
-
-    pool_messages.MemberMilestoneMetricsFetched(Error(err)) ->
-      opt.Some(Update(
-        member_pool.Model(..model, member_milestone_metrics: Failed(err)),
-        effect.none(),
-        NoRefresh,
-        NoRootPolicy,
-      ))
 
     pool_messages.MemberMilestoneCreateTaskClicked(milestone_id) ->
       try_local_transition(model, fn(pool) {
@@ -876,13 +830,7 @@ pub fn try_member_pool_update(
       let #(next, local_fx) = handle_milestone_created_ok(model, milestone)
       opt.Some(Update(
         next,
-        effect.batch([
-          local_fx,
-          api_milestones.get_milestone_metrics(
-            milestone.id,
-            context.on_milestone_metrics_fetched,
-          ),
-        ]),
+        local_fx,
         RefreshWithSuccess(MilestoneCreated),
         NoRootPolicy,
       ))

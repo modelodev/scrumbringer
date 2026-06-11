@@ -601,3 +601,22 @@ Criterios de aceptación:
 - Las cards internas comparten la mini-gramatica de Kanban.
 - Las tareas sueltas tienen una llamada clara como deuda estructural.
 - El master-detail conserva su contrato desktop/mobile.
+
+### RB-032 - Destilar Hitos como Delivery Plan
+
+Prioridad: P1
+
+Estado: aplicado el 2026-06-11.
+
+Superficies: `features/milestones`, `styles/layout.gleam`, i18n y tests de Hitos.
+
+Problema: despues de RB-031, Hitos explicaba salud de entrega, pero las cards internas seguian pareciendose demasiado a un segundo Kanban: previews de tareas, chips disponible/reclamada/en curso y mucho detalle operativo dentro de una vista que debe responder si la entrega esta bien estructurada.
+
+Mejora aplicada: Hitos se redefine como Delivery Plan. Cada card del hito pasa a una fila compacta con swatch de card, titulo, progreso, estado estructural y acciones. Se eliminan previews de tareas y chips operativos dentro de las cards, se ocultan ceros sanos, las tareas sueltas quedan como senal principal de trabajo sin estructurar y el detalle incorpora un puente explicito hacia Kanban para el seguimiento operativo. La refactorizacion posterior elimina tambien la carga cliente de metricas modales de hito, porque ya no hay superficie visible que las consuma.
+
+Criterios de aceptación:
+- El detalle de Hitos no se lee como un segundo Kanban.
+- Las cards internas son filas compactas de estructura, no contenedores de tareas.
+- Los ceros sanos no compiten con las senales relevantes.
+- Las tareas sueltas siguen siendo la senal principal de deuda estructural.
+- El seguimiento operativo queda conectado mediante la accion hacia Kanban.

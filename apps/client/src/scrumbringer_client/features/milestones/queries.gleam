@@ -27,17 +27,6 @@ pub fn loose_tasks_count(tasks: List(Task), milestone_id: Int) -> Int {
   loose_tasks_for_milestone(tasks, milestone_id) |> list.length
 }
 
-pub fn tasks_in_cards_count(
-  tasks: List(Task),
-  cards: List(Card),
-  milestone_id: Int,
-) -> Int {
-  list.count(tasks, fn(task) {
-    task.card_id != option.None
-    && effective_milestone_id(task, cards) == option.Some(milestone_id)
-  })
-}
-
 pub fn blocked_tasks_count(
   tasks: List(Task),
   cards: List(Card),
@@ -70,6 +59,11 @@ pub fn effective_milestone_id(
 pub fn empty_cards_count(cards: List(Card), milestone_id: Int) -> Int {
   cards_for_milestone(cards, milestone_id)
   |> list.count(fn(card) { card.task_count == 0 })
+}
+
+pub fn cards_without_progress_count(cards: List(Card), milestone_id: Int) -> Int {
+  cards_for_milestone(cards, milestone_id)
+  |> list.count(fn(card) { card.task_count > 0 && card.completed_count == 0 })
 }
 
 pub fn ready_destination_milestones(

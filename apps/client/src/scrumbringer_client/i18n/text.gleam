@@ -277,21 +277,26 @@ pub type Text {
   MilestoneTasksProgress(completed: Int, total: Int)
   MilestoneStructureSummary
   MilestoneActions
-  MilestoneHealthSummary
-  MilestoneMetricsSummary
   MilestoneSearchPlaceholder
   MilestoneLooseTasksNotice
   MilestoneLooseTasksHint
   MilestoneNoSelection
   MilestoneNoSelectionHint
-  MilestonePlanningSummary
-  MilestoneLifecycle
   MilestoneCardsCount(cards_count: Int)
   MilestoneLooseTasksCount(tasks_count: Int)
-  MilestoneTasksInCardsCount(tasks_count: Int)
   MilestoneBlockedTasksCount(tasks_count: Int)
   MilestoneEmptyCardsCount(cards_count: Int)
-  MilestoneEmptyCardsLabel
+  MilestoneCardsWithoutProgressCount(cards_count: Int)
+  MilestoneStructureComplete
+  MilestoneLooseTasksDiagnostic(tasks_count: Int)
+  MilestoneBlockedTasksDiagnostic(tasks_count: Int)
+  MilestoneEmptyCardsDiagnostic(cards_count: Int)
+  MilestoneCardsWithoutProgressDiagnostic(cards_count: Int)
+  MilestoneCardEmpty
+  MilestoneCardNoProgress
+  MilestoneCardBlocked
+  MilestoneCardComplete
+  ViewInKanban
   MilestoneTotalTasksCount(tasks_count: Int)
   MilestoneTaskStatusAvailable
   MilestoneTaskStatusClaimed

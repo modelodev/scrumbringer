@@ -2,7 +2,7 @@ import domain/card.{type Card, Card}
 import domain/milestone.{type Milestone}
 import domain/org.{type OrgUser}
 import domain/task.{type Task, Task}
-import domain/task_status.{type TaskStatus, Available, Claimed, Ongoing, Taken}
+import domain/task_status.{type TaskStatus}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
@@ -17,15 +17,12 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
-import scrumbringer_client/ui/card_with_tasks_preview
+import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/move_menu
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
-
-type TaskHealth {
-  TaskHealth(available: Int, claimed: Int, ongoing: Int, blocked: Int)
-}
 
 pub type Config(msg) {
   Config(
@@ -95,27 +92,13 @@ fn view_card_row(config: Config(msg), card: Card, card_id: Int) -> Element(msg) 
     <> ":"
     <> int.to_string(card_id)
   let card_tasks = config.tasks_for_card(card_id)
-
-  let preview =
-    card_with_tasks_preview.view(card_with_tasks_preview.Config(
-      locale: config.locale,
-      theme: config.theme,
-      card: card,
-      tasks: card_tasks,
-      org_users: config.org_users,
-      preview_limit: 3,
-      variant: card_with_tasks_preview.Milestone,
-      on_card_click: option.None,
-      on_task_click: config.on_task_open,
-      on_task_claim: config.on_task_claim,
-      header_actions: config.card_header_actions(card),
-      footer_actions: case config.can_move {
-        True -> [view_move_card_actions(config, card_id)]
-        False -> []
-      },
-      status_items: view_card_health_items(config, card_tasks),
-      testid: option.None,
-    ))
+  let actions = case config.can_move {
+    True ->
+      list.append(config.card_header_actions(card), [
+        view_move_card_actions(config, card_id),
+      ])
+    False -> config.card_header_actions(card)
+  }
 
   let attrs = [
     attribute.class("milestone-card-wrapper"),
@@ -127,69 +110,110 @@ fn view_card_row(config: Config(msg), card: Card, card_id: Int) -> Element(msg) 
       attrs,
       drag_attrs(config.can_drag, config.on_card_drag_started(card_id), config),
     ),
-    [preview],
+    [view_delivery_card_row(config, card, card_tasks, actions)],
   )
 }
 
-fn view_card_health_items(
+fn view_delivery_card_row(
   config: Config(msg),
+  card: Card,
+  tasks: List(Task),
+  actions: List(Element(msg)),
+) -> Element(msg) {
+  div(
+    [
+      attribute.class("milestone-delivery-card"),
+      attribute.attribute("data-testid", "milestone-delivery-card"),
+    ],
+    [
+      span(
+        [
+          attribute.class(
+            "milestone-card-swatch " <> color_picker.border_class(card.color),
+          ),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [],
+      ),
+      div([attribute.class("milestone-delivery-card-main")], [
+        div([attribute.class("milestone-delivery-card-title-row")], [
+          span([attribute.class("milestone-delivery-card-title")], [
+            text(card.title),
+          ]),
+          div(
+            [attribute.class("milestone-card-status-items")],
+            view_structural_status(config, card, tasks),
+          ),
+        ]),
+        div([attribute.class("milestone-delivery-card-progress")], [
+          card_progress.view(
+            card.completed_count,
+            card.task_count,
+            card_progress.Compact,
+          ),
+        ]),
+      ]),
+      view_card_actions(actions),
+    ],
+  )
+}
+
+fn view_structural_status(
+  config: Config(msg),
+  card: Card,
   tasks: List(Task),
 ) -> List(Element(msg)) {
-  let health = task_health(tasks)
-  let core_items = [
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.MetricsAvailable),
-      health.available,
-      "available",
-    ),
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.MetricsClaimed),
-      health.claimed,
-      "claimed",
-    ),
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
-      health.ongoing,
-      "ongoing",
-    ),
-  ]
+  let blocked_count = list.count(tasks, fn(task) { task.blocked_count > 0 })
 
-  case health.blocked > 0 {
-    True ->
-      list.append(core_items, [
-        view_health_chip(
-          i18n.t(config.locale, i18n_text.Blocked),
-          health.blocked,
-          "blocked",
-        ),
-      ])
-    False -> core_items
+  case
+    card.task_count == 0,
+    blocked_count > 0,
+    card.completed_count >= card.task_count,
+    card.completed_count == 0
+  {
+    True, _, _, _ -> [
+      view_status_chip(
+        i18n.t(config.locale, i18n_text.MilestoneCardEmpty),
+        "empty",
+      ),
+    ]
+    _, True, _, _ -> [
+      view_status_chip(
+        i18n.t(config.locale, i18n_text.MilestoneCardBlocked),
+        "blocked",
+      ),
+    ]
+    _, _, True, _ -> [
+      view_status_chip(
+        i18n.t(config.locale, i18n_text.MilestoneCardComplete),
+        "complete",
+      ),
+    ]
+    _, _, _, True -> [
+      view_status_chip(
+        i18n.t(config.locale, i18n_text.MilestoneCardNoProgress),
+        "no-progress",
+      ),
+    ]
+    _, _, _, _ -> []
   }
 }
 
-fn view_health_chip(label: String, value: Int, tone: String) -> Element(msg) {
+fn view_status_chip(label: String, tone: String) -> Element(msg) {
   span(
     [
-      attribute.class("kanban-health-chip " <> tone),
-      attribute.attribute("data-testid", "milestone-card-health-chip"),
-      attribute.attribute("title", label <> ": " <> int.to_string(value)),
+      attribute.class("milestone-card-status-chip " <> tone),
+      attribute.attribute("data-testid", "milestone-card-status-chip"),
     ],
-    [
-      span([attribute.class("kanban-health-value")], [
-        text(int.to_string(value)),
-      ]),
-      span([attribute.class("kanban-health-label")], [text(label)]),
-    ],
+    [text(label)],
   )
 }
 
-fn task_health(tasks: List(Task)) -> TaskHealth {
-  TaskHealth(
-    available: list.count(tasks, fn(task) { task.status == Available }),
-    claimed: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
-    ongoing: list.count(tasks, fn(task) { task.status == Claimed(Ongoing) }),
-    blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
-  )
+fn view_card_actions(actions: List(Element(msg))) -> Element(msg) {
+  case actions {
+    [] -> none()
+    _ -> div([attribute.class("milestone-card-actions")], actions)
+  }
 }
 
 fn view_loose_tasks_section(config: Config(msg)) -> Element(msg) {

@@ -17,6 +17,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn card(id: Int) -> Card {
   Card(
     id: id,
@@ -124,11 +128,13 @@ pub fn work_items_renders_cards_from_config_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "Planning Card 10")
-  assert_contains(html, "Loose Task 30")
   assert_contains(html, "milestone-card-row:1:10")
-  assert_contains(html, "milestone-card-health-chip")
-  assert_contains(html, "Available: 1")
-  assert_contains(html, "Blocked: 1")
+  assert_contains(html, "milestone-delivery-card")
+  assert_contains(html, "milestone-card-status-chip")
+  assert_contains(html, "Blocked")
+  assert_contains(html, "0/1")
+  assert_not_contains(html, "Loose Task 30")
+  assert_not_contains(html, "milestone-card-health-chip")
   assert_contains(html, "milestone-move-menu-card:1:10")
   assert_contains(html, "draggable=\"true\"")
 }
