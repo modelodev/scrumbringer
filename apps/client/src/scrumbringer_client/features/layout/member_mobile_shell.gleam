@@ -64,6 +64,7 @@ fn view_topbar(config: Config(msg)) -> Element(msg) {
         attribute.class("mobile-menu-btn"),
         attribute.attribute("data-testid", "mobile-menu-btn"),
         attribute.attribute("aria-label", "Open navigation menu"),
+        attribute.attribute("aria-expanded", bool_attr(config.left_drawer_open)),
         event.on_click(config.on_left_drawer_toggle),
       ],
       [icons.view_heroicon_inline("bars-3", 24, config.theme)],
@@ -74,9 +75,20 @@ fn view_topbar(config: Config(msg)) -> Element(msg) {
         attribute.class("mobile-user-btn"),
         attribute.attribute("data-testid", "mobile-user-btn"),
         attribute.attribute("aria-label", "Open activity panel"),
+        attribute.attribute(
+          "aria-expanded",
+          bool_attr(config.right_drawer_open),
+        ),
         event.on_click(config.on_right_drawer_toggle),
       ],
       [icons.view_heroicon_inline("user-circle", 24, config.theme)],
     ),
   ])
+}
+
+fn bool_attr(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }

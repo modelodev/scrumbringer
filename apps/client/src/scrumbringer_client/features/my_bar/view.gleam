@@ -64,6 +64,7 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_type_icon
 
 pub type Config(msg) {
@@ -405,7 +406,7 @@ pub fn view_member_bar_task_row(
 
   let claim_action =
     task_actions.claim_only(
-      i18n.t(config.locale, i18n_text.Claim),
+      task_state_ui.next_action(config.locale, Available),
       config.on_claim(id, version),
       action_buttons.SizeXs,
       config.disable_actions,
@@ -419,7 +420,7 @@ pub fn view_member_bar_task_row(
       i18n.t(config.locale, i18n_text.Start),
       config.on_start(id),
       "btn-xs",
-      i18n.t(config.locale, i18n_text.StartNowWorking),
+      task_state_ui.next_action(config.locale, Claimed(Taken)),
       config.disable_actions,
     )
 
@@ -428,7 +429,7 @@ pub fn view_member_bar_task_row(
       i18n.t(config.locale, i18n_text.Pause),
       config.on_pause,
       "btn-xs",
-      i18n.t(config.locale, i18n_text.PauseNowWorking),
+      task_state_ui.next_action(config.locale, Claimed(Ongoing)),
       config.disable_actions,
     )
 
@@ -443,16 +444,16 @@ pub fn view_member_bar_task_row(
     Claimed(_), True -> [
       now_working_action,
       ..task_actions.release_and_complete(
-        i18n.t(config.locale, i18n_text.Release),
+        task_state_ui.release_action(config.locale),
         config.on_release(id, version),
-        i18n.t(config.locale, i18n_text.Complete),
+        task_state_ui.complete_action(config.locale),
         config.on_complete(id, version),
         action_buttons.SizeXs,
         config.disable_actions,
         "",
         "",
-        opt.Some(i18n.t(config.locale, i18n_text.Release)),
-        opt.Some(i18n.t(config.locale, i18n_text.Complete)),
+        opt.Some(task_state_ui.release_action(config.locale)),
+        opt.Some(task_state_ui.complete_action(config.locale)),
         opt.None,
         opt.None,
       )

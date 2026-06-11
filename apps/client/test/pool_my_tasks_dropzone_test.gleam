@@ -35,7 +35,7 @@ pub fn my_tasks_dropzone_renders_drag_empty_state_without_root_model_test() {
   assert_contains(html, "My tasks")
   assert_contains(html, "pool-my-tasks-dropzone drag-active")
   assert_contains(html, "Claim: My tasks")
-  assert_contains(html, "No claimed tasks")
+  assert_contains(html, "No tasks in My Tasks yet")
 }
 
 pub fn my_tasks_dropzone_renders_claimed_tasks_without_root_model_test() {
@@ -53,7 +53,7 @@ pub fn my_tasks_dropzone_renders_claimed_tasks_without_root_model_test() {
   assert_contains(html, "Prepare release")
   assert_contains(html, "Release card")
   assert_contains(html, "Start")
-  assert_not_contains(html, "No claimed tasks")
+  assert_not_contains(html, "No tasks in My Tasks yet")
 }
 
 fn row_config() -> my_bar_view.TaskRowConfig(String) {

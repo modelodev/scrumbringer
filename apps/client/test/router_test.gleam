@@ -73,6 +73,12 @@ pub fn parse_org_assignments_test() {
   assert_equal(parsed, router.Parsed(router.Org(permissions.Assignments)))
 }
 
+pub fn parse_org_api_tokens_test() {
+  let parsed = router.parse_uri(build_uri("/org/api-tokens", ""))
+
+  assert_equal(parsed, router.Parsed(router.Org(permissions.ApiTokens)))
+}
+
 pub fn parse_org_unknown_section_redirects_to_invites_test() {
   let parsed = router.parse_uri(build_uri("/org/unknown", ""))
 
@@ -164,6 +170,13 @@ pub fn format_org_assignments_test() {
   )
 }
 
+pub fn format_org_api_tokens_test() {
+  assert_equal(
+    router.format(router.Org(permissions.ApiTokens)),
+    "/org/api-tokens",
+  )
+}
+
 pub fn format_member_pool_with_project_test() {
   assert_equal(
     router.format(member_route(member_section.Pool, Some(2), None)),
@@ -231,6 +244,11 @@ pub fn roundtrip_org_invites_test() {
 
 pub fn roundtrip_org_assignments_test() {
   let route = router.Org(permissions.Assignments)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_org_api_tokens_test() {
+  let route = router.Org(permissions.ApiTokens)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 

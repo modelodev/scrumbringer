@@ -28,6 +28,7 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/utils/card_queries
@@ -374,14 +375,14 @@ fn lane_metadata(
       i18n.t(locale, i18n_text.CapabilityBoardEmptyPending),
     )
     ClaimedLane -> #(
-      i18n.t(locale, i18n_text.TaskStateClaimed),
+      task_state_ui.label(locale, Claimed(Taken)),
       "claimed",
       icons.Pause,
       "claimed",
       i18n.t(locale, i18n_text.CapabilityBoardEmptyClaimed),
     )
     OngoingLane -> #(
-      i18n.t(locale, i18n_text.NowWorking),
+      task_state_ui.label(locale, Claimed(Ongoing)),
       "en-curso",
       icons.Play,
       "ongoing",
@@ -413,17 +414,35 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
       }
 
       let status_icon = task_status_utils.claimed_icon(task.status)
-      span([attribute.class("task-claimed-by")], [
-        text(i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label),
-        span([attribute.class("task-claimed-icon")], [
-          icons.nav_icon(status_icon, icons.XSmall),
-        ]),
-      ])
+      span(
+        [
+          attribute.class("task-claimed-by"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [
+          text(
+            i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label,
+          ),
+          span([attribute.class("task-claimed-icon")], [
+            icons.nav_icon(status_icon, icons.XSmall),
+          ]),
+        ],
+      )
     }
     Available ->
-      span([attribute.class("task-status-muted")], [
-        text(task_status_utils.label(config.locale, task.status)),
-      ])
+      span(
+        [
+          attribute.class("task-status-muted"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [text(task_status_utils.label(config.locale, task.status))],
+      )
     Completed -> task_item.empty_secondary()
   }
 
@@ -438,7 +457,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
   let actions = case task.status {
     Available ->
       task_item.single_action(task_actions.claim_icon(
-        i18n.t(config.locale, i18n_text.ClaimThisTask),
+        task_state_ui.next_action(config.locale, task.status),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,

@@ -89,6 +89,8 @@ pub fn admin_route_uses_org_route_for_org_sections_test() {
     left_panel_data.admin_route(permissions.Invites, Some(42))
   let assert router.Org(permissions.OrgSettings) =
     left_panel_data.admin_route(permissions.OrgSettings, Some(42))
+  let assert router.Org(permissions.ApiTokens) =
+    left_panel_data.admin_route(permissions.ApiTokens, Some(42))
   let assert router.Org(permissions.Metrics) =
     left_panel_data.admin_route(permissions.Metrics, Some(42))
 }

@@ -138,8 +138,9 @@ pub fn translate(text: Text) -> String {
     text.MySkillsHelp ->
       "Select the capabilities you have. The Pool will highlight matching tasks."
     text.MyTasks -> "My tasks"
-    text.NoClaimedTasks -> "No claimed tasks"
-    text.GoToPoolToClaimTasks -> "Go to Pool to claim tasks"
+    text.NoClaimedTasks ->
+      "No tasks in My Tasks yet. Claim work from the Pool first."
+    text.GoToPoolToClaimTasks -> "Claim work from the Pool first."
     text.NoProjectsBody -> "Ask an admin to add you to a project."
     text.You -> "You"
     text.Notes -> "Notes"
@@ -220,7 +221,7 @@ pub fn translate(text: Text) -> String {
     text.MetaCreated -> "created: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Claim"
-    text.ClaimThisTask -> "Claim this task"
+    text.ClaimThisTask -> "Claim this task and move it to My Tasks"
     text.ClaimedBy -> "Claimed by"
     text.UnknownUser -> "Unknown user"
     text.Busy -> "Busy"
@@ -331,14 +332,15 @@ pub fn translate(text: Text) -> String {
     text.PeopleActiveSection -> "Active"
     text.PeopleClaimedSection -> "Claimed"
     text.Drag -> "Drag"
-    text.StartNowWorking -> "Start now working"
-    text.PauseNowWorking -> "Pause now working"
+    text.StartNowWorking -> "Start working"
+    text.PauseNowWorking -> "Pause work"
 
     // Now working
-    text.NowWorking -> "Now Working"
-    text.NowWorkingLoading -> "Now Working: loading…"
-    text.NowWorkingNone -> "Now Working: none"
-    text.NowWorkingErrorPrefix -> "Now Working error: "
+    text.NowWorking -> "Working now"
+    text.NowWorkingLoading -> "Working now: loading…"
+    text.NowWorkingNone ->
+      "Nothing active. Start a task from My Tasks when you are ready to work."
+    text.NowWorkingErrorPrefix -> "Working now error: "
     text.Pause -> "Pause"
     text.Complete -> "Complete"
     text.Release -> "Release"
@@ -766,7 +768,19 @@ pub fn translate(text: Text) -> String {
     // Task States (for Rules)
     text.TaskStateAvailable -> "Available"
     text.TaskStateClaimed -> "Claimed"
+    text.TaskStateOngoing -> "Working now"
     text.TaskStateCompleted -> "Completed"
+    text.TaskStateAvailableHint -> "Ready to claim from the Pool"
+    text.TaskStateClaimedHint -> "In My Tasks, ready to start"
+    text.TaskStateOngoingHint -> "Active work session is running"
+    text.TaskStateCompletedHint -> "Done and no longer actionable"
+    text.TaskNextActionLabel -> "Next action"
+    text.TaskNextActionClaim -> "Claim to My Tasks"
+    text.TaskNextActionStart -> "Start working"
+    text.TaskNextActionPause -> "Pause work"
+    text.TaskNextActionComplete -> "Complete task"
+    text.TaskNextActionRelease -> "Release back to Pool"
+    text.TaskNextActionOpen -> "Open task"
 
     // Task Templates
     text.AdminTaskTemplates -> "Task Templates"

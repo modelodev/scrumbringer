@@ -1,8 +1,10 @@
 import domain/card
+import domain/org_role
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
+import domain/user.{User}
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -90,6 +92,7 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
   assert_contains(html, "active-task-card card-border-blue")
   assert_contains(html, "task-type-icon")
   assert_contains(html, "task-timer")
+  assert_contains(html, "title=\"Fix login\"")
 }
 
 pub fn right_panel_my_task_renders_border_and_actions_test() {
@@ -106,9 +109,13 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
     |> element.to_document_string
 
   assert_contains(html, "task-item card-border-blue")
+  assert_contains(html, "task-card-identity-swatch")
   assert_contains(html, "my-task-start-btn")
   assert_contains(html, "my-task-release-btn")
   assert_contains(html, "task-type-icon")
+  assert_contains(html, "type=\"button\"")
+  assert_contains(html, "aria-label=\"Open task: Fix login\"")
+  assert_contains(html, "title=\"Fix login\"")
 }
 
 pub fn right_panel_my_cards_renders_border_and_progress_test() {
@@ -128,4 +135,55 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
 
   assert_contains(html, "my-card-item card-border-blue")
   assert_contains(html, "1/3")
+  assert_contains(html, "type=\"button\"")
+  assert_contains(html, "aria-label=\"My Cards: Sprint\"")
+  assert_contains(html, "title=\"Sprint\"")
+}
+
+pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
+  let html =
+    right_panel.RightPanelConfig(
+      ..base_config([], [], []),
+      preferences_popup_open: True,
+    )
+    |> right_panel.view
+    |> element.to_document_string
+
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "aria-labelledby=\"preferences-popup-title\"")
+  assert_contains(html, "id=\"preferences-popup-title\"")
+  assert_contains(html, "aria-label=\"Close\"")
+  assert_contains(html, "Theme")
+  assert_contains(html, "Language")
+}
+
+pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
+  let user =
+    User(
+      id: 1,
+      email: "very.long.user.email.address@example-enterprise.test",
+      org_id: 1,
+      org_role: org_role.Admin,
+      created_at: "2026-01-01T00:00:00Z",
+    )
+
+  let html =
+    right_panel.RightPanelConfig(
+      ..base_config([], [], []),
+      user: Some(user),
+      preferences_popup_open: True,
+    )
+    |> right_panel.view
+    |> element.to_document_string
+
+  assert_contains(html, "aria-live=\"polite\"")
+  assert_contains(
+    html,
+    "title=\"very.long.user.email.address@example-enterprise.test\"",
+  )
+  assert_contains(html, "aria-label=\"Preferences\"")
+  assert_contains(html, "aria-haspopup=\"dialog\"")
+  assert_contains(html, "aria-expanded=\"true\"")
+  assert_contains(html, "aria-label=\"Logout\"")
 }

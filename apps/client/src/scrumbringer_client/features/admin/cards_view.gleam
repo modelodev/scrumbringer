@@ -22,6 +22,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
@@ -58,7 +59,7 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
+  admin_surface.view_with_filters(
     section_header.view_with_action(
       icons.Cards,
       t(config, i18n_text.CardsTitle(config.project_name)),
@@ -70,9 +71,11 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ),
     view_filters(config),
     view_list(config, filter_cards(config.model)),
-    view_crud_dialog(config),
-    config.detail_modal,
-  ])
+    [
+      view_crud_dialog(config),
+      config.detail_modal,
+    ],
+  )
 }
 
 pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {

@@ -23,6 +23,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
@@ -54,7 +55,7 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
+  admin_surface.view(
     section_header.view_with_action(
       icons.Cog,
       t(config, i18n_text.AdminApiTokens),
@@ -69,13 +70,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         ],
       ),
     ),
-    view_created_secret(config),
-    div([attribute.class("admin-card api-token-list-card")], [
-      view_tokens(config),
+    div([], [
+      view_created_secret(config),
+      div([attribute.class("api-token-list-card")], [view_tokens(config)]),
     ]),
-    view_token_dialog(config),
-    view_revoke_dialog(config),
-  ])
+    [
+      view_token_dialog(config),
+      view_revoke_dialog(config),
+    ],
+  )
 }
 
 fn view_created_secret(config: Config(msg)) -> Element(msg) {
@@ -113,12 +116,9 @@ fn view_tokens(config: Config(msg)) -> Element(msg) {
         data_table.column(t(config, i18n_text.Name), fn(token: ApiToken) {
           text(token.name)
         }),
-        data_table.column(
-          t(config, i18n_text.Integration),
-          fn(token: ApiToken) {
-            text(integration_user_email(config.model, token.integration_user_id))
-          },
-        ),
+        data_table.column(t(config, i18n_text.Integration), fn(token: ApiToken) {
+          text(integration_user_email(config.model, token.integration_user_id))
+        }),
         data_table.column(t(config, i18n_text.Project), fn(token: ApiToken) {
           badge.new_unchecked(
             project_name(config, config.projects, token.project_id),
@@ -255,9 +255,7 @@ fn view_scope_checkboxes(
         div([], [text(t(config, i18n_text.PermissionRead))]),
         div([], [text(t(config, i18n_text.PermissionWrite))]),
       ]),
-      ..list.map(scope_rows(config), fn(row) {
-        scope_row(config, form, row)
-      })
+      ..list.map(scope_rows(config), fn(row) { scope_row(config, form, row) })
     ]),
   ])
 }
@@ -406,17 +404,14 @@ fn token_state_badge(config: Config(msg), token: ApiToken) -> Element(msg) {
   |> badge.view_with_class("api-token-state-badge")
 }
 
-fn view_scope_summary(
-  config: Config(msg),
-  scopes: List(String),
-) -> Element(msg) {
+fn view_scope_summary(config: Config(msg), scopes: List(String)) -> Element(msg) {
   div(
     [attribute.class("api-token-scope-badges")],
     scopes
-    |> list.map(fn(scope) {
-      badge.new_unchecked(scope_label(config, scope), badge.Neutral)
-      |> badge.view_with_class("api-token-scope-badge")
-    }),
+      |> list.map(fn(scope) {
+        badge.new_unchecked(scope_label(config, scope), badge.Neutral)
+        |> badge.view_with_class("api-token-scope-badge")
+      }),
   )
 }
 
@@ -460,9 +455,7 @@ fn access_label(config: Config(msg), scope: String) -> String {
 fn scope_label(config: Config(msg), scope: String) -> String {
   case string.split(scope, ":") {
     [resource, access] ->
-      resource_label(config, resource)
-      <> " / "
-      <> access_text(config, access)
+      resource_label(config, resource) <> " / " <> access_text(config, access)
     _ -> scope
   }
 }

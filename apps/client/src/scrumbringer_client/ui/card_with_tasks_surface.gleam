@@ -23,6 +23,7 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/utils/text as text_utils
@@ -219,30 +220,60 @@ fn view_task(config: Config(msg), task: Task) -> Element(msg) {
 fn status_display(config: Config(msg), task: Task) -> Element(msg) {
   case config.task_density, task.status {
     Compact, Claimed(_) ->
-      span([attribute.class("task-claimed-by")], [
-        text(compact_claimed_name(config, task)),
-      ])
+      span(
+        [
+          attribute.class("task-claimed-by"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [text(compact_claimed_name(config, task))],
+      )
     Comfortable, Claimed(_) -> {
       let status_icon = task_status_utils.claimed_icon(task.status)
-      span([attribute.class("task-claimed-by")], [
-        text(
-          i18n.t(config.locale, i18n_text.ClaimedBy)
-          <> " "
-          <> comfortable_claimed_name(config, task),
-        ),
-        span([attribute.class("task-claimed-icon")], [
-          icons.nav_icon(status_icon, icons.XSmall),
-        ]),
-      ])
+      span(
+        [
+          attribute.class("task-claimed-by"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [
+          text(
+            i18n.t(config.locale, i18n_text.ClaimedBy)
+            <> " "
+            <> comfortable_claimed_name(config, task),
+          ),
+          span([attribute.class("task-claimed-icon")], [
+            icons.nav_icon(status_icon, icons.XSmall),
+          ]),
+        ],
+      )
     }
     _, Available ->
-      span([attribute.class("task-status-muted")], [
-        text(task_status_utils.label(config.locale, task.status)),
-      ])
+      span(
+        [
+          attribute.class("task-status-muted"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [text(task_status_utils.label(config.locale, task.status))],
+      )
     _, Completed ->
-      span([attribute.class("task-status")], [
-        text(task_status_utils.label(config.locale, task.status)),
-      ])
+      span(
+        [
+          attribute.class("task-status"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, task.status),
+          ),
+        ],
+        [text(task_status_utils.label(config.locale, task.status))],
+      )
   }
 }
 
@@ -282,7 +313,7 @@ fn task_actions_for(config: Config(msg), task: Task) -> List(Element(msg)) {
   case config.task_density, task.status {
     Compact, Available ->
       task_item.single_action(task_actions.claim_icon_with_class(
-        i18n.t(config.locale, i18n_text.Claim),
+        task_state_ui.next_action(config.locale, task.status),
         config.on_task_claim(task.id, task.version),
         icons.XSmall,
         False,
@@ -292,7 +323,7 @@ fn task_actions_for(config: Config(msg), task: Task) -> List(Element(msg)) {
       ))
     Comfortable, Available ->
       task_item.single_action(task_actions.claim_icon(
-        i18n.t(config.locale, i18n_text.ClaimThisTask),
+        task_state_ui.next_action(config.locale, task.status),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,

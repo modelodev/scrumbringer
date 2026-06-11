@@ -83,8 +83,12 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
     True -> "btn-loading"
     False -> ""
   }
+  let submit_class = case btn_class {
+    "" -> "auth-submit"
+    _ -> "auth-submit " <> btn_class
+  }
 
-  div([attribute.class("page")], [
+  div([attribute.class("page auth-page")], [
     h1([], [text(t(i18n_text.AppName))]),
     p([], [text(t(i18n_text.LoginSubtitle))]),
     // L03: Error banner with icon
@@ -92,7 +96,12 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
       opt.Some(err) -> error_notice.view(err)
       opt.None -> element.none()
     },
-    form([event.on_submit(fn(_) { config.on_login_submitted })], [
+    form(
+      [
+        attribute.class("auth-form"),
+        event.on_submit(fn(_) { config.on_login_submitted }),
+      ],
+      [
       form_field.view_required(
         t(i18n_text.EmailLabel),
         input([
@@ -117,19 +126,27 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
           attribute.attribute("aria-label", "Password"),
         ]),
       ),
-      // L01: Submit button with loading class
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(auth.login_in_flight),
-          attribute.class(btn_class),
-        ],
-        [text(submit_label)],
-      ),
-    ]),
-    button([event.on_click(config.on_forgot_password_clicked)], [
-      text(t(i18n_text.ForgotPassword)),
-    ]),
+        div([attribute.class("auth-actions")], [
+          // L01: Submit button with loading class
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(auth.login_in_flight),
+              attribute.class(submit_class),
+            ],
+            [text(submit_label)],
+          ),
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("auth-forgot"),
+              event.on_click(config.on_forgot_password_clicked),
+            ],
+            [text(t(i18n_text.ForgotPassword))],
+          ),
+        ]),
+      ],
+    ),
     case auth.forgot_password_open {
       True -> view_forgot_password(config)
       False -> element.none()

@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/option.{type Option}
+import gleam/string
 
 import domain/card.{type CardColor}
 import domain/task.{type Task, type TaskNote, Task}
@@ -7,7 +8,7 @@ import domain/task_state
 import domain/task_status.{Available, Claimed}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, text}
+import lustre/element/html.{button, div, span, text}
 import lustre/event
 
 import scrumbringer_client/features/pool/labels as pool_labels
@@ -20,6 +21,7 @@ import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_type_icon
 
 pub type Config(msg) {
@@ -74,8 +76,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       config.touch_preview,
     )
   let style = card_style(config.x, config.y)
-  let primary_action =
-    primary_action(config.locale, status, blocked_count, is_mine, config)
+  let top_left_action = top_left_action(config.locale, status, is_mine, config)
+  let claim_action = claim_action(config.locale, status, blocked_count, config)
   let drag_handle = drag_handle(config.locale, config.on_drag_started)
   let complete_action = complete_action(config.locale, is_mine, config)
 
@@ -108,7 +110,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             config.task,
             "task-blocked-card",
           ),
-          primary_action,
+          claim_action,
+          top_left_action,
         ]),
         div([attribute.class("task-card-actions-right")], [
           drag_handle,
@@ -127,6 +130,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             ],
             [text(title)],
           ),
+          mobile_context(config),
         ]),
       ]),
       div(
@@ -154,29 +158,62 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   )
 }
 
-fn primary_action(
+fn mobile_context(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("task-card-mobile-context")], [
+    card_context(config.card_title),
+    span([attribute.class("task-card-mobile-age")], [
+      text(pool_labels.created_ago_days(config.locale, config.age_days)),
+    ]),
+    description_context(config.task.description),
+  ])
+}
+
+fn card_context(card_title: Option(String)) -> Element(msg) {
+  case card_title {
+    option.Some(title) ->
+      case string.trim(title) {
+        "" -> element.none()
+        _ ->
+          span(
+            [
+              attribute.class("task-card-mobile-card"),
+              attribute.attribute("title", title),
+            ],
+            [text(title)],
+          )
+      }
+    _ -> element.none()
+  }
+}
+
+fn description_context(description: Option(String)) -> Element(msg) {
+  case description {
+    option.Some(value) ->
+      case string.trim(value) {
+        "" -> element.none()
+        _ ->
+          span(
+            [
+              attribute.class("task-card-mobile-description"),
+              attribute.attribute("title", value),
+            ],
+            [text(value)],
+          )
+      }
+    _ -> element.none()
+  }
+}
+
+fn top_left_action(
   locale: Locale,
   status,
-  blocked_count: Int,
   is_mine: Bool,
   config: Config(msg),
 ) -> Element(msg) {
   case status, is_mine {
-    Available, _ if blocked_count > 0 -> element.none()
-    Available, _ ->
-      task_actions.claim_icon(
-        pool_labels.claim(locale),
-        config.on_claim,
-        action_buttons.SizeXs,
-        config.disable_actions,
-        "",
-        option.None,
-        option.None,
-      )
-
     Claimed(_), True ->
       task_actions.release_icon(
-        pool_labels.release(locale),
+        task_state_ui.release_action(locale),
         config.on_release,
         action_buttons.SizeXs,
         config.disable_actions,
@@ -187,6 +224,36 @@ fn primary_action(
 
     _, _ -> element.none()
   }
+}
+
+fn claim_action(
+  locale: Locale,
+  status,
+  blocked_count: Int,
+  config: Config(msg),
+) -> Element(msg) {
+  case status, blocked_count {
+    Available, 0 -> claim_primary_action(locale, config)
+    _, _ -> element.none()
+  }
+}
+
+fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {
+  let descriptive_label = task_state_ui.next_action(locale, config.task.status)
+
+  button(
+    [
+      attribute.class("task-card-primary-action"),
+      attribute.attribute("title", descriptive_label),
+      attribute.attribute("aria-label", descriptive_label),
+      attribute.attribute("type", "button"),
+      attribute.disabled(config.disable_actions),
+      event.on_click(config.on_claim),
+    ],
+    [
+      icons.nav_icon(icons.HandRaised, icons.Small),
+    ],
+  )
 }
 
 fn drag_handle(
@@ -216,7 +283,7 @@ fn complete_action(
   case config.task.status, is_mine {
     Claimed(_), True ->
       task_actions.complete_icon(
-        pool_labels.complete(locale),
+        task_state_ui.complete_action(locale),
         config.on_complete,
         action_buttons.SizeXs,
         config.disable_actions,

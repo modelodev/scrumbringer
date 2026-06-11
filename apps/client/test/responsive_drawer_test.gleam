@@ -27,7 +27,7 @@ pub fn drawer_closed_has_no_open_class_test() {
 
   let html = element.to_document_string(rendered)
   assert_not_contains(html, "drawer-open")
-  assert_contains(html, "drawer-overlay")
+  assert_not_contains(html, "drawer-overlay")
 }
 
 pub fn drawer_open_has_open_class_test() {
@@ -44,9 +44,9 @@ pub fn drawer_open_has_open_class_test() {
   assert_contains(html, "Menu Content")
 }
 
-pub fn drawer_has_overlay_always_test() {
+pub fn drawer_open_has_overlay_test() {
   let rendered =
-    responsive_drawer.view(False, responsive_drawer.Left, NoOp, text("Content"))
+    responsive_drawer.view(True, responsive_drawer.Left, NoOp, text("Content"))
 
   let html = element.to_document_string(rendered)
   assert_contains(html, "drawer-overlay")

@@ -99,6 +99,9 @@ pub fn api_tokens_view_has_single_primary_creation_flow_test() {
     api_tokens_view.view(config(model()))
     |> element.to_document_string
 
+  assert_contains(html, "section admin-surface")
+  assert_contains(html, "admin-surface-content")
+  assert_not_contains(html, "admin-card api-token-list-card")
   assert_contains(html, "Create API token")
   assert_not_contains(html, "Create integration user")
   assert_contains(html, "n8n production")

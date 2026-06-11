@@ -23,12 +23,12 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h3, hr, span, text}
+import lustre/element/html.{button, div, h3, hr, span, text}
 import lustre/event
 
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type WorkSession, Task, WorkSession, claimed_by}
-import domain/task_status.{Claimed, Taken}
+import domain/task_status.{Claimed, Ongoing, Taken}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/helpers/time as helpers_time
@@ -40,6 +40,7 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_type_icon
 
 pub type Config(msg) {
@@ -76,9 +77,10 @@ pub fn view_mini_bar(config: Config(msg)) -> Element(msg) {
     False -> "▲"
   }
 
-  div(
+  button(
     [
       attribute.class("member-mini-bar"),
+      attribute.type_("button"),
       event.on_click(config.on_panel_toggled),
     ],
     [
@@ -111,68 +113,81 @@ pub fn view_mini_bar(config: Config(msg)) -> Element(msg) {
 /// Bottom sheet with NOW WORKING and CLAIMED sections.
 /// Appears when mini-bar is tapped.
 pub fn view_panel_sheet(config: Config(msg)) -> Element(msg) {
+  case config.panel_expanded {
+    False -> element.none()
+    True -> view_open_panel_sheet(config)
+  }
+}
+
+fn view_open_panel_sheet(config: Config(msg)) -> Element(msg) {
   let active_sessions = get_active_sessions(config)
   let claimed_tasks = get_claimed_not_working(config, active_sessions)
 
-  let sheet_class = case config.panel_expanded {
-    True -> "member-panel-sheet open"
-    False -> "member-panel-sheet"
-  }
-
-  div([attribute.class(sheet_class)], [
-    // Handle for closing
-    div(
-      [
-        attribute.class("member-panel-sheet-handle"),
-        event.on_click(config.on_panel_toggled),
-      ],
-      [],
-    ),
-    div([attribute.class("member-panel-sheet-content")], [
-      // Section 1: NOW WORKING (primary)
-      div([attribute.class("sheet-section sheet-section-primary")], [
-        h3([], [text(i18n.t(config.locale, i18n_text.NowWorking))]),
-        case active_sessions {
-          [] ->
-            div([attribute.class("sheet-empty")], [
-              empty_state.simple(
-                "clock",
-                i18n.t(config.locale, i18n_text.NowWorkingNone),
-              ),
-            ])
-          _ ->
-            div(
-              [],
-              list.map(active_sessions, fn(session) {
-                view_session_row(config, session)
-              }),
-            )
-        },
+  div(
+    [
+      attribute.class("member-panel-sheet open"),
+      attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-modal", "true"),
+      attribute.attribute(
+        "aria-label",
+        i18n.t(config.locale, i18n_text.NowWorking),
+      ),
+    ],
+    [
+      // Handle for closing
+      div(
+        [
+          attribute.class("member-panel-sheet-handle"),
+          event.on_click(config.on_panel_toggled),
+        ],
+        [],
+      ),
+      div([attribute.class("member-panel-sheet-content")], [
+        // Section 1: NOW WORKING (primary)
+        div([attribute.class("sheet-section sheet-section-primary")], [
+          h3([], [text(i18n.t(config.locale, i18n_text.NowWorking))]),
+          case active_sessions {
+            [] ->
+              div([attribute.class("sheet-empty")], [
+                empty_state.simple(
+                  "clock",
+                  i18n.t(config.locale, i18n_text.NowWorkingNone),
+                ),
+              ])
+            _ ->
+              div(
+                [],
+                list.map(active_sessions, fn(session) {
+                  view_session_row(config, session)
+                }),
+              )
+          },
+        ]),
+        // Divider
+        hr([attribute.class("sheet-divider")]),
+        // Section 2: CLAIMED (secondary)
+        div([attribute.class("sheet-section")], [
+          h3([], [text(i18n.t(config.locale, i18n_text.MyTasks))]),
+          case claimed_tasks {
+            [] ->
+              div([attribute.class("sheet-empty")], [
+                empty_state.simple(
+                  "hand-raised",
+                  i18n.t(config.locale, i18n_text.NoClaimedTasks),
+                ),
+              ])
+            _ ->
+              div(
+                [],
+                list.map(claimed_tasks, fn(task) {
+                  view_claimed_row(config, task)
+                }),
+              )
+          },
+        ]),
       ]),
-      // Divider
-      hr([attribute.class("sheet-divider")]),
-      // Section 2: CLAIMED (secondary)
-      div([attribute.class("sheet-section")], [
-        h3([], [text(i18n.t(config.locale, i18n_text.MyTasks))]),
-        case claimed_tasks {
-          [] ->
-            div([attribute.class("sheet-empty")], [
-              empty_state.simple(
-                "hand-raised",
-                i18n.t(config.locale, i18n_text.NoClaimedTasks),
-              ),
-            ])
-          _ ->
-            div(
-              [],
-              list.map(claimed_tasks, fn(task) {
-                view_claimed_row(config, task)
-              }),
-            )
-        },
-      ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 /// Overlay that appears behind the sheet when expanded.
@@ -207,7 +222,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
 
   let actions = [
     action_buttons.task_icon_button_with_class(
-      i18n.t(config.locale, i18n_text.Pause),
+      task_state_ui.next_action(config.locale, Claimed(Ongoing)),
       config.on_pause,
       icons.Pause,
       icons.Small,
@@ -217,7 +232,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
       opt.None,
     ),
     action_buttons.task_icon_button_with_class(
-      i18n.t(config.locale, i18n_text.Complete),
+      task_state_ui.complete_action(config.locale),
       config.on_complete(task_id, version),
       icons.Check,
       icons.Small,
@@ -237,7 +252,16 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
       icon_class: opt.Some("session-icon"),
       title: title,
       title_class: opt.Some("session-title"),
-      secondary: span([attribute.class("session-timer")], [text(elapsed)]),
+      secondary: span(
+        [
+          attribute.class("session-timer"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, Claimed(Ongoing)),
+          ),
+        ],
+        [text(elapsed)],
+      ),
       actions: [div([attribute.class("session-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,
@@ -255,7 +279,7 @@ fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
 
   let actions = [
     action_buttons.task_icon_button_with_class(
-      i18n.t(config.locale, i18n_text.Start),
+      task_state_ui.next_action(config.locale, Claimed(Taken)),
       config.on_start(id),
       icons.Play,
       icons.Small,
@@ -265,7 +289,7 @@ fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
       opt.None,
     ),
     action_buttons.task_icon_button_with_class(
-      i18n.t(config.locale, i18n_text.Release),
+      task_state_ui.release_action(config.locale),
       config.on_release(id, version),
       icons.Return,
       icons.Small,
@@ -285,7 +309,9 @@ fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
       icon_class: opt.Some("claimed-icon"),
       title: title,
       title_class: opt.Some("claimed-title"),
-      secondary: task_item.empty_secondary(),
+      secondary: span([attribute.class("claimed-state-hint")], [
+        text(task_state_ui.hint(config.locale, Claimed(Taken))),
+      ]),
       actions: [div([attribute.class("claimed-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,

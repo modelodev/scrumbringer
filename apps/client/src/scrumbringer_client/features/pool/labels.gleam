@@ -6,6 +6,10 @@ pub fn claim(locale: Locale) -> String {
   i18n.t(locale, i18n_text.Claim)
 }
 
+pub fn claim_this_task(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.ClaimThisTask)
+}
+
 pub fn release(locale: Locale) -> String {
   i18n.t(locale, i18n_text.Release)
 }

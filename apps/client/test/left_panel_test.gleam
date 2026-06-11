@@ -114,6 +114,20 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   })
 }
 
+pub fn left_panel_create_actions_are_global_shortcuts_test() {
+  let config =
+    left_panel.LeftPanelConfig(
+      ..base_config(opt.Some(member_route(view_mode_module.Pool))),
+      is_pm: True,
+    )
+  let html = left_panel.view(config) |> element.to_document_string
+
+  assert_contains(html, "btn-action btn-action-shortcut")
+  assert_contains(html, "data-testid=\"btn-new-task\"")
+  assert_contains(html, "data-testid=\"btn-new-card\"")
+  assert_not_contains(html, "btn-action btn-action-primary")
+}
+
 pub fn left_panel_config_section_active_test() {
   // Config section needs is_pm or is_org_admin to be visible
   let config =

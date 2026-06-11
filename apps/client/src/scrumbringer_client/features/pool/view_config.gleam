@@ -318,13 +318,15 @@ fn task_position(context: Context(msg), task_id: Int) -> #(Int, Int) {
 }
 
 fn initial_task_position(task_id: Int) -> #(Int, Int) {
-  let canvas_width = 700
-  let canvas_height = 500
-  let padding = 50
-  let initial_x =
-    { { task_id * 137 } % { canvas_width - padding } } + { padding / 2 }
+  let card_size = 128
+  let gap = 32
+  let columns = 5
+  let visible_rows = 4
+  let padding = 60
+  let index = task_id - 1
+  let initial_x = padding + { { index % columns } * { card_size + gap } }
   let initial_y =
-    { { task_id * 89 } % { canvas_height - padding } } + { padding / 2 }
+    padding + { { { index / columns } % visible_rows } * { card_size + gap } }
   #(initial_x, initial_y)
 }
 

@@ -20,6 +20,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
@@ -48,7 +49,7 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
+  admin_surface.view(
     section_header.view_with_action(
       icons.Crosshairs,
       t(config, i18n_text.Capabilities),
@@ -59,13 +60,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       ),
     ),
     view_list(config, config.capabilities.capabilities),
-    view_create_dialog(config),
-    case config.capabilities.capability_members_dialog_capability_id {
-      opt.Some(capability_id) -> view_members_dialog(config, capability_id)
-      opt.None -> element.none()
-    },
-    view_delete_dialog(config),
-  ])
+    [
+      view_create_dialog(config),
+      case config.capabilities.capability_members_dialog_capability_id {
+        opt.Some(capability_id) -> view_members_dialog(config, capability_id)
+        opt.None -> element.none()
+      },
+      view_delete_dialog(config),
+    ],
+  )
 }
 
 fn view_create_dialog(config: Config(msg)) -> Element(msg) {

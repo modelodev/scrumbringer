@@ -83,3 +83,81 @@ pub fn view_remote_renders_table_headers_with_class_test() {
   let html = element.to_document_string(rendered)
   assert_contains(html, "table-header")
 }
+
+pub fn view_uses_responsive_data_table_class_by_default_test() {
+  let rendered =
+    data_table.new()
+    |> data_table.with_columns([
+      data_table.column("Very long header", fn(value) { text(value) }),
+    ])
+    |> data_table.with_rows(["Long value"], fn(value) { value })
+    |> data_table.view()
+
+  let html = element.to_document_string(rendered)
+  assert_contains(html, "data-table-scroll")
+  assert_contains(html, "class=\"table data-table\"")
+  assert_contains(html, "scope=\"col\"")
+}
+
+pub fn sortable_column_renders_keyboard_button_test() {
+  let rendered =
+    data_table.new()
+    |> data_table.with_columns([
+      data_table.sortable_column("Name", fn(value) { text(value) }, "sort-name"),
+    ])
+    |> data_table.with_rows(["Alice"], fn(value) { value })
+    |> data_table.view()
+
+  let html = element.to_document_string(rendered)
+  assert_contains(html, "table-sort-button")
+  assert_contains(html, "type=\"button\"")
+  assert_contains(html, "aria-label=\"Sort by Name\"")
+  assert_contains(html, "aria-hidden=\"true\"")
+}
+
+pub fn loading_state_is_announced_without_blocking_page_test() {
+  let rendered =
+    data_table.view_remote(
+      NotAsked,
+      loading_msg: "Loading unusually long translated table label...",
+      empty_msg: "Empty",
+      config: base_config(),
+    )
+
+  let html = element.to_document_string(rendered)
+  assert_contains(html, "role=\"status\"")
+  assert_contains(html, "aria-live=\"polite\"")
+  assert_contains(html, "aria-busy=\"true\"")
+}
+
+pub fn forbidden_state_is_alerted_test() {
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
+
+  let rendered =
+    data_table.view_remote_with_forbidden(
+      Failed(err),
+      loading_msg: "Loading...",
+      empty_msg: "Empty",
+      forbidden_msg: "No permission for this table",
+      config: base_config(),
+    )
+
+  let html = element.to_document_string(rendered)
+  assert_contains(html, "role=\"alert\"")
+  assert_contains(html, "No permission for this table")
+}
+
+pub fn empty_error_message_gets_safe_fallback_test() {
+  let err = ApiError(status: 500, code: "SERVER", message: "")
+
+  let rendered =
+    data_table.view_remote(
+      Failed(err),
+      loading_msg: "Loading...",
+      empty_msg: "Empty",
+      config: base_config(),
+    )
+
+  let html = element.to_document_string(rendered)
+  assert_contains(html, "SERVER (500)")
+}

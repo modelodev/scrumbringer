@@ -28,7 +28,7 @@ pub fn view(completed: Int, total: Int, variant: Variant) -> Element(msg) {
           div(
             [
               attribute.class("progress-fill"),
-              attribute.style("width", int.to_string(percent) <> "%"),
+              attribute.style("--progress-width", int.to_string(percent) <> "%"),
             ],
             [],
           ),
@@ -42,7 +42,7 @@ pub fn view(completed: Int, total: Int, variant: Variant) -> Element(msg) {
           div(
             [
               attribute.class("progress-fill-mini"),
-              attribute.style("width", int.to_string(percent) <> "%"),
+              attribute.style("--progress-width", int.to_string(percent) <> "%"),
             ],
             [],
           ),

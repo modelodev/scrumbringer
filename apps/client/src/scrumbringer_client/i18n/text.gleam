@@ -656,7 +656,19 @@ pub type Text {
   // Task States (for Rules)
   TaskStateAvailable
   TaskStateClaimed
+  TaskStateOngoing
   TaskStateCompleted
+  TaskStateAvailableHint
+  TaskStateClaimedHint
+  TaskStateOngoingHint
+  TaskStateCompletedHint
+  TaskNextActionLabel
+  TaskNextActionClaim
+  TaskNextActionStart
+  TaskNextActionPause
+  TaskNextActionComplete
+  TaskNextActionRelease
+  TaskNextActionOpen
 
   // Task Templates
   AdminTaskTemplates

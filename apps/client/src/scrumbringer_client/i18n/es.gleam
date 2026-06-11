@@ -140,8 +140,9 @@ pub fn translate(text: Text) -> String {
     text.MySkillsHelp ->
       "Selecciona las capacidades que tienes. El Pool destacará las tareas que coincidan."
     text.MyTasks -> "Mis tareas"
-    text.NoClaimedTasks -> "No hay tareas reclamadas"
-    text.GoToPoolToClaimTasks -> "Ve al Pool para reclamar tareas"
+    text.NoClaimedTasks ->
+      "Aún no tienes tareas en Mis tareas. Reclama trabajo desde el Pool."
+    text.GoToPoolToClaimTasks -> "Reclama trabajo desde el Pool primero."
     text.NoProjectsBody -> "Pide a un admin que te añada a un proyecto."
     text.You -> "Tú"
     text.Notes -> "Notas"
@@ -222,7 +223,7 @@ pub fn translate(text: Text) -> String {
     text.MetaCreated -> "creada: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Reclamar"
-    text.ClaimThisTask -> "Reclamar esta tarea"
+    text.ClaimThisTask -> "Reclamar esta tarea y moverla a Mis tareas"
     text.ClaimedBy -> "Reclamada por"
     text.UnknownUser -> "Usuario desconocido"
     text.Busy -> "Ocupado"
@@ -333,13 +334,14 @@ pub fn translate(text: Text) -> String {
     text.PeopleActiveSection -> "Activas"
     text.PeopleClaimedSection -> "Reclamadas"
     text.Drag -> "Arrastrar"
-    text.StartNowWorking -> "Empezar en curso"
-    text.PauseNowWorking -> "Pausar en curso"
+    text.StartNowWorking -> "Empezar a trabajar"
+    text.PauseNowWorking -> "Pausar trabajo"
 
     // Now working
     text.NowWorking -> "En curso"
     text.NowWorkingLoading -> "En curso: cargando…"
-    text.NowWorkingNone -> "En curso: ninguna"
+    text.NowWorkingNone ->
+      "Nada activo. Empieza una tarea de Mis tareas cuando vayas a trabajar."
     text.NowWorkingErrorPrefix -> "Error En curso: "
     text.Pause -> "Pausar"
     text.Complete -> "Completar"
@@ -783,7 +785,19 @@ pub fn translate(text: Text) -> String {
     // Task States (for Rules)
     text.TaskStateAvailable -> "Disponible"
     text.TaskStateClaimed -> "Reclamada"
+    text.TaskStateOngoing -> "En curso"
     text.TaskStateCompleted -> "Completada"
+    text.TaskStateAvailableHint -> "Lista para reclamar desde el Pool"
+    text.TaskStateClaimedHint -> "En Mis tareas, lista para empezar"
+    text.TaskStateOngoingHint -> "Sesión de trabajo activa"
+    text.TaskStateCompletedHint -> "Terminada y sin acciones pendientes"
+    text.TaskNextActionLabel -> "Siguiente acción"
+    text.TaskNextActionClaim -> "Reclamar a Mis tareas"
+    text.TaskNextActionStart -> "Empezar a trabajar"
+    text.TaskNextActionPause -> "Pausar trabajo"
+    text.TaskNextActionComplete -> "Completar tarea"
+    text.TaskNextActionRelease -> "Devolver al Pool"
+    text.TaskNextActionOpen -> "Abrir tarea"
 
     // Task Templates
     text.AdminTaskTemplates -> "Plantillas de tarea"

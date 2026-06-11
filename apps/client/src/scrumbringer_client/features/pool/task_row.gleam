@@ -40,7 +40,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     True -> []
     False ->
       task_actions.claim_only(
-        pool_labels.claim(config.locale),
+        pool_labels.claim_this_task(config.locale),
         config.on_claim,
         action_buttons.SizeXs,
         config.disable_actions,

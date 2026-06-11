@@ -15,6 +15,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
@@ -36,15 +37,15 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
+  admin_surface.view(
     section_header.view_with_subtitle(
       icons.OrgUsers,
       t(config, i18n_text.OrgUsers),
       t(config, i18n_text.OrgSettingsHelp),
     ),
     view_table(config),
-    view_delete_dialog(config),
-  ])
+    [view_delete_dialog(config)],
+  )
 }
 
 fn view_table(config: Config(msg)) -> Element(msg) {

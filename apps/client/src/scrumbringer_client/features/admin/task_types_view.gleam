@@ -22,6 +22,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/event_decoders
@@ -47,7 +48,7 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
+  admin_surface.view(
     section_header.view_with_action(
       icons.TaskTypes,
       t(config, i18n_text.TaskTypesTitle(config.project_name)),
@@ -58,8 +59,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       ),
     ),
     view_list(config),
-    view_crud_dialog(config),
-  ])
+    [view_crud_dialog(config)],
+  )
 }
 
 fn view_crud_dialog(config: Config(msg)) -> Element(msg) {

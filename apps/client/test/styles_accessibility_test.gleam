@@ -40,3 +40,35 @@ pub fn highlight_utility_classes_do_not_define_transitions_test() {
   assert_not_contains(css, ".is-highlight-target { transition")
   assert_not_contains(css, ".is-highlight-dimmed { transition")
 }
+
+pub fn base_css_includes_polished_reduced_motion_rules_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, "prefers-reduced-motion: reduce")
+  assert_contains(css, "transition-delay: 0ms")
+  assert_contains(css, ".decay-shake-low")
+}
+
+pub fn progress_fills_avoid_width_transitions_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, "--progress-width")
+  assert_contains(css, "transition: clip-path")
+  assert_not_contains(css, "transition: width")
+  assert_not_contains(css, "transition: max-height")
+}
+
+pub fn touch_claim_actions_are_visible_without_hover_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, "@media (hover: none), (pointer: coarse)")
+  assert_contains(css, ".btn-claim-mini { opacity: 1")
+}
+
+pub fn auth_actions_stay_grouped_on_mobile_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, ".auth-actions { align-items: center; flex-wrap: wrap")
+  assert_contains(css, ".auth-submit { flex: 1 1 132px")
+  assert_contains(css, "@media (max-width: 340px)")
+}

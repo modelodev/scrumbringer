@@ -28,6 +28,7 @@ import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
@@ -54,15 +55,15 @@ pub type Config(msg) {
 pub fn view_assignments(config: Config(msg)) -> element.Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
 
-  div([attribute.class("section")], [
+  admin_surface.view_with_filters(
     section_header.view(icons.Team, t(i18n_text.Assignments)),
     view_toolbar(config),
     case config.assignments.view_mode {
       assignments_view_mode.ByProject -> view_by_project(config)
       assignments_view_mode.ByUser -> view_by_user(config)
     },
-    projects_view.view_project_dialogs(config.project_dialogs),
-  ])
+    [projects_view.view_project_dialogs(config.project_dialogs)],
+  )
 }
 
 fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
@@ -71,50 +72,48 @@ fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
   let is_projects = assignments.view_mode == assignments_view_mode.ByProject
   let is_users = assignments.view_mode == assignments_view_mode.ByUser
 
-  div([attribute.class("admin-card assignments-toolbar-card")], [
-    div([attribute.class("filters-row assignments-toolbar")], [
-      div([attribute.class("field assignments-toggle-field")], [
-        div([attribute.class("view-mode-toggle assignments-toggle")], [
-          button(
-            [
-              attribute.class(
-                "view-mode-btn"
-                <> case is_projects {
-                  True -> " active"
-                  False -> ""
-                },
-              ),
-              event.on_click(config.on_view_mode_changed(
-                assignments_view_mode.ByProject,
-              )),
-            ],
-            [text(t(i18n_text.AssignmentsByProject))],
-          ),
-          button(
-            [
-              attribute.class(
-                "view-mode-btn"
-                <> case is_users {
-                  True -> " active"
-                  False -> ""
-                },
-              ),
-              event.on_click(config.on_view_mode_changed(
-                assignments_view_mode.ByUser,
-              )),
-            ],
-            [text(t(i18n_text.AssignmentsByUser))],
-          ),
-        ]),
+  div([attribute.class("filters-row assignments-toolbar")], [
+    div([attribute.class("field assignments-toggle-field")], [
+      div([attribute.class("view-mode-toggle assignments-toggle")], [
+        button(
+          [
+            attribute.class(
+              "view-mode-btn"
+              <> case is_projects {
+                True -> " active"
+                False -> ""
+              },
+            ),
+            event.on_click(config.on_view_mode_changed(
+              assignments_view_mode.ByProject,
+            )),
+          ],
+          [text(t(i18n_text.AssignmentsByProject))],
+        ),
+        button(
+          [
+            attribute.class(
+              "view-mode-btn"
+              <> case is_users {
+                True -> " active"
+                False -> ""
+              },
+            ),
+            event.on_click(config.on_view_mode_changed(
+              assignments_view_mode.ByUser,
+            )),
+          ],
+          [text(t(i18n_text.AssignmentsByUser))],
+        ),
       ]),
-      div([attribute.class("field filter-q assignments-search")], [
-        input([
-          attribute.type_("text"),
-          attribute.value(assignments.search_input),
-          attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
-          event.on_input(config.on_search_changed),
-          event.debounce(event.on_input(config.on_search_debounced), 350),
-        ]),
+    ]),
+    div([attribute.class("field filter-q assignments-search")], [
+      input([
+        attribute.type_("text"),
+        attribute.value(assignments.search_input),
+        attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
+        event.on_input(config.on_search_changed),
+        event.debounce(event.on_input(config.on_search_debounced), 350),
       ]),
     ]),
   ])

@@ -76,12 +76,15 @@ pub fn mobile_panel_sheet_renders_from_config_test() {
     mobile.view_panel_sheet(config())
     |> element.to_document_string
 
-  assert_contains(html, "Now Working")
-  assert_contains(html, "Now Working: none")
+  assert_contains(html, "Working now")
+  assert_contains(
+    html,
+    "Nothing active. Start a task from My Tasks when you are ready to work.",
+  )
   assert_contains(html, "My tasks")
   assert_contains(html, "Prepare release")
-  assert_contains(html, "Start")
-  assert_contains(html, "Release")
+  assert_contains(html, "Start working")
+  assert_contains(html, "Release back to Pool")
 }
 
 pub fn mobile_mini_bar_renders_session_count_from_config_test() {
@@ -89,5 +92,5 @@ pub fn mobile_mini_bar_renders_session_count_from_config_test() {
     mobile.view_mini_bar(config())
     |> element.to_document_string
 
-  assert_contains(html, "Now Working (0)")
+  assert_contains(html, "Working now (0)")
 }

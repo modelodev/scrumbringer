@@ -849,7 +849,9 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
                   attribute.class("card-detail-progress-fill"),
                   attribute.attribute(
                     "style",
-                    "width: " <> int.to_string(metrics.tasks_percent) <> "%",
+                    "--progress-width: "
+                      <> int.to_string(metrics.tasks_percent)
+                      <> "%",
                   ),
                 ],
                 [],

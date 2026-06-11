@@ -101,24 +101,30 @@ pub type RightPanelConfig(msg) {
 
 /// Renders the right panel with all sections
 pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
-  div([attribute.class("right-panel-content")], [
-    // Activity sections (top)
-    div([attribute.class("right-panel-activity")], [
-      // Active tasks section (supports multiple)
-      view_active_tasks_section(config),
-      // My Tasks section (with inline hint when empty)
-      view_my_tasks(config),
-      // My Cards section (with inline hint when empty)
-      view_my_cards(config),
-    ]),
-    // Footer sections (bottom - pushed down with flex spacer)
-    div([attribute.class("right-panel-footer")], [
-      // Profile with preferences gear (Story 4.8 UX)
-      view_profile(config),
-    ]),
-    // Preferences popup (Story 4.8 UX: moved from inline)
-    view_preferences_popup(config),
-  ])
+  div(
+    [
+      attribute.class("right-panel-content"),
+      attribute.attribute("aria-live", "polite"),
+    ],
+    [
+      // Activity sections (top)
+      div([attribute.class("right-panel-activity")], [
+        // Active tasks section (supports multiple)
+        view_active_tasks_section(config),
+        // My Tasks section (with inline hint when empty)
+        view_my_tasks(config),
+        // My Cards section (with inline hint when empty)
+        view_my_cards(config),
+      ]),
+      // Footer sections (bottom - pushed down with flex spacer)
+      div([attribute.class("right-panel-footer")], [
+        // Profile with preferences gear (Story 4.8 UX)
+        view_profile(config),
+      ]),
+      // Preferences popup (Story 4.8 UX: moved from inline)
+      view_preferences_popup(config),
+    ],
+  )
 }
 
 // =============================================================================
@@ -180,56 +186,62 @@ fn view_active_task_card(
 ) -> Element(msg) {
   let border_class = task_color.card_border_class(active.card_color)
 
-  div([attribute.class("active-task-card " <> border_class)], [
-    div([attribute.class("task-title-row")], [
-      // Task type icon
-      span([attribute.class("task-type-icon")], [
-        task_type_icon.view(active.task_type_icon, 14, config.current_theme),
+  div(
+    [
+      attribute.class("active-task-card " <> border_class),
+      attribute.attribute("title", active.task_title),
+    ],
+    [
+      div([attribute.class("task-title-row")], [
+        // Task type icon
+        span([attribute.class("task-type-icon")], [
+          task_type_icon.view(active.task_type_icon, 14, config.current_theme),
+        ]),
+        span([attribute.class("task-title")], [text(active.task_title)]),
       ]),
-      span([attribute.class("task-title")], [text(active.task_title)]),
-    ]),
-    div(
-      [
-        attribute.class("task-timer"),
-        attribute.attribute("data-testid", "task-timer"),
-      ],
-      [text(active.elapsed_display)],
-    ),
-    div([attribute.class("task-actions")], [
-      case active.is_paused {
-        True ->
-          action_buttons.task_icon_button(
-            i18n.t(config.locale, i18n_text.Resume),
-            config.on_task_start(active.task_id),
-            icons.Play,
-            action_buttons.SizeXs,
-            config.disable_actions,
-            "",
-            None,
-            Some("my-task-start-btn"),
-          )
-        False ->
-          task_actions.pause_icon(
-            i18n.t(config.locale, i18n_text.Pause),
-            config.on_task_pause(active.task_id),
-            action_buttons.SizeXs,
-            config.disable_actions,
-            "",
-            None,
-            Some("task-pause-btn"),
-          )
-      },
-      task_actions.complete_icon(
-        i18n.t(config.locale, i18n_text.Complete),
-        config.on_task_complete(active.task_id),
-        action_buttons.SizeXs,
-        config.disable_actions,
-        "",
-        None,
-        Some("task-complete-btn"),
+      div(
+        [
+          attribute.class("task-timer"),
+          attribute.attribute("data-testid", "task-timer"),
+        ],
+        [text(active.elapsed_display)],
       ),
-    ]),
-  ])
+      div([attribute.class("task-actions")], [
+        case active.is_paused {
+          True ->
+            action_buttons.task_icon_button(
+              i18n.t(config.locale, i18n_text.Resume),
+              config.on_task_start(active.task_id),
+              icons.Play,
+              action_buttons.SizeXs,
+              config.disable_actions,
+              "",
+              None,
+              Some("my-task-start-btn"),
+            )
+          False ->
+            task_actions.pause_icon(
+              i18n.t(config.locale, i18n_text.Pause),
+              config.on_task_pause(active.task_id),
+              action_buttons.SizeXs,
+              config.disable_actions,
+              "",
+              None,
+              Some("task-pause-btn"),
+            )
+        },
+        task_actions.complete_icon(
+          i18n.t(config.locale, i18n_text.Complete),
+          config.on_task_complete(active.task_id),
+          action_buttons.SizeXs,
+          config.disable_actions,
+          "",
+          None,
+          Some("task-complete-btn"),
+        ),
+      ]),
+    ],
+  )
 }
 
 // =============================================================================
@@ -310,13 +322,24 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
 fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) {
   let resolved_color = config.task_card_color(task)
   let border_class = task_color.card_border_class(resolved_color)
+  let open_label =
+    i18n.t(config.locale, i18n_text.OpenTask) <> ": " <> task.title
 
   div([attribute.class("task-item " <> border_class)], [
+    span(
+      [
+        attribute.class("task-card-identity-swatch"),
+        attribute.attribute("aria-hidden", "true"),
+      ],
+      [],
+    ),
     div([attribute.class("task-title-row")], [
       button(
         [
           attribute.class("task-title-button"),
           attribute.type_("button"),
+          attribute.attribute("title", task.title),
+          attribute.attribute("aria-label", open_label),
           event.on_click(config.on_task_click(task.id)),
         ],
         [
@@ -405,11 +428,16 @@ fn view_my_card_item(
   card: MyCardProgress,
 ) -> Element(msg) {
   let border_class = task_color.card_border_class(card.card_color)
+  let open_label =
+    i18n.t(config.locale, i18n_text.MyCards) <> ": " <> card.card_title
 
   button(
     [
       attribute.class("my-card-item " <> border_class),
       attribute.attribute("data-testid", "my-card-item"),
+      attribute.type_("button"),
+      attribute.attribute("title", card.card_title),
+      attribute.attribute("aria-label", open_label),
       event.on_click(config.on_card_click(card.card_id)),
     ],
     [
@@ -430,73 +458,96 @@ fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
       let current_theme = theme.serialize(config.current_theme)
       let current_locale = locale.serialize(config.locale)
 
-      div(
-        [
-          attribute.class("preferences-popup-overlay"),
-          event.on_click(config.on_preferences_toggle),
-        ],
-        [
-          div(
-            [
-              attribute.class("preferences-popup"),
-              attribute.attribute("data-testid", "preferences-popup"),
-            ],
-            [
-              h4([attribute.class("popup-title")], [
-                icons.nav_icon(icons.Cog, icons.Small),
-                text(i18n.t(config.locale, i18n_text.Preferences)),
-              ]),
-              div([attribute.class("preferences-popup-content")], [
-                // Theme selector
-                label([attribute.class("preference-item")], [
-                  span([attribute.class("preference-icon")], [
-                    case config.current_theme {
-                      theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
-                      theme.Default -> icons.nav_icon(icons.Sun, icons.Small)
-                    },
-                  ]),
-                  select(
-                    [
-                      attribute.class("preference-select"),
-                      attribute.value(current_theme),
-                      attribute.attribute("data-testid", "theme-selector"),
-                      event.on_input(config.on_theme_change),
-                    ],
-                    [
-                      option(
-                        [attribute.value("default")],
-                        i18n.t(config.locale, i18n_text.ThemeDefault),
-                      ),
-                      option(
-                        [attribute.value("dark")],
-                        i18n.t(config.locale, i18n_text.ThemeDark),
-                      ),
-                    ],
+      div([attribute.class("preferences-popup-overlay")], [
+        div(
+          [
+            attribute.class("preferences-popup"),
+            attribute.attribute("data-testid", "preferences-popup"),
+            attribute.attribute("role", "dialog"),
+            attribute.attribute("aria-modal", "true"),
+            attribute.attribute("aria-labelledby", "preferences-popup-title"),
+          ],
+          [
+            div([attribute.class("popup-header")], [
+              h4(
+                [
+                  attribute.class("popup-title"),
+                  attribute.attribute("id", "preferences-popup-title"),
+                ],
+                [
+                  icons.nav_icon(icons.Cog, icons.Small),
+                  text(i18n.t(config.locale, i18n_text.Preferences)),
+                ],
+              ),
+              button(
+                [
+                  attribute.class("btn-icon-only"),
+                  attribute.type_("button"),
+                  attribute.attribute(
+                    "aria-label",
+                    i18n.t(config.locale, i18n_text.Close),
                   ),
+                  event.on_click(config.on_preferences_toggle),
+                ],
+                [icons.nav_icon(icons.Close, icons.Small)],
+              ),
+            ]),
+            div([attribute.class("preferences-popup-content")], [
+              // Theme selector
+              label([attribute.class("preference-item")], [
+                span([attribute.class("preference-icon")], [
+                  case config.current_theme {
+                    theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
+                    theme.Default -> icons.nav_icon(icons.Sun, icons.Small)
+                  },
                 ]),
-                // Language selector
-                label([attribute.class("preference-item")], [
-                  span([attribute.class("preference-icon")], [
-                    icons.nav_icon(icons.Globe, icons.Small),
-                  ]),
-                  select(
-                    [
-                      attribute.class("preference-select"),
-                      attribute.value(current_locale),
-                      attribute.attribute("data-testid", "locale-selector"),
-                      event.on_input(config.on_locale_change),
-                    ],
-                    [
-                      option([attribute.value("es")], "Español"),
-                      option([attribute.value("en")], "English"),
-                    ],
-                  ),
+                span([attribute.class("sr-only")], [
+                  text(i18n.t(config.locale, i18n_text.ThemeLabel)),
                 ]),
+                select(
+                  [
+                    attribute.class("preference-select"),
+                    attribute.value(current_theme),
+                    attribute.attribute("data-testid", "theme-selector"),
+                    event.on_input(config.on_theme_change),
+                  ],
+                  [
+                    option(
+                      [attribute.value("default")],
+                      i18n.t(config.locale, i18n_text.ThemeDefault),
+                    ),
+                    option(
+                      [attribute.value("dark")],
+                      i18n.t(config.locale, i18n_text.ThemeDark),
+                    ),
+                  ],
+                ),
               ]),
-            ],
-          ),
-        ],
-      )
+              // Language selector
+              label([attribute.class("preference-item")], [
+                span([attribute.class("preference-icon")], [
+                  icons.nav_icon(icons.Globe, icons.Small),
+                ]),
+                span([attribute.class("sr-only")], [
+                  text(i18n.t(config.locale, i18n_text.LanguageLabel)),
+                ]),
+                select(
+                  [
+                    attribute.class("preference-select"),
+                    attribute.value(current_locale),
+                    attribute.attribute("data-testid", "locale-selector"),
+                    event.on_input(config.on_locale_change),
+                  ],
+                  [
+                    option([attribute.value("es")], "Español"),
+                    option([attribute.value("en")], "English"),
+                  ],
+                ),
+              ]),
+            ]),
+          ],
+        ),
+      ])
     }
   }
 }
@@ -509,10 +560,16 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
   div([attribute.class("profile-section")], [
     case config.user {
       Some(user) ->
-        div([attribute.class("user-info")], [
-          icons.nav_icon(icons.UserCircle, icons.Small),
-          span([attribute.class("user-email")], [text(user.email)]),
-        ])
+        div(
+          [
+            attribute.class("user-info"),
+            attribute.attribute("title", user.email),
+          ],
+          [
+            icons.nav_icon(icons.UserCircle, icons.Small),
+            span([attribute.class("user-email")], [text(user.email)]),
+          ],
+        )
       None -> element.none()
     },
     div([attribute.class("profile-actions")], [
@@ -521,9 +578,22 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
         [
           attribute.class("btn-icon-only"),
           attribute.attribute("data-testid", "preferences-btn"),
+          attribute.type_("button"),
           attribute.attribute(
             "title",
             i18n.t(config.locale, i18n_text.Preferences),
+          ),
+          attribute.attribute(
+            "aria-label",
+            i18n.t(config.locale, i18n_text.Preferences),
+          ),
+          attribute.attribute("aria-haspopup", "dialog"),
+          attribute.attribute(
+            "aria-expanded",
+            case config.preferences_popup_open {
+              True -> "true"
+              False -> "false"
+            },
           ),
           event.on_click(config.on_preferences_toggle),
         ],
@@ -534,7 +604,12 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
         [
           attribute.class("btn-icon-only btn-logout"),
           attribute.attribute("data-testid", "logout-btn"),
+          attribute.type_("button"),
           attribute.attribute("title", i18n.t(config.locale, i18n_text.Logout)),
+          attribute.attribute(
+            "aria-label",
+            i18n.t(config.locale, i18n_text.Logout),
+          ),
           event.on_click(config.on_logout),
         ],
         [icons.nav_icon(icons.Logout, icons.Small)],

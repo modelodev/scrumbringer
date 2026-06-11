@@ -585,7 +585,8 @@ pub fn assignments_renders_table_layout_project_mode_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "assignments-toolbar-card")
+  assert_contains(html, "section admin-surface")
+  assert_contains(html, "admin-surface-filters")
   assert_contains(html, "table assignments-table")
 }
 

@@ -17,12 +17,14 @@ pub fn no_projects(locale: Locale) -> Element(msg) {
 
 pub fn header(locale: Locale, on_new_task: msg) -> Element(msg) {
   div([attribute.class("pool-header")], [
-    h3([attribute.class("pool-title")], [
-      text(i18n.t(locale, i18n_text.Pool)),
+    div([attribute.class("pool-header-main")], [
+      h3([attribute.class("pool-title")], [
+        text(i18n.t(locale, i18n_text.Pool)),
+      ]),
     ]),
     button(
       [
-        attribute.class("btn-sm btn-secondary"),
+        attribute.class("btn-sm btn-primary pool-header-action"),
         attribute.attribute("data-testid", "btn-new-task-pool-header"),
         event.on_click(on_new_task),
       ],

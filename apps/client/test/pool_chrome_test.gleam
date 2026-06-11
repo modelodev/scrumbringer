@@ -23,6 +23,7 @@ pub fn pool_chrome_renders_header_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "pool-header")
+  assert_contains(html, "btn-primary pool-header-action")
   assert_contains(html, "btn-new-task-pool-header")
   assert_contains(html, ">Pool<")
   assert_contains(html, "New task")
@@ -63,5 +64,5 @@ pub fn pool_chrome_renders_my_tasks_states_without_root_model_test() {
 
   assert_contains(heading, "My tasks")
   assert_contains(hint, "Claim: My tasks")
-  assert_contains(empty, "No claimed tasks")
+  assert_contains(empty, "No tasks in My Tasks yet")
 }

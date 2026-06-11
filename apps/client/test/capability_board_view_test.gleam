@@ -193,7 +193,7 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
   assert_contains(html, "data-column-state=\"ongoing\"")
   assert_contains(html, ">Pending<")
   assert_contains(html, ">Claimed<")
-  assert_contains(html, ">Now Working<")
+  assert_contains(html, ">Working now<")
   assert_contains(html, "Frontend polish")
   assert_contains(html, "Frontend takeover")
   assert_contains(html, "Backend API")

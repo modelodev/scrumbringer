@@ -31,6 +31,7 @@ import lustre/element/html.{div, h3, text}
 
 import domain/remote.{type Remote}
 import domain/task.{type Task, type WorkSession, Task, WorkSession}
+import domain/task_status.{Claimed, Ongoing}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -44,6 +45,7 @@ import scrumbringer_client/ui/error_notice
 
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
 
 pub type Config(msg) {
   Config(
@@ -133,9 +135,9 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
   let actions = case task_info {
     opt.Some(Task(version: version, ..)) ->
       task_actions.pause_and_complete(
-        i18n.t(config.locale, i18n_text.Pause),
+        task_state_ui.next_action(config.locale, Claimed(Ongoing)),
         config.on_pause,
-        i18n.t(config.locale, i18n_text.Complete),
+        task_state_ui.complete_action(config.locale),
         config.on_complete(task_id, version),
         action_buttons.SizeXs,
         config.disable_actions,
@@ -158,7 +160,16 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
       icon_class: opt.None,
       title: title,
       title_class: opt.Some("now-working-task-title"),
-      secondary: div([attribute.class("now-working-timer")], [text(elapsed)]),
+      secondary: div(
+        [
+          attribute.class("now-working-timer"),
+          attribute.attribute(
+            "title",
+            task_state_ui.hint(config.locale, Claimed(Ongoing)),
+          ),
+        ],
+        [text(elapsed)],
+      ),
       actions: [div([attribute.class("now-working-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,

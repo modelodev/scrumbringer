@@ -92,6 +92,10 @@ pub fn cards_view_renders_detail_button_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
+  assert_contains(html, "section admin-surface")
+  assert_contains(html, "admin-surface-filters")
+  assert_contains(html, "admin-surface-content")
+  assert_contains(html, "data-testid=\"cards-filters\"")
   assert_contains(html, "card-title-button")
   assert_contains(html, "card-detail-open")
 }

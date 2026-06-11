@@ -30,14 +30,20 @@ pub fn view(
   on_close: msg,
   content: Element(msg),
 ) -> Element(msg) {
+  case is_open {
+    False -> element.none()
+    True -> view_open(position, on_close, content)
+  }
+}
+
+fn view_open(
+  position: DrawerPosition,
+  on_close: msg,
+  content: Element(msg),
+) -> Element(msg) {
   let position_class = case position {
     Left -> " drawer-left"
     Right -> " drawer-right right"
-  }
-
-  let open_class = case is_open {
-    True -> " drawer-open open"
-    False -> ""
   }
 
   let testid = case position {
@@ -45,19 +51,27 @@ pub fn view(
     Right -> "right-drawer"
   }
 
-  div(
-    [
-      attribute.class("drawer-overlay" <> open_class),
-      attribute.attribute("data-testid", testid <> "-overlay"),
-      event.on_click(on_close),
-    ],
-    [
+  let dialog_label = case position {
+    Left -> "Navigation drawer"
+    Right -> "Activity drawer"
+  }
+
+  element.fragment([
+    div(
+      [
+        attribute.class("drawer-overlay open"),
+        attribute.attribute("data-testid", testid <> "-overlay"),
+        event.on_click(on_close),
+      ],
+      [],
+    ),
       div(
         [
-          attribute.class("drawer" <> position_class <> open_class),
+          attribute.class("drawer" <> position_class <> " drawer-open open"),
           attribute.attribute("data-testid", testid),
           attribute.attribute("role", "dialog"),
           attribute.attribute("aria-modal", "true"),
+          attribute.attribute("aria-label", dialog_label),
         ],
         [
           div([attribute.class("drawer-header")], [
@@ -74,8 +88,7 @@ pub fn view(
           div([attribute.class("drawer-content")], [content]),
         ],
       ),
-    ],
-  )
+  ])
 }
 
 /// Mini task bar for mobile (shows current task)

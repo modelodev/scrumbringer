@@ -40,12 +40,16 @@
 //// )
 //// ```
 
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 
 import lustre/attribute.{attribute, class}
 import lustre/element.{type Element}
-import lustre/element/html.{caption, div, span, table, td, text, th, thead, tr}
+import lustre/element/html.{
+  button, caption, div, span, table, td, text, th, thead, tr,
+}
 import lustre/element/keyed
 import lustre/event
 
@@ -98,7 +102,7 @@ pub fn new() -> DataTableConfig(row, msg) {
     rows: [],
     key_fn: fn(_) { "" },
     empty_state: None,
-    css_class: "table",
+    css_class: "table data-table",
     caption: None,
     error_prefix: None,
   )
@@ -184,16 +188,18 @@ pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
         None -> element.none()
       }
     _ ->
-      table([class(css_class), attribute("role", "grid")], [
-        case cap {
-          Some(c) -> caption([class("sr-only")], [text(c)])
-          None -> element.none()
-        },
-        thead([], [tr([], list.map(columns, view_header))]),
-        keyed.tbody(
-          [],
-          list.map(rows, fn(row) { #(key_fn(row), view_row(columns, row)) }),
-        ),
+      div([class("data-table-scroll")], [
+        table([class(css_class)], [
+          case cap {
+            Some(c) -> caption([class("sr-only")], [text(c)])
+            None -> element.none()
+          },
+          thead([], [tr([], list.map(columns, view_header))]),
+          keyed.tbody(
+            [],
+            list.map(rows, fn(row) { #(key_fn(row), view_row(columns, row)) }),
+          ),
+        ]),
       ])
   }
 }
@@ -201,7 +207,7 @@ pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
 fn view_header(column: Column(row, msg)) -> Element(msg) {
   let Column(header:, on_sort:, header_class:, ..) = column
 
-  let base_attrs = [attribute("role", "columnheader")]
+  let base_attrs = [attribute("scope", "col")]
   let class_attrs = case header_class {
     Some(css) -> [class("table-header " <> css), ..base_attrs]
     None -> [class("table-header"), ..base_attrs]
@@ -215,13 +221,24 @@ fn view_header(column: Column(row, msg)) -> Element(msg) {
             Some(css) -> "table-header sortable " <> css
             None -> "table-header sortable"
           }),
-          attribute("role", "columnheader"),
+          attribute("scope", "col"),
           attribute("aria-sort", "none"),
-          event.on_click(sort_msg),
         ],
         [
-          span([class("header-text")], [text(header)]),
-          span([class("sort-icon")], [text("⇅")]),
+          button(
+            [
+              class("table-sort-button"),
+              attribute("type", "button"),
+              attribute("aria-label", "Sort by " <> header),
+              event.on_click(sort_msg),
+            ],
+            [
+              span([class("header-text")], [text(header)]),
+              span([class("sort-icon"), attribute("aria-hidden", "true")], [
+                text("⇅"),
+              ]),
+            ],
+          ),
         ],
       )
     None -> th(class_attrs, [text(header)])
@@ -233,10 +250,7 @@ fn view_row(columns: List(Column(row, msg)), row: row) -> Element(msg) {
     [attribute("role", "row")],
     list.map(columns, fn(col) {
       let Column(render:, header:, cell_class:, ..) = col
-      let base_attrs = [
-        attribute("role", "gridcell"),
-        attribute("data-label", header),
-      ]
+      let base_attrs = [attribute("data-label", header)]
       let attrs = case cell_class {
         Some(css) -> [class(css), ..base_attrs]
         None -> base_attrs
@@ -336,7 +350,7 @@ pub fn view_remote(
   config config: DataTableConfig(row, msg),
 ) -> Element(msg) {
   case remote {
-    NotAsked | Loading -> div([class("empty")], [text(loading_msg)])
+    NotAsked | Loading -> view_loading(loading_msg)
 
     Failed(err) -> view_error(config.error_prefix, err)
 
@@ -361,11 +375,18 @@ pub fn view_remote_with_forbidden(
   config config: DataTableConfig(row, msg),
 ) -> Element(msg) {
   case remote {
-    NotAsked | Loading -> div([class("empty")], [text(loading_msg)])
+    NotAsked | Loading -> view_loading(loading_msg)
 
     Failed(err) ->
       case err.status == 403 {
-        True -> div([class("not-permitted")], [text(forbidden_msg)])
+        True ->
+          div(
+            [
+              class("not-permitted data-table-state"),
+              attribute("role", "alert"),
+            ],
+            [text(forbidden_msg)],
+          )
         False -> view_error(config.error_prefix, err)
       }
 
@@ -384,14 +405,45 @@ fn view_empty(
 ) -> Element(msg) {
   case empty_state {
     Some(custom) -> custom
-    None -> div([class("empty")], [text(empty_msg)])
+    None ->
+      div(
+        [
+          class("empty data-table-state"),
+          attribute("role", "status"),
+          attribute("aria-live", "polite"),
+        ],
+        [text(empty_msg)],
+      )
   }
 }
 
+fn view_loading(message: String) -> Element(msg) {
+  div(
+    [
+      class("empty data-table-state data-table-loading"),
+      attribute("role", "status"),
+      attribute("aria-live", "polite"),
+      attribute("aria-busy", "true"),
+    ],
+    [text(message)],
+  )
+}
+
 fn view_error(prefix: Option(String), err: ApiError) -> Element(msg) {
+  let safe_message = case string.is_empty(string.trim(err.message)) {
+    True -> fallback_error_message(err)
+    False -> err.message
+  }
   let message = case prefix {
-    Some(p) -> p <> err.message
-    None -> err.message
+    Some(p) -> p <> safe_message
+    None -> safe_message
   }
   error_notice.view(message)
+}
+
+fn fallback_error_message(err: ApiError) -> String {
+  case string.is_empty(string.trim(err.code)) {
+    True -> "Request failed (" <> int.to_string(err.status) <> ")"
+    False -> err.code <> " (" <> int.to_string(err.status) <> ")"
+  }
 }

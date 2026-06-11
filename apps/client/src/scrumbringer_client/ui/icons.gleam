@@ -31,7 +31,7 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{img, span}
+import lustre/element/html.{span}
 
 import gleroglero/outline
 
@@ -112,23 +112,31 @@ pub fn heroicon_outline_url(name: String) -> String {
 pub fn view_heroicon_inline(
   name: String,
   size: Int,
-  theme: Theme,
+  _theme: Theme,
 ) -> Element(msg) {
-  let filter = case theme {
-    theme.Dark -> "invert(1)"
-    theme.Default -> ""
-  }
+  let url = heroicon_outline_url(name)
+  let size_px = int.to_string(size) <> "px"
 
-  img([
-    attribute.src(heroicon_outline_url(name)),
-    attribute.alt(name),
-    attribute.attribute("width", int.to_string(size)),
-    attribute.attribute("height", int.to_string(size)),
-    attribute.attribute(
-      "style",
-      "vertical-align:middle; filter:" <> filter <> ";",
-    ),
-  ])
+  span(
+    [
+      attribute.class("heroicon-inline"),
+      attribute.attribute("role", "img"),
+      attribute.attribute("aria-label", name),
+      attribute.attribute(
+        "style",
+        "display:inline-block;width:"
+          <> size_px
+          <> ";height:"
+          <> size_px
+          <> ";vertical-align:middle;background-color:currentColor;mask:url('"
+          <> url
+          <> "') center / contain no-repeat;-webkit-mask:url('"
+          <> url
+          <> "') center / contain no-repeat;",
+      ),
+    ],
+    [],
+  )
 }
 
 // =============================================================================

@@ -53,7 +53,7 @@ pub fn task_card_renders_blocked_canvas_card_test() {
   assert_contains(html, "Blocked by 1 tasks")
   assert_contains(html, "API contract")
   assert_not_contains(html, "Done dependency")
-  assert_not_contains(html, "Claim")
+  assert_not_contains(html, "task-card-primary-action")
 }
 
 pub fn task_card_renders_claimed_owner_actions_test() {
@@ -79,7 +79,41 @@ pub fn task_card_renders_claimed_owner_actions_test() {
   assert_contains(html, "task-card")
   assert_contains(html, "Release")
   assert_contains(html, "Complete")
-  assert_not_contains(html, "Claim")
+  assert_not_contains(html, "task-card-primary-action")
+}
+
+pub fn task_card_renders_available_claim_action_test() {
+  let html =
+    task_card.view(config(
+      sample_task(),
+      x: 100,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "task-card-actions-left")
+  assert_contains(html, "task-card-primary-action")
+  assert_contains(html, "aria-label=\"Claim to My Tasks\"")
+  assert_not_contains(html, "task-card-primary-label")
+}
+
+pub fn task_card_renders_mobile_context_for_touch_layout_test() {
+  let html =
+    task_card.view(config(
+      sample_task(),
+      x: 100,
+      age_days: 3,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "task-card-mobile-context")
+  assert_contains(html, "Release card")
+  assert_contains(html, "3 days ago")
+  assert_contains(html, "Task description")
 }
 
 fn config(

@@ -274,7 +274,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
       // New Task button - ALL roles (AC7)
       button(
         [
-          attribute.class("btn-action btn-action-primary"),
+          attribute.class("btn-action btn-action-shortcut"),
           attribute.attribute("data-testid", "btn-new-task"),
           attribute.disabled(config.selected_project_id == None),
           event.on_click(config.on_new_task),
@@ -289,7 +289,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         True ->
           button(
             [
-              attribute.class("btn-action btn-action-primary"),
+              attribute.class("btn-action btn-action-shortcut"),
               attribute.attribute("data-testid", "btn-new-card"),
               attribute.disabled(config.selected_project_id == None),
               event.on_click(config.on_new_card),

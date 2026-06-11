@@ -22,7 +22,7 @@ pub fn css() -> List(String) {
     // Dialog header
     ".dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-title { display: flex; align-items: center; gap: 10px; }",
-    ".dialog-title h3 { margin: 0; font-size: 18px; font-weight: 600; }",
+    ".dialog-title h3 { margin: 0; font-size: var(--sb-font-xl); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-title); }",
     ".dialog-icon { font-size: 20px; }",
     ".dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; color: var(--sb-muted); cursor: pointer; border-radius: 10px; font-size: 18px; line-height: 1; }",
     ".dialog-close:hover { background: var(--sb-hover); color: var(--sb-text); }",
@@ -31,38 +31,44 @@ pub fn css() -> List(String) {
     // Story 4.8 UX: Allow color picker dropdown to overflow dialog-body when open
     ".dialog-body:has(.color-picker.open) { overflow: visible; }",
     // Dialog error
-    ".dialog-error { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin: 0 20px 0 20px; margin-top: -4px; color: var(--sb-danger); font-size: 14px; }",
+    ".dialog-error { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin: 0 20px 0 20px; margin-top: -4px; color: var(--sb-error-text); font-size: var(--sb-font-md); line-height: var(--sb-line-body); }",
     // Dialog footer
     ".dialog-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-footer .btn-compact { padding-left: 14px; padding-right: 14px; }",
     // Add button (for opening dialogs)
-    ".btn-add { display: inline-flex; align-items: center; gap: var(--sb-space-md); padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: var(--sb-radius-lg); font-weight: 500; cursor: pointer; transition: background var(--sb-transition-normal), transform 0.1s; }",
+    ".btn-add { display: inline-flex; align-items: center; gap: var(--sb-space-md); padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: var(--sb-radius-lg); font-weight: var(--sb-weight-semibold); cursor: pointer; transition: background var(--sb-transition-normal), transform 0.1s; }",
     ".btn-add:hover { background: var(--sb-primary-hover); }",
     ".btn-add:active { transform: scale(0.98); }",
     ".btn-add::before { content: '+'; font-weight: 700; font-size: 1.1em; }",
     // Admin section header with action button (Story 4.8 UX: consistent height)
     ".admin-section-header-wrapper { margin-bottom: 16px; }",
     ".admin-section-header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-bottom: 12px; border-bottom: 1px solid var(--sb-border); }",
-    ".admin-section-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); }",
+    ".admin-section-title { display: flex; align-items: center; gap: 8px; font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); color: var(--sb-muted-strong); }",
     ".admin-section-icon { font-size: 16px; }",
     ".admin-section-action { display: flex; align-items: center; }",
-    ".admin-section-subtitle { margin: 12px 0 0 0; padding: 10px 14px; font-size: 13px; line-height: 1.5; color: var(--sb-muted); background: var(--sb-elevated); border-radius: 8px; border-left: 3px solid var(--sb-primary); }",
+    ".admin-section-subtitle { margin: 12px 0 0 0; padding: 10px 14px; font-size: var(--sb-font-base); line-height: var(--sb-line-body); color: var(--sb-muted); background: color-mix(in oklab, var(--sb-primary) 4%, var(--sb-elevated)); border-radius: 8px; border: 1px solid color-mix(in oklab, var(--sb-primary) 24%, var(--sb-border)); }",
+    ".admin-surface { display: flex; flex-direction: column; gap: var(--sb-gap-section); }",
+    ".admin-surface .admin-section-header-wrapper { margin-bottom: 0; }",
+    ".admin-surface-filters { padding: var(--sb-gap-related) var(--sb-gap-group); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 70%, var(--sb-surface)); }",
+    ".admin-surface-content { min-width: 0; }",
+    ".admin-surface-content > .data-table-scroll, .admin-surface-content > .api-token-list-card { width: 100%; overflow-x: auto; }",
+    "@media (max-width: 768px) { .admin-surface { gap: var(--sb-gap-group); } .admin-surface-filters { padding: var(--sb-gap-related); } }",
     // Story 4.8 AC25: Unified vertical layout for capability checklists
     ".capabilities-checklist, .members-checklist { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 4px 0; }",
     ".capabilities-checklist .checkbox-label, .members-checklist .checkbox-label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; transition: all 0.15s ease; }",
     ".capabilities-checklist .checkbox-label:hover, .members-checklist .checkbox-label:hover { background: var(--sb-hover); border-color: var(--sb-primary); }",
     ".capabilities-checklist input[type='checkbox'], .members-checklist input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--sb-primary); cursor: pointer; }",
-    ".capabilities-checklist .capability-name, .members-checklist .member-name, .members-checklist .member-email { font-size: 14px; font-weight: 500; }",
+    ".capabilities-checklist .capability-name, .members-checklist .member-name, .members-checklist .member-email { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); }",
     // Story 4.8 UX: Table column alignment
     // Note: Never use display:flex on td elements - it breaks table-cell borders
     ".col-number, .cell-number { text-align: right; width: 80px; }",
     "th.col-actions, td.cell-actions { text-align: right; white-space: nowrap; padding-right: 12px; }",
     ".cell-actions .btn-icon { margin-left: 8px; }",
     ".cell-actions .btn-icon:first-child { margin-left: 0; }",
-    ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",
-    ".claimed-badge { min-width: 28px; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-weight: 600; font-size: var(--sb-font-sm); line-height: 1; text-align: center; background: color-mix(in oklab, var(--sb-info) 15%, var(--sb-elevated)); color: var(--sb-info); }",
+    ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; font-variant-numeric: tabular-nums; }",
+    ".claimed-badge { min-width: 28px; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-weight: var(--sb-weight-semibold); font-size: var(--sb-font-sm); line-height: 1; text-align: center; background: color-mix(in oklab, var(--sb-info) 15%, var(--sb-elevated)); color: var(--sb-info-text); font-variant-numeric: tabular-nums; }",
     ".release-btn { width: 28px; height: 28px; }",
-    ".btn-danger-icon { color: var(--sb-danger); }",
+    ".btn-danger-icon { color: var(--sb-error-text); }",
     ".btn-danger-icon:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",
     // UX: Cards config improvements (Sally UX review)
     // Inline filters layout
@@ -75,19 +81,19 @@ pub fn css() -> List(String) {
     ".card-title-button:hover { color: var(--sb-primary); text-decoration: underline; }",
     ".card-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 1px solid color-mix(in oklab, currentColor 20%, transparent); }",
     // State badges with semantic colors
-    ".state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }",
+    ".state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-tight); }",
     ".state-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }",
-    ".state-pending { background: color-mix(in oklab, var(--sb-warning) 15%, transparent); color: var(--sb-warning); }",
+    ".state-pending { background: color-mix(in oklab, var(--sb-warning) 15%, transparent); color: var(--sb-warning-text); }",
     ".state-pending::before { background: var(--sb-warning); }",
-    ".state-active { background: color-mix(in oklab, var(--sb-info) 15%, transparent); color: var(--sb-info); }",
+    ".state-active { background: color-mix(in oklab, var(--sb-info) 15%, transparent); color: var(--sb-info-text); }",
     ".state-active::before { background: var(--sb-info); }",
-    ".state-completed { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success); }",
+    ".state-completed { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success-text); }",
     ".state-completed::before { background: var(--sb-success); }",
     // Mini progress bar for cards table
     ".card-progress-cell { display: flex; align-items: center; gap: 8px; }",
     ".progress-bar-mini { width: 60px; height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
-    ".progress-fill-mini { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
-    ".progress-text-mini { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
+    ".progress-fill-mini { width: 100%; height: 100%; background: var(--sb-success-fill); clip-path: inset(0 calc(100% - var(--progress-width, 0%)) 0 0); transition: clip-path var(--sb-transition-slow); }",
+    ".progress-text-mini { font-size: var(--sb-font-sm); color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
     // Responsive dialog
     "@media (max-width: 640px) { .dialog { max-height: 100vh; border-radius: 0; } .dialog-overlay { padding: 0; } .dialog-sm, .dialog-md, .dialog-lg, .dialog-xl { width: 100%; height: 100%; } .dialog-body { padding: 16px; } .dialog-header, .dialog-footer { padding: 12px 16px; } }",
     // =============================================================================

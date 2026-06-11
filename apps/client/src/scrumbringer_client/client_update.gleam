@@ -289,6 +289,7 @@ fn current_route(model: client_state.Model) -> router.Route {
         | permissions.OrgSettings
         | permissions.Projects
         | permissions.Assignments
+        | permissions.ApiTokens
         | permissions.Metrics -> router.Org(model.core.active_section)
         _ ->
           router.Config(

@@ -36,7 +36,7 @@ pub fn task_row_renders_claimable_list_item_without_root_model_test() {
   assert_contains(html, "task-row card-border-blue")
   assert_contains(html, "is-highlight-source highlight-info")
   assert_contains(html, "Prepare release")
-  assert_contains(html, "title=\"Claim\"")
+  assert_contains(html, "title=\"Claim this task and move it to My Tasks\"")
 }
 
 pub fn task_row_hides_claim_action_when_blocked_test() {
@@ -55,7 +55,7 @@ pub fn task_row_hides_claim_action_when_blocked_test() {
 
   assert_contains(html, "task-blocked")
   assert_contains(html, "task-blocked-count")
-  assert_not_contains(html, "title=\"Claim\"")
+  assert_not_contains(html, "title=\"Claim this task and move it to My Tasks\"")
 }
 
 fn sample_task() {

@@ -6,8 +6,11 @@ import lustre/element.{type Element}
 
 import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/features/pool/labels as pool_labels
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_hover_popup
+import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_status_utils
 
 pub type Config(msg) {
@@ -27,6 +30,14 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   task_hover_popup.view(task_hover_popup.TaskHoverConfig(
     card_label: pool_labels.parent_card(config.locale),
     card_title: config.card_title,
+    status_label: i18n.t(config.locale, i18n_text.Status),
+    status_value: task_state_ui.label(config.locale, config.task.status),
+    status_hint: task_state_ui.hint(config.locale, config.task.status),
+    next_action_label: i18n.t(config.locale, i18n_text.TaskNextActionLabel),
+    next_action_value: task_state_ui.next_action(
+      config.locale,
+      config.task.status,
+    ),
     age_label: pool_labels.age(config.locale),
     age_value: pool_labels.created_ago_days(config.locale, config.age_days),
     description_label: pool_labels.description(config.locale),

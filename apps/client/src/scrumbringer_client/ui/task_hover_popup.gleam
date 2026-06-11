@@ -14,6 +14,11 @@ pub type TaskHoverConfig(msg) {
   TaskHoverConfig(
     card_label: String,
     card_title: Option(String),
+    status_label: String,
+    status_value: String,
+    status_hint: String,
+    next_action_label: String,
+    next_action_value: String,
     age_label: String,
     age_value: String,
     description_label: String,
@@ -36,6 +41,11 @@ pub fn view(config: TaskHoverConfig(msg)) -> lustre_element.Element(msg) {
   let TaskHoverConfig(
     card_label: card_label,
     card_title: card_title,
+    status_label: status_label,
+    status_value: status_value,
+    status_hint: status_hint,
+    next_action_label: next_action_label,
+    next_action_value: next_action_value,
     age_label: age_label,
     age_value: age_value,
     description_label: description_label,
@@ -66,6 +76,23 @@ pub fn view(config: TaskHoverConfig(msg)) -> lustre_element.Element(msg) {
     span([attribute.class("task-preview-value")], [text(age_value)]),
   ]
 
+  let status_entries = [
+    span([attribute.class("task-preview-label task-preview-label-strong")], [
+      text(status_label),
+    ]),
+    span(
+      [
+        attribute.class("task-preview-value"),
+        attribute.attribute("title", status_hint),
+      ],
+      [text(status_value)],
+    ),
+    span([attribute.class("task-preview-label task-preview-label-strong")], [
+      text(next_action_label),
+    ]),
+    span([attribute.class("task-preview-value")], [text(next_action_value)]),
+  ]
+
   let description_entries = case string.is_empty(description) {
     True -> []
     False -> [
@@ -79,7 +106,10 @@ pub fn view(config: TaskHoverConfig(msg)) -> lustre_element.Element(msg) {
   }
 
   let grid_entries =
-    g_list.append(g_list.append(card_entries, age_entries), description_entries)
+    g_list.append(
+      g_list.append(g_list.append(card_entries, status_entries), age_entries),
+      description_entries,
+    )
 
   let blocked_section = case blocked_label, blocked_items {
     Some(label), [_, ..] -> [
