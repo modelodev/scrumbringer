@@ -5,6 +5,7 @@ import gleam/string
 import lustre/element
 
 import domain/api_error.{ApiError}
+import domain/card
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
 import domain/project.{type ProjectMember, ProjectMember}
@@ -77,6 +78,20 @@ fn make_task(
 fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task {
   let task = make_task(id, title, user_id, task_status.Taken)
   Task(..task, ongoing_by: Some(task_status.OngoingBy(user_id: user_id)))
+}
+
+fn task_on_card(
+  task: Task,
+  card_id: Int,
+  title: String,
+  color: card.CardColor,
+) -> Task {
+  Task(
+    ..task,
+    card_id: Some(card_id),
+    card_title: Some(title),
+    card_color: Some(color),
+  )
 }
 
 fn base_model() -> client_state.Model {
@@ -322,6 +337,163 @@ pub fn people_view_availability_prefers_ongoing_by_test() {
 
   assert_contains(html, "Working")
   assert_not_contains(html, "Busy")
+}
+
+pub fn people_view_surface_summary_and_collapsed_balance_test() {
+  let tasks = [
+    make_task(1, "Build intake", 10, task_status.Ongoing)
+      |> task_on_card(101, "Checkout", card.Blue),
+    make_task(2, "Draft copy", 10, task_status.Taken)
+      |> task_on_card(102, "Onboarding", card.Green),
+    make_task(3, "Review logs", 11, task_status.Taken)
+      |> task_on_card(103, "Observability", card.Purple),
+    make_task(4, "Patch alert", 11, task_status.Taken)
+      |> task_on_card(103, "Observability", card.Purple),
+    make_task(5, "Check query", 11, task_status.Taken)
+      |> task_on_card(103, "Observability", card.Purple),
+    make_task(6, "Plan rollout", 11, task_status.Taken)
+      |> task_on_card(103, "Observability", card.Purple),
+  ]
+
+  let model =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        ProjectMember(
+          user_id: 10,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 2,
+        ),
+        ProjectMember(
+          user_id: 11,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 4,
+        ),
+        ProjectMember(
+          user_id: 12,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 0,
+        ),
+      ]),
+    )
+    |> with_org_users([
+      OrgUser(
+        id: 10,
+        email: "ana@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+      OrgUser(
+        id: 11,
+        email: "bob@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+      OrgUser(
+        id: 12,
+        email: "cora@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+    ])
+    |> with_tasks(tasks)
+
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
+
+  assert_contains(html, "Team load by current work and claimed tasks.")
+  assert_contains(html, "1 free")
+  assert_contains(html, "1 busy")
+  assert_contains(html, "1 working now")
+  assert_contains(html, "5 claimed")
+  assert_contains(html, "1 ongoing")
+  assert_contains(html, "4 claimed")
+  assert_contains(html, "2 cards")
+  assert_contains(html, "Checkout")
+  assert_contains(html, "Onboarding")
+  assert_contains(html, "High load")
+}
+
+pub fn people_view_expanded_keeps_card_context_without_card_groups_test() {
+  let tasks = [
+    make_task(1, "Build intake", 10, task_status.Ongoing)
+      |> task_on_card(101, "Checkout", card.Blue),
+    make_task(2, "Draft copy", 10, task_status.Taken)
+      |> task_on_card(102, "Onboarding", card.Green),
+    make_task(3, "Review copy", 10, task_status.Taken)
+      |> task_on_card(103, "Billing", card.Purple),
+  ]
+
+  let model =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        ProjectMember(
+          user_id: 10,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 3,
+        ),
+      ]),
+    )
+    |> with_org_users([
+      OrgUser(
+        id: 10,
+        email: "ana@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+    ])
+    |> with_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
+
+  assert_contains(html, "Checkout")
+  assert_contains(html, "Onboarding")
+  assert_contains(html, "Billing")
+  assert_contains(html, "Working now")
+  assert_contains(html, "Claimed")
+  assert_contains(html, "task-card-identity-swatch")
+  assert_contains(html, "role=\"img\"")
+  assert_contains(html, "aria-label=\"Checkout\"")
+  assert_not_contains(html, "people-task-group")
+  assert_not_contains(html, "people-task-card-meta")
+}
+
+pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
+  let model =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        ProjectMember(
+          user_id: 10,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 0,
+        ),
+      ]),
+    )
+    |> with_org_users([
+      OrgUser(
+        id: 10,
+        email: "ana@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+    ])
+    |> with_tasks([])
+    |> with_people_expanded(10)
+
+  let html =
+    people_view.view(people_config(model)) |> element.to_document_string
+
+  assert_contains(html, "Available capacity")
+  assert_contains(html, "No claimed tasks")
 }
 
 pub fn people_view_expanded_row_accessibility_and_sections_test() {

@@ -24,6 +24,22 @@ import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state as task_state_ui
+
+const load_warning_claimed_threshold = 4
+
+type PeopleSummary {
+  PeopleSummary(
+    free_count: Int,
+    busy_count: Int,
+    working_count: Int,
+    claimed_total: Int,
+  )
+}
+
+type TaskGroup {
+  TaskGroup(card_id: Option(Int), card_title: Option(String), tasks: List(Task))
+}
 
 pub type Config(msg) {
   Config(
@@ -90,9 +106,7 @@ fn view_loaded(
               attribute.attribute("data-testid", "people-view"),
             ],
             [
-              h3([attribute.class("people-title")], [
-                text(i18n.t(config.locale, i18n_text.People)),
-              ]),
+              view_surface_header(config, filtered),
               ul(
                 [attribute.class("people-items")],
                 list.map(filtered, fn(person) {
@@ -130,31 +144,52 @@ fn view_person_row(
   let availability_chip =
     badge.new_unchecked(badge_text, badge_variant)
     |> badge.view_with_class("people-status-chip")
+  let person_tasks = list.append(active_tasks, claimed_tasks)
 
   li([attribute.class("people-row")], [
     div([attribute.class("people-row-header")], [
-      button(
-        [
-          attribute.class("people-row-toggle"),
-          attribute.attribute(
-            "aria-expanded",
-            attribute_value.boolean(expanded),
+      div([attribute.class("people-row-main")], [
+        button(
+          [
+            attribute.class("people-row-toggle"),
+            attribute.attribute(
+              "aria-expanded",
+              attribute_value.boolean(expanded),
+            ),
+            attribute.attribute("aria-controls", details_id),
+            attribute.attribute("aria-label", toggle_label),
+            event.on_click(config.on_person_toggle(user_id)),
+          ],
+          [
+            span([attribute.class("people-row-caret")], [
+              text(case expanded {
+                True -> "▾"
+                False -> "▸"
+              }),
+            ]),
+            span([attribute.class("people-row-name")], [text(label)]),
+          ],
+        ),
+        availability_chip,
+      ]),
+      div([attribute.class("people-row-balance")], [
+        view_row_metric(
+          i18n.t(
+            config.locale,
+            i18n_text.PeopleOngoingCount(list.length(active_tasks)),
           ),
-          attribute.attribute("aria-controls", details_id),
-          attribute.attribute("aria-label", toggle_label),
-          event.on_click(config.on_person_toggle(user_id)),
-        ],
-        [
-          span([attribute.class("people-row-caret")], [
-            text(case expanded {
-              True -> "▾"
-              False -> "▸"
-            }),
-          ]),
-          span([attribute.class("people-row-name")], [text(label)]),
-        ],
-      ),
-      availability_chip,
+          badge.Primary,
+        ),
+        view_row_metric(
+          i18n.t(
+            config.locale,
+            i18n_text.PeopleClaimedCount(list.length(claimed_tasks)),
+          ),
+          badge.Neutral,
+        ),
+        view_person_cards(config, person_tasks),
+        view_load_warning(config, claimed_tasks),
+      ]),
     ]),
     case expanded {
       True ->
@@ -173,6 +208,121 @@ fn view_person_row(
   ])
 }
 
+fn view_surface_header(
+  config: Config(msg),
+  people: List(people_state.PersonStatus),
+) -> Element(msg) {
+  let summary = summarize_people(people)
+
+  div([attribute.class("people-surface-header")], [
+    div([attribute.class("people-surface-copy")], [
+      h3([attribute.class("people-title")], [
+        text(i18n.t(config.locale, i18n_text.People)),
+      ]),
+      p([attribute.class("people-purpose")], [
+        text(i18n.t(config.locale, i18n_text.PeoplePurpose)),
+      ]),
+    ]),
+    div([attribute.class("people-summary-chips")], [
+      view_row_metric(
+        i18n.t(config.locale, i18n_text.PeopleFreeCount(summary.free_count)),
+        badge.Success,
+      ),
+      view_row_metric(
+        i18n.t(config.locale, i18n_text.PeopleBusyCount(summary.busy_count)),
+        badge.Warning,
+      ),
+      view_row_metric(
+        i18n.t(
+          config.locale,
+          i18n_text.PeopleWorkingCount(summary.working_count),
+        ),
+        badge.Primary,
+      ),
+      view_row_metric(
+        i18n.t(
+          config.locale,
+          i18n_text.PeopleClaimedTotal(summary.claimed_total),
+        ),
+        badge.Neutral,
+      ),
+    ]),
+  ])
+}
+
+fn summarize_people(people: List(people_state.PersonStatus)) -> PeopleSummary {
+  list.fold(
+    people,
+    PeopleSummary(
+      free_count: 0,
+      busy_count: 0,
+      working_count: 0,
+      claimed_total: 0,
+    ),
+    fn(summary, person) {
+      let with_claimed =
+        PeopleSummary(
+          ..summary,
+          claimed_total: summary.claimed_total
+            + list.length(person.claimed_tasks),
+        )
+
+      case person.availability {
+        people_state.Free ->
+          PeopleSummary(..with_claimed, free_count: with_claimed.free_count + 1)
+        people_state.Busy ->
+          PeopleSummary(..with_claimed, busy_count: with_claimed.busy_count + 1)
+        people_state.Working ->
+          PeopleSummary(
+            ..with_claimed,
+            working_count: with_claimed.working_count + 1,
+          )
+      }
+    },
+  )
+}
+
+fn view_row_metric(label: String, variant: badge.BadgeVariant) -> Element(msg) {
+  badge.new_unchecked(label, variant)
+  |> badge.view_with_class("people-metric-chip")
+}
+
+fn view_person_cards(config: Config(msg), tasks: List(Task)) -> Element(msg) {
+  let titles = task_groups(tasks) |> card_titles_from_groups
+
+  case titles {
+    [] ->
+      span([attribute.class("people-card-empty")], [
+        text(i18n.t(config.locale, i18n_text.PeopleNoCardContext)),
+      ])
+    _ ->
+      div([attribute.class("people-card-set")], [
+        view_row_metric(
+          i18n.t(config.locale, i18n_text.PeopleCardsCount(list.length(titles))),
+          badge.Neutral,
+        ),
+        ..list.map(titles, fn(title) {
+          span([attribute.class("people-card-chip")], [text(title)])
+        })
+      ])
+  }
+}
+
+fn view_load_warning(
+  config: Config(msg),
+  claimed_tasks: List(Task),
+) -> Element(msg) {
+  case list.length(claimed_tasks) >= load_warning_claimed_threshold {
+    True ->
+      badge.new_unchecked(
+        i18n.t(config.locale, i18n_text.PeopleLoadWarning),
+        badge.Warning,
+      )
+      |> badge.view_with_class("people-load-chip")
+    False -> element.none()
+  }
+}
+
 fn view_active_section(
   config: Config(msg),
   active_tasks: List(Task),
@@ -182,17 +332,11 @@ fn view_active_section(
       text(i18n.t(config.locale, i18n_text.PeopleActiveSection)),
     ]),
     case active_tasks {
-      [] -> p([attribute.class("section-empty-hint")], [text("-")])
-      [task] -> view_task_item(config, task)
-      _ ->
-        ul(
-          [attribute.class("people-claimed-list")],
-          list.map(active_tasks, fn(task) {
-            li([attribute.class("people-task-item")], [
-              view_task_item(config, task),
-            ])
-          }),
-        )
+      [] ->
+        p([attribute.class("section-empty-hint people-task-empty")], [
+          text(i18n.t(config.locale, i18n_text.PeopleAvailableCapacity)),
+        ])
+      _ -> view_task_list(config, active_tasks)
     },
   ])
 }
@@ -206,18 +350,24 @@ fn view_claimed_section(
       text(i18n.t(config.locale, i18n_text.PeopleClaimedSection)),
     ]),
     case claimed_tasks {
-      [] -> p([attribute.class("section-empty-hint")], [text("-")])
-      _ ->
-        ul(
-          [attribute.class("people-claimed-list")],
-          list.map(claimed_tasks, fn(task) {
-            li([attribute.class("people-task-item")], [
-              view_task_item(config, task),
-            ])
-          }),
-        )
+      [] ->
+        p([attribute.class("section-empty-hint people-task-empty")], [
+          text(i18n.t(config.locale, i18n_text.PeopleNoClaimedTasks)),
+        ])
+      _ -> view_task_list(config, claimed_tasks)
     },
   ])
+}
+
+fn view_task_list(config: Config(msg), tasks: List(Task)) -> Element(msg) {
+  ul(
+    [attribute.class("people-claimed-list")],
+    list.map(tasks, fn(task) {
+      li([attribute.class("people-task-item")], [
+        view_task_item(config, task),
+      ])
+    }),
+  )
 }
 
 fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
@@ -228,13 +378,13 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
     task_item.Config(
       container_class: "task-item " <> border_class,
       content_class: "task-item-content",
-      leading: None,
+      leading: view_task_leading_swatch(config, task, resolved_color),
       on_click: Some(config.on_task_click(task.id)),
       icon: None,
       icon_class: None,
       title: task.title,
       title_class: None,
-      secondary: task_item.empty_secondary(),
+      secondary: view_task_secondary(config, task),
       actions: task_item.no_actions(),
       reserve_actions_slot: True,
       action_slot_class: None,
@@ -242,6 +392,100 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
     ),
     task_item.Div,
   )
+}
+
+fn view_task_leading_swatch(
+  config: Config(msg),
+  task: Task,
+  card_color: Option(CardColor),
+) -> Option(Element(msg)) {
+  case card_color {
+    Some(_) ->
+      Some(view_card_identity_swatch(
+        card_color,
+        task_card_accessibility_label(config, task),
+      ))
+    None -> None
+  }
+}
+
+fn view_card_identity_swatch(
+  card_color: Option(CardColor),
+  label: String,
+) -> Element(msg) {
+  case card_color {
+    Some(_) ->
+      span(
+        [
+          attribute.class("task-card-identity-swatch"),
+          attribute.attribute("role", "img"),
+          attribute.attribute("aria-label", label),
+          attribute.attribute("title", label),
+        ],
+        [],
+      )
+    None -> element.none()
+  }
+}
+
+fn view_task_secondary(config: Config(msg), task: Task) -> Element(msg) {
+  div([attribute.class("task-item-meta people-task-meta")], [
+    span(
+      [
+        attribute.class("task-status-muted"),
+        attribute.attribute(
+          "title",
+          task_state_ui.hint(config.locale, task.status),
+        ),
+      ],
+      [text(task_state_ui.label(config.locale, task.status))],
+    ),
+  ])
+}
+
+fn task_card_accessibility_label(config: Config(msg), task: Task) -> String {
+  case task.card_title {
+    Some(title) -> title
+    None -> i18n.t(config.locale, i18n_text.PeopleNoCardContext)
+  }
+}
+
+fn task_groups(tasks: List(Task)) -> List(TaskGroup) {
+  tasks
+  |> list.fold([], fn(groups, task) { upsert_task_group(groups, task) })
+  |> list.reverse
+  |> list.map(fn(group) { TaskGroup(..group, tasks: list.reverse(group.tasks)) })
+}
+
+fn upsert_task_group(groups: List(TaskGroup), task: Task) -> List(TaskGroup) {
+  case groups {
+    [] -> [new_task_group(task)]
+    [group, ..rest] -> {
+      case same_task_card(group, task) {
+        True -> [TaskGroup(..group, tasks: [task, ..group.tasks]), ..rest]
+        False -> [group, ..upsert_task_group(rest, task)]
+      }
+    }
+  }
+}
+
+fn new_task_group(task: Task) -> TaskGroup {
+  TaskGroup(card_id: task.card_id, card_title: task.card_title, tasks: [task])
+}
+
+fn same_task_card(group: TaskGroup, task: Task) -> Bool {
+  group.card_id == task.card_id && group.card_title == task.card_title
+}
+
+fn card_titles_from_groups(groups: List(TaskGroup)) -> List(String) {
+  groups
+  |> list.fold([], fn(titles, group) {
+    case group.card_title {
+      Some(title) -> [title, ..titles]
+      None -> titles
+    }
+  })
+  |> list.reverse
 }
 
 fn tasks_for_member(config: Config(msg), user_id: Int) -> List(Task) {

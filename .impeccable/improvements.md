@@ -258,7 +258,7 @@ Problema: el pool desktop se apoyaba en hover para exponer contexto de tarea. En
 
 Mejora aplicada: las task cards renderizan una línea de contexto móvil con tarjeta, antigüedad y descripción cuando existe; el layout táctil mantiene claim/drag/complete como objetivos de 44px sin tapar contenido; el preview hover se suprime en contextos sin hover; y los filtros del centro pasan a grid responsive con controles full-width en móvil y una columna en pantallas muy estrechas.
 
-Verificación: `gleam check` en `apps/client`, test nuevo de contexto móvil en `pool_task_card_test.gleam`, detector impeccable con solo avisos existentes de `transition: max-height/width` en `styles/layout.gleam`, y capturas browser de `/app/pool?view=pool` en 320x720, 844x390 y 1440x900.
+Verificación: `gleam check` en `apps/client`, test nuevo de contexto móvil en `pool_task_card_test.gleam`, detector impeccable con solo avisos existentes sobre animación de tamaño en `styles/layout.gleam`, y capturas browser de `/app/pool?view=pool` en 320x720, 844x390 y 1440x900.
 
 Criterios de aceptación:
 - En móvil, las tarjetas del pool muestran contexto esencial sin depender de hover.
@@ -278,7 +278,7 @@ Problema: tras los pases de rediseño, quedaban detalles de polish sistémico: t
 
 Mejora aplicada: el drawer admin móvil se mueve con `transform`; las barras de progreso usan `--progress-width` con `clip-path`; reduced-motion elimina delays y apaga shakes/indicadores pulsantes; claim mini queda visible en dispositivos coarse/touch; y los tests de tema/drawer/estilos reflejan el contrato visual vigente.
 
-Verificación: `gleam check`, suite completa `gleam test` con 1538 tests pasando, detector impeccable limpio sobre `apps/client/src/scrumbringer_client`, búsqueda manual sin `transition: width/left/max-height`, y capturas browser de pool desktop 1440x900, pool mobile 320x720, admin mobile y drawer abierto.
+Verificación: `gleam check`, suite completa `gleam test` con 1538 tests pasando, detector impeccable limpio sobre `apps/client/src/scrumbringer_client`, búsqueda manual sin transiciones de anchura, posición lateral ni altura máxima, y capturas browser de pool desktop 1440x900, pool mobile 320x720, admin mobile y drawer abierto.
 
 Criterios de aceptación:
 - La suite del cliente queda verde después del rediseño.
@@ -545,3 +545,41 @@ Criterios de aceptación:
 - Una task de Capacidades puede relacionarse visualmente con su card usando el mismo indicador que el sidebar.
 - El swatch no desplaza ni tapa el texto de la task.
 - Las tasks sin card no introducen una marca falsa.
+
+### RB-029 - Convertir Personas en balance de carga del equipo
+
+Prioridad: P1
+
+Estado: aplicado en Fase 3 de `.impeccable/work-surfaces-redesign-phase.md` el 2026-06-11.
+
+Superficies: `features/people/view.gleam`, `styles/layout.gleam`, i18n y tests de Personas.
+
+Problema: la vista de Personas mostraba disponibilidad por miembro, pero obligaba a expandir para entender carga real y no preservaba suficiente contexto de card/estado en las tareas. Eso debilitaba la pregunta principal de la superficie: como esta distribuida la carga del equipo.
+
+Mejora aplicada: Personas incorpora header de superficie con resumen de libres, ocupadas, trabajando ahora y reclamadas totales. Cada fila expone en colapsado estado, tareas en curso, reclamadas, cards implicadas y aviso de carga alta. Al expandir, las tareas se separan en `Active` y `Claimed`, conservan swatch de identidad de card y estado visible, y no introducen acciones que parezcan asignacion manual.
+
+Verificación: `gleam check`, suite de cliente `gleam test` con 1551 tests pasando, detector impeccable limpio (`[]`) y revision browser desktop/mobile de Personas, Pool, panel derecho y navegacion lateral.
+
+Criterios de aceptación:
+- Sin expandir se entiende quien esta libre, ocupado o trabajando.
+- La vista lee carga y capacidad, no reparto manual de tareas.
+- Las tasks preservan card y estado con la gramatica comun del producto.
+- La busqueda sigue siendo simple y no cambia el contrato de filtros.
+
+### RB-030 - Aligerar el detalle de Personas eliminando jerarquia visual de card
+
+Prioridad: P2
+
+Estado: aplicado el 2026-06-11.
+
+Superficies: `features/people/view.gleam`, `styles/layout.gleam`, tests de Personas y documentacion de fase.
+
+Problema: la expansion de Personas introducia una lectura `persona -> card -> task` cuando habia varios contextos de card. Esto hacia que la card pareciera un contenedor principal dentro de una vista cuyo objetivo es leer carga por persona, y duplicaba contexto al mostrar tambien swatch y metadatos de card en cada task.
+
+Mejora aplicada: la expansion de Personas pasa a listas planas bajo `Active` y `Claimed`. Cada task conserva el swatch de identidad de card con `title`/`aria-label`, pero deja de mostrar headers, cajas o nombres de card repetidos en el meta visible. El resumen colapsado mantiene los chips de cards implicadas porque ahi ayudan al escaneo de carga.
+
+Criterios de aceptación:
+- La expansion no muestra cards como contenedores de tareas.
+- Las tareas se leen como lista ligera por estado de carga.
+- El color de card sigue presente como contexto secundario y accesible.
+- La fila colapsada sigue mostrando las cards implicadas por persona.

@@ -204,6 +204,18 @@ pub type Text {
   PeopleNoResults
   PeopleLoading
   PeopleLoadError
+  PeoplePurpose
+  PeopleFreeCount(count: Int)
+  PeopleBusyCount(count: Int)
+  PeopleWorkingCount(count: Int)
+  PeopleClaimedTotal(count: Int)
+  PeopleOngoingCount(count: Int)
+  PeopleClaimedCount(count: Int)
+  PeopleCardsCount(count: Int)
+  PeopleLoadWarning
+  PeopleAvailableCapacity
+  PeopleNoClaimedTasks
+  PeopleNoCardContext
   CapabilityBoardLoading
   CapabilityBoardEmpty
   CapabilityBoardNoResults

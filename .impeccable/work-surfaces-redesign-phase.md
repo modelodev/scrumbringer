@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-11
 
-Estado: Fases 1-2 implementadas y verificadas; fases 3-5 pendientes.
+Estado: Fases 1-3 implementadas y verificadas; fases 4-5 pendientes.
 
 ## Objetivo
 
@@ -161,6 +161,16 @@ Criterios de aceptacion:
 - La vista no sugiere que el lead debe repartir tareas.
 - Las tareas conservan contexto de card y estado.
 - La busqueda sigue siendo simple y rapida.
+
+Estado de implementacion, 2026-06-11:
+
+- Aplicada en `features/people/view.gleam`, `styles/layout.gleam`, i18n y tests de `people_view_test.gleam`.
+- Personas incorpora header de superficie con proposito breve y summary chips de libres, ocupadas, trabajando ahora y reclamadas totales.
+- Cada fila muestra en colapsado estado, tareas en curso, tareas reclamadas, cards implicadas y aviso de carga cuando hay demasiadas reclamadas.
+- La expansion separa `Active`/`Claimed`, muestra tareas en lista plana y conserva estado de task e identidad de card mediante swatch accesible.
+- No se introducen acciones de asignacion; las tareas siguen siendo links de inspeccion.
+- Los estados vacios de personas libres se muestran como capacidad disponible, no como error.
+- Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas desktop/mobile.
 
 Comando sugerido:
 
