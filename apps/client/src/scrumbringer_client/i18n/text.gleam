@@ -211,6 +211,11 @@ pub type Text {
   CapabilityBoardEmptyPending
   CapabilityBoardEmptyClaimed
   CapabilityBoardEmptyOngoing
+  CapabilityBoardPurpose
+  CapabilityBoardOldest
+  CapabilityBoardPressureBlocked
+  CapabilityBoardPressureNoTraction
+  CapabilityBoardPressureFlowing
   NoCapability
   MilestonesEmpty
   MilestonesNoResults

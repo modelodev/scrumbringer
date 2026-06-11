@@ -146,6 +146,10 @@ fn claimed_task(id: Int, title: String, type_id: Int) -> Task {
   task_with(id, title, type_id, state)
 }
 
+fn blocked_task(id: Int, title: String, type_id: Int) -> Task {
+  Task(..available_task(id, title, type_id), blocked_count: 1, priority: 5)
+}
+
 fn taken_task(id: Int, title: String, type_id: Int) -> Task {
   let state =
     task_state.Claimed(
@@ -186,14 +190,22 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
   assert_contains(html, "Backend")
   assert_contains(html, "Frontend")
   assert_contains(html, "No capability")
-  assert_true(appears_before(html, ">Backend<", ">Frontend<"))
   assert_true(appears_before(html, ">Frontend<", ">No capability<"))
+  assert_true(appears_before(html, ">No capability<", ">Backend<"))
   assert_contains(html, "data-column-state=\"pending\"")
   assert_contains(html, "data-column-state=\"claimed\"")
   assert_contains(html, "data-column-state=\"ongoing\"")
-  assert_contains(html, ">Pending<")
+  assert_contains(html, "capability-board-purpose")
+  assert_contains(html, "Demand by skill, ordered by pressure and traction")
+  assert_contains(html, "capability-summary-chip")
+  assert_contains(html, "capability-board-pressure")
+  assert_contains(html, "capability-lane-group")
+  assert_contains(html, "capability-lane-group ongoing")
+  assert_not_contains(html, "capability-status-column")
+  assert_contains(html, ">Available<")
   assert_contains(html, ">Claimed<")
   assert_contains(html, ">Working now<")
+  assert_contains(html, ">Oldest<")
   assert_contains(html, "Frontend polish")
   assert_contains(html, "Frontend takeover")
   assert_contains(html, "Backend API")
@@ -210,8 +222,27 @@ pub fn capability_board_keeps_empty_columns_visible_test() {
     |> capability_board.view
     |> element.to_document_string
 
+  assert_contains(html, "capability-lane-empty")
   assert_contains(html, "No claimed tasks")
   assert_contains(html, "No ongoing tasks")
+}
+
+pub fn capability_board_orders_blocked_and_unstarted_pressure_first_test() {
+  let html =
+    base_config(
+      remote.Loaded([
+        claimed_task(1, "Backend API", 2),
+        blocked_task(2, "Frontend blocker", 1),
+        available_task(3, "Docs refresh", 3),
+      ]),
+    )
+    |> capability_board.view
+    |> element.to_document_string
+
+  assert_true(appears_before(html, ">Frontend<", ">No capability<"))
+  assert_true(appears_before(html, ">No capability<", ">Backend<"))
+  assert_contains(html, ">Blocked<")
+  assert_contains(html, ">No traction<")
 }
 
 pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {

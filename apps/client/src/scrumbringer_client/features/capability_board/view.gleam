@@ -17,6 +17,7 @@ import lustre/element/html.{div, h3, h4, p, section, span, text}
 import lustre/element/keyed
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/client_ffi
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -58,6 +59,9 @@ type CapabilityRow {
     pending: List(Task),
     claimed: List(Task),
     ongoing: List(Task),
+    blocked_count: Int,
+    oldest_age_days: Int,
+    pressure_score: Int,
     is_unassigned: Bool,
   )
 }
@@ -109,6 +113,9 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     [
       h3([attribute.class("capability-board-title")], [
         text(i18n.t(config.locale, i18n_text.CapabilitiesBoard)),
+      ]),
+      p([attribute.class("capability-board-purpose")], [
+        text(i18n.t(config.locale, i18n_text.CapabilityBoardPurpose)),
       ]),
       content,
     ],
@@ -199,7 +206,7 @@ fn build_rows(
         is_unassigned: False,
       )
     })
-    |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
+    |> list.sort(compare_rows)
 
   let unassigned_tasks =
     tasks
@@ -219,7 +226,9 @@ fn build_rows(
     )
   {
     Error(Nil) -> assigned_rows
-    Ok(unassigned_row) -> list.append(assigned_rows, [unassigned_row])
+    Ok(unassigned_row) ->
+      list.append(assigned_rows, [unassigned_row])
+      |> list.sort(compare_rows)
   }
 }
 
@@ -232,6 +241,8 @@ fn row_from_tasks(
   let pending = filter_lane(tasks, PendingLane)
   let claimed = filter_lane(tasks, ClaimedLane)
   let ongoing = filter_lane(tasks, OngoingLane)
+  let blocked_count = list.count(tasks, fn(task) { task.blocked_count > 0 })
+  let oldest_age_days = oldest_task_age_days(tasks)
 
   case pending, claimed, ongoing {
     [], [], [] -> Error(Nil)
@@ -242,8 +253,53 @@ fn row_from_tasks(
         pending: pending,
         claimed: claimed,
         ongoing: ongoing,
+        blocked_count: blocked_count,
+        oldest_age_days: oldest_age_days,
+        pressure_score: pressure_score(
+          pending: list.length(pending),
+          claimed: list.length(claimed),
+          ongoing: list.length(ongoing),
+          blocked: blocked_count,
+          oldest_age_days: oldest_age_days,
+        ),
         is_unassigned: is_unassigned,
       ))
+  }
+}
+
+fn oldest_task_age_days(tasks: List(Task)) -> Int {
+  tasks
+  |> list.map(fn(task) { client_ffi.days_since_iso(task.created_at) })
+  |> list.fold(0, int.max)
+}
+
+fn pressure_score(
+  pending pending: Int,
+  claimed claimed: Int,
+  ongoing ongoing: Int,
+  blocked blocked: Int,
+  oldest_age_days oldest_age_days: Int,
+) -> Int {
+  let unstarted_pressure = case pending > 0 && ongoing == 0 {
+    True -> 80
+    False -> 0
+  }
+
+  let claimed_pressure = int.max(claimed - ongoing, 0) * 8
+  let age_pressure = int.min(oldest_age_days, 30)
+
+  unstarted_pressure + { blocked * 40 } + claimed_pressure + age_pressure
+}
+
+fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {
+  case int.compare(b.pressure_score, a.pressure_score) {
+    order.Eq ->
+      case a.is_unassigned, b.is_unassigned {
+        True, False -> order.Gt
+        False, True -> order.Lt
+        _, _ -> string.compare(a.name, b.name)
+      }
+    other -> other
   }
 }
 
@@ -296,44 +352,126 @@ fn view_row(config: Config(msg), row: CapabilityRow) -> Element(msg) {
       attribute.class(row_class),
       attribute.attribute("aria-labelledby", heading_id),
       attribute.attribute("data-testid", "capability-row"),
+      attribute.attribute(
+        "data-pressure-score",
+        int.to_string(row.pressure_score),
+      ),
     ],
     [
-      h4(
-        [
-          attribute.class("capability-board-row-title"),
-          attribute.attribute("id", heading_id),
-        ],
-        [text(row.name)],
-      ),
+      div([attribute.class("capability-board-row-header")], [
+        div([attribute.class("capability-board-row-heading")], [
+          h4(
+            [
+              attribute.class("capability-board-row-title"),
+              attribute.attribute("id", heading_id),
+            ],
+            [text(row.name)],
+          ),
+          span(
+            [
+              attribute.class(
+                "capability-board-pressure " <> pressure_tone(row),
+              ),
+            ],
+            [text(pressure_label(config.locale, row))],
+          ),
+        ]),
+        div([attribute.class("capability-board-row-summary")], [
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.MetricsAvailable),
+            list.length(row.pending),
+            "available",
+          ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.MetricsClaimed),
+            list.length(row.claimed),
+            "claimed",
+          ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.MetricsOngoing),
+            list.length(row.ongoing),
+            "ongoing",
+          ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.Blocked),
+            row.blocked_count,
+            "blocked",
+          ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.CapabilityBoardOldest),
+            row.oldest_age_days,
+            "age",
+          ),
+        ]),
+      ]),
       div([attribute.class("capability-board-row-grid")], [
-        view_lane_column(config, PendingLane, row.pending),
-        view_lane_column(config, ClaimedLane, row.claimed),
-        view_lane_column(config, OngoingLane, row.ongoing),
+        view_lane_group(config, PendingLane, row.pending),
+        view_lane_group(config, ClaimedLane, row.claimed),
+        view_lane_group(config, OngoingLane, row.ongoing),
       ]),
     ],
   )
 }
 
-fn view_lane_column(
+fn view_summary_chip(label: String, value: Int, tone: String) -> Element(msg) {
+  span(
+    [
+      attribute.class("capability-summary-chip " <> tone),
+      attribute.attribute("data-testid", "capability-summary-chip"),
+    ],
+    [
+      span([attribute.class("capability-summary-value")], [
+        text(int.to_string(value)),
+      ]),
+      span([attribute.class("capability-summary-label")], [text(label)]),
+    ],
+  )
+}
+
+fn pressure_label(locale: Locale, row: CapabilityRow) -> String {
+  case row.blocked_count > 0 {
+    True -> i18n.t(locale, i18n_text.CapabilityBoardPressureBlocked)
+    False ->
+      case row.pending, row.claimed, row.ongoing {
+        [], [], _ -> i18n.t(locale, i18n_text.CapabilityBoardPressureFlowing)
+        _, _, [] -> i18n.t(locale, i18n_text.CapabilityBoardPressureNoTraction)
+        _, _, _ -> i18n.t(locale, i18n_text.CapabilityBoardPressureFlowing)
+      }
+  }
+}
+
+fn pressure_tone(row: CapabilityRow) -> String {
+  case row.blocked_count > 0 {
+    True -> "blocked"
+    False ->
+      case row.pending, row.claimed, row.ongoing {
+        [], [], _ -> "neutral"
+        _, _, [] -> "warning"
+        _, _, _ -> "flowing"
+      }
+  }
+}
+
+fn view_lane_group(
   config: Config(msg),
   lane: LaneState,
   tasks: List(Task),
 ) -> Element(msg) {
-  let #(title, column_class, icon_name, state_name, empty_text) =
+  let #(title, group_class, icon_name, state_name, empty_text) =
     lane_metadata(config.locale, lane)
 
   div(
     [
-      attribute.class("kanban-column " <> column_class),
-      attribute.attribute("data-testid", "capability-status-column"),
+      attribute.class("capability-lane-group " <> group_class),
+      attribute.attribute("data-testid", "capability-lane-group"),
       attribute.attribute("data-column-state", state_name),
     ],
     [
-      div([attribute.class("kanban-column-header")], [
-        div([attribute.class("kanban-column-title")], [
+      div([attribute.class("capability-lane-header")], [
+        div([attribute.class("capability-lane-title")], [
           span(
             [
-              attribute.class("kanban-column-icon"),
+              attribute.class("capability-lane-icon"),
               attribute.attribute("aria-hidden", "true"),
             ],
             [icons.nav_icon(icon_name, icons.Small)],
@@ -345,12 +483,12 @@ fn view_lane_column(
         ]),
       ]),
       case tasks {
-        [] -> view_empty_column(empty_text)
+        [] -> view_empty_group(empty_text)
         _ ->
           keyed.ul(
             [
               attribute.class(
-                "kanban-column-content capability-board-column-content",
+                "capability-lane-content capability-board-column-content",
               ),
             ],
             list.map(tasks, fn(task) {
@@ -368,8 +506,8 @@ fn lane_metadata(
 ) -> #(String, String, icons.NavIcon, String, String) {
   case lane {
     PendingLane -> #(
-      i18n.t(locale, i18n_text.CardStatePendiente),
-      "pendiente",
+      i18n.t(locale, i18n_text.MetricsAvailable),
+      "available",
       icons.Pause,
       "pending",
       i18n.t(locale, i18n_text.CapabilityBoardEmptyPending),
@@ -383,7 +521,7 @@ fn lane_metadata(
     )
     OngoingLane -> #(
       task_state_ui.label(locale, Claimed(Ongoing)),
-      "en-curso",
+      "ongoing",
       icons.Play,
       "ongoing",
       i18n.t(locale, i18n_text.CapabilityBoardEmptyOngoing),
@@ -391,11 +529,11 @@ fn lane_metadata(
   }
 }
 
-fn view_empty_column(message: String) -> Element(msg) {
+fn view_empty_group(message: String) -> Element(msg) {
   div(
     [
-      attribute.class("kanban-empty-column"),
-      attribute.attribute("data-testid", "kanban-empty-column"),
+      attribute.class("capability-lane-empty"),
+      attribute.attribute("data-testid", "capability-lane-empty"),
     ],
     [span([attribute.class("empty-text")], [text(message)])],
   )
@@ -419,13 +557,11 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
           attribute.class("task-claimed-by"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label,
           ),
         ],
         [
-          text(
-            i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label,
-          ),
+          text(claimed_label),
           span([attribute.class("task-claimed-icon")], [
             icons.nav_icon(status_icon, icons.XSmall),
           ]),

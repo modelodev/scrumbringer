@@ -242,6 +242,12 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardEmptyPending -> "Sin tareas pendientes"
     text.CapabilityBoardEmptyClaimed -> "Sin tareas reclamadas"
     text.CapabilityBoardEmptyOngoing -> "Sin tareas en curso"
+    text.CapabilityBoardPurpose ->
+      "Demanda por skill, ordenada por presión y tracción."
+    text.CapabilityBoardOldest -> "Más antigua"
+    text.CapabilityBoardPressureBlocked -> "Bloqueada"
+    text.CapabilityBoardPressureNoTraction -> "Sin tracción"
+    text.CapabilityBoardPressureFlowing -> "Fluyendo"
     text.NoCapability -> "Sin capacidad"
     text.MilestonesEmpty -> "Aun no hay hitos"
     text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"

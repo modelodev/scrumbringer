@@ -508,3 +508,23 @@ Criterios de aceptación:
 - La primera lectura permite detectar cards activas, paradas o bloqueadas.
 - Las cards comparten mini-gramatica con Hitos sin duplicar el Pool.
 - Desktop y mobile no presentan columnas ilegibles ni overflow horizontal operativo.
+
+### RB-027 - Convertir Capacidades en mapa de demanda por skill
+
+Prioridad: P1
+
+Estado: aplicado en Fase 2 de `.impeccable/work-surfaces-redesign-phase.md` el 2026-06-11.
+
+Superficies: `features/capability_board/view.gleam`, `styles/layout.gleam`, i18n y tests de Capacidades.
+
+Problema: la vista de Capacidades heredaba demasiada gramatica de Kanban: columnas visuales por estado, orden alfabetico y poca senal agregada por skill. Esto hacia dificil responder rapido donde habia presion operativa o falta de traccion.
+
+Mejora aplicada: cada fila de capacidad incorpora proposito, resumen de disponibles/reclamadas/en curso/bloqueadas/antiguedad, chip de presion y grupos internos compactos por estado. El orden ahora prioriza bloqueos, demanda sin traccion, reclamadas sin suficientes activas y antiguedad. Claim sigue disponible pero baja de dominancia visual frente a Pool.
+
+Verificación: `gleam check`, suite de cliente `gleam test` con 1548 tests pasando, detector impeccable limpio (`[]`), y revisión browser con capturas `/tmp/scrumbringer-capabilities-phase2-desktop-1440x900-final.png`, `/tmp/scrumbringer-capabilities-phase2-mobile-390x844.png`, `/tmp/scrumbringer-capabilities-phase2-mobile-320x720.png` y `/tmp/scrumbringer-capabilities-phase2-mobile-320x720-claimed.png`.
+
+Criterios de aceptación:
+- La primera lectura revela que capacidades tienen demanda o falta de traccion.
+- Los grupos internos se leen como estados dentro de una skill, no como otro Kanban.
+- Claim sigue accesible sin convertirse en accion principal visual.
+- Desktop y mobile no presentan overflow ni grupos comprimidos.

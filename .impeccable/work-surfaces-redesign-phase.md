@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-11
 
-Estado: Fase 1 implementada y verificada; fases 2-5 pendientes.
+Estado: Fases 1-2 implementadas y verificadas; fases 3-5 pendientes.
 
 ## Objetivo
 
@@ -115,6 +115,15 @@ Criterios de aceptacion:
 - Las columnas internas se entienden como estados dentro de una skill, no como Kanban duplicado.
 - Claim sigue accesible sin ser la accion principal visual.
 - El orden de filas ayuda a priorizar revision.
+
+Estado de implementacion, 2026-06-11:
+
+- Aplicada en `features/capability_board/view.gleam`, `styles/layout.gleam`, i18n y tests de `capability_board_view_test.gleam`.
+- Las filas por capacidad muestran resumen de disponibles, reclamadas, en curso, bloqueadas y antiguedad.
+- Las capacidades se ordenan por presion operativa: bloqueos, disponibles/reclamadas sin traccion, reclamadas sin suficientes activas y antiguedad.
+- Las columnas internas se sustituyen visualmente por grupos compactos de demanda, sin reutilizar el patron Kanban.
+- Claim sigue disponible en tareas disponibles, pero con peso visual mas bajo que en Pool.
+- Verificado con `gleam check`, `gleam test` de cliente, detector impeccable limpio y capturas desktop/mobile.
 
 Comando sugerido:
 
