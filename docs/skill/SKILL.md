@@ -47,11 +47,18 @@ Before any API call, verify:
 Use the helper script first:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs preflight
-node docs/scripts/scrumbringer-api.mjs preflight SCRUMBRINGER_PROJECT_ID
+node docs/skill/scripts/scrumbringer-api.mjs preflight
+node docs/skill/scripts/scrumbringer-api.mjs preflight SCRUMBRINGER_PROJECT_ID
 ```
 
 The helper never prints the full token.
+
+Project visibility is membership-based. `GET /api/v1/projects` returns the
+projects visible to the integration user behind the token, not every project in
+the organization. If it returns an empty list while the organization has
+projects, ask the user to recreate the token with the intended project selected
+or to add the integration user as a member of that project. Do not assume that a
+token without a project restriction can see all organization projects.
 
 ## References
 
@@ -59,12 +66,12 @@ Read `docs/references/scrumbringer-api.md` before using endpoints you have not
 used in the current task. It contains the supported Bearer routes, scopes,
 payload examples, and routes intentionally out of scope.
 
-Use `docs/scripts/scrumbringer-api.mjs` for deterministic API calls:
+Use `docs/skill/scripts/scrumbringer-api.mjs` for deterministic API calls:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs get /api/v1/projects
-node docs/scripts/scrumbringer-api.mjs get /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks
-node docs/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TASK_ID/notes '{"content":"External context..."}'
+node docs/skill/scripts/scrumbringer-api.mjs get /api/v1/projects
+node docs/skill/scripts/scrumbringer-api.mjs get /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TASK_ID/notes '{"content":"External context..."}'
 ```
 
 ## Operating Workflow
@@ -155,32 +162,32 @@ When reporting work, be concise and operational:
 List projects:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs get /api/v1/projects
+node docs/skill/scripts/scrumbringer-api.mjs get /api/v1/projects
 ```
 
 List tasks in a project:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs get /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks
+node docs/skill/scripts/scrumbringer-api.mjs get /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks
 ```
 
 Create a task after confirmation:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks \
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/tasks \
   '{"title":"Document import failure mode","description":"Capture observed failure, expected behavior, and rollback notes.","priority":3,"type_id":1}'
 ```
 
 Add a task note after confirmation:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TASK_ID/notes \
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TASK_ID/notes \
   '{"content":"External system reported retry success at 2026-06-12T12:40:00Z."}'
 ```
 
 Create a milestone after confirmation:
 
 ```bash
-node docs/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/milestones \
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/milestones \
   '{"name":"Importer stabilization","description":"Reduce import failure rate and make retry behavior observable."}'
 ```

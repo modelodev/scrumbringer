@@ -7,13 +7,13 @@ const TOKEN_ENV = "SCRUMBRINGER_API_TOKEN";
 
 function usage() {
   console.log(`Usage:
-  node docs/scripts/scrumbringer-api.mjs preflight [EXTRA_ENV...]
-  node docs/scripts/scrumbringer-api.mjs get PATH
-  node docs/scripts/scrumbringer-api.mjs post PATH JSON_OR_@FILE
-  node docs/scripts/scrumbringer-api.mjs patch PATH JSON_OR_@FILE
-  node docs/scripts/scrumbringer-api.mjs put PATH [JSON_OR_@FILE]
-  node docs/scripts/scrumbringer-api.mjs delete PATH [JSON_OR_@FILE]
-  node docs/scripts/scrumbringer-api.mjs request METHOD PATH [JSON_OR_@FILE]
+  node docs/skill/scripts/scrumbringer-api.mjs preflight [EXTRA_ENV...]
+  node docs/skill/scripts/scrumbringer-api.mjs get PATH
+  node docs/skill/scripts/scrumbringer-api.mjs post PATH JSON_OR_@FILE
+  node docs/skill/scripts/scrumbringer-api.mjs patch PATH JSON_OR_@FILE
+  node docs/skill/scripts/scrumbringer-api.mjs put PATH [JSON_OR_@FILE]
+  node docs/skill/scripts/scrumbringer-api.mjs delete PATH [JSON_OR_@FILE]
+  node docs/skill/scripts/scrumbringer-api.mjs request METHOD PATH [JSON_OR_@FILE]
 
 Required env:
   ${BASE_ENV}
