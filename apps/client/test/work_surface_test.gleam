@@ -4,6 +4,7 @@ import lustre/element
 import lustre/element/html.{button, text}
 
 import scrumbringer_client/features/layout/work_surface
+import scrumbringer_client/ui/tone
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
@@ -15,8 +16,8 @@ pub fn work_surface_header_renders_contract_test() {
       title: "Pool",
       purpose: "Choose work.",
       summary: [
-        work_surface.summary_chip("Available", "4", work_surface.Available),
-        work_surface.summary_chip("Blocked", "1", work_surface.Blocked),
+        work_surface.summary_chip("Available", "4", tone.Available),
+        work_surface.summary_chip("Blocked", "1", tone.Blocked),
       ],
       actions: [button([], [text("Create")])],
       extra_class: Some("pool-header"),

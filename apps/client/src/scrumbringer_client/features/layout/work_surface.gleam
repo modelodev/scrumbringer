@@ -4,21 +4,13 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h3, p, span, text}
+import lustre/element/html.{div, h3, p, text}
 
-pub type ChipTone {
-  Neutral
-  Primary
-  Available
-  Claimed
-  Ongoing
-  Blocked
-  Warning
-  Success
-}
+import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/tone
 
 pub type SummaryChip {
-  SummaryChip(label: String, value: String, tone: ChipTone)
+  SummaryChip(label: String, value: String, tone: tone.Tone)
 }
 
 pub type HeaderConfig(msg) {
@@ -45,8 +37,12 @@ pub fn header(config: HeaderConfig(msg)) -> Element(msg) {
   ])
 }
 
-pub fn summary_chip(label: String, value: String, tone: ChipTone) -> SummaryChip {
-  SummaryChip(label: label, value: value, tone: tone)
+pub fn summary_chip(
+  label: String,
+  value: String,
+  tone_value: tone.Tone,
+) -> SummaryChip {
+  SummaryChip(label: label, value: value, tone: tone_value)
 }
 
 fn header_attrs(config: HeaderConfig(msg)) -> List(attribute.Attribute(msg)) {
@@ -80,27 +76,12 @@ fn view_actions(actions: List(Element(msg))) -> Element(msg) {
 }
 
 fn view_summary_chip(chip: SummaryChip) -> Element(msg) {
-  span(
-    [
-      attribute.class("work-surface-chip " <> chip_tone_class(chip.tone)),
-      attribute.attribute("data-testid", "work-surface-chip"),
-    ],
-    [
-      span([attribute.class("work-surface-chip-value")], [text(chip.value)]),
-      span([attribute.class("work-surface-chip-label")], [text(chip.label)]),
-    ],
+  signal_chip.metric(chip.label, chip.value, chip.tone)
+  |> signal_chip.with_class("work-surface-chip")
+  |> signal_chip.with_parts(
+    "work-surface-chip-value",
+    "work-surface-chip-label",
   )
-}
-
-fn chip_tone_class(tone: ChipTone) -> String {
-  case tone {
-    Neutral -> "neutral"
-    Primary -> "primary"
-    Available -> "available"
-    Claimed -> "claimed"
-    Ongoing -> "ongoing"
-    Blocked -> "blocked"
-    Warning -> "warning"
-    Success -> "success"
-  }
+  |> signal_chip.with_testid("work-surface-chip")
+  |> signal_chip.view
 }

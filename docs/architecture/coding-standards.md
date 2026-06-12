@@ -238,6 +238,9 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 | `toast` | `ui/toast.gleam` | Notificaciones temporales |
 | `icons` | `ui/icons.gleam` | Sistema de iconos Heroicons |
 | `badge` | `ui/badge.gleam` | Badges de estado |
+| `tone` | `ui/tone.gleam` | Tonos semánticos compartidos para señales compactas |
+| `signal_chip` | `ui/signal_chip.gleam` | Chips compactos de texto o métrica, con clases de compatibilidad por vista |
+| `work_surface` | `features/layout/work_surface.gleam` | Cabecera común de vistas de trabajo con propósito, summary y acciones |
 
 #### Uso de section_header
 

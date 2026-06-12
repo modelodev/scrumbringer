@@ -13,6 +13,8 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/tone
 
 pub type Config(msg) {
   Config(
@@ -89,7 +91,7 @@ fn view_structural_summary_strip(config: Config(msg)) -> Element(msg) {
     ],
     list.append(
       [
-        summary_chip(
+        structure_chip(
           i18n.t(
             config.locale,
             i18n_text.MilestoneCardsProgress(
@@ -97,13 +99,15 @@ fn view_structural_summary_strip(config: Config(msg)) -> Element(msg) {
               progress.cards_total,
             ),
           ),
+          tone.Primary,
           "progress",
         ),
-        summary_chip(
+        structure_chip(
           i18n.t(
             config.locale,
             i18n_text.MilestoneCardsCount(progress.cards_total),
           ),
+          tone.Neutral,
           "cards",
         ),
       ],
@@ -114,54 +118,62 @@ fn view_structural_summary_strip(config: Config(msg)) -> Element(msg) {
 
 fn summary_signal_chips(config: Config(msg)) -> List(Element(msg)) {
   [
-    signal_chip(
+    signal_summary(
       config.loose_tasks,
       i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
+      tone.Warning,
       "loose",
     ),
-    signal_chip(
+    signal_summary(
       config.blocked_tasks,
       i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
+      tone.Blocked,
       "blocked",
     ),
-    signal_chip(
+    signal_summary(
       config.empty_cards,
       i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
+      tone.Warning,
       "empty",
     ),
-    signal_chip(
+    signal_summary(
       config.cards_without_progress,
       i18n_text.MilestoneCardsWithoutProgressCount(
         config.cards_without_progress,
       ),
+      tone.Warning,
       "no-progress",
     ),
   ]
   |> list.filter_map(fn(item) {
-    let #(count, label, tone) = item
+    let #(count, label, tone_value, extra_class) = item
     case count > 0 {
-      True -> Ok(summary_chip(i18n.t(config.locale, label), tone))
+      True ->
+        Ok(structure_chip(i18n.t(config.locale, label), tone_value, extra_class))
       False -> Error(Nil)
     }
   })
 }
 
-fn signal_chip(
+fn signal_summary(
   count: Int,
   label: i18n_text.Text,
-  tone: String,
-) -> #(Int, i18n_text.Text, String) {
-  #(count, label, tone)
+  tone_value: tone.Tone,
+  extra_class: String,
+) -> #(Int, i18n_text.Text, tone.Tone, String) {
+  #(count, label, tone_value, extra_class)
 }
 
-fn summary_chip(label: String, tone: String) -> Element(msg) {
-  span(
-    [
-      attribute.class("milestone-structure-chip " <> tone),
-      attribute.attribute("data-testid", "milestone-structure-chip"),
-    ],
-    [text(label)],
-  )
+fn structure_chip(
+  label: String,
+  tone_value: tone.Tone,
+  extra_class: String,
+) -> Element(msg) {
+  signal_chip.text(label, tone_value)
+  |> signal_chip.with_class("milestone-structure-chip")
+  |> signal_chip.with_extra_class(extra_class)
+  |> signal_chip.with_testid("milestone-structure-chip")
+  |> signal_chip.view
 }
 
 fn view_header_actions(config: Config(msg)) -> Element(msg) {

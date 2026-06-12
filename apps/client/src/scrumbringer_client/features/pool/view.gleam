@@ -40,6 +40,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
+import scrumbringer_client/ui/tone
 
 pub type MainConfig(msg) {
   MainConfig(
@@ -172,7 +173,7 @@ fn pool_summary(
     work_surface.summary_chip(
       i18n.t(config.locale, i18n_text.WorkSurfaceView),
       view_label,
-      work_surface.Neutral,
+      tone.Neutral,
     )
 
   case task_state {
@@ -181,7 +182,7 @@ fn pool_summary(
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.AvailableCount),
         int.to_string(list.length(tasks)),
-        work_surface.Available,
+        tone.Available,
       ),
     ]
     _ -> [view_chip]

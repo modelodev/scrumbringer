@@ -26,6 +26,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
@@ -33,6 +34,7 @@ import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
+import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
 
 pub type Config(msg) {
@@ -139,22 +141,22 @@ fn capability_summary(
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsAvailable),
         int.to_string(sum_rows(rows, fn(row) { list.length(row.pending) })),
-        work_surface.Available,
+        tone.Available,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsClaimed),
         int.to_string(sum_rows(rows, fn(row) { list.length(row.claimed) })),
-        work_surface.Claimed,
+        tone.Claimed,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsOngoing),
         int.to_string(sum_rows(rows, fn(row) { list.length(row.ongoing) })),
-        work_surface.Ongoing,
+        tone.Ongoing,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.Blocked),
         int.to_string(sum_rows(rows, fn(row) { row.blocked_count })),
-        work_surface.Blocked,
+        tone.Blocked,
       ),
     ]
     _ -> []
@@ -423,26 +425,31 @@ fn view_row(config: Config(msg), row: CapabilityRow) -> Element(msg) {
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsAvailable),
             list.length(row.pending),
-            "available",
+            tone.Available,
+            "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsClaimed),
             list.length(row.claimed),
-            "claimed",
+            tone.Claimed,
+            "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsOngoing),
             list.length(row.ongoing),
-            "ongoing",
+            tone.Ongoing,
+            "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.Blocked),
             row.blocked_count,
-            "blocked",
+            tone.Blocked,
+            "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.CapabilityBoardOldest),
             row.oldest_age_days,
+            tone.Neutral,
             "age",
           ),
         ]),
@@ -456,19 +463,26 @@ fn view_row(config: Config(msg), row: CapabilityRow) -> Element(msg) {
   )
 }
 
-fn view_summary_chip(label: String, value: Int, tone: String) -> Element(msg) {
-  span(
-    [
-      attribute.class("capability-summary-chip " <> tone),
-      attribute.attribute("data-testid", "capability-summary-chip"),
-    ],
-    [
-      span([attribute.class("capability-summary-value")], [
-        text(int.to_string(value)),
-      ]),
-      span([attribute.class("capability-summary-label")], [text(label)]),
-    ],
-  )
+fn view_summary_chip(
+  label: String,
+  value: Int,
+  tone_value: tone.Tone,
+  extra_class: String,
+) -> Element(msg) {
+  let chip =
+    signal_chip.metric_int(label, value, tone_value)
+    |> signal_chip.with_class("capability-summary-chip")
+    |> signal_chip.with_parts(
+      "capability-summary-value",
+      "capability-summary-label",
+    )
+    |> signal_chip.with_testid("capability-summary-chip")
+
+  case extra_class {
+    "" -> chip
+    _ -> signal_chip.with_extra_class(chip, extra_class)
+  }
+  |> signal_chip.view
 }
 
 fn pressure_label(locale: Locale, row: CapabilityRow) -> String {

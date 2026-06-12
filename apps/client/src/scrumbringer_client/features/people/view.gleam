@@ -26,6 +26,7 @@ import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
+import scrumbringer_client/ui/tone
 
 const load_warning_claimed_threshold = 4
 
@@ -222,22 +223,22 @@ fn view_surface_header(
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.PeopleFreeLabel),
         int.to_string(summary.free_count),
-        work_surface.Success,
+        tone.Success,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.PeopleBusyLabel),
         int.to_string(summary.busy_count),
-        work_surface.Warning,
+        tone.Warning,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.PeopleWorkingLabel),
         int.to_string(summary.working_count),
-        work_surface.Ongoing,
+        tone.Ongoing,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.PeopleClaimedLabel),
         int.to_string(summary.claimed_total),
-        work_surface.Claimed,
+        tone.Claimed,
       ),
     ],
     actions: [],

@@ -125,6 +125,31 @@ client/
 
 ## Component Standards
 
+### Canonical UI Primitives
+
+Shared UI primitives live in `apps/client/src/scrumbringer_client/ui/` and
+should be used before adding feature-local HTML fragments.
+
+| Primitive | Module | Use When |
+| --- | --- | --- |
+| Semantic tone | `ui/tone.gleam` | A compact status, metric, badge-adjacent signal, or surface summary needs a shared visual meaning such as `Available`, `Ongoing`, `Blocked`, or `Warning`. |
+| Signal chip | `ui/signal_chip.gleam` | A view needs a small text or metric chip. Keep business-specific classes as extra modifiers when existing CSS or domain language requires them. |
+| Work surface header | `features/layout/work_surface.gleam` | Pool, Kanban, Capacidades, Personas, Hitos, or future work views need a title, purpose, summary chips, and action slot. |
+| Action buttons | `ui/action_buttons.gleam` | A feature needs standard edit/delete/create/task icon buttons. Prefer these helpers over manual `btn-*` class strings. |
+| Empty state | `ui/empty_state.gleam` | A feature needs a no-data/no-results/setup state with icon, copy, and optional action. |
+| Card badge/identity | `ui/card_badge.gleam` and task identity helpers | A task, row, sidebar item, or detail view needs to reference a card compactly. |
+
+Rules:
+
+- Prefer stateless view functions for visual primitives. Use Lustre Components
+  only to encapsulate internal state or lifecycle.
+- Feature modules own domain decisions and i18n copy; shared UI modules render
+  visual contracts.
+- Preserve `data-testid`, accessible labels, and compatibility classes during
+  migrations unless the consuming tests and CSS are updated in the same change.
+- Do not introduce a new tone enum, chip helper, or action-button helper inside a
+  feature without first checking the canonical modules above.
+
 ### Component Template
 
 ```gleam

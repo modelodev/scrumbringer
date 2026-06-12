@@ -31,6 +31,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/tone
 
 pub type Config(msg) {
   Config(
@@ -178,21 +179,21 @@ fn milestone_summary(
       int.to_string(
         list.count(items, fn(progress) { progress.milestone.state == Active }),
       ),
-      work_surface.Primary,
+      tone.Primary,
     ),
     work_surface.summary_chip(
       i18n.t(locale, i18n_text.MilestonesReady),
       int.to_string(
         list.count(items, fn(progress) { progress.milestone.state == Ready }),
       ),
-      work_surface.Neutral,
+      tone.Neutral,
     ),
     work_surface.summary_chip(
       i18n.t(locale, i18n_text.MilestonesCompleted),
       int.to_string(
         list.count(items, fn(progress) { progress.milestone.state == Completed }),
       ),
-      work_surface.Success,
+      tone.Success,
     ),
   ]
 }

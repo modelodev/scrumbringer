@@ -38,6 +38,8 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_with_tasks_surface
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/tone
 
 // =============================================================================
 // Types
@@ -164,27 +166,27 @@ fn view_surface_header(
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.KanbanSummaryCards),
         int.to_string(summary.cards),
-        work_surface.Neutral,
+        tone.Neutral,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsAvailable),
         int.to_string(summary.available),
-        work_surface.Available,
+        tone.Available,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsClaimed),
         int.to_string(summary.claimed),
-        work_surface.Claimed,
+        tone.Claimed,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
         int.to_string(summary.ongoing),
-        work_surface.Ongoing,
+        tone.Ongoing,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.Blocked),
         int.to_string(summary.blocked),
-        work_surface.Blocked,
+        tone.Blocked,
       ),
     ],
     actions: [],
@@ -300,17 +302,17 @@ fn view_health_items(
     view_health_chip(
       i18n.t(config.locale, i18n_text.MetricsAvailable),
       health.available,
-      "available",
+      tone.Available,
     ),
     view_health_chip(
       i18n.t(config.locale, i18n_text.MetricsClaimed),
       health.claimed,
-      "claimed",
+      tone.Claimed,
     ),
     view_health_chip(
       i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
       health.ongoing,
-      "ongoing",
+      tone.Ongoing,
     ),
   ]
 
@@ -320,27 +322,24 @@ fn view_health_items(
         view_health_chip(
           i18n.t(config.locale, i18n_text.Blocked),
           health.blocked,
-          "blocked",
+          tone.Blocked,
         ),
       ])
     False -> core_items
   }
 }
 
-fn view_health_chip(label: String, value: Int, tone: String) -> Element(msg) {
-  span(
-    [
-      attribute.class("kanban-health-chip " <> tone),
-      attribute.attribute("data-testid", "kanban-health-chip"),
-      attribute.attribute("title", label <> ": " <> int.to_string(value)),
-    ],
-    [
-      span([attribute.class("kanban-health-value")], [
-        text(int.to_string(value)),
-      ]),
-      span([attribute.class("kanban-health-label")], [text(label)]),
-    ],
-  )
+fn view_health_chip(
+  label: String,
+  value: Int,
+  tone_value: tone.Tone,
+) -> Element(msg) {
+  signal_chip.metric_int(label, value, tone_value)
+  |> signal_chip.with_class("kanban-health-chip")
+  |> signal_chip.with_parts("kanban-health-value", "kanban-health-label")
+  |> signal_chip.with_testid("kanban-health-chip")
+  |> signal_chip.with_title(label <> ": " <> int.to_string(value))
+  |> signal_chip.view
 }
 
 fn header_actions(
