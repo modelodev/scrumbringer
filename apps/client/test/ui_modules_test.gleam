@@ -1,11 +1,19 @@
 //// Tests for UI modules: css_class, icons, empty_state, info_callout.
 
+import gleam/string
+import lustre/element
+
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/section_header
 
 fn assert_equal(actual: a, expected: a) {
   let assert True = actual == expected
+}
+
+fn assert_contains(html: String, fragment: String) {
+  let assert True = string.contains(html, fragment)
 }
 
 // =============================================================================
@@ -99,4 +107,14 @@ pub fn section_icon_members_test() {
 pub fn section_icon_workflows_test() {
   icons.section_icon(permissions.Workflows)
   |> assert_equal(icons.Cog6Tooth)
+}
+
+pub fn section_header_title_is_semantic_heading_test() {
+  let html =
+    section_header.view(icons.OrgUsers, "Members")
+    |> element.to_document_string
+
+  assert_contains(html, "<h2")
+  assert_contains(html, "admin-section-title")
+  assert_contains(html, "Members")
 }

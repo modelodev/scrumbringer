@@ -1,8 +1,8 @@
-//// Member Fichas (Cards) view component.
+//// Member cards view component.
 ////
 //// ## Mission
 ////
-//// Render the fichas (cards) list for members to view and interact with.
+//// Render the cards list for members to view and interact with.
 ////
 //// ## Responsibilities
 ////
@@ -14,7 +14,7 @@
 //// ## Relations
 ////
 //// - **client_view.gleam**: Imports and renders this component
-//// - **features/fichas/view_config.gleam**: Builds configs from root state
+//// - **features/cards/view_config.gleam**: Builds configs from root state
 //// - **api/cards.gleam**: Handles card data fetching
 //// - **components/card_detail_modal.gleam**: Card detail component
 
@@ -28,7 +28,7 @@ import lustre/element/html.{div}
 import domain/card.{type Card}
 import domain/task.{type Task}
 import scrumbringer_client/features/cards/detail_modal_entry
-import scrumbringer_client/features/fichas/list_view
+import scrumbringer_client/features/cards/list_view
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -55,25 +55,25 @@ pub type Config(msg) {
 // View Functions
 // =============================================================================
 
-/// Main entry point for the fichas view.
-pub fn view_fichas(config: Config(msg)) -> Element(msg) {
+/// Main entry point for the cards view.
+pub fn view_cards(config: Config(msg)) -> Element(msg) {
   div([attribute.class("content")], [
     div([attribute.class("section")], [
-      view_fichas_header(config),
-      view_fichas_content(config),
+      view_cards_header(config),
+      view_cards_content(config),
     ]),
     view_card_detail_modal(config),
   ])
 }
 
-fn view_fichas_header(config: Config(msg)) -> Element(msg) {
+fn view_cards_header(config: Config(msg)) -> Element(msg) {
   section_header.view(
     icons.Cards,
-    i18n.t(config.locale, i18n_text.MemberFichas),
+    i18n.t(config.locale, i18n_text.MemberCards),
   )
 }
 
-fn view_fichas_content(config: Config(msg)) -> Element(msg) {
+fn view_cards_content(config: Config(msg)) -> Element(msg) {
   list_view.Config(
     locale: config.locale,
     cards: config.cards,

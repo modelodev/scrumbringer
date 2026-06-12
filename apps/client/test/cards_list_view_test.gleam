@@ -3,7 +3,7 @@ import gleam/string
 import lustre/element
 
 import domain/card.{Card, Pendiente}
-import scrumbringer_client/features/fichas/list_view
+import scrumbringer_client/features/cards/list_view
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -40,7 +40,7 @@ fn config(cards, pending_count) -> list_view.Config(String) {
   )
 }
 
-pub fn fichas_list_view_renders_cards_without_root_model_test() {
+pub fn cards_list_view_renders_cards_without_root_model_test() {
   let html =
     list_view.view(config([sample_card()], 0))
     |> element.to_document_string
@@ -52,7 +52,7 @@ pub fn fichas_list_view_renders_cards_without_root_model_test() {
   assert_contains(html, "1/4")
 }
 
-pub fn fichas_list_view_renders_empty_state_without_root_model_test() {
+pub fn cards_list_view_renders_empty_state_without_root_model_test() {
   let html =
     list_view.view(config([], 0))
     |> element.to_document_string
@@ -61,7 +61,7 @@ pub fn fichas_list_view_renders_empty_state_without_root_model_test() {
   assert_contains(html, "Cards group related tasks")
 }
 
-pub fn fichas_list_view_renders_loading_when_pending_without_root_model_test() {
+pub fn cards_list_view_renders_loading_when_pending_without_root_model_test() {
   let html =
     list_view.view(config([], 2))
     |> element.to_document_string

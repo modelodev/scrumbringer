@@ -4,14 +4,11 @@ import domain/org_role
 import domain/project_role
 import gleam/json
 import helpers/json as json_helpers
+import scrumbringer_server/http/notes/presenters as note_presenters
 import scrumbringer_server/services/card_notes_db
 
-pub fn notes(notes: List(card_notes_db.CardNote)) -> json.Json {
-  json.array(notes, of: note)
-}
-
 pub fn notes_response(values: List(card_notes_db.CardNote)) -> json.Json {
-  json.object([#("notes", notes(values))])
+  note_presenters.notes_response(values, note)
 }
 
 pub fn note(note: card_notes_db.CardNote) -> json.Json {
@@ -44,5 +41,5 @@ pub fn note(note: card_notes_db.CardNote) -> json.Json {
 }
 
 pub fn note_response(value: card_notes_db.CardNote) -> json.Json {
-  json.object([#("note", note(value))])
+  note_presenters.note_response(value, note)
 }

@@ -70,7 +70,6 @@ import scrumbringer_client/features/tasks/update as tasks_workflow
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/member_section
 
 fn task_created_feedback_config(
   model: client_state.Model,
@@ -749,8 +748,7 @@ fn apply_pool_shortcut_update(
 
 fn pool_shortcut_context(model: client_state.Model) -> shortcut_update.Context {
   shortcut_update.Context(
-    is_pool_shortcut_target: model.core.page == client_state.Member
-    && model.member.pool.member_section == member_section.Pool,
+    is_pool_shortcut_target: model.core.page == client_state.Member,
   )
 }
 
@@ -1708,13 +1706,10 @@ fn update_without_view_mode(
 fn close_card_dialog_focus_target(
   model: client_state.Model,
 ) -> opt.Option(String) {
-  case
-    model.member.pool.member_section,
-    model.admin.cards.cards_create_milestone_id
-  {
-    member_section.Pool, opt.Some(milestone_id) ->
+  case model.admin.cards.cards_create_milestone_id {
+    opt.Some(milestone_id) ->
       opt.Some(milestone_ids.quick_create_card_button_id(milestone_id))
-    _, _ -> opt.None
+    opt.None -> opt.None
   }
 }
 

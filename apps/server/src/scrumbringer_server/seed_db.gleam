@@ -1,8 +1,9 @@
-//// Atomic database operations for seeding.
+//// Dev/test atomic database operations for seeding.
 ////
 //// ## Mission
 ////
-//// Provide reusable, low-level SQL insert operations with support for:
+//// Provide reusable, low-level SQL insert operations for seed scripts and test
+//// fixtures with support for:
 //// - Custom timestamps (for simulating historical data)
 //// - Optional fields (active, first_login_at, etc.)
 //// - All seed-relevant entities

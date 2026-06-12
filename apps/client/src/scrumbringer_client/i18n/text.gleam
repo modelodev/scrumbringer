@@ -593,7 +593,7 @@ pub type Text {
   PopoverStatus
   CreatedAgoDays(days: Int)
 
-  // Cards (fichas)
+  // Cards
   AdminCards
   CardsTitle(project_name: String)
   SelectProjectToManageCards
@@ -765,10 +765,10 @@ pub type Text {
   OutcomeSuppressed
 
   // Story 3.4 - Member Card Views
-  // Member Fichas section
-  MemberFichas
-  MemberFichasEmpty
-  MemberFichasEmptyHint
+  // Member Cards section
+  MemberCards
+  MemberCardsEmpty
+  MemberCardsEmptyHint
 
   // Color picker
   ColorLabel

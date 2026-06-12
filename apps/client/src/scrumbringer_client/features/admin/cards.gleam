@@ -1,4 +1,4 @@
-//// Admin cards (fichas) update handlers.
+//// Admin cards update handlers.
 ////
 //// ## Mission
 ////

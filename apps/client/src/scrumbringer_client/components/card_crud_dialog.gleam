@@ -27,7 +27,7 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{div, form, input, p, span, text}
+import lustre/element/html.{div, form, input, span, text}
 import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
@@ -829,28 +829,16 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
-  crud_dialog_base.view_dialog_shell(
-    "dialog dialog-sm",
-    modal_header.view_dialog_with_icon(
-      t(model.locale, i18n_text.DeleteCard),
-      icons.nav_icon(icons.Trash, icons.Medium),
-      DeleteCancelled,
-    ),
+  crud_dialog_base.view_delete_dialog_shell(
+    model.locale,
+    t(model.locale, i18n_text.DeleteCard),
+    icons.nav_icon(icons.Trash, icons.Medium),
+    t(model.locale, i18n_text.CardDeleteConfirm(card.title)),
     model.delete_error,
-    [
-      p([], [
-        text(t(model.locale, i18n_text.CardDeleteConfirm(card.title))),
-      ]),
-    ],
-    [
-      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
-      crud_dialog_base.view_danger_button(
-        DeleteConfirmed,
-        model.delete_in_flight,
-        t(model.locale, i18n_text.DeleteCard),
-        t(model.locale, i18n_text.Removing),
-      ),
-    ],
+    model.delete_in_flight,
+    DeleteCancelled,
+    DeleteConfirmed,
+    t(model.locale, i18n_text.Removing),
   )
 }
 

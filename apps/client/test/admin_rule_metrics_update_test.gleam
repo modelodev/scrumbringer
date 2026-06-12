@@ -3,7 +3,7 @@ import lustre/effect
 
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/admin/rule_metrics
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -17,8 +17,8 @@ fn context() -> rule_metrics.Context(String) {
   )
 }
 
-fn workflow_summary(id: Int) -> api_workflows.OrgWorkflowMetricsSummary {
-  api_workflows.OrgWorkflowMetricsSummary(
+fn workflow_summary(id: Int) -> api_rule_metrics.OrgWorkflowMetricsSummary {
+  api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: id,
     workflow_name: "Workflow",
     project_id: 2,
@@ -29,22 +29,22 @@ fn workflow_summary(id: Int) -> api_workflows.OrgWorkflowMetricsSummary {
   )
 }
 
-fn workflow_details(id: Int) -> api_workflows.WorkflowMetrics {
-  api_workflows.WorkflowMetrics(
+fn workflow_details(id: Int) -> api_rule_metrics.WorkflowMetrics {
+  api_rule_metrics.WorkflowMetrics(
     workflow_id: id,
     workflow_name: "Workflow",
     rules: [],
   )
 }
 
-fn rule_details(id: Int) -> api_workflows.RuleMetricsDetailed {
-  api_workflows.RuleMetricsDetailed(
+fn rule_details(id: Int) -> api_rule_metrics.RuleMetricsDetailed {
+  api_rule_metrics.RuleMetricsDetailed(
     rule_id: id,
     rule_name: "Rule",
     evaluated_count: 5,
     applied_count: 4,
     suppressed_count: 1,
-    suppression_breakdown: api_workflows.SuppressionBreakdown(
+    suppression_breakdown: api_rule_metrics.SuppressionBreakdown(
       idempotent: 1,
       not_user_triggered: 0,
       not_matching: 0,
@@ -53,11 +53,11 @@ fn rule_details(id: Int) -> api_workflows.RuleMetricsDetailed {
   )
 }
 
-fn executions_response(rule_id: Int) -> api_workflows.RuleExecutionsResponse {
-  api_workflows.RuleExecutionsResponse(
+fn executions_response(rule_id: Int) -> api_rule_metrics.RuleExecutionsResponse {
+  api_rule_metrics.RuleExecutionsResponse(
     rule_id: rule_id,
     executions: [],
-    pagination: api_workflows.Pagination(limit: 20, offset: 0, total: 0),
+    pagination: api_rule_metrics.Pagination(limit: 20, offset: 0, total: 0),
   )
 }
 
@@ -111,12 +111,14 @@ pub fn try_update_ignores_non_rule_metrics_messages_test() {
 }
 
 pub fn from_changed_and_refresh_waits_for_complete_range_test() {
-  let #(next, fx) =
-    rule_metrics.handle_from_changed_and_refresh(
-      admin_metrics.default_model(),
-      "2026-01-01",
-      context(),
+  let model =
+    admin_metrics.Model(
+      ..admin_metrics.default_model(),
+      admin_rule_metrics_to: "",
     )
+
+  let #(next, fx) =
+    rule_metrics.handle_from_changed_and_refresh(model, "2026-01-01", context())
 
   let assert "2026-01-01" = next.admin_rule_metrics_from
   let assert NotAsked = next.admin_rule_metrics

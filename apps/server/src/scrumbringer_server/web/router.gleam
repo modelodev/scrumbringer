@@ -440,14 +440,6 @@ fn route_me(
       Some(work_sessions.handle_pause(req, auth_ctx))
     ["api", "v1", "me", "work-sessions", "heartbeat"] ->
       Some(work_sessions.handle_heartbeat(req, auth_ctx))
-    ["api", "v1", "me", "active-task"] ->
-      Some(work_sessions.handle_get_active(req, auth_ctx))
-    ["api", "v1", "me", "active-task", "start"] ->
-      Some(work_sessions.handle_start(req, auth_ctx))
-    ["api", "v1", "me", "active-task", "pause"] ->
-      Some(work_sessions.handle_pause(req, auth_ctx))
-    ["api", "v1", "me", "active-task", "heartbeat"] ->
-      Some(work_sessions.handle_heartbeat(req, auth_ctx))
     ["api", "v1", "me", "metrics"] ->
       Some(me_metrics.handle_me_metrics(req, auth_ctx))
     _ -> None

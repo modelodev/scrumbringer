@@ -22,9 +22,7 @@
 //// ## Relations
 ////
 //// - **features/pool/view.gleam**: Pool canvas, task cards, filters
-//// - **features/tasks/view.gleam**: Task view utilities and distributed task view docs
 //// - **features/metrics/view.gleam**: client_state.Admin metrics views
-//// - **features/skills/view.gleam**: client_state.Member skills/capabilities
 //// - **features/admin/view.gleam**: client_state.Admin section views
 //// - **features/auth/view.gleam**: Auth views (login, register, etc.)
 
@@ -69,13 +67,12 @@ import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
-import scrumbringer_client/features/fichas/view as fichas_view
-import scrumbringer_client/features/fichas/view_config as fichas_view_config
+import scrumbringer_client/features/cards/view as cards_view
+import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/milestones/access as milestone_access
 import scrumbringer_client/features/milestones/view_config as milestones_view
-import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/features/pool/create_dialog_config
@@ -84,10 +81,8 @@ import scrumbringer_client/features/pool/task_details_dialog_config
 import scrumbringer_client/features/pool/view_config as pool_view
 import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
-import scrumbringer_client/features/skills/view as skills_view
 
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
@@ -925,7 +920,7 @@ fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
     opt.Some(user) ->
       case model.ui.is_mobile {
         // Mobile: mini-bar + drawer layout
-        True -> view_mobile_shell(model, user, view_member_section(model, user))
+        True -> view_mobile_shell(model, user, view_member_app(model, user))
 
         False ->
           div([attribute.class("member")], [
@@ -962,12 +957,7 @@ fn view_mobile_shell(
 }
 
 fn member_mobile_title(model: client_state.Model) -> String {
-  i18n.t(model.ui.locale, case model.member.pool.member_section {
-    member_section.Pool -> member_mobile_pool_title(model)
-    member_section.MyBar -> i18n_text.MyBar
-    member_section.MySkills -> i18n_text.MySkills
-    member_section.Fichas -> i18n_text.MemberFichas
-  })
+  i18n.t(model.ui.locale, member_mobile_pool_title(model))
 }
 
 fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
@@ -1013,37 +1003,14 @@ fn now_working_mobile_config(
   )
 }
 
-fn view_member_section(
+fn view_member_app(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
   let cards = project_cards(model)
   let pool_context = pool_view_context.from_state(model, cards)
 
-  case model.member.pool.member_section {
-    member_section.Pool -> view_mobile_pool_content(model, user, pool_context)
-    member_section.MyBar -> my_bar_view.view_bar(my_bar_config(model, user))
-    member_section.MySkills ->
-      skills_view.view_skills(
-        skills_view.Config(
-          locale: model.ui.locale,
-          capabilities: model.member.skills.member_capabilities,
-          selected_capability_ids: model.member.skills.member_my_capability_ids_edit,
-          error: model.member.skills.member_my_capabilities_error,
-          in_flight: model.member.skills.member_my_capabilities_in_flight,
-          on_save: client_state.pool_msg(
-            pool_messages.MemberSaveCapabilitiesClicked,
-          ),
-          on_capability_toggle: fn(capability_id) {
-            client_state.pool_msg(pool_messages.MemberToggleCapability(
-              capability_id,
-            ))
-          },
-        ),
-      )
-    member_section.Fichas ->
-      fichas_view.view_fichas(member_fichas_config(model))
-  }
+  view_mobile_pool_content(model, user, pool_context)
 }
 
 fn view_mobile_pool_content(
@@ -1055,58 +1022,6 @@ fn view_mobile_pool_content(
     view_mode.Pool -> pool_view.view_pool_main(pool_context, user)
     _ -> build_center_panel(model, user)
   }
-}
-
-fn my_bar_config(
-  model: client_state.Model,
-  user: User,
-) -> my_bar_view.Config(client_state.Msg) {
-  my_bar_view.Config(
-    locale: model.ui.locale,
-    has_active_projects: !list.is_empty(state_selectors.active_projects(model)),
-    member_tasks: model.member.pool.member_tasks,
-    member_metrics: model.member.metrics.member_metrics,
-    task_row_config: my_bar_task_row_config(model, user),
-    on_create_task_in_card: fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
-        card_id,
-      ))
-    },
-  )
-}
-
-fn my_bar_task_row_config(
-  model: client_state.Model,
-  user: User,
-) -> my_bar_view.TaskRowConfig(client_state.Msg) {
-  my_bar_view.TaskRowConfig(
-    locale: model.ui.locale,
-    theme: model.ui.theme,
-    user_id: user.id,
-    active_task_id: state_selectors.now_working_active_task_id(model),
-    disable_actions: model.member.pool.member_task_mutation_in_flight
-      || model.member.now_working.member_now_working_in_flight,
-    task_card_info: fn(task) { resolve_task_card_info(model, task) },
-    on_claim: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
-    },
-    on_start: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
-    },
-    on_pause: client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked),
-    on_release: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
-    },
-    on_complete: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCompleteClicked(
-        task_id,
-        version,
-      ))
-    },
-    on_task_open: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
-    },
-  )
 }
 
 // =============================================================================
@@ -1302,7 +1217,6 @@ fn left_panel_member_route_config(
 ) -> left_panel_data.MemberRouteConfig {
   left_panel_data.MemberRouteConfig(
     selected_project_id: model.core.selected_project_id,
-    member_section: model.member.pool.member_section,
     view_mode: model.member.pool.view_mode,
     capability_scope: model.member.pool.member_capability_scope,
     type_filter: model.member.pool.member_filters_type_id,
@@ -1364,9 +1278,6 @@ fn build_center_panel(
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
     view_mode: model.member.pool.view_mode,
-    on_view_mode_change: fn(mode) {
-      client_state.pool_msg(pool_messages.ViewModeChanged(mode))
-    },
     task_types: data.task_types,
     capabilities: data.capabilities,
     capability_scope: model.member.pool.member_capability_scope,
@@ -1720,13 +1631,13 @@ fn view_member_card_detail_modal(
   model: client_state.Model,
   _user: User,
 ) -> Element(client_state.Msg) {
-  fichas_view.view_card_detail_modal(member_fichas_config(model))
+  cards_view.view_card_detail_modal(member_cards_config(model))
 }
 
-fn member_fichas_config(
+fn member_cards_config(
   model: client_state.Model,
-) -> fichas_view.Config(client_state.Msg) {
-  fichas_view_config.from_state(
+) -> cards_view.Config(client_state.Msg) {
+  cards_view_config.from_state(
     model.ui.locale,
     project_cards(model),
     model.member.pool,

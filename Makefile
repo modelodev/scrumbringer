@@ -53,7 +53,7 @@ ci: deps build test
 release-check: ci
 	@if [ "$(RUN_SMOKE)" = "1" ]; then \
 		echo "Running smoke checks..."; \
-		bash scripts/smoke-active-task.sh; \
+		bash scripts/smoke-work-sessions.sh; \
 	else \
 		echo "Skipping smoke checks (set RUN_SMOKE=1 to enable)"; \
 	fi

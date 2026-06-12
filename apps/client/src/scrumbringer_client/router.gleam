@@ -56,7 +56,6 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
 import scrumbringer_client/url_state
 
@@ -80,7 +79,7 @@ pub type Route {
   // Story 4.5: New unified routes
   Config(section: permissions.AdminSection, project_id: Option(Int))
   Org(section: permissions.AdminSection)
-  Member(section: MemberSection, state: url_state.UrlState)
+  Member(state: url_state.UrlState)
 }
 
 /// Result of parsing a URL, indicating whether it was parsed directly
@@ -188,28 +187,27 @@ fn parse_org_section_query(
 
 fn parse_member_route(pathname: String, search: String) -> ParseResult {
   case string.starts_with(pathname, "/app") {
-    True -> parse_member_section(pathname, search)
+    True -> parse_member_pool(pathname, search)
     False -> Parsed(Login)
   }
 }
 
-fn parse_member_section(pathname: String, search: String) -> ParseResult {
+fn parse_member_pool(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/app")
   let result = url_state.parse_query(search_to_query(search), url_state.Member)
 
-  case member_section.parse_slug(slug) {
-    Ok(section) -> member_parse_result(section, result)
-    Error(_) -> member_parse_result(member_section.Pool, result) |> as_redirect
+  case slug {
+    "" | "pool" -> member_parse_result(result)
+    _ -> member_parse_result(result) |> as_redirect
   }
 }
 
 fn member_parse_result(
-  section: MemberSection,
   result: url_state.QueryParseResult,
 ) -> ParseResult {
   case result {
-    url_state.Parsed(state) -> Parsed(Member(section, state))
-    url_state.Redirect(state) -> Redirect(Member(section, state))
+    url_state.Parsed(state) -> Parsed(Member(state))
+    url_state.Redirect(state) -> Redirect(Member(state))
   }
 }
 
@@ -269,8 +267,8 @@ fn format_parts(route: Route) -> #(String, Option(String), Option(String)) {
     // Story 4.5: New /org/* routes for org-scoped admin
     Org(section) -> #("/org/" <> org_section_slug(section), None, None)
 
-    Member(section, state) -> {
-      let base = "/app/" <> member_section.to_slug(section)
+    Member(state) -> {
+      let base = "/app/pool"
       let query =
         query_option(url_state.to_query_string_for(url_state.Member, state))
       #(base, query, None)
@@ -501,7 +499,7 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
     Config(section, _) -> Some(admin_section_title(section, locale))
     Org(section) -> Some(admin_section_title(section, locale))
 
-    Member(section, _) -> Some(member_section_title(section, locale))
+    Member(_) -> Some(i18n.t(locale, i18n_text.Pool))
   }
 
   case section_title {
@@ -529,20 +527,6 @@ fn admin_section_title(
     permissions.Cards -> i18n_text.AdminCards
     permissions.Workflows -> i18n_text.AdminWorkflows
     permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
-  }
-  i18n.t(locale, text)
-}
-
-/// Get the i18n text key for a member section title.
-fn member_section_title(
-  section: MemberSection,
-  locale: i18n_locale.Locale,
-) -> String {
-  let text = case section {
-    member_section.Pool -> i18n_text.Pool
-    member_section.MyBar -> i18n_text.MyBar
-    member_section.MySkills -> i18n_text.MySkills
-    member_section.Fichas -> i18n_text.MemberFichas
   }
   i18n.t(locale, text)
 }

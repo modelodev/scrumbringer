@@ -12,12 +12,13 @@ import gleam/string
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, span, text}
+import lustre/element/html.{button, div, p, span, text}
 import lustre/event
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/modal_header
 
 pub type OptionalIntParseError {
   InvalidOptionalInt(String)
@@ -281,6 +282,31 @@ pub fn view_danger_button(
         True -> in_flight_label
         False -> idle_label
       }),
+    ],
+  )
+}
+
+/// Renders the common small delete confirmation dialog used by CRUD custom
+/// elements that do not need domain-specific delete guards.
+pub fn view_delete_dialog_shell(
+  locale: Locale,
+  title: String,
+  icon: Element(msg),
+  confirm_text: String,
+  error: Option(String),
+  in_flight: Bool,
+  on_cancel: msg,
+  on_confirm: msg,
+  in_flight_label: String,
+) -> Element(msg) {
+  view_dialog_shell(
+    "dialog dialog-sm",
+    modal_header.view_dialog_with_icon(title, icon, on_cancel),
+    error,
+    [p([], [text(confirm_text)])],
+    [
+      view_cancel_button(locale, on_cancel),
+      view_danger_button(on_confirm, in_flight, title, in_flight_label),
     ],
   )
 }

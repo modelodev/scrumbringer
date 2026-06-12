@@ -41,7 +41,7 @@ import domain/workflow.{
 }
 import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/i18n
@@ -156,7 +156,7 @@ fn workflow_name_or_id(name: opt.Option(String), workflow_id: Int) -> String {
 fn view_rules_table(
   config: Config(msg),
   rules: Remote(List(Rule)),
-  metrics: Remote(api_workflows.WorkflowMetrics),
+  metrics: Remote(api_rule_metrics.WorkflowMetrics),
 ) -> Element(msg) {
   ui_remote.view_remote(
     rules,
@@ -668,7 +668,7 @@ fn find_task_type(config: Config(msg), type_id: Int) -> opt.Option(TaskType) {
 
 /// Get metrics for a specific rule from the workflow metrics.
 fn get_rule_metrics(
-  metrics: Remote(api_workflows.WorkflowMetrics),
+  metrics: Remote(api_rule_metrics.WorkflowMetrics),
   rule_id: Int,
 ) -> #(Int, Int) {
   case metrics {
@@ -679,7 +679,7 @@ fn get_rule_metrics(
 
 // Justification: nested case isolates loaded metrics lookup from empty fallback.
 fn rule_metrics_for_loaded(
-  metrics: api_workflows.WorkflowMetrics,
+  metrics: api_rule_metrics.WorkflowMetrics,
   rule_id: Int,
 ) -> #(Int, Int) {
   case list.find(metrics.rules, fn(rm) { rm.rule_id == rule_id }) {

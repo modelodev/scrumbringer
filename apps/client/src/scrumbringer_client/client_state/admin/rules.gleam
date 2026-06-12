@@ -5,7 +5,7 @@ import gleam/set
 
 import domain/remote.{type Remote, NotAsked}
 import domain/workflow.{type Rule}
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/types as state_types
 
 /// Represents rule admin state.
@@ -19,7 +19,7 @@ pub type Model {
     attach_template_selected: Option(Int),
     attach_template_loading: Bool,
     detaching_templates: set.Set(#(Int, Int)),
-    rules_metrics: Remote(api_workflows.WorkflowMetrics),
+    rules_metrics: Remote(api_rule_metrics.WorkflowMetrics),
   )
 }
 

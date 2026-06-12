@@ -46,7 +46,7 @@ import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, p, span, text}
+import lustre/element/html.{div, h2, p, span, text}
 
 import scrumbringer_client/ui/icons.{type NavIcon}
 
@@ -100,7 +100,7 @@ fn view_internal(
   div([attribute.class("admin-section-header-wrapper")], [
     // Main header row (icon + title + action)
     div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
+      h2([attribute.class("admin-section-title")], [
         span([attribute.class("admin-section-icon")], [
           icons.nav_icon(icon, icons.Medium),
         ]),

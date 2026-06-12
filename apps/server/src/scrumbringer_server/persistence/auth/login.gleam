@@ -15,6 +15,10 @@
 ////
 //// - **queries.gleam**: Database operations
 //// - **auth_logic.gleam**: Error types
+////
+//// Auth keeps its SQL boundary in `persistence/auth` because login and
+//// registration share account bootstrap queries. Runtime business logic stays
+//// in `services/auth_logic.gleam` and `services/password.gleam`.
 
 import gleam/option.{None, Some}
 import gleam/result

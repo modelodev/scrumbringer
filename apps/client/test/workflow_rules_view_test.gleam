@@ -11,7 +11,7 @@ import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
   RuleTemplate, TaskRule, TaskTemplate, Workflow,
 }
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/workflow_rules_view
@@ -98,11 +98,11 @@ fn rules_state() -> admin_rules.Model {
     rules: Loaded([rule()]),
     rules_expanded: set.from_list([9]),
     rules_metrics: Loaded(
-      api_workflows.WorkflowMetrics(
+      api_rule_metrics.WorkflowMetrics(
         workflow_id: 3,
         workflow_name: "Release automation",
         rules: [
-          api_workflows.RuleMetricsSummary(
+          api_rule_metrics.RuleMetricsSummary(
             rule_id: 9,
             rule_name: "Complete bug workflow",
             evaluated_count: 6,

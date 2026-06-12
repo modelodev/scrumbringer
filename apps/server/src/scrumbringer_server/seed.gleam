@@ -1,8 +1,9 @@
-//// Standalone seed module for populating test data.
+//// Standalone dev/test seed module for populating demo data.
 ////
 //// ## Mission
 ////
-//// Populate the database with realistic demo data for development and metrics.
+//// Populate the database with realistic demo data for development, local QA,
+//// and metrics checks. This module is not imported by the runtime server path.
 ////
 //// ## Responsibilities
 ////

@@ -43,8 +43,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 fn view_empty_state(config: Config(msg)) -> Element(msg) {
   empty_state.new(
     "clipboard-document-list",
-    t(config, i18n_text.MemberFichasEmpty),
-    t(config, i18n_text.MemberFichasEmptyHint),
+    t(config, i18n_text.MemberCardsEmpty),
+    t(config, i18n_text.MemberCardsEmptyHint),
   )
   |> empty_state.view
 }

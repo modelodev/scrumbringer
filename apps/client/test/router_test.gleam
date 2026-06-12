@@ -5,7 +5,6 @@ import gleam/uri
 
 import domain/view_mode
 import scrumbringer_client/capability_scope
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -48,7 +47,7 @@ pub fn parse_member_pool_with_project_test() {
 
   assert_equal(
     parsed,
-    router.Parsed(member_route(member_section.Pool, Some(2), None)),
+    router.Parsed(member_route(Some(2), None)),
   )
 }
 
@@ -57,7 +56,7 @@ pub fn parse_member_unknown_section_redirects_to_pool_test() {
 
   assert_equal(
     parsed,
-    router.Redirect(member_route(member_section.Pool, Some(2), None)),
+    router.Redirect(member_route(Some(2), None)),
   )
 }
 
@@ -101,7 +100,7 @@ pub fn parse_member_invalid_view_redirects_test() {
 
   assert_equal(
     parsed,
-    router.Redirect(member_route(member_section.Pool, None, None)),
+    router.Redirect(member_route(None, None)),
   )
 }
 
@@ -110,7 +109,7 @@ pub fn parse_member_legacy_list_view_redirects_test() {
 
   assert_equal(
     parsed,
-    router.Redirect(member_route(member_section.Pool, None, None)),
+    router.Redirect(member_route(None, None)),
   )
 }
 
@@ -124,14 +123,14 @@ pub fn parse_org_assignments_invalid_view_redirects_test() {
 pub fn mobile_keeps_pool_route_test() {
   assert_equal(
     router.parse_uri(build_uri("/app/pool", "?project=2")),
-    router.Parsed(member_route(member_section.Pool, Some(2), None)),
+    router.Parsed(member_route(Some(2), None)),
   )
 }
 
 pub fn desktop_keeps_pool_route_test() {
   assert_equal(
     router.parse_uri(build_uri("/app/pool", "?project=2")),
-    router.Parsed(member_route(member_section.Pool, Some(2), None)),
+    router.Parsed(member_route(Some(2), None)),
   )
 }
 
@@ -179,40 +178,28 @@ pub fn format_org_api_tokens_test() {
 
 pub fn format_member_pool_with_project_test() {
   assert_equal(
-    router.format(member_route(member_section.Pool, Some(2), None)),
+    router.format(member_route(Some(2), None)),
     "/app/pool?project=2",
   )
 }
 
 pub fn format_member_milestones_with_project_test() {
   assert_equal(
-    router.format(member_route(
-      member_section.Pool,
-      Some(2),
-      Some(view_mode.Milestones),
-    )),
+    router.format(member_route(Some(2), Some(view_mode.Milestones))),
     "/app/pool?project=2&view=milestones",
   )
 }
 
 pub fn format_member_people_with_project_test() {
   assert_equal(
-    router.format(member_route(
-      member_section.Pool,
-      Some(2),
-      Some(view_mode.People),
-    )),
+    router.format(member_route(Some(2), Some(view_mode.People))),
     "/app/pool?project=2&view=people",
   )
 }
 
 pub fn format_member_capabilities_with_project_test() {
   assert_equal(
-    router.format(member_route(
-      member_section.Pool,
-      Some(2),
-      Some(view_mode.Capabilities),
-    )),
+    router.format(member_route(Some(2), Some(view_mode.Capabilities))),
     "/app/pool?project=2&view=capabilities",
   )
 }
@@ -225,7 +212,7 @@ pub fn format_member_cards_with_scope_test() {
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
 
   assert_equal(
-    router.format(router.Member(member_section.Pool, state)),
+    router.format(router.Member(state)),
     "/app/pool?project=2&view=cards&scope=mine",
   )
 }
@@ -252,40 +239,39 @@ pub fn roundtrip_org_api_tokens_test() {
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
-pub fn parse_my_bar_route_test() {
+pub fn parse_my_bar_route_redirects_to_pool_test() {
   assert_equal(
     router.parse_uri(build_uri("/app/my-bar", "")),
-    router.Parsed(member_route(member_section.MyBar, None, None)),
+    router.Redirect(member_route(None, None)),
   )
 }
 
-pub fn parse_my_skills_route_test() {
+pub fn parse_my_skills_route_redirects_to_pool_test() {
   assert_equal(
     router.parse_uri(build_uri("/app/my-skills", "")),
-    router.Parsed(member_route(member_section.MySkills, None, None)),
+    router.Redirect(member_route(None, None)),
   )
 }
 
-// Fichas is still valid
-pub fn roundtrip_member_fichas_without_project_test() {
-  let route = member_route(member_section.Fichas, None, None)
-  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+pub fn parse_unknown_member_route_redirects_to_pool_test() {
+  assert_equal(
+    router.parse_uri(build_uri("/app/unknown-member-route", "")),
+    router.Redirect(member_route(None, None)),
+  )
 }
 
 pub fn roundtrip_member_milestones_with_project_test() {
-  let route =
-    member_route(member_section.Pool, Some(2), Some(view_mode.Milestones))
+  let route = member_route(Some(2), Some(view_mode.Milestones))
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_people_with_project_test() {
-  let route = member_route(member_section.Pool, Some(2), Some(view_mode.People))
+  let route = member_route(Some(2), Some(view_mode.People))
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
 pub fn roundtrip_member_capabilities_with_project_test() {
-  let route =
-    member_route(member_section.Pool, Some(2), Some(view_mode.Capabilities))
+  let route = member_route(Some(2), Some(view_mode.Capabilities))
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
@@ -296,7 +282,7 @@ pub fn roundtrip_member_cards_with_scope_test() {
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
 
-  let route = router.Member(member_section.Pool, state)
+  let route = router.Member(state)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
@@ -327,7 +313,6 @@ fn build_uri(pathname: String, search: String) -> uri.Uri {
 }
 
 fn member_route(
-  section: member_section.MemberSection,
   project_id: Option(Int),
   view_mode: Option(view_mode.ViewMode),
 ) -> router.Route {
@@ -339,5 +324,5 @@ fn member_route(
     Some(mode) -> url_state.with_view(state, mode)
     None -> state
   }
-  router.Member(section, state)
+  router.Member(state)
 }

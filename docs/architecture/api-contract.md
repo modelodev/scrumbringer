@@ -629,10 +629,6 @@ Legend:
 | `/api/v1/me/work-sessions/start` | POST | M | Start work session |
 | `/api/v1/me/work-sessions/pause` | POST | M | Pause work session |
 | `/api/v1/me/work-sessions/heartbeat` | POST | M | Heartbeat work session |
-| `/api/v1/me/active-task` | GET | M | Alias of work-sessions/active |
-| `/api/v1/me/active-task/start` | POST | M | Alias of work-sessions/start |
-| `/api/v1/me/active-task/pause` | POST | M | Alias of work-sessions/pause |
-| `/api/v1/me/active-task/heartbeat` | POST | M | Alias of work-sessions/heartbeat |
 | `/api/v1/me/metrics` | GET | M | User activity metrics |
 
 ### Health
@@ -1476,12 +1472,6 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - csrf: required (double-submit)
   - body: `{ task_id }`
   - 200: `{ data: WorkSessionState }`
-
-Aliases (same behavior and payloads):
-- `GET /api/v1/me/active-task`
-- `POST /api/v1/me/active-task/start`
-- `POST /api/v1/me/active-task/pause`
-- `POST /api/v1/me/active-task/heartbeat`
 
 ### Me Metrics
 

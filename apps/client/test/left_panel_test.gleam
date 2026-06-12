@@ -6,7 +6,6 @@ import lustre/element
 import domain/view_mode as view_mode_module
 import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/i18n/locale as i18n_locale
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -71,7 +70,7 @@ fn member_route(mode: view_mode_module.ViewMode) -> router.Route {
     url_state.empty()
     |> url_state.with_project(1)
     |> url_state.with_view(mode)
-  router.Member(member_section.Pool, state)
+  router.Member(state)
 }
 
 /// Helper to create a Config route with an admin section

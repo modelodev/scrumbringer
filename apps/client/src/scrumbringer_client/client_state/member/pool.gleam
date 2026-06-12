@@ -15,7 +15,6 @@ import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
@@ -49,7 +48,6 @@ pub type MilestoneDragItem {
 /// Represents member pool state.
 pub type Model {
   Model(
-    member_section: member_section.MemberSection,
     view_mode: view_mode.ViewMode,
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
@@ -123,7 +121,6 @@ pub type Model {
 /// Provides default member pool state.
 pub fn default_model() -> Model {
   Model(
-    member_section: member_section.Pool,
     view_mode: view_mode.Pool,
     member_tasks: NotAsked,
     member_tasks_pending: 0,

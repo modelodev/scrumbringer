@@ -291,7 +291,7 @@ pub fn translate(text: Text) -> String {
     text.MilestoneActivationBody(cards_count, tasks_count) ->
       "Esta acción es irreversible. Activará todo el contenido del hito ("
       <> int.to_string(cards_count)
-      <> " fichas, "
+      <> " tarjetas, "
       <> int.to_string(tasks_count)
       <> " tareas)."
     text.MilestoneActivationWarning -> "No podrás deshacer esta acción"
@@ -910,9 +910,9 @@ pub fn translate(text: Text) -> String {
     text.OutcomeSuppressed -> "Suprimida"
 
     // Story 3.4 - Member Card Views
-    text.MemberFichas -> "Tarjetas"
-    text.MemberFichasEmpty -> "No hay tarjetas"
-    text.MemberFichasEmptyHint -> "Las tarjetas agrupan tareas relacionadas"
+    text.MemberCards -> "Tarjetas"
+    text.MemberCardsEmpty -> "No hay tarjetas"
+    text.MemberCardsEmptyHint -> "Las tarjetas agrupan tareas relacionadas"
 
     // Color picker
     text.ColorLabel -> "Color"

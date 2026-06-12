@@ -890,9 +890,9 @@ pub fn translate(text: Text) -> String {
     text.OutcomeSuppressed -> "Suppressed"
 
     // Story 3.4 - Member Card Views
-    text.MemberFichas -> "Cards"
-    text.MemberFichasEmpty -> "No cards"
-    text.MemberFichasEmptyHint -> "Cards group related tasks"
+    text.MemberCards -> "Cards"
+    text.MemberCardsEmpty -> "No cards"
+    text.MemberCardsEmptyHint -> "Cards group related tasks"
 
     // Color picker
     text.ColorLabel -> "Color"

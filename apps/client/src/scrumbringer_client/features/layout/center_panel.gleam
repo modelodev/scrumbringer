@@ -43,7 +43,6 @@ pub type CenterPanelConfig(msg) {
   CenterPanelConfig(
     locale: Locale,
     view_mode: ViewMode,
-    on_view_mode_change: fn(ViewMode) -> msg,
     // Filters
     task_types: List(TaskType),
     capabilities: List(Capability),
