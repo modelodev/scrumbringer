@@ -34,9 +34,9 @@ import gleam/option.{type Option}
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, span, text}
-import lustre/event
+import lustre/element/html.{div, span, text}
 
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/modal_close_button
 import scrumbringer_client/ui/notes_composer
 
@@ -112,13 +112,12 @@ fn view_body(config: Config(msg)) -> Element(msg) {
 /// Render the dialog footer with cancel button.
 fn view_footer(config: Config(msg)) -> Element(msg) {
   div([attribute.class("note-dialog-footer")], [
-    button(
-      [
-        attribute.class("btn btn-secondary"),
-        attribute.type_("button"),
-        event.on_click(config.on_close),
-      ],
-      [text(config.cancel_label)],
-    ),
+    button.text(
+      config.cancel_label,
+      config.on_close,
+      button.Secondary,
+      button.EntityAction,
+    )
+    |> button.view,
   ])
 }

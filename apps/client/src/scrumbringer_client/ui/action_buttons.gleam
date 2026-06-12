@@ -1,39 +1,7 @@
-//// Action Button Components for consistent UI across Scrumbringer.
+//// Semantic wrappers for common icon-only actions.
 ////
-//// ## Mission
-////
-//// Provide type-safe, consistently styled action buttons (edit, delete, etc.)
-//// that ensure visual homogeneity across all views.
-////
-//// ## Pattern
-////
-//// All action buttons follow the same visual pattern:
-//// - Icon-only buttons with hover effects
-//// - Edit: neutral icon, primary hover
-//// - Delete: red icon, red hover background
-////
-//// ## Usage
-////
-//// ```gleam
-//// import scrumbringer_client/ui/action_buttons
-////
-//// // In a table row
-//// div([], [
-////   action_buttons.edit_button("Edit item", EditClicked(item.id)),
-////   action_buttons.delete_button("Delete item", DeleteClicked(item.id)),
-//// ])
-//// ```
-////
-//// ## Responsibilities
-////
-//// - Consistent button styling across all CRUD views
-//// - Type-safe button generation
-//// - Accessibility (title, aria-label)
-////
-//// ## Non-responsibilities
-////
-//// - Click handlers (passed as parameter)
-//// - Confirmation dialogs (handled by caller)
+//// Keep feature code on domain names like edit/delete/claim while delegating the
+//// shared visual contract to `ui/button`.
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -44,27 +12,73 @@ import lustre/element.{type Element}
 import lustre/element/html.{button}
 import lustre/event
 
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/icons
-
-// =============================================================================
-// Action Button Types
-// =============================================================================
 
 /// Size variants for action buttons.
 pub type ButtonSize {
-  /// Extra small (for table rows)
   SizeXs
-  /// Small (for cards)
   SizeSm
 }
 
-// =============================================================================
-// Task Action Buttons
-// =============================================================================
+fn button_size(size: ButtonSize) -> ui_button.Size {
+  case size {
+    SizeXs -> ui_button.ExtraSmall
+    SizeSm -> ui_button.Small
+  }
+}
+
+fn with_optional_class(
+  config: ui_button.Config(msg),
+  class_name: String,
+) -> ui_button.Config(msg) {
+  case string.is_empty(class_name) {
+    True -> config
+    False -> ui_button.with_class(config, class_name)
+  }
+}
+
+fn with_optional_testid(
+  config: ui_button.Config(msg),
+  testid: Option(String),
+) -> ui_button.Config(msg) {
+  case testid {
+    Some(value) -> ui_button.with_testid(config, value)
+    None -> config
+  }
+}
+
+fn with_optional_tooltip(
+  config: ui_button.Config(msg),
+  tooltip: Option(String),
+) -> ui_button.Config(msg) {
+  case tooltip {
+    Some(value) -> ui_button.with_tooltip(config, value)
+    None -> config
+  }
+}
+
+fn icon_button(
+  title: String,
+  on_click: msg,
+  icon: icons.NavIcon,
+  intent: ui_button.Intent,
+  size: ButtonSize,
+  disabled: Bool,
+  extra_class: String,
+  tooltip: Option(String),
+  testid: Option(String),
+) -> Element(msg) {
+  ui_button.icon(title, on_click, icon, intent, ui_button.EntityAction)
+  |> ui_button.with_size(button_size(size))
+  |> ui_button.with_disabled(disabled)
+  |> with_optional_class(extra_class)
+  |> with_optional_tooltip(tooltip)
+  |> with_optional_testid(testid)
+  |> ui_button.view
+}
 
 /// Generic icon-only task action button.
-///
-/// Use this for claim/release/complete/pause actions to keep styling consistent.
 pub fn task_icon_button(
   title: String,
   on_click: msg,
@@ -75,43 +89,20 @@ pub fn task_icon_button(
   tooltip: Option(String),
   testid: Option(String),
 ) -> Element(msg) {
-  let size_class = case size {
-    SizeXs -> "btn-xs"
-    SizeSm -> "btn-sm"
-  }
-
-  let class = case string.is_empty(extra_class) {
-    True -> "btn-icon " <> size_class
-    False -> "btn-icon " <> size_class <> " " <> extra_class
-  }
-
-  let tooltip_attr = case tooltip {
-    Some(value) -> [attribute.attribute("data-tooltip", value)]
-    None -> []
-  }
-
-  let testid_attr = case testid {
-    Some(value) -> [attribute.attribute("data-testid", value)]
-    None -> []
-  }
-
-  let base_attrs = [
-    attribute.class(class),
-    attribute.attribute("title", title),
-    attribute.attribute("aria-label", title),
-    attribute.disabled(disabled),
-    event.on_click(on_click),
-  ]
-
-  let attrs = list.append(base_attrs, tooltip_attr)
-  let attrs_with_testid = list.append(attrs, testid_attr)
-
-  button(attrs_with_testid, [icons.nav_icon(icon, icons.Small)])
+  icon_button(
+    title,
+    on_click,
+    icon,
+    ui_button.Neutral,
+    size,
+    disabled,
+    extra_class,
+    tooltip,
+    testid,
+  )
 }
 
-/// Generic task action button with full class control.
-///
-/// Use this when the view uses a non-standard class (e.g. mobile/kanban).
+/// Generic task action button with full class control for legacy layouts.
 pub fn task_icon_button_with_class(
   title: String,
   on_click: msg,
@@ -146,18 +137,7 @@ pub fn task_icon_button_with_class(
   button(attrs_with_testid, [icons.nav_icon(icon, icon_size)])
 }
 
-// =============================================================================
-// Edit Button
-// =============================================================================
-
 /// Creates an edit button with pencil icon.
-///
-/// Uses neutral styling that highlights on hover.
-///
-/// ## Example
-/// ```gleam
-/// action_buttons.edit_button("Edit task type", OpenEditDialog(item))
-/// ```
 pub fn edit_button(title: String, on_click: msg) -> Element(msg) {
   edit_button_with_size(title, on_click, SizeXs)
 }
@@ -168,19 +148,16 @@ pub fn edit_button_with_size(
   on_click: msg,
   size: ButtonSize,
 ) -> Element(msg) {
-  let size_class = case size {
-    SizeXs -> "btn-xs"
-    SizeSm -> "btn-sm"
-  }
-
-  button(
-    [
-      attribute.class("btn-icon " <> size_class),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Pencil, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Pencil,
+    ui_button.Neutral,
+    size,
+    False,
+    "",
+    None,
+    None,
   )
 }
 
@@ -190,31 +167,20 @@ pub fn edit_button_with_testid(
   on_click: msg,
   testid: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn-icon btn-xs"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      attribute.attribute("data-testid", testid),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Pencil, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Pencil,
+    ui_button.Neutral,
+    SizeXs,
+    False,
+    "",
+    None,
+    Some(testid),
   )
 }
 
-// =============================================================================
-// Delete Button
-// =============================================================================
-
 /// Creates a delete button with trash icon.
-///
-/// Uses danger styling: red icon, red hover background.
-/// This is the standard pattern for all delete buttons in the app.
-///
-/// ## Example
-/// ```gleam
-/// action_buttons.delete_button("Delete task type", OpenDeleteDialog(item))
-/// ```
 pub fn delete_button(title: String, on_click: msg) -> Element(msg) {
   delete_button_with_size(title, on_click, SizeXs)
 }
@@ -225,20 +191,16 @@ pub fn delete_button_with_size(
   on_click: msg,
   size: ButtonSize,
 ) -> Element(msg) {
-  let size_class = case size {
-    SizeXs -> "btn-xs"
-    SizeSm -> "btn-sm"
-  }
-
-  button(
-    [
-      // btn-danger-icon: red icon color, transparent bg, red bg on hover
-      attribute.class("btn-icon " <> size_class <> " btn-danger-icon"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Trash, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Trash,
+    ui_button.Danger,
+    size,
+    False,
+    "",
+    None,
+    None,
   )
 }
 
@@ -248,15 +210,16 @@ pub fn delete_button_with_testid(
   on_click: msg,
   testid: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn-icon btn-xs btn-danger-icon"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      attribute.attribute("data-testid", testid),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Trash, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Trash,
+    ui_button.Danger,
+    SizeXs,
+    False,
+    "",
+    None,
+    Some(testid),
   )
 }
 
@@ -293,49 +256,36 @@ pub fn add_icon_button_with_size_and_testid(
   testid: Option(String),
   extra_class: Option(String),
 ) -> Element(msg) {
-  let size_class = case size {
-    SizeXs -> "btn-xs"
-    SizeSm -> "btn-sm"
-  }
-
-  let testid_attr = case testid {
-    Some(value) -> [attribute.attribute("data-testid", value)]
-    None -> []
-  }
-
   let class_name = case extra_class {
-    Some(value) -> "btn-icon " <> size_class <> " " <> value
-    None -> "btn-icon " <> size_class
+    Some(value) -> value
+    None -> ""
   }
 
-  let attrs = [
-    attribute.class(class_name),
-    attribute.attribute("title", title),
-    attribute.attribute("aria-label", title),
-    event.on_click(on_click),
-  ]
-
-  button(list.append(attrs, testid_attr), [
-    icons.nav_icon(icon, icons.Small),
-  ])
+  icon_button(
+    title,
+    on_click,
+    icon,
+    ui_button.Neutral,
+    size,
+    False,
+    class_name,
+    None,
+    testid,
+  )
 }
 
-// =============================================================================
-// Settings/Config Button
-// =============================================================================
-
 /// Creates a settings button with cog icon.
-///
-/// Used for configuration actions (e.g., member capabilities).
 pub fn settings_button(title: String, on_click: msg) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn-icon btn-xs"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Cog, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Cog,
+    ui_button.Neutral,
+    SizeXs,
+    False,
+    "",
+    None,
+    None,
   )
 }
 
@@ -345,35 +295,20 @@ pub fn settings_button_with_testid(
   on_click: msg,
   testid: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn-icon btn-xs"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      attribute.attribute("data-testid", testid),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Cog, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Cog,
+    ui_button.Neutral,
+    SizeXs,
+    False,
+    "",
+    None,
+    Some(testid),
   )
 }
 
-// =============================================================================
-// Action Button Row (for table cells)
-// =============================================================================
-
 /// Creates a row of action buttons (commonly edit + delete).
-///
-/// This is the standard pattern for table action columns.
-///
-/// ## Example
-/// ```gleam
-/// action_buttons.edit_delete_row(
-///   edit_title: "Edit task type",
-///   edit_click: OpenEditDialog(item),
-///   delete_title: "Delete task type",
-///   delete_click: OpenDeleteDialog(item),
-/// )
-/// ```
 pub fn edit_delete_row(
   edit_title edit_title: String,
   edit_click edit_click: msg,
@@ -401,31 +336,18 @@ pub fn edit_delete_row_with_testid(
   ])
 }
 
-// =============================================================================
-// Create Task in Card Button (Story 4.12 AC8-AC9-AC16)
-// =============================================================================
-
 /// Creates a button to add a new task to a specific card.
-///
-/// Used in card views (config/cards table, kanban) to quickly create
-/// a task pre-assigned to that card.
-///
-/// ## Example
-/// ```gleam
-/// action_buttons.create_task_in_card_button(
-///   "Nueva tarea en Release",
-///   OpenCreateDialogWithCard(card_id),
-/// )
-/// ```
 pub fn create_task_in_card_button(title: String, on_click: msg) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn-icon btn-xs btn-add-task"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Plus, icons.Small)],
+  icon_button(
+    title,
+    on_click,
+    icons.Plus,
+    ui_button.Neutral,
+    SizeXs,
+    False,
+    "btn-add-task",
+    None,
+    None,
   )
 }
 

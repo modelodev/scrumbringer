@@ -14,9 +14,9 @@ import gleam/list
 import gleam/option
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
-import lustre/element/html.{a, button, div, p, span, text}
-import lustre/event
+import lustre/element/html.{a, div, p, span, text}
 
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/tooltips/types.{
   type DeleteNoteContext, DeleteAsAdmin, DeleteOwnNote,
@@ -104,15 +104,15 @@ fn view_note(
       span([attribute.class("note-date")], [text(created_at)]),
       case can_delete {
         True ->
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.attribute("title", actual_delete_label),
-              attribute.attribute("aria-label", actual_delete_label),
-              event.on_click(on_delete(id)),
-            ],
-            [icons.nav_icon(icons.Trash, icons.Small)],
+          button.icon(
+            actual_delete_label,
+            on_delete(id),
+            icons.Trash,
+            button.Danger,
+            button.EntityAction,
           )
+          |> button.with_size(button.ExtraSmall)
+          |> button.view
         False -> element.none()
       },
     ]),

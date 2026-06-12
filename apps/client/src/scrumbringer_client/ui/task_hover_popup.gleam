@@ -7,8 +7,9 @@ import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/attribute
 import lustre/element as lustre_element
-import lustre/element/html.{button, div, li, span, text, ul}
-import lustre/event
+import lustre/element/html.{div, li, span, text, ul}
+
+import scrumbringer_client/ui/button
 
 pub type TaskHoverConfig(msg) {
   TaskHoverConfig(
@@ -175,13 +176,10 @@ pub fn view(config: TaskHoverConfig(msg)) -> lustre_element.Element(msg) {
       div([attribute.class("task-preview-grid")], grid_entries),
       div([attribute.class("task-preview-extras")], extras),
       div([attribute.class("task-preview-actions")], [
-        button(
-          [
-            attribute.class("btn btn-secondary btn-xs task-preview-btn"),
-            event.on_click(on_open),
-          ],
-          [text(open_label)],
-        ),
+        button.text(open_label, on_open, button.Secondary, button.EntityAction)
+        |> button.with_size(button.ExtraSmall)
+        |> button.with_class("task-preview-btn")
+        |> button.view,
       ]),
     ],
   )

@@ -361,13 +361,18 @@ Estado 2026-06-12:
 - Implementado `ui/button.gleam` con `Intent`, `Scope`, `Shape` y `Size`.
 - Migradas acciones visibles de Pool e Hitos a la API compartida sin cambiar
   labels, `data-testid` ni comportamiento.
-- Conservados `action_buttons.gleam` y `task_actions.gleam` como componentes de
-  dominio hasta que una fase especifica pueda migrarlos sin perder semantica de
-  tarea.
+- Consolidado `action_buttons.gleam` como wrapper semantico sobre `ui/button`
+  para acciones CRUD/task icon-only. Se conserva `task_icon_button_with_class`
+  como excepcion legacy porque lo usan layouts con clases y tamano de icono
+  totalmente custom.
+- Migrados botones manuales de UI compartida (`confirm_dialog`, `dialog`,
+  `note_dialog`, `notes_composer`, `notes_list`, `error_notice`,
+  `card_section_header`, `task_hover_popup`) y el footer de detalle de tarea.
 - Ajustado el CTA compacto `milestone-card-kanban` para no aumentar la densidad
   visual de las filas de Delivery Plan al pasar por la primitiva comun.
 - Tests nuevos:
   - `apps/client/test/ui_button_test.gleam`
+  - `apps/client/test/ui_action_buttons_test.gleam`
 - Tests actualizados:
   - `milestones_empty_state_test`
   - `milestones_view_test`

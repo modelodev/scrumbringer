@@ -4,8 +4,10 @@ import gleam/dynamic/decode
 import gleam/option.{type Option}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, text, textarea}
+import lustre/element/html.{div, text, textarea}
 import lustre/event
+
+import scrumbringer_client/ui/button
 
 pub type Config(msg) {
   Config(
@@ -51,14 +53,14 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     case show_button {
       True ->
         div([attribute.class("notes-composer-actions")], [
-          button(
-            [
-              attribute.class("btn btn-primary"),
-              event.on_click(on_submit),
-              attribute.disabled(submit_disabled),
-            ],
-            [text(submit_label)],
-          ),
+          button.text(
+            submit_label,
+            on_submit,
+            button.Primary,
+            button.EntityAction,
+          )
+          |> button.with_disabled(submit_disabled)
+          |> button.view,
         ])
       False -> element.none()
     },

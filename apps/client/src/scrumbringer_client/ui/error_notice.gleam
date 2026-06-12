@@ -4,9 +4,9 @@
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, text}
-import lustre/event
+import lustre/element/html.{div, h2, text}
 
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/error_banner
 
 pub fn view(message: String) -> Element(msg) {
@@ -20,9 +20,9 @@ pub fn view_dismissible(
 ) -> Element(msg) {
   div([attribute.class("error")], [
     error_banner.view(message),
-    button([attribute.class("btn-xs"), event.on_click(on_dismiss)], [
-      text(dismiss_label),
-    ]),
+    button.text(dismiss_label, on_dismiss, button.Ghost, button.EntityAction)
+      |> button.with_size(button.ExtraSmall)
+      |> button.view,
   ])
 }
 

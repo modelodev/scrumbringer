@@ -33,11 +33,11 @@ import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h3, span, text}
-import lustre/event
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/modal_close_button
 
 // =============================================================================
@@ -156,9 +156,13 @@ fn size_to_class(size: DialogSize) -> String {
 
 /// Create a cancel button for dialog footer using an explicit locale.
 pub fn cancel_button_with_locale(locale: Locale, on_click: msg) -> Element(msg) {
-  button([attribute.type_("button"), event.on_click(on_click)], [
-    text(i18n.t(locale, i18n_text.Cancel)),
-  ])
+  ui_button.text(
+    i18n.t(locale, i18n_text.Cancel),
+    on_click,
+    ui_button.Secondary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.view
 }
 
 /// Create a submit button for dialog footer using an explicit locale.
@@ -215,7 +219,12 @@ pub fn add_button_with_locale(
   label: i18n_text.Text,
   on_click: msg,
 ) -> Element(msg) {
-  button([attribute.class("btn-add"), event.on_click(on_click)], [
-    text(i18n.t(locale, label)),
-  ])
+  ui_button.text(
+    i18n.t(locale, label),
+    on_click,
+    ui_button.Primary,
+    ui_button.GlobalAction,
+  )
+  |> ui_button.with_class("btn-add")
+  |> ui_button.view
 }

@@ -3,12 +3,11 @@
 ////
 
 import gleam/option.{type Option}
+import gleam/string
 
-import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, text}
-import lustre/event
 
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/dialog
 
 pub type ConfirmConfig(msg) {
@@ -51,24 +50,30 @@ pub fn view(config: ConfirmConfig(msg)) -> Element(msg) {
     error,
     body,
     [
-      button(
-        [
-          attribute.class("btn btn-secondary btn-sm"),
-          attribute.type_("button"),
-          attribute.disabled(is_loading),
-          event.on_click(on_cancel),
-        ],
-        [text(cancel_label)],
-      ),
-      button(
-        [
-          attribute.class("btn " <> confirm_class),
-          attribute.type_("button"),
-          attribute.disabled(is_loading),
-          event.on_click(on_confirm),
-        ],
-        [text(confirm_label)],
-      ),
+      button.text(
+        cancel_label,
+        on_cancel,
+        button.Secondary,
+        button.EntityAction,
+      )
+        |> button.with_disabled(is_loading)
+        |> button.view,
+      button.text(
+        confirm_label,
+        on_confirm,
+        confirm_intent(confirm_class),
+        button.EntityAction,
+      )
+        |> button.with_disabled(is_loading)
+        |> button.with_class(confirm_class)
+        |> button.view,
     ],
   )
+}
+
+fn confirm_intent(confirm_class: String) -> button.Intent {
+  case string.contains(confirm_class, "danger") {
+    True -> button.Danger
+    False -> button.Primary
+  }
 }

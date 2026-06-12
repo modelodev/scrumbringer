@@ -29,8 +29,9 @@
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, span, text}
-import lustre/event
+import lustre/element/html.{div, span, text}
+
+import scrumbringer_client/ui/button
 
 /// Configuration for the card section header.
 pub type Config(msg) {
@@ -122,13 +123,14 @@ fn view_internal(
 ) -> Element(msg) {
   div([attribute.class(container_class)], [
     span([attribute.class("card-section-title")], [text(title)]),
-    button(
-      [
-        attribute.class(button_class),
-        event.on_click(on_button_click),
-        attribute.disabled(button_disabled),
-      ],
-      [text(button_label)],
-    ),
+    button.text(
+      button_label,
+      on_button_click,
+      button.Primary,
+      button.EntityAction,
+    )
+      |> button.with_disabled(button_disabled)
+      |> button.with_class(button_class)
+      |> button.view,
   ])
 }

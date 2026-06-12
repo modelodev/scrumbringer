@@ -16,6 +16,7 @@ import scrumbringer_client/ui/icons
 
 /// Visual intent of an action.
 pub type Intent {
+  Neutral
   Primary
   Secondary
   Ghost
@@ -55,6 +56,7 @@ pub opaque type Config(msg) {
     extra_class: Option(String),
     id: Option(String),
     testid: Option(String),
+    tooltip: Option(String),
   )
 }
 
@@ -76,6 +78,7 @@ pub fn text(
     extra_class: None,
     id: None,
     testid: None,
+    tooltip: None,
   )
 }
 
@@ -98,6 +101,7 @@ pub fn icon(
     extra_class: None,
     id: None,
     testid: None,
+    tooltip: None,
   )
 }
 
@@ -120,6 +124,7 @@ pub fn icon_text(
     extra_class: None,
     id: None,
     testid: None,
+    tooltip: None,
   )
 }
 
@@ -148,13 +153,18 @@ pub fn with_testid(config: Config(msg), testid: String) -> Config(msg) {
   Config(..config, testid: Some(testid))
 }
 
+/// Adds a hover/focus tooltip while preserving the accessible label.
+pub fn with_tooltip(config: Config(msg), tooltip: String) -> Config(msg) {
+  Config(..config, tooltip: Some(tooltip))
+}
+
 /// Renders a button element.
 pub fn view(config: Config(msg)) -> Element(msg) {
   html.button(attrs(config), content(config))
 }
 
 fn attrs(config: Config(msg)) {
-  let Config(label:, on_click:, disabled:, id:, testid:, ..) = config
+  let Config(label:, on_click:, disabled:, id:, testid:, tooltip:, ..) = config
 
   let base = [
     attribute.class(class_name(config)),
@@ -170,10 +180,16 @@ fn attrs(config: Config(msg)) {
     None -> base
   }
 
-  case testid {
+  let with_testid = case testid {
     Some(value) ->
       list.append(with_id, [attribute.attribute("data-testid", value)])
     None -> with_id
+  }
+
+  case tooltip {
+    Some(value) ->
+      list.append(with_testid, [attribute.attribute("data-tooltip", value)])
+    None -> with_testid
   }
 }
 
@@ -209,6 +225,7 @@ fn class_name(config: Config(msg)) -> String {
 
 fn intent_class(intent: Intent, shape: Shape) -> String {
   case intent, shape {
+    Neutral, _ -> ""
     Danger, Icon(_) -> "btn-danger-icon"
     Danger, _ -> "btn-danger"
     Primary, _ -> "btn-primary"

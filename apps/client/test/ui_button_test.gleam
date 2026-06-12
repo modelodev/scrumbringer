@@ -61,3 +61,39 @@ pub fn disabled_button_and_id_are_preserved_test() {
   assert_contains(html, "id=\"activate-button\"")
   assert_contains(html, "data-testid=\"activate-testid\"")
 }
+
+pub fn neutral_icon_button_does_not_force_intent_class_test() {
+  let html =
+    button.icon(
+      "Edit",
+      "msg",
+      icons.Pencil,
+      button.Neutral,
+      button.EntityAction,
+    )
+    |> button.view
+    |> element.to_document_string
+
+  assert_contains(html, "btn-icon")
+  assert_contains(html, "btn-xs")
+  let assert False = string.contains(html, "btn-primary")
+  let assert False = string.contains(html, "btn-secondary")
+  let assert False = string.contains(html, "btn-ghost")
+}
+
+pub fn tooltip_is_rendered_when_provided_test() {
+  let html =
+    button.icon(
+      "Claim task",
+      "msg",
+      icons.HandRaised,
+      button.Neutral,
+      button.EntityAction,
+    )
+    |> button.with_tooltip("Claim")
+    |> button.view
+    |> element.to_document_string
+
+  assert_contains(html, "data-tooltip=\"Claim\"")
+  assert_contains(html, "aria-label=\"Claim task\"")
+}
