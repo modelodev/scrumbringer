@@ -9,8 +9,7 @@ import gleam/list
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, text}
-import lustre/event
+import lustre/element/html.{div}
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/layout/work_surface
@@ -31,6 +30,8 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/button
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/tone
 
 pub type Config(msg) {
@@ -320,14 +321,15 @@ fn detail_header_actions(
 }
 
 fn view_kanban_button(config: Config(msg)) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn btn-secondary btn-sm milestone-view-kanban"),
-      attribute.type_("button"),
-      event.on_click(config.on_view_kanban),
-    ],
-    [text(i18n.t(config.locale, i18n_text.ViewInKanban))],
+  button.icon_text(
+    i18n.t(config.locale, i18n_text.ViewInKanban),
+    config.on_view_kanban,
+    icons.Cards,
+    button.Secondary,
+    button.ViewAction,
   )
+  |> button.with_class("milestone-view-kanban")
+  |> button.view
 }
 
 fn view_cards_section(config: Config(msg), milestone_id: Int) -> Element(msg) {

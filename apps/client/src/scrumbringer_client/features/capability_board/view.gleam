@@ -13,7 +13,7 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h4, p, section, span, text}
+import lustre/element/html.{div, h4, section, span, text}
 import lustre/element/keyed
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
@@ -25,6 +25,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_actions
@@ -87,24 +88,32 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let state = derive_state(config)
   let content = case state {
     LoadingState ->
-      view_state_message(
-        "capability-board-state capability-board-loading",
+      empty_state.notice_with_class(
+        "clock",
         i18n.t(config.locale, i18n_text.CapabilityBoardLoading),
+        empty_state.Loading,
+        "capability-board-state capability-board-loading",
       )
     ErrorState(message) ->
-      view_state_message(
-        "capability-board-state capability-board-error",
+      empty_state.notice_with_class(
+        "exclamation-triangle",
         message,
+        empty_state.Error,
+        "capability-board-state capability-board-error",
       )
     EmptyState ->
-      view_state_message(
-        "capability-board-state capability-board-empty",
+      empty_state.notice_with_class(
+        "clipboard-document-list",
         i18n.t(config.locale, i18n_text.CapabilityBoardEmpty),
+        empty_state.HealthyEmpty,
+        "capability-board-state capability-board-empty",
       )
     NoResultsState ->
-      view_state_message(
-        "capability-board-state capability-board-no-results",
+      empty_state.notice_with_class(
+        "magnifying-glass",
         i18n.t(config.locale, i18n_text.CapabilityBoardNoResults),
+        empty_state.NoResults,
+        "capability-board-state capability-board-no-results",
       )
     ReadyState(rows) -> view_rows(config, rows)
   }
@@ -702,8 +711,4 @@ fn view_card_identity_swatch(card_title: Option(String)) -> Option(Element(msg))
       )
     None -> None
   }
-}
-
-fn view_state_message(class_name: String, message: String) -> Element(msg) {
-  p([attribute.class(class_name)], [text(message)])
 }

@@ -240,7 +240,20 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 | `badge` | `ui/badge.gleam` | Badges de estado |
 | `tone` | `ui/tone.gleam` | Tonos semánticos compartidos para señales compactas |
 | `signal_chip` | `ui/signal_chip.gleam` | Chips compactos de texto o métrica, con clases de compatibilidad por vista |
+| `empty_state` | `ui/empty_state.gleam` | Estados empty/loading/error/no-results con significado semántico, icono y copy |
+| `button` | `ui/button.gleam` | Botones con intención, alcance, forma, tamaño, disabled y accesibilidad explícitos |
+| `filter_bar` | `ui/filter_bar.gleam` | Agrupación común de filtros con slot de acciones separado |
 | `work_surface` | `features/layout/work_surface.gleam` | Cabecera común de vistas de trabajo con propósito, summary y acciones |
+
+Los estados de carga, error, sin resultados o sin configuración en vistas de
+producto deben usar `empty_state.Meaning`. Las clases locales como
+`people-state` o `milestones-error` pueden mantenerse como modificadores de
+compatibilidad, pero no deben ser la única fuente del significado visual.
+
+Las acciones nuevas de producto deben usar `ui/button` salvo que ya exista un
+helper semántico más específico en `ui/action_buttons` o `ui/task_actions`. Los
+filtros nuevos deben usar `ui/filter_bar` cuando haya varios campos o acciones
+adyacentes.
 
 #### Uso de section_header
 

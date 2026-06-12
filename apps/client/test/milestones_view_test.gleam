@@ -380,7 +380,8 @@ pub fn milestones_view_shows_create_button_for_managers_test() {
 
   string.contains(html, "data-testid=\"milestones-create-button\"")
   |> assert_true
-  string.contains(html, "+ Create milestone") |> assert_true
+  string.contains(html, "btn-global-action") |> assert_true
+  string.contains(html, "Create milestone") |> assert_true
 }
 
 pub fn milestones_view_hides_create_button_for_non_managers_test() {

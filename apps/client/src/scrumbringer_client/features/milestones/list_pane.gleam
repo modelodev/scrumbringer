@@ -6,7 +6,7 @@ import gleam/list
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, div, h4, input, label, p, span, text}
+import lustre/element/html.{button, div, h4, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
@@ -16,6 +16,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/filter_bar
 
 pub type Config(msg) {
   Config(
@@ -54,47 +55,36 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_filters(config: Config(msg)) -> Element(msg) {
-  div(
-    [
-      attribute.class("milestones-filters"),
-      attribute.attribute("data-testid", "milestones-filters"),
-    ],
-    [
-      input([
-        attribute.type_("search"),
-        attribute.class("milestones-search"),
-        attribute.attribute("data-testid", "milestones-search"),
-        attribute.placeholder(i18n.t(
-          config.locale,
-          i18n_text.MilestoneSearchPlaceholder,
-        )),
-        attribute.value(config.search_query),
-        event.on_input(config.on_search_change),
-      ]),
-      div([attribute.class("milestones-filter-row")], [
-        label([attribute.class("milestones-filter-chip")], [
-          input([
-            attribute.type_("checkbox"),
-            attribute.class("milestones-filter-checkbox"),
-            attribute.attribute("data-testid", "milestones-filter-completed"),
-            attribute.checked(config.show_completed),
-            event.on_check(fn(_) { config.on_toggle_completed }),
-          ]),
-          text(" " <> i18n.t(config.locale, i18n_text.ShowCompletedMilestones)),
-        ]),
-        label([attribute.class("milestones-filter-chip")], [
-          input([
-            attribute.type_("checkbox"),
-            attribute.class("milestones-filter-checkbox"),
-            attribute.attribute("data-testid", "milestones-filter-empty"),
-            attribute.checked(config.show_empty),
-            event.on_check(fn(_) { config.on_toggle_empty }),
-          ]),
-          text(" " <> i18n.t(config.locale, i18n_text.ShowEmptyMilestones)),
-        ]),
-      ]),
-    ],
-  )
+  filter_bar.new([
+    filter_bar.search_input(
+      i18n.t(config.locale, i18n_text.MilestoneSearchPlaceholder),
+      config.search_query,
+      config.on_search_change,
+      "milestones-search",
+      "milestones-search",
+    ),
+    div([attribute.class("milestones-filter-row")], [
+      filter_bar.checkbox_chip(
+        i18n.t(config.locale, i18n_text.ShowCompletedMilestones),
+        config.show_completed,
+        fn(_) { config.on_toggle_completed },
+        "milestones-filter-completed",
+        "milestones-filter-chip",
+        "milestones-filter-checkbox",
+      ),
+      filter_bar.checkbox_chip(
+        i18n.t(config.locale, i18n_text.ShowEmptyMilestones),
+        config.show_empty,
+        fn(_) { config.on_toggle_empty },
+        "milestones-filter-empty",
+        "milestones-filter-chip",
+        "milestones-filter-checkbox",
+      ),
+    ]),
+  ])
+  |> filter_bar.with_class("milestones-filters")
+  |> filter_bar.with_testid("milestones-filters")
+  |> filter_bar.view
 }
 
 fn view_section(

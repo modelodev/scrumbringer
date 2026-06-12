@@ -18,8 +18,10 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/attribute_value
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/move_menu
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_item
@@ -224,18 +226,21 @@ fn milestone_card_testid(
 }
 
 fn view_card_kanban_action(config: Config(msg), card_id: Int) -> Element(msg) {
-  button(
-    [
-      attribute.class("btn btn-secondary btn-xs milestone-card-kanban"),
-      attribute.type_("button"),
-      attribute.attribute(
-        "data-testid",
-        milestone_card_testid("milestone-card-kanban:", config, card_id),
-      ),
-      event.on_click(config.on_view_kanban),
-    ],
-    [text(i18n.t(config.locale, i18n_text.ViewInKanban))],
+  ui_button.icon_text(
+    i18n.t(config.locale, i18n_text.ViewInKanban),
+    config.on_view_kanban,
+    icons.Cards,
+    ui_button.Secondary,
+    ui_button.ViewAction,
   )
+  |> ui_button.with_size(ui_button.ExtraSmall)
+  |> ui_button.with_class("milestone-card-kanban")
+  |> ui_button.with_testid(milestone_card_testid(
+    "milestone-card-kanban:",
+    config,
+    card_id,
+  ))
+  |> ui_button.view
 }
 
 fn view_card_tasks_panel(

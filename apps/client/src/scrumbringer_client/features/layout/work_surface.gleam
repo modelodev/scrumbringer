@@ -3,7 +3,7 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
-import lustre/element.{type Element}
+import lustre/element.{type Element, none}
 import lustre/element/html.{div, h3, p, text}
 
 import scrumbringer_client/ui/signal_chip
@@ -24,6 +24,17 @@ pub type HeaderConfig(msg) {
   )
 }
 
+pub type SurfaceConfig(msg) {
+  SurfaceConfig(
+    header: Element(msg),
+    filters: Option(Element(msg)),
+    content: Option(Element(msg)),
+    state: Option(Element(msg)),
+    extra_class: Option(String),
+    testid: Option(String),
+  )
+}
+
 pub fn header(config: HeaderConfig(msg)) -> Element(msg) {
   div(header_attrs(config), [
     div([attribute.class("work-surface-copy")], [
@@ -37,12 +48,67 @@ pub fn header(config: HeaderConfig(msg)) -> Element(msg) {
   ])
 }
 
+pub fn surface(config: SurfaceConfig(msg)) -> Element(msg) {
+  div(surface_attrs(config), [
+    config.header,
+    optional_slot("work-surface-filters", config.filters),
+    optional_slot("work-surface-state", config.state),
+    optional_slot("work-surface-content", config.content),
+  ])
+}
+
 pub fn summary_chip(
   label: String,
   value: String,
   tone_value: tone.Tone,
 ) -> SummaryChip {
   SummaryChip(label: label, value: value, tone: tone_value)
+}
+
+pub fn with_filters(
+  config: SurfaceConfig(msg),
+  filters: Element(msg),
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, filters: Some(filters))
+}
+
+pub fn with_content(
+  config: SurfaceConfig(msg),
+  content: Element(msg),
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, content: Some(content))
+}
+
+pub fn with_state(
+  config: SurfaceConfig(msg),
+  state: Element(msg),
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, state: Some(state))
+}
+
+pub fn new_surface(header: Element(msg)) -> SurfaceConfig(msg) {
+  SurfaceConfig(
+    header:,
+    filters: None,
+    content: None,
+    state: None,
+    extra_class: None,
+    testid: None,
+  )
+}
+
+pub fn surface_with_class(
+  config: SurfaceConfig(msg),
+  extra_class: String,
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, extra_class: Some(extra_class))
+}
+
+pub fn surface_with_testid(
+  config: SurfaceConfig(msg),
+  testid: String,
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, testid: Some(testid))
 }
 
 fn header_attrs(config: HeaderConfig(msg)) -> List(attribute.Attribute(msg)) {
@@ -55,6 +121,25 @@ fn header_attrs(config: HeaderConfig(msg)) -> List(attribute.Attribute(msg)) {
     Some(value) -> [attribute.attribute("data-testid", value)]
     None -> []
   })
+}
+
+fn surface_attrs(config: SurfaceConfig(msg)) -> List(attribute.Attribute(msg)) {
+  let class = case config.extra_class {
+    Some(extra) -> "work-surface " <> extra
+    None -> "work-surface"
+  }
+
+  list.append([attribute.class(class)], case config.testid {
+    Some(value) -> [attribute.attribute("data-testid", value)]
+    None -> []
+  })
+}
+
+fn optional_slot(class_name: String, slot: Option(Element(msg))) -> Element(msg) {
+  case slot {
+    Some(content) -> div([attribute.class(class_name)], [content])
+    None -> none()
+  }
 }
 
 fn view_summary(summary: List(SummaryChip)) -> Element(msg) {

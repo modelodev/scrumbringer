@@ -1,23 +1,28 @@
 import gleam/option
-import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, text}
 
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/empty_state
 
 pub fn loading(locale: Locale) -> Element(msg) {
-  div([attribute.class("milestones-state milestones-loading")], [
-    text(i18n.t(locale, i18n_text.LoadingEllipsis)),
-  ])
+  empty_state.notice_with_class(
+    "clock",
+    i18n.t(locale, i18n_text.LoadingEllipsis),
+    empty_state.Loading,
+    "milestones-state milestones-loading",
+  )
 }
 
 pub fn error(locale: Locale) -> Element(msg) {
-  div([attribute.class("milestones-state milestones-error")], [
-    text(i18n.t(locale, i18n_text.MilestonesLoadError)),
-  ])
+  empty_state.notice_with_class(
+    "exclamation-triangle",
+    i18n.t(locale, i18n_text.MilestonesLoadError),
+    empty_state.Error,
+    "milestones-state milestones-error",
+  )
 }
 
 pub fn header(

@@ -1,20 +1,23 @@
 import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, h3, p, text}
-import lustre/event
+import lustre/element/html.{div, h3, text}
 
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/icons
 
 pub fn no_projects(locale: Locale) -> Element(msg) {
-  div([attribute.class("empty")], [
-    h2([], [text(i18n.t(locale, i18n_text.NoProjectsYet))]),
-    p([], [text(i18n.t(locale, i18n_text.NoProjectsBody))]),
-  ])
+  empty_state.no_projects(
+    i18n.t(locale, i18n_text.NoProjectsYet),
+    i18n.t(locale, i18n_text.NoProjectsBody),
+  )
+  |> empty_state.with_class("empty")
+  |> empty_state.view
 }
 
 pub fn header(
@@ -27,17 +30,16 @@ pub fn header(
     purpose: i18n.t(locale, i18n_text.PoolPurpose),
     summary: summary,
     actions: [
-      button(
-        [
-          attribute.class("btn-sm btn-primary pool-header-action"),
-          attribute.attribute("data-testid", "btn-new-task-pool-header"),
-          event.on_click(on_new_task),
-        ],
-        [
-          text("+ "),
-          text(i18n.t(locale, i18n_text.NewTask)),
-        ],
-      ),
+      button.icon_text(
+        i18n.t(locale, i18n_text.NewTask),
+        on_new_task,
+        icons.Plus,
+        button.Primary,
+        button.GlobalAction,
+      )
+      |> button.with_class("pool-header-action")
+      |> button.with_testid("btn-new-task-pool-header")
+      |> button.view,
     ],
     extra_class: option.Some("pool-header"),
     testid: option.Some("pool-surface-header"),
@@ -45,15 +47,19 @@ pub fn header(
 }
 
 pub fn tasks_loading(locale: Locale) -> Element(msg) {
-  div([attribute.class("empty")], [
-    text(i18n.t(locale, i18n_text.LoadingEllipsis)),
-  ])
+  empty_state.notice_with_class(
+    "clock",
+    i18n.t(locale, i18n_text.LoadingEllipsis),
+    empty_state.Loading,
+    "empty",
+  )
 }
 
 pub fn tasks_no_matches(locale: Locale) -> Element(msg) {
-  empty_state.simple(
+  empty_state.notice(
     "magnifying-glass",
     i18n.t(locale, i18n_text.NoTasksMatchYourFilters),
+    empty_state.NoResults,
   )
 }
 
@@ -63,6 +69,7 @@ pub fn tasks_onboarding(locale: Locale, on_new_task: msg) -> Element(msg) {
     i18n.t(locale, i18n_text.NoAvailableTasksRightNow),
     i18n.t(locale, i18n_text.CreateFirstTaskToStartUsingPool),
   )
+  |> empty_state.with_meaning(empty_state.Onboarding)
   |> empty_state.with_action(i18n.t(locale, i18n_text.NewTask), on_new_task)
   |> empty_state.view
 }

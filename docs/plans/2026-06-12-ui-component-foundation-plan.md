@@ -356,6 +356,22 @@ Gate:
 - Sin acciones globales dentro de contenedores de filtros salvo decision
   documentada.
 
+Estado 2026-06-12:
+
+- Implementado `ui/button.gleam` con `Intent`, `Scope`, `Shape` y `Size`.
+- Migradas acciones visibles de Pool e Hitos a la API compartida sin cambiar
+  labels, `data-testid` ni comportamiento.
+- Conservados `action_buttons.gleam` y `task_actions.gleam` como componentes de
+  dominio hasta que una fase especifica pueda migrarlos sin perder semantica de
+  tarea.
+- Ajustado el CTA compacto `milestone-card-kanban` para no aumentar la densidad
+  visual de las filas de Delivery Plan al pasar por la primitiva comun.
+- Tests nuevos:
+  - `apps/client/test/ui_button_test.gleam`
+- Tests actualizados:
+  - `milestones_empty_state_test`
+  - `milestones_view_test`
+
 ## Fase 3: Estados vacios, loading y error productivos
 
 Objetivo: que ausencia de datos signifique algo de forma consistente.
@@ -410,6 +426,21 @@ Gate:
 - Todas las vistas principales tienen estados loading/error/empty/no-results
   cubiertos.
 - Ningun empty state nuevo dice solo "No hay datos" sin significado.
+
+Estado 2026-06-12:
+
+- Evolucionado `ui/empty_state.gleam` con `Meaning` semantico:
+  `HealthyEmpty`, `NoResults`, `NeedsSetup`, `Onboarding`, `Loading` y `Error`.
+- Anadidos `notice` y `notice_with_class` para estados compactos que deben
+  conservar layout local.
+- Migrados estados de Personas, Capacidades, Hitos y Pool a la primitiva comun.
+- Conservadas clases locales como `people-state`, `capability-board-state`,
+  `milestones-state` y `empty` cuando el layout de la feature aun depende de
+  ellas.
+- Eliminado el helper local `view_state_message` de Capacidades.
+- Tests actualizados:
+  - `ui_misc_test`
+  - tests de contrato de las vistas afectadas cuando validaban HTML visible.
 
 ## Fase 4: WorkSurface 2 y FilterBar
 
@@ -472,6 +503,23 @@ Gate:
 - Pool, Kanban, Capacidades, Personas e Hitos comparten header/surface rhythm.
 - Filtros no dominan mobile por defecto.
 - Acciones globales no parecen filtros.
+
+Estado 2026-06-12:
+
+- Ampliado `features/layout/work_surface.gleam` con slots opcionales de
+  `filters`, `state` y `content`, manteniendo el header existente.
+- Implementado `ui/filter_bar.gleam` con helpers para search, select y checkbox
+  chip.
+- Migrados los filtros de Hitos a `filter_bar`, conservando clases y testids de
+  compatibilidad.
+- Pool mantiene la separacion visual entre filtros y accion global mediante el
+  header compartido y `ui/button`.
+- Tests nuevos:
+  - `apps/client/test/ui_filter_bar_test.gleam`
+- Tests actualizados:
+  - `work_surface_test`
+- Pendiente deliberado: revisar `admin_surface` contra `filter_bar` en una fase
+  especifica de Admin antes de eliminar wrappers locales.
 
 ## Fase 5: Identidad de card y TaskItem convergence
 

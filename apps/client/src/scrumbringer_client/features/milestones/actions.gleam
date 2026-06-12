@@ -2,16 +2,14 @@
 
 import gleam/int
 import gleam/option
-import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, text}
-import lustre/event
 
 import domain/milestone.{type MilestoneProgress, Ready}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/icons
 
 /// Data and parent callbacks needed to render milestone detail actions.
@@ -86,24 +84,20 @@ fn activate_button(config: Config(msg), milestone_id: Int) -> Element(msg) {
     config.has_other_active
   {
     True, Ready, False ->
-      button(
-        [
-          attribute.class("btn btn-sm btn-primary"),
-          attribute.attribute("type", "button"),
-          attribute.attribute(
-            "data-testid",
-            "milestone-activate-button:" <> int.to_string(milestone_id),
-          ),
-          attribute.disabled(config.activation_in_flight),
-          event.on_click(config.on_activate_prompt(milestone_id)),
-        ],
-        [
-          text(case config.activation_in_flight {
-            True -> i18n.t(config.locale, i18n_text.ActivatingMilestone)
-            False -> i18n.t(config.locale, i18n_text.ActivateMilestone)
-          }),
-        ],
+      button.text(
+        case config.activation_in_flight {
+          True -> i18n.t(config.locale, i18n_text.ActivatingMilestone)
+          False -> i18n.t(config.locale, i18n_text.ActivateMilestone)
+        },
+        config.on_activate_prompt(milestone_id),
+        button.Primary,
+        button.EntityAction,
       )
+      |> button.with_disabled(config.activation_in_flight)
+      |> button.with_testid(
+        "milestone-activate-button:" <> int.to_string(milestone_id),
+      )
+      |> button.view
     _, _, _ -> none()
   }
 }

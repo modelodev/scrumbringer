@@ -135,8 +135,11 @@ should be used before adding feature-local HTML fragments.
 | Semantic tone | `ui/tone.gleam` | A compact status, metric, badge-adjacent signal, or surface summary needs a shared visual meaning such as `Available`, `Ongoing`, `Blocked`, or `Warning`. |
 | Signal chip | `ui/signal_chip.gleam` | A view needs a small text or metric chip. Keep business-specific classes as extra modifiers when existing CSS or domain language requires them. |
 | Work surface header | `features/layout/work_surface.gleam` | Pool, Kanban, Capacidades, Personas, Hitos, or future work views need a title, purpose, summary chips, and action slot. |
+| Work surface slots | `features/layout/work_surface.gleam` | A work view needs a consistent shell for header, filters, transient state, and content. |
+| Filter bar | `ui/filter_bar.gleam` | A view needs grouped filters with a separate action slot while preserving feature-owned filter meaning. |
+| Button | `ui/button.gleam` | A feature needs an action with explicit intent, scope, shape, size, disabled state, test id, and accessible label. |
 | Action buttons | `ui/action_buttons.gleam` | A feature needs standard edit/delete/create/task icon buttons. Prefer these helpers over manual `btn-*` class strings. |
-| Empty state | `ui/empty_state.gleam` | A feature needs a no-data/no-results/setup state with icon, copy, and optional action. |
+| Empty state | `ui/empty_state.gleam` | A feature needs a no-data/no-results/setup/loading/error state with icon, copy, optional action, and semantic meaning. |
 | Card badge/identity | `ui/card_badge.gleam` and task identity helpers | A task, row, sidebar item, or detail view needs to reference a card compactly. |
 
 Rules:
@@ -147,6 +150,13 @@ Rules:
   visual contracts.
 - Preserve `data-testid`, accessible labels, and compatibility classes during
   migrations unless the consuming tests and CSS are updated in the same change.
+- Use `empty_state.Meaning` for product states instead of feature-local
+  loading/error/no-results classes alone. Keep local classes as compatibility
+  modifiers when the view still needs scoped CSS.
+- Use `ui/button` for new global/view/entity actions. Keep `ui/action_buttons`
+  for domain-specific icon helpers that already encode task or CRUD semantics.
+- Use `ui/filter_bar` for new filter clusters, especially when actions could
+  otherwise appear visually attached to the wrong filter group.
 - Do not introduce a new tone enum, chip helper, or action-button helper inside a
   feature without first checking the canonical modules above.
 

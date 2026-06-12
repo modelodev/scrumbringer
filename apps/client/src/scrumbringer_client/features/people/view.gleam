@@ -23,6 +23,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
@@ -60,14 +61,20 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   case config.people_roster {
     NotAsked | Loading ->
-      div([attribute.class("people-state people-loading")], [
-        text(i18n.t(config.locale, i18n_text.PeopleLoading)),
-      ])
+      empty_state.notice_with_class(
+        "clock",
+        i18n.t(config.locale, i18n_text.PeopleLoading),
+        empty_state.Loading,
+        "people-state people-loading",
+      )
 
     Failed(_err) ->
-      div([attribute.class("people-state people-error")], [
-        text(i18n.t(config.locale, i18n_text.PeopleLoadError)),
-      ])
+      empty_state.notice_with_class(
+        "exclamation-triangle",
+        i18n.t(config.locale, i18n_text.PeopleLoadError),
+        empty_state.Error,
+        "people-state people-error",
+      )
 
     Loaded(members) -> view_loaded(config, members)
   }
@@ -79,9 +86,12 @@ fn view_loaded(
 ) -> Element(msg) {
   case members {
     [] ->
-      div([attribute.class("people-state people-empty")], [
-        text(i18n.t(config.locale, i18n_text.PeopleEmpty)),
-      ])
+      empty_state.notice_with_class(
+        "user-group",
+        i18n.t(config.locale, i18n_text.PeopleEmpty),
+        empty_state.NeedsSetup,
+        "people-state people-empty",
+      )
 
     _ -> {
       let people =
@@ -97,9 +107,12 @@ fn view_loaded(
 
       case filtered {
         [] ->
-          div([attribute.class("people-state people-no-results")], [
-            text(i18n.t(config.locale, i18n_text.PeopleNoResults)),
-          ])
+          empty_state.notice_with_class(
+            "magnifying-glass",
+            i18n.t(config.locale, i18n_text.PeopleNoResults),
+            empty_state.NoResults,
+            "people-state people-no-results",
+          )
 
         _ ->
           section(

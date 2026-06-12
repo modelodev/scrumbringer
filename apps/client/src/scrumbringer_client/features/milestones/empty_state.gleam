@@ -1,13 +1,14 @@
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, div, text}
-import lustre/event
+import lustre/element/html.{div}
 
 import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/empty_state as ui_empty_state
+import scrumbringer_client/ui/icons
 
 pub type EmptyConfig(msg) {
   EmptyConfig(
@@ -31,16 +32,16 @@ pub fn view(config: EmptyConfig(msg)) -> Element(msg) {
     case config.can_manage {
       True ->
         div([attribute.class("milestones-empty-actions")], [
-          button(
-            [
-              attribute.class("btn btn-sm btn-primary"),
-              attribute.attribute("type", "button"),
-              attribute.attribute("data-testid", "milestones-create-empty"),
-              attribute.id(milestone_ids.create_empty_button_id()),
-              event.on_click(config.on_create),
-            ],
-            [text(i18n.t(config.locale, i18n_text.CreateFirstMilestone))],
-          ),
+          button.icon_text(
+            i18n.t(config.locale, i18n_text.CreateFirstMilestone),
+            config.on_create,
+            icons.Plus,
+            button.Primary,
+            button.GlobalAction,
+          )
+          |> button.with_id(milestone_ids.create_empty_button_id())
+          |> button.with_testid("milestones-create-empty")
+          |> button.view,
         ])
       False -> none()
     },
@@ -50,16 +51,16 @@ pub fn view(config: EmptyConfig(msg)) -> Element(msg) {
 pub fn create_button(config: CreateButtonConfig(msg)) -> Element(msg) {
   case config.can_manage {
     True ->
-      button(
-        [
-          attribute.class("btn btn-sm btn-primary"),
-          attribute.attribute("type", "button"),
-          attribute.attribute("data-testid", "milestones-create-button"),
-          attribute.id(milestone_ids.create_button_id()),
-          event.on_click(config.on_create),
-        ],
-        [text("+ " <> i18n.t(config.locale, i18n_text.CreateMilestone))],
+      button.icon_text(
+        i18n.t(config.locale, i18n_text.CreateMilestone),
+        config.on_create,
+        icons.Plus,
+        button.Primary,
+        button.GlobalAction,
       )
+      |> button.with_id(milestone_ids.create_button_id())
+      |> button.with_testid("milestones-create-button")
+      |> button.view
     False -> none()
   }
 }

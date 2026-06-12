@@ -52,7 +52,9 @@ pub fn milestones_create_button_renders_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"milestones-create-button\"")
-  assert_contains(html, "+ Create milestone")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "Create milestone")
 }
 
 pub fn milestones_create_button_hides_without_permission_test() {

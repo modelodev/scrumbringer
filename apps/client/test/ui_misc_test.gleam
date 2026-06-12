@@ -26,6 +26,7 @@ pub fn org_user_fallback_builds_stable_admin_placeholder_test() {
 pub fn empty_state_view_renders_title_description_and_action_test() {
   let state =
     empty_state.new("magnifying-glass", "No results", "Try again")
+    |> empty_state.with_meaning(empty_state.NoResults)
     |> empty_state.with_action("Retry", "msg")
 
   let html =
@@ -35,6 +36,7 @@ pub fn empty_state_view_renders_title_description_and_action_test() {
   let assert True = string.contains(html, "No results")
   let assert True = string.contains(html, "Try again")
   let assert True = string.contains(html, "Retry")
+  let assert True = string.contains(html, "empty-state-no-results")
 }
 
 pub fn empty_state_simple_renders_description_test() {
@@ -43,6 +45,36 @@ pub fn empty_state_simple_renders_description_test() {
     |> element.to_document_string
 
   let assert True = string.contains(html, "Nothing here")
+}
+
+pub fn empty_state_notice_preserves_local_class_and_loading_role_test() {
+  let html =
+    empty_state.notice_with_class(
+      "clock",
+      "Loading people...",
+      empty_state.Loading,
+      "people-state people-loading",
+    )
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "people-state people-loading")
+  let assert True = string.contains(html, "empty-state-loading")
+  let assert True = string.contains(html, "role=\"status\"")
+  let assert True = string.contains(html, "aria-live=\"polite\"")
+}
+
+pub fn empty_state_error_notice_renders_alert_role_test() {
+  let html =
+    empty_state.notice(
+      "exclamation-triangle",
+      "Could not load data",
+      empty_state.Error,
+    )
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "empty-state-error")
+  let assert True = string.contains(html, "role=\"alert\"")
+  let assert True = string.contains(html, "Could not load data")
 }
 
 pub fn error_notice_renders_error_text_test() {

@@ -14,6 +14,16 @@ import lustre/event
 import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icon_catalog
 
+/// Product meaning represented by an empty or transient state.
+pub type Meaning {
+  HealthyEmpty
+  NoResults
+  NeedsSetup
+  Onboarding
+  Loading
+  Error
+}
+
 /// Configuration for an empty state display.
 pub type EmptyStateConfig(msg) {
   EmptyStateConfig(
@@ -21,6 +31,8 @@ pub type EmptyStateConfig(msg) {
     title: String,
     description: String,
     action: opt.Option(EmptyStateAction(msg)),
+    meaning: Meaning,
+    extra_class: opt.Option(String),
   )
 }
 
@@ -35,7 +47,14 @@ pub fn new(
   title: String,
   description: String,
 ) -> EmptyStateConfig(msg) {
-  EmptyStateConfig(icon_id:, title:, description:, action: opt.None)
+  EmptyStateConfig(
+    icon_id:,
+    title:,
+    description:,
+    action: opt.None,
+    meaning: HealthyEmpty,
+    extra_class: opt.None,
+  )
 }
 
 /// Adds an action button to the empty state.
@@ -50,11 +69,34 @@ pub fn with_action(
   )
 }
 
+/// Sets the product meaning for styling and assistive technology.
+pub fn with_meaning(
+  state: EmptyStateConfig(msg),
+  meaning: Meaning,
+) -> EmptyStateConfig(msg) {
+  EmptyStateConfig(..state, meaning:)
+}
+
+/// Adds a feature-specific class while keeping the shared empty-state classes.
+pub fn with_class(
+  state: EmptyStateConfig(msg),
+  extra_class: String,
+) -> EmptyStateConfig(msg) {
+  EmptyStateConfig(..state, extra_class: opt.Some(extra_class))
+}
+
 /// Renders the empty state component.
 pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
-  let EmptyStateConfig(icon_id:, title:, description:, action:) = state
+  let EmptyStateConfig(
+    icon_id:,
+    title:,
+    description:,
+    action:,
+    meaning:,
+    extra_class:,
+  ) = state
 
-  div([attribute.class(css.to_string(css.empty_state()))], [
+  div(root_attrs(meaning, extra_class), [
     div([attribute.class(css.to_string(css.empty_state_icon()))], [
       icon_catalog.render(icon_id, 40),
     ]),
@@ -84,6 +126,39 @@ pub fn simple(icon_id: String, description: String) -> Element(msg) {
   ])
 }
 
+/// Compact one-line state for loading/error/no-results messages.
+pub fn notice(
+  icon_id: String,
+  description: String,
+  meaning: Meaning,
+) -> Element(msg) {
+  div(root_attrs(meaning, opt.None), [
+    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+      icon_catalog.render(icon_id, 40),
+    ]),
+    p([attribute.class(css.to_string(css.empty_state_text()))], [
+      text(description),
+    ]),
+  ])
+}
+
+/// Compact one-line state with a feature-specific compatibility class.
+pub fn notice_with_class(
+  icon_id: String,
+  description: String,
+  meaning: Meaning,
+  extra_class: String,
+) -> Element(msg) {
+  div(root_attrs(meaning, opt.Some(extra_class)), [
+    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+      icon_catalog.render(icon_id, 40),
+    ]),
+    p([attribute.class(css.to_string(css.empty_state_text()))], [
+      text(description),
+    ]),
+  ])
+}
+
 // =============================================================================
 // Factory Functions for Common Empty States
 // =============================================================================
@@ -91,34 +166,80 @@ pub fn simple(icon_id: String, description: String) -> Element(msg) {
 /// Empty state for no active tasks (member view).
 pub fn no_tasks(title: String, description: String) -> EmptyStateConfig(msg) {
   new("hand-raised", title, description)
+  |> with_meaning(HealthyEmpty)
 }
 
 /// Empty state for no cards/fichas.
 pub fn no_cards(title: String, description: String) -> EmptyStateConfig(msg) {
   new("clipboard-document-list", title, description)
+  |> with_meaning(HealthyEmpty)
 }
 
 /// Empty state for no projects.
 pub fn no_projects(title: String, description: String) -> EmptyStateConfig(msg) {
   new("folder", title, description)
+  |> with_meaning(NeedsSetup)
 }
 
 /// Empty state for no team members.
 pub fn no_members(title: String, description: String) -> EmptyStateConfig(msg) {
   new("user-group", title, description)
+  |> with_meaning(NeedsSetup)
 }
 
 /// Empty state for no search results.
 pub fn no_results(title: String, description: String) -> EmptyStateConfig(msg) {
   new("magnifying-glass", title, description)
+  |> with_meaning(NoResults)
 }
 
 /// Empty state for all tasks completed (celebration).
 pub fn all_done(title: String, description: String) -> EmptyStateConfig(msg) {
   new("sparkles", title, description)
+  |> with_meaning(HealthyEmpty)
 }
 
 /// Empty state for inbox/notifications.
 pub fn empty_inbox(title: String, description: String) -> EmptyStateConfig(msg) {
   new("inbox", title, description)
+  |> with_meaning(HealthyEmpty)
+}
+
+fn root_attrs(meaning: Meaning, extra_class: opt.Option(String)) {
+  [attribute.class(root_class(meaning, extra_class)), ..meaning_attrs(meaning)]
+}
+
+fn root_class(meaning: Meaning, extra_class: opt.Option(String)) -> String {
+  case extra_class {
+    opt.Some(class_name) ->
+      css.to_string(css.empty_state())
+      <> " "
+      <> class_name
+      <> " "
+      <> meaning_class(meaning)
+    opt.None ->
+      css.to_string(css.empty_state()) <> " " <> meaning_class(meaning)
+  }
+}
+
+fn meaning_class(meaning: Meaning) -> String {
+  case meaning {
+    HealthyEmpty -> "empty-state-healthy"
+    NoResults -> "empty-state-no-results"
+    NeedsSetup -> "empty-state-needs-setup"
+    Onboarding -> "empty-state-onboarding"
+    Loading -> "empty-state-loading"
+    Error -> "empty-state-error"
+  }
+}
+
+fn meaning_attrs(meaning: Meaning) {
+  case meaning {
+    Loading -> [
+      attribute.attribute("role", "status"),
+      attribute.attribute("aria-live", "polite"),
+    ]
+    Error -> [attribute.attribute("role", "alert")]
+    _ -> []
+  }
 }
