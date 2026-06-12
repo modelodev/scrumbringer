@@ -1,14 +1,11 @@
 //// JSON presenters for task note endpoints.
 
 import gleam/json
+import scrumbringer_server/http/notes/presenters as note_presenters
 import scrumbringer_server/services/task_notes_db
 
-pub fn notes(notes: List(task_notes_db.TaskNote)) -> json.Json {
-  json.array(notes, of: note)
-}
-
 pub fn notes_response(values: List(task_notes_db.TaskNote)) -> json.Json {
-  json.object([#("notes", notes(values))])
+  note_presenters.notes_response(values, note)
 }
 
 pub fn note(note: task_notes_db.TaskNote) -> json.Json {
@@ -30,5 +27,5 @@ pub fn note(note: task_notes_db.TaskNote) -> json.Json {
 }
 
 pub fn note_response(value: task_notes_db.TaskNote) -> json.Json {
-  json.object([#("note", note(value))])
+  note_presenters.note_response(value, note)
 }

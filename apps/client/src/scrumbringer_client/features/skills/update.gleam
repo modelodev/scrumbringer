@@ -14,7 +14,7 @@
 //// ## Non-responsibilities
 ////
 //// - API request construction (see `api/tasks/capabilities.gleam`)
-//// - View rendering (see `features/skills/view.gleam`)
+//// - Capability selection state used by pool/capability flows
 ////
 //// ## Relations
 ////

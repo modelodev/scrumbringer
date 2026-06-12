@@ -457,7 +457,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
+  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -1974,7 +1974,7 @@ pub fn patch_rejects_blank_title_test() {
   |> expect.is_true
 }
 
-pub fn me_active_task_start_pause_and_persist_test() {
+pub fn me_work_session_start_pause_and_persist_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -2001,14 +2001,14 @@ pub fn me_active_task_start_pause_and_persist_test() {
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
 
   let start_body =
-    simulate.read_body(start_active_task(handler, session, csrf, task_id))
+    simulate.read_body(start_work_session(handler, session, csrf, task_id))
 
-  decode_active_task_id(start_body) |> expect.equal(option.Some(task_id))
+  decode_work_session_task_id(start_body) |> expect.equal(option.Some(task_id))
   is_iso8601_utc(decode_as_of(start_body)) |> expect.equal(True)
 
-  let get_res = get_active_task(handler, session, csrf)
+  let get_res = get_active_work_sessions(handler, session, csrf)
   expect.expect_status(get_res, 200)
-  decode_active_task_id(simulate.read_body(get_res))
+  decode_work_session_task_id(simulate.read_body(get_res))
   |> expect.equal(option.Some(task_id))
 
   // Simulate ~70s of elapsed time, then pause to flush accumulation.
@@ -2023,9 +2023,9 @@ pub fn me_active_task_start_pause_and_persist_test() {
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let pause_res = pause_active_task(handler, session, csrf, task_id)
+  let pause_res = pause_work_session(handler, session, csrf, task_id)
   expect.expect_status(pause_res, 200)
-  decode_active_task_id(simulate.read_body(pause_res))
+  decode_work_session_task_id(simulate.read_body(pause_res))
   |> expect.equal(option.None)
 
   let accumulated_after_pause =
@@ -2038,18 +2038,18 @@ pub fn me_active_task_start_pause_and_persist_test() {
   let _ = expect.is_true(accumulated_after_pause >= 70)
 
   let resume_body =
-    simulate.read_body(start_active_task(handler, session, csrf, task_id))
+    simulate.read_body(start_work_session(handler, session, csrf, task_id))
 
-  decode_active_task_accumulated_s(resume_body)
+  decode_work_session_accumulated_s(resume_body)
   |> expect.equal(option.Some(accumulated_after_pause))
 
-  let get_after_pause = get_active_task(handler, session, csrf)
+  let get_after_pause = get_active_work_sessions(handler, session, csrf)
   expect.expect_status(get_after_pause, 200)
-  decode_active_task_id(simulate.read_body(get_after_pause))
+  decode_work_session_task_id(simulate.read_body(get_after_pause))
   |> expect.equal(option.Some(task_id))
 }
 
-pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
+pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -2074,7 +2074,7 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
+  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -2096,7 +2096,7 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
       [pog.int(user_id), pog.int(task_id)],
     )
 
-  let heartbeat_res = heartbeat_active_task(handler, session, csrf, task_id)
+  let heartbeat_res = heartbeat_work_session(handler, session, csrf, task_id)
   expect.expect_status(heartbeat_res, 200)
 
   // Get last_heartbeat_at after heartbeat
@@ -2143,8 +2143,8 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   claim_task(handler, session, csrf, t2, 1) |> expect.equal(200)
 
   // Start sessions on both tasks - multi-session model supports this
-  expect.expect_status(start_active_task(handler, session, csrf, t1), 200)
-  let res = start_active_task(handler, session, csrf, t2)
+  expect.expect_status(start_work_session(handler, session, csrf, t1), 200)
+  let res = start_work_session(handler, session, csrf, t2)
   expect.expect_status(res, 200)
 
   // Verify both sessions exist
@@ -2159,7 +2159,7 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   session_count |> expect.equal(2)
 }
 
-pub fn me_active_task_start_returns_409_when_not_claimed_test() {
+pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -2183,13 +2183,13 @@ pub fn me_active_task_start_returns_409_when_not_claimed_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  let res = start_active_task(handler, session, csrf, task_id)
+  let res = start_work_session(handler, session, csrf, task_id)
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> expect.equal(True)
 }
 
-pub fn me_active_task_clears_before_release_and_complete_test() {
+pub fn me_work_session_clears_before_release_and_complete_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -2214,7 +2214,7 @@ pub fn me_active_task_clears_before_release_and_complete_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
+  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
 
   let version = task_version(db, task_id)
 
@@ -2232,24 +2232,24 @@ pub fn me_active_task_clears_before_release_and_complete_test() {
 
   expect.expect_status(release_res, 200)
 
-  let active_after_release = get_active_task(handler, session, csrf)
-  decode_active_task_id(simulate.read_body(active_after_release))
+  let active_after_release = get_active_work_sessions(handler, session, csrf)
+  decode_work_session_task_id(simulate.read_body(active_after_release))
   |> expect.equal(option.None)
 
   // Re-claim + start, then complete.
   let version = task_version(db, task_id)
   claim_task(handler, session, csrf, task_id, version) |> expect.equal(200)
-  expect.expect_status(start_active_task(handler, session, csrf, task_id), 200)
+  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
 
   let version = task_version(db, task_id)
   complete_task(handler, session, csrf, task_id, version) |> expect.equal(200)
 
-  let active_after_complete = get_active_task(handler, session, csrf)
-  decode_active_task_id(simulate.read_body(active_after_complete))
+  let active_after_complete = get_active_work_sessions(handler, session, csrf)
+  decode_work_session_task_id(simulate.read_body(active_after_complete))
   |> expect.equal(option.None)
 }
 
-fn get_active_task(
+fn get_active_work_sessions(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
@@ -2261,7 +2261,7 @@ fn get_active_task(
   )
 }
 
-fn start_active_task(
+fn start_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
@@ -2276,7 +2276,7 @@ fn start_active_task(
   )
 }
 
-fn pause_active_task(
+fn pause_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
@@ -2291,7 +2291,7 @@ fn pause_active_task(
   )
 }
 
-fn heartbeat_active_task(
+fn heartbeat_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
@@ -2306,7 +2306,7 @@ fn heartbeat_active_task(
   )
 }
 
-fn decode_active_task(body: String) -> #(option.Option(Int), String, Int) {
+fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
   let session_decoder = {
@@ -2336,13 +2336,13 @@ fn decode_active_task(body: String) -> #(option.Option(Int), String, Int) {
   payload
 }
 
-fn decode_active_task_id(body: String) -> option.Option(Int) {
-  let #(active_task_id, _, _) = decode_active_task(body)
+fn decode_work_session_task_id(body: String) -> option.Option(Int) {
+  let #(active_task_id, _, _) = decode_work_session(body)
   active_task_id
 }
 
-fn decode_active_task_accumulated_s(body: String) -> option.Option(Int) {
-  let #(active_task_id, _, accumulated_s) = decode_active_task(body)
+fn decode_work_session_accumulated_s(body: String) -> option.Option(Int) {
+  let #(active_task_id, _, accumulated_s) = decode_work_session(body)
 
   case active_task_id {
     option.Some(_) -> option.Some(accumulated_s)
@@ -2351,7 +2351,7 @@ fn decode_active_task_accumulated_s(body: String) -> option.Option(Int) {
 }
 
 fn decode_as_of(body: String) -> String {
-  let #(_, as_of, _) = decode_active_task(body)
+  let #(_, as_of, _) = decode_work_session(body)
   as_of
 }
 

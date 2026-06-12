@@ -9,7 +9,7 @@ import domain/workflow.{
   type Rule, type RuleTemplate, type Workflow, Rule, RuleTemplate, TaskRule,
   Workflow,
 }
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
@@ -62,8 +62,8 @@ fn rule_template(id: Int, name: String) -> RuleTemplate {
   )
 }
 
-fn workflow_metrics(workflow_id: Int) -> api_workflows.WorkflowMetrics {
-  api_workflows.WorkflowMetrics(
+fn workflow_metrics(workflow_id: Int) -> api_rule_metrics.WorkflowMetrics {
+  api_rule_metrics.WorkflowMetrics(
     workflow_id: workflow_id,
     workflow_name: "Delivery",
     rules: [],

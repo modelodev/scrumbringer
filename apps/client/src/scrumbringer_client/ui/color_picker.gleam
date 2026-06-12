@@ -13,7 +13,7 @@
 //// ## Relations
 ////
 //// - **features/admin/cards.gleam**: Uses this for card color selection
-//// - **features/fichas/card_detail.gleam**: Uses this for viewing card color
+//// - **features/cards/detail_modal_entry.gleam**: Uses this for viewing card color
 
 import gleam/list
 import gleam/option.{type Option, None, Some}

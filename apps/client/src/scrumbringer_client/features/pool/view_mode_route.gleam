@@ -25,16 +25,13 @@ pub fn apply(
 ) -> effect.Effect(client_state.Msg) {
   case route_policy {
     view_mode_update.NoRouteChange -> effect.none()
-    view_mode_update.ReplaceMemberRoute(section, state) ->
-      router.replace(router.Member(section, state))
+    view_mode_update.ReplaceMemberRoute(state) ->
+      router.replace(router.Member(state))
   }
 }
 
 fn context(model: client_state.Model) -> view_mode_update.Context {
-  view_mode_update.Context(
-    selected_project_id: model.core.selected_project_id,
-    member_section: model.member.pool.member_section,
-  )
+  view_mode_update.Context(selected_project_id: model.core.selected_project_id)
 }
 
 fn apply_update(

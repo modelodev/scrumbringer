@@ -20,7 +20,7 @@ import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
 
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/task_tabs
@@ -163,7 +163,7 @@ pub type Msg {
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))
   AdminRuleMetricsFetched(
-    ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)),
+    ApiResult(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
   )
   AdminRuleMetricsFromChanged(String)
   AdminRuleMetricsToChanged(String)
@@ -173,15 +173,15 @@ pub type Msg {
   AdminRuleMetricsQuickRangeClicked(String, String)
   AdminRuleMetricsWorkflowExpanded(Int)
   AdminRuleMetricsWorkflowDetailsFetched(
-    ApiResult(api_workflows.WorkflowMetrics),
+    ApiResult(api_rule_metrics.WorkflowMetrics),
   )
   AdminRuleMetricsDrilldownClicked(Int)
   AdminRuleMetricsDrilldownClosed
   AdminRuleMetricsRuleDetailsFetched(
-    ApiResult(api_workflows.RuleMetricsDetailed),
+    ApiResult(api_rule_metrics.RuleMetricsDetailed),
   )
   AdminRuleMetricsExecutionsFetched(
-    ApiResult(api_workflows.RuleExecutionsResponse),
+    ApiResult(api_rule_metrics.RuleExecutionsResponse),
   )
   AdminRuleMetricsExecPageChanged(Int)
   CardsFetched(ApiResult(List(Card)))
@@ -221,7 +221,7 @@ pub type Msg {
   TemplateDetachClicked(Int, Int)
   TemplateDetachSucceeded(Int, Int)
   TemplateDetachFailed(Int, Int, ApiError)
-  RuleMetricsFetched(ApiResult(api_workflows.WorkflowMetrics))
+  RuleMetricsFetched(ApiResult(api_rule_metrics.WorkflowMetrics))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
   OpenTaskTemplateDialog(state_types.TaskTemplateDialogMode)
   CloseTaskTemplateDialog

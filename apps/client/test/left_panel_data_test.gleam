@@ -4,7 +4,6 @@ import domain/view_mode
 import gleam/option.{type Option, None, Some}
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/layout/left_panel_data
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -16,7 +15,6 @@ fn assert_equal(actual: a, expected: a) {
 fn base_config() -> left_panel_data.MemberRouteConfig {
   left_panel_data.MemberRouteConfig(
     selected_project_id: Some(42),
-    member_section: member_section.Pool,
     view_mode: view_mode.Pool,
     capability_scope: capability_scope.MyCapabilities,
     type_filter: Some(7),
@@ -39,7 +37,7 @@ fn invite_link(email: String, used_at: Option(String)) {
 
 pub fn member_route_preserves_project_filters_and_search_test() {
   let route = left_panel_data.member_route(base_config(), view_mode.Cards)
-  let assert router.Member(member_section.Pool, state) = route
+  let assert router.Member(state) = route
 
   state |> url_state.project |> assert_equal(Some(42))
   state |> url_state.view |> assert_equal(view_mode.Cards)
@@ -51,18 +49,16 @@ pub fn member_route_preserves_project_filters_and_search_test() {
   state |> url_state.search |> assert_equal(Some("sync"))
 }
 
-pub fn current_member_route_maps_my_bar_to_pool_test() {
+pub fn current_member_route_uses_member_state_test() {
   let config =
     left_panel_data.MemberRouteConfig(
       ..base_config(),
-      member_section: member_section.MyBar,
       view_mode: view_mode.Capabilities,
     )
 
   let route = left_panel_data.current_member_route(config)
-  let assert router.Member(section, state) = route
+  let assert router.Member(state) = route
 
-  section |> assert_equal(member_section.Pool)
   state |> url_state.view |> assert_equal(view_mode.Capabilities)
 }
 

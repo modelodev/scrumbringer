@@ -15,7 +15,7 @@
 ////
 //// ## Relations
 ////
-//// - Parent: features/fichas/view.gleam renders this component
+//// - Parent: features/cards/view.gleam renders this component
 //// - API: api/cards.gleam for getting card notes
 
 import gleam/dynamic/decode.{type Decoder}

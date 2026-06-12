@@ -103,7 +103,7 @@ fn is_route_active(
     Some(route) ->
       case route {
         // Work views: match by ViewMode
-        router.Member(_, state) ->
+        router.Member(state) ->
           case check_view_mode, url_state.view_param(state) {
             Some(expected), Some(actual) -> expected == actual
             _, _ -> False

@@ -2,7 +2,6 @@ import gleam/option.{type Option, None, Some}
 
 import domain/org_role
 import scrumbringer_client/hydration
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -327,5 +326,5 @@ fn member_route(project_id: Option(Int)) -> router.Route {
     Some(id) -> url_state.with_project(url_state.empty(), id)
     None -> url_state.empty()
   }
-  router.Member(member_section.Pool, state)
+  router.Member(state)
 }

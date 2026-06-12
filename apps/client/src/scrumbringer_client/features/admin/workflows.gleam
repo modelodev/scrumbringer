@@ -34,7 +34,9 @@ import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/api/tasks/task_types as task_types_api
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
+import scrumbringer_client/api/workflows/rules as api_rules
+import scrumbringer_client/api/workflows/task_templates as api_task_templates
 
 pub type WorkflowSuccess {
   WorkflowCreated
@@ -70,7 +72,7 @@ pub type RulesContext(parent_msg) {
   RulesContext(
     selected_project_id: opt.Option(Int),
     on_rules_fetched: fn(ApiResult(List(Rule))) -> parent_msg,
-    on_rule_metrics_fetched: fn(ApiResult(api_workflows.WorkflowMetrics)) ->
+    on_rule_metrics_fetched: fn(ApiResult(api_rule_metrics.WorkflowMetrics)) ->
       parent_msg,
     on_task_types_fetched: fn(ApiResult(List(TaskType))) -> parent_msg,
   )
@@ -252,8 +254,8 @@ fn workflow_rules_clicked(
   #(
     state,
     effect.batch([
-      api_workflows.list_rules(workflow_id, context.on_rules_fetched),
-      api_workflows.get_workflow_metrics(
+      api_rules.list_rules(workflow_id, context.on_rules_fetched),
+      api_rule_metrics.get_workflow_metrics(
         workflow_id,
         context.on_rule_metrics_fetched,
       ),
@@ -309,7 +311,7 @@ fn attach_template_modal_opened(
     Loaded(_), _ -> effect.none()
     Loading, _ -> effect.none()
     _, opt.Some(project_id) ->
-      api_workflows.list_project_templates(
+      api_task_templates.list_project_templates(
         project_id,
         context.on_task_templates_fetched,
       )
@@ -389,7 +391,7 @@ fn attach_template_submitted(
           rules: admin_rules.Model(..rules, attach_template_loading: True),
           task_templates: task_templates,
         ),
-        api_workflows.attach_template(rule_id, template_id, order, fn(result) {
+        api_rules.attach_template(rule_id, template_id, order, fn(result) {
           case result {
             Ok(templates) ->
               context.on_attach_template_succeeded(rule_id, templates)
@@ -450,7 +452,7 @@ fn template_detach_clicked(
       rules: template_detach_started(rules, rule_id, template_id),
       task_templates: task_templates,
     ),
-    api_workflows.detach_template(rule_id, template_id, fn(result) {
+    api_rules.detach_template(rule_id, template_id, fn(result) {
       case result {
         Ok(_) -> context.on_template_detach_succeeded(rule_id, template_id)
         Error(err) ->
@@ -730,7 +732,7 @@ pub fn rules_fetched_error(
 
 pub fn rule_metrics_fetched_ok(
   state: admin_rules.Model,
-  metrics: api_workflows.WorkflowMetrics,
+  metrics: api_rule_metrics.WorkflowMetrics,
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules_metrics: Loaded(metrics))
 }

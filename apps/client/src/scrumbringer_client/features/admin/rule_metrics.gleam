@@ -22,7 +22,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -30,14 +30,14 @@ import scrumbringer_client/features/pool/msg as pool_messages
 pub type Context(parent_msg) {
   Context(
     on_rule_metrics_fetched: fn(
-      ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)),
+      ApiResult(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
     ) ->
       parent_msg,
-    on_workflow_details_fetched: fn(ApiResult(api_workflows.WorkflowMetrics)) ->
+    on_workflow_details_fetched: fn(ApiResult(api_rule_metrics.WorkflowMetrics)) ->
       parent_msg,
-    on_rule_details_fetched: fn(ApiResult(api_workflows.RuleMetricsDetailed)) ->
+    on_rule_details_fetched: fn(ApiResult(api_rule_metrics.RuleMetricsDetailed)) ->
       parent_msg,
-    on_executions_fetched: fn(ApiResult(api_workflows.RuleExecutionsResponse)) ->
+    on_executions_fetched: fn(ApiResult(api_rule_metrics.RuleExecutionsResponse)) ->
       parent_msg,
   )
 }
@@ -190,7 +190,7 @@ pub fn handle_from_changed_and_refresh(
         )
       #(
         model,
-        api_workflows.get_org_rule_metrics(
+        api_rule_metrics.get_org_rule_metrics(
           from,
           to,
           context.on_rule_metrics_fetched,
@@ -222,7 +222,7 @@ pub fn handle_to_changed_and_refresh(
         )
       #(
         model,
-        api_workflows.get_org_rule_metrics(
+        api_rule_metrics.get_org_rule_metrics(
           from,
           to,
           context.on_rule_metrics_fetched,
@@ -248,7 +248,7 @@ pub fn handle_refresh_clicked(
       // Use org-wide metrics (project filtering can be added later)
       #(
         model,
-        api_workflows.get_org_rule_metrics(
+        api_rule_metrics.get_org_rule_metrics(
           from,
           to,
           context.on_rule_metrics_fetched,
@@ -274,7 +274,7 @@ pub fn handle_quick_range_clicked(
     )
   #(
     model,
-    api_workflows.get_org_rule_metrics(
+    api_rule_metrics.get_org_rule_metrics(
       from,
       to,
       context.on_rule_metrics_fetched,
@@ -289,7 +289,7 @@ pub fn handle_quick_range_clicked(
 /// Handle rule metrics fetch success.
 pub fn handle_fetched_ok(
   model: admin_metrics.Model,
-  metrics: List(api_workflows.OrgWorkflowMetricsSummary),
+  metrics: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
     admin_metrics.Model(..model, admin_rule_metrics: Loaded(metrics)),
@@ -329,14 +329,28 @@ pub fn init_tab(
         )
       #(
         model,
-        api_workflows.get_org_rule_metrics(
+        api_rule_metrics.get_org_rule_metrics(
           from,
           to,
           context.on_rule_metrics_fetched,
         ),
       )
     }
-    False -> #(model, effect.none())
+    False ->
+      case model.admin_rule_metrics {
+        NotAsked -> {
+          let model = admin_metrics.Model(..model, admin_rule_metrics: Loading)
+          #(
+            model,
+            api_rule_metrics.get_org_rule_metrics(
+              model.admin_rule_metrics_from,
+              model.admin_rule_metrics_to,
+              context.on_rule_metrics_fetched,
+            ),
+          )
+        }
+        _ -> #(model, effect.none())
+      }
   }
 }
 
@@ -370,7 +384,7 @@ pub fn handle_workflow_expanded(
         )
       #(
         model,
-        api_workflows.get_workflow_metrics(
+        api_rule_metrics.get_workflow_metrics(
           workflow_id,
           context.on_workflow_details_fetched,
         ),
@@ -382,7 +396,7 @@ pub fn handle_workflow_expanded(
 /// Handle workflow details fetch success.
 pub fn handle_workflow_details_fetched_ok(
   model: admin_metrics.Model,
-  details: api_workflows.WorkflowMetrics,
+  details: api_rule_metrics.WorkflowMetrics,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
     admin_metrics.Model(
@@ -427,7 +441,7 @@ pub fn handle_drilldown_clicked(
     )
 
   let details_effect =
-    api_workflows.get_rule_metrics_detailed(
+    api_rule_metrics.get_rule_metrics_detailed(
       rule_id,
       from,
       to,
@@ -435,7 +449,7 @@ pub fn handle_drilldown_clicked(
     )
 
   let executions_effect =
-    api_workflows.get_rule_executions(
+    api_rule_metrics.get_rule_executions(
       rule_id,
       from,
       to,
@@ -466,7 +480,7 @@ pub fn handle_drilldown_closed(
 /// Handle rule details fetch success.
 pub fn handle_rule_details_fetched_ok(
   model: admin_metrics.Model,
-  details: api_workflows.RuleMetricsDetailed,
+  details: api_rule_metrics.RuleMetricsDetailed,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
     admin_metrics.Model(
@@ -491,7 +505,7 @@ pub fn handle_rule_details_fetched_error(
 /// Handle executions fetch success.
 pub fn handle_executions_fetched_ok(
   model: admin_metrics.Model,
-  response: api_workflows.RuleExecutionsResponse,
+  response: api_rule_metrics.RuleExecutionsResponse,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
     admin_metrics.Model(
@@ -532,7 +546,7 @@ pub fn handle_exec_page_changed(
         )
       #(
         model,
-        api_workflows.get_rule_executions(
+        api_rule_metrics.get_rule_executions(
           rule_id,
           from,
           to,

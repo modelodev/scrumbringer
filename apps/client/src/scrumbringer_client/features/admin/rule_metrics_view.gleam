@@ -23,7 +23,7 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -178,7 +178,7 @@ fn view_rule_metrics_results(config: Config(msg)) -> Element(msg) {
 
 fn view_rule_metrics_loaded(
   config: Config(msg),
-  workflows: List(api_workflows.OrgWorkflowMetricsSummary),
+  workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> Element(msg) {
   case workflows {
     [] ->
@@ -196,7 +196,7 @@ fn view_rule_metrics_loaded(
 
 fn view_rule_metrics_table(
   config: Config(msg),
-  metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
+  metrics: Remote(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
 ) -> Element(msg) {
   case metrics {
     NotAsked ->
@@ -214,7 +214,7 @@ fn view_rule_metrics_table(
 
 fn view_rule_metrics_table_loaded(
   config: Config(msg),
-  workflows: List(api_workflows.OrgWorkflowMetricsSummary),
+  workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> Element(msg) {
   case workflows {
     [] ->
@@ -258,7 +258,7 @@ fn view_rule_metrics_table_loaded(
 /// Render a workflow row with optional expansion for per-rule metrics.
 fn view_workflow_row(
   config: Config(msg),
-  w: api_workflows.OrgWorkflowMetricsSummary,
+  w: api_rule_metrics.OrgWorkflowMetricsSummary,
 ) -> List(#(String, Element(msg))) {
   let is_expanded =
     config.model.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
@@ -317,7 +317,7 @@ fn view_workflow_rules_expansion(
 
 fn view_workflow_rules_expansion_content(
   config: Config(msg),
-  details: Remote(api_workflows.WorkflowMetrics),
+  details: Remote(api_rule_metrics.WorkflowMetrics),
 ) -> Element(msg) {
   case details {
     NotAsked | Loading -> skeleton.skeleton_list(2)
@@ -328,7 +328,7 @@ fn view_workflow_rules_expansion_content(
 
 fn view_workflow_rules_expansion_loaded(
   config: Config(msg),
-  details: api_workflows.WorkflowMetrics,
+  details: api_rule_metrics.WorkflowMetrics,
 ) -> Element(msg) {
   case details.rules {
     [] ->
@@ -362,7 +362,7 @@ fn view_workflow_rules_expansion_loaded(
 
 fn view_workflow_rule_metrics_row(
   config: Config(msg),
-  rule_metrics: api_workflows.RuleMetricsSummary,
+  rule_metrics: api_rule_metrics.RuleMetricsSummary,
 ) -> #(String, Element(msg)) {
   #(
     "rule-" <> int.to_string(rule_metrics.rule_id),
@@ -514,29 +514,29 @@ fn view_drilldown_executions(config: Config(msg)) -> Element(msg) {
 
 fn view_drilldown_executions_loaded(
   config: Config(msg),
-  response: api_workflows.RuleExecutionsResponse,
+  response: api_rule_metrics.RuleExecutionsResponse,
 ) -> Element(msg) {
-  let origin_cell: fn(api_workflows.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_workflows.RuleExecution(_, origin_type, origin_id, _, _, _, _, _) =
+  let origin_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+    let api_rule_metrics.RuleExecution(_, origin_type, origin_id, _, _, _, _, _) =
       exec
     text(origin_type <> " #" <> int.to_string(origin_id))
   }
-  let outcome_cell: fn(api_workflows.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_workflows.RuleExecution(_, _, _, outcome, _, _, _, _) = exec
+  let outcome_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+    let api_rule_metrics.RuleExecution(_, _, _, outcome, _, _, _, _) = exec
     span([attribute.class(outcome_class_for(outcome))], [
       text(outcome_text_for(config, exec)),
     ])
   }
-  let user_cell: fn(api_workflows.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_workflows.RuleExecution(_, _, _, _, _, _, user_email, _) = exec
+  let user_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+    let api_rule_metrics.RuleExecution(_, _, _, _, _, _, user_email, _) = exec
     text(display_user_email(user_email))
   }
-  let timestamp_cell: fn(api_workflows.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_workflows.RuleExecution(_, _, _, _, _, _, _, created_at) = exec
+  let timestamp_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+    let api_rule_metrics.RuleExecution(_, _, _, _, _, _, _, created_at) = exec
     text(created_at)
   }
-  let key_fn: fn(api_workflows.RuleExecution) -> String = fn(exec) {
-    let api_workflows.RuleExecution(id, _, _, _, _, _, _, _) = exec
+  let key_fn: fn(api_rule_metrics.RuleExecution) -> String = fn(exec) {
+    let api_rule_metrics.RuleExecution(id, _, _, _, _, _, _, _) = exec
     int.to_string(id)
   }
 
@@ -578,7 +578,7 @@ fn outcome_class_for(outcome: String) -> String {
 
 fn outcome_text_for(
   config: Config(msg),
-  exec: api_workflows.RuleExecution,
+  exec: api_rule_metrics.RuleExecution,
 ) -> String {
   case exec.outcome {
     "applied" -> t(config, i18n_text.OutcomeApplied)
@@ -606,7 +606,7 @@ fn display_user_email(user_email: String) -> String {
 /// Render pagination controls for executions.
 fn view_executions_pagination(
   config: Config(msg),
-  pagination: api_workflows.Pagination,
+  pagination: api_rule_metrics.Pagination,
 ) -> Element(msg) {
   let current_page = pagination.offset / pagination.limit + 1
   let total_pages =

@@ -12,7 +12,7 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - API request construction (see `api/metrics.gleam`)
+//// - API request construction (see `api/operational_metrics.gleam`)
 //// - View rendering (see `features/metrics/view.gleam`)
 ////
 //// ## Relations

@@ -16,4 +16,4 @@ if [ -n "$STAGING_API_URL" ]; then
   export API_URL="$STAGING_API_URL"
 fi
 
-bash scripts/smoke-active-task.sh
+bash scripts/smoke-work-sessions.sh

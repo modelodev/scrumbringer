@@ -52,7 +52,7 @@
 //// - **accept_invite.gleam**: Child component with its own `Model` and `Msg`
 //// - **reset_password.gleam**: Child component with its own `Model` and `Msg`
 //// - **permissions.gleam**: Provides `AdminSection` type
-//// - **member_section.gleam**: Provides `MemberSection` type
+//// - **router.gleam**: Provides typed routes and URL state
 //// - **pool_prefs.gleam**: Provides `ViewMode` and `KeyEvent` types
 //// - **theme.gleam**: Provides `Theme` type
 //// - **i18n/locale.gleam**: Provides `Locale` type

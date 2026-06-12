@@ -29,7 +29,7 @@ import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
-  div, form, input, option as html_option, p, select, span, text, textarea,
+  div, form, input, option as html_option, select, span, text, textarea,
 }
 import lustre/event
 
@@ -39,7 +39,7 @@ import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
 import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/task_templates as api_task_templates
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
@@ -416,7 +416,7 @@ fn submit_template_with_type(
     )
     Ok(priority), option.Some(project_id) -> #(
       Model(..model, create_in_flight: True, create_error: option.None),
-      api_workflows.create_project_template(
+      api_task_templates.create_project_template(
         project_id,
         name,
         model.create_description,
@@ -492,7 +492,7 @@ fn submit_edit_with_fields(
         )
         Ok(priority) -> #(
           Model(..model, edit_in_flight: True, edit_error: option.None),
-          api_workflows.update_template(
+          api_task_templates.update_template(
             template.id,
             name,
             model.edit_description,
@@ -521,7 +521,7 @@ fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
     crud_dialog_base.Deleting(template) -> #(
       Model(..model, delete_in_flight: True, delete_error: option.None),
-      api_workflows.delete_template(template.id, DeleteResult),
+      api_task_templates.delete_template(template.id, DeleteResult),
     )
     _ -> #(model, effect.none())
   }
@@ -815,28 +815,16 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_delete_dialog(model: Model, template: TaskTemplate) -> Element(Msg) {
-  crud_dialog_base.view_dialog_shell(
-    "dialog dialog-sm",
-    modal_header.view_dialog_with_icon(
-      t(model.locale, i18n_text.DeleteTaskTemplate),
-      text("\u{1F5D1}"),
-      DeleteCancelled,
-    ),
+  crud_dialog_base.view_delete_dialog_shell(
+    model.locale,
+    t(model.locale, i18n_text.DeleteTaskTemplate),
+    text("\u{1F5D1}"),
+    t(model.locale, i18n_text.TaskTemplateDeleteConfirm(template.name)),
     model.delete_error,
-    [
-      p([], [
-        text(t(model.locale, i18n_text.TaskTemplateDeleteConfirm(template.name))),
-      ]),
-    ],
-    [
-      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
-      crud_dialog_base.view_danger_button(
-        DeleteConfirmed,
-        model.delete_in_flight,
-        t(model.locale, i18n_text.DeleteTaskTemplate),
-        t(model.locale, i18n_text.Removing),
-      ),
-    ],
+    model.delete_in_flight,
+    DeleteCancelled,
+    DeleteConfirmed,
+    t(model.locale, i18n_text.Removing),
   )
 }
 

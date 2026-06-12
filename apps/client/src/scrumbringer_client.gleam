@@ -65,7 +65,6 @@ import modem
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
@@ -245,7 +244,7 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
     router.Config(_, _) | router.Org(_) -> Admin
-    router.Member(_, _) -> Member
+    router.Member(_) -> Member
   }
 
   let active_section = case route {
@@ -253,21 +252,16 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     _ -> permissions.Invites
   }
 
-  let member_section = case route {
-    router.Member(section, _) -> section
-    _ -> member_section.Pool
-  }
-
   let selected_project_id = case route {
     router.Config(_, project_id) -> project_id
-    router.Member(_, state) -> url_state.project(state)
+    router.Member(state) -> url_state.project(state)
     router.Org(_) -> opt.None
     _ -> opt.None
   }
 
   // Extract view mode from URL (default to Pool if not specified)
   let initial_view_mode = case route {
-    router.Member(_, state) -> url_state.view(state)
+    router.Member(state) -> url_state.view(state)
     _ -> view_mode.Pool
   }
 
@@ -312,7 +306,6 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_section: member_section,
           view_mode: initial_view_mode,
           member_pool_filters_visible: pool_filters_visible,
           member_pool_view_mode: pool_view_mode,

@@ -2,7 +2,7 @@
 ////
 //// ## Mission
 ////
-//// Provides card (ficha) management API operations including listing, creating,
+//// Provides card management API operations including listing, creating,
 //// updating, and deleting cards within projects.
 ////
 //// ## Usage

@@ -27,7 +27,6 @@ import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
 
 fn assert_equal(actual: a, expected: a) {
@@ -1157,11 +1156,7 @@ pub fn milestone_create_card_close_dialog_preserves_milestones_context_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_section: member_section.Pool,
-          member_selected_milestone_id: Some(89),
-        ),
+        pool: member_pool.Model(..pool, member_selected_milestone_id: Some(89)),
       )
     })
 
@@ -1181,7 +1176,6 @@ pub fn milestone_create_card_close_dialog_preserves_milestones_context_test() {
 
   after_close.admin.cards.cards_dialog_mode |> assert_equal(None)
   after_close.admin.cards.cards_create_milestone_id |> assert_equal(None)
-  after_close.member.pool.member_section |> assert_equal(member_section.Pool)
   after_close.member.pool.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogClosed)
   fx_close |> assert_not_equal(effect.none())
@@ -1227,11 +1221,7 @@ pub fn global_create_task_from_milestones_opens_pool_create_without_milestone_te
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_section: member_section.Pool,
-          member_create_milestone_id: Some(77),
-        ),
+        pool: member_pool.Model(..pool, member_create_milestone_id: Some(77)),
       )
     })
 
@@ -1286,7 +1276,6 @@ fn model_with_milestone_dialog(
       ..member,
       pool: member_pool.Model(
         ..pool,
-        member_section: member_section.Pool,
         member_milestone_dialog: dialog,
         member_milestone_dialog_in_flight: True,
         member_milestone_dialog_error: Some("boom"),
@@ -1363,7 +1352,6 @@ pub fn milestone_escape_shortcut_keeps_create_dialog_open_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_section: member_section.Pool,
           member_milestone_dialog: member_pool.MilestoneDialogCreate(
             "New milestone",
             "Desc",

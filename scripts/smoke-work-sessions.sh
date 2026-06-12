@@ -109,23 +109,23 @@ curl_json() {
   rm -f "$tmp"
 }
 
-echo "== GET /me/active-task =="
-curl_json GET "/api/v1/me/active-task"
+echo "== GET /me/work-sessions/active =="
+curl_json GET "/api/v1/me/work-sessions/active"
 
 echo
 
-echo "== POST /me/active-task/start (task_id=$TASK_ID) =="
-curl_json POST "/api/v1/me/active-task/start" "{\"task_id\":$TASK_ID}"
+echo "== POST /me/work-sessions/start (task_id=$TASK_ID) =="
+curl_json POST "/api/v1/me/work-sessions/start" "{\"task_id\":$TASK_ID}"
 
 echo
 
-echo "== GET /me/active-task =="
-curl_json GET "/api/v1/me/active-task"
+echo "== GET /me/work-sessions/active =="
+curl_json GET "/api/v1/me/work-sessions/active"
 
 echo
 
-echo "== POST /me/active-task/pause =="
-curl_json POST "/api/v1/me/active-task/pause"
+echo "== POST /me/work-sessions/pause =="
+curl_json POST "/api/v1/me/work-sessions/pause" "{\"task_id\":$TASK_ID}"
 
 echo
 

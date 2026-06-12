@@ -24,7 +24,7 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/user.{type User}
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/auth as api_auth
-import scrumbringer_client/api/metrics as api_metrics
+import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks/active as active_api

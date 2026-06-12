@@ -31,7 +31,7 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/features/pool/msg as pool_messages
 
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/task_templates as api_task_templates
 
 pub type Success {
   TaskTemplateCreated
@@ -238,7 +238,7 @@ pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
   case model.core.selected_project_id {
     opt.Some(project_id) -> {
       let fetch_effect =
-        api_workflows.list_project_templates(project_id, fn(result) {
+        api_task_templates.list_project_templates(project_id, fn(result) {
           pool_msg(pool_messages.TaskTemplatesProjectFetched(result))
         })
       let model =

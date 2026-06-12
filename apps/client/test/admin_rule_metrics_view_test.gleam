@@ -3,7 +3,7 @@ import gleam/string
 import lustre/element
 
 import domain/remote.{Loaded}
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/admin/rule_metrics_view
 import scrumbringer_client/i18n/locale
@@ -12,8 +12,8 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
-fn workflow_summary() -> api_workflows.OrgWorkflowMetricsSummary {
-  api_workflows.OrgWorkflowMetricsSummary(
+fn workflow_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
+  api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: 11,
     workflow_name: "Escalation workflow",
     project_id: 3,

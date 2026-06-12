@@ -15,6 +15,9 @@
 ////
 //// - **queries.gleam**: Database operations
 //// - **auth_logic.gleam**: Error types
+////
+//// Auth keeps its SQL boundary in `persistence/auth` because registration
+//// spans organizations, users, invites, and initial membership rows.
 
 import domain/org_role
 import domain/project_role

@@ -16,7 +16,7 @@
 //// ## Relations
 ////
 //// - Parent: features/admin/view.gleam renders this component
-//// - API: api/workflows.gleam for CRUD operations
+//// - API: api/workflows/rules.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
 import gleam/int
@@ -29,7 +29,7 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{form, input, option as html_option, p, select, text}
+import lustre/element/html.{form, input, option as html_option, select, text}
 import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
@@ -40,7 +40,7 @@ import domain/workflow.{
 }
 import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rules as api_rules
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
@@ -458,7 +458,7 @@ fn submit_create(model: Model) -> #(Model, Effect(Msg)) {
       {
         Ok(target) -> #(
           Model(..model, create_in_flight: True, create_error: option.None),
-          api_workflows.create_rule(
+          api_rules.create_rule(
             workflow_id,
             name,
             model.create_goal,
@@ -522,7 +522,7 @@ fn submit_edit_with_name(model: Model, name: String) -> #(Model, Effect(Msg)) {
       {
         Ok(target) -> #(
           Model(..model, edit_in_flight: True, edit_error: option.None),
-          api_workflows.update_rule(
+          api_rules.update_rule(
             rule.id,
             name,
             model.edit_goal,
@@ -563,7 +563,7 @@ fn submit_delete(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
     crud_dialog_base.Deleting(rule) -> #(
       Model(..model, delete_in_flight: True, delete_error: option.None),
-      api_workflows.delete_rule(rule.id, DeleteResult),
+      api_rules.delete_rule(rule.id, DeleteResult),
     )
     _ -> #(model, effect.none())
   }
@@ -871,28 +871,16 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_delete_dialog(model: Model, rule: Rule) -> Element(Msg) {
-  crud_dialog_base.view_dialog_shell(
-    "dialog dialog-sm",
-    modal_header.view_dialog_with_icon(
-      t(model.locale, i18n_text.DeleteRule),
-      text("\u{1F5D1}"),
-      DeleteCancelled,
-    ),
+  crud_dialog_base.view_delete_dialog_shell(
+    model.locale,
+    t(model.locale, i18n_text.DeleteRule),
+    text("\u{1F5D1}"),
+    t(model.locale, i18n_text.RuleDeleteConfirm(rule.name)),
     model.delete_error,
-    [
-      p([], [
-        text(t(model.locale, i18n_text.RuleDeleteConfirm(rule.name))),
-      ]),
-    ],
-    [
-      crud_dialog_base.view_cancel_button(model.locale, DeleteCancelled),
-      crud_dialog_base.view_danger_button(
-        DeleteConfirmed,
-        model.delete_in_flight,
-        t(model.locale, i18n_text.DeleteRule),
-        t(model.locale, i18n_text.Removing),
-      ),
-    ],
+    model.delete_in_flight,
+    DeleteCancelled,
+    DeleteConfirmed,
+    t(model.locale, i18n_text.Removing),
   )
 }
 

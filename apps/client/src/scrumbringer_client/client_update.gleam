@@ -41,7 +41,7 @@ import scrumbringer_client/assignments_view_mode
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/api/metrics as api_metrics
+import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
@@ -54,9 +54,7 @@ import scrumbringer_client/api/workflows as api_workflows
 
 // Domain types
 import domain/task.{type TaskFilters, TaskFilters}
-import domain/task_status
 import scrumbringer_client/client_ffi
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
@@ -78,7 +76,6 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
@@ -325,7 +322,7 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           helpers_options.empty_to_opt(model.member.pool.member_filters_q),
         )
-      router.Member(model.member.pool.member_section, state)
+      router.Member(state)
     }
   }
 }
@@ -534,7 +531,7 @@ fn apply_route_fields(
       #(model, fx)
     }
 
-    router.Member(section, state) -> {
+    router.Member(state) -> {
       let project_id = url_state.project(state)
       let capabilities_fx = case model.core.page, project_id {
         client_state.Admin, opt.Some(pid) ->
@@ -567,7 +564,6 @@ fn apply_route_fields(
               ..member,
               pool: member_pool.Model(
                 ..pool,
-                member_section: section,
                 view_mode: new_view,
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
@@ -884,17 +880,7 @@ fn handle_navigate_to(
   route: router.Route,
   mode: client_state.NavMode,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let #(next_route, next_mode) = case model.ui.is_mobile, route {
-    True, router.Member(member_section.Pool, state) ->
-      case should_redirect_mobile_pool(state) {
-        True -> #(
-          router.Member(member_section.MyBar, state),
-          client_state.Replace,
-        )
-        False -> #(route, mode)
-      }
-    _, _ -> #(route, mode)
-  }
+  let #(next_route, next_mode) = #(route, mode)
 
   case next_route == current_route(model) {
     True -> #(model, effect.none())
@@ -918,14 +904,6 @@ fn handle_navigate_to(
         ]),
       )
     }
-  }
-}
-
-fn should_redirect_mobile_pool(state: url_state.UrlState) -> Bool {
-  case url_state.view_param(state) {
-    opt.None -> True
-    opt.Some(view_mode.Pool) -> True
-    opt.Some(_) -> False
   }
 }
 
@@ -1588,110 +1566,7 @@ fn fetch_workflows(
 fn member_refresh(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.member.pool.member_section {
-    member_section.MySkills -> refresh_member_capabilities(model)
-    member_section.Fichas -> refresh_member_cards(model)
-    _ -> refresh_member_tasks(model)
-  }
-}
-
-fn refresh_member_capabilities(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.core.selected_project_id {
-    opt.Some(project_id) -> #(
-      client_state.update_member(model, fn(member) {
-        let skills = member.skills
-        member_state.MemberModel(
-          ..member,
-          skills: member_skills.Model(..skills, member_capabilities: Loading),
-        )
-      }),
-      api_org.list_project_capabilities(project_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberProjectCapabilitiesFetched(
-          result,
-        ))
-      }),
-    )
-    opt.None -> #(
-      client_state.update_member(model, fn(member) {
-        let skills = member.skills
-        member_state.MemberModel(
-          ..member,
-          skills: member_skills.Model(..skills, member_capabilities: NotAsked),
-        )
-      }),
-      effect.none(),
-    )
-  }
-}
-
-fn refresh_member_cards(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let projects = state_selectors.active_projects(model)
-  let project_ids = project_ids_for_member_refresh(model, projects)
-
-  case project_ids {
-    [] -> reset_member_cards(model)
-    _ -> refresh_member_cards_for_projects(model, project_ids)
-  }
-}
-
-fn reset_member_cards(
-  model: client_state.Model,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  #(
-    client_state.update_member(model, fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_cards_store: normalized_store.new(),
-          member_cards: NotAsked,
-        ),
-      )
-    }),
-    effect.none(),
-  )
-}
-
-fn refresh_member_cards_for_projects(
-  model: client_state.Model,
-  project_ids: List(Int),
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let effects =
-    list.map(project_ids, fn(project_id) {
-      api_cards.list_cards(project_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
-          project_id,
-          result,
-        ))
-      })
-    })
-
-  let next =
-    client_state.update_member(model, fn(member) {
-      let pool = member.pool
-      let next_store =
-        card_refresh.mark_pending(
-          pool.member_cards_store,
-          list.length(project_ids),
-        )
-      let next_member_cards =
-        card_refresh.loading_unless_loaded(pool.member_cards)
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_cards_store: next_store,
-          member_cards: next_member_cards,
-        ),
-      )
-    })
-
-  #(next, effect.batch(effects))
+  refresh_member_tasks(model)
 }
 
 fn refresh_member_tasks(
@@ -1748,7 +1623,7 @@ fn refresh_member_data(
   model: client_state.Model,
   project_ids: List(Int),
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let filters = task_filters_for_member_section(model)
+  let filters = task_filters_for_member_route(model)
 
   let positions_effect =
     task_positions_api.list_me_task_positions(
@@ -1889,35 +1764,14 @@ fn refresh_member_data(
 
 // cards_effects_for_refresh removed from member refresh to avoid admin coupling.
 
-fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
-  case model.member.pool.member_section {
-    member_section.MyBar ->
-      TaskFilters(
-        status: opt.Some(task_status.Claimed(task_status.Taken)),
-        type_id: opt.None,
-        capability_id: opt.None,
-        q: opt.None,
-        blocked: opt.None,
-      )
-
-    member_section.Pool ->
-      TaskFilters(
-        status: opt.None,
-        type_id: model.member.pool.member_filters_type_id,
-        capability_id: model.member.pool.member_filters_capability_id,
-        q: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
-        blocked: opt.None,
-      )
-
-    _ ->
-      TaskFilters(
-        status: model.member.pool.member_filters_status,
-        type_id: model.member.pool.member_filters_type_id,
-        capability_id: model.member.pool.member_filters_capability_id,
-        q: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
-        blocked: opt.None,
-      )
-  }
+fn task_filters_for_member_route(model: client_state.Model) -> TaskFilters {
+  TaskFilters(
+    status: opt.None,
+    type_id: model.member.pool.member_filters_type_id,
+    capability_id: model.member.pool.member_filters_capability_id,
+    q: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+    blocked: opt.None,
+  )
 }
 
 /// Provides should pause active task on project change.

@@ -1,18 +1,19 @@
-//// Metrics API functions for Scrumbringer client.
+//// Operational metrics API functions for Scrumbringer client.
 ////
 //// ## Mission
 ////
-//// Provides metrics API operations including personal metrics,
-//// organization-wide metrics overview, and project-level task metrics.
+//// Provides product/operational metrics API operations including personal
+//// metrics, organization-wide metrics overview, and project-level task metrics.
+//// Rule automation metrics live in `api/workflows/rule_metrics.gleam`.
 ////
 //// ## Usage
 ////
 //// ```gleam
-//// import scrumbringer_client/api/metrics
+//// import scrumbringer_client/api/operational_metrics
 ////
-//// metrics.get_me_metrics(30, MyMetricsFetched)
-//// metrics.get_org_metrics_overview(30, OrgMetricsFetched)
-//// metrics.get_org_metrics_project_tasks(project_id, 30, TaskMetricsFetched)
+//// operational_metrics.get_me_metrics(30, MyMetricsFetched)
+//// operational_metrics.get_org_metrics_overview(30, OrgMetricsFetched)
+//// operational_metrics.get_org_metrics_project_tasks(project_id, 30, TaskMetricsFetched)
 //// ```
 
 import gleam/dynamic/decode

@@ -23,7 +23,6 @@ fn base_config(
   center_panel.CenterPanelConfig(
     locale: locale.En,
     view_mode: mode,
-    on_view_mode_change: fn(_mode) { "msg" },
     task_types: [],
     capabilities: [],
     capability_scope: capability_scope.AllCapabilities,

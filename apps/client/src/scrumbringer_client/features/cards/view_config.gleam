@@ -1,4 +1,4 @@
-//// Root-state adapter for member fichas views.
+//// Root-state adapter for member cards views.
 
 import gleam/option
 
@@ -9,7 +9,7 @@ import domain/user.{type User}
 
 import scrumbringer_client/client_state/member/pool as pool_state
 import scrumbringer_client/features/cards/detail_modal_entry
-import scrumbringer_client/features/fichas/view
+import scrumbringer_client/features/cards/view
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/permissions
 import scrumbringer_client/state/normalized_store

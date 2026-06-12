@@ -5,6 +5,10 @@
 //// Provides low-level database access for authentication operations including
 //// user lookups, organization checks, and user/project creation.
 ////
+//// This package is the formal SQL boundary for authentication. It is separate
+//// from `services/*_db.gleam` so auth flows can share bootstrap/login queries
+//// without making credential logic a generic service module.
+////
 //// ## Responsibilities
 ////
 //// - Query users by email or ID

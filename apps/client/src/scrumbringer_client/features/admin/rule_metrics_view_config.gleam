@@ -25,6 +25,18 @@ pub fn from_state(
   callbacks: Callbacks(msg),
 ) -> rule_metrics_view.Config(msg) {
   let today = client_ffi.date_today()
+  let default_from = client_ffi.date_days_ago(30)
+  let metrics = case
+    metrics.admin_rule_metrics_from == "" || metrics.admin_rule_metrics_to == ""
+  {
+    True ->
+      admin_metrics.Model(
+        ..metrics,
+        admin_rule_metrics_from: default_from,
+        admin_rule_metrics_to: today,
+      )
+    False -> metrics
+  }
   let quick_range = fn(label, days) {
     let from = client_ffi.date_days_ago(days)
     rule_metrics_view.QuickRange(

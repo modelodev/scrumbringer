@@ -1,147 +1,161 @@
-import gleam/option as opt
-import gleam/string
-import lustre/element
+//// Tests for cards view components.
+////
+//// Verifies Story 3.4 acceptance criteria:
+//// - AC1: Cards section renders in member navigation
+//// - AC4: Pool tasks show card identification (badge, border)
+//// - AC5: My bar groups tasks by card
 
-import domain/card.{Card, Cerrada, Pendiente}
-import domain/milestone.{Milestone, MilestoneProgress, Ready}
-import domain/remote.{Loaded, NotAsked}
-import scrumbringer_client/client_state/admin/cards as admin_cards
-import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/features/admin/cards_view
-import scrumbringer_client/i18n/locale
+import gleam/list
+import gleam/option
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
+import domain/card.{Cerrada, EnCurso, Pendiente, all_colors}
+import scrumbringer_client/ui/card_badge
+import scrumbringer_client/ui/color_picker
+
+// =============================================================================
+// Card Badge Tests (AC4)
+// =============================================================================
+
+pub fn generate_initials_two_words_test() {
+  let assert "HW" = card_badge.generate_initials("Hello World")
 }
 
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
+pub fn generate_initials_single_word_test() {
+  let assert "HE" = card_badge.generate_initials("Hello")
 }
 
-fn sample_card(id: Int, title: String) {
-  Card(
-    id: id,
-    project_id: 7,
-    milestone_id: opt.None,
-    title: title,
-    description: "",
-    color: opt.None,
-    state: Pendiente,
-    task_count: 1,
-    completed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    has_new_notes: False,
-  )
+pub fn generate_initials_three_words_test() {
+  let assert "AL" = card_badge.generate_initials("Auth Login Flow")
 }
 
-fn closed_empty_card() {
-  Card(
-    ..sample_card(9, "Closed Empty"),
-    state: Cerrada,
-    task_count: 0,
-    completed_count: 0,
-  )
+pub fn generate_initials_single_char_test() {
+  let assert "X" = card_badge.generate_initials("X")
 }
 
-fn sample_milestone_progress() {
-  MilestoneProgress(
-    milestone: Milestone(
-      id: 89,
-      project_id: 7,
-      name: "Milestone 89",
-      description: opt.None,
-      state: Ready,
-      position: 1,
-      created_by: 1,
-      created_at: "2026-01-01",
-      activated_at: opt.None,
-      completed_at: opt.None,
-    ),
-    cards_total: 0,
-    cards_completed: 0,
-    tasks_total: 0,
-    tasks_completed: 0,
-  )
+pub fn generate_initials_empty_test() {
+  // Empty string returns "??" fallback
+  let assert "??" = card_badge.generate_initials("")
 }
 
-fn config(model: admin_cards.Model) -> cards_view.Config(String) {
-  cards_view.Config(
-    locale: locale.En,
-    project_id: 7,
-    project_name: "Roadmap",
-    model: model,
-    milestones: Loaded([sample_milestone_progress()]),
-    detail_modal: element.none(),
-    on_create_opened: "create-opened",
-    on_search_changed: fn(value) { "search:" <> value },
-    on_state_filter_changed: fn(value) { "state:" <> value },
-    on_show_empty_toggled: "show-empty",
-    on_show_completed_toggled: "show-completed",
-    on_detail_opened: fn(_) { "detail" },
-    on_task_create_opened: fn(_) { "task" },
-    on_edit_opened: fn(_) { "edit" },
-    on_delete_opened: fn(_) { "delete" },
-    on_dialog_closed: "closed",
-    on_card_created: fn(_) { "created" },
-    on_card_updated: fn(_) { "updated" },
-    on_card_deleted: fn(_) { "deleted" },
-  )
+pub fn generate_initials_lowercase_test() {
+  let assert "TC" = card_badge.generate_initials("test card")
 }
 
-pub fn cards_view_renders_list_from_config_without_root_model_test() {
-  let model =
-    admin_cards.Model(
-      ..admin_cards.default_model(),
-      cards: Loaded([sample_card(1, "Playwright Card")]),
-    )
+// =============================================================================
+// Color Picker Tests (AC2, AC7)
+// =============================================================================
 
-  let html =
-    cards_view.view(config(model))
-    |> element.to_document_string
-
-  assert_contains(html, "Cards - Roadmap")
-  assert_contains(html, "Create Card")
-  assert_contains(html, "Playwright Card")
-  assert_contains(html, "card-detail-open")
-  assert_contains(html, "card-edit-btn")
-  assert_contains(html, "card-delete-btn")
+pub fn all_colors_has_8_colors_test() {
+  let assert 8 = list.length(all_colors)
 }
 
-pub fn cards_view_applies_filters_from_local_model_test() {
-  let model =
-    admin_cards.Model(
-      ..admin_cards.default_model(),
-      cards: Loaded([sample_card(1, "Visible Card"), closed_empty_card()]),
-      cards_search: "visible",
-      cards_show_empty: False,
-      cards_show_completed: False,
-    )
-
-  let html =
-    cards_view.view(config(model))
-    |> element.to_document_string
-
-  assert_contains(html, "Visible Card")
-  assert_not_contains(html, "Closed Empty")
+pub fn color_to_string_gray_test() {
+  let assert "gray" = card.color_to_string(card.Gray)
 }
 
-pub fn cards_view_renders_crud_dialog_with_milestone_context_test() {
-  let model =
-    admin_cards.Model(
-      ..admin_cards.default_model(),
-      cards: NotAsked,
-      cards_dialog_mode: opt.Some(state_types.CardDialogCreate),
-      cards_create_milestone_id: opt.Some(89),
-    )
+pub fn color_to_string_red_test() {
+  let assert "red" = card.color_to_string(card.Red)
+}
 
-  let html =
-    cards_view.view_crud_dialog(config(model))
-    |> element.to_document_string
+pub fn color_to_string_blue_test() {
+  let assert "blue" = card.color_to_string(card.Blue)
+}
 
-  assert_contains(html, "card-crud-dialog")
-  assert_contains(html, "project-id=\"7\"")
-  assert_contains(html, "milestone-id=\"89\"")
-  assert_contains(html, "milestone-name=\"Milestone 89\"")
-  assert_contains(html, "mode=\"create\"")
+pub fn string_to_color_gray_test() {
+  let assert option.Some(card.Gray) = color_picker.string_to_color("gray")
+}
+
+pub fn string_to_color_red_test() {
+  let assert option.Some(card.Red) = color_picker.string_to_color("red")
+}
+
+pub fn string_to_color_invalid_test() {
+  let assert option.None = color_picker.string_to_color("invalid")
+}
+
+pub fn string_to_color_empty_test() {
+  let assert option.None = color_picker.string_to_color("")
+}
+
+pub fn border_class_gray_test() {
+  let assert "card-border-gray" =
+    color_picker.border_class(option.Some(card.Gray))
+}
+
+pub fn border_class_red_test() {
+  let assert "card-border-red" =
+    color_picker.border_class(option.Some(card.Red))
+}
+
+pub fn border_class_none_test() {
+  let assert "" = color_picker.border_class(option.None)
+}
+
+pub fn initials_class_blue_test() {
+  let assert "card-initials-blue" =
+    color_picker.initials_class(option.Some(card.Blue))
+}
+
+pub fn initials_class_none_test() {
+  let assert "card-initials-none" = color_picker.initials_class(option.None)
+}
+
+// =============================================================================
+// Card State Derivation Tests
+// =============================================================================
+
+pub fn derive_state_no_tasks_pendiente_test() {
+  let assert Pendiente = card.derive_state(0, 0, 0)
+}
+
+pub fn derive_state_all_completed_cerrada_test() {
+  let assert Cerrada = card.derive_state(3, 3, 0)
+}
+
+pub fn derive_state_some_claimed_en_curso_test() {
+  // 3 tasks, 1 completed, 1 available (means 1 claimed/ongoing)
+  let assert EnCurso = card.derive_state(3, 1, 1)
+}
+
+pub fn derive_state_all_available_pendiente_test() {
+  // 3 tasks, 0 completed, 3 available
+  let assert Pendiente = card.derive_state(3, 0, 3)
+}
+
+pub fn derive_state_one_completed_en_curso_test() {
+  // 5 tasks, 1 completed, 2 available (means 2 claimed/ongoing)
+  let assert EnCurso = card.derive_state(5, 1, 2)
+}
+
+// =============================================================================
+// Card State String Conversion Tests
+// =============================================================================
+
+pub fn state_to_string_pendiente_test() {
+  let assert "pendiente" = card.state_to_string(Pendiente)
+}
+
+pub fn state_to_string_en_curso_test() {
+  let assert "en_curso" = card.state_to_string(EnCurso)
+}
+
+pub fn state_to_string_cerrada_test() {
+  let assert "cerrada" = card.state_to_string(Cerrada)
+}
+
+pub fn state_from_string_pendiente_test() {
+  let assert Ok(Pendiente) = card.state_from_string("pendiente")
+}
+
+pub fn state_from_string_en_curso_test() {
+  let assert Ok(EnCurso) = card.state_from_string("en_curso")
+}
+
+pub fn state_from_string_cerrada_test() {
+  let assert Ok(Cerrada) = card.state_from_string("cerrada")
+}
+
+pub fn state_from_string_invalid_returns_error_test() {
+  let assert Error(card.UnknownCardState("invalid")) =
+    card.state_from_string("invalid")
 }

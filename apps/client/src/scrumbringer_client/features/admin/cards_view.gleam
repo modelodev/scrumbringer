@@ -263,7 +263,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
         text(t(config, i18n_text.NoCardsYet)),
       ]),
       div([attribute.class("empty-state-description")], [
-        text(t(config, i18n_text.MemberFichasEmptyHint)),
+        text(t(config, i18n_text.MemberCardsEmptyHint)),
       ]),
     ])
 

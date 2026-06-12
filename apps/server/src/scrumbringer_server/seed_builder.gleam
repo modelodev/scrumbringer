@@ -1,8 +1,9 @@
-//// Scenario builders for seed data generation.
+//// Dev/test scenario builders for seed data generation.
 ////
 //// ## Mission
 ////
-//// Provide configurable, realistic seed data generation with:
+//// Provide configurable, realistic seed data generation for local/dev/test use
+//// with:
 //// - Preset configuration (realistic)
 //// - Variability in priorities, timestamps, creators
 //// - Edge case coverage (empty projects, inactive workflows, etc.)

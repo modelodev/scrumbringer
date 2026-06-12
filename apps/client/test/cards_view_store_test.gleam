@@ -8,8 +8,8 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/selectors as state_selectors
-import scrumbringer_client/features/fichas/view as fichas_view
-import scrumbringer_client/features/fichas/view_config as fichas_view_config
+import scrumbringer_client/features/cards/view as cards_view
+import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
@@ -41,8 +41,8 @@ fn card_id(card: Card) -> Int {
   id
 }
 
-fn fichas_config(model: client_state.Model) {
-  fichas_view_config.from_state(
+fn cards_config(model: client_state.Model) {
+  cards_view_config.from_state(
     model.ui.locale,
     project_cards(model),
     model.member.pool,
@@ -78,8 +78,8 @@ fn project_cards(model: client_state.Model) {
   )
 }
 
-pub fn fichas_uses_cache_when_available_test() {
-  let card_a = make_card(1, 10, "Ficha A")
+pub fn cards_uses_cache_when_available_test() {
+  let card_a = make_card(1, 10, "Card A")
   let store =
     normalized_store.new()
     |> normalized_store.upsert(10, [card_a], card_id)
@@ -104,14 +104,14 @@ pub fn fichas_uses_cache_when_available_test() {
 
   let html =
     model
-    |> fichas_config
-    |> fichas_view.view_fichas
+    |> cards_config
+    |> cards_view.view_cards
     |> element.to_document_string
 
-  assert_contains(html, "Ficha A")
+  assert_contains(html, "Card A")
 }
 
-pub fn fichas_shows_loading_only_without_cache_test() {
+pub fn cards_shows_loading_only_without_cache_test() {
   let store = normalized_store.new() |> normalized_store.with_pending(1)
 
   let model =
@@ -130,15 +130,15 @@ pub fn fichas_shows_loading_only_without_cache_test() {
 
   let html =
     model
-    |> fichas_config
-    |> fichas_view.view_fichas
+    |> cards_config
+    |> cards_view.view_cards
     |> element.to_document_string
 
   let expected = i18n.t(model.ui.locale, i18n_text.LoadingEllipsis)
   assert_contains(html, expected)
 }
 
-pub fn fichas_shows_empty_without_cache_or_pending_test() {
+pub fn cards_shows_empty_without_cache_or_pending_test() {
   let model =
     client_state.default_model()
     |> client_state.update_core(fn(core) {
@@ -158,10 +158,10 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
 
   let html =
     model
-    |> fichas_config
-    |> fichas_view.view_fichas
+    |> cards_config
+    |> cards_view.view_cards
     |> element.to_document_string
 
-  let expected = i18n.t(model.ui.locale, i18n_text.MemberFichasEmpty)
+  let expected = i18n.t(model.ui.locale, i18n_text.MemberCardsEmpty)
   assert_contains(html, expected)
 }

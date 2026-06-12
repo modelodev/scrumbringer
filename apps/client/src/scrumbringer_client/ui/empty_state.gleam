@@ -169,7 +169,7 @@ pub fn no_tasks(title: String, description: String) -> EmptyStateConfig(msg) {
   |> with_meaning(HealthyEmpty)
 }
 
-/// Empty state for no cards/fichas.
+/// Empty state for no cards.
 pub fn no_cards(title: String, description: String) -> EmptyStateConfig(msg) {
   new("clipboard-document-list", title, description)
   |> with_meaning(HealthyEmpty)

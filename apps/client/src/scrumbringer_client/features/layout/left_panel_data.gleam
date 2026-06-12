@@ -6,7 +6,6 @@ import domain/view_mode.{type ViewMode}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
-import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -14,7 +13,6 @@ import scrumbringer_client/url_state
 pub type MemberRouteConfig {
   MemberRouteConfig(
     selected_project_id: Option(Int),
-    member_section: MemberSection,
     view_mode: ViewMode,
     capability_scope: CapabilityScope,
     type_filter: Option(Int),
@@ -36,14 +34,11 @@ pub fn member_state(
 }
 
 pub fn member_route(config: MemberRouteConfig, mode: ViewMode) -> router.Route {
-  router.Member(member_section.Pool, member_state(config, mode))
+  router.Member(member_state(config, mode))
 }
 
 pub fn current_member_route(config: MemberRouteConfig) -> router.Route {
-  router.Member(
-    current_member_section(config.member_section),
-    member_state(config, config.view_mode),
-  )
+  member_route(config, config.view_mode)
 }
 
 pub fn admin_route(
@@ -74,13 +69,6 @@ fn base_state(selected_project_id: Option(Int)) -> url_state.UrlState {
   case selected_project_id {
     Some(project_id) -> url_state.with_project(url_state.empty(), project_id)
     None -> url_state.empty()
-  }
-}
-
-fn current_member_section(section: MemberSection) -> MemberSection {
-  case section {
-    member_section.MyBar -> member_section.Pool
-    other -> other
   }
 }
 
