@@ -94,6 +94,15 @@ Gleam HTTP API (Gleam → Erlang/BEAM). Recommended responsibilities:
 - Command validation and optimistic concurrency (`version`)
 - Data access layer via Squirrel + Postgres driver
 
+Runtime persistence normally lives behind `services/*_db.gleam`. The
+`scrumbringer_server/persistence/auth/*` modules are an intentional exception:
+they are the SQL boundary for login and registration bootstrap, where user,
+organization, invite, and initial membership queries need to stay together.
+
+`scrumbringer_server/seed.gleam`, `seed_builder.gleam`, and `seed_db.gleam` are
+dev/test support modules for local demo data and test fixtures. They should not
+be imported by runtime HTTP handlers or business services.
+
 ### `shared/`
 
 Shared domain types and helper functions reused by both targets.

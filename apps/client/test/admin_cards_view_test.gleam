@@ -125,6 +125,28 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
   assert_contains(html, "card-detail-modal")
 }
 
+pub fn cards_view_does_not_render_local_crud_dialog_test() {
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(
+          ..cards,
+          cards: Loaded([sample_card()]),
+          cards_dialog_mode: opt.Some(state_types.CardDialogDelete(1)),
+        ),
+      )
+    })
+
+  let html =
+    admin_view.view_cards(model, opt.Some(sample_project()))
+    |> element.to_document_string
+
+  assert_not_contains(html, "card-crud-dialog")
+}
+
 pub fn cards_view_passes_milestone_context_to_dialog_test() {
   let model =
     base_model()

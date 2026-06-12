@@ -72,7 +72,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     view_filters(config),
     view_list(config, filter_cards(config.model)),
     [
-      view_crud_dialog(config),
       config.detail_modal,
     ],
   )

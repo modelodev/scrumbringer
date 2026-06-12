@@ -766,6 +766,102 @@ pub fn card_notes_indicator_updates_after_view_test() {
   |> expect.equal(False)
 }
 
+// Justification: large function kept intact to mirror the card view contract.
+pub fn task_notes_indicator_updates_after_view_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Bug",
+    "bug-ant",
+  )
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let task_id =
+    create_task(
+      handler,
+      member_session,
+      member_csrf,
+      project_id,
+      "Task",
+      "",
+      3,
+      type_id,
+    )
+
+  let note_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
+
+  expect.expect_status(handler(note_req), 200)
+
+  let list_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+
+  let list_res = handler(list_req)
+  expect.expect_status(list_res, 200)
+  decode_task_has_new_notes(simulate.read_body(list_res), task_id)
+  |> expect.equal(True)
+
+  let view_req =
+    simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+
+  expect.expect_status(handler(view_req), 204)
+
+  let list_res_2 = handler(list_req)
+  expect.expect_status(list_res_2, 200)
+  decode_task_has_new_notes(simulate.read_body(list_res_2), task_id)
+  |> expect.equal(False)
+}
+
 pub fn task_positions_upsert_requires_csrf_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1212,6 +1308,32 @@ fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
   let assert Ok(cards) = decode.run(dynamic, response_decoder)
   let assert Ok(#(_, has_new_notes)) =
     list.find(cards, fn(card) { card.0 == card_id })
+
+  has_new_notes
+}
+
+fn decode_task_has_new_notes(body: String, task_id: Int) -> Bool {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_decoder = {
+    use id <- decode.field("id", decode.int)
+    use has_new_notes <- decode.field("has_new_notes", decode.bool)
+    decode.success(#(id, has_new_notes))
+  }
+
+  let data_decoder = {
+    use tasks <- decode.field("tasks", decode.list(task_decoder))
+    decode.success(tasks)
+  }
+
+  let response_decoder = {
+    use tasks <- decode.field("data", data_decoder)
+    decode.success(tasks)
+  }
+
+  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+  let assert Ok(#(_, has_new_notes)) =
+    list.find(tasks, fn(task) { task.0 == task_id })
 
   has_new_notes
 }

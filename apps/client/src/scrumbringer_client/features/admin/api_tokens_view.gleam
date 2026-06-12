@@ -61,12 +61,12 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       t(config, i18n_text.AdminApiTokens),
       button(
         [
-          attribute.class("btn-primary"),
+          attribute.class("btn btn-primary"),
           event.on_click(config.on_token_create_opened),
         ],
         [
           icons.nav_icon(icons.Plus, icons.Small),
-          text(" " <> t(config, i18n_text.CreateApiToken)),
+          text(t(config, i18n_text.CreateApiToken)),
         ],
       ),
     ),
