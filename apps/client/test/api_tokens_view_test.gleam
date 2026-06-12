@@ -3,6 +3,7 @@ import gleam/option
 import gleam/string
 import lustre/element
 
+import domain/api_token_scope
 import domain/org_role
 import domain/project.{type Project, Project}
 import domain/project_role
@@ -56,7 +57,10 @@ fn token() -> ApiToken {
     project_id: option.Some(7),
     name: "n8n production",
     public_id: "pub",
-    scopes: ["projects:read", "tasks:write"],
+    scopes: [
+      api_token_scope.ProjectsRead,
+      api_token_scope.TasksWrite,
+    ],
     created_at: "2026-01-01T10:00:00Z",
     last_used_at: option.None,
     expires_at: option.None,
@@ -83,7 +87,9 @@ fn config(model: ApiTokensModel) -> api_tokens_view.Config(String) {
     on_token_name_changed: fn(value) { "name:" <> value },
     on_token_integration_changed: fn(value) { "integration:" <> value },
     on_token_project_changed: fn(value) { "project:" <> value },
-    on_token_scope_toggled: fn(value) { "scope:" <> value },
+    on_token_scope_toggled: fn(value) {
+      "scope:" <> api_token_scope.to_string(value)
+    },
     on_token_expires_at_changed: fn(value) { "expires:" <> value },
     on_token_create_submitted: "submit-token",
     on_token_secret_dismissed: "dismiss-secret",

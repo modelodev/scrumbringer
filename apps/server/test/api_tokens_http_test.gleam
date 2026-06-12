@@ -403,11 +403,19 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
   |> expect.expect_status(200)
 }
 
-pub fn api_token_project_create_grants_integration_membership_test() {
+pub fn project_api_token_grants_access_without_membership_test() {
   let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) =
     fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(
+      handler,
+      admin_session,
+      project_id,
+      "Bug",
+      "bug-ant",
+    )
 
   let res =
     create_api_token_response(
@@ -415,11 +423,12 @@ pub fn api_token_project_create_grants_integration_membership_test() {
       admin_session,
       "outside@example.com",
       Some(project_id),
-      ["tasks:read"],
+      ["tasks:read", "tasks:write"],
       None,
     )
 
   expect.expect_status(res, 200)
+  let assert Ok(token) = decode_token(simulate.read_body(res))
 
   let assert Ok(member_count) =
     fixtures.query_int(
@@ -427,7 +436,83 @@ pub fn api_token_project_create_grants_integration_membership_test() {
       "\nselect count(*)\nfrom project_members pm\njoin users u on u.id = pm.user_id\nwhere pm.project_id = $1 and u.email = $2 and pm.role = 'manager'\n",
       [pog.int(project_id), pog.text("outside@example.com")],
     )
-  expect.equal(member_count, 1)
+  expect.equal(member_count, 0)
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
+
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+    )
+    |> fixtures.with_bearer(token)
+    |> simulate.json_body(
+      json.object([
+        #("title", json.string("Imported task")),
+        #("description", json.string("Created by integration")),
+        #("type_id", json.int(type_id)),
+        #("priority", json.int(3)),
+      ]),
+    ),
+  )
+  |> expect.expect_status(200)
+}
+
+pub fn org_wide_api_token_can_list_existing_projects_test() {
+  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_a) =
+    fixtures.create_project(handler, admin_session, "Alpha")
+  let assert Ok(project_b) =
+    fixtures.create_project(handler, admin_session, "Zulu")
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "org-wide@example.com")
+  let assert Ok(token) =
+    create_api_token(handler, admin_session, "org-wide@example.com", None, [
+      "projects:read",
+      "tasks:read",
+    ])
+  let assert Ok(project_c) =
+    fixtures.create_project(handler, admin_session, "Future")
+
+  let assert Ok(member_count) =
+    fixtures.query_int(
+      db,
+      "\nselect count(*)\nfrom project_members\nwhere user_id = $1 and role = 'manager' and project_id in ($2, $3, $4)\n",
+      [
+        pog.int(integration_user_id),
+        pog.int(project_a),
+        pog.int(project_b),
+        pog.int(project_c),
+      ],
+    )
+  expect.equal(member_count, 0)
+
+  let res =
+    handler(
+      simulate.request(http.Get, "/api/v1/projects")
+      |> fixtures.with_bearer(token),
+    )
+
+  expect.expect_status(res, 200)
+  decode_project_names(simulate.read_body(res))
+  |> expect.equal(["Alpha", "Default", "Future", "Zulu"])
+
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_c) <> "/tasks",
+    )
+    |> fixtures.with_bearer(token),
+  )
+  |> expect.expect_status(200)
 }
 
 pub fn api_token_rejects_invalid_expires_at_test() {
@@ -678,6 +763,28 @@ fn decode_integration_user_id(body: String) -> Result(Int, String) {
   }
   decode.run(dynamic, decoder)
   |> result.map_error(fn(_) { "invalid integration user response" })
+}
+
+fn decode_project_names(body: String) -> List(String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let project_decoder = {
+    use name <- decode.field("name", decode.string)
+    decode.success(name)
+  }
+
+  let data_decoder = {
+    use projects <- decode.field("projects", decode.list(project_decoder))
+    decode.success(projects)
+  }
+
+  let response_decoder = {
+    use projects <- decode.field("data", data_decoder)
+    decode.success(projects)
+  }
+
+  let assert Ok(projects) = decode.run(dynamic, response_decoder)
+  projects
 }
 
 fn decode_token(body: String) -> Result(String, String) {

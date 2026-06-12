@@ -2,6 +2,7 @@
 
 import gleam/option
 
+import domain/api_token_scope
 import domain/remote.{NotAsked}
 import scrumbringer_client/client_state/types as state_types
 
@@ -18,8 +19,8 @@ pub fn default_token_form() -> state_types.ApiTokenForm {
   )
 }
 
-pub fn default_scopes() -> List(String) {
-  ["projects:read", "tasks:read"]
+pub fn default_scopes() -> List(api_token_scope.Scope) {
+  [api_token_scope.ProjectsRead, api_token_scope.TasksRead]
 }
 
 pub fn default_model() -> Model {

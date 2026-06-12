@@ -1,6 +1,7 @@
 //// Admin feature messages.
 
 import domain/api_error.{type ApiResult}
+import domain/api_token_scope
 import domain/capability.{type Capability}
 import domain/org.{type InviteLink, type OrgUser}
 import domain/org_role
@@ -121,7 +122,7 @@ pub type Msg {
   ApiTokenNameChanged(String)
   ApiTokenIntegrationChanged(String)
   ApiTokenProjectChanged(String)
-  ApiTokenScopeToggled(String)
+  ApiTokenScopeToggled(api_token_scope.Scope)
   ApiTokenExpiresAtChanged(String)
   ApiTokenCreateSubmitted
   ApiTokenCreated(ApiResult(state_types.CreatedApiToken))

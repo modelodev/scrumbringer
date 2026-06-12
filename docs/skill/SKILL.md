@@ -53,12 +53,10 @@ node docs/skill/scripts/scrumbringer-api.mjs preflight SCRUMBRINGER_PROJECT_ID
 
 The helper never prints the full token.
 
-Project visibility is membership-based. `GET /api/v1/projects` returns the
-projects visible to the integration user behind the token, not every project in
-the organization. If it returns an empty list while the organization has
-projects, ask the user to recreate the token with the intended project selected
-or to add the integration user as a member of that project. Do not assume that a
-token without a project restriction can see all organization projects.
+Project visibility follows the token project setting. A token with a concrete
+project only sees that project. A token created for all projects derives access
+from its active grant, so `GET /api/v1/projects` should return current and future
+organization projects when the token has `projects:read`.
 
 ## References
 

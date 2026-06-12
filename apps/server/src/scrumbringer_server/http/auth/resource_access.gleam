@@ -6,7 +6,9 @@ import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
-import scrumbringer_server/services/api_tokens.{type VerifiedToken}
+import scrumbringer_server/services/api_tokens.{
+  type VerifiedToken, AllProjects, ProjectOnly,
+}
 import scrumbringer_server/services/persisted_field
 
 pub type AccessError {
@@ -22,9 +24,9 @@ pub fn require_token_project(
   method: http.Method,
   segments: List(String),
 ) -> Result(Nil, AccessError) {
-  case token.project_id {
-    None -> Ok(Nil)
-    Some(project_id) ->
+  case token.project_grant {
+    AllProjects -> Ok(Nil)
+    ProjectOnly(project_id) ->
       require_matching_project(db, project_id, method, segments)
   }
 }

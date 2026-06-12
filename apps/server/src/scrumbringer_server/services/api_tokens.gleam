@@ -3,6 +3,7 @@
 //// Tokens are opaque high-entropy Bearer credentials. Only their SHA-256 hash
 //// is persisted; the full token is returned once at creation time.
 
+import domain/api_token_scope
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -18,32 +19,15 @@ import scrumbringer_server/services/persisted_field
 
 pub const token_prefix = "sbt"
 
-pub type Resource {
-  Projects
-  Tasks
-  Cards
-  Notes
-  Milestones
-}
-
-pub type Access {
-  Read
-  Write
-}
-
-pub type Scope {
-  Scope(resource: Resource, access: Access)
-}
-
 pub type ApiToken {
   ApiToken(
     id: Int,
     org_id: Int,
     integration_user_id: Int,
-    project_id: Option(Int),
+    project_grant: ProjectGrant,
     name: String,
     public_id: String,
-    scopes: List(Scope),
+    scopes: List(api_token_scope.Scope),
     created_at: String,
     last_used_at: Option(String),
     expires_at: Option(String),
@@ -61,9 +45,14 @@ pub type VerifiedToken {
     token_id: Int,
     integration_user_id: Int,
     org_id: Int,
-    project_id: Option(Int),
-    scopes: List(Scope),
+    project_grant: ProjectGrant,
+    scopes: List(api_token_scope.Scope),
   )
+}
+
+pub type ProjectGrant {
+  AllProjects
+  ProjectOnly(Int)
 }
 
 pub type ApiTokenError {
@@ -75,7 +64,6 @@ pub type ApiTokenError {
   IntegrationUserNotFound
   IntegrationUnavailable
   ProjectNotFound
-  ProjectAccessRequired
   InvalidExpiresAt
   TokenNotFound
   TokenExpired
@@ -107,41 +95,27 @@ pub fn create(
   project_id: Option(Int),
   created_by: Int,
   name: String,
-  scopes: List(Scope),
+  scopes: List(api_token_scope.Scope),
   expires_at: Option(String),
 ) -> Result(CreatedToken, ApiTokenError) {
   use name <- result.try(validate_name(name))
   use scopes <- result.try(validate_scopes(scopes))
   use expires_at <- result.try(validate_expires_at(expires_at))
+  let project_grant = project_grant_from_option(project_id)
   use Nil <- result.try(ensure_integration_user(db, org_id, integration_user_id))
-  use Nil <- result.try(ensure_project_access(
-    db,
-    org_id,
-    integration_user_id,
-    project_id,
-  ))
-
-  let public_id = random_token_part(12)
-  let secret = random_token_part(32)
-  let bearer = token_prefix <> "_" <> public_id <> "_" <> secret
-  let hash = hash_token(bearer)
+  use Nil <- result.try(ensure_project_exists(db, org_id, project_grant))
 
   pog.transaction(db, fn(tx) {
-    use token_id <- result.try(insert_token(
+    create_token_record(
       tx,
       org_id,
       integration_user_id,
-      project_id,
+      project_grant,
       created_by,
       name,
-      public_id,
-      hash,
+      scopes,
       expires_at,
-    ))
-    use Nil <- result.try(insert_scopes(tx, token_id, scopes))
-    use token <- result.try(get(tx, token_id))
-
-    Ok(CreatedToken(token: token, bearer: bearer))
+    )
   })
   |> result.map_error(transaction_error_to_api_token_error)
 }
@@ -153,12 +127,13 @@ pub fn create_for_integration(
   project_id: Option(Int),
   created_by: Int,
   name: String,
-  scopes: List(Scope),
+  scopes: List(api_token_scope.Scope),
   expires_at: Option(String),
 ) -> Result(CreatedToken, ApiTokenError) {
   use name <- result.try(validate_name(name))
   use scopes <- result.try(validate_scopes(scopes))
   use expires_at <- result.try(validate_expires_at(expires_at))
+  let project_grant = project_grant_from_option(project_id)
 
   let integration = string.trim(integration)
 
@@ -170,33 +145,18 @@ pub fn create_for_integration(
     let integration_users.IntegrationUser(id: integration_user_id, ..) =
       integration_user
 
-    use Nil <- result.try(ensure_project_exists(tx, org_id, project_id))
-    use Nil <- result.try(ensure_project_manager_membership(
-      tx,
-      integration_user_id,
-      project_id,
-    ))
+    use Nil <- result.try(ensure_project_exists(tx, org_id, project_grant))
 
-    let public_id = random_token_part(12)
-    let secret = random_token_part(32)
-    let bearer = token_prefix <> "_" <> public_id <> "_" <> secret
-    let hash = hash_token(bearer)
-
-    use token_id <- result.try(insert_token(
+    create_token_record(
       tx,
       org_id,
       integration_user_id,
-      project_id,
+      project_grant,
       created_by,
       name,
-      public_id,
-      hash,
+      scopes,
       expires_at,
-    ))
-    use Nil <- result.try(insert_scopes(tx, token_id, scopes))
-    use token <- result.try(get(tx, token_id))
-
-    Ok(CreatedToken(token: token, bearer: bearer))
+    )
   })
   |> result.map_error(transaction_error_to_api_token_error)
 }
@@ -219,7 +179,7 @@ pub fn verify_bearer(
         token_id: row.id,
         integration_user_id: row.integration_user_id,
         org_id: row.org_id,
-        project_id: row.project_id,
+        project_grant: project_grant_from_option(row.project_id),
         scopes: scopes,
       ))
     }
@@ -324,63 +284,44 @@ pub fn token_id_for_bearer_public_id(
   }
 }
 
-pub fn has_scope(token: VerifiedToken, required: Scope) -> Bool {
+pub fn has_scope(token: VerifiedToken, required: api_token_scope.Scope) -> Bool {
   list.contains(token.scopes, required)
 }
 
-pub fn parse_scope(value: String) -> Result(Scope, ApiTokenError) {
-  case string.split(value, ":") {
-    [resource, access] -> {
-      use resource <- result.try(parse_resource(resource))
-      use access <- result.try(parse_access(access))
-      let scope = Scope(resource: resource, access: access)
-      case is_supported_scope(scope) {
-        True -> Ok(scope)
-        False -> Error(InvalidScope(value))
-      }
+pub fn parse_scope(
+  value: String,
+) -> Result(api_token_scope.Scope, ApiTokenError) {
+  api_token_scope.parse(value)
+  |> result.map_error(fn(error) {
+    case error {
+      api_token_scope.InvalidScope(value) -> InvalidScope(value)
     }
-
-    _ -> Error(InvalidScope(value))
-  }
+  })
 }
 
-pub fn supported_scopes() -> List(Scope) {
-  [
-    Scope(Projects, Read),
-    Scope(Tasks, Read),
-    Scope(Tasks, Write),
-    Scope(Cards, Read),
-    Scope(Cards, Write),
-    Scope(Notes, Read),
-    Scope(Notes, Write),
-    Scope(Milestones, Read),
-    Scope(Milestones, Write),
-  ]
+pub fn supported_scopes() -> List(api_token_scope.Scope) {
+  api_token_scope.supported()
 }
 
 pub fn supported_scope_strings() -> List(String) {
-  supported_scopes()
-  |> list.map(scope_to_string)
+  api_token_scope.supported_strings()
 }
 
-pub fn scope_to_string(scope: Scope) -> String {
-  resource_to_string(scope.resource) <> ":" <> access_to_string(scope.access)
+pub fn scope_to_string(scope: api_token_scope.Scope) -> String {
+  api_token_scope.to_string(scope)
 }
 
-pub fn resource_to_string(resource: Resource) -> String {
-  case resource {
-    Projects -> "projects"
-    Tasks -> "tasks"
-    Cards -> "cards"
-    Notes -> "notes"
-    Milestones -> "milestones"
+pub fn project_grant_from_option(project_id: Option(Int)) -> ProjectGrant {
+  case project_id {
+    None -> AllProjects
+    Some(project_id) -> ProjectOnly(project_id)
   }
 }
 
-pub fn access_to_string(access: Access) -> String {
-  case access {
-    Read -> "read"
-    Write -> "write"
+pub fn project_grant_to_option(project_grant: ProjectGrant) -> Option(Int) {
+  case project_grant {
+    AllProjects -> None
+    ProjectOnly(project_id) -> Some(project_id)
   }
 }
 
@@ -411,7 +352,7 @@ fn token_from_row(
     id: row.id,
     org_id: row.org_id,
     integration_user_id: row.integration_user_id,
-    project_id: row.project_id,
+    project_grant: project_grant_from_option(row.project_id),
     name: row.name,
     public_id: row.public_id,
     scopes: scopes,
@@ -431,26 +372,25 @@ fn validate_name(name: String) -> Result(String, ApiTokenError) {
   }
 }
 
-fn validate_scopes(scopes: List(Scope)) -> Result(List(Scope), ApiTokenError) {
+fn validate_scopes(
+  scopes: List(api_token_scope.Scope),
+) -> Result(List(api_token_scope.Scope), ApiTokenError) {
   case scopes {
     [] -> Error(EmptyScopes)
-    _ ->
-      scopes
-      |> unique_scopes
-      |> list.try_map(fn(scope) {
-        case is_supported_scope(scope) {
-          True -> Ok(scope)
-          False -> Error(InvalidScope(scope_to_string(scope)))
-        }
-      })
+    _ -> Ok(unique_scopes(scopes))
   }
 }
 
-fn unique_scopes(scopes: List(Scope)) -> List(Scope) {
+fn unique_scopes(
+  scopes: List(api_token_scope.Scope),
+) -> List(api_token_scope.Scope) {
   unique_scopes_loop(scopes, [])
 }
 
-fn unique_scopes_loop(scopes: List(Scope), kept: List(Scope)) -> List(Scope) {
+fn unique_scopes_loop(
+  scopes: List(api_token_scope.Scope),
+  kept: List(api_token_scope.Scope),
+) -> List(api_token_scope.Scope) {
   case scopes {
     [] -> list.reverse(kept)
     [scope, ..rest] ->
@@ -502,32 +442,14 @@ fn ensure_integration_user(
   }
 }
 
-fn ensure_project_access(
-  db: pog.Connection,
-  org_id: Int,
-  integration_user_id: Int,
-  project_id: Option(Int),
-) -> Result(Nil, ApiTokenError) {
-  case project_id {
-    None -> Ok(Nil)
-    Some(project_id) ->
-      ensure_integration_project_member(
-        db,
-        org_id,
-        integration_user_id,
-        project_id,
-      )
-  }
-}
-
 fn ensure_project_exists(
   db: pog.Connection,
   org_id: Int,
-  project_id: Option(Int),
+  project_grant: ProjectGrant,
 ) -> Result(Nil, ApiTokenError) {
-  case project_id {
-    None -> Ok(Nil)
-    Some(project_id) -> {
+  case project_grant {
+    AllProjects -> Ok(Nil)
+    ProjectOnly(project_id) -> {
       let decoder = {
         use exists <- decode.field(0, decode.bool)
         decode.success(exists)
@@ -552,70 +474,43 @@ fn ensure_project_exists(
   }
 }
 
-fn ensure_project_manager_membership(
-  db: pog.Connection,
-  integration_user_id: Int,
-  project_id: Option(Int),
-) -> Result(Nil, ApiTokenError) {
-  case project_id {
-    None -> Ok(Nil)
-    Some(project_id) ->
-      pog.query(
-        "insert into project_members (project_id, user_id, role) values ($1, $2, 'manager') on conflict (project_id, user_id) do update set role = 'manager'",
-      )
-      |> pog.parameter(pog.int(project_id))
-      |> pog.parameter(pog.int(integration_user_id))
-      |> pog.execute(db)
-      |> result.map(fn(_) { Nil })
-      |> result.map_error(DbError)
-  }
-}
-
-type ProjectAccessRow {
-  ProjectAccessRow(project_exists: Bool, user_is_member: Bool)
-}
-
-fn ensure_integration_project_member(
+fn create_token_record(
   db: pog.Connection,
   org_id: Int,
   integration_user_id: Int,
-  project_id: Int,
-) -> Result(Nil, ApiTokenError) {
-  let decoder = {
-    use project_exists <- decode.field(0, decode.bool)
-    use user_is_member <- decode.field(1, decode.bool)
-    decode.success(ProjectAccessRow(project_exists:, user_is_member:))
-  }
+  project_grant: ProjectGrant,
+  created_by: Int,
+  name: String,
+  scopes: List(api_token_scope.Scope),
+  expires_at: Option(Timestamp),
+) -> Result(CreatedToken, ApiTokenError) {
+  let public_id = random_token_part(12)
+  let secret = random_token_part(32)
+  let bearer = token_prefix <> "_" <> public_id <> "_" <> secret
+  let hash = hash_token(bearer)
 
-  use returned <- result.try(
-    pog.query(
-      "\nselect\n  exists(select 1 from projects where id = $1 and org_id = $2) as project_exists,\n  exists(select 1 from project_members where project_id = $1 and user_id = $3) as user_is_member\n",
-    )
-    |> pog.parameter(pog.int(project_id))
-    |> pog.parameter(pog.int(org_id))
-    |> pog.parameter(pog.int(integration_user_id))
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-    |> result.map_error(DbError),
-  )
+  use token_id <- result.try(insert_token(
+    db,
+    org_id,
+    integration_user_id,
+    project_grant,
+    created_by,
+    name,
+    public_id,
+    hash,
+    expires_at,
+  ))
+  use Nil <- result.try(insert_scopes(db, token_id, scopes))
+  use token <- result.try(get(db, token_id))
 
-  use access <- result.try(
-    persisted_field.query_row(returned.rows)
-    |> result.map_error(fn(_) { ProjectNotFound }),
-  )
-
-  case access {
-    ProjectAccessRow(project_exists: False, ..) -> Error(ProjectNotFound)
-    ProjectAccessRow(user_is_member: False, ..) -> Error(ProjectAccessRequired)
-    ProjectAccessRow(project_exists: True, user_is_member: True) -> Ok(Nil)
-  }
+  Ok(CreatedToken(token: token, bearer: bearer))
 }
 
 fn insert_token(
   db: pog.Connection,
   org_id: Int,
   integration_user_id: Int,
-  project_id: Option(Int),
+  project_grant: ProjectGrant,
   created_by: Int,
   name: String,
   public_id: String,
@@ -628,7 +523,10 @@ fn insert_token(
     )
     |> pog.parameter(pog.int(org_id))
     |> pog.parameter(pog.int(integration_user_id))
-    |> pog.parameter(pog.nullable(pog.int, project_id))
+    |> pog.parameter(pog.nullable(
+      pog.int,
+      project_grant_to_option(project_grant),
+    ))
     |> pog.parameter(pog.int(created_by))
     |> pog.parameter(pog.text(name))
     |> pog.parameter(pog.text(public_id))
@@ -646,7 +544,7 @@ fn insert_token(
 fn insert_scopes(
   db: pog.Connection,
   token_id: Int,
-  scopes: List(Scope),
+  scopes: List(api_token_scope.Scope),
 ) -> Result(Nil, ApiTokenError) {
   scopes
   |> list.try_each(fn(scope) {
@@ -745,7 +643,7 @@ fn query_token_rows(
 fn list_scopes(
   db: pog.Connection,
   token_id: Int,
-) -> Result(List(Scope), ApiTokenError) {
+) -> Result(List(api_token_scope.Scope), ApiTokenError) {
   let decoder = {
     use scope <- decode.field(0, decode.string)
     decode.success(scope)
@@ -774,29 +672,6 @@ fn validate_token_state(row: TokenRow) -> Result(Nil, ApiTokenError) {
         False -> Ok(Nil)
       }
   }
-}
-
-fn parse_resource(value: String) -> Result(Resource, ApiTokenError) {
-  case value {
-    "projects" -> Ok(Projects)
-    "tasks" -> Ok(Tasks)
-    "cards" -> Ok(Cards)
-    "notes" -> Ok(Notes)
-    "milestones" -> Ok(Milestones)
-    other -> Error(InvalidScope(other))
-  }
-}
-
-fn parse_access(value: String) -> Result(Access, ApiTokenError) {
-  case value {
-    "read" -> Ok(Read)
-    "write" -> Ok(Write)
-    other -> Error(InvalidScope(other))
-  }
-}
-
-fn is_supported_scope(scope: Scope) -> Bool {
-  list.contains(supported_scopes(), scope)
 }
 
 fn integration_user_error_to_api_token_error(

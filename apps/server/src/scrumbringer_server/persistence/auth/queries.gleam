@@ -81,12 +81,16 @@ pub fn user_from_row(
     persisted_role.org_role(row.org_role)
     |> result.map_error(auth_logic.DbError),
   )
-  use user_kind <- result.try(
-    store_state.parse_user_kind(row.user_kind)
+  use identity <- result.try(
+    store_state.parse_user_identity(row.user_kind, row.password_hash)
     |> result.map_error(fn(error) {
       case error {
-        store_state.UnknownUserKind(value) ->
+        store_state.UnknownUserIdentityKind(value) ->
           auth_logic.InvalidPersistedUserKind(value)
+        store_state.HumanIdentityMissingPassword ->
+          auth_logic.InvalidPersistedUserIdentity("human_missing_password")
+        store_state.IntegrationIdentityHasPassword ->
+          auth_logic.InvalidPersistedUserIdentity("integration_has_password")
       }
     }),
   )
@@ -94,10 +98,9 @@ pub fn user_from_row(
   Ok(store_state.StoredUser(
     id: row.id,
     email: row.email,
-    password_hash: row.password_hash,
+    identity: identity,
     org_id: row.org_id,
     org_role: parsed_role,
-    user_kind: user_kind,
     created_at: row.created_at,
   ))
 }

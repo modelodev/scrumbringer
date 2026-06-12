@@ -8,6 +8,7 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/api_token_scope
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/api_tokens
 import scrumbringer_client/client_ffi
@@ -353,7 +354,10 @@ fn parse_optional_int(value: String) -> opt.Option(Int) {
   }
 }
 
-fn toggle_scope(scopes: List(String), scope: String) -> List(String) {
+fn toggle_scope(
+  scopes: List(api_token_scope.Scope),
+  scope: api_token_scope.Scope,
+) -> List(api_token_scope.Scope) {
   case list.contains(scopes, scope) {
     True -> list.filter(scopes, fn(existing) { existing != scope })
     False -> [scope, ..scopes]

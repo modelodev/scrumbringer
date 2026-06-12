@@ -50,8 +50,8 @@ pub fn login(
 
   use user <- result.try(queries.user_from_row(row))
 
-  case user.user_kind, user.password_hash {
-    store_state.Human, Some(password_hash) -> {
+  case user.identity {
+    store_state.HumanIdentity(password_hash: password_hash) -> {
       use matched <- result.try(
         password.verify(password_raw, password_hash)
         |> result.map_error(auth_logic.PasswordError),
@@ -71,7 +71,7 @@ pub fn login(
       }
     }
 
-    _, _ -> Error(auth_logic.InvalidCredentials)
+    store_state.IntegrationIdentity -> Error(auth_logic.InvalidCredentials)
   }
 }
 

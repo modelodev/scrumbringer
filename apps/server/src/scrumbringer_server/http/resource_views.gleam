@@ -17,8 +17,7 @@ pub fn handle_put(
   touch_view: fn(pog.Connection, Int, Int) -> Result(a, pog.QueryError),
 ) -> wisp.Response {
   case req.method {
-    http.Put ->
-      put(req, ctx, resource_id, fetch_project_id, touch_view)
+    http.Put -> put(req, ctx, resource_id, fetch_project_id, touch_view)
     _ -> wisp.method_not_allowed([http.Put])
   }
 }

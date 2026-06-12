@@ -139,10 +139,9 @@ pub fn register_rejects_taken_email_test() {
     ss.StoredUser(
       id: 1,
       email: "admin@example.com",
-      password_hash: Some("hash"),
+      identity: ss.HumanIdentity(password_hash: "hash"),
       org_id: 1,
       org_role: org_role.Admin,
-      user_kind: ss.Human,
       created_at: now_iso,
     )
 

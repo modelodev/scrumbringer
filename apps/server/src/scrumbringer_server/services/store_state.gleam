@@ -6,7 +6,7 @@
 import domain/org_role.{type OrgRole}
 import domain/project_role.{type ProjectRole}
 import gleam/dict
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 
 /// Distinguishes browser users from external integration identities.
 pub type UserKind {
@@ -16,6 +16,21 @@ pub type UserKind {
 
 pub type UserKindParseError {
   UnknownUserKind(String)
+}
+
+/// The credential-bearing identity shape for a stored user.
+///
+/// A human user must carry a password hash. An integration user cannot carry
+/// password credentials, which keeps token-only identities out of login flows.
+pub type UserIdentity {
+  HumanIdentity(password_hash: String)
+  IntegrationIdentity
+}
+
+pub type UserIdentityParseError {
+  UnknownUserIdentityKind(String)
+  HumanIdentityMissingPassword
+  IntegrationIdentityHasPassword
 }
 
 pub fn user_kind_to_string(kind: UserKind) -> String {
@@ -30,6 +45,25 @@ pub fn parse_user_kind(value: String) -> Result(UserKind, UserKindParseError) {
     "human" -> Ok(Human)
     "integration" -> Ok(Integration)
     other -> Error(UnknownUserKind(other))
+  }
+}
+
+pub fn parse_user_identity(
+  kind_value: String,
+  password_hash: Option(String),
+) -> Result(UserIdentity, UserIdentityParseError) {
+  case parse_user_kind(kind_value) {
+    Error(UnknownUserKind(value)) -> Error(UnknownUserIdentityKind(value))
+    Ok(Human) ->
+      case password_hash {
+        Some(hash) -> Ok(HumanIdentity(password_hash: hash))
+        None -> Error(HumanIdentityMissingPassword)
+      }
+    Ok(Integration) ->
+      case password_hash {
+        Some(_) -> Error(IntegrationIdentityHasPassword)
+        None -> Ok(IntegrationIdentity)
+      }
   }
 }
 
@@ -71,10 +105,9 @@ pub type StoredUser {
   StoredUser(
     id: Int,
     email: String,
-    password_hash: Option(String),
+    identity: UserIdentity,
     org_id: Int,
     org_role: OrgRole,
-    user_kind: UserKind,
     created_at: String,
   )
 }

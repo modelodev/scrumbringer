@@ -9,6 +9,7 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
+import domain/api_token_scope
 import domain/org_role/codec as org_role_codec
 import scrumbringer_client/api/core
 import scrumbringer_client/client_state/types as state_types
@@ -107,7 +108,7 @@ pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
   use project_id <- decode.field("project_id", core.nullable_int())
   use name <- decode.field("name", decode.string)
   use public_id <- decode.field("public_id", decode.string)
-  use scopes <- decode.field("scopes", decode.list(decode.string))
+  use scopes <- decode.field("scopes", decode.list(api_token_scope.decoder()))
   use created_at <- decode.field("created_at", decode.string)
   use last_used_at <- decode.field("last_used_at", core.nullable_string())
   use expires_at <- decode.field("expires_at", core.nullable_string())
@@ -134,9 +135,14 @@ fn token_body(form: state_types.ApiTokenForm) -> json.Json {
     #("name", json.string(string.trim(form.name))),
     #("integration", json.string(string.trim(form.integration))),
     #("project_id", option_int_json(form.project_id)),
-    #("scopes", json.array(form.scopes, of: json.string)),
+    #("scopes", json.array(form.scopes, of: scope_json)),
     #("expires_at", optional_string_json(form.expires_at)),
   ])
+}
+
+fn scope_json(scope: api_token_scope.Scope) -> json.Json {
+  api_token_scope.to_string(scope)
+  |> json.string
 }
 
 fn option_int_json(value: Option(Int)) -> json.Json {

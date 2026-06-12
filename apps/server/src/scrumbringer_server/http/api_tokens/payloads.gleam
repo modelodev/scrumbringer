@@ -1,3 +1,4 @@
+import domain/api_token_scope
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/list
@@ -10,7 +11,7 @@ pub type CreateApiTokenPayload {
     name: String,
     integration: String,
     project_id: Option(Int),
-    scopes: List(token_service.Scope),
+    scopes: List(api_token_scope.Scope),
     expires_at: Option(String),
   )
 }

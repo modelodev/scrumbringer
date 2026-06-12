@@ -3,7 +3,6 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -12,6 +11,7 @@ import lustre/element/html.{
 }
 import lustre/event
 
+import domain/api_token_scope
 import domain/project.{type Project}
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
@@ -43,7 +43,7 @@ pub type Config(msg) {
     on_token_name_changed: fn(String) -> msg,
     on_token_integration_changed: fn(String) -> msg,
     on_token_project_changed: fn(String) -> msg,
-    on_token_scope_toggled: fn(String) -> msg,
+    on_token_scope_toggled: fn(api_token_scope.Scope) -> msg,
     on_token_expires_at_changed: fn(String) -> msg,
     on_token_create_submitted: msg,
     on_token_secret_dismissed: msg,
@@ -261,7 +261,11 @@ fn view_scope_checkboxes(
 }
 
 type ScopeRow {
-  ScopeRow(label: String, read: opt.Option(String), write: opt.Option(String))
+  ScopeRow(
+    label: String,
+    read: opt.Option(api_token_scope.Scope),
+    write: opt.Option(api_token_scope.Scope),
+  )
 }
 
 fn scope_row(
@@ -280,7 +284,7 @@ fn scope_row(
 fn scope_cell(
   config: Config(msg),
   form: ApiTokenForm,
-  scope: opt.Option(String),
+  scope: opt.Option(api_token_scope.Scope),
 ) -> Element(msg) {
   case scope {
     opt.None -> div([attribute.class("scope-matrix-empty")], [text("-")])
@@ -291,12 +295,13 @@ fn scope_cell(
 fn scope_checkbox(
   config: Config(msg),
   form: ApiTokenForm,
-  scope: String,
+  scope: api_token_scope.Scope,
 ) -> Element(msg) {
+  let scope_value = api_token_scope.to_string(scope)
   label([attribute.class("checkbox-label scope-checkbox")], [
     input([
       attribute.type_("checkbox"),
-      attribute.value(scope),
+      attribute.value(scope_value),
       attribute.checked(list.contains(form.scopes, scope)),
       event.on_check(fn(_) { config.on_token_scope_toggled(scope) }),
     ]),
@@ -404,7 +409,10 @@ fn token_state_badge(config: Config(msg), token: ApiToken) -> Element(msg) {
   |> badge.view_with_class("api-token-state-badge")
 }
 
-fn view_scope_summary(config: Config(msg), scopes: List(String)) -> Element(msg) {
+fn view_scope_summary(
+  config: Config(msg),
+  scopes: List(api_token_scope.Scope),
+) -> Element(msg) {
   div(
     [attribute.class("api-token-scope-badges")],
     scopes
@@ -419,63 +427,62 @@ fn scope_rows(config: Config(msg)) -> List(ScopeRow) {
   [
     ScopeRow(
       label: t(config, i18n_text.ResourceProjects),
-      read: opt.Some("projects:read"),
+      read: opt.Some(api_token_scope.ProjectsRead),
       write: opt.None,
     ),
     ScopeRow(
       label: t(config, i18n_text.ResourceTasks),
-      read: opt.Some("tasks:read"),
-      write: opt.Some("tasks:write"),
+      read: opt.Some(api_token_scope.TasksRead),
+      write: opt.Some(api_token_scope.TasksWrite),
     ),
     ScopeRow(
       label: t(config, i18n_text.ResourceCards),
-      read: opt.Some("cards:read"),
-      write: opt.Some("cards:write"),
+      read: opt.Some(api_token_scope.CardsRead),
+      write: opt.Some(api_token_scope.CardsWrite),
     ),
     ScopeRow(
       label: t(config, i18n_text.ResourceNotes),
-      read: opt.Some("notes:read"),
-      write: opt.Some("notes:write"),
+      read: opt.Some(api_token_scope.NotesRead),
+      write: opt.Some(api_token_scope.NotesWrite),
     ),
     ScopeRow(
       label: t(config, i18n_text.ResourceMilestones),
-      read: opt.Some("milestones:read"),
-      write: opt.Some("milestones:write"),
+      read: opt.Some(api_token_scope.MilestonesRead),
+      write: opt.Some(api_token_scope.MilestonesWrite),
     ),
   ]
 }
 
-fn access_label(config: Config(msg), scope: String) -> String {
-  case string.ends_with(scope, ":write") {
-    True -> t(config, i18n_text.PermissionWrite)
-    False -> t(config, i18n_text.PermissionRead)
+fn access_label(config: Config(msg), scope: api_token_scope.Scope) -> String {
+  case api_token_scope.access(scope) {
+    api_token_scope.Read -> t(config, i18n_text.PermissionRead)
+    api_token_scope.Write -> t(config, i18n_text.PermissionWrite)
   }
 }
 
-fn scope_label(config: Config(msg), scope: String) -> String {
-  case string.split(scope, ":") {
-    [resource, access] ->
-      resource_label(config, resource) <> " / " <> access_text(config, access)
-    _ -> scope
-  }
+fn scope_label(config: Config(msg), scope: api_token_scope.Scope) -> String {
+  resource_label(config, api_token_scope.resource(scope))
+  <> " / "
+  <> access_text(config, api_token_scope.access(scope))
 }
 
-fn resource_label(config: Config(msg), resource: String) -> String {
+fn resource_label(
+  config: Config(msg),
+  resource: api_token_scope.Resource,
+) -> String {
   case resource {
-    "projects" -> t(config, i18n_text.ResourceProjects)
-    "tasks" -> t(config, i18n_text.ResourceTasks)
-    "cards" -> t(config, i18n_text.ResourceCards)
-    "notes" -> t(config, i18n_text.ResourceNotes)
-    "milestones" -> t(config, i18n_text.ResourceMilestones)
-    _ -> resource
+    api_token_scope.Projects -> t(config, i18n_text.ResourceProjects)
+    api_token_scope.Tasks -> t(config, i18n_text.ResourceTasks)
+    api_token_scope.Cards -> t(config, i18n_text.ResourceCards)
+    api_token_scope.Notes -> t(config, i18n_text.ResourceNotes)
+    api_token_scope.Milestones -> t(config, i18n_text.ResourceMilestones)
   }
 }
 
-fn access_text(config: Config(msg), access: String) -> String {
+fn access_text(config: Config(msg), access: api_token_scope.Access) -> String {
   case access {
-    "read" -> t(config, i18n_text.PermissionRead)
-    "write" -> t(config, i18n_text.PermissionWrite)
-    _ -> access
+    api_token_scope.Read -> t(config, i18n_text.PermissionRead)
+    api_token_scope.Write -> t(config, i18n_text.PermissionWrite)
   }
 }
 

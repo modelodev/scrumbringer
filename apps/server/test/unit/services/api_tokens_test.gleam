@@ -1,3 +1,4 @@
+import domain/api_token_scope
 import gleam/string
 import scrumbringer_server/services/api_tokens
 import support/assertions as expect
@@ -5,7 +6,8 @@ import support/assertions as expect
 pub fn parse_scope_accepts_known_resources_and_access_test() {
   let assert Ok(scope) = api_tokens.parse_scope("tasks:write")
 
-  scope |> expect.equal(api_tokens.Scope(api_tokens.Tasks, api_tokens.Write))
+  scope
+  |> expect.equal(api_token_scope.TasksWrite)
 }
 
 pub fn parse_scope_rejects_unsupported_project_write_test() {
@@ -30,16 +32,16 @@ pub fn supported_scope_strings_match_public_contract_test() {
 
 pub fn parse_scope_rejects_unknown_resource_test() {
   api_tokens.parse_scope("workflows:read")
-  |> expect.equal(Error(api_tokens.InvalidScope("workflows")))
+  |> expect.equal(Error(api_tokens.InvalidScope("workflows:read")))
 }
 
 pub fn parse_scope_rejects_unknown_access_test() {
   api_tokens.parse_scope("tasks:admin")
-  |> expect.equal(Error(api_tokens.InvalidScope("admin")))
+  |> expect.equal(Error(api_tokens.InvalidScope("tasks:admin")))
 }
 
 pub fn scope_to_string_returns_wire_value_test() {
-  api_tokens.Scope(api_tokens.Milestones, api_tokens.Read)
+  api_token_scope.MilestonesRead
   |> api_tokens.scope_to_string
   |> expect.equal("milestones:read")
 }

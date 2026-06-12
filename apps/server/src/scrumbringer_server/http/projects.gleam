@@ -23,7 +23,6 @@
 import domain/org_role
 import gleam/http
 import gleam/list
-import gleam/option.{Some}
 import gleam/result
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -34,6 +33,7 @@ import scrumbringer_server/http/projects/payloads as project_payloads
 import scrumbringer_server/http/projects/presenters as project_presenters
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/api_tokens
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
@@ -309,31 +309,28 @@ fn update_member_role(
 
 fn list_projects(req: wisp.Request, ctx: auth.Ctx) {
   use principal <- result.try(auth.require_principal_response(req, ctx))
-  let auth.Principal(user: user, source: source) = principal
+  let user = auth.principal_user(principal)
   let auth.Ctx(db: db, ..) = ctx
-  case projects_db.list_projects_for_user(db, user.id) {
-    Ok(projects) ->
-      Ok(
-        project_presenters.projects_response(filter_projects_for_source(
-          projects,
-          source,
-        )),
-      )
+  case list_projects_for_principal(db, user, principal) {
+    Ok(projects) -> Ok(project_presenters.projects_response(projects))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
-fn filter_projects_for_source(
-  projects: List(projects_db.Project),
-  source: auth.AuthSource,
-) -> List(projects_db.Project) {
-  case source {
-    auth.WebSession -> projects
-    auth.ApiToken(token) ->
-      case token.project_id {
-        Some(project_id) ->
-          list.filter(projects, fn(project) { project.id == project_id })
-        _ -> projects
+fn list_projects_for_principal(db, user: StoredUser, principal: auth.Principal) {
+  case principal {
+    auth.WebPrincipal(_) -> projects_db.list_projects_for_user(db, user.id)
+    auth.ApiTokenPrincipal(_, token) ->
+      case token.project_grant {
+        api_tokens.AllProjects ->
+          projects_db.list_projects_for_org(db, user.org_id)
+        api_tokens.ProjectOnly(project_id) -> {
+          use projects <- result.try(projects_db.list_projects_for_org(
+            db,
+            user.org_id,
+          ))
+          Ok(list.filter(projects, fn(project) { project.id == project_id }))
+        }
       }
   }
 }

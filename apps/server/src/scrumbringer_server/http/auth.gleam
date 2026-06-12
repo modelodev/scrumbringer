@@ -18,6 +18,7 @@
 //// - JWT operations (see `services/jwt.gleam`)
 //// - Database operations (see `persistence/auth/`)
 
+import domain/api_token_scope
 import gleam/bit_array
 import gleam/crypto
 import gleam/http
@@ -42,7 +43,7 @@ import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/rate_limit
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/services/store_state
 import scrumbringer_server/services/time
 import wisp
 
@@ -51,13 +52,12 @@ pub type Ctx {
   Ctx(db: pog.Connection, jwt_secret: BitArray)
 }
 
-pub type AuthSource {
-  WebSession
-  ApiToken(token: api_tokens.VerifiedToken)
-}
-
 pub type Principal {
-  Principal(user: StoredUser, source: AuthSource)
+  WebPrincipal(user: store_state.StoredUser)
+  ApiTokenPrincipal(
+    user: store_state.StoredUser,
+    token: api_tokens.VerifiedToken,
+  )
 }
 
 const invite_rate_limit_window_seconds = 60
@@ -240,7 +240,10 @@ fn logout_with_csrf(req: wisp.Request) -> wisp.Response {
   }
 }
 
-fn ok_with_auth(user: StoredUser, jwt_secret: BitArray) -> wisp.Response {
+fn ok_with_auth(
+  user: store_state.StoredUser,
+  jwt_secret: BitArray,
+) -> wisp.Response {
   let session_jwt =
     jwt.new_claims(user.id, user.org_id, user.org_role)
     |> jwt.sign(jwt_secret)
@@ -258,9 +261,9 @@ fn ok_with_auth(user: StoredUser, jwt_secret: BitArray) -> wisp.Response {
 pub fn require_current_user(
   req: wisp.Request,
   ctx: Ctx,
-) -> Result(StoredUser, Nil) {
+) -> Result(store_state.StoredUser, Nil) {
   require_principal(req, ctx)
-  |> result.map(fn(principal) { principal.user })
+  |> result.map(principal_user)
   |> result.replace_error(Nil)
 }
 
@@ -295,7 +298,10 @@ fn require_web_principal(
     |> result.replace_error(auth_required_response()),
   )
 
-  Ok(Principal(user: user, source: WebSession))
+  case user.identity {
+    store_state.HumanIdentity(_) -> Ok(WebPrincipal(user: user))
+    store_state.IntegrationIdentity -> Error(auth_required_response())
+  }
 }
 
 fn require_bearer_principal(
@@ -329,15 +335,19 @@ fn require_bearer_principal(
     |> result.map_error(fn(_) { api.error(500, "INTERNAL", "Database error") }),
   )
 
-  Ok(Principal(user: user, source: ApiToken(token: token)))
+  case user.identity {
+    store_state.IntegrationIdentity ->
+      Ok(ApiTokenPrincipal(user: user, token: token))
+    store_state.HumanIdentity(_) -> Error(auth_required_response())
+  }
 }
 
 pub fn require_current_user_response(
   req: wisp.Request,
   ctx: Ctx,
-) -> Result(StoredUser, wisp.Response) {
+) -> Result(store_state.StoredUser, wisp.Response) {
   require_principal(req, ctx)
-  |> result.map(fn(principal) { principal.user })
+  |> result.map(principal_user)
 }
 
 pub fn require_principal_response(
@@ -345,6 +355,13 @@ pub fn require_principal_response(
   ctx: Ctx,
 ) -> Result(Principal, wisp.Response) {
   require_principal(req, ctx)
+}
+
+pub fn principal_user(principal: Principal) -> store_state.StoredUser {
+  case principal {
+    WebPrincipal(user) -> user
+    ApiTokenPrincipal(user, _) -> user
+  }
 }
 
 pub fn record_bearer_audit(
@@ -402,7 +419,7 @@ fn bearer_from_header(value: String) -> opt.Option(String) {
 
 fn require_token_scope(
   token: api_tokens.VerifiedToken,
-  scope: api_tokens.Scope,
+  scope: api_token_scope.Scope,
 ) -> Result(Nil, wisp.Response) {
   case api_tokens.has_scope(token, scope) {
     True -> Ok(Nil)
@@ -445,6 +462,8 @@ fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
       api.error(422, "VALIDATION_ERROR", "Email already taken")
     auth_logic.InvalidPersistedUserKind(_) ->
       api.error(500, "INTERNAL", "Invalid persisted user kind")
+    auth_logic.InvalidPersistedUserIdentity(_) ->
+      api.error(500, "INTERNAL", "Invalid persisted user identity")
     auth_logic.PasswordError(_) ->
       api.error(500, "INTERNAL", "Password hashing failed")
     auth_logic.DbError(_) -> api.error(500, "INTERNAL", "Database error")

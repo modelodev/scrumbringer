@@ -21,6 +21,7 @@
 //// - Shares `ProjectRole` with domain types
 
 import domain/project_role.{type ProjectRole}
+import gleam/dynamic/decode
 import gleam/list
 import gleam/result
 import pog
@@ -183,6 +184,36 @@ pub fn list_projects_for_user(
   })
 }
 
+pub fn list_projects_for_org(
+  db: pog.Connection,
+  org_id: Int,
+) -> Result(List(Project), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    use my_role <- decode.field(4, decode.string)
+    use members_count <- decode.field(5, decode.int)
+    decode.success(#(id, org_id, name, created_at, my_role, members_count))
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "\nselect\n  p.id,\n  p.org_id,\n  p.name,\n  to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,\n  'manager' as my_role,\n  (select count(*) from project_members where project_id = p.id) as members_count\nfrom projects p\nwhere p.org_id = $1\norder by p.name asc",
+    )
+    |> pog.parameter(pog.int(org_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  returned.rows
+  |> list.try_map(fn(row) {
+    let #(id, org_id, name, created_at, my_role, members_count) = row
+    project_from_db_fields(id, org_id, name, created_at, my_role, members_count)
+  })
+}
+
 /// Checks whether a user is a manager of a project.
 ///
 /// Example:
@@ -199,7 +230,10 @@ pub fn is_project_manager(
   ))
 
   use row <- result.try(persisted_field.query_row(returned.rows))
-  Ok(row.is_manager)
+  case row.is_manager {
+    True -> Ok(True)
+    False -> has_active_api_token_project_grant(db, project_id, user_id)
+  }
 }
 
 /// Checks whether a user is a member of a project.
@@ -218,7 +252,33 @@ pub fn is_project_member(
   ))
 
   use row <- result.try(persisted_field.query_row(returned.rows))
-  Ok(row.is_member)
+  case row.is_member {
+    True -> Ok(True)
+    False -> has_active_api_token_project_grant(db, project_id, user_id)
+  }
+}
+
+fn has_active_api_token_project_grant(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> Result(Bool, pog.QueryError) {
+  let decoder = {
+    use has_grant <- decode.field(0, decode.bool)
+    decode.success(has_grant)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "\nselect exists(\n  select 1\n  from api_tokens t\n  join projects p on p.id = $1 and p.org_id = t.org_id\n  join users u on u.id = t.integration_user_id\n  where t.integration_user_id = $2\n    and u.user_kind = 'integration'\n    and u.deleted_at is null\n    and t.revoked_at is null\n    and (t.expires_at is null or t.expires_at > now())\n    and (t.project_id is null or t.project_id = $1)\n) as has_grant",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(user_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  persisted_field.query_row(returned.rows)
 }
 
 /// Checks whether a project exists.

@@ -20,9 +20,8 @@
 
 import domain/org_role
 import gleam/int
-import gleam/option.{Some}
 import scrumbringer_server/services/store_state.{
-  type StoredUser, Human, StoredUser,
+  type StoredUser, HumanIdentity, StoredUser,
 }
 
 /// Creates a test user with member role.
@@ -30,10 +29,9 @@ pub fn make_test_user() -> StoredUser {
   StoredUser(
     id: 1,
     email: "test@example.com",
-    password_hash: Some("hashed_password"),
+    identity: HumanIdentity(password_hash: "hashed_password"),
     org_id: 1,
     org_role: org_role.Member,
-    user_kind: Human,
     created_at: "2026-01-20T00:00:00Z",
   )
 }
@@ -43,10 +41,9 @@ pub fn make_test_admin() -> StoredUser {
   StoredUser(
     id: 1,
     email: "admin@example.com",
-    password_hash: Some("hashed_password"),
+    identity: HumanIdentity(password_hash: "hashed_password"),
     org_id: 1,
     org_role: org_role.Admin,
-    user_kind: Human,
     created_at: "2026-01-20T00:00:00Z",
   )
 }
@@ -56,10 +53,9 @@ pub fn make_test_user_with_id(id: Int) -> StoredUser {
   StoredUser(
     id: id,
     email: "test" <> int.to_string(id) <> "@example.com",
-    password_hash: Some("hashed_password"),
+    identity: HumanIdentity(password_hash: "hashed_password"),
     org_id: 1,
     org_role: org_role.Member,
-    user_kind: Human,
     created_at: "2026-01-20T00:00:00Z",
   )
 }
@@ -69,10 +65,9 @@ pub fn make_test_admin_with_id(id: Int) -> StoredUser {
   StoredUser(
     id: id,
     email: "admin" <> int.to_string(id) <> "@example.com",
-    password_hash: Some("hashed_password"),
+    identity: HumanIdentity(password_hash: "hashed_password"),
     org_id: 1,
     org_role: org_role.Admin,
-    user_kind: Human,
     created_at: "2026-01-20T00:00:00Z",
   )
 }

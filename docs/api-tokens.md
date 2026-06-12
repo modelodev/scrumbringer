@@ -10,13 +10,10 @@ sesion web del navegador.
 - La UI crea o reutiliza esa integracion al crear el token.
 - Los usuarios de integracion no pueden iniciar sesion en la UI.
 - Un token puede limitarse a un proyecto concreto.
-- Si el token no tiene proyecto asignado, puede operar en todos los proyectos a
-  los que tenga acceso su usuario de integracion.
-- Un token sin proyecto asignado no concede acceso a todos los proyectos por si
-  solo. El usuario de integracion debe ser miembro de los proyectos que quiera
-  ver u operar.
-- Al crear un token seleccionando un proyecto concreto, ScrumBringer anade esa
-  integracion como miembro manager de ese proyecto si hace falta.
+- Si el token no tiene proyecto asignado, puede operar en todos los proyectos
+  actuales y futuros de la organizacion.
+- El acceso de proyecto deriva del grant activo del token; ScrumBringer no crea
+  membresias artificiales en `project_members` para las integraciones.
 - El token completo se muestra una sola vez al crearlo.
 - La base de datos guarda solo el hash del token.
 - Los tokens no expiran por defecto; `expires_at` es opcional.
@@ -65,9 +62,9 @@ Desde la UI de administracion:
 
 Si la integracion indicada ya existe en la organizacion se reutiliza; si no
 existe, ScrumBringer la crea automaticamente como identidad tecnica interna.
-Para integraciones de agentes, selecciona normalmente el proyecto de trabajo al
-crear el token; asi `GET /api/v1/projects` devolvera ese proyecto y el agente
-podra descubrir su `project_id`.
+Para integraciones de agentes, selecciona un proyecto concreto si quieres
+limitar el alcance. Selecciona todos los proyectos si el agente debe descubrir y
+operar sobre todos los proyectos de la organizacion, actuales y futuros.
 
 Crear y revocar tokens sigue usando sesion web y CSRF. No se permite administrar
 tokens usando otro Bearer en esta version.
@@ -94,9 +91,8 @@ curl -fsS \
 ```
 
 Si devuelve `{"projects":[]}` aunque existan proyectos en la organizacion,
-comprueba que el token incluye `projects:read` y que la integracion tecnica es
-miembro del proyecto. La forma mas simple es crear el token seleccionando el
-proyecto destino.
+comprueba que el token incluye `projects:read`, que se creo en la instancia
+correcta y que no esta limitado a otro proyecto.
 
 Listar tasks de un proyecto:
 

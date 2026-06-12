@@ -159,8 +159,6 @@ fn api_token_error_response(error: api_tokens.ApiTokenError) -> wisp.Response {
       api.error(422, "VALIDATION_ERROR", "Integration is not available")
     api_tokens.ProjectNotFound ->
       api.error(404, "NOT_FOUND", "Project not found")
-    api_tokens.ProjectAccessRequired ->
-      api.error(403, "FORBIDDEN", "Integration user cannot access project")
     api_tokens.InvalidExpiresAt ->
       api.error(422, "VALIDATION_ERROR", "expires_at must be RFC3339")
     api_tokens.TokenNotFound -> api.error(404, "NOT_FOUND", "Token not found")

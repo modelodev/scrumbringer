@@ -5,6 +5,7 @@ import gleam/option.{type Option}
 import gleam/set
 
 import domain/api_error.{type ApiError}
+import domain/api_token_scope
 import domain/org.{type OrgUser}
 import domain/org_role.{type OrgRole}
 import domain/project.{type Project, type ProjectMember}
@@ -55,7 +56,7 @@ pub type ApiToken {
     project_id: Option(Int),
     name: String,
     public_id: String,
-    scopes: List(String),
+    scopes: List(api_token_scope.Scope),
     created_at: String,
     last_used_at: Option(String),
     expires_at: Option(String),
@@ -75,7 +76,7 @@ pub type ApiTokenForm {
     name: String,
     integration: String,
     project_id: Option(Int),
-    scopes: List(String),
+    scopes: List(api_token_scope.Scope),
     expires_at: String,
   )
 }

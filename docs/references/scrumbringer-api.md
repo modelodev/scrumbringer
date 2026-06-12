@@ -72,10 +72,10 @@ Supported Bearer scopes:
 | --- | --- | --- | --- |
 | List projects | `GET` | `/api/v1/projects` | `projects:read` |
 
-This lists projects visible to the token integration user. It does not list all
-organization projects. A token without a `project_id` restriction still only sees
-projects where its integration user is a member. If the response is empty, the
-token probably has no project membership or lacks `projects:read`.
+This lists projects visible to the token. A token limited to a concrete
+`project_id` only returns that project. A token created for all projects derives
+access from its active grant and returns current and future organization projects
+when it has `projects:read`.
 
 Project creation/editing/membership administration is not Bearer-supported.
 
