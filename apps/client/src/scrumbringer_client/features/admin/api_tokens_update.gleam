@@ -321,10 +321,7 @@ fn handle_secret_copy_clicked(
   context: Context(parent_msg),
 ) -> #(ApiTokensModel, Effect(parent_msg)) {
   #(
-    ApiTokensModel(
-      ..model,
-      token_secret_copy_status: opt.Some(context.copying),
-    ),
+    ApiTokensModel(..model, token_secret_copy_status: opt.Some(context.copying)),
     copy_to_clipboard(secret, context.on_token_secret_copy_finished),
   )
 }
@@ -340,10 +337,7 @@ fn handle_secret_copy_finished(
   }
 
   #(
-    ApiTokensModel(
-      ..model,
-      token_secret_copy_status: opt.Some(message),
-    ),
+    ApiTokensModel(..model, token_secret_copy_status: opt.Some(message)),
     effect.none(),
   )
 }

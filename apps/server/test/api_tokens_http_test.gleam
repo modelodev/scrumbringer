@@ -266,10 +266,12 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
         "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
       )
       |> fixtures.with_bearer(token)
-      |> simulate.json_body(json.object([
-        #("title", json.string("Imported card")),
-        #("description", json.string("Created by integration")),
-      ])),
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string("Imported card")),
+          #("description", json.string("Created by integration")),
+        ]),
+      ),
     )
   expect.expect_status(create_card_res, 200)
 
@@ -282,10 +284,12 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
       "/api/v1/cards/" <> int.to_string(created_card_id),
     )
     |> fixtures.with_bearer(token)
-    |> simulate.json_body(json.object([
-      #("title", json.string("Updated imported card")),
-      #("description", json.string("Updated by integration")),
-    ])),
+    |> simulate.json_body(
+      json.object([
+        #("title", json.string("Updated imported card")),
+        #("description", json.string("Updated by integration")),
+      ]),
+    ),
   )
   |> expect.expect_status(200)
 
@@ -311,9 +315,11 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
       |> fixtures.with_bearer(token)
-      |> simulate.json_body(json.object([
-        #("content", json.string("Card note from integration")),
-      ])),
+      |> simulate.json_body(
+        json.object([
+          #("content", json.string("Card note from integration")),
+        ]),
+      ),
     )
   expect.expect_status(card_note_res, 200)
   let assert Ok(card_note_id) =
@@ -346,9 +352,11 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
     |> fixtures.with_bearer(token)
-    |> simulate.json_body(json.object([
-      #("content", json.string("Task note from integration")),
-    ])),
+    |> simulate.json_body(
+      json.object([
+        #("content", json.string("Task note from integration")),
+      ]),
+    ),
   )
   |> expect.expect_status(200)
 
@@ -359,10 +367,12 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
         "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
       )
       |> fixtures.with_bearer(token)
-      |> simulate.json_body(json.object([
-        #("name", json.string("Imported milestone")),
-        #("description", json.string("Created by integration")),
-      ])),
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Imported milestone")),
+          #("description", json.string("Created by integration")),
+        ]),
+      ),
     )
   expect.expect_status(milestone_res, 200)
   let assert Ok(milestone_id) =
@@ -374,10 +384,12 @@ pub fn bearer_can_operate_cards_notes_and_milestones_test() {
       "/api/v1/milestones/" <> int.to_string(milestone_id),
     )
     |> fixtures.with_bearer(token)
-    |> simulate.json_body(json.object([
-      #("name", json.string("Updated milestone")),
-      #("description", json.string("Updated by integration")),
-    ])),
+    |> simulate.json_body(
+      json.object([
+        #("name", json.string("Updated milestone")),
+        #("description", json.string("Updated by integration")),
+      ]),
+    ),
   )
   |> expect.expect_status(200)
 
@@ -619,7 +631,8 @@ fn create_api_token_created(
 
   case res.status {
     200 -> decode_created_token(simulate.read_body(res))
-    status -> Error("create_api_token_created failed: " <> int.to_string(status))
+    status ->
+      Error("create_api_token_created failed: " <> int.to_string(status))
   }
 }
 

@@ -65,29 +65,29 @@ fn view_open(
       ],
       [],
     ),
-      div(
-        [
-          attribute.class("drawer" <> position_class <> " drawer-open open"),
-          attribute.attribute("data-testid", testid),
-          attribute.attribute("role", "dialog"),
-          attribute.attribute("aria-modal", "true"),
-          attribute.attribute("aria-label", dialog_label),
-        ],
-        [
-          div([attribute.class("drawer-header")], [
-            button(
-              [
-                attribute.class("drawer-close"),
-                attribute.attribute("data-testid", "drawer-close"),
-                attribute.attribute("aria-label", "Close drawer"),
-                event.on_click(on_close),
-              ],
-              [element.text("\u{00D7}")],
-            ),
-          ]),
-          div([attribute.class("drawer-content")], [content]),
-        ],
-      ),
+    div(
+      [
+        attribute.class("drawer" <> position_class <> " drawer-open open"),
+        attribute.attribute("data-testid", testid),
+        attribute.attribute("role", "dialog"),
+        attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-label", dialog_label),
+      ],
+      [
+        div([attribute.class("drawer-header")], [
+          button(
+            [
+              attribute.class("drawer-close"),
+              attribute.attribute("data-testid", "drawer-close"),
+              attribute.attribute("aria-label", "Close drawer"),
+              event.on_click(on_close),
+            ],
+            [element.text("\u{00D7}")],
+          ),
+        ]),
+        div([attribute.class("drawer-content")], [content]),
+      ],
+    ),
   ])
 }
 

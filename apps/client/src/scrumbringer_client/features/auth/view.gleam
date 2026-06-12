@@ -102,30 +102,30 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
         event.on_submit(fn(_) { config.on_login_submitted }),
       ],
       [
-      form_field.view_required(
-        t(i18n_text.EmailLabel),
-        input([
-          attribute.attribute("id", "login-email"),
-          attribute.type_("email"),
-          attribute.value(auth.login_email),
-          event.on_input(fn(value) { config.on_login_email_changed(value) }),
-          attribute.required(True),
-          // L02: Autofocus on first field
-          attribute.autofocus(True),
-          attribute.attribute("aria-label", "Email address"),
-        ]),
-      ),
-      form_field.view_required(
-        t(i18n_text.PasswordLabel),
-        input([
-          attribute.attribute("id", "login-password"),
-          attribute.type_("password"),
-          attribute.value(auth.login_password),
-          event.on_input(fn(value) { config.on_login_password_changed(value) }),
-          attribute.required(True),
-          attribute.attribute("aria-label", "Password"),
-        ]),
-      ),
+        form_field.view_required(
+          t(i18n_text.EmailLabel),
+          input([
+            attribute.attribute("id", "login-email"),
+            attribute.type_("email"),
+            attribute.value(auth.login_email),
+            event.on_input(fn(value) { config.on_login_email_changed(value) }),
+            attribute.required(True),
+            // L02: Autofocus on first field
+            attribute.autofocus(True),
+            attribute.attribute("aria-label", "Email address"),
+          ]),
+        ),
+        form_field.view_required(
+          t(i18n_text.PasswordLabel),
+          input([
+            attribute.attribute("id", "login-password"),
+            attribute.type_("password"),
+            attribute.value(auth.login_password),
+            event.on_input(fn(value) { config.on_login_password_changed(value) }),
+            attribute.required(True),
+            attribute.attribute("aria-label", "Password"),
+          ]),
+        ),
         div([attribute.class("auth-actions")], [
           // L01: Submit button with loading class
           button(

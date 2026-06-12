@@ -157,7 +157,8 @@ fn api_token_error_response(error: api_tokens.ApiTokenError) -> wisp.Response {
       api.error(404, "NOT_FOUND", "Integration user not found")
     api_tokens.IntegrationUnavailable ->
       api.error(422, "VALIDATION_ERROR", "Integration is not available")
-    api_tokens.ProjectNotFound -> api.error(404, "NOT_FOUND", "Project not found")
+    api_tokens.ProjectNotFound ->
+      api.error(404, "NOT_FOUND", "Project not found")
     api_tokens.ProjectAccessRequired ->
       api.error(403, "FORBIDDEN", "Integration user cannot access project")
     api_tokens.InvalidExpiresAt ->
