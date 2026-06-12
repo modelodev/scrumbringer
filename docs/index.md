@@ -1,15 +1,35 @@
 # Documentation Index
 
-## Sprint Closures
+This directory keeps developer-facing documentation for ScrumBringer. Historical
+plans, sprint reports, QA gates, stories, workflow pilots, and one-off audits
+have been removed from `docs`.
 
-### [Sprint 7 Closure Report](./sprint-7-closure.md)
+## Architecture
 
-Closure report for Sprint 7 with completed stories and follow-ups.
+- [Architecture overview](./architecture.md)
+- [API contract](./architecture/api-contract.md)
+- [Data model](./architecture/data-model.md)
+- [Source tree](./architecture/source-tree.md)
+- [Tech stack](./architecture/tech-stack.md)
+- [Coding standards](./architecture/coding-standards.md)
+- [Testing architecture](./architecture/testing-architecture.md)
+- [Responsive guidance](./architecture/responsive.md)
+- [Lustre components](./architecture/lustre-components.md)
+- [Helpers catalog](./architecture/helpers-catalog.md)
 
-### [Sprint 6 Closure Report](./sprint-6-closure.md)
+## Frontend
 
-Closure report for Sprint 6 with story gates and follow-ups.
+- [UI architecture](./ui-architecture.md)
+- [Lustre inventory](./lustre_inventory.yml)
 
-### [Sprint 5 Closure Report](./sprint-5-closure.md)
+## API And Integrations
 
-Closure report for Sprint 5 with story gates and evidence.
+- [API tokens](./api-tokens.md)
+- [Scrumbringer agent skill](./SKILL.md)
+- [Scrumbringer Bearer API reference for agents](./references/scrumbringer-api.md)
+- [Scrumbringer API helper script](./scripts/scrumbringer-api.mjs)
+
+## Operations
+
+- [Production deploy runbook](./deploy/runbook.md)
+- [No-legacy rules](./no-legacy-rules.md)

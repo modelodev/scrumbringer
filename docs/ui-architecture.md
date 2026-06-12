@@ -19,9 +19,9 @@
 - **No type duplication:** client imports shared domain types, no local equivalents.
 
 ### Required References / Inputs
-- **PRD**: `docs/brief.md` (UI/UX rules for pool, my bar, skills view, now working).  
-- **Architecture**: `docs/sprint-3-refactor-checklist.md` (client stack, source tree, TEA constraints).  
-- **UX**: none provided (note: we will encode UI/UX rules from PRD).
+- **Architecture**: `docs/architecture.md` and `docs/architecture/source-tree.md`.
+- **Coding standards**: `docs/architecture/coding-standards.md`.
+- **Component guidance**: `docs/architecture/lustre-components.md`.
 
 ### Change Log
 

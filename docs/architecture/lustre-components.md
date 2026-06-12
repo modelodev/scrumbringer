@@ -489,7 +489,6 @@ This allows components to use theme colors defined in the parent document:
 ## References
 
 - [Lustre Component API](https://hexdocs.pm/lustre/lustre/component.html)
-- [Story 3.6: Card Detail Modal](../stories/3.6.card-detail-component.md) - First implementation
 - [Coding Standards](./coding-standards.md) - Module structure guidelines
 
 ---

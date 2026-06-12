@@ -37,8 +37,7 @@ This document defines a **type-safe BDD testing architecture** for Gleam/Lustre 
 8. [Living Documentation](#8-living-documentation)
 9. [Security Considerations](#9-security-considerations)
 10. [Project Structure](#10-project-structure)
-11. [Implementation Roadmap](#11-implementation-roadmap)
-12. [Appendix: Full Type Definitions](#12-appendix-full-type-definitions)
+11. [Appendix: Full Type Definitions](#11-appendix-full-type-definitions)
 
 ---
 
@@ -2017,54 +2016,7 @@ The `framework/` directory is designed to be extractable as a standalone Hex pac
 
 ---
 
-## 11. Implementation Roadmap
-
-### 11.1 Phase 1: Core DSL
-
-- [ ] Define all domain types (`refs.gleam`, `routes.gleam`, `targets.gleam`, etc.)
-- [ ] Implement `TestContext` with `materialize()`
-- [ ] Implement `Spec` type with capability inference
-- [ ] Implement DSL builder (`spec()`, `given()`, `when_()`, `then_()`)
-- [ ] Write 3-5 example specs for auth and pool features
-- [ ] Add `data-test-id` attributes to existing Lustre views
-
-### 11.2 Phase 2: Simulate Backend
-
-- [ ] Implement test_id resolution (NOT CSS)
-- [ ] Implement `simulate_backend.run()` with threaded Simulation
-- [ ] Implement expectation assertions against model and view
-- [ ] Handle `Nth` locator via `query.find_all`
-- [ ] Document effects limitation and `InjectMsg` pattern
-- [ ] Make the example specs pass in simulate
-
-### 11.3 Phase 3: Playwright Backend
-
-- [ ] Implement Command ADT encoder (typed, not strings)
-- [ ] Write Node.js runner with `getByTestId()`
-- [ ] Implement fixture API endpoint with token protection
-- [ ] Implement Locator AST resolution in runner
-- [ ] Test protocol communication Gleam ↔ Node
-- [ ] Make drag-drop spec pass in Playwright
-
-### 11.4 Phase 4: Integration
-
-- [ ] Implement execution router with auto-backend selection
-- [ ] Implement console and JSON reporters
-- [ ] Implement Markdown doc generator with stable ordering
-- [ ] Add CLI commands (`gleam test -- --tags smoke`, `gleam test -- --e2e`)
-- [ ] CI integration with parallel execution
-
-### 11.5 Phase 5: Polish
-
-- [ ] Add more specs to catalog (target: 20-30 specs)
-- [ ] Add multi-actor support for Playwright
-- [ ] Add duration tracking per step
-- [ ] Performance optimization
-- [ ] Documentation
-
----
-
-## 12. Appendix: Full Type Definitions
+## 11. Appendix: Full Type Definitions
 
 See individual module files:
 

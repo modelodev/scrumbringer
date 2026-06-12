@@ -104,6 +104,5 @@ This resolves the key constraint identified in `.ai/handoff.md`: Lustre 4.x is n
 
 ## References
 
-- [Project Brief](brief.md)
 - [Lustre Documentation](https://hexdocs.pm/lustre)
 - [Squirrel Documentation](https://hexdocs.pm/squirrel)

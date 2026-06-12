@@ -14,11 +14,12 @@ scrumbringer/
 ├── .bmad-core/                  # BMAD methodology files
 ├── .ai/                         # Session handoff + notes
 ├── docs/                        # Documentation
-│   ├── brief.md
+│   ├── index.md
 │   ├── architecture.md
 │   ├── architecture/
-│   ├── prd/
-│   └── stories/
+│   ├── deploy/
+│   ├── references/
+│   └── scripts/
 │
 ├── apps/
 │   ├── client/                  # Lustre app (Gleam → JavaScript)
