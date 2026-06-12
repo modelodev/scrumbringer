@@ -414,6 +414,8 @@ fn view_task_row(
           content_class: "task-item-content milestone-task-content",
           leading: option.None,
           on_click: option.Some(config.on_task_open(task_id)),
+          content_title: option.None,
+          content_label: option.None,
           icon: option.Some(task_type_icon.view(
             task.task_type.icon,
             14,

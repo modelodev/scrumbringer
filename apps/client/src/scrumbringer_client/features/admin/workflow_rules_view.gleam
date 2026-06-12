@@ -51,6 +51,7 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
@@ -570,32 +571,39 @@ fn view_attach_template_modal_body(
 
 fn view_attach_template_modal_footer(config: Config(msg)) -> Element(msg) {
   div([attribute.class("modal-footer")], [
-    button(
-      [
-        attribute.class("btn btn-secondary"),
-        event.on_click(config.on_attach_modal_closed),
-      ],
-      [text(t(config, i18n_text.Cancel))],
-    ),
-    // AC20: Loading state on submit button
-    case config.rules.attach_template_loading {
-      True ->
-        button([attribute.class("btn btn-primary"), attribute.disabled(True)], [
-          text(t(config, i18n_text.Attaching)),
-        ])
-      False ->
-        button(
-          [
-            attribute.class("btn btn-primary"),
-            attribute.disabled(opt.is_none(
-              config.rules.attach_template_selected,
-            )),
-            event.on_click(config.on_attach_submitted),
-          ],
-          [text(t(config, i18n_text.Attach))],
-        )
-    },
+    ui_button.text(
+      t(config, i18n_text.Cancel),
+      config.on_attach_modal_closed,
+      ui_button.Secondary,
+      ui_button.EntityAction,
+    )
+      |> ui_button.view,
+    view_attach_template_submit_button(config),
   ])
+}
+
+fn view_attach_template_submit_button(config: Config(msg)) -> Element(msg) {
+  let label = case config.rules.attach_template_loading {
+    True -> t(config, i18n_text.Attaching)
+    False -> t(config, i18n_text.Attach)
+  }
+
+  let button =
+    ui_button.text(
+      label,
+      config.on_attach_submitted,
+      ui_button.Primary,
+      ui_button.EntityAction,
+    )
+    |> ui_button.with_disabled(
+      config.rules.attach_template_loading
+      || opt.is_none(config.rules.attach_template_selected),
+    )
+
+  case config.rules.attach_template_loading {
+    True -> button |> ui_button.with_class("btn-loading") |> ui_button.view
+    False -> button |> ui_button.view
+  }
 }
 
 /// Render a radio button option for template selection.

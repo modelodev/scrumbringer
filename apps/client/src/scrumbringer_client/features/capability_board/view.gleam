@@ -681,6 +681,8 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
       container_class: "task-item " <> border_class <> blocked_class,
       content_class: "task-item-content",
       on_click: Some(config.on_task_click(task.id)),
+      content_title: None,
+      content_label: None,
       leading: view_card_identity_swatch(card_title_opt),
       icon: Some(task_type_icon.view(task.task_type.icon, 14, config.theme)),
       icon_class: None,

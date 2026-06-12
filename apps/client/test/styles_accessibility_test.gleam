@@ -72,3 +72,15 @@ pub fn auth_actions_stay_grouped_on_mobile_test() {
   assert_contains(css, ".auth-submit { flex: 1 1 132px")
   assert_contains(css, "@media (max-width: 340px)")
 }
+
+pub fn left_sidebar_reserves_scrollbar_space_and_truncates_nav_labels_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, "grid-template-columns: minmax(248px, 264px)")
+  assert_contains(css, "scrollbar-gutter: stable")
+  assert_contains(css, ".nav-link { display: flex")
+  assert_contains(css, "width: 100%; min-width: 0")
+  assert_contains(css, ".nav-label { flex: 1; min-width: 0")
+  assert_contains(css, "text-overflow: ellipsis")
+  assert_contains(css, ".nav-link .nav-icon, .nav-link .badge")
+}

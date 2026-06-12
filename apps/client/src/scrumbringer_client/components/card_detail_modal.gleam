@@ -60,6 +60,7 @@ import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
@@ -802,25 +803,45 @@ fn view_task_list(tasks: List(Task)) -> Element(Msg) {
 }
 
 fn view_task_item(task: Task) -> Element(Msg) {
+  task_item.view(
+    task_item.Config(
+      container_class: "card-task-item detail-item-row",
+      content_class: "card-task-content",
+      leading: option.Some(view_task_status(task)),
+      on_click: option.None,
+      content_title: option.None,
+      content_label: option.None,
+      icon: option.None,
+      icon_class: option.None,
+      title: task.title,
+      title_class: option.Some("card-task-title"),
+      secondary: view_task_claim_status(task),
+      actions: task_item.no_actions(),
+      reserve_actions_slot: False,
+      action_slot_class: option.None,
+      testid: option.None,
+    ),
+    task_item.Div,
+  )
+}
+
+fn view_task_status(task: Task) -> Element(Msg) {
   let status_icon = case task.status {
     Completed -> "\u{2705}"
-    // green checkmark
     task_status.Claimed(_) -> "\u{1F7E1}"
-    // yellow circle
     Available -> "\u{26AA}"
-    // white circle
   }
 
+  span([attribute.class("card-task-status")], [text(status_icon)])
+}
+
+fn view_task_claim_status(task: Task) -> Element(Msg) {
   let claimed_text = case claimed_by(task) {
     option.Some(_id) -> " (claimed)"
     option.None -> ""
   }
 
-  div([attribute.class("card-task-item detail-item-row")], [
-    span([attribute.class("card-task-status")], [text(status_icon)]),
-    span([attribute.class("card-task-title")], [text(task.title)]),
-    span([attribute.class("card-task-info")], [text(claimed_text)]),
-  ])
+  span([attribute.class("card-task-info")], [text(claimed_text)])
 }
 
 fn view_card_metrics_section(model: Model) -> Element(Msg) {
@@ -857,27 +878,27 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
                 [],
               ),
             ]),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsTasksTotal),
               int.to_string(metrics.tasks_total),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsTasksCompleted),
               int.to_string(metrics.tasks_completed),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsProgress),
               int.to_string(metrics.tasks_percent) <> "%",
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsAvailable),
               int.to_string(metrics.tasks_available),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsClaimed),
               int.to_string(metrics.tasks_claimed),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsOngoing),
               int.to_string(metrics.tasks_ongoing),
             ),
@@ -907,21 +928,21 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
                 badge.Success,
               ),
             ]),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsRebotesAvg),
               int.to_string(metrics.health.avg_rebotes),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsPoolLifetimeAvg),
               detail_metrics.format_duration_s(
                 metrics.health.avg_pool_lifetime_s,
               ),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsAvgExecutors),
               int.to_string(metrics.health.avg_executors),
             ),
-            view_metrics_row(
+            detail_metrics.view_row(
               t(model.locale, i18n_text.MetricsMostActivated),
               metrics.most_activated
                 |> metrics_text_or_not_available(model),
@@ -934,10 +955,6 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
           ])
       }
   }
-}
-
-fn view_metrics_row(label: String, value: String) -> Element(Msg) {
-  detail_metrics.view_row(label, value)
 }
 
 fn metrics_text_or_not_available(value: Option(String), model: Model) -> String {

@@ -291,6 +291,8 @@ fn view_task_item(
       content_class: "task-item-content",
       leading: None,
       on_click: Some(config.on_task_click(task.id)),
+      content_title: None,
+      content_label: None,
       icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
       icon_class: None,
       title: task.title,

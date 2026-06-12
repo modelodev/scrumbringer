@@ -79,4 +79,6 @@ pub fn org_settings_view_renders_delete_dialog_from_config_without_root_model_te
   assert_contains(html, "Delete user")
   assert_contains(html, "member@example.com")
   assert_contains(html, "Deleting")
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "btn-entity-action")
 }

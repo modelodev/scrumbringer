@@ -467,6 +467,8 @@ pub fn view_member_bar_task_row(
       content_class: "task-row-title",
       leading: opt.None,
       on_click: opt.Some(config.on_task_open(id)),
+      content_title: opt.None,
+      content_label: opt.None,
       icon: opt.None,
       icon_class: opt.None,
       title: title,

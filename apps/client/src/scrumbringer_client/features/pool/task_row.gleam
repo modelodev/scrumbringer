@@ -65,6 +65,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       content_class: "task-row-title",
       leading: opt.None,
       on_click: opt.Some(config.on_open),
+      content_title: opt.None,
+      content_label: opt.None,
       icon: opt.Some(task_type_icon.view(task_type.icon, 16, config.theme)),
       icon_class: opt.None,
       title: title,

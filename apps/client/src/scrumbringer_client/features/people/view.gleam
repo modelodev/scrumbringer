@@ -390,6 +390,8 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
       content_class: "task-item-content",
       leading: view_task_leading_swatch(config, task, resolved_color),
       on_click: Some(config.on_task_click(task.id)),
+      content_title: None,
+      content_label: None,
       icon: None,
       icon_class: None,
       title: task.title,

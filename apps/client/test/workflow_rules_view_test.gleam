@@ -193,3 +193,26 @@ pub fn workflow_rules_view_renders_crud_dialog_from_config_without_root_model_te
   assert_contains(html, "workflow-id=\"3\"")
   assert_contains(html, "mode=\"create\"")
 }
+
+pub fn workflow_rules_attach_modal_footer_uses_semantic_buttons_test() {
+  let html =
+    workflow_rules_view.view_workflow_rules(
+      workflow_rules_view.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          attach_template_modal: opt.Some(9),
+          attach_template_loading: True,
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Attach Template")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-loading")
+  assert_contains(html, "Attaching")
+  assert_contains(html, "disabled")
+}

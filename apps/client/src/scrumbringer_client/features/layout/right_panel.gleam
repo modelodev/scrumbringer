@@ -36,6 +36,7 @@ import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 
 /// Active task info for timer display
@@ -291,53 +292,62 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
   let open_label =
     i18n.t(config.locale, i18n_text.OpenTask) <> ": " <> task.title
 
-  div([attribute.class("task-item " <> border_class)], [
-    span(
-      [
-        attribute.class("task-card-identity-swatch"),
-        attribute.attribute("aria-hidden", "true"),
+  task_item.view(
+    task_item.Config(
+      container_class: "task-item " <> border_class,
+      content_class: "task-title-button",
+      leading: Some(view_task_card_swatch()),
+      on_click: Some(config.on_task_click(task.id)),
+      content_title: Some(task.title),
+      content_label: Some(open_label),
+      icon: Some(task_type_icon.view(
+        task.task_type.icon,
+        14,
+        config.current_theme,
+      )),
+      icon_class: None,
+      title: task.title,
+      title_class: None,
+      secondary: task_item.empty_secondary(),
+      actions: [
+        div([attribute.class("task-actions")], [
+          action_buttons.task_icon_button(
+            i18n.t(config.locale, i18n_text.Start),
+            config.on_task_start(task.id),
+            icons.Play,
+            action_buttons.SizeXs,
+            config.disable_actions,
+            "",
+            None,
+            Some("my-task-start-btn"),
+          ),
+          task_actions.release_icon(
+            i18n.t(config.locale, i18n_text.Release),
+            config.on_task_release(task.id),
+            action_buttons.SizeXs,
+            config.disable_actions,
+            "",
+            None,
+            Some("my-task-release-btn"),
+          ),
+        ]),
       ],
-      [],
+      reserve_actions_slot: False,
+      action_slot_class: None,
+      testid: None,
     ),
-    div([attribute.class("task-title-row")], [
-      button(
-        [
-          attribute.class("task-title-button"),
-          attribute.type_("button"),
-          attribute.attribute("title", task.title),
-          attribute.attribute("aria-label", open_label),
-          event.on_click(config.on_task_click(task.id)),
-        ],
-        [
-          span([attribute.class("task-type-icon")], [
-            task_type_icon.view(task.task_type.icon, 14, config.current_theme),
-          ]),
-          span([attribute.class("task-title")], [text(task.title)]),
-        ],
-      ),
-    ]),
-    div([attribute.class("task-actions")], [
-      action_buttons.task_icon_button(
-        i18n.t(config.locale, i18n_text.Start),
-        config.on_task_start(task.id),
-        icons.Play,
-        action_buttons.SizeXs,
-        config.disable_actions,
-        "",
-        None,
-        Some("my-task-start-btn"),
-      ),
-      task_actions.release_icon(
-        i18n.t(config.locale, i18n_text.Release),
-        config.on_task_release(task.id),
-        action_buttons.SizeXs,
-        config.disable_actions,
-        "",
-        None,
-        Some("my-task-release-btn"),
-      ),
-    ]),
-  ])
+    task_item.Div,
+  )
+}
+
+fn view_task_card_swatch() -> Element(msg) {
+  span(
+    [
+      attribute.class("task-card-identity-swatch"),
+      attribute.attribute("aria-hidden", "true"),
+    ],
+    [],
+  )
 }
 
 fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {

@@ -3,7 +3,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, option, p, select, text}
+import lustre/element/html.{div, option, p, select, text}
 import lustre/event
 
 import domain/org.{type OrgUser}
@@ -16,6 +16,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/admin_surface
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
@@ -115,20 +116,19 @@ fn view_delete_dialog(config: Config(msg)) -> Element(msg) {
             config.locale,
             config.on_delete_cancelled,
           ),
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("btn btn-danger"),
-              attribute.disabled(config.model.org_settings_delete_in_flight),
-              event.on_click(config.on_delete_confirmed),
-            ],
-            [
-              text(case config.model.org_settings_delete_in_flight {
-                True -> t(config, i18n_text.Deleting)
-                False -> t(config, i18n_text.Delete)
-              }),
-            ],
-          ),
+          ui_button.text(
+            case config.model.org_settings_delete_in_flight {
+              True -> t(config, i18n_text.Deleting)
+              False -> t(config, i18n_text.Delete)
+            },
+            config.on_delete_confirmed,
+            ui_button.Danger,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_disabled(
+              config.model.org_settings_delete_in_flight,
+            )
+            |> ui_button.view,
         ],
       )
   }

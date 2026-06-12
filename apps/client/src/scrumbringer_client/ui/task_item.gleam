@@ -16,6 +16,8 @@ pub type Config(msg) {
     container_class: String,
     content_class: String,
     on_click: Option(msg),
+    content_title: Option(String),
+    content_label: Option(String),
     leading: Option(lelement.Element(msg)),
     icon: Option(lelement.Element(msg)),
     icon_class: Option(String),
@@ -34,6 +36,8 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
     container_class: container_class,
     content_class: content_class,
     on_click: on_click,
+    content_title: content_title,
+    content_label: content_label,
     leading: leading,
     icon: icon,
     icon_class: icon_class,
@@ -77,11 +81,7 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
   let content = case on_click {
     Some(msg) ->
       button(
-        [
-          attribute.class(content_class),
-          attribute.type_("button"),
-          event.on_click(msg),
-        ],
+        content_button_attrs(content_class, msg, content_title, content_label),
         [
           icon_el,
           span([attribute.class(title_css)], [text(title)]),
@@ -115,6 +115,30 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
   case wrapper {
     Div -> div(container_attrs, children)
     ListItem -> li(container_attrs, children)
+  }
+}
+
+fn content_button_attrs(
+  content_class: String,
+  msg: msg,
+  content_title: Option(String),
+  content_label: Option(String),
+) -> List(attribute.Attribute(msg)) {
+  let base = [
+    attribute.class(content_class),
+    attribute.type_("button"),
+    event.on_click(msg),
+  ]
+
+  let with_title = case content_title {
+    Some(value) -> list.append(base, [attribute.attribute("title", value)])
+    None -> base
+  }
+
+  case content_label {
+    Some(value) ->
+      list.append(with_title, [attribute.attribute("aria-label", value)])
+    None -> with_title
   }
 }
 

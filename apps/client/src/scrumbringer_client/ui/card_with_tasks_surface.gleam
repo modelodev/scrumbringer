@@ -184,6 +184,8 @@ fn view_task(config: Config(msg), task: Task) -> Element(msg) {
       content_class: task_content_class(),
       leading: option.None,
       on_click: option.Some(config.on_task_click(task.id)),
+      content_title: option.None,
+      content_label: option.None,
       icon: option.Some(task_type_icon.view(
         task.task_type.icon,
         14,
