@@ -521,7 +521,9 @@ fn view_drilldown_executions_loaded(
       exec
     text(origin_type <> " #" <> int.to_string(origin_id))
   }
-  let outcome_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+  let outcome_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec,
+  ) {
     let api_rule_metrics.RuleExecution(_, _, _, outcome, _, _, _, _) = exec
     span([attribute.class(outcome_class_for(outcome))], [
       text(outcome_text_for(config, exec)),
@@ -531,7 +533,9 @@ fn view_drilldown_executions_loaded(
     let api_rule_metrics.RuleExecution(_, _, _, _, _, _, user_email, _) = exec
     text(display_user_email(user_email))
   }
-  let timestamp_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
+  let timestamp_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec,
+  ) {
     let api_rule_metrics.RuleExecution(_, _, _, _, _, _, _, created_at) = exec
     text(created_at)
   }

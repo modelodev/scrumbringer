@@ -71,10 +71,7 @@ pub fn view_rows(
 
   let warning_badge = case no_projects {
     True ->
-      badge.new_unchecked(
-        t(i18n_text.AssignmentsNoProjectsBadge),
-        badge.Warning,
-      )
+      badge.new_unchecked(t(i18n_text.TeamNoProjectsBadge), badge.Warning)
       |> badge.view_inline
     False -> element.none()
   }
@@ -83,7 +80,7 @@ pub fn view_rows(
     Loaded(projects_list) -> list.length(projects_list)
     _ -> list.length(projects)
   }
-  let projects_label = t(i18n_text.AssignmentsProjectsCount(projects_count))
+  let projects_label = t(i18n_text.TeamProjectsCount(projects_count))
   let metrics_summary = view_user_metrics_summary(config, user.id)
 
   let is_inline_add = case assignments.inline_add_context {
@@ -110,8 +107,7 @@ pub fn view_rows(
         opt.None -> element.none()
       },
       case projects_state {
-        NotAsked | Loading ->
-          loading.loading(t(i18n_text.AssignmentsLoadingProjects))
+        NotAsked | Loading -> loading.loading(t(i18n_text.TeamLoadingProjects))
 
         Failed(err) -> error_notice.view(err.message)
 

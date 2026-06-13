@@ -151,8 +151,6 @@ pub type Msg {
   MemberDependencyAdded(ApiResult(TaskDependency))
   MemberDependencyRemoveClicked(Int)
   MemberDependencyRemoved(Int, ApiResult(Nil))
-  MemberBlockedClaimCancelled
-  MemberBlockedClaimConfirmed
   MemberNotesFetched(ApiResult(List(TaskNote)))
   MemberNoteContentChanged(String)
   MemberNoteDialogOpened

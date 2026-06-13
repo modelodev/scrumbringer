@@ -225,6 +225,7 @@ fn list_tasks_error_response(error: workflow_types.Error) -> wisp.Response {
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
+    | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -244,6 +245,7 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
+    | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()

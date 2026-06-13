@@ -14,6 +14,13 @@ with updated as (
   where id = $1
     and status = 'available'
     and version = $3
+    and not exists (
+      select 1
+      from task_dependencies d
+      join tasks blocker on blocker.id = d.depends_on_task_id
+      where d.task_id = tasks.id
+        and blocker.status != 'completed'
+    )
   returning
     id,
     project_id,

@@ -17,6 +17,7 @@ pub type ErrorLabels {
   ErrorLabels(
     task_not_found: String,
     task_already_claimed: String,
+    task_blocked_by_dependencies: String,
     task_version_conflict: String,
     task_mutation_rolled_back: String,
   )
@@ -93,9 +94,13 @@ pub fn error_feedback(
 }
 
 fn conflict_message(err: ApiError, labels: ErrorLabels) -> String {
-  case string.contains(err.code, "CLAIMED") {
-    True -> labels.task_already_claimed
-    False -> labels.task_version_conflict
+  case
+    string.contains(err.code, "BLOCKED"),
+    string.contains(err.code, "CLAIMED")
+  {
+    True, _ -> labels.task_blocked_by_dependencies
+    _, True -> labels.task_already_claimed
+    False, False -> labels.task_version_conflict
   }
 }
 

@@ -15,7 +15,7 @@ pub fn visible_sections_org_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
-    permissions.Assignments,
+    permissions.Team,
     permissions.ApiTokens,
     permissions.Metrics,
     permissions.RuleMetrics,
@@ -32,7 +32,7 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
-    permissions.Assignments,
+    permissions.Team,
     permissions.ApiTokens,
     permissions.Metrics,
     permissions.RuleMetrics,
@@ -91,7 +91,7 @@ pub fn can_access_assignments_admin_only_test() {
 
   let assert True =
     permissions.can_access_section(
-      permissions.Assignments,
+      permissions.Team,
       org_role.Admin,
       projects,
       option.None,
@@ -99,7 +99,7 @@ pub fn can_access_assignments_admin_only_test() {
 
   let assert False =
     permissions.can_access_section(
-      permissions.Assignments,
+      permissions.Team,
       org_role.Member,
       projects,
       option.None,

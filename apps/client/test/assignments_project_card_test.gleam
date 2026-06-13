@@ -101,7 +101,7 @@ pub fn project_card_renders_expanded_members_from_config_test() {
     |> element.to_document_string
 
   assert_contains(html, "Platform")
-  assert_contains(html, "1 user")
+  assert_contains(html, "1 person")
   assert_contains(html, "member@example.com")
   assert_contains(html, "Add member")
 }

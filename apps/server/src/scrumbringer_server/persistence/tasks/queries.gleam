@@ -188,8 +188,8 @@ pub fn get_task_for_user(
   }
 }
 
-/// Update a task that is claimed by the user.
-pub fn update_task_claimed_by_user(
+/// Update an available task or a task claimed by the caller.
+pub fn update_editable_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,

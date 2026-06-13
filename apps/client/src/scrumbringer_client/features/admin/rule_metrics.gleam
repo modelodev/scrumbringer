@@ -37,7 +37,9 @@ pub type Context(parent_msg) {
       parent_msg,
     on_rule_details_fetched: fn(ApiResult(api_rule_metrics.RuleMetricsDetailed)) ->
       parent_msg,
-    on_executions_fetched: fn(ApiResult(api_rule_metrics.RuleExecutionsResponse)) ->
+    on_executions_fetched: fn(
+      ApiResult(api_rule_metrics.RuleExecutionsResponse),
+    ) ->
       parent_msg,
   )
 }

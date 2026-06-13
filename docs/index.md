@@ -21,6 +21,7 @@ have been removed from `docs`.
 
 - [UI architecture](./ui-architecture.md)
 - [Lustre inventory](./lustre_inventory.yml)
+- [Pull flow model hardening plan](./pull-flow-model-hardening-plan.md)
 
 ## API And Integrations
 

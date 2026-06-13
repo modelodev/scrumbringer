@@ -1230,6 +1230,155 @@ pub fn task_dependencies_reject_completed_dependency_test() {
   |> expect.is_true
 }
 
+pub fn blocked_task_claim_returns_conflict_blocked_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Blocked Claim")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Blocked Claim'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+  let task_blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+
+  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  |> expect.equal(200)
+
+  let claim_res =
+    claim_task_response(
+      handler,
+      session,
+      csrf,
+      task_blocked,
+      task_version(db, task_blocked),
+    )
+
+  expect.expect_status(claim_res, 409)
+  simulate.read_body(claim_res)
+  |> string.contains("CONFLICT_BLOCKED")
+  |> expect.is_true
+  task_claimed_by(db, task_blocked) |> expect.equal(0)
+}
+
+pub fn blocked_task_claim_succeeds_after_dependency_completed_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Blocked Claim Completed")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Blocked Claim Completed'",
+      [],
+    )
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+  let task_blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+
+  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  |> expect.equal(200)
+  claim_task(
+    handler,
+    session,
+    csrf,
+    task_blocker,
+    task_version(db, task_blocker),
+  )
+  |> expect.equal(200)
+  complete_task(
+    handler,
+    session,
+    csrf,
+    task_blocker,
+    task_version(db, task_blocker),
+  )
+  |> expect.equal(200)
+
+  claim_task(
+    handler,
+    session,
+    csrf,
+    task_blocked,
+    task_version(db, task_blocked),
+  )
+  |> expect.equal(200)
+}
+
+pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Blocked Claim Removed")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Blocked Claim Removed'",
+      [],
+    )
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+  let task_blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+
+  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  |> expect.equal(200)
+  delete_dependency(handler, session, csrf, task_blocked, task_blocker)
+  |> expect.equal(204)
+
+  claim_task(
+    handler,
+    session,
+    csrf,
+    task_blocked,
+    task_version(db, task_blocked),
+  )
+  |> expect.equal(200)
+}
+
 pub fn task_dependencies_schema_indices_present_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -2401,16 +2550,72 @@ fn claim_task(
   task_id: Int,
   version: Int,
 ) -> Int {
+  let res = claim_task_response(handler, session, csrf, task_id, version)
+  res.status
+}
+
+fn claim_task_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  version: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("version", json.int(version))])),
+  )
+}
+
+fn create_dependency(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Int {
   let res =
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/dependencies",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
+      |> simulate.json_body(
+        json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
+      ),
+    )
+
+  res.status
+}
+
+fn delete_dependency(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/tasks/"
+          <> int_to_string(task_id)
+          <> "/dependencies/"
+          <> int_to_string(depends_on_task_id),
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
     )
 
   res.status

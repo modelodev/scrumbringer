@@ -49,8 +49,8 @@ select
   coalesce(tc.available_count, 0) as available_count,
   coalesce(tc.ongoing_count, 0) as ongoing_count,
   coalesce(tc.wip_count, 0) as wip_count,
-  ts.avg_claim_to_complete_ms,
-  ts.avg_time_in_claimed_ms,
+  coalesce(ts.avg_claim_to_complete_ms, 0) as avg_claim_to_complete_ms,
+  coalesce(ts.avg_time_in_claimed_ms, 0) as avg_time_in_claimed_ms,
   coalesce(ts.stale_claims_count, 0) as stale_claims_count
 from projects p
 left join event_counts ec on ec.project_id = p.id

@@ -45,19 +45,13 @@ pub fn parse_config_member_scope_redirects_to_canonical_config_test() {
 pub fn parse_member_pool_with_project_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?project=2"))
 
-  assert_equal(
-    parsed,
-    router.Parsed(member_route(Some(2), None)),
-  )
+  assert_equal(parsed, router.Parsed(member_route(Some(2), None)))
 }
 
 pub fn parse_member_unknown_section_redirects_to_pool_test() {
   let parsed = router.parse_uri(build_uri("/app/unknown", "?project=2"))
 
-  assert_equal(
-    parsed,
-    router.Redirect(member_route(Some(2), None)),
-  )
+  assert_equal(parsed, router.Redirect(member_route(Some(2), None)))
 }
 
 pub fn parse_accept_invite_token_test() {
@@ -69,7 +63,13 @@ pub fn parse_accept_invite_token_test() {
 pub fn parse_org_assignments_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", ""))
 
-  assert_equal(parsed, router.Parsed(router.Org(permissions.Assignments)))
+  assert_equal(parsed, router.Parsed(router.Org(permissions.Team)))
+}
+
+pub fn parse_org_team_test() {
+  let parsed = router.parse_uri(build_uri("/org/team", ""))
+
+  assert_equal(parsed, router.Parsed(router.Org(permissions.Team)))
 }
 
 pub fn parse_org_api_tokens_test() {
@@ -98,25 +98,19 @@ pub fn parse_invalid_project_redirects_and_drops_project_test() {
 pub fn parse_member_invalid_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=nope"))
 
-  assert_equal(
-    parsed,
-    router.Redirect(member_route(None, None)),
-  )
+  assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
 
 pub fn parse_member_legacy_list_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
 
-  assert_equal(
-    parsed,
-    router.Redirect(member_route(None, None)),
-  )
+  assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
 
 pub fn parse_org_assignments_invalid_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", "?view=pool"))
 
-  assert_equal(parsed, router.Redirect(router.Org(permissions.Assignments)))
+  assert_equal(parsed, router.Redirect(router.Org(permissions.Team)))
 }
 
 // Story 4.4: Mobile keeps pool route in 3-panel layout
@@ -163,10 +157,7 @@ pub fn format_org_invites_test() {
 }
 
 pub fn format_org_assignments_test() {
-  assert_equal(
-    router.format(router.Org(permissions.Assignments)),
-    "/org/assignments",
-  )
+  assert_equal(router.format(router.Org(permissions.Team)), "/org/team")
 }
 
 pub fn format_org_api_tokens_test() {
@@ -230,7 +221,7 @@ pub fn roundtrip_org_invites_test() {
 }
 
 pub fn roundtrip_org_assignments_test() {
-  let route = router.Org(permissions.Assignments)
+  let route = router.Org(permissions.Team)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 

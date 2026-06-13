@@ -50,7 +50,6 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/features/i18n/msg as i18n_messages
 import scrumbringer_client/features/layout/msg as layout_messages
-import scrumbringer_client/features/pool/blocked_claim_modal
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/features/admin/msg as admin_messages
@@ -463,7 +462,7 @@ fn view_section(
         permissions.OrgSettings -> admin_view.view_org_settings(model)
         permissions.Projects ->
           projects_view.view_projects(admin_projects_config(model))
-        permissions.Assignments ->
+        permissions.Team ->
           assignments_view.view_assignments(admin_assignments_config(model))
         permissions.ApiTokens -> admin_view.view_api_tokens(model)
         permissions.Metrics ->
@@ -936,7 +935,7 @@ fn view_mobile_shell(
   main_content: Element(client_state.Msg),
 ) -> Element(client_state.Msg) {
   member_mobile_shell.view(member_mobile_shell.Config(
-    title: member_mobile_title(model),
+    title: mobile_title(model),
     theme: model.ui.theme,
     left_drawer_open: ui_state.mobile_drawer_left_open(model.ui.mobile_drawer),
     right_drawer_open: ui_state.mobile_drawer_right_open(model.ui.mobile_drawer),
@@ -956,8 +955,33 @@ fn view_mobile_shell(
   ))
 }
 
-fn member_mobile_title(model: client_state.Model) -> String {
-  i18n.t(model.ui.locale, member_mobile_pool_title(model))
+fn mobile_title(model: client_state.Model) -> String {
+  i18n.t(model.ui.locale, mobile_title_key(model))
+}
+
+fn mobile_title_key(model: client_state.Model) -> i18n_text.Text {
+  case model.core.page {
+    client_state.Admin -> admin_mobile_title_key(model.core.active_section)
+    _ -> member_mobile_pool_title(model)
+  }
+}
+
+fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
+  case section {
+    permissions.Invites -> i18n_text.AdminInvites
+    permissions.OrgSettings -> i18n_text.AdminOrgSettings
+    permissions.Projects -> i18n_text.AdminProjects
+    permissions.Team -> i18n_text.Team
+    permissions.ApiTokens -> i18n_text.AdminApiTokens
+    permissions.Metrics -> i18n_text.AdminMetrics
+    permissions.RuleMetrics -> i18n_text.RuleMetricsTitle
+    permissions.Members -> i18n_text.AdminMembers
+    permissions.Capabilities -> i18n_text.Capabilities
+    permissions.Cards -> i18n_text.MemberCards
+    permissions.TaskTypes -> i18n_text.TaskTypes
+    permissions.Workflows -> i18n_text.AdminWorkflows
+    permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
+  }
 }
 
 fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
@@ -1047,32 +1071,7 @@ fn view_member_three_panel(
       i18n.t(model.ui.locale, i18n_text.MyActivity),
     ),
     view_member_card_detail_modal(model, user),
-    view_member_blocked_claim_modal(model),
   ])
-}
-
-fn view_member_blocked_claim_modal(
-  model: client_state.Model,
-) -> Element(client_state.Msg) {
-  case model.member.pool.member_blocked_claim_task {
-    opt.None -> element.none()
-    opt.Some(#(task_id, _version)) -> {
-      blocked_claim_modal.view(blocked_claim_modal.Config(
-        locale: model.ui.locale,
-        task_id: task_id,
-        task: right_panel_data.find_loaded_task(
-          model.member.pool.member_tasks,
-          task_id,
-        ),
-        on_confirm: client_state.pool_msg(
-          pool_messages.MemberBlockedClaimConfirmed,
-        ),
-        on_cancel: client_state.pool_msg(
-          pool_messages.MemberBlockedClaimCancelled,
-        ),
-      ))
-    }
-  }
 }
 
 /// Builds the left panel with project selector and navigation
@@ -1194,7 +1193,7 @@ fn build_left_panel(
       client_state.Push,
     ),
     on_navigate_org_assignments: client_state.NavigateTo(
-      router.Org(permissions.Assignments),
+      router.Org(permissions.Team),
       client_state.Push,
     ),
     on_navigate_org_api_tokens: client_state.NavigateTo(

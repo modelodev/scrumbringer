@@ -70,6 +70,7 @@ pub fn translate(text: Text) -> String {
     text.TaskCompleteFailed -> "Could not complete task"
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
+    text.TaskBlockedByDependencies -> "Task has incomplete dependencies"
     text.TaskNotFound -> "Task not found"
     text.TaskMutationRolledBack -> "Action rolled back"
 
@@ -166,9 +167,6 @@ pub fn translate(text: Text) -> String {
       "Blocked by " <> int.to_string(count) <> " tasks"
     text.HiddenBlockedByFilters(count) ->
       int.to_string(count) <> " blockers out of view due to filters"
-    text.BlockedTaskTitle -> "Blocked task"
-    text.BlockedTaskWarning(count) ->
-      "This task depends on " <> int.to_string(count) <> " incomplete tasks."
     text.EditPosition -> "Edit position"
     text.XLabel -> "x"
     text.YLabel -> "y"
@@ -428,34 +426,30 @@ pub fn translate(text: Text) -> String {
     text.RevokeApiToken -> "Revoke API token"
     text.RevokeApiTokenConfirm ->
       "Revoke this token? External systems using it will stop working."
-    text.Assignments -> "Assignments"
-    text.AssignmentsByProject -> "By Project"
-    text.AssignmentsByUser -> "By User"
-    text.AssignmentsSearchPlaceholder -> "Search projects or users"
-    text.AssignmentsNoProjectsTitle -> "No projects yet"
-    text.AssignmentsNoProjectsBody ->
-      "Create a project to start assigning members."
-    text.AssignmentsNoUsersTitle -> "No users yet"
-    text.AssignmentsNoUsersBody ->
-      "Invite a user to start assigning them to projects."
-    text.AssignmentsNoMembersBadge -> "NO MEMBERS"
-    text.AssignmentsNoProjectsBadge -> "NO PROJECTS"
-    text.AssignmentsUsersCount(count) ->
+    text.TeamByProject -> "By Project"
+    text.TeamByPerson -> "By Person"
+    text.TeamSearchPlaceholder -> "Search projects or people"
+    text.TeamNoProjectsTitle -> "No projects yet"
+    text.TeamNoProjectsBody -> "Create a project to start building the team."
+    text.TeamNoPeopleTitle -> "No people yet"
+    text.TeamNoPeopleBody -> "Invite someone to start adding them to projects."
+    text.TeamNoPeopleBadge -> "NO MEMBERS"
+    text.TeamNoProjectsBadge -> "NO PROJECTS"
+    text.TeamPeopleCount(count) ->
       int.to_string(count)
-      <> " user"
       <> case count {
-        1 -> ""
-        _ -> "s"
+        1 -> " person"
+        _ -> " people"
       }
-    text.AssignmentsProjectsCount(count) ->
+    text.TeamProjectsCount(count) ->
       int.to_string(count)
       <> " project"
       <> case count {
         1 -> ""
         _ -> "s"
       }
-    text.AssignmentsLoadingMembers -> "Loading members…"
-    text.AssignmentsLoadingProjects -> "Loading projects…"
+    text.TeamLoadingMembers -> "Loading members…"
+    text.TeamLoadingProjects -> "Loading projects…"
     text.NoAdminPermissions -> "No admin permissions"
     text.NotPermitted -> "Not permitted"
     text.NotPermittedBody -> "You don't have permission to access this section."

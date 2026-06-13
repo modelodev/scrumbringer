@@ -1,5 +1,5 @@
 ////
-//// Assignments admin view.
+//// Team admin view.
 ////
 
 import gleam/dict
@@ -56,7 +56,7 @@ pub fn view_assignments(config: Config(msg)) -> element.Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
 
   admin_surface.view_with_filters(
-    section_header.view(icons.Team, t(i18n_text.Assignments)),
+    section_header.view(icons.Team, t(i18n_text.Team)),
     view_toolbar(config),
     case config.assignments.view_mode {
       assignments_view_mode.ByProject -> view_by_project(config)
@@ -88,7 +88,7 @@ fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
               assignments_view_mode.ByProject,
             )),
           ],
-          [text(t(i18n_text.AssignmentsByProject))],
+          [text(t(i18n_text.TeamByProject))],
         ),
         button(
           [
@@ -103,7 +103,7 @@ fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
               assignments_view_mode.ByUser,
             )),
           ],
-          [text(t(i18n_text.AssignmentsByUser))],
+          [text(t(i18n_text.TeamByPerson))],
         ),
       ]),
     ]),
@@ -111,7 +111,7 @@ fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
       input([
         attribute.type_("text"),
         attribute.value(assignments.search_input),
-        attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
+        attribute.placeholder(t(i18n_text.TeamSearchPlaceholder)),
         event.on_input(config.on_search_changed),
         event.debounce(event.on_input(config.on_search_debounced), 350),
       ]),
@@ -122,8 +122,7 @@ fn view_toolbar(config: Config(msg)) -> element.Element(msg) {
 fn view_by_project(config: Config(msg)) -> element.Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
   case config.projects {
-    NotAsked | Loading ->
-      loading.loading(t(i18n_text.AssignmentsLoadingProjects))
+    NotAsked | Loading -> loading.loading(t(i18n_text.TeamLoadingProjects))
 
     Failed(err) -> error_notice.view(err.message)
 
@@ -131,8 +130,8 @@ fn view_by_project(config: Config(msg)) -> element.Element(msg) {
       case projects_list == [] {
         True ->
           empty_state.no_projects(
-            t(i18n_text.AssignmentsNoProjectsTitle),
-            t(i18n_text.AssignmentsNoProjectsBody),
+            t(i18n_text.TeamNoProjectsTitle),
+            t(i18n_text.TeamNoProjectsBody),
           )
           |> empty_state.with_action(
             t(i18n_text.CreateProject),
@@ -144,7 +143,7 @@ fn view_by_project(config: Config(msg)) -> element.Element(msg) {
           table([attribute.class("table assignments-table")], [
             thead([], [
               tr([], [
-                th([], [text(t(i18n_text.AssignmentsByProject))]),
+                th([], [text(t(i18n_text.TeamByProject))]),
                 th([], [text(t(i18n_text.MembersCount))]),
               ]),
             ]),
@@ -192,8 +191,8 @@ fn view_by_user(config: Config(msg)) -> element.Element(msg) {
       case users_list == [] || only_current_user {
         True ->
           empty_state.no_members(
-            t(i18n_text.AssignmentsNoUsersTitle),
-            t(i18n_text.AssignmentsNoUsersBody),
+            t(i18n_text.TeamNoPeopleTitle),
+            t(i18n_text.TeamNoPeopleBody),
           )
           |> empty_state.with_action(
             t(i18n_text.CreateInviteLink),
@@ -205,7 +204,7 @@ fn view_by_user(config: Config(msg)) -> element.Element(msg) {
           table([attribute.class("table assignments-table")], [
             thead([], [
               tr([], [
-                th([], [text(t(i18n_text.AssignmentsByUser))]),
+                th([], [text(t(i18n_text.TeamByPerson))]),
                 th([], [text(t(i18n_text.Projects))]),
               ]),
             ]),

@@ -8,7 +8,10 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleeunit
+import pog
 import scrumbringer_server
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/service_error
 import support/assertions as expect
 import wisp/simulate
 
@@ -135,8 +138,43 @@ pub fn claim_task_fails_with_version_mismatch_test() {
   expect.expect_status(res, 409)
 }
 
-// Import pog for query parameters
-import pog
+pub fn claim_task_query_rejects_incomplete_dependencies_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Blocked Query Project")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Blocked")
+  let assert Ok(blocker_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Blocker")
+
+  let assert Ok(user_id) =
+    fixtures.query_int(db, "select id from users where email = $1", [
+      pog.text("admin@example.com"),
+    ])
+  let assert Ok(org_id) =
+    fixtures.query_int(db, "select org_id from users where id = $1", [
+      pog.int(user_id),
+    ])
+  let assert Ok(_) =
+    fixtures.query_int(
+      db,
+      "insert into task_dependencies (task_id, depends_on_task_id, created_by) values ($1, $2, $3) returning id",
+      [pog.int(task_id), pog.int(blocker_id), pog.int(user_id)],
+    )
+
+  let assert Error(service_error.NotFound) =
+    tasks_queries.claim_task(db, org_id, task_id, user_id, 1)
+
+  let assert Ok(status) =
+    fixtures.query_string(db, "select status from tasks where id = $1", [
+      pog.int(task_id),
+    ])
+  status |> expect.equal("available")
+}
 
 // =============================================================================
 // AC4: Release success test

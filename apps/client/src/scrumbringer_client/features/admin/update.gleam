@@ -604,7 +604,7 @@ fn apply_assignments_update(
     let root_fx = case root_policy {
       assignments_workflow.NoRootPolicy -> effect.none()
       assignments_workflow.ReplaceAssignmentsView(view_mode) ->
-        router.replace_assignments_view(view_mode)
+        router.replace_team_view(view_mode)
       assignments_workflow.MemberRoleSuccessFeedback ->
         member_role_update.success_effect(model)
       assignments_workflow.MemberRoleErrorFeedback(err) ->

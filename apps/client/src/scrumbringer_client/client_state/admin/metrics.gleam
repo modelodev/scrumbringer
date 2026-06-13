@@ -21,10 +21,16 @@ pub type Model {
     admin_rule_metrics_from: String,
     admin_rule_metrics_to: String,
     admin_rule_metrics_expanded_workflow: Option(Int),
-    admin_rule_metrics_workflow_details: Remote(api_rule_metrics.WorkflowMetrics),
+    admin_rule_metrics_workflow_details: Remote(
+      api_rule_metrics.WorkflowMetrics,
+    ),
     admin_rule_metrics_drilldown_rule_id: Option(Int),
-    admin_rule_metrics_rule_details: Remote(api_rule_metrics.RuleMetricsDetailed),
-    admin_rule_metrics_executions: Remote(api_rule_metrics.RuleExecutionsResponse),
+    admin_rule_metrics_rule_details: Remote(
+      api_rule_metrics.RuleMetricsDetailed,
+    ),
+    admin_rule_metrics_executions: Remote(
+      api_rule_metrics.RuleExecutionsResponse,
+    ),
     admin_rule_metrics_exec_offset: Int,
   )
 }

@@ -827,7 +827,7 @@ pub fn start_user_projects_fetch(
   callbacks: Context(parent_msg),
 ) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
   case callbacks.active_section {
-    permissions.Assignments -> {
+    permissions.Team -> {
       let #(next_assignments, effects) =
         list.fold(users, #(model, []), fn(state, user) {
           let #(current, fx) = state

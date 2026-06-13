@@ -173,7 +173,7 @@ fn parse_org_section_query(
   search: String,
 ) -> ParseResult {
   let context = case section {
-    permissions.Assignments -> url_state.OrgAssignments
+    permissions.Team -> url_state.OrgAssignments
     _ -> url_state.Org
   }
   let result = url_state.parse_query(search_to_query(search), context)
@@ -202,9 +202,7 @@ fn parse_member_pool(pathname: String, search: String) -> ParseResult {
   }
 }
 
-fn member_parse_result(
-  result: url_state.QueryParseResult,
-) -> ParseResult {
+fn member_parse_result(result: url_state.QueryParseResult) -> ParseResult {
   case result {
     url_state.Parsed(state) -> Parsed(Member(state))
     url_state.Redirect(state) -> Redirect(Member(state))
@@ -291,13 +289,13 @@ fn query_option(query: String) -> Option(String) {
 }
 
 // =============================================================================
-// Assignments view helpers
+// Team view helpers
 // =============================================================================
 
-pub fn format_assignments(
+pub fn format_team(
   view: Option(assignments_view_mode.AssignmentsViewMode),
 ) -> String {
-  let base = "/org/assignments"
+  let base = "/org/team"
   let state = case view {
     Some(mode) -> url_state.with_assignments_view(url_state.empty(), mode)
     None -> url_state.empty()
@@ -311,22 +309,40 @@ pub fn format_assignments(
   }
 }
 
-pub fn replace_assignments_view(
+pub fn replace_team_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
   let state = url_state.with_assignments_view(url_state.empty(), view)
   let query =
     query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
-  modem.replace("/org/assignments", query, None)
+  modem.replace("/org/team", query, None)
+}
+
+pub fn push_team_view(
+  view: assignments_view_mode.AssignmentsViewMode,
+) -> Effect(msg) {
+  let state = url_state.with_assignments_view(url_state.empty(), view)
+  let query =
+    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
+  modem.push("/org/team", query, None)
+}
+
+pub fn format_assignments(
+  view: Option(assignments_view_mode.AssignmentsViewMode),
+) -> String {
+  format_team(view)
+}
+
+pub fn replace_assignments_view(
+  view: assignments_view_mode.AssignmentsViewMode,
+) -> Effect(msg) {
+  replace_team_view(view)
 }
 
 pub fn push_assignments_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let state = url_state.with_assignments_view(url_state.empty(), view)
-  let query =
-    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
-  modem.push("/org/assignments", query, None)
+  push_team_view(view)
 }
 
 fn search_to_query(search: String) -> String {
@@ -414,7 +430,7 @@ fn org_section_from_slug(slug: String) -> Result(permissions.AdminSection, Nil) 
     "settings" -> Ok(permissions.OrgSettings)
     "users" -> Ok(permissions.OrgSettings)
     "projects" -> Ok(permissions.Projects)
-    "assignments" -> Ok(permissions.Assignments)
+    "team" | "assignments" -> Ok(permissions.Team)
     "api-tokens" -> Ok(permissions.ApiTokens)
     "metrics" -> Ok(permissions.Metrics)
     "rule-metrics" -> Ok(permissions.RuleMetrics)
@@ -428,7 +444,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
     permissions.Invites -> "invites"
     permissions.OrgSettings -> "settings"
     permissions.Projects -> "projects"
-    permissions.Assignments -> "assignments"
+    permissions.Team -> "team"
     permissions.ApiTokens -> "api-tokens"
     permissions.Metrics -> "metrics"
     permissions.RuleMetrics -> "rule-metrics"
@@ -517,7 +533,7 @@ fn admin_section_title(
     permissions.Invites -> i18n_text.AdminInvites
     permissions.OrgSettings -> i18n_text.AdminOrgSettings
     permissions.Projects -> i18n_text.AdminProjects
-    permissions.Assignments -> i18n_text.Assignments
+    permissions.Team -> i18n_text.Team
     permissions.ApiTokens -> i18n_text.AdminApiTokens
     permissions.Metrics -> i18n_text.AdminMetrics
     permissions.RuleMetrics -> i18n_text.AdminRuleMetrics

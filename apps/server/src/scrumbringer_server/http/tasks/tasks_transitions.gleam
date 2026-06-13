@@ -193,6 +193,7 @@ fn claim_error_response(
   case error {
     workflow_types.NotFound -> not_found_response()
     workflow_types.AlreadyClaimed -> claimed_conflict_response()
+    workflow_types.TaskBlockedByDependencies(_) -> blocked_conflict_response()
     workflow_types.InvalidTransition -> invalid_transition_response()
     workflow_types.ClaimOwnershipConflict(_) -> claimed_conflict_response()
     workflow_types.VersionConflict ->
@@ -220,7 +221,8 @@ fn release_or_complete_error_response(
     workflow_types.VersionConflict ->
       conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
     workflow_types.DbError(_) -> database_error_response()
-    workflow_types.ValidationError(_)
+    workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.ValidationError(_)
     | workflow_types.TaskMilestoneInheritedFromCard
     | workflow_types.InvalidMovePoolToMilestone
     | workflow_types.TaskTypeAlreadyExists
@@ -237,6 +239,10 @@ fn decode_version(data) -> Result(payloads.VersionPayload, wisp.Response) {
 
 fn claimed_conflict_response() -> wisp.Response {
   api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
+}
+
+fn blocked_conflict_response() -> wisp.Response {
+  api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
 }
 
 fn invalid_transition_response() -> wisp.Response {

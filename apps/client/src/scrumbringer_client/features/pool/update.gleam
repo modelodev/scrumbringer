@@ -595,6 +595,10 @@ fn task_mutation_error_context(
         model.ui.locale,
         i18n_text.TaskAlreadyClaimed,
       ),
+      task_blocked_by_dependencies: i18n.t(
+        model.ui.locale,
+        i18n_text.TaskBlockedByDependencies,
+      ),
       task_version_conflict: i18n.t(
         model.ui.locale,
         i18n_text.TaskVersionConflict,
@@ -1502,8 +1506,6 @@ fn update_without_view_mode(
     pool_messages.MemberClaimClicked(_, _)
     | pool_messages.MemberReleaseClicked(_, _)
     | pool_messages.MemberCompleteClicked(_, _)
-    | pool_messages.MemberBlockedClaimCancelled
-    | pool_messages.MemberBlockedClaimConfirmed
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)
     | pool_messages.MemberTaskCompleted(_) -> #(model, effect.none())

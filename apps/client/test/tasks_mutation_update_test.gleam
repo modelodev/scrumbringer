@@ -160,7 +160,7 @@ pub fn try_task_mutation_update_ignores_non_mutation_messages_test() {
     )
 }
 
-pub fn local_claim_clicked_blocked_task_prompts_confirmation_test() {
+pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
   let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
 
   let #(next, fx) =
@@ -171,8 +171,9 @@ pub fn local_claim_clicked_blocked_task_prompts_confirmation_test() {
       mutation_context(),
     )
 
-  let assert Some(#(42, 3)) = next.member_blocked_claim_task
   let assert False = next.member_task_mutation_in_flight
+  let assert None = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
   let assert True = fx == effect.none()
 }
 
@@ -211,7 +212,7 @@ pub fn local_claim_dropped_marks_in_flight_without_optimistic_claim_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn local_claim_dropped_does_not_prompt_blocked_confirmation_test() {
+pub fn local_claim_dropped_blocked_task_does_not_submit_test() {
   let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
 
   let #(next, fx) =
@@ -221,9 +222,10 @@ pub fn local_claim_dropped_does_not_prompt_blocked_confirmation_test() {
       mutation_context(),
     )
 
-  let assert None = next.member_blocked_claim_task
-  let assert True = next.member_task_mutation_in_flight
-  let assert True = fx != effect.none()
+  let assert False = next.member_task_mutation_in_flight
+  let assert None = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
+  let assert True = fx == effect.none()
 }
 
 pub fn local_release_clicked_applies_optimistic_release_test() {
@@ -330,6 +332,17 @@ pub fn mutation_error_409_claimed_uses_claimed_warning_test() {
   let assert toast.Warning = variant
 }
 
+pub fn mutation_error_409_blocked_uses_blocked_warning_test() {
+  let #(message, variant) =
+    mutation_update.error_feedback(
+      ApiError(status: 409, code: "CONFLICT_BLOCKED", message: "blocked"),
+      labels(),
+    )
+
+  let assert "Blocked by dependencies" = message
+  let assert toast.Warning = variant
+}
+
 pub fn mutation_error_409_other_uses_version_warning_test() {
   let #(message, variant) =
     mutation_update.error_feedback(
@@ -398,6 +411,7 @@ fn labels() -> mutation_update.ErrorLabels {
   mutation_update.ErrorLabels(
     task_not_found: "Task not found",
     task_already_claimed: "Task already claimed",
+    task_blocked_by_dependencies: "Blocked by dependencies",
     task_version_conflict: "Task version conflict",
     task_mutation_rolled_back: "Rolled back",
   )

@@ -90,7 +90,7 @@ pub fn section_icon(section: permissions.AdminSection) -> HeroIcon {
     permissions.Cards -> DocumentText
     permissions.Workflows -> Cog6Tooth
     permissions.TaskTemplates -> DocumentDuplicate
-    permissions.Assignments -> Users
+    permissions.Team -> Users
   }
 }
 

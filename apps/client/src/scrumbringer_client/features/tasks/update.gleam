@@ -53,7 +53,7 @@ import scrumbringer_client/api/tasks/task_types as task_types_api
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/metrics.{type TaskModalMetrics}
 import domain/remote.{type Remote, Failed, NotAsked}
-import domain/task.{type Task, type TaskDependency, type TaskNote, Task}
+import domain/task.{type Task, type TaskDependency, type TaskNote}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
@@ -462,14 +462,6 @@ pub fn try_task_mutation_update(
       handle_complete_clicked(model, task_id, version, context.mutation_context)
       |> task_mutation_without_policy
 
-    pool_messages.MemberBlockedClaimCancelled ->
-      handle_blocked_claim_cancelled(model)
-      |> task_mutation_without_policy
-
-    pool_messages.MemberBlockedClaimConfirmed ->
-      handle_blocked_claim_confirmed(model, context.mutation_context)
-      |> task_mutation_without_policy
-
     pool_messages.MemberTaskClaimed(Ok(_)) ->
       task_mutation_success(
         model,
@@ -555,14 +547,12 @@ pub fn handle_claim_clicked(
     True -> #(model, effect.none())
     False ->
       case helpers_lookup.find_task_by_id(model.member_tasks, task_id) {
-        opt.Some(Task(blocked_count: blocked_count, ..)) if blocked_count > 0 -> #(
-          member_pool.Model(
-            ..model,
-            member_blocked_claim_task: opt.Some(#(task_id, version)),
-          ),
-          effect.none(),
-        )
-        _ -> submit_claim(model, task_id, version, context)
+        opt.Some(task) ->
+          case can_claim_task(task) {
+            True -> submit_claim(model, task_id, version, context)
+            False -> #(model, effect.none())
+          }
+        _ -> #(model, effect.none())
       }
   }
 }
@@ -577,35 +567,25 @@ pub fn handle_claim_dropped(
     helpers_lookup.find_task_by_id(model.member_tasks, task_id),
     model.member_task_mutation_in_flight
   {
-    opt.Some(Task(version: version, ..)), False -> #(
-      mutation_state.start_dropped_claim(model),
-      task_operations_api.claim_task(task_id, version, context.on_task_claimed),
-    )
-    opt.Some(_), True -> #(model, effect.none())
+    opt.Some(task), False ->
+      case can_claim_task(task) {
+        True -> #(
+          mutation_state.start_dropped_claim(model),
+          task_operations_api.claim_task(
+            task_id,
+            task.version,
+            context.on_task_claimed,
+          ),
+        )
+        False -> #(model, effect.none())
+      }
+    opt.Some(_), _ -> #(model, effect.none())
     opt.None, _ -> #(model, effect.none())
   }
 }
 
-pub fn handle_blocked_claim_cancelled(
-  model: member_pool.Model,
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(
-    member_pool.Model(..model, member_blocked_claim_task: opt.None),
-    effect.none(),
-  )
-}
-
-pub fn handle_blocked_claim_confirmed(
-  model: member_pool.Model,
-  context: TaskMutationContext(parent_msg),
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  case model.member_blocked_claim_task {
-    opt.None -> #(model, effect.none())
-    opt.Some(#(task_id, version)) -> {
-      let #(model, fx) = submit_claim(model, task_id, version, context)
-      #(member_pool.Model(..model, member_blocked_claim_task: opt.None), fx)
-    }
-  }
+pub fn can_claim_task(task: Task) -> Bool {
+  task.blocked_count == 0
 }
 
 fn submit_claim(

@@ -46,10 +46,13 @@ pub fn handle_claim_conflict(
     Error(error) -> service_error_response.to_database_response(error)
 
     Ok(current) ->
-      case current.status {
-        Claimed(_) -> api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-        Completed -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
-        Available -> api.error(409, "CONFLICT_VERSION", "Version conflict")
+      case current.status, current.blocked_count {
+        Claimed(_), _ ->
+          api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
+        Completed, _ -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
+        Available, count if count > 0 ->
+          api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
+        Available, _ -> api.error(409, "CONFLICT_VERSION", "Version conflict")
       }
   }
 }

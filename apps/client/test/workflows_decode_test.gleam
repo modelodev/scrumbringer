@@ -321,7 +321,10 @@ pub fn rule_metrics_detailed_decoder_decodes_with_breakdown_test() {
     "{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
 
   let assert Ok(metrics) =
-    json.parse(from: body, using: api_rule_metrics.rule_metrics_detailed_decoder())
+    json.parse(
+      from: body,
+      using: api_rule_metrics.rule_metrics_detailed_decoder(),
+    )
   let assert 1 = metrics.rule_id
   let assert 20 = metrics.suppressed_count
   let assert 10 = metrics.suppression_breakdown.idempotent
@@ -332,7 +335,10 @@ pub fn rule_metrics_detailed_decoder_decodes_zero_counts_test() {
     "{\"rule_id\":2,\"rule_name\":\"New Rule\",\"evaluated_count\":0,\"applied_count\":0,\"suppressed_count\":0,\"suppression_breakdown\":{\"idempotent\":0,\"not_user_triggered\":0,\"not_matching\":0,\"inactive\":0}}"
 
   let assert Ok(metrics) =
-    json.parse(from: body, using: api_rule_metrics.rule_metrics_detailed_decoder())
+    json.parse(
+      from: body,
+      using: api_rule_metrics.rule_metrics_detailed_decoder(),
+    )
   let assert 2 = metrics.rule_id
   let assert 0 = metrics.evaluated_count
   let assert 0 = metrics.suppression_breakdown.inactive

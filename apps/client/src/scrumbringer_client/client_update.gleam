@@ -41,8 +41,8 @@ import scrumbringer_client/assignments_view_mode
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/milestones as api_milestones
+import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks/active as active_api
@@ -285,7 +285,7 @@ fn current_route(model: client_state.Model) -> router.Route {
         permissions.Invites
         | permissions.OrgSettings
         | permissions.Projects
-        | permissions.Assignments
+        | permissions.Team
         | permissions.ApiTokens
         | permissions.Metrics -> router.Org(model.core.active_section)
         _ ->
@@ -485,7 +485,7 @@ fn apply_route_fields(
         )
 
       let model = case section {
-        permissions.Assignments ->
+        permissions.Team ->
           client_state.update_admin(model, fn(admin) {
             let state_types.AssignmentsModel(
               view_mode: _,
@@ -824,7 +824,7 @@ fn apply_assignments_view_from_url(
   uri: Uri,
 ) -> client_state.Model {
   case route {
-    router.Org(permissions.Assignments) ->
+    router.Org(permissions.Team) ->
       case url_state.parse(uri, url_state.OrgAssignments) {
         url_state.Parsed(state) | url_state.Redirect(state) ->
           case url_state.assignments_view_param(state) {
@@ -1042,7 +1042,7 @@ pub fn refresh_section_for_test(
       }),
     )
 
-    permissions.Assignments -> {
+    permissions.Team -> {
       let #(model, fx) = refresh_assignments(model)
       #(model, fx)
     }

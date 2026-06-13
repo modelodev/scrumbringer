@@ -1,4 +1,4 @@
--- name: update_task_claimed_by_user
+-- name: update_editable_task
 with updated as (
 update tasks
 set

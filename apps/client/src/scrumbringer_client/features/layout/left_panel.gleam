@@ -591,10 +591,10 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ),
           view_org_nav_link(
             config,
-            permissions.Assignments,
+            permissions.Team,
             "nav-assignments",
             icons.Team,
-            i18n_text.Assignments,
+            i18n_text.Team,
             config.on_navigate_org_assignments,
             None,
           ),

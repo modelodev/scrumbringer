@@ -12,7 +12,7 @@ import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/update as assignments_update
-import scrumbringer_client/permissions.{Assignments}
+import scrumbringer_client/permissions.{Team}
 
 fn assert_equal(actual: a, expected: a) {
   let assert True = actual == expected
@@ -65,7 +65,7 @@ fn feedback_context() -> assignments_update.FeedbackContext(Nil) {
 
 fn context() -> assignments_update.Context(Nil) {
   assignments_update.Context(
-    active_section: Assignments,
+    active_section: Team,
     on_project_members_fetched: fn(_, _) { Nil },
     on_user_projects_fetched: fn(_, _) { Nil },
     on_project_member_added: fn(_, _) { Nil },

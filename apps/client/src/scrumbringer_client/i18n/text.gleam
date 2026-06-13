@@ -60,6 +60,7 @@ pub type Text {
   TaskCompleteFailed
   TaskVersionConflict
   TaskAlreadyClaimed
+  TaskBlockedByDependencies
   TaskNotFound
   TaskMutationRolledBack
 
@@ -147,8 +148,6 @@ pub type Text {
   Blocked
   BlockedByTasks(count: Int)
   HiddenBlockedByFilters(count: Int)
-  BlockedTaskTitle
-  BlockedTaskWarning(count: Int)
   EditPosition
   XLabel
   YLabel
@@ -372,20 +371,19 @@ pub type Text {
   Active
   RevokeApiToken
   RevokeApiTokenConfirm
-  Assignments
-  AssignmentsByProject
-  AssignmentsByUser
-  AssignmentsSearchPlaceholder
-  AssignmentsNoProjectsTitle
-  AssignmentsNoProjectsBody
-  AssignmentsNoUsersTitle
-  AssignmentsNoUsersBody
-  AssignmentsNoMembersBadge
-  AssignmentsNoProjectsBadge
-  AssignmentsUsersCount(count: Int)
-  AssignmentsProjectsCount(count: Int)
-  AssignmentsLoadingMembers
-  AssignmentsLoadingProjects
+  TeamByProject
+  TeamByPerson
+  TeamSearchPlaceholder
+  TeamNoProjectsTitle
+  TeamNoProjectsBody
+  TeamNoPeopleTitle
+  TeamNoPeopleBody
+  TeamNoPeopleBadge
+  TeamNoProjectsBadge
+  TeamPeopleCount(count: Int)
+  TeamProjectsCount(count: Int)
+  TeamLoadingMembers
+  TeamLoadingProjects
   NoAdminPermissions
   NotPermitted
   NotPermittedBody

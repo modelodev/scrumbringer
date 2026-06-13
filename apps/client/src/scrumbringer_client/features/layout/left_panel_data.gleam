@@ -77,7 +77,7 @@ fn is_org_section(section: AdminSection) -> Bool {
     permissions.Invites
     | permissions.OrgSettings
     | permissions.Projects
-    | permissions.Assignments
+    | permissions.Team
     | permissions.ApiTokens
     | permissions.Metrics -> True
     _ -> False

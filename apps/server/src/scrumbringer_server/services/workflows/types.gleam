@@ -75,7 +75,8 @@ pub type Message {
   /// Get a single task.
   GetTask(task_id: Int, user_id: Int)
 
-  /// Update a task (owner only).
+  /// Update task fields. Available tasks are editable by project members;
+  /// claimed tasks are editable only by the claiming user.
   UpdateTask(task_id: Int, user_id: Int, version: Int, updates: TaskUpdates)
 
   /// Claim an available task.
@@ -158,6 +159,9 @@ pub type Error {
 
   /// Task is already claimed by someone else.
   AlreadyClaimed
+
+  /// Task cannot be claimed while dependencies are incomplete.
+  TaskBlockedByDependencies(blocked_count: Int)
 
   /// Invalid state transition (e.g., release unclaimed task).
   InvalidTransition

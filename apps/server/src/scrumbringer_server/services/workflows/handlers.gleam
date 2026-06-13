@@ -45,10 +45,10 @@ import scrumbringer_server/services/workflows/types.{
   AlreadyClaimed, ClaimOwnershipConflict, ClaimTask, CompleteTask, CreateTask,
   CreateTaskType, DbError, DeleteTaskType, GetTask, InvalidMovePoolToMilestone,
   InvalidTransition, ListTaskTypes, ListTasks, NotAuthorized, NotFound,
-  ReleaseTask, TaskMilestoneInheritedFromCard, TaskResult, TaskTypeAlreadyExists,
-  TaskTypeCreated, TaskTypeDeleted, TaskTypeInUse, TaskTypeUpdated,
-  TaskTypesList, TasksList, UpdateTask, UpdateTaskType, ValidationError,
-  VersionConflict,
+  ReleaseTask, TaskBlockedByDependencies, TaskMilestoneInheritedFromCard,
+  TaskResult, TaskTypeAlreadyExists, TaskTypeCreated, TaskTypeDeleted,
+  TaskTypeInUse, TaskTypeUpdated, TaskTypesList, TasksList, UpdateTask,
+  UpdateTaskType, ValidationError, VersionConflict,
 }
 import scrumbringer_server/services/workflows/validation
 
@@ -410,31 +410,23 @@ fn update_task_for_current(
   updates: TaskUpdates,
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
-  case current.status {
-    Available ->
-      update_task_for_owner(db, task_id, user_id, version, updates, current)
-    Completed -> Error(NotAuthorized)
-    Claimed(_) ->
-      update_task_for_claimed(db, task_id, user_id, version, updates, current)
-  }
+  use Nil <- result.try(authorize_task_edit(current, user_id))
+  update_editable_task(db, task_id, user_id, version, updates, current)
 }
 
-fn update_task_for_claimed(
-  db: pog.Connection,
-  task_id: Int,
-  user_id: Int,
-  version: Int,
-  updates: TaskUpdates,
+fn authorize_task_edit(
   current: task_mappers.Task,
-) -> Result(Response, Error) {
-  case task_state.claimed_by(current.state) {
-    Some(id) if id == user_id ->
-      update_task_for_owner(db, task_id, user_id, version, updates, current)
-    _ -> Error(NotAuthorized)
+  user_id: Int,
+) -> Result(Nil, Error) {
+  case current.state {
+    task_state.Available -> Ok(Nil)
+    task_state.Claimed(claimed_by: owner_id, ..) if owner_id == user_id ->
+      Ok(Nil)
+    task_state.Claimed(..) | task_state.Completed(..) -> Error(NotAuthorized)
   }
 }
 
-fn update_task_for_owner(
+fn update_editable_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
@@ -459,7 +451,7 @@ fn update_task_for_owner(
   let type_id_update = field_update.to_option(updates.type_id)
 
   case
-    tasks_queries.update_task_claimed_by_user(
+    tasks_queries.update_editable_task(
       db,
       task_id,
       user_id,
@@ -613,10 +605,11 @@ fn claim_task_for_current(
   version: Int,
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
-  case current.status {
-    Claimed(_) -> Error(AlreadyClaimed)
-    Completed -> Error(InvalidTransition)
-    Available ->
+  case current.status, current.blocked_count {
+    Claimed(_), _ -> Error(AlreadyClaimed)
+    Completed, _ -> Error(InvalidTransition)
+    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
+    Available, _ ->
       claim_available_task(db, task_id, user_id, org_id, version, current)
   }
 }
@@ -935,10 +928,11 @@ fn detect_conflict(
 }
 
 fn conflict_from_task(current: task_mappers.Task) -> Result(Response, Error) {
-  case current.status {
-    Claimed(_) ->
+  case current.status, current.blocked_count {
+    Claimed(_), _ ->
       Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
-    _ -> Error(VersionConflict)
+    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
+    _, _ -> Error(VersionConflict)
   }
 }
 

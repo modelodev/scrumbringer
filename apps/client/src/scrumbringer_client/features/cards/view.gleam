@@ -67,10 +67,7 @@ pub fn view_cards(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_cards_header(config: Config(msg)) -> Element(msg) {
-  section_header.view(
-    icons.Cards,
-    i18n.t(config.locale, i18n_text.MemberCards),
-  )
+  section_header.view(icons.Cards, i18n.t(config.locale, i18n_text.MemberCards))
 }
 
 fn view_cards_content(config: Config(msg)) -> Element(msg) {

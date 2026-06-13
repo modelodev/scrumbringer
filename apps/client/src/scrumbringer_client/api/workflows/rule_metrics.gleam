@@ -108,9 +108,7 @@ pub fn org_workflow_metrics_summary_decoder() -> decode.Decoder(
   ))
 }
 
-fn org_rule_metrics_decoder() -> decode.Decoder(
-  List(OrgWorkflowMetricsSummary),
-) {
+fn org_rule_metrics_decoder() -> decode.Decoder(List(OrgWorkflowMetricsSummary)) {
   decode.field(
     "workflows",
     decode.list(org_workflow_metrics_summary_decoder()),

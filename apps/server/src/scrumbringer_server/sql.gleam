@@ -5,7 +5,6 @@
 ////
 
 import gleam/dynamic/decode
-import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -1188,8 +1187,8 @@ pub type MetricsOrgOverviewByProjectRow {
     available_count: Int,
     ongoing_count: Int,
     wip_count: Int,
-    avg_claim_to_complete_ms: Option(Int),
-    avg_time_in_claimed_ms: Option(Int),
+    avg_claim_to_complete_ms: Int,
+    avg_time_in_claimed_ms: Int,
     stale_claims_count: Int,
   )
 }
@@ -1213,8 +1212,8 @@ pub fn metrics_org_overview_by_project(
     use available_count <- decode.field(5, decode.int)
     use ongoing_count <- decode.field(6, decode.int)
     use wip_count <- decode.field(7, decode.int)
-    use avg_claim_to_complete_ms <- decode.field(8, decode.optional(decode.int))
-    use avg_time_in_claimed_ms <- decode.field(9, decode.optional(decode.int))
+    use avg_claim_to_complete_ms <- decode.field(8, decode.int)
+    use avg_time_in_claimed_ms <- decode.field(9, decode.int)
     use stale_claims_count <- decode.field(10, decode.int)
     decode.success(MetricsOrgOverviewByProjectRow(
       project_id:,
@@ -1282,8 +1281,8 @@ select
   coalesce(tc.available_count, 0) as available_count,
   coalesce(tc.ongoing_count, 0) as ongoing_count,
   coalesce(tc.wip_count, 0) as wip_count,
-  ts.avg_claim_to_complete_ms,
-  ts.avg_time_in_claimed_ms,
+  coalesce(ts.avg_claim_to_complete_ms, 0) as avg_claim_to_complete_ms,
+  coalesce(ts.avg_time_in_claimed_ms, 0) as avg_time_in_claimed_ms,
   coalesce(ts.stale_claims_count, 0) as stale_claims_count
 from projects p
 left join event_counts ec on ec.project_id = p.id
@@ -6350,6 +6349,13 @@ with updated as (
   where id = $1
     and status = 'available'
     and version = $3
+    and not exists (
+      select 1
+      from task_dependencies d
+      join tasks blocker on blocker.id = d.depends_on_task_id
+      where d.task_id = tasks.id
+        and blocker.status != 'completed'
+    )
   returning
     id,
     project_id,
@@ -7621,7 +7627,7 @@ pub type TasksUpdateRow {
   )
 }
 
-/// name: update_task_claimed_by_user
+/// name: update_editable_task
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7694,7 +7700,7 @@ pub fn tasks_update(
     ))
   }
 
-  "-- name: update_task_claimed_by_user
+  "-- name: update_editable_task
 with updated as (
 update tasks
 set

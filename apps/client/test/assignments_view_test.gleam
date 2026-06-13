@@ -473,7 +473,7 @@ pub fn empty_state_when_no_users_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "No users yet")
+  assert_contains(html, "No people yet")
   assert_contains(html, "Create invite link")
 }
 
@@ -515,7 +515,7 @@ pub fn empty_state_when_only_admin_user_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "No users yet")
+  assert_contains(html, "No people yet")
   assert_contains(html, "Create invite link")
 }
 

@@ -312,7 +312,7 @@ fn plan_org_for_admin(snap: Snapshot, section: AdminSection) -> List(Command) {
       collect([
         #(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers),
       ])
-    permissions.Assignments ->
+    permissions.Team ->
       collect([#(needs_fetch(snap.org_users_cache), FetchOrgUsersCache)])
     permissions.ApiTokens ->
       collect([
