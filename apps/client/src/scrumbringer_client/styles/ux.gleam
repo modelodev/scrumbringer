@@ -448,8 +448,6 @@ pub fn css() -> List(String) {
     // Shared section header for card detail tabs (Tasks, Notes)
     ".card-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
     ".card-section-title { font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); color: var(--sb-muted-strong); }",
-    ".card-detail-tasks-section { }",
-    ".card-detail-notes-section { }",
     // Note dialog (modal within card detail modal)
     ".note-dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1100; }",
     ".note-dialog { background: var(--sb-elevated); border-radius: 8px; padding: 16px; min-width: 320px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }",
@@ -482,7 +480,6 @@ pub fn css() -> List(String) {
     ".task-meta-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: color-mix(in oklab, var(--sb-text) 84%, var(--sb-muted)); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-medium); line-height: var(--sb-line-tight); }",
     ".task-meta-assignee.muted { color: var(--sb-muted); opacity: 0.7; }",
     // Task tabs (aligned with card-tabs)
-    ".task-tabs { }",
     ".task-tab .tab-count { font-size: var(--sb-font-sm); }",
     ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: var(--sb-font-xs); margin-left: 4px; animation: pulse 2s infinite; }",
     // Task detail tab content
@@ -630,7 +627,7 @@ pub fn css() -> List(String) {
     // Mobile adaptations
     "@media (max-width: 640px) { .my-bar-card-groups { gap: 12px; } .my-bar-card-header { padding: 8px 10px; gap: 8px; } .my-bar-card-title { font-size: var(--sb-font-base); } .my-bar-card-progress { font-size: var(--sb-font-sm); } }",
     "@media (max-width: 640px) { .fichas-list { gap: 8px; } .ficha-card { padding: 10px 12px; } .ficha-header { gap: 8px; } .ficha-title { font-size: var(--sb-font-md); } .ficha-state-badge { font-size: var(--sb-font-xs); padding: 2px 6px; } }",
-    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 12px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-detail-modal { padding: 8px; align-items: stretch; justify-content: stretch; } .task-detail-modal .modal-content { width: 100%; max-width: none; height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); min-height: 0; border-radius: 12px; } .task-detail-modal .modal-header-block { position: sticky; top: 0; z-index: 2; padding-bottom: 18px; } .task-detail-modal .modal-tabs { position: static; } .task-detail-modal .modal-tabs.detail-tabs { margin-top: 10px; min-height: 62px; padding-bottom: 10px; } .task-detail-modal .modal-footer { position: sticky; bottom: 0; z-index: 2; padding: 10px 12px; } .task-detail-footer .btn { min-height: 44px; } .task-detail-body { padding: 12px 12px 18px; } .task-detail-summary-grid { grid-template-columns: 1fr; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-grid { grid-template-columns: 1fr; } }",
+    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 12px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-detail-modal { padding: 8px; align-items: stretch; justify-content: stretch; } .task-detail-modal .modal-content { width: 100%; max-width: none; height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); min-height: 0; border-radius: 12px; } .task-detail-modal .modal-header-block { position: sticky; top: 0; z-index: 2; padding-bottom: 18px; } .task-detail-modal .modal-tabs { position: static; } .task-detail-modal .modal-tabs.detail-tabs { margin-top: 10px; min-height: 62px; padding-bottom: 10px; } .task-detail-modal .modal-footer { position: sticky; bottom: 0; z-index: 2; padding: 10px 12px; } .task-detail-footer .btn { min-height: 44px; } .task-detail-body { padding: 12px 12px 18px; } .task-detail-summary-grid { grid-template-columns: 1fr; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-grid { grid-template-columns: 1fr; } }",
     // =====================================================
   ]
 }

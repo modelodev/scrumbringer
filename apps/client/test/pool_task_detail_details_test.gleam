@@ -8,6 +8,7 @@ import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_detail_details
+import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -45,9 +46,18 @@ fn config(
 ) -> task_detail_details.Config(String) {
   task_detail_details.Config(
     locale: locale.En,
-    current_user_id: current_user_id,
     task: task,
     dependencies: NotAsked,
+    milestones: NotAsked,
+    parent_card_title: Some("Release card"),
+    editor: editor_config(current_user_id),
+  )
+}
+
+fn editor_config(current_user_id: Option(Int)) -> detail_editor.Config(String) {
+  detail_editor.Config(
+    locale: locale.En,
+    current_user_id: current_user_id,
     editing: False,
     edit_title: "Prepare release",
     edit_description: "Review release checklist.",
@@ -60,7 +70,6 @@ fn config(
     task_types: NotAsked,
     cards: [],
     milestones: NotAsked,
-    parent_card_title: Some("Release card"),
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },

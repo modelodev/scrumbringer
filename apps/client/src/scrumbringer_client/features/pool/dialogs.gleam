@@ -41,6 +41,7 @@ import scrumbringer_client/features/pool/task_detail_header
 import scrumbringer_client/features/pool/task_detail_tabs
 import scrumbringer_client/features/pool/task_metrics
 import scrumbringer_client/features/pool/task_notes
+import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/ui/task_tabs
 
@@ -232,9 +233,18 @@ fn details_config(
 ) -> task_detail_details.Config(msg) {
   task_detail_details.Config(
     locale: config.locale,
-    current_user_id: config.current_user_id,
     task: config.task,
     dependencies: config.dependencies,
+    milestones: config.milestones,
+    parent_card_title: config.parent_card_title,
+    editor: editor_config(config),
+  )
+}
+
+fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
+  detail_editor.Config(
+    locale: config.locale,
+    current_user_id: config.current_user_id,
     editing: config.editing,
     edit_title: config.edit_title,
     edit_description: config.edit_description,
@@ -247,7 +257,6 @@ fn details_config(
     task_types: config.task_types,
     cards: config.cards,
     milestones: config.milestones,
-    parent_card_title: config.parent_card_title,
     on_edit_started: config.on_edit_started,
     on_edit_cancelled: config.on_edit_cancelled,
     on_title_changed: config.on_edit_title_changed,

@@ -28,6 +28,9 @@ pub type Config {
 }
 
 pub fn view(config: Config) -> Element(msg) {
+  let is_owner_empty = owner_is_empty(config)
+  let blocker_count = blocking_count(config)
+
   div([attribute.class("task-detail-summary")], [
     div([attribute.class("task-detail-summary-title")], [
       text(t(config.locale, i18n_text.TaskOperationalSummary)),
@@ -61,12 +64,12 @@ pub fn view(config: Config) -> Element(msg) {
       summary_item(
         t(config.locale, i18n_text.TaskOwner),
         owner_label(config),
-        owner_is_empty(config),
+        is_owner_empty,
       ),
       summary_item(
         t(config.locale, i18n_text.Blocked),
-        blocking_label(config),
-        blocking_count(config) == 0,
+        blocking_label(config, blocker_count),
+        blocker_count == 0,
       ),
     ]),
   ])
@@ -129,8 +132,8 @@ fn owner_is_empty(config: Config) -> Bool {
   claimed_by(config.task) == opt.None
 }
 
-fn blocking_label(config: Config) -> String {
-  case blocking_count(config) {
+fn blocking_label(config: Config, count: Int) -> String {
+  case count {
     0 -> t(config.locale, i18n_text.TaskBlockingClear)
     count -> t(config.locale, i18n_text.BlockedByTasks(count))
   }

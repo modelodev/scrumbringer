@@ -194,17 +194,19 @@ pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
 }
 
 fn view_type_field(config: Config(msg), current_task: Task) -> Element(msg) {
+  let selected = effective_type_id(config, current_task)
+
   form_field.view(
     i18n.t(config.locale, i18n_text.TaskType),
     select(
       [
-        attribute.value(effective_type_id(config, current_task)),
+        attribute.value(selected),
         event.on_input(config.on_type_id_changed),
         attribute.disabled(
           config.edit_in_flight || !remote_loaded(config.task_types),
         ),
       ],
-      task_type_options(config, effective_type_id(config, current_task)),
+      task_type_options(config, selected),
     ),
   )
 }
@@ -215,35 +217,23 @@ fn task_type_options(
 ) -> List(Element(msg)) {
   case config.task_types {
     Loaded(task_types) -> [
-      option(
-        [attribute.value(""), attribute.selected(selected == "")],
-        i18n.t(config.locale, i18n_text.SelectTaskType),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.SelectTaskType), selected),
       ..list.map(task_types, fn(task_type) {
         let value = int.to_string(task_type.id)
-        option(
-          [attribute.value(value), attribute.selected(selected == value)],
-          task_type.name,
-        )
+        select_option(value, task_type.name, selected)
       })
     ]
     Loading -> [
-      option(
-        [attribute.value(""), attribute.selected(selected == "")],
-        i18n.t(config.locale, i18n_text.LoadingEllipsis),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.LoadingEllipsis), selected),
     ]
     NotAsked -> [
-      option(
-        [attribute.value(""), attribute.selected(selected == "")],
+      empty_option(
         i18n.t(config.locale, i18n_text.SelectProjectFirst),
+        selected,
       ),
     ]
     Failed(_) -> [
-      option(
-        [attribute.value(""), attribute.selected(selected == "")],
-        i18n.t(config.locale, i18n_text.ErrorLoadingTasks),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.ErrorLoadingTasks), selected),
     ]
   }
 }
@@ -300,19 +290,13 @@ fn view_card_field(config: Config(msg)) -> Element(msg) {
         event.on_input(config.on_card_id_changed),
       ],
       [
-        option(
-          [attribute.value(""), attribute.selected(config.edit_card_id == "")],
+        empty_option(
           i18n.t(config.locale, i18n_text.NoCard),
+          config.edit_card_id,
         ),
         ..list.map(config.cards, fn(card) {
           let value = int.to_string(card.id)
-          option(
-            [
-              attribute.value(value),
-              attribute.selected(config.edit_card_id == value),
-            ],
-            card.title,
-          )
+          select_option(value, card.title, config.edit_card_id)
         })
       ],
     ),
@@ -355,59 +339,42 @@ fn milestone_hint(config: Config(msg)) -> opt.Option(String) {
 }
 
 fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
+  let selected = config.edit_milestone_id
+
   case config.milestones {
     Loaded(milestones) -> [
-      option(
-        [
-          attribute.value(""),
-          attribute.selected(config.edit_milestone_id == ""),
-        ],
-        i18n.t(config.locale, i18n_text.NoMilestone),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.NoMilestone), selected),
       ..milestones
       |> list.filter(fn(progress) {
-        progress.milestone.state != Completed
-        || config.edit_milestone_id == int.to_string(progress.milestone.id)
+        let value = int.to_string(progress.milestone.id)
+        progress.milestone.state != Completed || selected == value
       })
       |> list.map(fn(progress) {
         let value = int.to_string(progress.milestone.id)
-        option(
-          [
-            attribute.value(value),
-            attribute.selected(config.edit_milestone_id == value),
-          ],
-          progress.milestone.name,
-        )
+        select_option(value, progress.milestone.name, selected)
       })
     ]
     Loading -> [
-      option(
-        [
-          attribute.value(""),
-          attribute.selected(config.edit_milestone_id == ""),
-        ],
-        i18n.t(config.locale, i18n_text.LoadingEllipsis),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.LoadingEllipsis), selected),
     ]
     NotAsked -> [
-      option(
-        [
-          attribute.value(""),
-          attribute.selected(config.edit_milestone_id == ""),
-        ],
-        i18n.t(config.locale, i18n_text.NoMilestone),
-      ),
+      empty_option(i18n.t(config.locale, i18n_text.NoMilestone), selected),
     ]
     Failed(_) -> [
-      option(
-        [
-          attribute.value(""),
-          attribute.selected(config.edit_milestone_id == ""),
-        ],
+      empty_option(
         i18n.t(config.locale, i18n_text.MilestonesLoadError),
+        selected,
       ),
     ]
   }
+}
+
+fn empty_option(label: String, selected: String) -> Element(msg) {
+  select_option("", label, selected)
+}
+
+fn select_option(value: String, label: String, selected: String) -> Element(msg) {
+  option([attribute.value(value), attribute.selected(selected == value)], label)
 }
 
 fn remote_loaded(remote: Remote(List(item))) -> Bool {
