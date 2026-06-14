@@ -27,19 +27,22 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 pub fn view(config: Config(msg)) -> Element(msg) {
   case config.task {
     opt.Some(task) ->
-      modal_header.view_extended(base_header_config(
-        config,
-        title: task.title,
-        meta: opt.Some(task_meta(config, task)),
-      ))
+      render_header(config, task.title, opt.Some(task_meta(config, task)))
 
     opt.None ->
-      modal_header.view_extended(base_header_config(
-        config,
-        title: t(config, i18n_text.LoadingEllipsis),
-        meta: opt.None,
-      ))
+      render_header(config, t(config, i18n_text.LoadingEllipsis), opt.None)
   }
+}
+
+fn render_header(
+  config: Config(msg),
+  title: String,
+  meta: opt.Option(Element(msg)),
+) -> Element(msg) {
+  modal_header.view_extended_with_close_label(
+    base_header_config(config, title:, meta:),
+    t(config, i18n_text.Close),
+  )
 }
 
 fn base_header_config(
@@ -50,7 +53,7 @@ fn base_header_config(
   modal_header.ExtendedConfig(
     title: title,
     title_element: modal_header.TitleH2,
-    close_position: modal_header.CloseBeforeTitle,
+    close_position: modal_header.CloseAfterTitle,
     icon: opt.None,
     badges: [],
     meta: meta,

@@ -607,10 +607,11 @@ fn view_name_hint(hint: Option(String)) -> Element(Msg) {
 fn view_create_dialog(model: Model) -> Element(Msg) {
   crud_dialog_base.view_dialog_frame(
     "dialog dialog-lg dialog-lg-tight",
-    modal_header.view_dialog(
+    modal_header.view_dialog_with_close_label(
       i18n_t(model.locale, i18n_text.CreateTaskType),
       option.None,
       CloseRequested,
+      i18n_t(model.locale, i18n_text.Close),
     ),
     [
       form(
@@ -661,10 +662,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   crud_dialog_base.view_dialog_frame(
     "dialog dialog-lg dialog-lg-tight",
-    modal_header.view_dialog(
+    modal_header.view_dialog_with_close_label(
       i18n_t(model.locale, i18n_text.EditTaskType),
       option.None,
       EditCancelled,
+      i18n_t(model.locale, i18n_text.Close),
     ),
     [
       form(
@@ -715,10 +717,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
   crud_dialog_base.view_dialog_frame(
     "dialog dialog-small",
-    modal_header.view_dialog(
+    modal_header.view_dialog_with_close_label(
       i18n_t(model.locale, i18n_text.DeleteTaskType),
       option.None,
       DeleteCancelled,
+      i18n_t(model.locale, i18n_text.Close),
     ),
     [
       div([attribute.class("dialog-body")], [

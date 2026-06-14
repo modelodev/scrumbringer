@@ -27,6 +27,7 @@ fn default_config() -> Config(Nil) {
     submit_label: "Add",
     submit_disabled: True,
     cancel_label: "Cancel",
+    close_label: "Close",
     on_content_change: fn(_) { Nil },
     on_submit: Nil,
     on_close: Nil,
@@ -106,4 +107,12 @@ pub fn has_aria_attributes_test() {
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-label=\"Close\"")
+}
+
+pub fn uses_configured_close_label_test() {
+  let config = Config(..default_config(), close_label: "Cerrar")
+
+  let html = render_to_string(config)
+
+  assert_contains(html, "aria-label=\"Cerrar\"")
 }

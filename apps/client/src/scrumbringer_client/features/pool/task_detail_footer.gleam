@@ -22,7 +22,12 @@ pub type Config(msg) {
     task: opt.Option(Task),
     current_user_id: opt.Option(Int),
     disable_actions: Bool,
+    editing: Bool,
+    edit_in_flight: Bool,
+    edit_dirty: Bool,
     on_close: msg,
+    on_edit_cancelled: msg,
+    on_edit_submitted: msg,
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
@@ -34,6 +39,15 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
+  let actions = case config.editing {
+    True -> edit_actions(config)
+    False -> reading_actions(config)
+  }
+
+  div([attribute.class("modal-footer task-detail-footer")], actions)
+}
+
+fn reading_actions(config: Config(msg)) -> List(Element(msg)) {
   let close_button =
     text_button(
       t(config, i18n_text.Close),
@@ -41,16 +55,40 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       button.Secondary,
       False,
     )
+    |> button.view
 
   let actions = case config.task {
     opt.None -> []
     opt.Some(task) -> task_actions(config, task)
   }
 
-  div(
-    [attribute.class("modal-footer task-detail-footer")],
-    list.append([close_button], actions),
-  )
+  list.append([close_button], actions)
+}
+
+fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
+  let cancel =
+    text_button(
+      t(config, i18n_text.Cancel),
+      config.on_edit_cancelled,
+      button.Secondary,
+      config.edit_in_flight,
+    )
+    |> button.view
+
+  let save =
+    text_button(
+      t(config, i18n_text.Save),
+      config.on_edit_submitted,
+      button.Primary,
+      config.edit_in_flight || !config.edit_dirty,
+    )
+    |> button.with_class(case config.edit_in_flight {
+      True -> "btn-loading task-detail-save"
+      False -> "task-detail-save"
+    })
+    |> button.view
+
+  [cancel, save]
 }
 
 fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
@@ -62,7 +100,8 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         config.on_claim(task.id, task.version),
         button.Primary,
         config.disable_actions || task.blocked_count > 0,
-      ),
+      )
+      |> button.view,
     ]
 
     task_status.WorkClaimed | task_status.WorkOngoing ->
@@ -73,13 +112,15 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
             config.on_release(task.id, task.version),
             button.Secondary,
             config.disable_actions,
-          ),
+          )
+            |> button.view,
           text_button(
             t(config, i18n_text.Complete),
             config.on_complete(task.id, task.version),
             button.Primary,
             config.disable_actions,
-          ),
+          )
+            |> button.view,
         ]
         False -> []
       }
@@ -93,8 +134,7 @@ fn text_button(
   on_click: msg,
   intent: button.Intent,
   disabled: Bool,
-) -> Element(msg) {
+) -> button.Config(msg) {
   button.text(label, on_click, intent, button.EntityAction)
   |> button.with_disabled(disabled)
-  |> button.view
 }

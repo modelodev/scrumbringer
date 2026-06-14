@@ -47,6 +47,7 @@ fn config(
     locale: locale.En,
     current_user_id: current_user_id,
     task: task,
+    dependencies: NotAsked,
     editing: False,
     edit_title: "Prepare release",
     edit_description: "Review release checklist.",

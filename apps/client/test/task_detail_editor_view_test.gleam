@@ -67,7 +67,6 @@ fn config(current_user_id) -> detail_editor.Config(String) {
     task_types: NotAsked,
     cards: [],
     milestones: NotAsked,
-    parent_card_title: Some("Release card"),
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
@@ -87,7 +86,6 @@ pub fn detail_editor_renders_config_data_without_root_model_test() {
 
   assert_contains(html, "Details")
   assert_contains(html, "Edit task")
-  assert_contains(html, "Release card")
   assert_contains(html, "Review release checklist.")
 }
 
@@ -98,6 +96,24 @@ pub fn detail_editor_hides_edit_for_other_claimed_task_test() {
 
   assert_not_contains(html, "Edit task")
   assert_contains(html, "claim the task to keep editing")
+}
+
+pub fn detail_editor_hides_edit_for_completed_task_test() {
+  let completed_state = task_state.Completed("2026-06-14T12:00:00Z")
+  let task =
+    Task(
+      ..claimed_task(),
+      state: completed_state,
+      status: task_state.to_status(completed_state),
+      work_state: task_state.to_work_state(completed_state),
+    )
+  let html =
+    detail_editor.view_readonly_fields(config(Some(7)), task)
+    |> element.to_document_string
+
+  assert_not_contains(html, "Edit task")
+  assert_contains(html, "Completed tasks are read-only")
+  assert_not_contains(html, "claim the task to keep editing")
 }
 
 pub fn detail_editor_marks_current_type_option_selected_test() {
@@ -122,4 +138,18 @@ pub fn detail_editor_marks_current_type_option_selected_test() {
 
   assert_contains(html, "value=\"1\"")
   assert_contains(html, "selected")
+}
+
+pub fn detail_editor_renders_segmented_priority_test() {
+  let html =
+    detail_editor.view_form(
+      detail_editor.Config(..config(Some(7)), editing: True),
+      claimed_task(),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "task-priority-segmented")
+  assert_contains(html, "P1")
+  assert_contains(html, "P5")
+  assert_contains(html, "aria-pressed=\"true\"")
 }

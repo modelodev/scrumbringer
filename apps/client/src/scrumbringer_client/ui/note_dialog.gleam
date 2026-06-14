@@ -17,6 +17,7 @@
 ////     submit_label: "Add Note",
 ////     submit_disabled: model.note_in_flight || model.note_content == "",
 ////     cancel_label: "Cancel",
+////     close_label: "Close",
 ////     on_content_change: NoteContentChanged,
 ////     on_submit: NoteSubmitted,
 ////     on_close: NoteDialogClosed,
@@ -55,6 +56,7 @@ pub type Config(msg) {
     submit_label: String,
     submit_disabled: Bool,
     cancel_label: String,
+    close_label: String,
     on_content_change: fn(String) -> msg,
     on_submit: msg,
     on_close: msg,
@@ -89,7 +91,11 @@ fn view_header(config: Config(msg)) -> Element(msg) {
       [attribute.class("note-dialog-title"), attribute.id("note-dialog-title")],
       [text(config.title)],
     ),
-    modal_close_button.view_with_class("btn-icon", config.on_close),
+    modal_close_button.view_with_label_and_class(
+      config.close_label,
+      "btn-icon",
+      config.on_close,
+    ),
   ])
 }
 

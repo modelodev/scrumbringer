@@ -30,7 +30,6 @@ import lustre/effect
 
 import domain/api_error.{type ApiError}
 import domain/task
-import domain/task_state
 import scrumbringer_client/api/tasks/active as active_api
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
@@ -64,6 +63,7 @@ import scrumbringer_client/features/pool/task_created_update
 import scrumbringer_client/features/pool/view_mode_route
 import scrumbringer_client/features/skills/update as skills_workflow
 import scrumbringer_client/features/tasks/dependency_update as dependency_workflow
+import scrumbringer_client/features/tasks/detail_permissions
 import scrumbringer_client/features/tasks/detail_update as task_detail_update
 import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 import scrumbringer_client/features/tasks/update as tasks_workflow
@@ -362,11 +362,12 @@ fn can_edit_selected_task(
   model: client_state.Model,
   current_task: task.Task,
 ) -> Bool {
-  case model.core.user, task_state.claimed_by(current_task.state) {
-    opt.Some(user), opt.Some(claimed_by) -> user.id == claimed_by
-    opt.Some(_), opt.None -> True
-    _, _ -> False
+  let current_user_id = case model.core.user {
+    opt.Some(user) -> opt.Some(user.id)
+    opt.None -> opt.None
   }
+
+  detail_permissions.can_edit(current_user_id, current_task)
 }
 
 fn task_detail_edit_context(

@@ -70,6 +70,38 @@ pub fn task_detail_footer_hides_claimed_actions_for_other_owner_test() {
   assert_not_contains(html, "Complete")
 }
 
+pub fn task_detail_footer_renders_edit_actions_in_edit_mode_test() {
+  let html =
+    task_detail_footer.view(
+      task_detail_footer.Config(
+        ..config(Some(claimed_task(claimed_by: 7)), current_user_id: Some(7)),
+        editing: True,
+        edit_dirty: True,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Cancel")
+  assert_contains(html, "Save")
+  assert_not_contains(html, "Release")
+  assert_not_contains(html, "Complete")
+}
+
+pub fn task_detail_footer_disables_save_without_edit_changes_test() {
+  let html =
+    task_detail_footer.view(
+      task_detail_footer.Config(
+        ..config(Some(claimed_task(claimed_by: 7)), current_user_id: Some(7)),
+        editing: True,
+        edit_dirty: False,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Save")
+  assert_contains(html, "disabled")
+}
+
 fn config(
   task: Option(Task),
   current_user_id current_user_id: Option(Int),
@@ -79,7 +111,12 @@ fn config(
     task: task,
     current_user_id: current_user_id,
     disable_actions: False,
+    editing: False,
+    edit_in_flight: False,
+    edit_dirty: False,
     on_close: "close",
+    on_edit_cancelled: "cancel-edit",
+    on_edit_submitted: "submit-edit",
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
     on_complete: fn(_, _) { "complete" },

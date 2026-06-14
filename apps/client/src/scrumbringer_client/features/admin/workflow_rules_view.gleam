@@ -479,10 +479,11 @@ fn view_attach_template_modal(config: Config(msg)) -> Element(msg) {
 
       div([attribute.class("modal-backdrop")], [
         div([attribute.class("modal-sm")], [
-          modal_header.view_dialog(
+          modal_header.view_dialog_with_close_label(
             t(config, i18n_text.AttachTemplate),
             opt.None,
             config.on_attach_modal_closed,
+            t(config, i18n_text.Close),
           ),
           view_attach_template_modal_body(
             config,

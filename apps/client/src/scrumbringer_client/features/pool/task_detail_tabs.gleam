@@ -29,7 +29,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     notes_count: notes_count(config.notes),
     has_new_notes: False,
     labels: task_tabs.Labels(
-      tasks: t(config.locale, i18n_text.TabTasks),
+      tasks: t(config.locale, i18n_text.TabDetails),
       notes: t(config.locale, i18n_text.TabNotes),
       metrics: t(config.locale, i18n_text.TabMetrics),
     ),

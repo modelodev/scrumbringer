@@ -301,7 +301,12 @@ pub fn view_delete_dialog_shell(
 ) -> Element(msg) {
   view_dialog_shell(
     "dialog dialog-sm",
-    modal_header.view_dialog_with_icon(title, icon, on_cancel),
+    modal_header.view_dialog_with_icon_and_close_label(
+      title,
+      icon,
+      on_cancel,
+      i18n.t(locale, i18n_text.Close),
+    ),
     error,
     [p([], [text(confirm_text)])],
     [

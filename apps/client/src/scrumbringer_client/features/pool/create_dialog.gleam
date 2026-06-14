@@ -52,13 +52,14 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  dialog.view(
+  dialog.view_with_close_label(
     dialog.DialogConfig(
       title: t(config, i18n_text.NewTask),
       icon: opt.Some(icons.nav_icon(icons.ClipboardDoc, icons.Medium)),
       size: dialog.DialogMd,
       on_close: config.on_close,
     ),
+    t(config, i18n_text.Close),
     True,
     config.error,
     [

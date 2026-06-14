@@ -635,21 +635,24 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
     ])
 
   div([attribute.class("detail-header")], [
-    modal_header.view_extended(modal_header.ExtendedConfig(
-      title: card.title,
-      title_element: modal_header.TitleSpan,
-      close_position: modal_header.CloseBeforeTitle,
-      icon: option.None,
-      badges: [],
-      meta: option.Some(meta),
-      progress: option.None,
-      on_close: CloseClicked,
-      header_class: "detail-header",
-      title_row_class: "detail-title-row",
-      title_class: "detail-title",
-      title_id: "card-detail-title",
-      close_button_class: "modal-close btn-icon",
-    )),
+    modal_header.view_extended_with_close_label(
+      modal_header.ExtendedConfig(
+        title: card.title,
+        title_element: modal_header.TitleSpan,
+        close_position: modal_header.CloseBeforeTitle,
+        icon: option.None,
+        badges: [],
+        meta: option.Some(meta),
+        progress: option.None,
+        on_close: CloseClicked,
+        header_class: "detail-header",
+        title_row_class: "detail-title-row",
+        title_class: "detail-title",
+        title_id: "card-detail-title",
+        close_button_class: "modal-close btn-icon",
+      ),
+      t(model.locale, i18n_text.Close),
+    ),
     case card.description {
       "" -> element.none()
       desc -> div([attribute.class("card-detail-description")], [text(desc)])
@@ -706,6 +709,7 @@ fn view_note_dialog(model: Model) -> Element(Msg) {
     submit_label: t(model.locale, i18n_text.AddNote),
     submit_disabled: model.note_in_flight || model.note_content == "",
     cancel_label: t(model.locale, i18n_text.Cancel),
+    close_label: t(model.locale, i18n_text.Close),
     on_content_change: NoteContentChanged,
     on_submit: NoteSubmitted,
     on_close: NoteDialogClosed,

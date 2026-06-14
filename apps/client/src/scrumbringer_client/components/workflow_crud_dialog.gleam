@@ -610,10 +610,11 @@ fn maybe_add_aria_label(
 fn view_create_dialog(model: Model) -> Element(Msg) {
   crud_dialog_base.view_dialog_shell(
     "dialog dialog-md",
-    modal_header.view_dialog_with_icon(
+    modal_header.view_dialog_with_icon_and_close_label(
       t(model.locale, i18n_text.CreateWorkflow),
       text("\u{2699}"),
       CloseRequested,
+      t(model.locale, i18n_text.Close),
     ),
     model.create_error,
     [
@@ -650,10 +651,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   crud_dialog_base.view_dialog_shell(
     "dialog dialog-md",
-    modal_header.view_dialog_with_icon(
+    modal_header.view_dialog_with_icon_and_close_label(
       t(model.locale, i18n_text.EditWorkflow),
       text("\u{270F}"),
       EditCancelled,
+      t(model.locale, i18n_text.Close),
     ),
     model.edit_error,
     [

@@ -43,3 +43,19 @@ pub fn dialog_view_open_includes_title_and_icon_test() {
   assert_contains(html, "Create")
   assert_contains(html, "icon")
 }
+
+pub fn dialog_view_accepts_localized_close_label_test() {
+  let config =
+    dialog.DialogConfig(
+      title: "Crear",
+      icon: None,
+      size: dialog.DialogSm,
+      on_close: "close",
+    )
+
+  let rendered =
+    dialog.view_with_close_label(config, "Cerrar", True, None, [], [])
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "aria-label=\"Cerrar\"")
+}

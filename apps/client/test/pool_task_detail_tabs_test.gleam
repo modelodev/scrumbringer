@@ -24,7 +24,7 @@ pub fn task_detail_tabs_render_labels_and_note_count_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Tasks")
+  assert_contains(html, "Details")
   assert_contains(html, "Notes")
   assert_contains(html, "Metrics")
   assert_contains(html, "2")

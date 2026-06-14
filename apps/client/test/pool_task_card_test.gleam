@@ -96,6 +96,8 @@ pub fn task_card_renders_available_claim_action_test() {
   assert_contains(html, "task-card-actions-left")
   assert_contains(html, "task-card-primary-action")
   assert_contains(html, "aria-label=\"Claim to My Tasks\"")
+  assert_contains(html, "task-card-open-action")
+  assert_contains(html, "aria-label=\"Open task: Prepare release\"")
   assert_not_contains(html, "task-card-primary-label")
 }
 

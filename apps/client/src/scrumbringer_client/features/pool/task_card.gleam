@@ -119,19 +119,32 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         ]),
       ]),
       div([attribute.class("task-card-body")], [
-        div([attribute.class("task-card-center")], [
-          div([attribute.class("task-card-center-icon")], [
-            task_type_icon.view(task_type.icon, 22, config.theme),
-          ]),
-          div(
-            [
-              attribute.class("task-card-title"),
-              attribute.attribute("title", title),
-            ],
-            [text(title)],
-          ),
-          mobile_context(config),
-        ]),
+        button(
+          [
+            attribute.class("task-card-open-action"),
+            attribute.attribute("type", "button"),
+            attribute.attribute(
+              "aria-label",
+              pool_labels.open_task(config.locale) <> ": " <> title,
+            ),
+            event.on_click(config.on_open),
+          ],
+          [
+            span([attribute.class("task-card-center")], [
+              span([attribute.class("task-card-center-icon")], [
+                task_type_icon.view(task_type.icon, 22, config.theme),
+              ]),
+              span(
+                [
+                  attribute.class("task-card-title"),
+                  attribute.attribute("title", title),
+                ],
+                [text(title)],
+              ),
+              mobile_context(config),
+            ]),
+          ],
+        ),
       ]),
       div(
         [
@@ -159,7 +172,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn mobile_context(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("task-card-mobile-context")], [
+  span([attribute.class("task-card-mobile-context")], [
     card_context(config.card_title),
     span([attribute.class("task-card-mobile-age")], [
       text(pool_labels.created_ago_days(config.locale, config.age_days)),

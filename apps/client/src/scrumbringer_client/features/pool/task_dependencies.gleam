@@ -180,13 +180,14 @@ fn dependency_dialog(config: Config(msg)) -> Element(msg) {
   let query = string.trim(config.search_query)
   let results = filtered_candidates(config.candidates, current_task_id, query)
 
-  dialog.view(
+  dialog.view_with_close_label(
     dialog.DialogConfig(
       title: t(config, i18n_text.AddDependency),
       icon: opt.Some(icons.nav_icon(icons.Plus, icons.Medium)),
       size: dialog.DialogMd,
       on_close: config.on_dialog_closed,
     ),
+    t(config, i18n_text.Close),
     True,
     config.add_error,
     [

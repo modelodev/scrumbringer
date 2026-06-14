@@ -112,6 +112,7 @@ fn note_dialog(config: Config(msg)) -> Element(msg) {
     submit_label: t(config, i18n_text.AddNote),
     submit_disabled: config.note_in_flight || config.note_content == "",
     cancel_label: t(config, i18n_text.Cancel),
+    close_label: t(config, i18n_text.Close),
     on_content_change: config.on_content_changed,
     on_submit: config.on_submitted,
     on_close: config.on_dialog_closed,

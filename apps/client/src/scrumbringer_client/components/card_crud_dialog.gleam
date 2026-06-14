@@ -709,10 +709,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
 
   crud_dialog_base.view_dialog_shell(
     dialog_class,
-    modal_header.view_dialog_with_icon(
+    modal_header.view_dialog_with_icon_and_close_label(
       t(model.locale, i18n_text.CreateCard),
       icons.nav_icon(icons.Cards, icons.Medium),
       CloseRequested,
+      t(model.locale, i18n_text.Close),
     ),
     model.create_error,
     [
@@ -788,10 +789,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 
   crud_dialog_base.view_dialog_shell(
     dialog_class,
-    modal_header.view_dialog_with_icon(
+    modal_header.view_dialog_with_icon_and_close_label(
       t(model.locale, i18n_text.EditCard),
       icons.nav_icon(icons.Pencil, icons.Medium),
       EditCancelled,
+      t(model.locale, i18n_text.Close),
     ),
     model.edit_error,
     [

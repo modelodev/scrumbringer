@@ -311,6 +311,20 @@ pub fn view_dialog_with_icon_test() {
   assert_contains(html, "modal-header-icon")
 }
 
+pub fn view_dialog_with_icon_accepts_close_label_test() {
+  let icon = span([], [text("icon")])
+  let html =
+    modal_header.view_dialog_with_icon_and_close_label(
+      "Crear",
+      icon,
+      Nil,
+      "Cerrar",
+    )
+    |> element.to_string()
+
+  assert_contains(html, "aria-label=\"Cerrar\"")
+}
+
 // =============================================================================
 // view_detail Tests
 // =============================================================================

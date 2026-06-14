@@ -74,14 +74,27 @@ pub fn view(
   content: List(Element(msg)),
   footer: List(Element(msg)),
 ) -> Element(msg) {
+  view_with_close_label(config, "Close", is_open, error, content, footer)
+}
+
+/// Render a dialog when open with a localized accessible close label.
+pub fn view_with_close_label(
+  config: DialogConfig(msg),
+  close_label: String,
+  is_open: Bool,
+  error: Option(String),
+  content: List(Element(msg)),
+  footer: List(Element(msg)),
+) -> Element(msg) {
   case is_open {
     False -> element.none()
-    True -> view_dialog(config, error, content, footer)
+    True -> view_dialog(config, close_label, error, content, footer)
   }
 }
 
 fn view_dialog(
   config: DialogConfig(msg),
+  close_label: String,
   error: Option(String),
   content: List(Element(msg)),
   footer: List(Element(msg)),
@@ -98,7 +111,7 @@ fn view_dialog(
       ],
       [
         // Header
-        view_header(config),
+        view_header(config, close_label),
         // Error banner
         view_error(error),
         // Body
@@ -110,7 +123,7 @@ fn view_dialog(
   ])
 }
 
-fn view_header(config: DialogConfig(msg)) -> Element(msg) {
+fn view_header(config: DialogConfig(msg), close_label: String) -> Element(msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       case config.icon {
@@ -119,7 +132,11 @@ fn view_header(config: DialogConfig(msg)) -> Element(msg) {
       },
       h3([attribute.id("dialog-title")], [text(config.title)]),
     ]),
-    modal_close_button.view_with_class("btn-icon dialog-close", config.on_close),
+    modal_close_button.view_with_label_and_class(
+      close_label,
+      "btn-icon dialog-close",
+      config.on_close,
+    ),
   ])
 }
 

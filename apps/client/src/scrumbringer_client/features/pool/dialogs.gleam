@@ -224,10 +224,17 @@ fn view_dependencies(config: TaskDetailsConfig(msg)) -> Element(msg) {
 
 /// Details tab content (AC3)
 fn view_task_details_tab(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  task_detail_details.view(task_detail_details.Config(
+  task_detail_details.view(details_config(config))
+}
+
+fn details_config(
+  config: TaskDetailsConfig(msg),
+) -> task_detail_details.Config(msg) {
+  task_detail_details.Config(
     locale: config.locale,
     current_user_id: config.current_user_id,
     task: config.task,
+    dependencies: config.dependencies,
     editing: config.editing,
     edit_title: config.edit_title,
     edit_description: config.edit_description,
@@ -250,7 +257,7 @@ fn view_task_details_tab(config: TaskDetailsConfig(msg)) -> Element(msg) {
     on_card_id_changed: config.on_edit_card_id_changed,
     on_milestone_id_changed: config.on_edit_milestone_id_changed,
     on_submitted: config.on_edit_submitted,
-  ))
+  )
 }
 
 /// Renders the notes section for a task.
@@ -280,9 +287,21 @@ fn view_task_footer(config: TaskDetailsConfig(msg)) -> Element(msg) {
     task: config.task,
     current_user_id: config.current_user_id,
     disable_actions: config.disable_actions,
+    editing: config.editing,
+    edit_in_flight: config.edit_in_flight,
+    edit_dirty: edit_dirty(config),
     on_close: config.on_close,
+    on_edit_cancelled: config.on_edit_cancelled,
+    on_edit_submitted: config.on_edit_submitted,
     on_claim: config.on_claim,
     on_release: config.on_release,
     on_complete: config.on_complete,
   ))
+}
+
+fn edit_dirty(config: TaskDetailsConfig(msg)) -> Bool {
+  case config.task {
+    opt.Some(task) -> task_detail_details.is_dirty(details_config(config), task)
+    opt.None -> False
+  }
 }

@@ -36,12 +36,21 @@ pub fn view(on_close: msg) -> Element(msg) {
 
 /// Render a close button with custom CSS class.
 pub fn view_with_class(class: String, on_close: msg) -> Element(msg) {
+  view_with_label_and_class("Close", class, on_close)
+}
+
+/// Render a close button with a custom accessible label and CSS class.
+pub fn view_with_label_and_class(
+  label: String,
+  class: String,
+  on_close: msg,
+) -> Element(msg) {
   button(
     [
       attribute.class(class),
       attribute.type_("button"),
       event.on_click(on_close),
-      attribute.attribute("aria-label", "Close"),
+      attribute.attribute("aria-label", label),
     ],
     [text("\u{2715}")],
   )

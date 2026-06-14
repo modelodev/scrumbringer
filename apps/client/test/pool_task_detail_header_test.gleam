@@ -57,6 +57,18 @@ pub fn task_detail_header_renders_loading_title_test() {
   assert_contains(html, "task-detail-title")
 }
 
+pub fn task_detail_header_localizes_close_label_test() {
+  let html =
+    task_detail_header.view(task_detail_header.Config(
+      locale: locale.Es,
+      task: Some(available_task()),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "aria-label=\"Cerrar\"")
+}
+
 fn available_task() -> Task {
   Task(
     id: 42,

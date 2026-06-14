@@ -871,8 +871,18 @@ pub type Text {
   TabMetrics
   EditTask
   TaskUpdated
+  TaskEditPlanning
+  TaskEditLocation
   TaskEditKeyboardHint
   TaskEditRequiresClaim
+  TaskEditCompletedReadOnly
+  MilestoneLabel
+  NoMilestone
+  TaskMilestoneInheritedFromCard
+  TaskDescriptionEmpty
+  TaskOperationalSummary
+  TaskOwner
+  TaskBlockingClear
   MetricsTasksTotal
   MetricsTasksCompleted
   MetricsProgress

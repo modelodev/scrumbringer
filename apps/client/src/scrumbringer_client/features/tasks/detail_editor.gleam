@@ -18,6 +18,7 @@ import domain/task.{type Task}
 import domain/task_state
 import domain/task_type.{type TaskType}
 
+import scrumbringer_client/features/tasks/detail_permissions
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -39,7 +40,6 @@ pub type Config(msg) {
     task_types: Remote(List(TaskType)),
     cards: List(Card),
     milestones: Remote(List(MilestoneProgress)),
-    parent_card_title: opt.Option(String),
     on_edit_started: msg,
     on_edit_cancelled: msg,
     on_title_changed: fn(String) -> msg,
@@ -52,21 +52,19 @@ pub type Config(msg) {
   )
 }
 
-pub fn can_edit_task(config: Config(msg), current_task: Task) -> Bool {
-  case config.current_user_id, task_state.claimed_by(current_task.state) {
-    opt.Some(user_id), opt.Some(claimed_by) -> user_id == claimed_by
-    opt.Some(_), opt.None -> True
-    _, _ -> False
-  }
+fn can_edit_task(config: Config(msg), current_task: Task) -> Bool {
+  detail_permissions.can_edit(config.current_user_id, current_task)
 }
 
 pub fn permission_hint(
   config: Config(msg),
   current_task: Task,
 ) -> opt.Option(String) {
-  case can_edit_task(config, current_task) {
-    True -> opt.None
-    False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
+  case current_task.state, can_edit_task(config, current_task) {
+    _, True -> opt.None
+    task_state.Completed(_), False ->
+      opt.Some(i18n.t(config.locale, i18n_text.TaskEditCompletedReadOnly))
+    _, False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
   }
 }
 
@@ -96,66 +94,60 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
       event.on_submit(fn(_) { config.on_submitted }),
     ],
     [
-      form_field.with_error(
-        i18n.t(config.locale, i18n_text.Title),
-        input([
-          attribute.type_("text"),
-          attribute.class("task-detail-edit-input"),
-          attribute.attribute("maxlength", "56"),
-          attribute.value(config.edit_title),
-          attribute.autofocus(True),
-          event.on_input(config.on_title_changed),
-          on_escape(config.on_edit_cancelled),
-        ]),
-        config.edit_error,
-      ),
-      form_field.view(
-        i18n.t(config.locale, i18n_text.Description),
-        textarea(
-          [
-            attribute.class("task-detail-edit-textarea"),
-            attribute.rows(5),
-            attribute.value(config.edit_description),
-            event.on_input(config.on_description_changed),
-            on_ctrl_enter(config.on_submitted),
+      view_edit_section(i18n.t(config.locale, i18n_text.IdentitySection), [
+        form_field.with_error(
+          i18n.t(config.locale, i18n_text.Title),
+          input([
+            attribute.type_("text"),
+            attribute.class("task-detail-edit-input"),
+            attribute.attribute("maxlength", "56"),
+            attribute.value(config.edit_title),
+            attribute.autofocus(True),
+            event.on_input(config.on_title_changed),
             on_escape(config.on_edit_cancelled),
-          ],
-          "",
+          ]),
+          config.edit_error,
         ),
-      ),
-      div([attribute.class("task-detail-edit-grid")], [
-        view_type_field(config, current_task),
-        view_priority_field(config),
-        view_card_field(config),
-        view_milestone_field(config),
+        form_field.view(
+          i18n.t(config.locale, i18n_text.Description),
+          textarea(
+            [
+              attribute.class("task-detail-edit-textarea"),
+              attribute.rows(5),
+              attribute.value(config.edit_description),
+              event.on_input(config.on_description_changed),
+              on_ctrl_enter(config.on_submitted),
+              on_escape(config.on_edit_cancelled),
+            ],
+            "",
+          ),
+        ),
+      ]),
+      view_edit_section(i18n.t(config.locale, i18n_text.TaskEditPlanning), [
+        div([attribute.class("task-detail-edit-grid")], [
+          view_type_field(config, current_task),
+          view_priority_field(config),
+        ]),
+      ]),
+      view_edit_section(i18n.t(config.locale, i18n_text.TaskEditLocation), [
+        div([attribute.class("task-detail-edit-grid")], [
+          view_card_field(config),
+          view_milestone_field(config),
+        ]),
       ]),
       form_field.hint(i18n.t(config.locale, i18n_text.TaskEditKeyboardHint)),
-      div([attribute.class("task-detail-edit-actions")], [
-        button(
-          [
-            attribute.type_("button"),
-            attribute.class("btn btn-secondary"),
-            event.on_click(config.on_edit_cancelled),
-            attribute.disabled(config.edit_in_flight),
-          ],
-          [text(i18n.t(config.locale, i18n_text.Cancel))],
-        ),
-        button(
-          [
-            attribute.type_("submit"),
-            attribute.class(case config.edit_in_flight {
-              True -> "btn btn-primary btn-loading"
-              False -> "btn btn-primary"
-            }),
-            attribute.disabled(
-              config.edit_in_flight || !is_dirty(config, current_task),
-            ),
-          ],
-          [text(i18n.t(config.locale, i18n_text.Save))],
-        ),
-      ]),
     ],
   )
+}
+
+fn view_edit_section(
+  title: String,
+  children: List(Element(msg)),
+) -> Element(msg) {
+  div([attribute.class("task-detail-edit-section")], [
+    div([attribute.class("task-detail-edit-section-title")], [text(title)]),
+    ..children
+  ])
 }
 
 pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
@@ -259,14 +251,42 @@ fn task_type_options(
 fn view_priority_field(config: Config(msg)) -> Element(msg) {
   form_field.view(
     i18n.t(config.locale, i18n_text.Priority),
-    input([
-      attribute.type_("number"),
-      attribute.attribute("min", "1"),
-      attribute.attribute("max", "5"),
-      attribute.value(config.edit_priority),
+    div(
+      [
+        attribute.class("task-priority-segmented"),
+        attribute.attribute("role", "group"),
+        attribute.attribute(
+          "aria-label",
+          i18n.t(config.locale, i18n_text.Priority),
+        ),
+      ],
+      list.map([1, 2, 3, 4, 5], fn(priority) {
+        priority_option(config, priority)
+      }),
+    ),
+  )
+}
+
+fn priority_option(config: Config(msg), priority: Int) -> Element(msg) {
+  let value = int.to_string(priority)
+  let selected = config.edit_priority == value
+  let label = i18n.t(config.locale, i18n_text.PriorityShort(priority))
+
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(case selected {
+        True -> "task-priority-option selected"
+        False -> "task-priority-option"
+      }),
+      attribute.attribute("aria-pressed", case selected {
+        True -> "true"
+        False -> "false"
+      }),
       attribute.disabled(config.edit_in_flight),
-      event.on_input(config.on_priority_changed),
-    ]),
+      event.on_click(config.on_priority_changed(value)),
+    ],
+    [text(label)],
   )
 }
 
@@ -300,8 +320,7 @@ fn view_card_field(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_milestone_field(config: Config(msg)) -> Element(msg) {
-  form_field.view(
-    i18n.t(config.locale, i18n_text.Milestones),
+  let control =
     select(
       [
         attribute.value(config.edit_milestone_id),
@@ -313,8 +332,26 @@ fn view_milestone_field(config: Config(msg)) -> Element(msg) {
         event.on_input(config.on_milestone_id_changed),
       ],
       milestone_options(config),
-    ),
-  )
+    )
+
+  case milestone_hint(config) {
+    opt.Some(hint) ->
+      form_field.with_hint(
+        i18n.t(config.locale, i18n_text.MilestoneLabel),
+        control,
+        hint,
+      )
+    opt.None ->
+      form_field.view(i18n.t(config.locale, i18n_text.MilestoneLabel), control)
+  }
+}
+
+fn milestone_hint(config: Config(msg)) -> opt.Option(String) {
+  case config.edit_card_id != "" {
+    True ->
+      opt.Some(i18n.t(config.locale, i18n_text.TaskMilestoneInheritedFromCard))
+    False -> opt.None
+  }
 }
 
 fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
@@ -325,7 +362,7 @@ fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
           attribute.value(""),
           attribute.selected(config.edit_milestone_id == ""),
         ],
-        "-",
+        i18n.t(config.locale, i18n_text.NoMilestone),
       ),
       ..milestones
       |> list.filter(fn(progress) {
@@ -358,7 +395,7 @@ fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
           attribute.value(""),
           attribute.selected(config.edit_milestone_id == ""),
         ],
-        "-",
+        i18n.t(config.locale, i18n_text.NoMilestone),
       ),
     ]
     Failed(_) -> [
@@ -386,21 +423,16 @@ pub fn view_readonly_fields(
 ) -> Element(msg) {
   let desc = case current_task.description {
     opt.Some(value) -> value
-    opt.None -> "-"
+    opt.None -> i18n.t(config.locale, i18n_text.TaskDescriptionEmpty)
   }
-  let desc_empty = desc == "-"
+  let desc_empty = current_task.description == opt.None
 
-  div([attribute.class("task-details-stack")], [
+  div([attribute.class("task-detail-editor-stack")], [
     view_intro(config, current_task),
     case config.editing {
       True -> view_form(config, current_task)
       False -> element.none()
     },
-    view_value_field(
-      i18n.t(config.locale, i18n_text.ParentCardLabel),
-      parent_card_label(config),
-      parent_card_is_empty(config),
-    ),
     case config.editing {
       True -> element.none()
       False ->
@@ -426,17 +458,6 @@ fn view_value_field(label: String, value: String, muted: Bool) -> Element(msg) {
       [text(value)],
     ),
   ])
-}
-
-fn parent_card_label(config: Config(msg)) -> String {
-  case config.parent_card_title {
-    opt.Some(title) -> title
-    opt.None -> i18n.t(config.locale, i18n_text.NoCard)
-  }
-}
-
-fn parent_card_is_empty(config: Config(msg)) -> Bool {
-  config.parent_card_title == opt.None
 }
 
 fn normalize_description(description: String) -> String {

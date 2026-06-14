@@ -182,8 +182,17 @@ pub fn view_simple(title: String, on_close: msg) -> Element(msg) {
 /// Render a modal header with custom CSS classes.
 /// Use this when integrating with existing CSS patterns.
 pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
+  view_extended_with_close_label(config, "Close")
+}
+
+/// Render a modal header with custom CSS classes and close button label.
+pub fn view_extended_with_close_label(
+  config: ExtendedConfig(msg),
+  close_label: String,
+) -> Element(msg) {
   let close_button =
-    modal_close_button.view_with_class(
+    modal_close_button.view_with_label_and_class(
+      close_label,
       config.close_button_class,
       config.on_close,
     )
@@ -250,6 +259,16 @@ pub fn view_dialog(
   icon: Option(Element(msg)),
   on_close: msg,
 ) -> Element(msg) {
+  view_dialog_with_close_label(title, icon, on_close, "Close")
+}
+
+/// Render a CRUD dialog header with a localized close button label.
+pub fn view_dialog_with_close_label(
+  title: String,
+  icon: Option(Element(msg)),
+  on_close: msg,
+  close_label: String,
+) -> Element(msg) {
   div(
     [
       attribute.class("dialog-header"),
@@ -261,7 +280,11 @@ pub fn view_dialog(
         None -> element.none()
       },
       h3([attribute.id("dialog-title")], [text(title)]),
-      modal_close_button.view_with_class("dialog-close", on_close),
+      modal_close_button.view_with_label_and_class(
+        close_label,
+        "dialog-close",
+        on_close,
+      ),
     ],
   )
 }
@@ -274,6 +297,16 @@ pub fn view_dialog_with_icon(
   icon: Element(msg),
   on_close: msg,
 ) -> Element(msg) {
+  view_dialog_with_icon_and_close_label(title, icon, on_close, "Close")
+}
+
+/// Render a CRUD dialog header with icon and a localized close button label.
+pub fn view_dialog_with_icon_and_close_label(
+  title: String,
+  icon: Element(msg),
+  on_close: msg,
+  close_label: String,
+) -> Element(msg) {
   div(
     [
       attribute.class("dialog-header"),
@@ -284,7 +317,11 @@ pub fn view_dialog_with_icon(
         span([attribute.class("dialog-icon")], [icon]),
         h3([attribute.id("dialog-title")], [text(title)]),
       ]),
-      modal_close_button.view_with_class("btn-icon dialog-close", on_close),
+      modal_close_button.view_with_label_and_class(
+        close_label,
+        "btn-icon dialog-close",
+        on_close,
+      ),
     ],
   )
 }
@@ -310,21 +347,32 @@ pub type DetailConfig(msg) {
 /// Render a detail modal header with meta row and optional progress.
 /// Use this for card_detail_modal and task detail views.
 pub fn view_detail(config: DetailConfig(msg)) -> Element(msg) {
-  view_extended(ExtendedConfig(
-    title: config.title,
-    title_element: TitleSpan,
-    close_position: CloseBeforeTitle,
-    icon: config.icon,
-    badges: [],
-    meta: config.meta,
-    progress: config.progress,
-    on_close: config.on_close,
-    header_class: config.class_prefix <> "-header",
-    title_row_class: config.class_prefix <> "-title-row",
-    title_class: config.class_prefix <> "-title",
-    title_id: config.class_prefix <> "-title",
-    close_button_class: "modal-close btn-icon",
-  ))
+  view_detail_with_close_label(config, "Close")
+}
+
+/// Render a detail modal header with a localized close button label.
+pub fn view_detail_with_close_label(
+  config: DetailConfig(msg),
+  close_label: String,
+) -> Element(msg) {
+  view_extended_with_close_label(
+    ExtendedConfig(
+      title: config.title,
+      title_element: TitleSpan,
+      close_position: CloseBeforeTitle,
+      icon: config.icon,
+      badges: [],
+      meta: config.meta,
+      progress: config.progress,
+      on_close: config.on_close,
+      header_class: config.class_prefix <> "-header",
+      title_row_class: config.class_prefix <> "-title-row",
+      title_class: config.class_prefix <> "-title",
+      title_id: config.class_prefix <> "-title",
+      close_button_class: "modal-close btn-icon",
+    ),
+    close_label,
+  )
 }
 
 // =============================================================================
