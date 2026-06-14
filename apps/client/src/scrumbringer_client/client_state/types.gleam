@@ -44,7 +44,13 @@ pub type InviteLinkForm {
 
 /// User identity used by external systems through API tokens.
 pub type IntegrationUser {
-  IntegrationUser(id: Int, email: String, org_role: OrgRole, created_at: String)
+  IntegrationUser(
+    id: Int,
+    email: String,
+    org_role: OrgRole,
+    created_at: String,
+    active_token_count: Int,
+  )
 }
 
 /// API token metadata. The bearer secret is only returned at creation time.
@@ -53,6 +59,7 @@ pub type ApiToken {
     id: Int,
     org_id: Int,
     integration_user_id: Int,
+    integration_user_email: String,
     project_id: Option(Int),
     name: String,
     public_id: String,
@@ -87,9 +94,11 @@ pub type ApiTokensModel {
     integration_users: Remote(List(IntegrationUser)),
     tokens: Remote(List(ApiToken)),
     token_dialog: DialogState(ApiTokenForm),
+    token_rename_dialog: DialogState(#(Int, String)),
     created_token: Option(String),
     token_secret_copy_status: Option(String),
     revoke_confirm: Option(Int),
+    integration_deactivate_confirm: Option(Int),
   )
 }
 

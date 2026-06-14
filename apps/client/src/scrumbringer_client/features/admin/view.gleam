@@ -111,11 +111,28 @@ fn api_tokens_config(model: Model) -> api_tokens_view.Config(Msg) {
     on_token_secret_copy_clicked: fn(secret) {
       admin_msg(admin_messages.ApiTokenCreatedSecretCopyClicked(secret))
     },
+    on_token_rename_clicked: fn(id, name) {
+      admin_msg(admin_messages.ApiTokenRenameClicked(id, name))
+    },
+    on_token_rename_cancelled: admin_msg(admin_messages.ApiTokenRenameCancelled),
+    on_token_rename_name_changed: fn(value) {
+      admin_msg(admin_messages.ApiTokenRenameNameChanged(value))
+    },
+    on_token_rename_submitted: admin_msg(admin_messages.ApiTokenRenameSubmitted),
     on_token_revoke_clicked: fn(id) {
       admin_msg(admin_messages.ApiTokenRevokeClicked(id))
     },
     on_token_revoke_cancelled: admin_msg(admin_messages.ApiTokenRevokeCancelled),
     on_token_revoke_confirmed: admin_msg(admin_messages.ApiTokenRevokeConfirmed),
+    on_integration_deactivate_clicked: fn(id) {
+      admin_msg(admin_messages.IntegrationDeactivateClicked(id))
+    },
+    on_integration_deactivate_cancelled: admin_msg(
+      admin_messages.IntegrationDeactivateCancelled,
+    ),
+    on_integration_deactivate_confirmed: admin_msg(
+      admin_messages.IntegrationDeactivateConfirmed,
+    ),
   )
 }
 

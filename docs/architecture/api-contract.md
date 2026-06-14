@@ -106,7 +106,9 @@ General:
 
 Task rules:
 - Creating tasks: any **project member**.
-- Editing tasks (fields other than notes): requires the task to be **claimed by the caller**.
+- Editing available tasks: any **project member**.
+- Editing claimed tasks: only the **claimer**.
+- Editing completed tasks: not available in the normal workflow.
 - Claim/Release/Complete: only valid when the caller is a **project member**; Release/Complete require the caller to be the **claimer**.
 - Notes can be added by any **project member** and deleted by their author or a project/org admin; note content is not edited in place.
 - Positions are per-user and can only be written by the **current user**.
@@ -226,6 +228,42 @@ Task rules:
   ]
 }
 ```
+
+### API Tokens
+
+API token grants are immutable after creation. To change scopes, project grant,
+integration identity, or expiration, revoke the token and create a new one.
+
+Mutable field:
+
+- `name`: admin-editable descriptive label only.
+
+Routes:
+
+| Method | Path | Role | Notes |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/api-tokens` | Org admin | List token metadata |
+| `POST` | `/api/v1/api-tokens` | Org admin + CSRF | Create token and one-time bearer secret |
+| `PATCH` | `/api/v1/api-tokens/:id` | Org admin + CSRF | Rename token with `{ "name": "..." }` |
+| `DELETE` | `/api/v1/api-tokens/:id` | Org admin + CSRF | Revoke token |
+
+Token metadata includes both `integration_user_id` and
+`integration_user_email`. The email is returned on token rows so historical
+revoked tokens keep a readable identity after an integration identity has been
+deactivated.
+
+### Integration Users
+
+Integration users are technical identities. They are listed inside the API
+tokens admin surface and are not mixed into human user management.
+
+Routes:
+
+| Method | Path | Role | Notes |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/integration-users` | Org admin | Includes `active_token_count` |
+| `POST` | `/api/v1/integration-users` | Org admin + CSRF | Create technical identity |
+| `DELETE` | `/api/v1/integration-users/:id` | Org admin + CSRF | Soft-deactivate only when `active_token_count = 0`; otherwise `409 HAS_ACTIVE_TOKENS` |
 
 ### TaskNote
 

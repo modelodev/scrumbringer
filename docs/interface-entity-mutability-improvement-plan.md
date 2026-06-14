@@ -318,7 +318,9 @@ Decision:
 ### Codigo
 
 - Mantener `api_tokens` sin update de scopes/proyecto/expiry.
-- Anadir solo `PATCH /api/v1/api-tokens/:id/name`.
+- Anadir solo `PATCH /api/v1/api-tokens/:id` con payload `{ "name": ... }`.
+  Es mejor que un sub-path `/name` porque sigue el contrato PATCH del resto de
+  recursos sin sugerir que los grants sean editables.
 - Anadir `integration_users.deactivate` con `deleted_at = now()` para identidades
   sin tokens activos.
 - Extender `GET /api/v1/integration-users` para incluir `active_token_count`.

@@ -6,6 +6,16 @@ Auditoria enfocada en detectar entidades que el usuario puede crear o configurar
 desde la interfaz, pero que luego no puede editar, eliminar, revocar o corregir
 de forma equivalente.
 
+## Estado posterior
+
+Los hallazgos de este informe reflejan el estado auditado el 2026-06-13. La
+implementacion posterior queda detallada en
+`docs/interface-entity-mutability-improvement-plan.md` y cubre los casos
+principales detectados: edicion operativa completa de tareas, borrado controlado
+de notas de tarea, invalidacion de invitaciones, renombrado de capacidades,
+renombrado/revocacion de API tokens y desactivacion de identidades de
+integracion sin tokens activos.
+
 ## Resumen
 
 Estado global: **riesgo medio**.
@@ -267,4 +277,3 @@ Para cada correccion, exigir:
 - Mensajes de error especificos para restricciones intencionales, por ejemplo
   "no se puede borrar porque tiene tareas" o "los tokens son inmutables; revoca
   y crea uno nuevo".
-

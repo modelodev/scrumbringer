@@ -24,6 +24,7 @@ pub fn token(api_token: token_service.ApiToken) -> json.Json {
     id: id,
     org_id: org_id,
     integration_user_id: integration_user_id,
+    integration_user_email: integration_user_email,
     project_grant: project_grant,
     name: name,
     public_id: public_id,
@@ -39,6 +40,7 @@ pub fn token(api_token: token_service.ApiToken) -> json.Json {
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
     #("integration_user_id", json.int(integration_user_id)),
+    #("integration_user_email", json.string(integration_user_email)),
     #(
       "project_id",
       json_helpers.option_int_json(token_service.project_grant_to_option(

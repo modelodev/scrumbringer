@@ -138,10 +138,19 @@ pub type Msg {
   ApiTokenCreatedSecretDismissed
   ApiTokenCreatedSecretCopyClicked(String)
   ApiTokenCreatedSecretCopyFinished(Bool)
+  ApiTokenRenameClicked(Int, String)
+  ApiTokenRenameCancelled
+  ApiTokenRenameNameChanged(String)
+  ApiTokenRenameSubmitted
+  ApiTokenRenamed(ApiResult(state_types.ApiToken))
   ApiTokenRevokeClicked(Int)
   ApiTokenRevokeCancelled
   ApiTokenRevokeConfirmed
   ApiTokenRevoked(Int, ApiResult(Nil))
+  IntegrationDeactivateClicked(Int)
+  IntegrationDeactivateCancelled
+  IntegrationDeactivateConfirmed
+  IntegrationDeactivated(Int, ApiResult(Nil))
   TaskTypesFetched(ApiResult(List(TaskType)))
   TaskTypeCreateDialogOpened
   TaskTypeCreateDialogClosed

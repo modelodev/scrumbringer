@@ -18,6 +18,7 @@ pub fn integration_user(user: IntegrationUser) -> json.Json {
     email: email,
     org_role: role,
     created_at: created_at,
+    active_token_count: active_token_count,
   ) = user
 
   json.object([
@@ -25,5 +26,6 @@ pub fn integration_user(user: IntegrationUser) -> json.Json {
     #("email", json.string(email)),
     #("org_role", json.string(org_role.to_string(role))),
     #("created_at", json.string(created_at)),
+    #("active_token_count", json.int(active_token_count)),
   ])
 }

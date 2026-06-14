@@ -122,6 +122,8 @@ fn route_api_tokens(
   case segments {
     ["api", "v1", "integration-users"] ->
       Some(integration_users.handle_integration_users(req, auth_ctx))
+    ["api", "v1", "integration-users", user_id] ->
+      Some(integration_users.handle_integration_user(req, auth_ctx, user_id))
     ["api", "v1", "api-tokens"] ->
       Some(api_tokens.handle_api_tokens(req, auth_ctx))
     ["api", "v1", "api-tokens", token_id] ->

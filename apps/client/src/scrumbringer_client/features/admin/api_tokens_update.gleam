@@ -26,7 +26,9 @@ pub type Context(parent_msg) {
       parent_msg,
     on_tokens_fetched: fn(ApiResult(List(ApiToken))) -> parent_msg,
     on_token_created: fn(ApiResult(CreatedApiToken)) -> parent_msg,
+    on_token_renamed: fn(ApiResult(ApiToken)) -> parent_msg,
     on_token_revoked: fn(Int, ApiResult(Nil)) -> parent_msg,
+    on_integration_deactivated: fn(Int, ApiResult(Nil)) -> parent_msg,
     on_token_secret_copy_finished: fn(Bool) -> parent_msg,
     name_required: String,
     integration_required: String,
@@ -135,6 +137,25 @@ pub fn try_update(
     admin_messages.ApiTokenCreatedSecretCopyFinished(ok) ->
       handle_secret_copy_finished(model, ok, context) |> without_auth_check
 
+    admin_messages.ApiTokenRenameClicked(id, name) ->
+      open_rename_dialog(model, id, name) |> without_auth_check
+
+    admin_messages.ApiTokenRenameCancelled ->
+      close_rename_dialog(model) |> without_auth_check
+
+    admin_messages.ApiTokenRenameNameChanged(value) ->
+      update_rename_form(model, fn(id, _) { #(id, value) })
+      |> without_auth_check
+
+    admin_messages.ApiTokenRenameSubmitted ->
+      submit_rename(model, context) |> without_auth_check
+
+    admin_messages.ApiTokenRenamed(Ok(token)) ->
+      token_renamed(model, token) |> without_auth_check
+
+    admin_messages.ApiTokenRenamed(Error(err)) ->
+      token_rename_failed(model, err) |> with_auth_check(err)
+
     admin_messages.ApiTokenRevokeClicked(id) ->
       #(ApiTokensModel(..model, revoke_confirm: opt.Some(id)), effect.none())
       |> without_auth_check
@@ -151,6 +172,33 @@ pub fn try_update(
 
     admin_messages.ApiTokenRevoked(_, Error(err)) ->
       #(ApiTokensModel(..model, revoke_confirm: opt.None), effect.none())
+      |> with_auth_check(err)
+
+    admin_messages.IntegrationDeactivateClicked(id) ->
+      #(
+        ApiTokensModel(..model, integration_deactivate_confirm: opt.Some(id)),
+        effect.none(),
+      )
+      |> without_auth_check
+
+    admin_messages.IntegrationDeactivateCancelled ->
+      #(
+        ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+        effect.none(),
+      )
+      |> without_auth_check
+
+    admin_messages.IntegrationDeactivateConfirmed ->
+      submit_integration_deactivate(model, context) |> without_auth_check
+
+    admin_messages.IntegrationDeactivated(_, Ok(_)) ->
+      integration_deactivated(model, context) |> without_auth_check
+
+    admin_messages.IntegrationDeactivated(_, Error(err)) ->
+      #(
+        ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+        effect.none(),
+      )
       |> with_auth_check(err)
 
     _ -> opt.None
@@ -281,6 +329,116 @@ fn token_created(
   )
 }
 
+fn open_rename_dialog(
+  model: ApiTokensModel,
+  id: Int,
+  name: String,
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  #(
+    ApiTokensModel(
+      ..model,
+      token_rename_dialog: DialogOpen(form: #(id, name), operation: Idle),
+    ),
+    effect.none(),
+  )
+}
+
+fn close_rename_dialog(
+  model: ApiTokensModel,
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  #(
+    ApiTokensModel(..model, token_rename_dialog: DialogClosed(operation: Idle)),
+    effect.none(),
+  )
+}
+
+fn update_rename_form(
+  model: ApiTokensModel,
+  update: fn(Int, String) -> #(Int, String),
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  let dialog = case model.token_rename_dialog {
+    DialogClosed(operation) -> DialogClosed(operation)
+    DialogOpen(form, operation) -> {
+      let #(id, name) = form
+      DialogOpen(update(id, name), operation)
+    }
+  }
+  #(ApiTokensModel(..model, token_rename_dialog: dialog), effect.none())
+}
+
+fn submit_rename(
+  model: ApiTokensModel,
+  context: Context(parent_msg),
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  case model.token_rename_dialog {
+    DialogClosed(_) -> #(model, effect.none())
+    DialogOpen(form, _) -> {
+      let #(id, name) = form
+      case string.trim(name) {
+        "" -> #(
+          ApiTokensModel(
+            ..model,
+            token_rename_dialog: DialogOpen(
+              form: form,
+              operation: OperationError(context.name_required),
+            ),
+          ),
+          effect.none(),
+        )
+        trimmed -> #(
+          ApiTokensModel(
+            ..model,
+            token_rename_dialog: DialogOpen(
+              form: #(id, trimmed),
+              operation: InFlight,
+            ),
+          ),
+          api_tokens.rename_token(id, trimmed, context.on_token_renamed),
+        )
+      }
+    }
+  }
+}
+
+fn token_renamed(
+  model: ApiTokensModel,
+  token: ApiToken,
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  let tokens = case model.tokens {
+    Loaded(existing) ->
+      existing
+      |> list.map(fn(existing) {
+        case existing.id == token.id {
+          True -> token
+          False -> existing
+        }
+      })
+      |> Loaded
+    other -> other
+  }
+
+  #(
+    ApiTokensModel(
+      ..model,
+      tokens: tokens,
+      token_rename_dialog: DialogClosed(operation: Idle),
+    ),
+    effect.none(),
+  )
+}
+
+fn token_rename_failed(
+  model: ApiTokensModel,
+  err: ApiError,
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  let dialog = case model.token_rename_dialog {
+    DialogClosed(_) -> DialogClosed(operation: OperationError(err.message))
+    DialogOpen(form, _) ->
+      DialogOpen(form: form, operation: OperationError(err.message))
+  }
+  #(ApiTokensModel(..model, token_rename_dialog: dialog), effect.none())
+}
+
 fn token_create_failed(
   model: ApiTokensModel,
   err: ApiError,
@@ -313,7 +471,38 @@ fn token_revoked(
   context: Context(parent_msg),
 ) -> #(ApiTokensModel, Effect(parent_msg)) {
   let model = ApiTokensModel(..model, revoke_confirm: opt.None)
-  #(model, api_tokens.list_tokens(context.on_tokens_fetched))
+  #(
+    model,
+    effect.batch([
+      api_tokens.list_tokens(context.on_tokens_fetched),
+      api_tokens.list_integration_users(context.on_integration_users_fetched),
+    ]),
+  )
+}
+
+fn submit_integration_deactivate(
+  model: ApiTokensModel,
+  context: Context(parent_msg),
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  case model.integration_deactivate_confirm {
+    opt.None -> #(model, effect.none())
+    opt.Some(id) -> #(
+      model,
+      api_tokens.deactivate_integration_user(id, fn(result) {
+        context.on_integration_deactivated(id, result)
+      }),
+    )
+  }
+}
+
+fn integration_deactivated(
+  model: ApiTokensModel,
+  context: Context(parent_msg),
+) -> #(ApiTokensModel, Effect(parent_msg)) {
+  #(
+    ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+    api_tokens.list_integration_users(context.on_integration_users_fetched),
+  )
 }
 
 fn handle_secret_copy_clicked(

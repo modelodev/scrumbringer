@@ -28,8 +28,10 @@ pub fn default_model() -> Model {
     integration_users: NotAsked,
     tokens: NotAsked,
     token_dialog: state_types.DialogClosed(operation: state_types.Idle),
+    token_rename_dialog: state_types.DialogClosed(operation: state_types.Idle),
     created_token: option.None,
     token_secret_copy_status: option.None,
     revoke_confirm: option.None,
+    integration_deactivate_confirm: option.None,
   )
 }

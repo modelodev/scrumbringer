@@ -24,6 +24,17 @@ pub fn handle_integration_users(
   }
 }
 
+pub fn handle_integration_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Delete -> handle_deactivate(req, ctx, user_id)
+    _ -> wisp.method_not_allowed([http.Delete])
+  }
+}
+
 fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case require_admin(req, ctx) {
     Error(resp) -> resp
@@ -58,6 +69,35 @@ fn create_integration_user(
 
   case integration_users.create(db, user.org_id, email) {
     Ok(created) -> api.ok(presenters.integration_user_response(created))
+    Error(error) -> integration_user_error_response(error)
+  }
+}
+
+fn handle_deactivate(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> wisp.Response {
+  case require_admin_write(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) -> {
+      case api.parse_id(user_id) {
+        Error(resp) -> resp
+        Ok(user_id) -> deactivate_integration_user(ctx, user, user_id)
+      }
+    }
+  }
+}
+
+fn deactivate_integration_user(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case integration_users.deactivate(db, user.org_id, user_id) {
+    Ok(Nil) -> api.no_content()
     Error(error) -> integration_user_error_response(error)
   }
 }
@@ -99,6 +139,8 @@ fn integration_user_error_response(
     integration_users.EmailTaken ->
       api.error(422, "VALIDATION_ERROR", "Email already taken")
     integration_users.NotFound -> api.error(404, "NOT_FOUND", "Not found")
+    integration_users.HasActiveTokens ->
+      api.error(409, "HAS_ACTIVE_TOKENS", "Integration has active tokens")
     integration_users.InvalidPersistedRole(_) ->
       api.error(500, "INTERNAL", "Invalid persisted role")
     integration_users.DbError(_) -> api.error(500, "INTERNAL", "Database error")

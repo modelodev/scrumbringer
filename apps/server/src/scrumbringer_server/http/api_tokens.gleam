@@ -27,8 +27,9 @@ pub fn handle_api_token(
   token_id: String,
 ) -> wisp.Response {
   case req.method {
+    http.Patch -> handle_rename(req, ctx, token_id)
     http.Delete -> handle_revoke(req, ctx, token_id)
-    _ -> wisp.method_not_allowed([http.Delete])
+    _ -> wisp.method_not_allowed([http.Patch, http.Delete])
   }
 }
 
@@ -67,6 +68,25 @@ fn handle_revoke(
       case api.parse_id(token_id) {
         Error(resp) -> resp
         Ok(token_id) -> revoke_token(ctx, user, token_id)
+      }
+    }
+  }
+}
+
+fn handle_rename(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  token_id: String,
+) -> wisp.Response {
+  case require_admin_write(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) -> {
+      case api.parse_id(token_id) {
+        Error(resp) -> resp
+        Ok(token_id) ->
+          json_payload.with_response(req, decode_rename_payload, fn(payload) {
+            rename_token(ctx, user, token_id, payload)
+          })
       }
     }
   }
@@ -112,6 +132,21 @@ fn revoke_token(ctx: auth.Ctx, user: StoredUser, token_id: Int) -> wisp.Response
   }
 }
 
+fn rename_token(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  token_id: Int,
+  payload: payloads.RenameApiTokenPayload,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  let payloads.RenameApiTokenPayload(name: name) = payload
+
+  case api_tokens.rename(db, user.org_id, token_id, name) {
+    Ok(token) -> api.ok(presenters.token_response(token))
+    Error(error) -> api_token_error_response(error)
+  }
+}
+
 fn require_admin_write(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -142,6 +177,13 @@ fn decode_create_payload(data) {
       payloads.InvalidScope(_) ->
         api.error(422, "VALIDATION_ERROR", "Invalid scope")
     }
+  })
+}
+
+fn decode_rename_payload(data) {
+  payloads.decode_rename(data)
+  |> result.map_error(fn(_) {
+    api.error(422, "VALIDATION_ERROR", "Invalid JSON body")
   })
 }
 

@@ -24,6 +24,7 @@ pub type ApiToken {
     id: Int,
     org_id: Int,
     integration_user_id: Int,
+    integration_user_email: String,
     project_grant: ProjectGrant,
     name: String,
     public_id: String,
@@ -76,6 +77,7 @@ type TokenRow {
     id: Int,
     org_id: Int,
     integration_user_id: Int,
+    integration_user_email: String,
     project_id: Option(Int),
     name: String,
     public_id: String,
@@ -224,6 +226,32 @@ pub fn revoke(
   }
 }
 
+pub fn rename(
+  db: pog.Connection,
+  org_id: Int,
+  token_id: Int,
+  name: String,
+) -> Result(ApiToken, ApiTokenError) {
+  use name <- result.try(validate_name(name))
+
+  use returned <- result.try(
+    pog.query(
+      "\nupdate api_tokens\nset name = $1\nwhere id = $2 and org_id = $3\nreturning 1\n",
+    )
+    |> pog.parameter(pog.text(name))
+    |> pog.parameter(pog.int(token_id))
+    |> pog.parameter(pog.int(org_id))
+    |> pog.returning(persisted_field.int_decoder())
+    |> pog.execute(db)
+    |> result.map_error(DbError),
+  )
+
+  case returned.rows {
+    [] -> Error(TokenNotFound)
+    _ -> get(db, token_id)
+  }
+}
+
 pub fn record_use(
   db: pog.Connection,
   token_id: Int,
@@ -352,6 +380,7 @@ fn token_from_row(
     id: row.id,
     org_id: row.org_id,
     integration_user_id: row.integration_user_id,
+    integration_user_email: row.integration_user_email,
     project_grant: project_grant_from_option(row.project_id),
     name: row.name,
     public_id: row.public_id,
@@ -597,19 +626,21 @@ fn query_token_rows(
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
     use integration_user_id <- decode.field(2, decode.int)
-    use project_id <- decode.field(3, decode.optional(decode.int))
-    use name <- decode.field(4, decode.string)
-    use public_id <- decode.field(5, decode.string)
-    use token_hash <- decode.field(6, decode.string)
-    use created_at <- decode.field(7, decode.string)
-    use last_used_at <- decode.field(8, decode.optional(decode.string))
-    use expires_at <- decode.field(9, decode.optional(decode.string))
-    use revoked_at <- decode.field(10, decode.optional(decode.string))
-    use expired <- decode.field(11, decode.bool)
+    use integration_user_email <- decode.field(3, decode.string)
+    use project_id <- decode.field(4, decode.optional(decode.int))
+    use name <- decode.field(5, decode.string)
+    use public_id <- decode.field(6, decode.string)
+    use token_hash <- decode.field(7, decode.string)
+    use created_at <- decode.field(8, decode.string)
+    use last_used_at <- decode.field(9, decode.optional(decode.string))
+    use expires_at <- decode.field(10, decode.optional(decode.string))
+    use revoked_at <- decode.field(11, decode.optional(decode.string))
+    use expired <- decode.field(12, decode.bool)
     decode.success(TokenRow(
       id:,
       org_id:,
       integration_user_id:,
+      integration_user_email:,
       project_id:,
       name:,
       public_id:,
@@ -624,7 +655,7 @@ fn query_token_rows(
 
   let query =
     pog.query(
-      "\nselect\n  t.id,\n  t.org_id,\n  t.integration_user_id,\n  t.project_id,\n  t.name,\n  t.public_id,\n  t.token_hash,\n  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,\n  to_char(t.last_used_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_used_at,\n  to_char(t.expires_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as expires_at,\n  to_char(t.revoked_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as revoked_at,\n  (t.expires_at is not null and t.expires_at <= now()) as expired\nfrom api_tokens t\n"
+      "\nselect\n  t.id,\n  t.org_id,\n  t.integration_user_id,\n  u.email as integration_user_email,\n  t.project_id,\n  t.name,\n  t.public_id,\n  t.token_hash,\n  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,\n  to_char(t.last_used_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_used_at,\n  to_char(t.expires_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as expires_at,\n  to_char(t.revoked_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as revoked_at,\n  (t.expires_at is not null and t.expires_at <= now()) as expired\nfrom api_tokens t\njoin users u on u.id = t.integration_user_id\n"
       <> where_clause
       <> "\n",
     )
@@ -681,6 +712,7 @@ fn integration_user_error_to_api_token_error(
     integration_users.EmailRequired -> IntegrationUserRequired
     integration_users.EmailTaken -> IntegrationUnavailable
     integration_users.NotFound -> IntegrationUserNotFound
+    integration_users.HasActiveTokens -> IntegrationUnavailable
     integration_users.InvalidPersistedRole(_) -> IntegrationUnavailable
     integration_users.DbError(error) -> DbError(error)
   }

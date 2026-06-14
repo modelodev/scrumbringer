@@ -352,6 +352,12 @@ pub type Text {
   IntegrationIdentity
   IntegrationIdentityHint
   ApiTokenGrantsImmutable
+  RenameApiToken
+  Integrations
+  NoIntegrationUsersYet
+  ActiveTokenCount
+  DeactivateIntegration
+  DeactivateIntegrationConfirm
   IntegrationRequired
   ApiTokens
   CreateApiToken

@@ -16,8 +16,8 @@ import domain/project.{type Project}
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 import scrumbringer_client/client_state/types.{
-  type ApiToken, type ApiTokenForm, type ApiTokensModel, DialogClosed,
-  DialogOpen, Error as OperationError, InFlight,
+  type ApiToken, type ApiTokenForm, type ApiTokensModel, type IntegrationUser,
+  DialogClosed, DialogOpen, Error as OperationError, InFlight,
 }
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -48,9 +48,16 @@ pub type Config(msg) {
     on_token_create_submitted: msg,
     on_token_secret_dismissed: msg,
     on_token_secret_copy_clicked: fn(String) -> msg,
+    on_token_rename_clicked: fn(Int, String) -> msg,
+    on_token_rename_cancelled: msg,
+    on_token_rename_name_changed: fn(String) -> msg,
+    on_token_rename_submitted: msg,
     on_token_revoke_clicked: fn(Int) -> msg,
     on_token_revoke_cancelled: msg,
     on_token_revoke_confirmed: msg,
+    on_integration_deactivate_clicked: fn(Int) -> msg,
+    on_integration_deactivate_cancelled: msg,
+    on_integration_deactivate_confirmed: msg,
   )
 }
 
@@ -76,10 +83,16 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         text(t(config, i18n_text.ApiTokenGrantsImmutable)),
       ]),
       div([attribute.class("api-token-list-card")], [view_tokens(config)]),
+      div([attribute.class("api-token-list-card")], [
+        section_header.view(icons.Team, t(config, i18n_text.Integrations)),
+        view_integrations(config),
+      ]),
     ]),
     [
       view_token_dialog(config),
+      view_rename_dialog(config),
       view_revoke_dialog(config),
+      view_deactivate_integration_dialog(config),
     ],
   )
 }
@@ -116,42 +129,130 @@ fn view_tokens(config: Config(msg)) -> Element(msg) {
     config: data_table.new()
       |> data_table.with_error_prefix(t(config, i18n_text.FailedToLoadPrefix))
       |> data_table.with_columns([
-        data_table.column(t(config, i18n_text.Name), fn(token: ApiToken) {
-          text(token.name)
-        }),
-        data_table.column(t(config, i18n_text.Integration), fn(token: ApiToken) {
-          text(integration_user_email(config.model, token.integration_user_id))
-        }),
-        data_table.column(t(config, i18n_text.Project), fn(token: ApiToken) {
-          badge.new_unchecked(
-            project_name(config, config.projects, token.project_id),
-            badge.Neutral,
-          )
-          |> badge.view_with_class("api-token-project-badge")
-        }),
-        data_table.column(t(config, i18n_text.Scopes), fn(token: ApiToken) {
-          view_scope_summary(config, token.scopes)
-        }),
-        data_table.column(t(config, i18n_text.LastUsed), fn(token: ApiToken) {
-          text(optional_date(token.last_used_at))
-        }),
-        data_table.column(t(config, i18n_text.State), fn(token: ApiToken) {
-          token_state_badge(config, token)
-        }),
+        data_table.column_with_class(
+          t(config, i18n_text.Name),
+          fn(token: ApiToken) { text(token.name) },
+          "token-col-name",
+          "token-cell-name",
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.Integration),
+          fn(token: ApiToken) { text(token.integration_user_email) },
+          "token-col-integration",
+          "token-cell-integration",
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.Project),
+          fn(token: ApiToken) {
+            badge.new_unchecked(
+              project_name(config, config.projects, token.project_id),
+              badge.Neutral,
+            )
+            |> badge.view_with_class("api-token-project-badge")
+          },
+          "token-col-project",
+          "token-cell-project",
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.Scopes),
+          fn(token: ApiToken) { view_scope_summary(config, token.scopes) },
+          "token-col-scopes",
+          "token-cell-scopes",
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.LastUsed),
+          fn(token: ApiToken) { text(optional_date(token.last_used_at)) },
+          "token-col-last-used",
+          "token-cell-last-used",
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.State),
+          fn(token: ApiToken) { token_state_badge(config, token) },
+          "token-col-state",
+          "token-cell-state",
+        ),
         data_table.column_with_class(
           t(config, i18n_text.Actions),
-          fn(token: ApiToken) {
-            action_buttons.delete_button(
-              t(config, i18n_text.RevokeApiToken),
-              config.on_token_revoke_clicked(token.id),
-            )
+          fn(token: ApiToken) { view_token_actions(config, token) },
+          "token-col-actions col-actions",
+          "token-cell-actions cell-actions",
+        ),
+      ])
+      |> data_table.with_class("api-token-table")
+      |> data_table.with_key(fn(token: ApiToken) { int.to_string(token.id) }),
+  )
+}
+
+fn view_token_actions(config: Config(msg), token: ApiToken) -> Element(msg) {
+  let rename =
+    action_buttons.edit_button(
+      t(config, i18n_text.RenameApiToken),
+      config.on_token_rename_clicked(token.id, token.name),
+    )
+
+  let actions = case token.revoked_at {
+    opt.None -> [
+      rename,
+      action_buttons.delete_button(
+        t(config, i18n_text.RevokeApiToken),
+        config.on_token_revoke_clicked(token.id),
+      ),
+    ]
+    opt.Some(_) -> [rename]
+  }
+
+  div([attribute.class("action-buttons")], actions)
+}
+
+fn view_integrations(config: Config(msg)) -> Element(msg) {
+  data_table.view_remote(
+    config.model.integration_users,
+    loading_msg: t(config, i18n_text.LoadingEllipsis),
+    empty_msg: t(config, i18n_text.NoIntegrationUsersYet),
+    config: data_table.new()
+      |> data_table.with_error_prefix(t(config, i18n_text.FailedToLoadPrefix))
+      |> data_table.with_columns([
+        data_table.column(
+          t(config, i18n_text.IntegrationIdentity),
+          fn(user: IntegrationUser) { text(user.email) },
+        ),
+        data_table.column(
+          t(config, i18n_text.CreatedAt),
+          fn(user: IntegrationUser) {
+            text(format_date.date_only(user.created_at))
           },
+        ),
+        data_table.column(
+          t(config, i18n_text.ActiveTokenCount),
+          fn(user: IntegrationUser) {
+            text(int.to_string(user.active_token_count))
+          },
+        ),
+        data_table.column_with_class(
+          t(config, i18n_text.Actions),
+          fn(user: IntegrationUser) { view_integration_actions(config, user) },
           "col-actions",
           "cell-actions",
         ),
       ])
-      |> data_table.with_key(fn(token: ApiToken) { int.to_string(token.id) }),
+      |> data_table.with_key(fn(user: IntegrationUser) {
+        int.to_string(user.id)
+      }),
   )
+}
+
+fn view_integration_actions(
+  config: Config(msg),
+  user: IntegrationUser,
+) -> Element(msg) {
+  case user.active_token_count {
+    0 ->
+      action_buttons.delete_button(
+        t(config, i18n_text.DeactivateIntegration),
+        config.on_integration_deactivate_clicked(user.id),
+      )
+    _ -> element.none()
+  }
 }
 
 fn view_token_dialog(config: Config(msg)) -> Element(msg) {
@@ -214,6 +315,47 @@ fn view_token_dialog(config: Config(msg)) -> Element(msg) {
   )
 }
 
+fn view_rename_dialog(config: Config(msg)) -> Element(msg) {
+  let #(open, name, error, in_flight) = rename_dialog_info(config.model)
+  dialog.view(
+    dialog.DialogConfig(
+      title: t(config, i18n_text.RenameApiToken),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: config.on_token_rename_cancelled,
+    ),
+    open,
+    error,
+    [
+      form([event.on_submit(fn(_) { config.on_token_rename_submitted })], [
+        form_field.view_required(
+          t(config, i18n_text.Name),
+          input([
+            attribute.type_("text"),
+            attribute.value(name),
+            attribute.required(True),
+            event.on_input(config.on_token_rename_name_changed),
+          ]),
+        ),
+      ]),
+    ],
+    [
+      dialog.cancel_button_with_locale(
+        config.locale,
+        config.on_token_rename_cancelled,
+      ),
+      button(
+        [
+          attribute.type_("button"),
+          attribute.disabled(in_flight),
+          event.on_click(config.on_token_rename_submitted),
+        ],
+        [text(t(config, i18n_text.Save))],
+      ),
+    ],
+  )
+}
+
 fn view_revoke_dialog(config: Config(msg)) -> Element(msg) {
   dialog.view(
     dialog.DialogConfig(
@@ -242,6 +384,39 @@ fn view_revoke_dialog(config: Config(msg)) -> Element(msg) {
           event.on_click(config.on_token_revoke_confirmed),
         ],
         [text(t(config, i18n_text.Revoke))],
+      ),
+    ],
+  )
+}
+
+fn view_deactivate_integration_dialog(config: Config(msg)) -> Element(msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: t(config, i18n_text.DeactivateIntegration),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: config.on_integration_deactivate_cancelled,
+    ),
+    config.model.integration_deactivate_confirm != opt.None,
+    opt.None,
+    [
+      p([], [
+        text(t(config, i18n_text.DeactivateIntegrationConfirm)),
+        text(" "),
+        text(deactivate_integration_name(config)),
+      ]),
+    ],
+    [
+      dialog.cancel_button_with_locale(
+        config.locale,
+        config.on_integration_deactivate_cancelled,
+      ),
+      button(
+        [
+          attribute.class("btn-danger"),
+          event.on_click(config.on_integration_deactivate_confirmed),
+        ],
+        [text(t(config, i18n_text.DeactivateIntegration))],
       ),
     ],
   )
@@ -354,21 +529,27 @@ fn token_dialog_info(
   }
 }
 
+fn rename_dialog_info(
+  model: ApiTokensModel,
+) -> #(Bool, String, opt.Option(String), Bool) {
+  case model.token_rename_dialog {
+    DialogOpen(form: form, operation: operation) -> {
+      let #(_, name) = form
+      #(True, name, operation_error(operation), operation == InFlight)
+    }
+    DialogClosed(operation: operation) -> #(
+      False,
+      "",
+      operation_error(operation),
+      False,
+    )
+  }
+}
+
 fn operation_error(operation) -> opt.Option(String) {
   case operation {
     OperationError(message) -> opt.Some(message)
     _ -> opt.None
-  }
-}
-
-fn integration_user_email(model: ApiTokensModel, id: Int) -> String {
-  case model.integration_users {
-    remote.Loaded(users) ->
-      case list.find(users, fn(user) { user.id == id }) {
-        Ok(user) -> user.email
-        Error(_) -> "#" <> int.to_string(id)
-      }
-    _ -> "#" <> int.to_string(id)
   }
 }
 
@@ -495,6 +676,20 @@ fn revoke_token_name(config: Config(msg)) -> String {
     opt.Some(id), remote.Loaded(tokens) ->
       case list.find(tokens, fn(token) { token.id == id }) {
         Ok(token) -> token.name
+        Error(_) -> ""
+      }
+    _, _ -> ""
+  }
+}
+
+fn deactivate_integration_name(config: Config(msg)) -> String {
+  case
+    config.model.integration_deactivate_confirm,
+    config.model.integration_users
+  {
+    opt.Some(id), remote.Loaded(users) ->
+      case list.find(users, fn(user) { user.id == id }) {
+        Ok(user) -> user.email
         Error(_) -> ""
       }
     _, _ -> ""

@@ -16,6 +16,10 @@ pub type CreateApiTokenPayload {
   )
 }
 
+pub type RenameApiTokenPayload {
+  RenameApiTokenPayload(name: String)
+}
+
 pub type DecodeError {
   InvalidJson
   InvalidScope(String)
@@ -61,4 +65,16 @@ pub fn decode_create(
     scopes: scopes,
     expires_at: expires_at,
   ))
+}
+
+pub fn decode_rename(
+  data: Dynamic,
+) -> Result(RenameApiTokenPayload, DecodeError) {
+  let decoder = {
+    use name <- decode.field("name", decode.string)
+    decode.success(RenameApiTokenPayload(name: name))
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) { InvalidJson })
 }

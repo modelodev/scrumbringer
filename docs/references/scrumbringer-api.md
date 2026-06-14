@@ -221,7 +221,7 @@ Do not attempt these with `SCRUMBRINGER_API_TOKEN`:
 - workflows;
 - rules;
 - task templates;
-- API token administration;
+- API token and integration identity administration;
 - org users, invites, assignments, and membership administration;
 - project creation/editing/deletion;
 - capabilities and task types;

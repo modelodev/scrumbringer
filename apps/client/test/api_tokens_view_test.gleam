@@ -46,6 +46,7 @@ fn integration_user() -> IntegrationUser {
     email: "n8n",
     org_role: org_role.Member,
     created_at: "2026-01-01T10:00:00Z",
+    active_token_count: 1,
   )
 }
 
@@ -54,6 +55,7 @@ fn token() -> ApiToken {
     id: 11,
     org_id: 1,
     integration_user_id: 9,
+    integration_user_email: "n8n",
     project_id: option.Some(7),
     name: "n8n production",
     public_id: "pub",
@@ -94,9 +96,20 @@ fn config(model: ApiTokensModel) -> api_tokens_view.Config(String) {
     on_token_create_submitted: "submit-token",
     on_token_secret_dismissed: "dismiss-secret",
     on_token_secret_copy_clicked: fn(value) { "copy:" <> value },
+    on_token_rename_clicked: fn(id, name) {
+      "rename:" <> int.to_string(id) <> ":" <> name
+    },
+    on_token_rename_cancelled: "cancel-rename",
+    on_token_rename_name_changed: fn(value) { "rename-name:" <> value },
+    on_token_rename_submitted: "submit-rename",
     on_token_revoke_clicked: fn(id) { "revoke:" <> int.to_string(id) },
     on_token_revoke_cancelled: "cancel-revoke",
     on_token_revoke_confirmed: "confirm-revoke",
+    on_integration_deactivate_clicked: fn(id) {
+      "deactivate:" <> int.to_string(id)
+    },
+    on_integration_deactivate_cancelled: "cancel-deactivate",
+    on_integration_deactivate_confirmed: "confirm-deactivate",
   )
 }
 
@@ -112,6 +125,9 @@ pub fn api_tokens_view_has_single_primary_creation_flow_test() {
   assert_not_contains(html, "Create integration user")
   assert_contains(html, "n8n production")
   assert_contains(html, "n8n")
+  assert_contains(html, "Integrations")
+  assert_contains(html, "Active tokens")
+  assert_contains(html, "Rename API token")
 }
 
 pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_test() {
@@ -157,4 +173,40 @@ pub fn api_tokens_view_renders_secret_copy_control_test() {
   assert_contains(html, "sbt_public_secret")
   assert_contains(html, "Copy")
   assert_contains(html, "Copied")
+}
+
+pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
+  let idle_user =
+    IntegrationUser(
+      ..integration_user(),
+      id: 10,
+      email: "zapier",
+      active_token_count: 0,
+    )
+  let model =
+    ApiTokensModel(
+      ..model(),
+      integration_users: remote.Loaded([integration_user(), idle_user]),
+    )
+
+  let html =
+    api_tokens_view.view(config(model))
+    |> element.to_document_string
+
+  assert_contains(html, "zapier")
+  assert_contains(html, "Deactivate integration")
+}
+
+pub fn api_tokens_view_hides_revoke_action_for_revoked_tokens_test() {
+  let revoked_token =
+    ApiToken(..token(), revoked_at: option.Some("2026-01-02T10:00:00Z"))
+  let model = ApiTokensModel(..model(), tokens: remote.Loaded([revoked_token]))
+
+  let html =
+    api_tokens_view.view(config(model))
+    |> element.to_document_string
+
+  assert_contains(html, "Revoked")
+  assert_contains(html, "Rename API token")
+  assert_not_contains(html, "Revoke API token")
 }

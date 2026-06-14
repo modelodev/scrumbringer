@@ -51,10 +51,36 @@ pub fn create_token(
   )
 }
 
+pub fn rename_token(
+  id: Int,
+  name: String,
+  to_msg: fn(ApiResult(state_types.ApiToken)) -> msg,
+) -> Effect(msg) {
+  core.request(
+    core.Patch,
+    "/api/v1/api-tokens/" <> int.to_string(id),
+    option.Some(json.object([#("name", json.string(string.trim(name)))])),
+    token_payload_decoder(),
+    to_msg,
+  )
+}
+
 pub fn revoke_token(id: Int, to_msg: fn(ApiResult(Nil)) -> msg) -> Effect(msg) {
   core.request_nil(
     core.Delete,
     "/api/v1/api-tokens/" <> int.to_string(id),
+    option.None,
+    to_msg,
+  )
+}
+
+pub fn deactivate_integration_user(
+  id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    core.Delete,
+    "/api/v1/integration-users/" <> int.to_string(id),
     option.None,
     to_msg,
   )
@@ -80,6 +106,10 @@ pub fn tokens_payload_decoder() -> decode.Decoder(List(state_types.ApiToken)) {
   decode.field("api_tokens", decode.list(token_decoder()), decode.success)
 }
 
+pub fn token_payload_decoder() -> decode.Decoder(state_types.ApiToken) {
+  decode.field("api_token", token_decoder(), decode.success)
+}
+
 pub fn created_token_payload_decoder() -> decode.Decoder(
   state_types.CreatedApiToken,
 ) {
@@ -93,11 +123,13 @@ pub fn integration_user_decoder() -> decode.Decoder(state_types.IntegrationUser)
   use email <- decode.field("email", decode.string)
   use org_role <- decode.field("org_role", org_role_codec.org_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
+  use active_token_count <- decode.field("active_token_count", decode.int)
   decode.success(state_types.IntegrationUser(
     id: id,
     email: email,
     org_role: org_role,
     created_at: created_at,
+    active_token_count: active_token_count,
   ))
 }
 
@@ -105,6 +137,10 @@ pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
   use id <- decode.field("id", decode.int)
   use org_id <- decode.field("org_id", decode.int)
   use integration_user_id <- decode.field("integration_user_id", decode.int)
+  use integration_user_email <- decode.field(
+    "integration_user_email",
+    decode.string,
+  )
   use project_id <- decode.field("project_id", core.nullable_int())
   use name <- decode.field("name", decode.string)
   use public_id <- decode.field("public_id", decode.string)
@@ -118,6 +154,7 @@ pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
     id: id,
     org_id: org_id,
     integration_user_id: integration_user_id,
+    integration_user_email: integration_user_email,
     project_id: project_id,
     name: name,
     public_id: public_id,

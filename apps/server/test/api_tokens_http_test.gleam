@@ -5,6 +5,7 @@ import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import pog
 import scrumbringer_server
 import support/assertions as expect
@@ -560,6 +561,140 @@ pub fn api_token_rejects_project_write_scope_test() {
 
   expect.expect_status(res, 422)
   expect.expect_json_contains_code(simulate.read_body(res), "VALIDATION_ERROR")
+}
+
+pub fn api_token_name_can_be_renamed_without_changing_grant_test() {
+  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, admin_session, "Core")
+  let assert Ok(#(token_id, _bearer)) =
+    create_api_token_created(
+      handler,
+      admin_session,
+      "rename-token@example.com",
+      Some(project_id),
+      ["tasks:read"],
+    )
+
+  let res =
+    handler(
+      simulate.request(
+        http.Patch,
+        "/api/v1/api-tokens/" <> int.to_string(token_id),
+      )
+      |> fixtures.with_auth(admin_session)
+      |> simulate.json_body(json.object([#("name", json.string("docs bot"))])),
+    )
+
+  expect.expect_status(res, 200)
+  let assert Ok(name) =
+    fixtures.query_string(db, "select name from api_tokens where id = $1", [
+      pog.int(token_id),
+    ])
+  expect.equal(name, "docs bot")
+  let assert Ok(scope_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from api_token_scopes where token_id = $1 and scope = $2",
+      [pog.int(token_id), pog.text("tasks:read")],
+    )
+  expect.equal(scope_count, 1)
+}
+
+pub fn integration_users_report_active_token_count_test() {
+  let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
+  let assert Ok(_token) =
+    create_api_token(
+      handler,
+      admin_session,
+      "counted-integration@example.com",
+      None,
+      ["projects:read"],
+    )
+
+  let res =
+    handler(
+      simulate.request(http.Get, "/api/v1/integration-users")
+      |> fixtures.with_auth(admin_session),
+    )
+
+  expect.expect_status(res, 200)
+  let body = simulate.read_body(res)
+  case string.contains(body, "\"integration_users\"") {
+    True -> Nil
+    False -> panic as "expected integration_users payload"
+  }
+  case string.contains(body, "\"active_token_count\":1") {
+    True -> Nil
+    False -> panic as "expected active_token_count to be 1"
+  }
+}
+
+pub fn integration_user_deactivate_requires_no_active_tokens_test() {
+  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(integration_user_id) =
+    create_integration_user(handler, admin_session, "deactivate@example.com")
+  let assert Ok(#(token_id, _bearer)) =
+    create_api_token_created(
+      handler,
+      admin_session,
+      "deactivate@example.com",
+      None,
+      ["projects:read"],
+    )
+
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/integration-users/" <> int.to_string(integration_user_id),
+    )
+    |> fixtures.with_auth(admin_session),
+  )
+  |> expect.expect_status(409)
+
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/api-tokens/" <> int.to_string(token_id),
+    )
+    |> fixtures.with_auth(admin_session),
+  )
+  |> expect.expect_status(204)
+
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/integration-users/" <> int.to_string(integration_user_id),
+    )
+    |> fixtures.with_auth(admin_session),
+  )
+  |> expect.expect_status(204)
+
+  let assert Ok(deleted_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from users where id = $1 and deleted_at is not null",
+      [pog.int(integration_user_id)],
+    )
+  expect.equal(deleted_count, 1)
+
+  let tokens_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/api-tokens")
+      |> fixtures.with_auth(admin_session),
+    )
+  expect.expect_status(tokens_res, 200)
+  case
+    string.contains(
+      simulate.read_body(tokens_res),
+      "\"integration_user_email\":\"deactivate@example.com\"",
+    )
+  {
+    True -> Nil
+    False -> panic as "expected token to preserve integration email"
+  }
 }
 
 pub fn bearer_revoked_expired_and_unsupported_routes_are_rejected_test() {

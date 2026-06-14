@@ -407,6 +407,13 @@ pub fn translate(text: Text) -> String {
       "Existing names are reused; new names create a technical identity."
     text.ApiTokenGrantsImmutable ->
       "Grants are immutable. Revoke and create a new token to change scopes, project, or expiration."
+    text.RenameApiToken -> "Rename API token"
+    text.Integrations -> "Integrations"
+    text.NoIntegrationUsersYet -> "No integration identities yet"
+    text.ActiveTokenCount -> "Active tokens"
+    text.DeactivateIntegration -> "Deactivate integration"
+    text.DeactivateIntegrationConfirm ->
+      "Deactivate this integration identity? It cannot be used for new tokens unless reactivated later."
     text.IntegrationRequired -> "Integration is required"
     text.ApiTokens -> "API tokens"
     text.CreateApiToken -> "Create API token"

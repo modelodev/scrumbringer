@@ -437,10 +437,19 @@ fn update_without_api_tokens(
     | admin_messages.ApiTokenCreatedSecretDismissed
     | admin_messages.ApiTokenCreatedSecretCopyClicked(_)
     | admin_messages.ApiTokenCreatedSecretCopyFinished(_)
+    | admin_messages.ApiTokenRenameClicked(_, _)
+    | admin_messages.ApiTokenRenameCancelled
+    | admin_messages.ApiTokenRenameNameChanged(_)
+    | admin_messages.ApiTokenRenameSubmitted
+    | admin_messages.ApiTokenRenamed(_)
     | admin_messages.ApiTokenRevokeClicked(_)
     | admin_messages.ApiTokenRevokeCancelled
     | admin_messages.ApiTokenRevokeConfirmed
-    | admin_messages.ApiTokenRevoked(_, _) -> #(model, effect.none())
+    | admin_messages.ApiTokenRevoked(_, _)
+    | admin_messages.IntegrationDeactivateClicked(_)
+    | admin_messages.IntegrationDeactivateCancelled
+    | admin_messages.IntegrationDeactivateConfirmed
+    | admin_messages.IntegrationDeactivated(_, _) -> #(model, effect.none())
 
     // Handled by task_types_workflow.try_update before this dispatch.
     admin_messages.TaskTypesFetched(_)
@@ -546,8 +555,14 @@ fn api_tokens_context(
     on_token_created: fn(result) {
       client_state.admin_msg(admin_messages.ApiTokenCreated(result))
     },
+    on_token_renamed: fn(result) {
+      client_state.admin_msg(admin_messages.ApiTokenRenamed(result))
+    },
     on_token_revoked: fn(id, result) {
       client_state.admin_msg(admin_messages.ApiTokenRevoked(id, result))
+    },
+    on_integration_deactivated: fn(id, result) {
+      client_state.admin_msg(admin_messages.IntegrationDeactivated(id, result))
     },
     on_token_secret_copy_finished: fn(ok) {
       client_state.admin_msg(admin_messages.ApiTokenCreatedSecretCopyFinished(
