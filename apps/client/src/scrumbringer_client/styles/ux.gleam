@@ -413,7 +413,7 @@ pub fn css() -> List(String) {
     ".detail-meta-group { display: inline-flex; align-items: center; gap: var(--sb-space-sm); }",
     ".detail-summary { padding: 14px 16px; border: 1px solid color-mix(in oklab, var(--sb-border) 75%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",
     ".detail-tabs { box-sizing: border-box; margin-top: 2px; padding: 8px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-surface) 85%, var(--sb-elevated)); overflow: visible; }",
-    ".modal-tabs.detail-tabs { display: flex; align-items: stretch; justify-content: center; align-self: stretch; width: 100%; min-height: 56px; gap: 8px; padding: 8px; border-bottom: 0; }",
+    ".modal-tabs.detail-tabs { display: flex; align-items: stretch; justify-content: center; align-self: stretch; width: 100%; min-height: 56px; gap: 8px; padding: 8px; border-bottom: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); }",
     ".detail-tab { box-sizing: border-box; min-height: 38px; padding-inline: 12px; font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-tight); }",
     ".detail-tabpanel { min-height: 240px; padding: 6px 0 4px; }",
     ".detail-content { display: flex; flex-direction: column; gap: 16px; padding-top: 4px; }",
