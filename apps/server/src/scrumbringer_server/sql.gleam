@@ -187,6 +187,59 @@ order by name asc;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `capabilities_update` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilitiesUpdateRow {
+  CapabilitiesUpdateRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    created_at: String,
+  )
+}
+
+/// name: update_capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capabilities_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+) -> Result(pog.Returned(CapabilitiesUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(CapabilitiesUpdateRow(id:, project_id:, name:, created_at:))
+  }
+
+  "-- name: update_capability
+update capabilities
+set name = $3
+where project_id = $1
+  and id = $2
+returning
+  id,
+  project_id,
+  name,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// name: delete_all_capability_members
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -2476,6 +2529,76 @@ returning
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `org_invite_links_invalidate` query
+/// defined in `./src/scrumbringer_server/sql/org_invite_links_invalidate.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type OrgInviteLinksInvalidateRow {
+  OrgInviteLinksInvalidateRow(
+    email: String,
+    token: String,
+    state: String,
+    created_at: String,
+    used_at: String,
+    invalidated_at: String,
+  )
+}
+
+/// name: invalidate_org_invite_link
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn org_invite_links_invalidate(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(OrgInviteLinksInvalidateRow), pog.QueryError) {
+  let decoder = {
+    use email <- decode.field(0, decode.string)
+    use token <- decode.field(1, decode.string)
+    use state <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    use used_at <- decode.field(4, decode.string)
+    use invalidated_at <- decode.field(5, decode.string)
+    decode.success(OrgInviteLinksInvalidateRow(
+      email:,
+      token:,
+      state:,
+      created_at:,
+      used_at:,
+      invalidated_at:,
+    ))
+  }
+
+  "-- name: invalidate_org_invite_link
+update org_invite_links
+set invalidated_at = now()
+where org_id = $1
+  and email = $2
+  and used_at is null
+  and invalidated_at is null
+returning
+  email,
+  token,
+  case
+    when used_at is not null then 'used'
+    when invalidated_at is not null then 'invalidated'
+    else 'active'
+  end as state,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(used_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as used_at,
+  coalesce(to_char(invalidated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as invalidated_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5226,6 +5349,103 @@ returning
   |> pog.execute(db)
 }
 
+/// A row you get from running the `task_notes_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesDeleteRow {
+  TaskNotesDeleteRow(id: Int)
+}
+
+/// name: task_notes_delete
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskNotesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TaskNotesDeleteRow(id:))
+  }
+
+  "-- name: task_notes_delete
+delete from task_notes
+where task_id = $1
+  and id = $2
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_notes_get` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_get.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesGetRow {
+  TaskNotesGetRow(
+    id: Int,
+    task_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+  )
+}
+
+/// name: task_notes_get
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_get(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskNotesGetRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    decode.success(TaskNotesGetRow(
+      id:,
+      task_id:,
+      user_id:,
+      content:,
+      created_at:,
+    ))
+  }
+
+  "-- name: task_notes_get
+select
+  id,
+  task_id,
+  user_id,
+  content,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from task_notes
+where task_id = $1
+  and id = $2;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `task_notes_list` query
 /// defined in `./src/scrumbringer_server/sql/task_notes_list.sql`.
 ///
@@ -7642,6 +7862,7 @@ pub fn tasks_update(
   arg_6: Int,
   arg_7: Int,
   arg_8: Int,
+  arg_9: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -7708,14 +7929,19 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
-  milestone_id = case when $7 = -1 then milestone_id else nullif($7, 0) end,
+  milestone_id = case
+    when $8 > 0 then null
+    when $7 = -1 then milestone_id
+    else nullif($7, 0)
+  end,
+  card_id = case when $8 = -1 then card_id else nullif($8, 0) end,
   version = version + 1
 where id = $1
   and (
     status = 'available'
     or (status = 'claimed' and claimed_by = $2)
   )
-  and version = $8
+  and version = $9
   returning
     id,
     project_id,
@@ -7779,6 +8005,7 @@ left join lateral (
   |> pog.parameter(pog.int(arg_6))
   |> pog.parameter(pog.int(arg_7))
   |> pog.parameter(pog.int(arg_8))
+  |> pog.parameter(pog.int(arg_9))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

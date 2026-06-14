@@ -18,6 +18,7 @@ pub type Model {
     member_note_in_flight: Bool,
     member_note_error: Option(String),
     member_note_dialog_mode: dialog_mode.DialogMode,
+    member_note_delete_in_flight: Option(Int),
   )
 }
 
@@ -32,5 +33,6 @@ pub fn default_model() -> Model {
     member_note_in_flight: False,
     member_note_error: option.None,
     member_note_dialog_mode: dialog_mode.DialogClosed,
+    member_note_delete_in_flight: option.None,
   )
 }

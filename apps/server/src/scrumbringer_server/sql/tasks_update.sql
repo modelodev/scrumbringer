@@ -6,14 +6,19 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
-  milestone_id = case when $7 = -1 then milestone_id else nullif($7, 0) end,
+  milestone_id = case
+    when $8 > 0 then null
+    when $7 = -1 then milestone_id
+    else nullif($7, 0)
+  end,
+  card_id = case when $8 = -1 then card_id else nullif($8, 0) end,
   version = version + 1
 where id = $1
   and (
     status = 'available'
     or (status = 'claimed' and claimed_by = $2)
   )
-  and version = $8
+  and version = $9
   returning
     id,
     project_id,

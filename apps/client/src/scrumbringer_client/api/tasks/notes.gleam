@@ -63,3 +63,20 @@ pub fn add_task_note(
     to_msg,
   )
 }
+
+/// Delete a note from a task.
+pub fn delete_task_note(
+  task_id: Int,
+  note_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    core.Delete,
+    "/api/v1/tasks/"
+      <> int.to_string(task_id)
+      <> "/notes/"
+      <> int.to_string(note_id),
+    option.None,
+    to_msg,
+  )
+}

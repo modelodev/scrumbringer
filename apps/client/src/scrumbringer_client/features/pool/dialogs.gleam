@@ -26,9 +26,12 @@ import lustre/element.{type Element}
 import lustre/element/html.{div}
 import lustre/event
 
+import domain/card.{type Card}
 import domain/metrics.{type TaskModalMetrics}
+import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
+import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
@@ -51,6 +54,7 @@ pub type TaskDetailsConfig(msg) {
     task_id: Int,
     task: opt.Option(Task),
     current_user_id: opt.Option(Int),
+    can_manage_notes: Bool,
     active_tab: task_tabs.Tab,
     notes: Remote(List(TaskNote)),
     metrics: Remote(TaskModalMetrics),
@@ -65,13 +69,21 @@ pub type TaskDetailsConfig(msg) {
     editing: Bool,
     edit_title: String,
     edit_description: String,
+    edit_priority: String,
+    edit_type_id: String,
+    edit_card_id: String,
+    edit_milestone_id: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
+    task_types: Remote(List(TaskType)),
+    cards: List(Card),
+    milestones: Remote(List(MilestoneProgress)),
     parent_card_title: opt.Option(String),
     note_dialog_mode: dialog_mode.DialogMode,
     note_content: String,
     note_error: opt.Option(String),
     note_in_flight: Bool,
+    note_delete_in_flight: opt.Option(Int),
     disable_actions: Bool,
     on_close: msg,
     on_tab_clicked: fn(task_tabs.Tab) -> msg,
@@ -85,6 +97,10 @@ pub type TaskDetailsConfig(msg) {
     on_edit_cancelled: msg,
     on_edit_title_changed: fn(String) -> msg,
     on_edit_description_changed: fn(String) -> msg,
+    on_edit_priority_changed: fn(String) -> msg,
+    on_edit_type_id_changed: fn(String) -> msg,
+    on_edit_card_id_changed: fn(String) -> msg,
+    on_edit_milestone_id_changed: fn(String) -> msg,
     on_edit_submitted: msg,
     on_note_dialog_opened: msg,
     on_note_dialog_closed: msg,
@@ -215,13 +231,24 @@ fn view_task_details_tab(config: TaskDetailsConfig(msg)) -> Element(msg) {
     editing: config.editing,
     edit_title: config.edit_title,
     edit_description: config.edit_description,
+    edit_priority: config.edit_priority,
+    edit_type_id: config.edit_type_id,
+    edit_card_id: config.edit_card_id,
+    edit_milestone_id: config.edit_milestone_id,
     edit_error: config.edit_error,
     edit_in_flight: config.edit_in_flight,
+    task_types: config.task_types,
+    cards: config.cards,
+    milestones: config.milestones,
     parent_card_title: config.parent_card_title,
     on_edit_started: config.on_edit_started,
     on_edit_cancelled: config.on_edit_cancelled,
     on_title_changed: config.on_edit_title_changed,
     on_description_changed: config.on_edit_description_changed,
+    on_priority_changed: config.on_edit_priority_changed,
+    on_type_id_changed: config.on_edit_type_id_changed,
+    on_card_id_changed: config.on_edit_card_id_changed,
+    on_milestone_id_changed: config.on_edit_milestone_id_changed,
     on_submitted: config.on_edit_submitted,
   ))
 }
@@ -232,11 +259,13 @@ fn view_notes(config: TaskDetailsConfig(msg)) -> Element(msg) {
   task_notes.view(task_notes.Config(
     locale: config.locale,
     current_user_id: config.current_user_id,
+    can_manage_notes: config.can_manage_notes,
     notes: config.notes,
     dialog_mode: config.note_dialog_mode,
     note_content: config.note_content,
     note_error: config.note_error,
     note_in_flight: config.note_in_flight,
+    delete_in_flight: config.note_delete_in_flight,
     on_dialog_opened: config.on_note_dialog_opened,
     on_dialog_closed: config.on_note_dialog_closed,
     on_content_changed: config.on_note_content_changed,

@@ -103,6 +103,7 @@ pub fn decode_update_task(
     |> result.map_error(fn(_) { InvalidJson }),
   )
   use milestone_update <- result.try(decode_milestone_update(data))
+  use card_update <- result.try(decode_card_update(data))
 
   let #(version, title, description, priority, type_id) = payload
   Ok(UpdateTaskPayload(
@@ -113,6 +114,7 @@ pub fn decode_update_task(
       priority: field_update.from_option(priority),
       type_id: field_update.from_option(type_id),
       milestone_id: milestone_update,
+      card_id: card_update,
     ),
   ))
 }
@@ -164,22 +166,38 @@ pub fn decode_task_type(data: Dynamic) -> Result(TaskTypePayload, DecodeError) {
 fn decode_milestone_update(
   data: Dynamic,
 ) -> Result(field_update.FieldUpdate(Option(Int)), DecodeError) {
+  decode_optional_id_update(data, "milestone_id")
+  |> result.map(fn(update) { field_update.map(update, normalize_milestone_id) })
+}
+
+fn decode_card_update(
+  data: Dynamic,
+) -> Result(field_update.FieldUpdate(Option(Int)), DecodeError) {
+  decode_optional_id_update(data, "card_id")
+  |> result.map(fn(update) { field_update.map(update, normalize_optional_id) })
+}
+
+fn decode_optional_id_update(
+  data: Dynamic,
+  field_name: String,
+) -> Result(field_update.FieldUpdate(Option(Int)), DecodeError) {
   case
-    decode.run(
-      data,
-      decode.field("milestone_id", decode.dynamic, decode.success),
-    )
+    decode.run(data, decode.field(field_name, decode.dynamic, decode.success))
   {
     Error(_) -> Ok(field_update.unchanged())
     Ok(raw) ->
       decode.run(raw, decode.optional(decode.int))
-      |> result.map(normalize_milestone_id)
+      |> result.map(normalize_optional_id)
       |> result.map(field_update.set)
       |> result.map_error(fn(_) { InvalidJson })
   }
 }
 
 fn normalize_milestone_id(value: Option(Int)) -> Option(Int) {
+  normalize_optional_id(value)
+}
+
+fn normalize_optional_id(value: Option(Int)) -> Option(Int) {
   case value {
     Some(id) if id <= 0 -> None
     _ -> value

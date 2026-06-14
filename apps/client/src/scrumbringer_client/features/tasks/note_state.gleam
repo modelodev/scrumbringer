@@ -1,5 +1,6 @@
 //// Pure task note state transitions.
 
+import gleam/list
 import gleam/option as opt
 
 import domain/api_error.{type ApiError}
@@ -86,6 +87,47 @@ pub fn add_failed(
   member_notes.Model(
     ..notes_model,
     member_note_in_flight: False,
+    member_note_error: opt.Some(err.message),
+  )
+}
+
+pub fn delete_started(
+  notes_model: member_notes.Model,
+  note_id: Int,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_delete_in_flight: opt.Some(note_id),
+    member_note_error: opt.None,
+  )
+}
+
+pub fn deleted(
+  notes_model: member_notes.Model,
+  note_id: Int,
+) -> member_notes.Model {
+  let notes = case notes_model.member_notes {
+    Loaded(items) ->
+      items
+      |> list.filter(fn(note) { note.id != note_id })
+      |> Loaded
+    other -> other
+  }
+
+  member_notes.Model(
+    ..notes_model,
+    member_notes: notes,
+    member_note_delete_in_flight: opt.None,
+  )
+}
+
+pub fn delete_failed(
+  notes_model: member_notes.Model,
+  err: ApiError,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_delete_in_flight: opt.None,
     member_note_error: opt.Some(err.message),
   )
 }

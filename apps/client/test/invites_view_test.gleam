@@ -35,6 +35,9 @@ fn config(invites: invites_state.Model) -> invites_view.Config(String) {
     on_email_changed: fn(value) { "email:" <> value },
     on_link_copy_clicked: fn(value) { "copy:" <> value },
     on_link_regenerate_clicked: fn(value) { "regenerate:" <> value },
+    on_link_invalidate_clicked: fn(value) { "invalidate:" <> value },
+    on_link_invalidate_cancelled: "invalidate-cancel",
+    on_link_invalidate_confirmed: "invalidate-confirm",
   )
 }
 

@@ -108,7 +108,7 @@ Task rules:
 - Creating tasks: any **project member**.
 - Editing tasks (fields other than notes): requires the task to be **claimed by the caller**.
 - Claim/Release/Complete: only valid when the caller is a **project member**; Release/Complete require the caller to be the **claimer**.
-- Notes are **append-only** and can be added by any **project member**.
+- Notes can be added by any **project member** and deleted by their author or a project/org admin; note content is not edited in place.
 - Positions are per-user and can only be written by the **current user**.
 
 ---
@@ -227,7 +227,7 @@ Task rules:
 }
 ```
 
-### TaskNote (append-only)
+### TaskNote
 
 ```json
 {
@@ -619,8 +619,9 @@ Legend:
 | `/api/v1/tasks/:task_id/dependencies` | GET | M | List dependencies |
 | `/api/v1/tasks/:task_id/dependencies` | POST | PA/OA | Add dependency |
 | `/api/v1/tasks/:task_id/dependencies/:depends_on_task_id` | DELETE | PA/OA | Remove dependency |
-| `/api/v1/tasks/:task_id/notes` | GET | M | Notes are append-only |
-| `/api/v1/tasks/:task_id/notes` | POST | M | Append-only |
+| `/api/v1/tasks/:task_id/notes` | GET | M | List task notes |
+| `/api/v1/tasks/:task_id/notes` | POST | M | Add task note |
+| `/api/v1/tasks/:task_id/notes/:note_id` | DELETE | M/PA/OA | Delete task note (author or manager) |
 | `/api/v1/views/tasks/:task_id` | PUT | M | Mark task notes as read (per-user) |
 | `/api/v1/me/task-positions` | GET | M | Per-user positions |
 | `/api/v1/me/task-positions/:task_id` | PUT | M | Per-user positions |
@@ -1366,7 +1367,7 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - csrf: required (double-submit)
   - 204
 
-### Task Notes (append-only)
+### Task Notes
 
 - `GET /api/v1/tasks/:task_id/notes`
   - 200: `{ data: { notes: TaskNote[] } }`
@@ -1376,6 +1377,11 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - csrf: required (double-submit)
   - body: `{ content }`
   - 200: `{ data: { note } }`
+
+- `DELETE /api/v1/tasks/:task_id/notes/:note_id`
+  - auth: note author, project admin, or org admin
+  - csrf: required (double-submit)
+  - 204
 
 ### Task Views (per-user)
 

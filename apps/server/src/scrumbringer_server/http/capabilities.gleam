@@ -52,8 +52,9 @@ pub fn handle_capability(
   capability_id: Int,
 ) -> wisp.Response {
   case req.method {
+    http.Patch -> handle_update(req, ctx, project_id, capability_id)
     http.Delete -> handle_delete(req, ctx, project_id, capability_id)
-    _ -> wisp.method_not_allowed([http.Delete])
+    _ -> wisp.method_not_allowed([http.Patch, http.Delete])
   }
 }
 
@@ -156,6 +157,49 @@ fn handle_delete(
   case require_manager_context(req, ctx, project_id) {
     Error(resp) -> resp
     Ok(_) -> delete_capability(req, ctx, project_id, capability_id)
+  }
+}
+
+fn handle_update(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case require_manager_context(req, ctx, project_id) {
+    Error(resp) -> resp
+    Ok(_) -> update_capability(req, ctx, project_id, capability_id)
+  }
+}
+
+fn update_capability(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  json_payload.with_csrf(req, capability_payloads.decode_create, fn(payload) {
+    update_capability_in_project(ctx, project_id, capability_id, payload.name)
+  })
+}
+
+fn update_capability_in_project(
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+  name: String,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case capabilities_db.update_capability(db, project_id, capability_id, name) {
+    Ok(capability) ->
+      api.ok(capability_presenters.capability_response(capability))
+    Error(capabilities_db.UpdateAlreadyExists) ->
+      api.error(422, "VALIDATION_ERROR", "Capability name already exists")
+    Error(capabilities_db.UpdateNotFound) ->
+      api.error(404, "NOT_FOUND", "Capability not found")
+    Error(capabilities_db.UpdateDbError(_)) ->
+      api.error(500, "INTERNAL", "Database error")
   }
 }
 

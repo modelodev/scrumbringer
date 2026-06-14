@@ -1,14 +1,22 @@
 import gleam/dynamic/decode
+import gleam/int
+import gleam/list
 import gleam/option as opt
 import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, input, text, textarea}
+import lustre/element/html.{
+  button, div, form, input, option, select, text, textarea,
+}
 import lustre/event
 
+import domain/card.{type Card}
+import domain/milestone.{type MilestoneProgress, Completed}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_state
+import domain/task_type.{type TaskType}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -22,13 +30,24 @@ pub type Config(msg) {
     editing: Bool,
     edit_title: String,
     edit_description: String,
+    edit_priority: String,
+    edit_type_id: String,
+    edit_card_id: String,
+    edit_milestone_id: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
+    task_types: Remote(List(TaskType)),
+    cards: List(Card),
+    milestones: Remote(List(MilestoneProgress)),
     parent_card_title: opt.Option(String),
     on_edit_started: msg,
     on_edit_cancelled: msg,
     on_title_changed: fn(String) -> msg,
     on_description_changed: fn(String) -> msg,
+    on_priority_changed: fn(String) -> msg,
+    on_type_id_changed: fn(String) -> msg,
+    on_card_id_changed: fn(String) -> msg,
+    on_milestone_id_changed: fn(String) -> msg,
     on_submitted: msg,
   )
 }
@@ -62,6 +81,11 @@ pub fn is_dirty(config: Config(msg), current_task: Task) -> Bool {
   string.trim(config.edit_title) != current_task.title
   || normalize_description(config.edit_description)
   != task_description_text(current_task)
+  || config.edit_priority != int.to_string(current_task.priority)
+  || effective_type_id(config, current_task)
+  != int.to_string(task_type_id(current_task))
+  || config.edit_card_id != id_to_string(current_task.card_id)
+  || config.edit_milestone_id != id_to_string(current_task.milestone_id)
 }
 
 pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
@@ -99,6 +123,12 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
           "",
         ),
       ),
+      div([attribute.class("task-detail-edit-grid")], [
+        view_type_field(config, current_task),
+        view_priority_field(config),
+        view_card_field(config),
+        view_milestone_field(config),
+      ]),
       form_field.hint(i18n.t(config.locale, i18n_text.TaskEditKeyboardHint)),
       div([attribute.class("task-detail-edit-actions")], [
         button(
@@ -171,6 +201,185 @@ pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
   ])
 }
 
+fn view_type_field(config: Config(msg), current_task: Task) -> Element(msg) {
+  form_field.view(
+    i18n.t(config.locale, i18n_text.TaskType),
+    select(
+      [
+        attribute.value(effective_type_id(config, current_task)),
+        event.on_input(config.on_type_id_changed),
+        attribute.disabled(
+          config.edit_in_flight || !remote_loaded(config.task_types),
+        ),
+      ],
+      task_type_options(config, effective_type_id(config, current_task)),
+    ),
+  )
+}
+
+fn task_type_options(
+  config: Config(msg),
+  selected: String,
+) -> List(Element(msg)) {
+  case config.task_types {
+    Loaded(task_types) -> [
+      option(
+        [attribute.value(""), attribute.selected(selected == "")],
+        i18n.t(config.locale, i18n_text.SelectTaskType),
+      ),
+      ..list.map(task_types, fn(task_type) {
+        let value = int.to_string(task_type.id)
+        option(
+          [attribute.value(value), attribute.selected(selected == value)],
+          task_type.name,
+        )
+      })
+    ]
+    Loading -> [
+      option(
+        [attribute.value(""), attribute.selected(selected == "")],
+        i18n.t(config.locale, i18n_text.LoadingEllipsis),
+      ),
+    ]
+    NotAsked -> [
+      option(
+        [attribute.value(""), attribute.selected(selected == "")],
+        i18n.t(config.locale, i18n_text.SelectProjectFirst),
+      ),
+    ]
+    Failed(_) -> [
+      option(
+        [attribute.value(""), attribute.selected(selected == "")],
+        i18n.t(config.locale, i18n_text.ErrorLoadingTasks),
+      ),
+    ]
+  }
+}
+
+fn view_priority_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    i18n.t(config.locale, i18n_text.Priority),
+    input([
+      attribute.type_("number"),
+      attribute.attribute("min", "1"),
+      attribute.attribute("max", "5"),
+      attribute.value(config.edit_priority),
+      attribute.disabled(config.edit_in_flight),
+      event.on_input(config.on_priority_changed),
+    ]),
+  )
+}
+
+fn view_card_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    i18n.t(config.locale, i18n_text.ParentCardLabel),
+    select(
+      [
+        attribute.value(config.edit_card_id),
+        attribute.disabled(config.edit_in_flight),
+        event.on_input(config.on_card_id_changed),
+      ],
+      [
+        option(
+          [attribute.value(""), attribute.selected(config.edit_card_id == "")],
+          i18n.t(config.locale, i18n_text.NoCard),
+        ),
+        ..list.map(config.cards, fn(card) {
+          let value = int.to_string(card.id)
+          option(
+            [
+              attribute.value(value),
+              attribute.selected(config.edit_card_id == value),
+            ],
+            card.title,
+          )
+        })
+      ],
+    ),
+  )
+}
+
+fn view_milestone_field(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    i18n.t(config.locale, i18n_text.Milestones),
+    select(
+      [
+        attribute.value(config.edit_milestone_id),
+        attribute.disabled(
+          config.edit_in_flight
+          || config.edit_card_id != ""
+          || !remote_loaded(config.milestones),
+        ),
+        event.on_input(config.on_milestone_id_changed),
+      ],
+      milestone_options(config),
+    ),
+  )
+}
+
+fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
+  case config.milestones {
+    Loaded(milestones) -> [
+      option(
+        [
+          attribute.value(""),
+          attribute.selected(config.edit_milestone_id == ""),
+        ],
+        "-",
+      ),
+      ..milestones
+      |> list.filter(fn(progress) {
+        progress.milestone.state != Completed
+        || config.edit_milestone_id == int.to_string(progress.milestone.id)
+      })
+      |> list.map(fn(progress) {
+        let value = int.to_string(progress.milestone.id)
+        option(
+          [
+            attribute.value(value),
+            attribute.selected(config.edit_milestone_id == value),
+          ],
+          progress.milestone.name,
+        )
+      })
+    ]
+    Loading -> [
+      option(
+        [
+          attribute.value(""),
+          attribute.selected(config.edit_milestone_id == ""),
+        ],
+        i18n.t(config.locale, i18n_text.LoadingEllipsis),
+      ),
+    ]
+    NotAsked -> [
+      option(
+        [
+          attribute.value(""),
+          attribute.selected(config.edit_milestone_id == ""),
+        ],
+        "-",
+      ),
+    ]
+    Failed(_) -> [
+      option(
+        [
+          attribute.value(""),
+          attribute.selected(config.edit_milestone_id == ""),
+        ],
+        i18n.t(config.locale, i18n_text.MilestonesLoadError),
+      ),
+    ]
+  }
+}
+
+fn remote_loaded(remote: Remote(List(item))) -> Bool {
+  case remote {
+    Loaded(_) -> True
+    _ -> False
+  }
+}
+
 pub fn view_readonly_fields(
   config: Config(msg),
   current_task: Task,
@@ -234,6 +443,27 @@ fn normalize_description(description: String) -> String {
   case string.trim(description) {
     "" -> ""
     _ -> description
+  }
+}
+
+fn id_to_string(id: opt.Option(Int)) -> String {
+  case id {
+    opt.Some(value) -> int.to_string(value)
+    opt.None -> ""
+  }
+}
+
+fn task_type_id(task: Task) -> Int {
+  case task.type_id > 0 {
+    True -> task.type_id
+    False -> task.task_type.id
+  }
+}
+
+fn effective_type_id(config: Config(msg), current_task: Task) -> String {
+  case config.edit_type_id {
+    "" -> int.to_string(task_type_id(current_task))
+    value -> value
   }
 }
 

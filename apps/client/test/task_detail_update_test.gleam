@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/option as opt
 import gleam/string
 import lustre/effect
@@ -41,6 +42,10 @@ fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
     on_edit_cancelled: "edit-cancel",
     on_edit_title_changed: fn(value) { "title:" <> value },
     on_edit_description_changed: fn(value) { "description:" <> value },
+    on_edit_priority_changed: fn(value) { "priority:" <> value },
+    on_edit_type_id_changed: fn(value) { "type:" <> value },
+    on_edit_card_id_changed: fn(value) { "card:" <> value },
+    on_edit_milestone_id_changed: fn(value) { "milestone:" <> value },
     on_edit_submitted: "edit-submit",
     on_note_dialog_opened: "note-open",
     on_note_dialog_closed: "note-close",
@@ -60,6 +65,7 @@ fn task_detail_view(model: client_state.Model, task_id: Int) {
     model.member.dependencies,
     model.member.notes,
     model.core.user |> opt.map(fn(user) { user.id }),
+    False,
     [],
     task_id,
     task_details_callbacks(),
@@ -167,6 +173,38 @@ pub fn task_details_open_sets_default_tasks_tab_test() {
   let assert "Prepare release" = next.member.pool.member_task_detail_edit_title
   let assert "Review release checklist." =
     next.member.pool.member_task_detail_edit_description
+}
+
+pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test() {
+  let model =
+    model_with_task()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_tasks: remote.Loaded([]),
+          member_tasks_by_project: dict.from_list([#(1, [sample_task()])]),
+        ),
+      )
+    })
+
+  let config =
+    task_details_dialog.from_state(
+      model.ui.locale,
+      model.member.pool,
+      model.member.dependencies,
+      model.member.notes,
+      model.core.user |> opt.map(fn(user) { user.id }),
+      False,
+      [],
+      42,
+      task_details_callbacks(),
+    )
+
+  let assert opt.Some(found) = config.task
+  let assert "Prepare release" = found.title
 }
 
 pub fn task_details_close_resets_default_tasks_tab_test() {
@@ -301,4 +339,31 @@ pub fn task_detail_edit_started_allows_unclaimed_task_test() {
     )
 
   let assert True = next.member.pool.member_task_detail_editing
+}
+
+pub fn task_detail_edit_started_uses_project_cache_when_active_list_misses_task_test() {
+  let model =
+    model_with_task()
+    |> model_with_notes_task_id(42)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_tasks: remote.Loaded([]),
+          member_tasks_by_project: dict.from_list([#(1, [sample_task()])]),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberTaskDetailEditStarted,
+      test_context(),
+    )
+
+  let assert True = next.member.pool.member_task_detail_editing
+  let assert "1" = next.member.pool.member_task_detail_edit_type_id
 }

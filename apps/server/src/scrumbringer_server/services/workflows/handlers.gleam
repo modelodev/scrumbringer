@@ -439,11 +439,7 @@ fn update_editable_task(
     updates.type_id,
     current.project_id,
   )
-  use _ <- result.try(validate_milestone_update(
-    db,
-    current,
-    updates.milestone_id,
-  ))
+  use _ <- result.try(validate_placement_update(db, user_id, current, updates))
 
   let title_update = field_update.to_option(updates.title)
   let description_update = field_update.to_option(updates.description)
@@ -460,6 +456,7 @@ fn update_editable_task(
       priority_update,
       type_id_update,
       updates.milestone_id,
+      updates.card_id,
       version,
     )
   {
@@ -476,21 +473,70 @@ fn update_editable_task(
   }
 }
 
+fn validate_placement_update(
+  db: pog.Connection,
+  user_id: Int,
+  current: task_mappers.Task,
+  updates: TaskUpdates,
+) -> Result(Nil, Error) {
+  use _ <- result.try(validate_card_update(
+    db,
+    user_id,
+    current.project_id,
+    updates.card_id,
+  ))
+
+  let target_card_id = field_update.unwrap(updates.card_id, current.card_id)
+
+  case target_card_id, updates.milestone_id {
+    Some(_), field_update.Set(Some(_)) -> Error(TaskMilestoneInheritedFromCard)
+    Some(_), field_update.Set(None) -> Ok(Nil)
+    _, _ ->
+      validate_milestone_update(
+        db,
+        current,
+        target_card_id,
+        updates.milestone_id,
+      )
+  }
+}
+
+fn validate_card_update(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+  card_update: field_update.FieldUpdate(Option(Int)),
+) -> Result(Nil, Error) {
+  case card_update {
+    field_update.Unchanged | field_update.Set(None) -> Ok(Nil)
+    field_update.Set(Some(card_id)) ->
+      case cards_db.get_card(db, card_id, user_id) {
+        Ok(card) ->
+          case card.project_id == project_id {
+            True -> Ok(Nil)
+            False -> Error(ValidationError("Invalid card_id"))
+          }
+        Error(_) -> Error(ValidationError("Invalid card_id"))
+      }
+  }
+}
+
 fn validate_milestone_update(
   db: pog.Connection,
   current: task_mappers.Task,
+  target_card_id: Option(Int),
   milestone_update: field_update.FieldUpdate(Option(Int)),
-) -> Result(Response, Error) {
+) -> Result(Nil, Error) {
   case milestone_update {
-    field_update.Unchanged -> Ok(TaskResult(current))
+    field_update.Unchanged -> Ok(Nil)
     field_update.Set(target) ->
-      case current.card_id {
+      case target_card_id {
         Some(_) -> Error(TaskMilestoneInheritedFromCard)
         None ->
           case
             validate_milestone_move(db, current.project_id, current.id, target)
           {
-            Ok(Nil) -> Ok(TaskResult(current))
+            Ok(Nil) -> Ok(Nil)
             Error(e) -> Error(e)
           }
       }

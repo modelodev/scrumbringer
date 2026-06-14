@@ -82,11 +82,13 @@ fn config(
   task_notes.Config(
     locale: locale.En,
     current_user_id: current_user_id,
+    can_manage_notes: False,
     notes: notes,
     dialog_mode: dialog_mode,
     note_content: note_content,
     note_error: None,
     note_in_flight: note_in_flight,
+    delete_in_flight: None,
     on_dialog_opened: "open",
     on_dialog_closed: "close",
     on_content_changed: fn(value) { "content-" <> value },

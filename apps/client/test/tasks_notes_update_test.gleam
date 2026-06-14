@@ -14,6 +14,7 @@ fn note_context() -> tasks_update.NoteContext(Nil) {
     content_required: "Content required",
     note_added: "Note added",
     on_note_added: fn(_result) { Nil },
+    on_note_deleted: fn(_note_id, _result) { Nil },
     on_notes_fetched: fn(_result) { Nil },
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
   )

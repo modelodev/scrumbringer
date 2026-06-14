@@ -52,7 +52,7 @@ import scrumbringer_client/api/tasks/task_types as task_types_api
 // Domain types
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/metrics.{type TaskModalMetrics}
-import domain/remote.{type Remote, Failed, NotAsked}
+import domain/remote.{Failed, NotAsked}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
@@ -105,6 +105,8 @@ pub type TaskDetailEditContext(parent_msg) {
     on_task_updated: fn(ApiResult(Task)) -> parent_msg,
     title_required: String,
     title_too_long_max_56: String,
+    type_required: String,
+    priority_must_be_1_to_5: String,
   )
 }
 
@@ -113,6 +115,7 @@ pub type NoteContext(parent_msg) {
     content_required: String,
     note_added: String,
     on_note_added: fn(ApiResult(TaskNote)) -> parent_msg,
+    on_note_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
     on_notes_fetched: fn(ApiResult(List(TaskNote))) -> parent_msg,
     on_success_toast: fn(String) -> Effect(parent_msg),
   )
@@ -642,19 +645,6 @@ pub fn handle_complete_clicked(
   }
 }
 
-fn task_detail_edit_values(
-  tasks: Remote(List(Task)),
-  task_id: Int,
-) -> #(String, String) {
-  case helpers_lookup.find_task_by_id(tasks, task_id) {
-    opt.Some(current_task) -> #(
-      current_task.title,
-      detail_edit_form.task_description_text(current_task),
-    )
-    opt.None -> #("", "")
-  }
-}
-
 fn submit_task_detail_edit(
   model: member_pool.Model,
   context: TaskDetailEditContext(parent_msg),
@@ -667,10 +657,16 @@ fn submit_task_detail_edit(
           detail_edit_form.Input(
             title: model.member_task_detail_edit_title,
             description: model.member_task_detail_edit_description,
+            priority: model.member_task_detail_edit_priority,
+            type_id: model.member_task_detail_edit_type_id,
+            card_id: model.member_task_detail_edit_card_id,
+            milestone_id: model.member_task_detail_edit_milestone_id,
           ),
           detail_edit_form.Labels(
             title_required: context.title_required,
             title_too_long_max_56: context.title_too_long_max_56,
+            type_required: context.type_required,
+            priority_must_be_1_to_5: context.priority_must_be_1_to_5,
           ),
         )
       {
@@ -678,18 +674,24 @@ fn submit_task_detail_edit(
           detail_state.edit_invalid(model, message),
           effect.none(),
         )
-        detail_edit_form.Unchanged(title, description) -> #(
-          detail_state.edit_unchanged(model, title, description),
+        detail_edit_form.Unchanged(submission) -> #(
+          detail_state.edit_unchanged(model, submission),
           effect.none(),
         )
-        detail_edit_form.Changed(title, description) -> {
+        detail_edit_form.Changed(submission) -> {
           #(
-            detail_state.edit_started_submit(model, title, description),
+            detail_state.edit_started_submit(model, submission),
             task_operations_api.update_task(
               current_task.id,
-              current_task.version,
-              title,
-              description,
+              task_operations_api.TaskUpdatePayload(
+                version: current_task.version,
+                title: submission.title,
+                description: submission.description,
+                priority: submission.priority,
+                type_id: submission.type_id,
+                card_id: submission.card_id,
+                milestone_id: submission.milestone_id,
+              ),
               context.on_task_updated,
             ),
           )
@@ -784,6 +786,22 @@ pub fn try_task_detail_update(
       handle_task_detail_edit_description_changed(model.pool, value)
       |> task_detail_pool_result(model)
 
+    pool_messages.MemberTaskDetailEditPriorityChanged(value) ->
+      handle_task_detail_edit_priority_changed(model.pool, value)
+      |> task_detail_pool_result(model)
+
+    pool_messages.MemberTaskDetailEditTypeIdChanged(value) ->
+      handle_task_detail_edit_type_id_changed(model.pool, value)
+      |> task_detail_pool_result(model)
+
+    pool_messages.MemberTaskDetailEditCardIdChanged(value) ->
+      handle_task_detail_edit_card_id_changed(model.pool, value)
+      |> task_detail_pool_result(model)
+
+    pool_messages.MemberTaskDetailEditMilestoneIdChanged(value) ->
+      handle_task_detail_edit_milestone_id_changed(model.pool, value)
+      |> task_detail_pool_result(model)
+
     pool_messages.MemberTaskDetailEditSubmitted ->
       handle_task_detail_edit_submitted(model.pool, context.edit_context)
       |> task_detail_pool_result(model)
@@ -846,16 +864,19 @@ pub fn handle_task_details_opened(
   task_id: Int,
   context: TaskDetailContext(parent_msg),
 ) -> #(TaskDetailModel, Effect(parent_msg)) {
-  let #(edit_title, edit_description) =
-    task_detail_edit_values(model.pool.member_tasks, task_id)
+  let current_task =
+    helpers_lookup.find_task_by_id_in_cache(
+      model.pool.member_tasks,
+      model.pool.member_tasks_by_project,
+      task_id,
+    )
   let #(pool, notes, dependencies) =
     detail_state.open(
       model.pool,
       model.notes,
       model.dependencies,
       task_id,
-      edit_title,
-      edit_description,
+      current_task,
     )
   let next_model =
     TaskDetailModel(pool: pool, notes: notes, dependencies: dependencies)
@@ -919,6 +940,34 @@ pub fn handle_task_detail_edit_description_changed(
   value: String,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   #(detail_state.change_edit_description(model, value), effect.none())
+}
+
+pub fn handle_task_detail_edit_priority_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(detail_state.change_edit_priority(model, value), effect.none())
+}
+
+pub fn handle_task_detail_edit_type_id_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(detail_state.change_edit_type_id(model, value), effect.none())
+}
+
+pub fn handle_task_detail_edit_card_id_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(detail_state.change_edit_card_id(model, value), effect.none())
+}
+
+pub fn handle_task_detail_edit_milestone_id_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(detail_state.change_edit_milestone_id(model, value), effect.none())
 }
 
 pub fn handle_task_detail_edit_submitted(
@@ -996,6 +1045,18 @@ pub fn try_note_update(
 
     pool_messages.MemberNoteAdded(Error(err)) ->
       handle_note_added_error(model, err, context)
+      |> note_with_auth_check(err)
+
+    pool_messages.MemberNoteDeleteClicked(note_id) ->
+      handle_note_delete_clicked(model, note_id, context)
+      |> note_without_auth_check
+
+    pool_messages.MemberNoteDeleted(note_id, Ok(Nil)) ->
+      handle_note_deleted_ok(model, note_id)
+      |> note_without_auth_check
+
+    pool_messages.MemberNoteDeleted(_note_id, Error(err)) ->
+      handle_note_deleted_error(model, err)
       |> note_with_auth_check(err)
 
     _ -> opt.None
@@ -1129,4 +1190,35 @@ pub fn handle_note_added_error(
     )
     opt.None -> #(model, effect.none())
   }
+}
+
+pub fn handle_note_delete_clicked(
+  model: member_notes.Model,
+  note_id: Int,
+  context: NoteContext(parent_msg),
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  case model.member_note_delete_in_flight, model.member_notes_task_id {
+    opt.Some(_), _ -> #(model, effect.none())
+    _, opt.None -> #(model, effect.none())
+    opt.None, opt.Some(task_id) -> #(
+      note_state.delete_started(model, note_id),
+      task_notes_api.delete_task_note(task_id, note_id, fn(result) {
+        context.on_note_deleted(note_id, result)
+      }),
+    )
+  }
+}
+
+pub fn handle_note_deleted_ok(
+  model: member_notes.Model,
+  note_id: Int,
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  #(note_state.deleted(model, note_id), effect.none())
+}
+
+pub fn handle_note_deleted_error(
+  model: member_notes.Model,
+  err: ApiError,
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  #(note_state.delete_failed(model, err), effect.none())
 }

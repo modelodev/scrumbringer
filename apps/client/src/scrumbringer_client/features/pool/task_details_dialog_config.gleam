@@ -1,15 +1,14 @@
-import gleam/list
 import gleam/option as opt
 import lustre/element.{type Element}
 
 import domain/card.{type Card}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
 import scrumbringer_client/client_state/member/pool as pool_state
 import scrumbringer_client/features/pool/dialogs
+import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/utils/card_queries
@@ -28,6 +27,10 @@ pub type Callbacks(msg) {
     on_edit_cancelled: msg,
     on_edit_title_changed: fn(String) -> msg,
     on_edit_description_changed: fn(String) -> msg,
+    on_edit_priority_changed: fn(String) -> msg,
+    on_edit_type_id_changed: fn(String) -> msg,
+    on_edit_card_id_changed: fn(String) -> msg,
+    on_edit_milestone_id_changed: fn(String) -> msg,
     on_edit_submitted: msg,
     on_note_dialog_opened: msg,
     on_note_dialog_closed: msg,
@@ -46,6 +49,7 @@ pub fn view(
   dependencies: dependencies_state.Model,
   notes: notes_state.Model,
   current_user_id: opt.Option(Int),
+  can_manage_notes: Bool,
   cards: List(Card),
   task_id: Int,
   callbacks: Callbacks(msg),
@@ -56,6 +60,7 @@ pub fn view(
     dependencies,
     notes,
     current_user_id,
+    can_manage_notes,
     cards,
     task_id,
     callbacks,
@@ -68,6 +73,7 @@ pub fn from_state(
   dependencies: dependencies_state.Model,
   notes: notes_state.Model,
   current_user_id: opt.Option(Int),
+  can_manage_notes: Bool,
   cards: List(Card),
   task_id: Int,
   callbacks: Callbacks(msg),
@@ -79,6 +85,7 @@ pub fn from_state(
     task_id: task_id,
     task: task,
     current_user_id: current_user_id,
+    can_manage_notes: can_manage_notes,
     active_tab: pool.member_task_detail_tab,
     notes: notes.member_notes,
     metrics: pool.member_task_detail_metrics,
@@ -93,13 +100,21 @@ pub fn from_state(
     editing: pool.member_task_detail_editing,
     edit_title: pool.member_task_detail_edit_title,
     edit_description: pool.member_task_detail_edit_description,
+    edit_priority: pool.member_task_detail_edit_priority,
+    edit_type_id: pool.member_task_detail_edit_type_id,
+    edit_card_id: pool.member_task_detail_edit_card_id,
+    edit_milestone_id: pool.member_task_detail_edit_milestone_id,
     edit_error: pool.member_task_detail_edit_error,
     edit_in_flight: pool.member_task_detail_edit_in_flight,
+    task_types: pool.member_task_types,
+    cards: cards,
+    milestones: pool.member_milestones,
     parent_card_title: parent_card_title(cards, task),
     note_dialog_mode: notes.member_note_dialog_mode,
     note_content: notes.member_note_content,
     note_error: notes.member_note_error,
     note_in_flight: notes.member_note_in_flight,
+    note_delete_in_flight: notes.member_note_delete_in_flight,
     disable_actions: pool.member_task_mutation_in_flight
       || pool.member_task_detail_editing
       || pool.member_task_detail_edit_in_flight,
@@ -115,6 +130,10 @@ pub fn from_state(
     on_edit_cancelled: callbacks.on_edit_cancelled,
     on_edit_title_changed: callbacks.on_edit_title_changed,
     on_edit_description_changed: callbacks.on_edit_description_changed,
+    on_edit_priority_changed: callbacks.on_edit_priority_changed,
+    on_edit_type_id_changed: callbacks.on_edit_type_id_changed,
+    on_edit_card_id_changed: callbacks.on_edit_card_id_changed,
+    on_edit_milestone_id_changed: callbacks.on_edit_milestone_id_changed,
     on_edit_submitted: callbacks.on_edit_submitted,
     on_note_dialog_opened: callbacks.on_note_dialog_opened,
     on_note_dialog_closed: callbacks.on_note_dialog_closed,
@@ -128,11 +147,11 @@ pub fn from_state(
 }
 
 fn find_task(pool: pool_state.Model, task_id: Int) -> opt.Option(Task) {
-  case pool.member_tasks {
-    Loaded(tasks) ->
-      list.find(tasks, fn(task) { task.id == task_id }) |> opt.from_result
-    NotAsked | Loading | Failed(_) -> opt.None
-  }
+  helpers_lookup.find_task_by_id_in_cache(
+    pool.member_tasks,
+    pool.member_tasks_by_project,
+    task_id,
+  )
 }
 
 fn parent_card_title(

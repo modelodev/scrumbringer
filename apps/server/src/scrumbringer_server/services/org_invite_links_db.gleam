@@ -104,6 +104,7 @@ pub type InviteLinkDataError {
 pub type InviteLinkError {
   DbError(pog.QueryError)
   InvalidLifecycle(InviteLinkDataError)
+  NotFound
 }
 
 /// Inserts or updates an invite link for an email.
@@ -215,6 +216,27 @@ pub fn list_invite_links(
       row.invalidated_at,
     )
   })
+}
+
+/// Invalidates an active invite link for an organization and email.
+pub fn invalidate_invite_link(
+  db: pog.Connection,
+  org_id: Int,
+  email: String,
+) -> Result(OrgInviteLink, InviteLinkError) {
+  case sql.org_invite_links_invalidate(db, org_id, email) {
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      invite_link_from_fields(
+        row.email,
+        row.token,
+        row.state,
+        row.created_at,
+        row.used_at,
+        row.invalidated_at,
+      )
+  }
 }
 
 fn invite_link_from_fields(

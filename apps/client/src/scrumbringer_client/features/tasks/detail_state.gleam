@@ -1,5 +1,6 @@
 //// Pure task detail state transitions.
 
+import gleam/int
 import gleam/option as opt
 
 import domain/api_error.{type ApiError}
@@ -19,17 +20,22 @@ pub fn open(
   notes: member_notes.Model,
   dependencies: member_dependencies.Model,
   task_id: Int,
-  edit_title: String,
-  edit_description: String,
+  maybe_task: opt.Option(Task),
 ) -> #(member_pool.Model, member_notes.Model, member_dependencies.Model) {
+  let fields = edit_fields(maybe_task)
+
   #(
     member_pool.Model(
       ..pool,
       member_task_detail_tab: task_tabs.TasksTab,
       member_task_detail_metrics: Loading,
       member_task_detail_editing: False,
-      member_task_detail_edit_title: edit_title,
-      member_task_detail_edit_description: edit_description,
+      member_task_detail_edit_title: fields.title,
+      member_task_detail_edit_description: fields.description,
+      member_task_detail_edit_priority: fields.priority,
+      member_task_detail_edit_type_id: fields.type_id,
+      member_task_detail_edit_card_id: fields.card_id,
+      member_task_detail_edit_milestone_id: fields.milestone_id,
       member_task_detail_edit_in_flight: False,
       member_task_detail_edit_error: opt.None,
     ),
@@ -38,6 +44,7 @@ pub fn open(
       member_notes_task_id: opt.Some(task_id),
       member_notes: Loading,
       member_note_error: opt.None,
+      member_note_delete_in_flight: opt.None,
     ),
     member_dependencies.Model(
       ..dependencies,
@@ -46,6 +53,40 @@ pub fn open(
       member_dependency_remove_in_flight: opt.None,
     ),
   )
+}
+
+type EditFields {
+  EditFields(
+    title: String,
+    description: String,
+    priority: String,
+    type_id: String,
+    card_id: String,
+    milestone_id: String,
+  )
+}
+
+fn edit_fields(maybe_task: opt.Option(Task)) -> EditFields {
+  case maybe_task {
+    opt.Some(task) ->
+      EditFields(
+        title: task.title,
+        description: detail_edit_form.task_description_text(task),
+        priority: int.to_string(task.priority),
+        type_id: int.to_string(detail_edit_form.task_type_id(task)),
+        card_id: id_to_form_value(task.card_id),
+        milestone_id: id_to_form_value(task.milestone_id),
+      )
+    opt.None ->
+      EditFields(
+        title: "",
+        description: "",
+        priority: "3",
+        type_id: "",
+        card_id: "",
+        milestone_id: "",
+      )
+  }
 }
 
 pub fn close(
@@ -60,6 +101,10 @@ pub fn close(
       member_task_detail_editing: False,
       member_task_detail_edit_title: "",
       member_task_detail_edit_description: "",
+      member_task_detail_edit_priority: "3",
+      member_task_detail_edit_type_id: "",
+      member_task_detail_edit_card_id: "",
+      member_task_detail_edit_milestone_id: "",
       member_task_detail_edit_in_flight: False,
       member_task_detail_edit_error: opt.None,
     ),
@@ -70,6 +115,7 @@ pub fn close(
       member_note_content: "",
       member_note_error: opt.None,
       member_note_dialog_mode: dialog_mode.DialogClosed,
+      member_note_delete_in_flight: opt.None,
     ),
     member_dependencies.default_model(),
   )
@@ -96,6 +142,14 @@ pub fn start_edit(
         member_task_detail_edit_description: detail_edit_form.task_description_text(
           task,
         ),
+        member_task_detail_edit_priority: int.to_string(task.priority),
+        member_task_detail_edit_type_id: int.to_string(
+          detail_edit_form.task_type_id(task),
+        ),
+        member_task_detail_edit_card_id: id_to_form_value(task.card_id),
+        member_task_detail_edit_milestone_id: id_to_form_value(
+          task.milestone_id,
+        ),
         member_task_detail_edit_in_flight: False,
         member_task_detail_edit_error: opt.None,
       )
@@ -115,6 +169,14 @@ pub fn cancel_edit(
         member_task_detail_edit_title: task.title,
         member_task_detail_edit_description: detail_edit_form.task_description_text(
           task,
+        ),
+        member_task_detail_edit_priority: int.to_string(task.priority),
+        member_task_detail_edit_type_id: int.to_string(
+          detail_edit_form.task_type_id(task),
+        ),
+        member_task_detail_edit_card_id: id_to_form_value(task.card_id),
+        member_task_detail_edit_milestone_id: id_to_form_value(
+          task.milestone_id,
         ),
         member_task_detail_edit_in_flight: False,
         member_task_detail_edit_error: opt.None,
@@ -145,6 +207,51 @@ pub fn change_edit_description(
   )
 }
 
+pub fn change_edit_priority(
+  pool: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..pool,
+    member_task_detail_edit_priority: value,
+    member_task_detail_edit_error: opt.None,
+  )
+}
+
+pub fn change_edit_type_id(
+  pool: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..pool,
+    member_task_detail_edit_type_id: value,
+    member_task_detail_edit_error: opt.None,
+  )
+}
+
+pub fn change_edit_card_id(
+  pool: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..pool,
+    member_task_detail_edit_card_id: value,
+    member_task_detail_edit_milestone_id: "",
+    member_task_detail_edit_error: opt.None,
+  )
+}
+
+pub fn change_edit_milestone_id(
+  pool: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..pool,
+    member_task_detail_edit_milestone_id: value,
+    member_task_detail_edit_error: opt.None,
+  )
+}
+
 pub fn edit_invalid(
   pool: member_pool.Model,
   message: String,
@@ -154,14 +261,19 @@ pub fn edit_invalid(
 
 pub fn edit_unchanged(
   pool: member_pool.Model,
-  title: String,
-  description: String,
+  submission: detail_edit_form.Submission,
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
     member_task_detail_editing: False,
-    member_task_detail_edit_title: title,
-    member_task_detail_edit_description: description,
+    member_task_detail_edit_title: submission.title,
+    member_task_detail_edit_description: submission.description,
+    member_task_detail_edit_priority: int.to_string(submission.priority),
+    member_task_detail_edit_type_id: int.to_string(submission.type_id),
+    member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
+    member_task_detail_edit_milestone_id: id_to_form_value(
+      submission.milestone_id,
+    ),
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: opt.None,
   )
@@ -169,13 +281,18 @@ pub fn edit_unchanged(
 
 pub fn edit_started_submit(
   pool: member_pool.Model,
-  title: String,
-  description: String,
+  submission: detail_edit_form.Submission,
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_title: title,
-    member_task_detail_edit_description: description,
+    member_task_detail_edit_title: submission.title,
+    member_task_detail_edit_description: submission.description,
+    member_task_detail_edit_priority: int.to_string(submission.priority),
+    member_task_detail_edit_type_id: int.to_string(submission.type_id),
+    member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
+    member_task_detail_edit_milestone_id: id_to_form_value(
+      submission.milestone_id,
+    ),
     member_task_detail_edit_in_flight: True,
     member_task_detail_edit_error: opt.None,
   )
@@ -207,9 +324,24 @@ pub fn task_updated(
     member_task_detail_edit_description: detail_edit_form.task_description_text(
       updated_task,
     ),
+    member_task_detail_edit_priority: int.to_string(updated_task.priority),
+    member_task_detail_edit_type_id: int.to_string(
+      detail_edit_form.task_type_id(updated_task),
+    ),
+    member_task_detail_edit_card_id: id_to_form_value(updated_task.card_id),
+    member_task_detail_edit_milestone_id: id_to_form_value(
+      updated_task.milestone_id,
+    ),
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: opt.None,
   )
+}
+
+fn id_to_form_value(id: opt.Option(Int)) -> String {
+  case id {
+    opt.Some(value) -> int.to_string(value)
+    opt.None -> ""
+  }
 }
 
 pub fn task_update_failed(

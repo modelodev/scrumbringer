@@ -49,8 +49,10 @@ pub fn translate(text: Text) -> String {
     text.ProjectCreated -> "Proyecto creado"
     text.CapabilityCreated -> "Capacidad creada"
     text.CapabilityDeleted -> "Capacidad eliminada"
+    text.CapabilityUpdated -> "Capacidad actualizada"
     text.InviteLinkCreated -> "Link de invitación creado"
     text.InviteLinkRegenerated -> "Link de invitación regenerado"
+    text.InviteLinkInvalidated -> "Link de invitación invalidado"
     text.RoleUpdated -> "Rol actualizado"
     text.CannotDemoteLastManager ->
       "No se puede degradar al último manager del proyecto"
@@ -405,6 +407,11 @@ pub fn translate(text: Text) -> String {
     text.AdminTaskTypes -> "Tipos de tarea"
     text.AdminApiTokens -> "Tokens API"
     text.Integration -> "Integración"
+    text.IntegrationIdentity -> "Identidad de integración"
+    text.IntegrationIdentityHint ->
+      "Los nombres existentes se reutilizan; los nuevos crean una identidad técnica."
+    text.ApiTokenGrantsImmutable ->
+      "Los permisos son inmutables. Revoca y crea otro token para cambiar scopes, proyecto o expiración."
     text.IntegrationRequired -> "La integración es obligatoria"
     text.ApiTokens -> "Tokens API"
     text.CreateApiToken -> "Crear token API"
@@ -554,6 +561,9 @@ pub fn translate(text: Text) -> String {
     text.State -> "Estado"
     text.CreatedAt -> "Creado"
     text.Regenerate -> "Regenerar"
+    text.InvalidateInvite -> "Invalidar"
+    text.InvalidateInviteConfirm(email) ->
+      "¿Invalidar el link para " <> email <> "? Este link dejará de funcionar."
     // Invite link states (Story 4.8)
     text.InviteStateActive -> "Pendiente"
     text.InviteStateUsed -> "Usada"
@@ -585,6 +595,7 @@ pub fn translate(text: Text) -> String {
       "¿Eliminar la capacidad \""
       <> name
       <> "\"? Esta acción no se puede deshacer."
+    text.EditCapability -> "Editar capacidad"
     text.CapabilityNamePlaceholder -> "ej., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "Aún no hay capacidades"
 

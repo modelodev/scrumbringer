@@ -13,6 +13,8 @@ pub type Model {
     invite_link_dialog: state_types.DialogState(state_types.InviteLinkForm),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
+    invite_link_invalidate_confirm: Option(String),
+    invite_link_invalidate_in_flight: Option(String),
   )
 }
 
@@ -23,5 +25,7 @@ pub fn default_model() -> Model {
     invite_link_dialog: state_types.DialogClosed(operation: state_types.Idle),
     invite_link_last: option.None,
     invite_link_copy_status: option.None,
+    invite_link_invalidate_confirm: option.None,
+    invite_link_invalidate_in_flight: option.None,
   )
 }

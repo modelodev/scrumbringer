@@ -170,6 +170,8 @@ fn route_org(
       Some(org_invite_links.handle_invite_links(req, auth_ctx))
     ["api", "v1", "org", "invite-links", "regenerate"] ->
       Some(org_invite_links.handle_regenerate(req, auth_ctx))
+    ["api", "v1", "org", "invite-links", "invalidate"] ->
+      Some(org_invite_links.handle_invalidate(req, auth_ctx))
     ["api", "v1", "org", "users"] ->
       Some(org_users.handle_org_users(req, auth_ctx))
     ["api", "v1", "org", "users", user_id] ->
@@ -352,6 +354,8 @@ fn route_tasks(
       Some(tasks.handle_task_dependencies(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "dependencies", dep_task_id] ->
       Some(tasks.handle_task_dependency(req, auth_ctx, task_id, dep_task_id))
+    ["api", "v1", "tasks", task_id, "notes", note_id] ->
+      Some(task_notes.handle_task_note(req, auth_ctx, task_id, note_id))
     ["api", "v1", "tasks", task_id, "notes"] ->
       Some(task_notes.handle_task_notes(req, auth_ctx, task_id))
     ["api", "v1", "views", "tasks", task_id] ->

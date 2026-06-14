@@ -72,6 +72,9 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ),
     div([], [
       view_created_secret(config),
+      div([attribute.class("task-section-hint")], [
+        text(t(config, i18n_text.ApiTokenGrantsImmutable)),
+      ]),
       div([attribute.class("api-token-list-card")], [view_tokens(config)]),
     ]),
     [
@@ -174,7 +177,7 @@ fn view_token_dialog(config: Config(msg)) -> Element(msg) {
           ]),
         ),
         form_field.view_required(
-          t(config, i18n_text.Integration),
+          t(config, i18n_text.IntegrationIdentity),
           input([
             attribute.type_("text"),
             attribute.value(token_form.integration),
@@ -182,6 +185,7 @@ fn view_token_dialog(config: Config(msg)) -> Element(msg) {
             event.on_input(config.on_token_integration_changed),
           ]),
         ),
+        form_field.hint(t(config, i18n_text.IntegrationIdentityHint)),
         form_field.view(
           t(config, i18n_text.Project),
           select(

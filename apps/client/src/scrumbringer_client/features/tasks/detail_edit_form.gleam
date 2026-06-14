@@ -1,22 +1,47 @@
 //// Pure task detail edit form validation and change detection.
 
+import gleam/int
+import gleam/option as opt
 import gleam/string
 
 import domain/task.{type Task}
 import scrumbringer_client/features/tasks/detail_editor
 
 pub type Input {
-  Input(title: String, description: String)
+  Input(
+    title: String,
+    description: String,
+    priority: String,
+    type_id: String,
+    card_id: String,
+    milestone_id: String,
+  )
 }
 
 pub type Labels {
-  Labels(title_required: String, title_too_long_max_56: String)
+  Labels(
+    title_required: String,
+    title_too_long_max_56: String,
+    type_required: String,
+    priority_must_be_1_to_5: String,
+  )
+}
+
+pub type Submission {
+  Submission(
+    title: String,
+    description: String,
+    priority: Int,
+    type_id: Int,
+    card_id: opt.Option(Int),
+    milestone_id: opt.Option(Int),
+  )
 }
 
 pub type Decision {
   Invalid(message: String)
-  Unchanged(title: String, description: String)
-  Changed(title: String, description: String)
+  Unchanged(submission: Submission)
+  Changed(submission: Submission)
 }
 
 pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
@@ -25,15 +50,38 @@ pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
   case validate_title(title, labels) {
     Error(message) -> Invalid(message)
     Ok(title) -> {
-      let description = normalize_description(input.description)
+      case
+        validate_type_id(
+          effective_type_input(input.type_id, current_task),
+          labels,
+        )
+      {
+        Error(message) -> Invalid(message)
+        Ok(type_id) ->
+          case validate_priority(input.priority, labels) {
+            Error(message) -> Invalid(message)
+            Ok(priority) -> {
+              let card_id = optional_id_from_input(input.card_id)
+              let milestone_id = case card_id {
+                opt.Some(_) -> opt.None
+                opt.None -> optional_id_from_input(input.milestone_id)
+              }
+              let submission =
+                Submission(
+                  title: title,
+                  description: normalize_description(input.description),
+                  priority: priority,
+                  type_id: type_id,
+                  card_id: card_id,
+                  milestone_id: milestone_id,
+                )
 
-      case is_dirty(current_task, title, description) {
-        True -> Changed(title: title, description: description)
-        False ->
-          Unchanged(
-            title: current_task.title,
-            description: task_description_text(current_task),
-          )
+              case is_dirty(current_task, submission) {
+                True -> Changed(submission)
+                False -> Unchanged(submission)
+              }
+            }
+          }
       }
     }
   }
@@ -54,6 +102,20 @@ fn validate_title(title: String, labels: Labels) -> Result(String, String) {
   }
 }
 
+fn validate_type_id(type_id: String, labels: Labels) -> Result(Int, String) {
+  case int.parse(type_id) {
+    Ok(id) if id > 0 -> Ok(id)
+    _ -> Error(labels.type_required)
+  }
+}
+
+fn validate_priority(priority: String, labels: Labels) -> Result(Int, String) {
+  case int.parse(priority) {
+    Ok(value) if value >= 1 && value <= 5 -> Ok(value)
+    _ -> Error(labels.priority_must_be_1_to_5)
+  }
+}
+
 fn normalize_description(description: String) -> String {
   case string.trim(description) {
     "" -> ""
@@ -61,11 +123,32 @@ fn normalize_description(description: String) -> String {
   }
 }
 
-fn is_dirty(
-  current_task: Task,
-  next_title: String,
-  next_description: String,
-) -> Bool {
-  next_title != current_task.title
-  || next_description != task_description_text(current_task)
+fn is_dirty(current_task: Task, submission: Submission) -> Bool {
+  submission.title != current_task.title
+  || submission.description != task_description_text(current_task)
+  || submission.priority != current_task.priority
+  || submission.type_id != task_type_id(current_task)
+  || submission.card_id != current_task.card_id
+  || submission.milestone_id != current_task.milestone_id
+}
+
+pub fn task_type_id(task: Task) -> Int {
+  case task.type_id > 0 {
+    True -> task.type_id
+    False -> task.task_type.id
+  }
+}
+
+fn effective_type_input(type_id: String, current_task: Task) -> String {
+  case string.trim(type_id) {
+    "" -> int.to_string(task_type_id(current_task))
+    value -> value
+  }
+}
+
+fn optional_id_from_input(value: String) -> opt.Option(Int) {
+  case int.parse(value) {
+    Ok(id) if id > 0 -> opt.Some(id)
+    _ -> opt.None
+  }
 }

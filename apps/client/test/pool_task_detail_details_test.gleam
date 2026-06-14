@@ -2,6 +2,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
 
+import domain/remote.{NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
@@ -49,13 +50,24 @@ fn config(
     editing: False,
     edit_title: "Prepare release",
     edit_description: "Review release checklist.",
+    edit_priority: "2",
+    edit_type_id: "1",
+    edit_card_id: "",
+    edit_milestone_id: "",
     edit_error: None,
     edit_in_flight: False,
+    task_types: NotAsked,
+    cards: [],
+    milestones: NotAsked,
     parent_card_title: Some("Release card"),
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
     on_description_changed: fn(value) { "description:" <> value },
+    on_priority_changed: fn(value) { "priority:" <> value },
+    on_type_id_changed: fn(value) { "type:" <> value },
+    on_card_id_changed: fn(value) { "card:" <> value },
+    on_milestone_id_changed: fn(value) { "milestone:" <> value },
     on_submitted: "submitted",
   )
 }

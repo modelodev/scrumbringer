@@ -7,7 +7,9 @@ import gleam/list
 import gleam/result
 import pog
 import scrumbringer_server/services/persisted_field
-import scrumbringer_server/services/service_error.{type ServiceError, DbError}
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, NotFound,
+}
 import scrumbringer_server/sql
 
 /// A note attached to a task.
@@ -72,6 +74,32 @@ pub fn create_note(
   }
 }
 
+/// Get a note for a task by ID.
+pub fn get_note(
+  db: pog.Connection,
+  task_id: Int,
+  note_id: Int,
+) -> Result(TaskNote, ServiceError) {
+  case sql.task_notes_get(db, task_id, note_id) {
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_get_row(row))
+  }
+}
+
+/// Deletes a note by ID.
+pub fn delete_note(
+  db: pog.Connection,
+  task_id: Int,
+  note_id: Int,
+) -> Result(Nil, ServiceError) {
+  case sql.task_notes_delete(db, task_id, note_id) {
+    Ok(pog.Returned(rows: [_row, ..], ..)) -> Ok(Nil)
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
 fn note_from_list_row(row: sql.TaskNotesListRow) -> TaskNote {
   note_from_fields(
     row.id,
@@ -83,6 +111,16 @@ fn note_from_list_row(row: sql.TaskNotesListRow) -> TaskNote {
 }
 
 fn note_from_create_row(row: sql.TaskNotesCreateRow) -> TaskNote {
+  note_from_fields(
+    row.id,
+    row.task_id,
+    row.user_id,
+    row.content,
+    row.created_at,
+  )
+}
+
+fn note_from_get_row(row: sql.TaskNotesGetRow) -> TaskNote {
   note_from_fields(
     row.id,
     row.task_id,

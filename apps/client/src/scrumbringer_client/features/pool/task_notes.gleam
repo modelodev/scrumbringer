@@ -25,11 +25,13 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     current_user_id: opt.Option(Int),
+    can_manage_notes: Bool,
     notes: Remote(List(TaskNote)),
     dialog_mode: dialog_mode.DialogMode,
     note_content: String,
     note_error: opt.Option(String),
     note_in_flight: Bool,
+    delete_in_flight: opt.Option(Int),
     on_dialog_opened: msg,
     on_dialog_closed: msg,
     on_content_changed: fn(String) -> msg,
@@ -129,14 +131,20 @@ fn task_note_to_view(config: Config(msg), note: TaskNote) -> notes_list.NoteView
     True -> t(config, i18n_text.You)
     False -> t(config, i18n_text.UserNumber(user_id))
   }
+  let is_own_note = config.current_user_id == opt.Some(user_id)
+  let can_delete = config.can_manage_notes || is_own_note
+  let delete_context = case is_own_note {
+    True -> notes_list_types.DeleteOwnNote
+    False -> notes_list_types.DeleteAsAdmin
+  }
 
   notes_list.NoteView(
     id: id,
     author: author,
     created_at: created_at,
     content: content,
-    can_delete: False,
-    delete_context: notes_list_types.DeleteOwnNote,
+    can_delete: can_delete && config.delete_in_flight != opt.Some(id),
+    delete_context: delete_context,
     author_email: "",
     author_project_role: opt.None,
     author_org_role: org_role.Member,

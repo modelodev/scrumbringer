@@ -42,6 +42,8 @@ fn edit_context(
     on_task_updated: fn(_result) { Nil },
     title_required: "Title required",
     title_too_long_max_56: "Title too long",
+    type_required: "Type required",
+    priority_must_be_1_to_5: "Priority must be 1-5",
   )
 }
 
@@ -264,6 +266,8 @@ pub fn local_task_detail_edit_submitted_unchanged_stops_editing_test() {
       member_task_detail_editing: True,
       member_task_detail_edit_title: "Prepare release",
       member_task_detail_edit_description: "Review checklist.",
+      member_task_detail_edit_priority: "2",
+      member_task_detail_edit_type_id: "1",
       member_task_detail_edit_error: Some("old"),
     )
 
@@ -287,6 +291,8 @@ pub fn local_task_detail_edit_submitted_changed_sets_in_flight_test() {
       member_task_detail_editing: True,
       member_task_detail_edit_title: " Updated title ",
       member_task_detail_edit_description: "Updated description",
+      member_task_detail_edit_priority: "2",
+      member_task_detail_edit_type_id: "1",
     )
 
   let #(next, fx) =

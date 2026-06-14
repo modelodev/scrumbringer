@@ -53,6 +53,7 @@ pub type Context(parent_msg) {
     on_capability_members_saved: fn(ApiResult(api_projects.CapabilityMembers)) ->
       parent_msg,
     on_capability_created: fn(ApiResult(Capability)) -> parent_msg,
+    on_capability_updated: fn(ApiResult(Capability)) -> parent_msg,
     on_capability_deleted: fn(ApiResult(Int)) -> parent_msg,
     name_required: String,
   )
@@ -60,6 +61,7 @@ pub type Context(parent_msg) {
 
 pub type Success {
   CapabilityCreated
+  CapabilityUpdated
   CapabilityDeleted
   MemberCapabilitiesSaved
   CapabilityMembersSaved
@@ -68,6 +70,7 @@ pub type Success {
 pub type FeedbackContext(parent_msg) {
   FeedbackContext(
     capability_created: String,
+    capability_updated: String,
     capability_deleted: String,
     member_capabilities_saved: String,
     capability_members_saved: String,
@@ -129,6 +132,36 @@ pub fn try_update(
 
     admin_messages.CapabilityCreated(Error(err)) ->
       handle_capability_created_error(
+        model,
+        permission_error_message(err, error_feedback),
+      )
+      |> with_auth_check_and_effect(
+        err,
+        permission_warning_effect(err, error_feedback),
+      )
+
+    admin_messages.CapabilityEditDialogOpened(capability_id, name) ->
+      handle_capability_edit_dialog_opened(model, capability_id, name)
+      |> without_auth_check
+
+    admin_messages.CapabilityEditDialogClosed ->
+      handle_capability_edit_dialog_closed(model)
+      |> without_auth_check
+
+    admin_messages.CapabilityEditNameChanged(name) ->
+      handle_capability_edit_name_changed(model, name)
+      |> without_auth_check
+
+    admin_messages.CapabilityEditSubmitted ->
+      handle_capability_edit_submitted(model, context)
+      |> without_auth_check
+
+    admin_messages.CapabilityUpdated(Ok(capability)) ->
+      handle_capability_updated_ok(model, capability, feedback)
+      |> without_auth_check
+
+    admin_messages.CapabilityUpdated(Error(err)) ->
+      handle_capability_updated_error(
         model,
         permission_error_message(err, error_feedback),
       )
@@ -761,6 +794,141 @@ pub fn handle_capability_created_error(
   )
 }
 
+pub fn handle_capability_edit_dialog_opened(
+  model: admin_capabilities.Model,
+  capability_id: Int,
+  name: String,
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  #(
+    admin_capabilities.Model(
+      ..model,
+      capabilities_dialog_mode: dialog_mode.DialogEdit,
+      capability_edit_dialog_id: opt.Some(capability_id),
+      capability_edit_name: name,
+      capability_edit_in_flight: False,
+      capability_edit_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+pub fn handle_capability_edit_dialog_closed(
+  model: admin_capabilities.Model,
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  #(
+    admin_capabilities.Model(
+      ..model,
+      capabilities_dialog_mode: dialog_mode.DialogClosed,
+      capability_edit_dialog_id: opt.None,
+      capability_edit_name: "",
+      capability_edit_in_flight: False,
+      capability_edit_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+pub fn handle_capability_edit_name_changed(
+  model: admin_capabilities.Model,
+  name: String,
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  #(
+    admin_capabilities.Model(
+      ..model,
+      capability_edit_name: name,
+      capability_edit_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+pub fn handle_capability_edit_submitted(
+  model: admin_capabilities.Model,
+  context: Context(parent_msg),
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  case
+    model.capability_edit_in_flight,
+    model.capability_edit_dialog_id,
+    context.selected_project_id
+  {
+    True, _, _ -> #(model, effect.none())
+    _, opt.None, _ -> #(model, effect.none())
+    _, _, opt.None -> #(model, effect.none())
+    False, opt.Some(capability_id), opt.Some(project_id) -> {
+      let name = string.trim(model.capability_edit_name)
+      case name == "" {
+        True -> #(
+          admin_capabilities.Model(
+            ..model,
+            capability_edit_error: opt.Some(context.name_required),
+          ),
+          effect.none(),
+        )
+        False -> #(
+          admin_capabilities.Model(
+            ..model,
+            capability_edit_name: name,
+            capability_edit_in_flight: True,
+            capability_edit_error: opt.None,
+          ),
+          api_org.update_project_capability(
+            project_id,
+            capability_id,
+            name,
+            context.on_capability_updated,
+          ),
+        )
+      }
+    }
+  }
+}
+
+pub fn handle_capability_updated_ok(
+  model: admin_capabilities.Model,
+  capability: Capability,
+  feedback: FeedbackContext(parent_msg),
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  let updated = case model.capabilities {
+    Loaded(capabilities) ->
+      capabilities
+      |> list.map(fn(existing) {
+        case existing.id == capability.id {
+          True -> capability
+          False -> existing
+        }
+      })
+      |> Loaded
+    other -> other
+  }
+
+  #(
+    admin_capabilities.Model(
+      ..model,
+      capabilities: updated,
+      capabilities_dialog_mode: dialog_mode.DialogClosed,
+      capability_edit_dialog_id: opt.None,
+      capability_edit_name: "",
+      capability_edit_in_flight: False,
+      capability_edit_error: opt.None,
+    ),
+    success_effect(CapabilityUpdated, feedback),
+  )
+}
+
+pub fn handle_capability_updated_error(
+  model: admin_capabilities.Model,
+  message: String,
+) -> #(admin_capabilities.Model, Effect(parent_msg)) {
+  #(
+    admin_capabilities.Model(
+      ..model,
+      capability_edit_in_flight: False,
+      capability_edit_error: opt.Some(message),
+    ),
+    effect.none(),
+  )
+}
+
 // =============================================================================
 // Capability Delete Handlers (Story 4.9 AC9)
 // =============================================================================
@@ -880,6 +1048,7 @@ pub fn success_effect(
 fn success_message(success: Success, context: FeedbackContext(parent_msg)) {
   case success {
     CapabilityCreated -> context.capability_created
+    CapabilityUpdated -> context.capability_updated
     CapabilityDeleted -> context.capability_deleted
     MemberCapabilitiesSaved -> context.member_capabilities_saved
     CapabilityMembersSaved -> context.capability_members_saved

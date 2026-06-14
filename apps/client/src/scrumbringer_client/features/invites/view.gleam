@@ -34,6 +34,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
@@ -57,6 +58,9 @@ pub type Config(msg) {
     on_email_changed: fn(String) -> msg,
     on_link_copy_clicked: fn(String) -> msg,
     on_link_regenerate_clicked: fn(String) -> msg,
+    on_link_invalidate_clicked: fn(String) -> msg,
+    on_link_invalidate_cancelled: msg,
+    on_link_invalidate_confirmed: msg,
   )
 }
 
@@ -77,6 +81,7 @@ pub fn view_invites(config: Config(msg)) -> Element(msg) {
     view_latest_invite(config),
     // Invite links list
     view_invite_links_list(config),
+    view_invalidate_confirm(config),
     // Create dialog
     view_create_dialog(config),
   ])
@@ -159,24 +164,69 @@ fn view_invite_links_list(config: Config(msg)) -> Element(msg) {
         ),
         data_table.column_with_class(
           translate(i18n_text.Actions),
-          fn(link: InviteLink) {
-            action_buttons.task_icon_button(
-              translate(i18n_text.Regenerate),
-              config.on_link_regenerate_clicked(link.email),
-              icons.Refresh,
-              action_buttons.SizeXs,
-              in_flight,
-              "",
-              opt.None,
-              opt.None,
-            )
-          },
+          fn(link: InviteLink) { view_invite_actions(config, link, in_flight) },
           "col-actions",
           "cell-actions",
         ),
       ])
       |> data_table.with_key(fn(link: InviteLink) { link.email }),
   )
+}
+
+fn view_invite_actions(
+  config: Config(msg),
+  link: InviteLink,
+  in_flight: Bool,
+) -> Element(msg) {
+  let invalidate_in_flight =
+    config.invites.invite_link_invalidate_in_flight == opt.Some(link.email)
+
+  div([attribute.class("action-buttons")], [
+    action_buttons.task_icon_button(
+      t(config, i18n_text.Regenerate),
+      config.on_link_regenerate_clicked(link.email),
+      icons.Refresh,
+      action_buttons.SizeXs,
+      in_flight || invalidate_in_flight,
+      "",
+      opt.None,
+      opt.None,
+    ),
+    case link.state {
+      Active ->
+        action_buttons.task_icon_button(
+          t(config, i18n_text.InvalidateInvite),
+          config.on_link_invalidate_clicked(link.email),
+          icons.Trash,
+          action_buttons.SizeXs,
+          in_flight || invalidate_in_flight,
+          "",
+          opt.None,
+          opt.None,
+        )
+      Used | Invalidated -> element.none()
+    },
+  ])
+}
+
+fn view_invalidate_confirm(config: Config(msg)) -> Element(msg) {
+  case config.invites.invite_link_invalidate_confirm {
+    opt.None -> element.none()
+    opt.Some(email) ->
+      confirm_dialog.view(confirm_dialog.ConfirmConfig(
+        title: t(config, i18n_text.InvalidateInvite),
+        body: [text(t(config, i18n_text.InvalidateInviteConfirm(email)))],
+        confirm_label: t(config, i18n_text.InvalidateInvite),
+        cancel_label: t(config, i18n_text.Cancel),
+        on_confirm: config.on_link_invalidate_confirmed,
+        on_cancel: config.on_link_invalidate_cancelled,
+        is_open: True,
+        is_loading: config.invites.invite_link_invalidate_in_flight
+          == opt.Some(email),
+        error: opt.None,
+        confirm_class: "btn-danger",
+      ))
+  }
 }
 
 fn view_create_dialog(config: Config(msg)) -> Element(msg) {

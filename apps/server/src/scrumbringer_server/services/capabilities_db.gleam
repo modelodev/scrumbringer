@@ -31,6 +31,12 @@ pub type CreateCapabilityError {
   DbError(pog.QueryError)
 }
 
+pub type UpdateCapabilityError {
+  UpdateAlreadyExists
+  UpdateNotFound
+  UpdateDbError(pog.QueryError)
+}
+
 fn capability_from_fields(
   id: Int,
   project_id: Int,
@@ -47,6 +53,10 @@ fn capability_from_list_row(
 }
 
 fn capability_from_create_row(row: sql.CapabilitiesCreateRow) -> Capability {
+  capability_from_fields(row.id, row.project_id, row.name, row.created_at)
+}
+
+fn capability_from_update_row(row: sql.CapabilitiesUpdateRow) -> Capability {
   capability_from_fields(row.id, row.project_id, row.name, row.created_at)
 }
 
@@ -137,6 +147,32 @@ fn map_create_error(
         False -> Error(DbError(error))
       }
     _ -> Error(DbError(error))
+  }
+}
+
+pub fn update_capability(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+  name: String,
+) -> Result(Capability, UpdateCapabilityError) {
+  case sql.capabilities_update(db, project_id, capability_id, name) {
+    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(capability_from_update_row(row))
+    Error(error) -> map_update_error(error)
+  }
+}
+
+fn map_update_error(
+  error: pog.QueryError,
+) -> Result(Capability, UpdateCapabilityError) {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      case string.contains(constraint, "capabilities") {
+        True -> Error(UpdateAlreadyExists)
+        False -> Error(UpdateDbError(error))
+      }
+    _ -> Error(UpdateDbError(error))
   }
 }
 

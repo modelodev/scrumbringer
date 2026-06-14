@@ -113,6 +113,14 @@ fn type_id_update_value(value: Option(Int)) -> Int {
 fn milestone_id_update_value(
   value: field_update.FieldUpdate(Option(Int)),
 ) -> Int {
+  optional_id_update_value(value)
+}
+
+fn card_id_update_value(value: field_update.FieldUpdate(Option(Int))) -> Int {
+  optional_id_update_value(value)
+}
+
+fn optional_id_update_value(value: field_update.FieldUpdate(Option(Int))) -> Int {
   case value {
     field_update.Unchanged -> -1
     field_update.Set(None) -> 0
@@ -198,6 +206,7 @@ pub fn update_editable_task(
   priority: Option(Int),
   type_id: Option(Int),
   milestone_id: field_update.FieldUpdate(Option(Int)),
+  card_id: field_update.FieldUpdate(Option(Int)),
   version: Int,
 ) -> Result(Task, service_error.ServiceError) {
   case
@@ -210,6 +219,7 @@ pub fn update_editable_task(
       priority_update_value(priority),
       type_id_update_value(type_id),
       milestone_id_update_value(milestone_id),
+      card_id_update_value(card_id),
       version,
     )
   {

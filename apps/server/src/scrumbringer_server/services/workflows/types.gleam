@@ -112,6 +112,7 @@ pub type TaskUpdates {
     priority: field_update.FieldUpdate(Int),
     type_id: field_update.FieldUpdate(Int),
     milestone_id: field_update.FieldUpdate(Option(Int)),
+    card_id: field_update.FieldUpdate(Option(Int)),
   )
 }
 

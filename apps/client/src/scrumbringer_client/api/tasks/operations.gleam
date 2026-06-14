@@ -279,18 +279,32 @@ pub fn get_task_metrics(
 }
 
 /// Update editable task fields from the task detail modal.
+pub type TaskUpdatePayload {
+  TaskUpdatePayload(
+    version: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    type_id: Int,
+    card_id: option.Option(Int),
+    milestone_id: option.Option(Int),
+  )
+}
+
 pub fn update_task(
   task_id: Int,
-  version: Int,
-  title: String,
-  description: String,
+  payload: TaskUpdatePayload,
   to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([
-      #("version", json.int(version)),
-      #("title", json.string(title)),
-      #("description", json.string(description)),
+      #("version", json.int(payload.version)),
+      #("title", json.string(payload.title)),
+      #("description", json.string(payload.description)),
+      #("priority", json.int(payload.priority)),
+      #("type_id", json.int(payload.type_id)),
+      #("card_id", optional_int(payload.card_id)),
+      #("milestone_id", optional_int(payload.milestone_id)),
     ])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
@@ -300,6 +314,13 @@ pub fn update_task(
     decoder,
     to_msg,
   )
+}
+
+fn optional_int(value: option.Option(Int)) -> json.Json {
+  case value {
+    option.Some(id) -> json.int(id)
+    option.None -> json.null()
+  }
 }
 
 /// Update milestone assignment for a task.

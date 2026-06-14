@@ -42,6 +42,7 @@ pub type Context(parent_msg) {
     on_links_fetched: fn(ApiResult(List(InviteLink))) -> parent_msg,
     on_link_created: fn(ApiResult(InviteLink)) -> parent_msg,
     on_link_regenerated: fn(ApiResult(InviteLink)) -> parent_msg,
+    on_link_invalidated: fn(ApiResult(InviteLink)) -> parent_msg,
     on_copy_finished: fn(Bool) -> parent_msg,
     email_required: String,
     copying: String,
@@ -53,12 +54,14 @@ pub type Context(parent_msg) {
 pub type Success {
   InviteLinkCreated
   InviteLinkRegenerated
+  InviteLinkInvalidated
 }
 
 pub type FeedbackContext(parent_msg) {
   FeedbackContext(
     invite_link_created: String,
     invite_link_regenerated: String,
+    invite_link_invalidated: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
   )
 }
@@ -129,6 +132,26 @@ pub fn try_update(
 
     admin_messages.InviteLinkRegenerated(Error(err)) ->
       handle_invite_link_regenerated_error(model, err, error_feedback)
+      |> with_auth_check(err)
+
+    admin_messages.InviteLinkInvalidateClicked(email) ->
+      handle_invite_link_invalidate_clicked(model, email)
+      |> without_auth_check
+
+    admin_messages.InviteLinkInvalidateCancelled ->
+      handle_invite_link_invalidate_cancelled(model)
+      |> without_auth_check
+
+    admin_messages.InviteLinkInvalidateConfirmed ->
+      handle_invite_link_invalidate_confirmed(model, context)
+      |> without_auth_check
+
+    admin_messages.InviteLinkInvalidated(Ok(link)) ->
+      handle_invite_link_invalidated_ok(model, link, context, feedback)
+      |> without_auth_check
+
+    admin_messages.InviteLinkInvalidated(Error(err)) ->
+      handle_invite_link_invalidated_error(model, err, error_feedback)
       |> with_auth_check(err)
 
     admin_messages.InviteLinkCopyClicked(text) ->
@@ -410,6 +433,77 @@ pub fn handle_invite_link_regenerated_error(
   )
 }
 
+pub fn handle_invite_link_invalidate_clicked(
+  model: admin_invites.Model,
+  email: String,
+) -> #(admin_invites.Model, Effect(parent_msg)) {
+  #(
+    admin_invites.Model(
+      ..model,
+      invite_link_invalidate_confirm: opt.Some(email),
+    ),
+    effect.none(),
+  )
+}
+
+pub fn handle_invite_link_invalidate_cancelled(
+  model: admin_invites.Model,
+) -> #(admin_invites.Model, Effect(parent_msg)) {
+  #(
+    admin_invites.Model(..model, invite_link_invalidate_confirm: opt.None),
+    effect.none(),
+  )
+}
+
+pub fn handle_invite_link_invalidate_confirmed(
+  model: admin_invites.Model,
+  context: Context(parent_msg),
+) -> #(admin_invites.Model, Effect(parent_msg)) {
+  case model.invite_link_invalidate_confirm {
+    opt.None -> #(model, effect.none())
+    opt.Some(email) -> #(
+      admin_invites.Model(
+        ..model,
+        invite_link_invalidate_in_flight: opt.Some(email),
+        invite_link_copy_status: opt.None,
+      ),
+      api_org.invalidate_invite_link(email, context.on_link_invalidated),
+    )
+  }
+}
+
+pub fn handle_invite_link_invalidated_ok(
+  model: admin_invites.Model,
+  _link: InviteLink,
+  context: Context(parent_msg),
+  feedback: FeedbackContext(parent_msg),
+) -> #(admin_invites.Model, Effect(parent_msg)) {
+  #(
+    admin_invites.Model(
+      ..model,
+      invite_link_invalidate_confirm: opt.None,
+      invite_link_invalidate_in_flight: opt.None,
+      invite_link_copy_status: opt.None,
+    ),
+    effect.batch([
+      api_org.list_invite_links(context.on_links_fetched),
+      success_effect(InviteLinkInvalidated, feedback),
+    ]),
+  )
+}
+
+pub fn handle_invite_link_invalidated_error(
+  model: admin_invites.Model,
+  err: ApiError,
+  feedback: ErrorFeedbackContext(parent_msg),
+) -> #(admin_invites.Model, Effect(parent_msg)) {
+  let message = error_message(err, feedback)
+  #(
+    admin_invites.Model(..model, invite_link_invalidate_in_flight: opt.None),
+    error_effect(err, message, feedback),
+  )
+}
+
 fn update_invite_error_state(
   dialog: DialogState(InviteLinkForm),
   message: String,
@@ -500,6 +594,7 @@ fn success_message(success: Success, context: FeedbackContext(parent_msg)) {
   case success {
     InviteLinkCreated -> context.invite_link_created
     InviteLinkRegenerated -> context.invite_link_regenerated
+    InviteLinkInvalidated -> context.invite_link_invalidated
   }
 }
 

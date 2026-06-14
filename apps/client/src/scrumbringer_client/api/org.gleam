@@ -250,6 +250,32 @@ pub fn create_project_capability(
   )
 }
 
+/// Update a capability name in a project.
+pub fn update_project_capability(
+  project_id: Int,
+  capability_id: Int,
+  name: String,
+  to_msg: fn(ApiResult(Capability)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("name", json.string(name))])
+  let decoder =
+    decode.field(
+      "capability",
+      capability_codec.capability_decoder(),
+      decode.success,
+    )
+  core.request(
+    core.Patch,
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/capabilities/"
+      <> int.to_string(capability_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
 /// Delete a capability from a project (Story 4.9 AC9).
 pub fn delete_project_capability(
   project_id: Int,
@@ -332,6 +358,21 @@ pub fn regenerate_invite_link(
   core.request(
     core.Post,
     "/api/v1/org/invite-links/regenerate",
+    option.Some(body),
+    invite_link_payload_decoder(),
+    to_msg,
+  )
+}
+
+/// Invalidate an active invite link for an email.
+pub fn invalidate_invite_link(
+  email: String,
+  to_msg: fn(ApiResult(InviteLink)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("email", json.string(string.trim(email)))])
+  core.request(
+    core.Post,
+    "/api/v1/org/invite-links/invalidate",
     option.Some(body),
     invite_link_payload_decoder(),
     to_msg,

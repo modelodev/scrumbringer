@@ -158,6 +158,14 @@ fn capabilities_config(model: Model) -> capabilities_view.Config(Msg) {
       admin_msg(admin_messages.CapabilityCreateNameChanged(value))
     },
     on_create_submitted: admin_msg(admin_messages.CapabilityCreateSubmitted),
+    on_edit_opened: fn(id, name) {
+      admin_msg(admin_messages.CapabilityEditDialogOpened(id, name))
+    },
+    on_edit_closed: admin_msg(admin_messages.CapabilityEditDialogClosed),
+    on_edit_name_changed: fn(value) {
+      admin_msg(admin_messages.CapabilityEditNameChanged(value))
+    },
+    on_edit_submitted: admin_msg(admin_messages.CapabilityEditSubmitted),
     on_delete_opened: fn(id) {
       admin_msg(admin_messages.CapabilityDeleteDialogOpened(id))
     },

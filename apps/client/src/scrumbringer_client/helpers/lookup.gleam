@@ -1,5 +1,6 @@
 //// Helpers for remote/cache lookups.
 
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
@@ -22,6 +23,35 @@ pub fn find_task_by_id(tasks: Remote(List(Task)), task_id: Int) -> Option(Task) 
       }
 
     _ -> None
+  }
+}
+
+/// Find a task by ID in the active Remote list, falling back to per-project
+/// task caches populated by project refreshes.
+pub fn find_task_by_id_in_cache(
+  tasks: Remote(List(Task)),
+  tasks_by_project: Dict(Int, List(Task)),
+  task_id: Int,
+) -> Option(Task) {
+  case find_task_by_id(tasks, task_id) {
+    Some(task) -> Some(task)
+    None ->
+      tasks_by_project
+      |> dict.values
+      |> list.flatten
+      |> find_task_in_list(task_id)
+  }
+}
+
+fn find_task_in_list(tasks: List(Task), task_id: Int) -> Option(Task) {
+  case
+    list.find(tasks, fn(t) {
+      let Task(id: id, ..) = t
+      id == task_id
+    })
+  {
+    Ok(t) -> Some(t)
+    Error(_) -> None
   }
 }
 

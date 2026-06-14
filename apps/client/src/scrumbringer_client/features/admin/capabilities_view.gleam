@@ -38,6 +38,10 @@ pub type Config(msg) {
     on_create_closed: msg,
     on_create_name_changed: fn(String) -> msg,
     on_create_submitted: msg,
+    on_edit_opened: fn(Int, String) -> msg,
+    on_edit_closed: msg,
+    on_edit_name_changed: fn(String) -> msg,
+    on_edit_submitted: msg,
     on_delete_opened: fn(Int) -> msg,
     on_delete_closed: msg,
     on_delete_submitted: msg,
@@ -66,6 +70,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         opt.Some(capability_id) -> view_members_dialog(config, capability_id)
         opt.None -> element.none()
       },
+      view_edit_dialog(config),
       view_delete_dialog(config),
     ],
   )
@@ -128,6 +133,68 @@ fn view_create_dialog(config: Config(msg)) -> Element(msg) {
           text(case config.capabilities.capabilities_create_in_flight {
             True -> t(config, i18n_text.Creating)
             False -> t(config, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_edit_dialog(config: Config(msg)) -> Element(msg) {
+  let is_open = case config.capabilities.capabilities_dialog_mode {
+    dialog_mode.DialogEdit -> True
+    _ -> False
+  }
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: t(config, i18n_text.EditCapability),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: config.on_edit_closed,
+    ),
+    is_open,
+    config.capabilities.capability_edit_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { config.on_edit_submitted }),
+          attribute.id("capability-edit-form"),
+        ],
+        [
+          form_field.view(
+            t(config, i18n_text.Name),
+            input([
+              attribute.type_("text"),
+              attribute.value(config.capabilities.capability_edit_name),
+              event.on_input(config.on_edit_name_changed),
+              attribute.required(True),
+              attribute.placeholder(t(
+                config,
+                i18n_text.CapabilityNamePlaceholder,
+              )),
+              attribute.attribute("aria-label", "Capability name"),
+            ]),
+          ),
+        ],
+      ),
+    ],
+    [
+      dialog.cancel_button_with_locale(config.locale, config.on_edit_closed),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("capability-edit-form"),
+          attribute.disabled(config.capabilities.capability_edit_in_flight),
+          attribute.class(case config.capabilities.capability_edit_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
+        ],
+        [
+          text(case config.capabilities.capability_edit_in_flight {
+            True -> t(config, i18n_text.Saving)
+            False -> t(config, i18n_text.Save)
           }),
         ],
       ),
@@ -214,6 +281,11 @@ fn view_list(
           t(config, i18n_text.Actions),
           fn(c: Capability) {
             div([attribute.class("btn-group")], [
+              action_buttons.edit_button_with_testid(
+                t(config, i18n_text.EditCapability),
+                config.on_edit_opened(c.id, c.name),
+                "capability-edit-btn",
+              ),
               action_buttons.settings_button_with_testid(
                 t(config, i18n_text.ManageMembers),
                 config.on_members_opened(c.id),

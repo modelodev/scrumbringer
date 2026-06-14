@@ -1,10 +1,11 @@
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote.{Loaded, NotAsked}
-import domain/task.{Task}
+import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
-import gleam/option.{None}
+import gleam/dict
+import gleam/option.{None, Some}
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/helpers/options as helpers_options
 
@@ -22,33 +23,45 @@ pub fn find_task_by_id_returns_none_when_not_loaded_test() {
 
 pub fn find_task_by_id_returns_none_when_missing_test() {
   let state = task_state.Available
-  let tasks = [
-    Task(
-      id: 1,
-      project_id: 1,
-      type_id: 1,
-      task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
-      ongoing_by: None,
-      title: "T",
-      description: None,
-      priority: 3,
-      state: state,
-      status: task_state.to_status(state),
-      work_state: task_state.to_work_state(state),
-      created_by: 1,
-      created_at: "2026-01-01T00:00:00Z",
-      version: 1,
-      milestone_id: None,
-      card_id: None,
-      card_title: None,
-      card_color: None,
-      has_new_notes: False,
-      blocked_count: 0,
-      dependencies: [],
-    ),
-  ]
+  let tasks = [task_with_state(1, state)]
 
   let assert None = helpers_lookup.find_task_by_id(Loaded(tasks), 99)
+}
+
+pub fn find_task_by_id_in_cache_falls_back_to_project_cache_test() {
+  let state = task_state.Available
+  let cached_task = task_with_state(42, state)
+  let tasks_by_project = dict.from_list([#(7, [cached_task])])
+
+  let assert Some(found) =
+    helpers_lookup.find_task_by_id_in_cache(NotAsked, tasks_by_project, 42)
+  let assert 42 = found.id
+}
+
+fn task_with_state(id: Int, state: task_state.TaskState) -> Task {
+  Task(
+    id: id,
+    project_id: 1,
+    type_id: 1,
+    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
+    ongoing_by: None,
+    title: "T",
+    description: None,
+    priority: 3,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    version: 1,
+    milestone_id: None,
+    card_id: None,
+    card_title: None,
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
+  )
 }
 
 pub fn resolve_org_user_returns_none_when_not_loaded_test() {

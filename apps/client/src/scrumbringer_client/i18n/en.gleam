@@ -48,8 +48,10 @@ pub fn translate(text: Text) -> String {
     text.ProjectCreated -> "Project created"
     text.CapabilityCreated -> "Capability created"
     text.CapabilityDeleted -> "Capability deleted"
+    text.CapabilityUpdated -> "Capability updated"
     text.InviteLinkCreated -> "Invite link created"
     text.InviteLinkRegenerated -> "Invite link regenerated"
+    text.InviteLinkInvalidated -> "Invite link invalidated"
     text.RoleUpdated -> "Role updated"
     text.CannotDemoteLastManager -> "Cannot demote the last project manager"
     text.MemberAdded -> "Member added"
@@ -400,6 +402,11 @@ pub fn translate(text: Text) -> String {
     text.AdminTaskTypes -> "Task Types"
     text.AdminApiTokens -> "API tokens"
     text.Integration -> "Integration"
+    text.IntegrationIdentity -> "Integration identity"
+    text.IntegrationIdentityHint ->
+      "Existing names are reused; new names create a technical identity."
+    text.ApiTokenGrantsImmutable ->
+      "Grants are immutable. Revoke and create a new token to change scopes, project, or expiration."
     text.IntegrationRequired -> "Integration is required"
     text.ApiTokens -> "API tokens"
     text.CreateApiToken -> "Create API token"
@@ -543,6 +550,9 @@ pub fn translate(text: Text) -> String {
     text.State -> "State"
     text.CreatedAt -> "Created"
     text.Regenerate -> "Regenerate"
+    text.InvalidateInvite -> "Invalidate"
+    text.InvalidateInviteConfirm(email) ->
+      "Invalidate invite for " <> email <> "? This link will stop working."
     // Invite link states (Story 4.8)
     text.InviteStateActive -> "Pending"
     text.InviteStateUsed -> "Used"
@@ -571,6 +581,7 @@ pub fn translate(text: Text) -> String {
     text.DeleteCapability -> "Delete Capability"
     text.ConfirmDeleteCapability(name) ->
       "Delete capability \"" <> name <> "\"? This action cannot be undone."
+    text.EditCapability -> "Edit capability"
     text.CapabilityNamePlaceholder -> "e.g., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "No capabilities yet"
 

@@ -20,6 +20,7 @@ fn context(selected_project_id) -> capabilities_update.Context(Nil) {
     on_capability_members_fetched: fn(_result) { Nil },
     on_capability_members_saved: fn(_result) { Nil },
     on_capability_created: fn(_result) { Nil },
+    on_capability_updated: fn(_result) { Nil },
     on_capability_deleted: fn(_result) { Nil },
     name_required: "Name required",
   )
@@ -28,6 +29,7 @@ fn context(selected_project_id) -> capabilities_update.Context(Nil) {
 fn feedback_context() -> capabilities_update.FeedbackContext(Nil) {
   capabilities_update.FeedbackContext(
     capability_created: "Capability created",
+    capability_updated: "Capability updated",
     capability_deleted: "Capability deleted",
     member_capabilities_saved: "Skills saved",
     capability_members_saved: "Members saved",

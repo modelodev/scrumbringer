@@ -38,6 +38,10 @@ pub type Msg {
   InviteLinksFetched(ApiResult(List(InviteLink)))
   InviteLinkRegenerateClicked(String)
   InviteLinkRegenerated(ApiResult(InviteLink))
+  InviteLinkInvalidateClicked(String)
+  InviteLinkInvalidateCancelled
+  InviteLinkInvalidateConfirmed
+  InviteLinkInvalidated(ApiResult(InviteLink))
   InviteLinkCopyClicked(String)
   InviteLinkCopyFinished(Bool)
   CapabilitiesFetched(ApiResult(List(Capability)))
@@ -46,6 +50,11 @@ pub type Msg {
   CapabilityCreateNameChanged(String)
   CapabilityCreateSubmitted
   CapabilityCreated(ApiResult(Capability))
+  CapabilityEditDialogOpened(Int, String)
+  CapabilityEditDialogClosed
+  CapabilityEditNameChanged(String)
+  CapabilityEditSubmitted
+  CapabilityUpdated(ApiResult(Capability))
   CapabilityDeleteDialogOpened(Int)
   CapabilityDeleteDialogClosed
   CapabilityDeleteSubmitted

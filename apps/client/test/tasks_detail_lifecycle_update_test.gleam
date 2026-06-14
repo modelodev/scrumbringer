@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/option.{None, Some}
 import lustre/effect
 
@@ -71,6 +72,28 @@ pub fn local_task_details_opened_sets_detail_state_and_fetches_test() {
   let assert True = next.notes.member_notes == remote.Loading
   let assert True = next.dependencies.member_dependencies == remote.Loading
   let assert True = fx != effect.none()
+}
+
+pub fn local_task_details_opened_uses_project_cache_when_active_list_misses_task_test() {
+  let task = sample_task()
+  let model =
+    tasks_update.TaskDetailModel(
+      pool: member_pool.Model(
+        ..member_pool.default_model(),
+        member_tasks: remote.Loaded([]),
+        member_tasks_by_project: dict.from_list([#(task.project_id, [task])]),
+      ),
+      notes: member_notes.default_model(),
+      dependencies: member_dependencies.default_model(),
+    )
+
+  let #(next, _) =
+    tasks_update.handle_task_details_opened(model, task.id, detail_context())
+
+  let assert "Prepare release" = next.pool.member_task_detail_edit_title
+  let assert "Review checklist." = next.pool.member_task_detail_edit_description
+  let assert "2" = next.pool.member_task_detail_edit_priority
+  let assert "1" = next.pool.member_task_detail_edit_type_id
 }
 
 pub fn local_task_details_closed_resets_detail_state_test() {

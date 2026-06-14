@@ -303,6 +303,10 @@ fn update_without_api_tokens(
     | admin_messages.InviteLinkRegenerateClicked(_)
     | admin_messages.InviteLinkCreated(_)
     | admin_messages.InviteLinkRegenerated(_)
+    | admin_messages.InviteLinkInvalidateClicked(_)
+    | admin_messages.InviteLinkInvalidateCancelled
+    | admin_messages.InviteLinkInvalidateConfirmed
+    | admin_messages.InviteLinkInvalidated(_)
     | admin_messages.InviteLinkCopyClicked(_)
     | admin_messages.InviteLinkCopyFinished(_) -> #(model, effect.none())
 
@@ -313,6 +317,11 @@ fn update_without_api_tokens(
     | admin_messages.CapabilityCreateNameChanged(_)
     | admin_messages.CapabilityCreateSubmitted
     | admin_messages.CapabilityCreated(_)
+    | admin_messages.CapabilityEditDialogOpened(_, _)
+    | admin_messages.CapabilityEditDialogClosed
+    | admin_messages.CapabilityEditNameChanged(_)
+    | admin_messages.CapabilityEditSubmitted
+    | admin_messages.CapabilityUpdated(_)
     | admin_messages.CapabilityDeleteDialogOpened(_)
     | admin_messages.CapabilityDeleteDialogClosed
     | admin_messages.CapabilityDeleteSubmitted
@@ -823,6 +832,9 @@ fn capabilities_context(
     on_capability_created: fn(result) {
       client_state.admin_msg(admin_messages.CapabilityCreated(result))
     },
+    on_capability_updated: fn(result) {
+      client_state.admin_msg(admin_messages.CapabilityUpdated(result))
+    },
     on_capability_deleted: fn(result) {
       client_state.admin_msg(admin_messages.CapabilityDeleted(result))
     },
@@ -835,6 +847,7 @@ fn capabilities_feedback_context(
 ) -> capabilities_workflow.FeedbackContext(client_state.Msg) {
   capabilities_workflow.FeedbackContext(
     capability_created: i18n.t(model.ui.locale, i18n_text.CapabilityCreated),
+    capability_updated: i18n.t(model.ui.locale, i18n_text.CapabilityUpdated),
     capability_deleted: i18n.t(model.ui.locale, i18n_text.CapabilityDeleted),
     member_capabilities_saved: i18n.t(model.ui.locale, i18n_text.SkillsSaved),
     capability_members_saved: i18n.t(model.ui.locale, i18n_text.MembersSaved),
@@ -1059,6 +1072,9 @@ fn invite_links_context(
     on_link_regenerated: fn(result) {
       client_state.admin_msg(admin_messages.InviteLinkRegenerated(result))
     },
+    on_link_invalidated: fn(result) {
+      client_state.admin_msg(admin_messages.InviteLinkInvalidated(result))
+    },
     on_copy_finished: fn(ok) {
       client_state.admin_msg(admin_messages.InviteLinkCopyFinished(ok))
     },
@@ -1077,6 +1093,10 @@ fn invite_links_feedback_context(
     invite_link_regenerated: i18n.t(
       model.ui.locale,
       i18n_text.InviteLinkRegenerated,
+    ),
+    invite_link_invalidated: i18n.t(
+      model.ui.locale,
+      i18n_text.InviteLinkInvalidated,
     ),
     on_success_toast: app_effects.toast_success,
   )

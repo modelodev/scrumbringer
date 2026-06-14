@@ -17,6 +17,7 @@ fn context() -> invites_update.Context(Nil) {
     on_links_fetched: fn(_result) { Nil },
     on_link_created: fn(_result) { Nil },
     on_link_regenerated: fn(_result) { Nil },
+    on_link_invalidated: fn(_result) { Nil },
     on_copy_finished: fn(_ok) { Nil },
     email_required: "Email required",
     copying: "Copying",
@@ -29,6 +30,7 @@ fn feedback_context() -> invites_update.FeedbackContext(Nil) {
   invites_update.FeedbackContext(
     invite_link_created: "Invite link created",
     invite_link_regenerated: "Invite link regenerated",
+    invite_link_invalidated: "Invite link invalidated",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
   )
 }

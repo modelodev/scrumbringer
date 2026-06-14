@@ -50,6 +50,16 @@ pub fn handle_regenerate(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   handle_upsert(req, ctx)
 }
 
+/// Handles POST /api/org/invite-links/invalidate to invalidate a link.
+pub fn handle_invalidate(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+  use <- wisp.require_method(req, http.Post)
+
+  case require_admin_context(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) -> invalidate_as_admin(req, ctx, user.org_id)
+  }
+}
+
 fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
@@ -89,6 +99,17 @@ fn upsert_as_admin(
   }
 }
 
+fn invalidate_as_admin(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  org_id: Int,
+) -> wisp.Response {
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
+    Ok(Nil) -> invalidate_with_csrf(req, ctx, org_id)
+  }
+}
+
 fn upsert_with_csrf(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -101,6 +122,20 @@ fn upsert_with_csrf(
     Error(resp) -> resp
     Ok(invite_link_payloads.EmailPayload(email: email)) ->
       upsert_invite_link(ctx, org_id, user_id, email)
+  }
+}
+
+fn invalidate_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  org_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+
+  case decode_email_payload(data) {
+    Error(resp) -> resp
+    Ok(invite_link_payloads.EmailPayload(email: email)) ->
+      invalidate_invite_link(ctx, org_id, email)
   }
 }
 
@@ -118,6 +153,19 @@ fn upsert_invite_link(
   }
 }
 
+fn invalidate_invite_link(
+  ctx: auth.Ctx,
+  org_id: Int,
+  email: String,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case org_invite_links_db.invalidate_invite_link(db, org_id, email) {
+    Ok(link) -> api.ok(invite_link_presenters.link_response(link))
+    Error(error) -> invite_link_error_to_response(error)
+  }
+}
+
 fn invite_link_error_to_response(
   error: org_invite_links_db.InviteLinkError,
 ) -> wisp.Response {
@@ -126,6 +174,8 @@ fn invite_link_error_to_response(
       api.error(500, "INTERNAL", "Database error")
     org_invite_links_db.InvalidLifecycle(_) ->
       api.error(500, "INTERNAL", "Invalid persisted invite link")
+    org_invite_links_db.NotFound ->
+      api.error(404, "NOT_FOUND", "Invite link not found")
   }
 }
 

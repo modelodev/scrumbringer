@@ -8,6 +8,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/tasks/detail_edit_form
 import scrumbringer_client/features/tasks/detail_state
 import scrumbringer_client/ui/task_tabs
 
@@ -16,25 +17,36 @@ fn sample_task() -> Task {
   Task(
     id: 42,
     project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
+    type_id: 7,
+    task_type: TaskTypeInline(id: 7, name: "Bug", icon: "bug-ant"),
     ongoing_by: None,
     title: "Prepare release",
     description: Some("Review checklist."),
-    priority: 2,
+    priority: 4,
     state: state,
     status: task_state.to_status(state),
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
     version: 3,
-    milestone_id: None,
-    card_id: None,
+    milestone_id: Some(12),
+    card_id: Some(9),
     card_title: None,
     card_color: None,
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+  )
+}
+
+fn submission(title: String, description: String) -> detail_edit_form.Submission {
+  detail_edit_form.Submission(
+    title: title,
+    description: description,
+    priority: 2,
+    type_id: 1,
+    card_id: None,
+    milestone_id: None,
   )
 }
 
@@ -45,17 +57,34 @@ pub fn detail_state_open_sets_loading_detail_state_test() {
       member_notes.default_model(),
       member_dependencies.default_model(),
       42,
-      "Prepare release",
-      "Review checklist.",
+      Some(sample_task()),
     )
 
   let assert task_tabs.TasksTab = pool.member_task_detail_tab
   let assert True = pool.member_task_detail_metrics == remote.Loading
   let assert "Prepare release" = pool.member_task_detail_edit_title
   let assert "Review checklist." = pool.member_task_detail_edit_description
+  let assert "4" = pool.member_task_detail_edit_priority
+  let assert "7" = pool.member_task_detail_edit_type_id
+  let assert "9" = pool.member_task_detail_edit_card_id
+  let assert "12" = pool.member_task_detail_edit_milestone_id
   let assert Some(42) = notes.member_notes_task_id
   let assert True = notes.member_notes == remote.Loading
   let assert True = dependencies.member_dependencies == remote.Loading
+}
+
+pub fn detail_state_open_uses_inline_task_type_when_type_id_is_invalid_test() {
+  let task = Task(..sample_task(), type_id: 0)
+  let #(pool, _, _) =
+    detail_state.open(
+      member_pool.default_model(),
+      member_notes.default_model(),
+      member_dependencies.default_model(),
+      42,
+      Some(task),
+    )
+
+  let assert "7" = pool.member_task_detail_edit_type_id
 }
 
 pub fn detail_state_close_resets_detail_state_test() {
@@ -67,6 +96,10 @@ pub fn detail_state_close_resets_detail_state_test() {
       member_task_detail_editing: True,
       member_task_detail_edit_title: "Changed",
       member_task_detail_edit_description: "Changed description",
+      member_task_detail_edit_priority: "5",
+      member_task_detail_edit_type_id: "3",
+      member_task_detail_edit_card_id: "9",
+      member_task_detail_edit_milestone_id: "4",
       member_task_detail_edit_in_flight: True,
       member_task_detail_edit_error: Some("old"),
     )
@@ -121,19 +154,19 @@ pub fn detail_state_edit_decisions_update_form_state_test() {
   let unchanged =
     detail_state.edit_unchanged(
       member_pool.Model(..invalid, member_task_detail_editing: True),
-      "Prepare release",
-      "Review checklist.",
+      submission("Prepare release", "Review checklist."),
     )
   let started =
     detail_state.edit_started_submit(
       member_pool.default_model(),
-      "Updated",
-      "Updated description",
+      submission("Updated", "Updated description"),
     )
 
   let assert Some("Required") = invalid.member_task_detail_edit_error
   let assert False = unchanged.member_task_detail_editing
   let assert "Prepare release" = unchanged.member_task_detail_edit_title
+  let assert "2" = unchanged.member_task_detail_edit_priority
+  let assert "1" = unchanged.member_task_detail_edit_type_id
   let assert None = unchanged.member_task_detail_edit_error
   let assert True = started.member_task_detail_edit_in_flight
   let assert "Updated" = started.member_task_detail_edit_title

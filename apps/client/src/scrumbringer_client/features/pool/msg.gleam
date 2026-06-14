@@ -138,6 +138,10 @@ pub type Msg {
   MemberTaskDetailEditCancelled
   MemberTaskDetailEditTitleChanged(String)
   MemberTaskDetailEditDescriptionChanged(String)
+  MemberTaskDetailEditPriorityChanged(String)
+  MemberTaskDetailEditTypeIdChanged(String)
+  MemberTaskDetailEditCardIdChanged(String)
+  MemberTaskDetailEditMilestoneIdChanged(String)
   MemberTaskDetailEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
   MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
@@ -157,6 +161,8 @@ pub type Msg {
   MemberNoteDialogClosed
   MemberNoteSubmitted
   MemberNoteAdded(ApiResult(TaskNote))
+  MemberNoteDeleteClicked(Int)
+  MemberNoteDeleted(Int, ApiResult(Nil))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))

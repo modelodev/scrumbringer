@@ -349,7 +349,11 @@ fn task_create_context(
 fn selected_task_detail(model: client_state.Model) -> opt.Option(task.Task) {
   case model.member.notes.member_notes_task_id {
     opt.Some(task_id) ->
-      helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
+      helpers_lookup.find_task_by_id_in_cache(
+        model.member.pool.member_tasks,
+        model.member.pool.member_tasks_by_project,
+        task_id,
+      )
     opt.None -> opt.None
   }
 }
@@ -382,6 +386,11 @@ fn task_detail_edit_context(
     },
     title_required: i18n.t(model.ui.locale, i18n_text.TitleRequired),
     title_too_long_max_56: i18n.t(model.ui.locale, i18n_text.TitleTooLongMax56),
+    type_required: i18n.t(model.ui.locale, i18n_text.TypeRequired),
+    priority_must_be_1_to_5: i18n.t(
+      model.ui.locale,
+      i18n_text.PriorityMustBe1To5,
+    ),
   )
 }
 
@@ -422,6 +431,9 @@ fn note_context(
     note_added: i18n.t(model.ui.locale, i18n_text.NoteAdded),
     on_note_added: fn(result) {
       client_state.pool_msg(pool_messages.MemberNoteAdded(result))
+    },
+    on_note_deleted: fn(note_id, result) {
+      client_state.pool_msg(pool_messages.MemberNoteDeleted(note_id, result))
     },
     on_notes_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberNotesFetched(result))
@@ -1568,6 +1580,10 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskDetailEditCancelled
     | pool_messages.MemberTaskDetailEditTitleChanged(_)
     | pool_messages.MemberTaskDetailEditDescriptionChanged(_)
+    | pool_messages.MemberTaskDetailEditPriorityChanged(_)
+    | pool_messages.MemberTaskDetailEditTypeIdChanged(_)
+    | pool_messages.MemberTaskDetailEditCardIdChanged(_)
+    | pool_messages.MemberTaskDetailEditMilestoneIdChanged(_)
     | pool_messages.MemberTaskDetailEditSubmitted
     | pool_messages.MemberTaskUpdated(_)
     | pool_messages.MemberTaskMetricsFetched(_) -> #(model, effect.none())
@@ -1590,7 +1606,9 @@ fn update_without_view_mode(
     | pool_messages.MemberNoteDialogOpened
     | pool_messages.MemberNoteDialogClosed
     | pool_messages.MemberNoteSubmitted
-    | pool_messages.MemberNoteAdded(_) -> #(model, effect.none())
+    | pool_messages.MemberNoteAdded(_)
+    | pool_messages.MemberNoteDeleteClicked(_)
+    | pool_messages.MemberNoteDeleted(_, _) -> #(model, effect.none())
 
     // Handled by cards_workflow.try_update before this dispatch.
     pool_messages.CardsFetched(_)

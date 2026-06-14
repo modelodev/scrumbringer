@@ -146,12 +146,14 @@ that state transition.
 | --- | --- | --- | --- |
 | List task notes | `GET` | `/api/v1/tasks/:task_id/notes` | `notes:read` |
 | Add task note | `POST` | `/api/v1/tasks/:task_id/notes` | `notes:write` |
-
-Task notes are append-only.
+| Delete task note | `DELETE` | `/api/v1/tasks/:task_id/notes/:note_id` | `notes:write` |
 
 ```json
 { "content": "External system reported retry success." }
 ```
+
+Delete task notes only after explicit confirmation. A regular user can delete
+their own note; manager/admin deletion follows the session API policy.
 
 ### Cards
 

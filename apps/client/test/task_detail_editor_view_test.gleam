@@ -2,10 +2,11 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
+import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{TaskType, TaskTypeInline}
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/locale
 
@@ -57,13 +58,24 @@ fn config(current_user_id) -> detail_editor.Config(String) {
     editing: False,
     edit_title: "Prepare release",
     edit_description: "Review release checklist.",
+    edit_priority: "2",
+    edit_type_id: "1",
+    edit_card_id: "",
+    edit_milestone_id: "",
     edit_error: None,
     edit_in_flight: False,
+    task_types: NotAsked,
+    cards: [],
+    milestones: NotAsked,
     parent_card_title: Some("Release card"),
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
     on_description_changed: fn(value) { "description:" <> value },
+    on_priority_changed: fn(value) { "priority:" <> value },
+    on_type_id_changed: fn(value) { "type:" <> value },
+    on_card_id_changed: fn(value) { "card:" <> value },
+    on_milestone_id_changed: fn(value) { "milestone:" <> value },
     on_submitted: "submitted",
   )
 }
@@ -86,4 +98,28 @@ pub fn detail_editor_hides_edit_for_other_claimed_task_test() {
 
   assert_not_contains(html, "Edit task")
   assert_contains(html, "claim the task to keep editing")
+}
+
+pub fn detail_editor_marks_current_type_option_selected_test() {
+  let task_type =
+    TaskType(
+      id: 1,
+      name: "Bug",
+      icon: "bug-ant",
+      capability_id: None,
+      tasks_count: 0,
+    )
+  let html =
+    detail_editor.view_form(
+      detail_editor.Config(
+        ..config(Some(7)),
+        editing: True,
+        task_types: Loaded([task_type]),
+      ),
+      claimed_task(),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "value=\"1\"")
+  assert_contains(html, "selected")
 }

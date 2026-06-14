@@ -84,7 +84,7 @@ pub fn css() -> List(String) {
     // =====================================================
     ".table-actions { display: flex; gap: 4px; justify-content: flex-end; }",
     ".table-actions button { padding: 12px; min-width: 44px; min-height: 44px; }",
-    ".cell-actions .btn-icon, .actions-row .btn-icon, .btn-group .btn-icon { padding: 12px; min-width: 44px; min-height: 44px; }",
+    ".cell-actions .btn-icon, .actions-row .btn-icon, .btn-group .btn-icon, .action-buttons .btn-icon { padding: 12px; min-width: 44px; min-height: 44px; }",
     ".table td.actions-cell { text-align: right; }",
     ".pagination { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 12px; }",
     ".page-info { min-width: 68px; text-align: center; font-size: var(--sb-font-sm); color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
@@ -104,6 +104,7 @@ pub fn css() -> List(String) {
     ".data-table th.sortable:hover .sort-icon { opacity: 1; }",
     ".data-table-state { overflow-wrap: anywhere; }",
     ".api-token-list-card { overflow-x: auto; }",
+    ".action-buttons { display: inline-flex; align-items: center; gap: 6px; }",
     ".api-token-secret { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }",
     ".api-token-secret .copy { max-width: 760px; }",
     ".api-token-secret input { font-family: var(--sb-font-mono, monospace); }",
@@ -487,6 +488,8 @@ pub fn css() -> List(String) {
     ".task-detail-field-value { font-size: var(--sb-font-base); font-weight: var(--sb-weight-medium); color: color-mix(in oklab, var(--sb-text) 88%, var(--sb-muted)); line-height: var(--sb-line-body); }",
     ".task-detail-field-value.muted { color: var(--sb-muted); }",
     ".task-detail-edit-form { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid color-mix(in oklab, var(--sb-primary) 24%, var(--sb-border)); border-radius: 12px; background: color-mix(in oklab, var(--sb-primary) 5%, var(--sb-surface)); }",
+    ".task-detail-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }",
+    ".task-detail-edit-grid select, .task-detail-edit-grid input { width: 100%; min-width: 0; box-sizing: border-box; }",
     ".task-detail-edit-input, .task-detail-edit-textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-elevated); color: var(--sb-text); font: inherit; }",
     ".task-detail-edit-textarea { min-height: 120px; resize: vertical; line-height: var(--sb-line-body); }",
     ".task-detail-edit-input:focus, .task-detail-edit-textarea:focus { outline: 2px solid color-mix(in oklab, var(--sb-primary) 32%, transparent); outline-offset: 1px; border-color: var(--sb-primary); }",
@@ -602,7 +605,7 @@ pub fn css() -> List(String) {
     // Mobile adaptations
     "@media (max-width: 640px) { .my-bar-card-groups { gap: 12px; } .my-bar-card-header { padding: 8px 10px; gap: 8px; } .my-bar-card-title { font-size: var(--sb-font-base); } .my-bar-card-progress { font-size: var(--sb-font-sm); } }",
     "@media (max-width: 640px) { .fichas-list { gap: 8px; } .ficha-card { padding: 10px 12px; } .ficha-header { gap: 8px; } .ficha-title { font-size: var(--sb-font-md); } .ficha-state-badge { font-size: var(--sb-font-xs); padding: 2px 6px; } }",
-    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 10px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-actions { flex-direction: column-reverse; } .task-detail-edit-actions .btn { width: 100%; } }",
+    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 10px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-grid { grid-template-columns: 1fr; } .task-detail-edit-actions { flex-direction: column-reverse; } .task-detail-edit-actions .btn { width: 100%; } }",
     // =====================================================
   ]
 }

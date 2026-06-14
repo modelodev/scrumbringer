@@ -39,8 +39,10 @@ pub type Text {
   ProjectCreated
   CapabilityCreated
   CapabilityDeleted
+  CapabilityUpdated
   InviteLinkCreated
   InviteLinkRegenerated
+  InviteLinkInvalidated
   RoleUpdated
   CannotDemoteLastManager
   MemberAdded
@@ -347,6 +349,9 @@ pub type Text {
   AdminTaskTypes
   AdminApiTokens
   Integration
+  IntegrationIdentity
+  IntegrationIdentityHint
+  ApiTokenGrantsImmutable
   IntegrationRequired
   ApiTokens
   CreateApiToken
@@ -474,6 +479,8 @@ pub type Text {
   State
   CreatedAt
   Regenerate
+  InvalidateInvite
+  InvalidateInviteConfirm(email: String)
   // Invite link states (Story 4.8)
   InviteStateActive
   InviteStateUsed
@@ -500,6 +507,7 @@ pub type Text {
   CreateCapability
   DeleteCapability
   ConfirmDeleteCapability(name: String)
+  EditCapability
   CapabilityNamePlaceholder
   NoCapabilitiesYet
 

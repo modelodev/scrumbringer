@@ -108,7 +108,8 @@ The target edit rule is:
 - Available task: any project member may edit task fields.
 - Claimed task: only the claiming user may edit task fields.
 - Completed task: no normal task-field edits.
-- Notes: any project member may add append-only notes.
+- Notes: any project member may add notes; task notes can be deleted by their
+  author or by a manager/admin when a correction is needed.
 - Dependencies: manager/admin controlled, unchanged by this plan.
 
 This keeps pool tasks collectively shapeable before ownership, and protects

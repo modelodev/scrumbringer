@@ -192,6 +192,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           model.member.dependencies,
           model.member.notes,
           model.core.user |> opt.map(fn(user) { user.id }),
+          can_manage_task_notes(model),
           project_cards(model),
           task_id,
           task_details_callbacks(),
@@ -268,6 +269,26 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
         pool_messages.MemberTaskDetailEditDescriptionChanged(value),
       )
     },
+    on_edit_priority_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskDetailEditPriorityChanged(
+        value,
+      ))
+    },
+    on_edit_type_id_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskDetailEditTypeIdChanged(
+        value,
+      ))
+    },
+    on_edit_card_id_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskDetailEditCardIdChanged(
+        value,
+      ))
+    },
+    on_edit_milestone_id_changed: fn(value) {
+      client_state.pool_msg(
+        pool_messages.MemberTaskDetailEditMilestoneIdChanged(value),
+      )
+    },
     on_edit_submitted: client_state.pool_msg(
       pool_messages.MemberTaskDetailEditSubmitted,
     ),
@@ -281,8 +302,8 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       client_state.pool_msg(pool_messages.MemberNoteContentChanged(value))
     },
     on_note_submitted: client_state.pool_msg(pool_messages.MemberNoteSubmitted),
-    on_note_delete: fn(_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsClosed)
+    on_note_delete: fn(note_id) {
+      client_state.pool_msg(pool_messages.MemberNoteDeleteClicked(note_id))
     },
     on_claim: fn(claim_task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(
@@ -531,6 +552,15 @@ fn admin_invites_config(
     on_link_regenerate_clicked: fn(email) {
       client_state.admin_msg(admin_messages.InviteLinkRegenerateClicked(email))
     },
+    on_link_invalidate_clicked: fn(email) {
+      client_state.admin_msg(admin_messages.InviteLinkInvalidateClicked(email))
+    },
+    on_link_invalidate_cancelled: client_state.admin_msg(
+      admin_messages.InviteLinkInvalidateCancelled,
+    ),
+    on_link_invalidate_confirmed: client_state.admin_msg(
+      admin_messages.InviteLinkInvalidateConfirmed,
+    ),
   )
 }
 
@@ -1674,6 +1704,17 @@ fn project_cards(model: client_state.Model) -> List(Card) {
     model.admin.cards.cards,
     model.core.selected_project_id,
   )
+}
+
+fn can_manage_task_notes(model: client_state.Model) -> Bool {
+  case model.core.user {
+    opt.Some(user) ->
+      permissions.can_manage_project_content(
+        user.org_role,
+        state_selectors.selected_project(model),
+      )
+    opt.None -> False
+  }
 }
 
 fn resolve_task_card_info(model: client_state.Model, task: Task) {

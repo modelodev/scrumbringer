@@ -228,7 +228,7 @@ pub fn task_notes_list_requires_task_membership_test() {
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
-pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
+pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -310,17 +310,50 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
 
   expect.expect_status(patch_collection_res, 405)
 
+  let note_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf)
+      |> simulate.json_body(
+        json.object([#("content", json.string("Remove me"))]),
+      ),
+    )
+  expect.expect_status(note_res, 200)
+  let note_id = decode_note_id(simulate.read_body(note_res))
+
   let delete_item_res =
     handler(
       simulate.request(
         http.Delete,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes/1",
+        "/api/v1/tasks/"
+          <> int_to_string(task_id)
+          <> "/notes/"
+          <> int_to_string(note_id),
       )
       |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf),
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf),
     )
 
-  expect.expect_status(delete_item_res, 404)
+  expect.expect_status(delete_item_res, 204)
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", member_session),
+    )
+
+  expect.expect_status(list_res, 200)
+  decode_note_list_contents(simulate.read_body(list_res))
+  |> expect.equal([])
 
   let patch_item_res =
     handler(
@@ -333,7 +366,7 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
       |> request.set_header("X-CSRF", member_csrf),
     )
 
-  expect.expect_status(patch_item_res, 404)
+  expect.expect_status(patch_item_res, 405)
 }
 
 pub fn task_notes_create_requires_csrf_test() {
