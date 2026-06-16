@@ -7,10 +7,10 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/auth/helpers as auth_helpers
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/project_refresh
+import scrumbringer_client/features/pool/route_support
 
 pub fn try_project_update(
   model: client_state.Model,
@@ -39,9 +39,11 @@ fn apply_project_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let project_refresh.Update(pool, auth_policy) = update
 
-  apply_auth_check_before(model, project_refresh_auth_error(auth_policy), fn() {
-    #(update_member_pool(model, fn(_) { pool }), effect.none())
-  })
+  route_support.apply_auth_check_before(
+    model,
+    project_refresh_auth_error(auth_policy),
+    fn() { #(update_member_pool(model, fn(_) { pool }), effect.none()) },
+  )
 }
 
 fn project_refresh_auth_error(
@@ -50,17 +52,6 @@ fn project_refresh_auth_error(
   case policy {
     project_refresh.NoAuthCheck -> opt.None
     project_refresh.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_auth_check_before(
-  model: client_state.Model,
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> auth_helpers.handle_401_or(model, err, apply_update)
   }
 }
 

@@ -109,7 +109,7 @@ fn bootstrap_register(
 
   let org = ss.Organization(id: org_id, name: org_name, created_at: now_iso)
   let project =
-    ss.Project(
+    ss.StoredProject(
       id: project_id,
       org_id: org_id,
       name: "Default",
@@ -125,7 +125,7 @@ fn bootstrap_register(
       created_at: now_iso,
     )
   let member =
-    ss.ProjectMember(
+    ss.StoredProjectMember(
       project_id: project_id,
       user_id: user_id,
       role: Manager,

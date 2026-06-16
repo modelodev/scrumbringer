@@ -27,12 +27,11 @@
 //// )
 //// ```
 
-import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h3, span, text}
+import lustre/element/html.{div, h3, span, text}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -190,44 +189,80 @@ pub fn submit_button_with_locale(
   label: i18n_text.Text,
   loading_label: i18n_text.Text,
 ) -> Element(msg) {
-  submit_button_with_locale_attrs(
-    locale,
-    [],
-    is_loading,
-    is_disabled,
-    label,
-    loading_label,
-  )
+  submit_button(locale, is_loading, is_disabled, label, loading_label)
+  |> ui_button.view
 }
 
-/// Create a submit button with explicit locale and additional attributes.
-pub fn submit_button_with_locale_attrs(
+/// Create a submit button targeting an external form.
+pub fn submit_button_with_locale_form(
   locale: Locale,
-  extra_attrs: List(attribute.Attribute(msg)),
+  form_id: String,
   is_loading: Bool,
   is_disabled: Bool,
   label: i18n_text.Text,
   loading_label: i18n_text.Text,
 ) -> Element(msg) {
-  button(
-    list.append(
-      [
-        attribute.type_("submit"),
-        attribute.disabled(is_loading || is_disabled),
-        attribute.class(case is_loading {
-          True -> "btn-loading"
-          False -> ""
-        }),
-      ],
-      extra_attrs,
-    ),
-    [
-      text(case is_loading {
-        True -> i18n.t(locale, loading_label)
-        False -> i18n.t(locale, label)
-      }),
-    ],
+  submit_button(locale, is_loading, is_disabled, label, loading_label)
+  |> ui_button.with_form(form_id)
+  |> ui_button.view
+}
+
+/// Create a submit-like action button for forms handled by message.
+pub fn submit_button_with_locale_click(
+  locale: Locale,
+  on_click: msg,
+  is_loading: Bool,
+  is_disabled: Bool,
+  label: i18n_text.Text,
+  loading_label: i18n_text.Text,
+) -> Element(msg) {
+  ui_button.text(
+    submit_label(locale, is_loading, label, loading_label),
+    on_click,
+    ui_button.Primary,
+    ui_button.EntityAction,
   )
+  |> ui_button.with_disabled(is_loading || is_disabled)
+  |> with_loading_class(is_loading)
+  |> ui_button.view
+}
+
+fn submit_button(
+  locale: Locale,
+  is_loading: Bool,
+  is_disabled: Bool,
+  label: i18n_text.Text,
+  loading_label: i18n_text.Text,
+) -> ui_button.Config(msg) {
+  ui_button.submit(
+    submit_label(locale, is_loading, label, loading_label),
+    ui_button.Primary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_disabled(is_loading || is_disabled)
+  |> with_loading_class(is_loading)
+}
+
+fn submit_label(
+  locale: Locale,
+  is_loading: Bool,
+  label: i18n_text.Text,
+  loading_label: i18n_text.Text,
+) -> String {
+  case is_loading {
+    True -> i18n.t(locale, loading_label)
+    False -> i18n.t(locale, label)
+  }
+}
+
+fn with_loading_class(
+  button: ui_button.Config(msg),
+  is_loading: Bool,
+) -> ui_button.Config(msg) {
+  case is_loading {
+    True -> button |> ui_button.with_class("btn-loading")
+    False -> button
+  }
 }
 
 /// Create an add button that opens a dialog using an explicit locale.

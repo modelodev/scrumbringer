@@ -6,7 +6,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, input, option, select, text}
+import lustre/element/html.{div, form, input, option, select, text}
 import lustre/event
 
 import domain/card.{type Card}
@@ -17,6 +17,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
@@ -83,22 +84,13 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_close),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("task-create-form"),
-          attribute.disabled(config.in_flight),
-          attribute.class(case config.in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case config.in_flight {
-            True -> t(config, i18n_text.Creating)
-            False -> t(config, i18n_text.Create)
-          }),
-        ],
+      dialog.submit_button_with_locale_form(
+        config.locale,
+        "task-create-form",
+        config.in_flight,
+        False,
+        i18n_text.Create,
+        i18n_text.Creating,
       ),
     ],
   )
@@ -161,13 +153,13 @@ fn view_type_field(config: Config(msg)) -> Element(msg) {
       ),
       case config.task_types {
         Failed(_) ->
-          button(
-            [
-              attribute.type_("button"),
-              event.on_click(config.on_type_options_retry_clicked),
-            ],
-            [text(t(config, i18n_text.Retry))],
+          ui_button.text(
+            t(config, i18n_text.Retry),
+            config.on_type_options_retry_clicked,
+            ui_button.Secondary,
+            ui_button.EntityAction,
           )
+          |> ui_button.view
         _ -> element.none()
       },
     ]),

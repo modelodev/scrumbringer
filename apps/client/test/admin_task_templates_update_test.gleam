@@ -6,7 +6,6 @@ import domain/remote.{type Remote, Failed, Loaded}
 import domain/workflow.{type TaskTemplate, TaskTemplate}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/task_templates as task_templates_update
 import scrumbringer_client/features/pool/msg as pool_messages
 
@@ -35,6 +34,20 @@ fn feedback_context() -> task_templates_update.FeedbackContext(client_state.Msg)
   )
 }
 
+fn update(
+  state: admin_task_templates.Model,
+  msg: pool_messages.Msg,
+) -> #(
+  admin_task_templates.Model,
+  effect.Effect(client_state.Msg),
+  task_templates_update.AuthPolicy,
+) {
+  let assert opt.Some(task_templates_update.Update(next, fx, auth_policy)) =
+    task_templates_update.try_update(state, msg, feedback_context())
+
+  #(next, fx, auth_policy)
+}
+
 fn state_with_templates(
   org: Remote(List(TaskTemplate)),
   project: Remote(List(TaskTemplate)),
@@ -42,7 +55,9 @@ fn state_with_templates(
   admin_task_templates.Model(
     task_templates_org: org,
     task_templates_project: project,
-    task_templates_dialog_mode: opt.Some(state_types.TaskTemplateDialogCreate),
+    task_templates_dialog_mode: opt.Some(
+      admin_task_templates.TaskTemplateDialogCreate,
+    ),
   )
 }
 
@@ -50,29 +65,43 @@ pub fn local_fetch_transitions_update_project_remote_test() {
   let loaded = [template(1, "Loaded", opt.Some(3))]
   let state = state_with_templates(Loaded([]), Loaded([]))
 
-  let next = task_templates_update.project_fetched_ok(state, loaded)
+  let #(next, fx, auth_policy) =
+    update(state, pool_messages.TaskTemplatesProjectFetched(Ok(loaded)))
   let assert True = next.task_templates_project == Loaded(loaded)
+  let assert True = fx == effect.none()
+  let assert task_templates_update.NoAuthCheck = auth_policy
 
   let err = ApiError(status: 409, code: "CONFLICT", message: "Conflict")
-  let failed = task_templates_update.project_fetched_error(next, err)
+  let #(failed, fx, auth_policy) =
+    update(next, pool_messages.TaskTemplatesProjectFetched(Error(err)))
   let assert True = failed.task_templates_project == Failed(err)
+  let assert True = fx == effect.none()
+  let assert task_templates_update.CheckAuth(auth_err) = auth_policy
+  let assert True = auth_err == err
 }
 
 pub fn local_dialog_transitions_open_and_close_test() {
   let state = state_with_templates(Loaded([]), Loaded([]))
   let item = template(3, "To delete", opt.Some(3))
 
-  let opened =
-    task_templates_update.open_dialog(
+  let #(opened, fx, auth_policy) =
+    update(
       state,
-      state_types.TaskTemplateDialogDelete(item),
+      pool_messages.OpenTaskTemplateDialog(
+        admin_task_templates.TaskTemplateDialogDelete(item),
+      ),
     )
   let assert True =
     opened.task_templates_dialog_mode
-    == opt.Some(state_types.TaskTemplateDialogDelete(item))
+    == opt.Some(admin_task_templates.TaskTemplateDialogDelete(item))
+  let assert True = fx == effect.none()
+  let assert task_templates_update.NoAuthCheck = auth_policy
 
-  let closed = task_templates_update.close_dialog(opened)
+  let #(closed, fx, auth_policy) =
+    update(opened, pool_messages.CloseTaskTemplateDialog)
   let assert opt.None = closed.task_templates_dialog_mode
+  let assert True = fx == effect.none()
+  let assert task_templates_update.NoAuthCheck = auth_policy
 }
 
 pub fn local_crud_transitions_update_scopes_test() {
@@ -81,17 +110,19 @@ pub fn local_crud_transitions_update_scopes_test() {
   let updated = template(2, "Updated", opt.Some(3))
   let state = state_with_templates(Loaded([]), Loaded([existing]))
 
-  let after_create = task_templates_update.template_created(state, created)
+  let #(after_create, _, _) =
+    update(state, pool_messages.TaskTemplateCrudCreated(created))
   let assert True =
     after_create.task_templates_project == Loaded([created, existing])
   let assert opt.None = after_create.task_templates_dialog_mode
 
-  let after_update =
-    task_templates_update.template_updated(after_create, updated)
+  let #(after_update, _, _) =
+    update(after_create, pool_messages.TaskTemplateCrudUpdated(updated))
   let assert True =
     after_update.task_templates_project == Loaded([updated, existing])
 
-  let after_delete = task_templates_update.template_deleted(after_update, 2)
+  let #(after_delete, _, _) =
+    update(after_update, pool_messages.TaskTemplateCrudDeleted(2))
   let assert True = after_delete.task_templates_project == Loaded([existing])
 }
 
@@ -119,15 +150,15 @@ pub fn try_update_open_dialog_updates_local_state_test() {
   let assert opt.Some(task_templates_update.Update(next, fx, auth_policy)) =
     task_templates_update.try_update(
       state,
-      pool_messages.OpenTaskTemplateDialog(state_types.TaskTemplateDialogDelete(
-        item,
-      )),
+      pool_messages.OpenTaskTemplateDialog(
+        admin_task_templates.TaskTemplateDialogDelete(item),
+      ),
       feedback_context(),
     )
 
   let assert True =
     next.task_templates_dialog_mode
-    == opt.Some(state_types.TaskTemplateDialogDelete(item))
+    == opt.Some(admin_task_templates.TaskTemplateDialogDelete(item))
   let assert True = fx == effect.none()
   let assert task_templates_update.NoAuthCheck = auth_policy
 }

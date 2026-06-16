@@ -8,14 +8,15 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/api_token.{
+  type ApiToken, type CreatedApiToken, type IntegrationUser, CreatedApiToken,
+}
 import domain/api_token_scope
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/api_tokens
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 import scrumbringer_client/client_state/types.{
-  type ApiToken, type ApiTokenForm, type ApiTokensModel, type CreatedApiToken,
-  type IntegrationUser, ApiTokenForm, ApiTokensModel, CreatedApiToken,
   DialogClosed, DialogOpen, Error as OperationError, Idle, InFlight,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
@@ -45,32 +46,44 @@ pub type AuthPolicy {
 }
 
 pub type Update(parent_msg) {
-  Update(ApiTokensModel, Effect(parent_msg), AuthPolicy)
+  Update(api_tokens_state.Model, Effect(parent_msg), AuthPolicy)
 }
 
 pub fn try_update(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   inner: admin_messages.Msg,
   context: Context(parent_msg),
 ) -> opt.Option(Update(parent_msg)) {
   case inner {
     admin_messages.IntegrationUsersFetched(Ok(users)) ->
       #(
-        ApiTokensModel(..model, integration_users: Loaded(users)),
+        api_tokens_state.ApiTokensModel(
+          ..model,
+          integration_users: Loaded(users),
+        ),
         effect.none(),
       )
       |> without_auth_check
 
     admin_messages.IntegrationUsersFetched(Error(err)) ->
-      #(ApiTokensModel(..model, integration_users: Failed(err)), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, integration_users: Failed(err)),
+        effect.none(),
+      )
       |> with_auth_check(err)
 
     admin_messages.ApiTokensFetched(Ok(tokens)) ->
-      #(ApiTokensModel(..model, tokens: Loaded(tokens)), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, tokens: Loaded(tokens)),
+        effect.none(),
+      )
       |> without_auth_check
 
     admin_messages.ApiTokensFetched(Error(err)) ->
-      #(ApiTokensModel(..model, tokens: Failed(err)), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, tokens: Failed(err)),
+        effect.none(),
+      )
       |> with_auth_check(err)
 
     admin_messages.ApiTokenCreateDialogOpened ->
@@ -78,36 +91,47 @@ pub fn try_update(
 
     admin_messages.ApiTokenCreateDialogClosed ->
       #(
-        ApiTokensModel(..model, token_dialog: DialogClosed(operation: Idle)),
+        api_tokens_state.ApiTokensModel(
+          ..model,
+          token_dialog: DialogClosed(operation: Idle),
+        ),
         effect.none(),
       )
       |> without_auth_check
 
     admin_messages.ApiTokenNameChanged(value) ->
-      update_token_form(model, fn(form) { ApiTokenForm(..form, name: value) })
+      update_token_form(model, fn(form) {
+        api_tokens_state.ApiTokenForm(..form, name: value)
+      })
       |> without_auth_check
 
     admin_messages.ApiTokenIntegrationChanged(value) ->
       update_token_form(model, fn(form) {
-        ApiTokenForm(..form, integration: value)
+        api_tokens_state.ApiTokenForm(..form, integration: value)
       })
       |> without_auth_check
 
     admin_messages.ApiTokenProjectChanged(value) ->
       update_token_form(model, fn(form) {
-        ApiTokenForm(..form, project_id: parse_optional_int(value))
+        api_tokens_state.ApiTokenForm(
+          ..form,
+          project_id: parse_optional_int(value),
+        )
       })
       |> without_auth_check
 
     admin_messages.ApiTokenScopeToggled(scope) ->
       update_token_form(model, fn(form) {
-        ApiTokenForm(..form, scopes: toggle_scope(form.scopes, scope))
+        api_tokens_state.ApiTokenForm(
+          ..form,
+          scopes: toggle_scope(form.scopes, scope),
+        )
       })
       |> without_auth_check
 
     admin_messages.ApiTokenExpiresAtChanged(value) ->
       update_token_form(model, fn(form) {
-        ApiTokenForm(..form, expires_at: value)
+        api_tokens_state.ApiTokenForm(..form, expires_at: value)
       })
       |> without_auth_check
 
@@ -122,7 +146,7 @@ pub fn try_update(
 
     admin_messages.ApiTokenCreatedSecretDismissed ->
       #(
-        ApiTokensModel(
+        api_tokens_state.ApiTokensModel(
           ..model,
           created_token: opt.None,
           token_secret_copy_status: opt.None,
@@ -157,11 +181,17 @@ pub fn try_update(
       token_rename_failed(model, err) |> with_auth_check(err)
 
     admin_messages.ApiTokenRevokeClicked(id) ->
-      #(ApiTokensModel(..model, revoke_confirm: opt.Some(id)), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, revoke_confirm: opt.Some(id)),
+        effect.none(),
+      )
       |> without_auth_check
 
     admin_messages.ApiTokenRevokeCancelled ->
-      #(ApiTokensModel(..model, revoke_confirm: opt.None), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, revoke_confirm: opt.None),
+        effect.none(),
+      )
       |> without_auth_check
 
     admin_messages.ApiTokenRevokeConfirmed ->
@@ -171,19 +201,28 @@ pub fn try_update(
       token_revoked(model, context) |> without_auth_check
 
     admin_messages.ApiTokenRevoked(_, Error(err)) ->
-      #(ApiTokensModel(..model, revoke_confirm: opt.None), effect.none())
+      #(
+        api_tokens_state.ApiTokensModel(..model, revoke_confirm: opt.None),
+        effect.none(),
+      )
       |> with_auth_check(err)
 
     admin_messages.IntegrationDeactivateClicked(id) ->
       #(
-        ApiTokensModel(..model, integration_deactivate_confirm: opt.Some(id)),
+        api_tokens_state.ApiTokensModel(
+          ..model,
+          integration_deactivate_confirm: opt.Some(id),
+        ),
         effect.none(),
       )
       |> without_auth_check
 
     admin_messages.IntegrationDeactivateCancelled ->
       #(
-        ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+        api_tokens_state.ApiTokensModel(
+          ..model,
+          integration_deactivate_confirm: opt.None,
+        ),
         effect.none(),
       )
       |> without_auth_check
@@ -196,7 +235,10 @@ pub fn try_update(
 
     admin_messages.IntegrationDeactivated(_, Error(err)) ->
       #(
-        ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+        api_tokens_state.ApiTokensModel(
+          ..model,
+          integration_deactivate_confirm: opt.None,
+        ),
         effect.none(),
       )
       |> with_auth_check(err)
@@ -206,20 +248,20 @@ pub fn try_update(
 }
 
 fn without_auth_check(
-  result: #(ApiTokensModel, Effect(parent_msg)),
+  result: #(api_tokens_state.Model, Effect(parent_msg)),
 ) -> opt.Option(Update(parent_msg)) {
   with_policy(result, NoAuthCheck)
 }
 
 fn with_auth_check(
-  result: #(ApiTokensModel, Effect(parent_msg)),
+  result: #(api_tokens_state.Model, Effect(parent_msg)),
   err: ApiError,
 ) -> opt.Option(Update(parent_msg)) {
   with_policy(result, CheckAuth(err))
 }
 
 fn with_policy(
-  result: #(ApiTokensModel, Effect(parent_msg)),
+  result: #(api_tokens_state.Model, Effect(parent_msg)),
   auth_policy: AuthPolicy,
 ) -> opt.Option(Update(parent_msg)) {
   let #(model, fx) = result
@@ -227,10 +269,10 @@ fn with_policy(
 }
 
 fn open_token_dialog(
-  model: ApiTokensModel,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+  model: api_tokens_state.Model,
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   #(
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model,
       token_dialog: DialogOpen(
         form: api_tokens_state.default_token_form(),
@@ -243,33 +285,36 @@ fn open_token_dialog(
 }
 
 fn update_token_form(
-  model: ApiTokensModel,
-  update: fn(ApiTokenForm) -> ApiTokenForm,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+  model: api_tokens_state.Model,
+  update: fn(api_tokens_state.Form) -> api_tokens_state.Form,
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let dialog = case model.token_dialog {
     DialogClosed(operation) -> DialogClosed(operation)
     DialogOpen(form, operation) -> DialogOpen(update(form), operation)
   }
-  #(ApiTokensModel(..model, token_dialog: dialog), effect.none())
+  #(
+    api_tokens_state.ApiTokensModel(..model, token_dialog: dialog),
+    effect.none(),
+  )
 }
 
 fn submit_token(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   case model.token_dialog {
     DialogClosed(_) -> #(model, effect.none())
     DialogOpen(form, _) ->
       case validate_token_form(form, context) {
         Ok(valid) -> #(
-          ApiTokensModel(
+          api_tokens_state.ApiTokensModel(
             ..model,
             token_dialog: DialogOpen(form: form, operation: InFlight),
           ),
           api_tokens.create_token(valid, context.on_token_created),
         )
         Error(message) -> #(
-          ApiTokensModel(
+          api_tokens_state.ApiTokensModel(
             ..model,
             token_dialog: DialogOpen(
               form: form,
@@ -283,16 +328,16 @@ fn submit_token(
 }
 
 fn validate_token_form(
-  form: ApiTokenForm,
+  form: api_tokens_state.Form,
   context: Context(parent_msg),
-) -> Result(ApiTokenForm, String) {
+) -> Result(api_tokens_state.Form, String) {
   case string.trim(form.name), string.trim(form.integration), form.scopes {
     "", _, _ -> Error(context.name_required)
     _, "", _ -> Error(context.integration_required)
     _, _, [] -> Error(context.scope_required)
     name, integration, scopes ->
       Ok(
-        ApiTokenForm(
+        api_tokens_state.ApiTokenForm(
           ..form,
           name: name,
           integration: integration,
@@ -303,17 +348,17 @@ fn validate_token_form(
 }
 
 fn token_created(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   created: CreatedApiToken,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let CreatedApiToken(api_token: api_token, token: bearer) = created
   let tokens = case model.tokens {
     Loaded(existing) -> Loaded([api_token, ..existing])
     other -> other
   }
   let model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model,
       tokens: tokens,
       token_dialog: DialogClosed(operation: Idle),
@@ -330,12 +375,12 @@ fn token_created(
 }
 
 fn open_rename_dialog(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   id: Int,
   name: String,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   #(
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model,
       token_rename_dialog: DialogOpen(form: #(id, name), operation: Idle),
     ),
@@ -344,18 +389,21 @@ fn open_rename_dialog(
 }
 
 fn close_rename_dialog(
-  model: ApiTokensModel,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+  model: api_tokens_state.Model,
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   #(
-    ApiTokensModel(..model, token_rename_dialog: DialogClosed(operation: Idle)),
+    api_tokens_state.ApiTokensModel(
+      ..model,
+      token_rename_dialog: DialogClosed(operation: Idle),
+    ),
     effect.none(),
   )
 }
 
 fn update_rename_form(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   update: fn(Int, String) -> #(Int, String),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let dialog = case model.token_rename_dialog {
     DialogClosed(operation) -> DialogClosed(operation)
     DialogOpen(form, operation) -> {
@@ -363,20 +411,23 @@ fn update_rename_form(
       DialogOpen(update(id, name), operation)
     }
   }
-  #(ApiTokensModel(..model, token_rename_dialog: dialog), effect.none())
+  #(
+    api_tokens_state.ApiTokensModel(..model, token_rename_dialog: dialog),
+    effect.none(),
+  )
 }
 
 fn submit_rename(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   case model.token_rename_dialog {
     DialogClosed(_) -> #(model, effect.none())
     DialogOpen(form, _) -> {
       let #(id, name) = form
       case string.trim(name) {
         "" -> #(
-          ApiTokensModel(
+          api_tokens_state.ApiTokensModel(
             ..model,
             token_rename_dialog: DialogOpen(
               form: form,
@@ -386,7 +437,7 @@ fn submit_rename(
           effect.none(),
         )
         trimmed -> #(
-          ApiTokensModel(
+          api_tokens_state.ApiTokensModel(
             ..model,
             token_rename_dialog: DialogOpen(
               form: #(id, trimmed),
@@ -401,9 +452,9 @@ fn submit_rename(
 }
 
 fn token_renamed(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   token: ApiToken,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let tokens = case model.tokens {
     Loaded(existing) ->
       existing
@@ -418,7 +469,7 @@ fn token_renamed(
   }
 
   #(
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model,
       tokens: tokens,
       token_rename_dialog: DialogClosed(operation: Idle),
@@ -428,33 +479,39 @@ fn token_renamed(
 }
 
 fn token_rename_failed(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   err: ApiError,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let dialog = case model.token_rename_dialog {
     DialogClosed(_) -> DialogClosed(operation: OperationError(err.message))
     DialogOpen(form, _) ->
       DialogOpen(form: form, operation: OperationError(err.message))
   }
-  #(ApiTokensModel(..model, token_rename_dialog: dialog), effect.none())
+  #(
+    api_tokens_state.ApiTokensModel(..model, token_rename_dialog: dialog),
+    effect.none(),
+  )
 }
 
 fn token_create_failed(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   err: ApiError,
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let dialog = case model.token_dialog {
     DialogClosed(_) -> DialogClosed(operation: OperationError(err.message))
     DialogOpen(form, _) ->
       DialogOpen(form: form, operation: OperationError(err.message))
   }
-  #(ApiTokensModel(..model, token_dialog: dialog), effect.none())
+  #(
+    api_tokens_state.ApiTokensModel(..model, token_dialog: dialog),
+    effect.none(),
+  )
 }
 
 fn submit_revoke(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   case model.revoke_confirm {
     opt.None -> #(model, effect.none())
     opt.Some(id) -> #(
@@ -467,10 +524,10 @@ fn submit_revoke(
 }
 
 fn token_revoked(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
-  let model = ApiTokensModel(..model, revoke_confirm: opt.None)
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
+  let model = api_tokens_state.ApiTokensModel(..model, revoke_confirm: opt.None)
   #(
     model,
     effect.batch([
@@ -481,9 +538,9 @@ fn token_revoked(
 }
 
 fn submit_integration_deactivate(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   case model.integration_deactivate_confirm {
     opt.None -> #(model, effect.none())
     opt.Some(id) -> #(
@@ -496,38 +553,47 @@ fn submit_integration_deactivate(
 }
 
 fn integration_deactivated(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   #(
-    ApiTokensModel(..model, integration_deactivate_confirm: opt.None),
+    api_tokens_state.ApiTokensModel(
+      ..model,
+      integration_deactivate_confirm: opt.None,
+    ),
     api_tokens.list_integration_users(context.on_integration_users_fetched),
   )
 }
 
 fn handle_secret_copy_clicked(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   secret: String,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   #(
-    ApiTokensModel(..model, token_secret_copy_status: opt.Some(context.copying)),
+    api_tokens_state.ApiTokensModel(
+      ..model,
+      token_secret_copy_status: opt.Some(context.copying),
+    ),
     copy_to_clipboard(secret, context.on_token_secret_copy_finished),
   )
 }
 
 fn handle_secret_copy_finished(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
   ok: Bool,
   context: Context(parent_msg),
-) -> #(ApiTokensModel, Effect(parent_msg)) {
+) -> #(api_tokens_state.Model, Effect(parent_msg)) {
   let message = case ok {
     True -> context.copied
     False -> context.copy_failed
   }
 
   #(
-    ApiTokensModel(..model, token_secret_copy_status: opt.Some(message)),
+    api_tokens_state.ApiTokensModel(
+      ..model,
+      token_secret_copy_status: opt.Some(message),
+    ),
     effect.none(),
   )
 }

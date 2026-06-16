@@ -20,6 +20,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn capability(id: Int, name: String) -> Capability {
   Capability(id: id, name: name)
 }
@@ -120,6 +124,28 @@ pub fn capabilities_view_renders_members_dialog_from_config_without_root_model_t
   assert_contains(html, "data-testid=\"members-checklist\"")
   assert_contains(html, "alice@example.com")
   assert_contains(html, "bob@example.com")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "class=\"btn-primary\"")
+}
+
+pub fn capabilities_view_delete_dialog_uses_shared_danger_button_test() {
+  let capabilities =
+    admin_capabilities.Model(
+      ..admin_capabilities.default_model(),
+      capabilities: Loaded([capability(1, "Backend")]),
+      capability_delete_dialog_id: opt.Some(1),
+      capability_delete_in_flight: True,
+    )
+
+  let html =
+    capabilities_view.view(config(capabilities, admin_members.default_model()))
+    |> element.to_document_string
+
+  assert_contains(html, "Delete Capability")
+  assert_contains(html, "Deleting")
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "btn-entity-action")
 }
 
 pub fn capabilities_view_renders_create_dialog_from_config_without_root_model_test() {

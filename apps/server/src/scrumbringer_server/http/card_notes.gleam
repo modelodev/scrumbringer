@@ -21,6 +21,7 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/card_notes_db.gleam` for persistence
 
+import domain/card.{type Card, type CardNote, CardNote}
 import gleam/http
 import gleam/result
 import pog
@@ -233,7 +234,7 @@ fn get_note(
   db: pog.Connection,
   card_id: Int,
   note_id: Int,
-) -> Result(card_notes_db.CardNote, wisp.Response) {
+) -> Result(CardNote, wisp.Response) {
   case card_notes_db.get_note(db, card_id, note_id) {
     Ok(note) -> Ok(note)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -255,9 +256,9 @@ fn can_delete_note(
   db: pog.Connection,
   user: StoredUser,
   project_id: Int,
-  note: card_notes_db.CardNote,
+  note: CardNote,
 ) -> Bool {
-  let card_notes_db.CardNote(user_id: author_id, ..) = note
+  let CardNote(user_id: author_id, ..) = note
 
   case
     authorization.require_project_manager_with_org_bypass(db, user, project_id)
@@ -271,7 +272,7 @@ fn require_card_access(
   db: pog.Connection,
   card_id: Int,
   user_id: Int,
-) -> Result(cards_db.Card, wisp.Response) {
+) -> Result(Card, wisp.Response) {
   case cards_db.get_card(db, card_id, user_id) {
     Error(cards_db.CardNotFound) -> Error(not_found_response())
     Error(cards_db.DbError(_)) -> Error(database_error_response())

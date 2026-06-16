@@ -17,7 +17,6 @@ import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote, Loaded}
 
 import scrumbringer_client/client_state/admin/cards as admin_cards
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -86,8 +85,8 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
         |> milestone_name_or_empty
 
       let #(mode_str, card_json) = case mode {
-        state_types.CardDialogCreate -> #("create", attribute.none())
-        state_types.CardDialogEdit(card_id) ->
+        admin_cards.CardDialogCreate -> #("create", attribute.none())
+        admin_cards.CardDialogEdit(card_id) ->
           case find_card(config.model.cards, card_id) {
             opt.Some(card) -> #(
               "edit",
@@ -95,7 +94,7 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
             )
             opt.None -> #("edit", attribute.none())
           }
-        state_types.CardDialogDelete(card_id) ->
+        admin_cards.CardDialogDelete(card_id) ->
           case find_card(config.model.cards, card_id) {
             opt.Some(card) -> #(
               "delete",

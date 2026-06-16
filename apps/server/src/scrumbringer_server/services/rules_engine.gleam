@@ -737,8 +737,13 @@ fn event_task_type_id(event: StateChange) -> option.Option(Int) {
 }
 
 fn task_type_filter_value(event: StateChange) -> Int {
-  option_helpers.option_to_value(event_task_type_id(event), 0)
+  option_helpers.option_to_value(
+    event_task_type_id(event),
+    no_task_type_filter_value,
+  )
 }
+
+const no_task_type_filter_value = 0
 
 fn event_task_type_label(event: StateChange) -> String {
   case event_task_type_id(event) {
@@ -755,8 +760,10 @@ fn event_card_id(event: StateChange) -> option.Option(Int) {
 }
 
 fn card_id_create_value(card_id: option.Option(Int)) -> Int {
-  option_helpers.option_to_value(card_id, 0)
+  option_helpers.option_to_value(card_id, no_card_id_create_value)
 }
+
+const no_card_id_create_value = 0
 
 const no_task_milestone_id = 0
 

@@ -32,8 +32,8 @@ import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/types.{
-  type DialogState, type InviteLinkForm, DialogClosed, DialogOpen,
-  Error as OperationError, Idle, InFlight, InviteLinkForm,
+  type DialogState, DialogClosed, DialogOpen, Error as OperationError, Idle,
+  InFlight,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
 
@@ -51,7 +51,7 @@ pub type Context(parent_msg) {
   )
 }
 
-pub type Success {
+type Success {
   InviteLinkCreated
   InviteLinkRegenerated
   InviteLinkInvalidated
@@ -192,7 +192,7 @@ fn with_policy(
 // =============================================================================
 
 /// Handle invite links fetch success.
-pub fn handle_invite_links_fetched_ok(
+fn handle_invite_links_fetched_ok(
   model: admin_invites.Model,
   links: List(InviteLink),
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
@@ -200,7 +200,7 @@ pub fn handle_invite_links_fetched_ok(
 }
 
 /// Handle invite links fetch error.
-pub fn handle_invite_links_fetched_error(
+fn handle_invite_links_fetched_error(
   model: admin_invites.Model,
   err: ApiError,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
@@ -212,14 +212,14 @@ pub fn handle_invite_links_fetched_error(
 // =============================================================================
 
 /// Handle invite create dialog opened.
-pub fn handle_invite_create_dialog_opened(
+fn handle_invite_create_dialog_opened(
   model: admin_invites.Model,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
   #(
     admin_invites.Model(
       ..model,
       invite_link_dialog: DialogOpen(
-        form: InviteLinkForm(email: ""),
+        form: admin_invites.InviteLinkForm(email: ""),
         operation: Idle,
       ),
     ),
@@ -228,7 +228,7 @@ pub fn handle_invite_create_dialog_opened(
 }
 
 /// Handle invite create dialog closed.
-pub fn handle_invite_create_dialog_closed(
+fn handle_invite_create_dialog_closed(
   model: admin_invites.Model,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
   #(
@@ -245,27 +245,36 @@ pub fn handle_invite_create_dialog_closed(
 // =============================================================================
 
 /// Handle invite link email input change.
-pub fn handle_invite_link_email_changed(
+fn handle_invite_link_email_changed(
   model: admin_invites.Model,
   value: String,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
   let dialog = case model.invite_link_dialog {
     DialogClosed(operation: operation) -> DialogClosed(operation: operation)
-    DialogOpen(form: InviteLinkForm(email: _), operation: operation) ->
-      DialogOpen(form: InviteLinkForm(email: value), operation: operation)
+    DialogOpen(
+      form: admin_invites.InviteLinkForm(email: _),
+      operation: operation,
+    ) ->
+      DialogOpen(
+        form: admin_invites.InviteLinkForm(email: value),
+        operation: operation,
+      )
   }
 
   #(admin_invites.Model(..model, invite_link_dialog: dialog), effect.none())
 }
 
 /// Handle invite link create form submission.
-pub fn handle_invite_link_create_submitted(
+fn handle_invite_link_create_submitted(
   model: admin_invites.Model,
   context: Context(parent_msg),
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
   case model.invite_link_dialog {
     DialogClosed(..) -> #(model, effect.none())
-    DialogOpen(form: InviteLinkForm(email: email), operation: operation) ->
+    DialogOpen(
+      form: admin_invites.InviteLinkForm(email: email),
+      operation: operation,
+    ) ->
       case operation {
         InFlight -> #(model, effect.none())
         _ -> submit_invite_link_create(model, string.trim(email), context)
@@ -283,7 +292,7 @@ fn submit_invite_link_create(
       admin_invites.Model(
         ..model,
         invite_link_dialog: DialogOpen(
-          form: InviteLinkForm(email: email),
+          form: admin_invites.InviteLinkForm(email: email),
           operation: OperationError(context.email_required),
         ),
       ),
@@ -293,7 +302,7 @@ fn submit_invite_link_create(
       admin_invites.Model(
         ..model,
         invite_link_dialog: DialogOpen(
-          form: InviteLinkForm(email: email),
+          form: admin_invites.InviteLinkForm(email: email),
           operation: InFlight,
         ),
         invite_link_copy_status: opt.None,
@@ -304,7 +313,7 @@ fn submit_invite_link_create(
 }
 
 /// Handle invite link created success.
-pub fn handle_invite_link_created_ok(
+fn handle_invite_link_created_ok(
   model: admin_invites.Model,
   link: InviteLink,
   context: Context(parent_msg),
@@ -325,7 +334,7 @@ pub fn handle_invite_link_created_ok(
 }
 
 /// Handle invite link created error.
-pub fn handle_invite_link_created_error(
+fn handle_invite_link_created_error(
   model: admin_invites.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -349,7 +358,7 @@ pub fn handle_invite_link_created_error(
 // =============================================================================
 
 /// Handle invite link regenerate click.
-pub fn handle_invite_link_regenerate_clicked(
+fn handle_invite_link_regenerate_clicked(
   model: admin_invites.Model,
   email: String,
   context: Context(parent_msg),
@@ -366,7 +375,7 @@ pub fn handle_invite_link_regenerate_clicked(
 
 fn submit_invite_link_regenerate(
   model: admin_invites.Model,
-  dialog: DialogState(InviteLinkForm),
+  dialog: DialogState(admin_invites.InviteLinkForm),
   email: String,
   context: Context(parent_msg),
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
@@ -393,7 +402,7 @@ fn submit_invite_link_regenerate(
 }
 
 /// Handle invite link regenerated success.
-pub fn handle_invite_link_regenerated_ok(
+fn handle_invite_link_regenerated_ok(
   model: admin_invites.Model,
   link: InviteLink,
   context: Context(parent_msg),
@@ -414,7 +423,7 @@ pub fn handle_invite_link_regenerated_ok(
 }
 
 /// Handle invite link regenerated error.
-pub fn handle_invite_link_regenerated_error(
+fn handle_invite_link_regenerated_error(
   model: admin_invites.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -433,7 +442,7 @@ pub fn handle_invite_link_regenerated_error(
   )
 }
 
-pub fn handle_invite_link_invalidate_clicked(
+fn handle_invite_link_invalidate_clicked(
   model: admin_invites.Model,
   email: String,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
@@ -446,7 +455,7 @@ pub fn handle_invite_link_invalidate_clicked(
   )
 }
 
-pub fn handle_invite_link_invalidate_cancelled(
+fn handle_invite_link_invalidate_cancelled(
   model: admin_invites.Model,
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
   #(
@@ -455,7 +464,7 @@ pub fn handle_invite_link_invalidate_cancelled(
   )
 }
 
-pub fn handle_invite_link_invalidate_confirmed(
+fn handle_invite_link_invalidate_confirmed(
   model: admin_invites.Model,
   context: Context(parent_msg),
 ) -> #(admin_invites.Model, Effect(parent_msg)) {
@@ -472,7 +481,7 @@ pub fn handle_invite_link_invalidate_confirmed(
   }
 }
 
-pub fn handle_invite_link_invalidated_ok(
+fn handle_invite_link_invalidated_ok(
   model: admin_invites.Model,
   _link: InviteLink,
   context: Context(parent_msg),
@@ -492,7 +501,7 @@ pub fn handle_invite_link_invalidated_ok(
   )
 }
 
-pub fn handle_invite_link_invalidated_error(
+fn handle_invite_link_invalidated_error(
   model: admin_invites.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -505,9 +514,9 @@ pub fn handle_invite_link_invalidated_error(
 }
 
 fn update_invite_error_state(
-  dialog: DialogState(InviteLinkForm),
+  dialog: DialogState(admin_invites.InviteLinkForm),
   message: String,
-) -> DialogState(InviteLinkForm) {
+) -> DialogState(admin_invites.InviteLinkForm) {
   case dialog {
     DialogOpen(form: form, ..) ->
       DialogOpen(form: form, operation: OperationError(message))
@@ -516,17 +525,20 @@ fn update_invite_error_state(
 }
 
 fn update_invite_in_flight(
-  dialog: DialogState(InviteLinkForm),
+  dialog: DialogState(admin_invites.InviteLinkForm),
   email: String,
-) -> DialogState(InviteLinkForm) {
+) -> DialogState(admin_invites.InviteLinkForm) {
   case dialog {
-    DialogOpen(form: InviteLinkForm(email: _), ..) ->
-      DialogOpen(form: InviteLinkForm(email: email), operation: InFlight)
+    DialogOpen(form: admin_invites.InviteLinkForm(email: _), ..) ->
+      DialogOpen(
+        form: admin_invites.InviteLinkForm(email: email),
+        operation: InFlight,
+      )
     DialogClosed(..) -> DialogClosed(operation: InFlight)
   }
 }
 
-pub fn error_message(
+fn error_message(
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
 ) -> String {
@@ -536,7 +548,7 @@ pub fn error_message(
   }
 }
 
-pub fn error_effect(
+fn error_effect(
   err: ApiError,
   message: String,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -552,7 +564,7 @@ pub fn error_effect(
 // =============================================================================
 
 /// Handle invite link copy click.
-pub fn handle_invite_link_copy_clicked(
+fn handle_invite_link_copy_clicked(
   model: admin_invites.Model,
   text: String,
   context: Context(parent_msg),
@@ -567,7 +579,7 @@ pub fn handle_invite_link_copy_clicked(
 }
 
 /// Handle invite link copy finished.
-pub fn handle_invite_link_copy_finished(
+fn handle_invite_link_copy_finished(
   model: admin_invites.Model,
   ok: Bool,
   context: Context(parent_msg),
@@ -583,7 +595,7 @@ pub fn handle_invite_link_copy_finished(
   )
 }
 
-pub fn success_effect(
+fn success_effect(
   success: Success,
   context: FeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {

@@ -5,27 +5,26 @@ import gleam/json
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
 
-pub fn projects(projects: List(projects_db.Project)) -> json.Json {
+pub fn projects(projects: List(projects_db.ProjectRecord)) -> json.Json {
   json.array(projects, of: project)
 }
 
-pub fn projects_response(values: List(projects_db.Project)) -> json.Json {
+pub fn projects_response(values: List(projects_db.ProjectRecord)) -> json.Json {
   json.object([#("projects", projects(values))])
 }
 
-pub fn project(project: projects_db.Project) -> json.Json {
-  let projects_db.Project(
+pub fn project(project: projects_db.ProjectRecord) -> json.Json {
+  let projects_db.ProjectRecord(
     id: id,
-    org_id: org_id,
     name: name,
     created_at: created_at,
     my_role: my_role,
     members_count: members_count,
+    ..,
   ) = project
 
   json.object([
     #("id", json.int(id)),
-    #("org_id", json.int(org_id)),
     #("name", json.string(name)),
     #("created_at", json.string(created_at)),
     #("my_role", json.string(project_role.to_string(my_role))),
@@ -33,29 +32,30 @@ pub fn project(project: projects_db.Project) -> json.Json {
   ])
 }
 
-pub fn project_response(value: projects_db.Project) -> json.Json {
+pub fn project_response(value: projects_db.ProjectRecord) -> json.Json {
   json.object([#("project", project(value))])
 }
 
-pub fn members(members: List(projects_db.ProjectMember)) -> json.Json {
+pub fn members(members: List(projects_db.ProjectMemberRecord)) -> json.Json {
   json.array(members, of: member)
 }
 
-pub fn members_response(values: List(projects_db.ProjectMember)) -> json.Json {
+pub fn members_response(
+  values: List(projects_db.ProjectMemberRecord),
+) -> json.Json {
   json.object([#("members", members(values))])
 }
 
-pub fn member(member: projects_db.ProjectMember) -> json.Json {
-  let projects_db.ProjectMember(
-    project_id: project_id,
+pub fn member(member: projects_db.ProjectMemberRecord) -> json.Json {
+  let projects_db.ProjectMemberRecord(
     user_id: user_id,
     role: role,
     created_at: created_at,
     claimed_count: claimed_count,
+    ..,
   ) = member
 
   json.object([
-    #("project_id", json.int(project_id)),
     #("user_id", json.int(user_id)),
     #("role", json.string(project_role.to_string(role))),
     #("created_at", json.string(created_at)),
@@ -63,7 +63,7 @@ pub fn member(member: projects_db.ProjectMember) -> json.Json {
   ])
 }
 
-pub fn member_response(value: projects_db.ProjectMember) -> json.Json {
+pub fn member_response(value: projects_db.ProjectMemberRecord) -> json.Json {
   json.object([#("member", member(value))])
 }
 

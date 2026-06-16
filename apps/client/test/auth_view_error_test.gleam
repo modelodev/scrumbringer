@@ -4,9 +4,14 @@ import lustre/element
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/i18n/locale
+import scrumbringer_client/token_flow
 
 fn assert_contains(html: String, text: String) {
   let assert True = string.contains(html, text)
+}
+
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
 }
 
 fn config(auth: auth_state.AuthModel) -> auth_view.Config(String) {
@@ -47,6 +52,22 @@ pub fn login_in_flight_adds_loading_class_test() {
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
   assert_contains(html, "btn-loading")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "type=\"submit\"")
+}
+
+pub fn forgot_password_trigger_uses_semantic_button_test() {
+  let auth = auth_state.default_model()
+
+  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+
+  assert_contains(html, "Forgot password?")
+  assert_contains(html, "auth-forgot")
+  assert_contains(html, "btn-ghost")
+  assert_contains(html, "btn-view-action")
+  assert_contains(html, "type=\"button\"")
+  assert_not_contains(html, "class=\"auth-forgot\"")
 }
 
 pub fn forgot_password_error_renders_error_block_test() {
@@ -61,4 +82,65 @@ pub fn forgot_password_error_renders_error_block_test() {
 
   assert_contains(html, "class=\"error\"")
   assert_contains(html, "Email not found")
+}
+
+pub fn forgot_password_submit_uses_semantic_button_test() {
+  let auth =
+    auth_state.AuthModel(
+      ..auth_state.default_model(),
+      forgot_password_open: True,
+      forgot_password_in_flight: True,
+    )
+
+  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+
+  assert_contains(html, "Working")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "btn-loading")
+  assert_contains(html, "type=\"submit\"")
+}
+
+pub fn accept_invite_submit_uses_semantic_button_test() {
+  let auth =
+    auth_state.AuthModel(
+      ..auth_state.default_model(),
+      accept_invite: token_flow.Model(
+        token: "invite-token",
+        state: token_flow.Ready("member@example.com"),
+        password: "",
+        password_error: opt.None,
+        submit_error: opt.None,
+      ),
+    )
+
+  let html =
+    auth_view.view_accept_invite(config(auth)) |> element.to_document_string
+
+  assert_contains(html, "Register")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "type=\"submit\"")
+}
+
+pub fn reset_password_submit_uses_semantic_button_test() {
+  let auth =
+    auth_state.AuthModel(
+      ..auth_state.default_model(),
+      reset_password: token_flow.Model(
+        token: "reset-token",
+        state: token_flow.Ready("member@example.com"),
+        password: "",
+        password_error: opt.None,
+        submit_error: opt.None,
+      ),
+    )
+
+  let html =
+    auth_view.view_reset_password(config(auth)) |> element.to_document_string
+
+  assert_contains(html, "Save new password")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "type=\"submit\"")
 }

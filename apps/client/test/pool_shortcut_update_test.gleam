@@ -27,8 +27,21 @@ fn key(key: String) -> pool_prefs.KeyEvent {
   )
 }
 
+fn shortcut(
+  model: shortcut_update.Model,
+  key_name: String,
+) -> shortcut_update.Model {
+  let assert Some(shortcut_update.Update(next, _fx)) =
+    shortcut_update.try_update(
+      model,
+      pool_messages.GlobalKeyDown(key(key_name)),
+      shortcut_update.Context(is_pool_shortcut_target: True),
+    )
+  next
+}
+
 pub fn shortcut_update_toggle_filters_changes_visibility_test() {
-  let #(next, _fx) = shortcut_update.handle(local_model(), key("f"))
+  let next = shortcut(local_model(), "f")
 
   let assert True = next.pool.member_pool_filters_visible
 }
@@ -66,10 +79,10 @@ pub fn shortcut_try_update_ignores_non_shortcut_message_test() {
 }
 
 pub fn shortcut_update_open_and_close_create_dialog_test() {
-  let #(opened, _fx) = shortcut_update.handle(local_model(), key("n"))
+  let opened = shortcut(local_model(), "n")
   let assert dialog_mode.DialogCreate = opened.pool.member_create_dialog_mode
 
-  let #(closed, _fx) = shortcut_update.handle(opened, key("Escape"))
+  let closed = shortcut(opened, "Escape")
   let assert dialog_mode.DialogClosed = closed.pool.member_create_dialog_mode
 }
 
@@ -83,7 +96,7 @@ pub fn shortcut_update_escape_closes_notes_detail_test() {
       ),
     )
 
-  let #(next, _fx) = shortcut_update.handle(model, key("Escape"))
+  let next = shortcut(model, "Escape")
 
   let assert None = next.notes.member_notes_task_id
 }
@@ -99,7 +112,7 @@ pub fn shortcut_update_escape_closes_position_edit_test() {
       ),
     )
 
-  let #(next, _fx) = shortcut_update.handle(model, key("Escape"))
+  let next = shortcut(model, "Escape")
 
   let assert None = next.positions.member_position_edit_task
   let assert None = next.positions.member_position_edit_error
@@ -117,7 +130,7 @@ pub fn shortcut_update_escape_closes_closable_milestone_dialog_test() {
       ),
     )
 
-  let #(next, _fx) = shortcut_update.handle(model, key("Escape"))
+  let next = shortcut(model, "Escape")
 
   let assert member_pool.MilestoneDialogClosed =
     next.pool.member_milestone_dialog

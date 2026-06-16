@@ -17,10 +17,10 @@
 //// - **http/tasks.gleam**: Constructs messages and interprets responses
 
 import domain/field_update
+import domain/task as domain_task
 import domain/task_status
 import gleam/option.{type Option}
 import pog
-import scrumbringer_server/persistence/tasks/mappers as tasks_mappers
 import scrumbringer_server/services/task_types_db
 
 // =============================================================================
@@ -126,8 +126,8 @@ pub type Response {
   TaskTypeCreated(task_types_db.TaskType)
   TaskTypeUpdated(task_types_db.TaskType)
   TaskTypeDeleted(Int)
-  TasksList(List(tasks_mappers.Task))
-  TaskResult(tasks_mappers.Task)
+  TasksList(List(domain_task.Task))
+  TaskResult(domain_task.Task)
 }
 
 // =============================================================================

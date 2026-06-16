@@ -6,6 +6,9 @@ import lustre/effect
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/features/admin/cards as cards_workflow
+import scrumbringer_client/features/milestones/create_update as milestone_create_update
+import scrumbringer_client/features/milestones/dialog_update as milestone_dialog_update
+import scrumbringer_client/features/milestones/movement_update as milestone_movement_update
 import scrumbringer_client/features/milestones/update as milestones_workflow
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
@@ -19,15 +22,73 @@ pub fn try_update(
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   let feedback = feedback_context(model)
+  let context = milestones_context(model)
 
   case
-    milestones_workflow.try_member_pool_update(
+    milestone_dialog_update.try_update(
       model.member.pool,
       inner,
-      context(model),
+      context,
       feedback,
     )
   {
+    opt.Some(update) ->
+      opt.Some(apply_update(model, update, feedback, member_refresh))
+    opt.None ->
+      try_movement_update(
+        model,
+        inner,
+        movement_context(),
+        feedback,
+        member_refresh,
+      )
+  }
+}
+
+fn try_movement_update(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  context: milestone_movement_update.Context(client_state.Msg),
+  feedback: milestones_workflow.FeedbackContext(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
+  case
+    milestone_movement_update.try_update(
+      model.member.pool,
+      inner,
+      context,
+      feedback,
+    )
+  {
+    opt.Some(update) ->
+      opt.Some(apply_update(model, update, feedback, member_refresh))
+    opt.None -> try_create_update(model, inner, feedback, member_refresh)
+  }
+}
+
+fn try_create_update(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  feedback: milestones_workflow.FeedbackContext(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
+  case milestone_create_update.try_update(model.member.pool, inner) {
+    opt.Some(update) ->
+      opt.Some(apply_update(model, update, feedback, member_refresh))
+    opt.None -> try_workflow_update(model, inner, feedback, member_refresh)
+  }
+}
+
+fn try_workflow_update(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  feedback: milestones_workflow.FeedbackContext(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
+  case milestones_workflow.try_member_pool_update(model.member.pool, inner) {
     opt.Some(update) ->
       opt.Some(apply_update(model, update, feedback, member_refresh))
     opt.None -> opt.None
@@ -99,7 +160,7 @@ fn apply_root_policy(
   }
 }
 
-fn context(
+fn milestones_context(
   model: client_state.Model,
 ) -> milestones_workflow.Context(client_state.Msg) {
   milestones_workflow.Context(
@@ -122,14 +183,19 @@ fn context(
         result,
       ))
     },
+    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
+    select_project_first: i18n.t(model.ui.locale, i18n_text.SelectProjectFirst),
+  )
+}
+
+fn movement_context() -> milestone_movement_update.Context(client_state.Msg) {
+  milestone_movement_update.Context(
     on_milestone_card_moved: fn(result) {
       client_state.pool_msg(pool_messages.MemberMilestoneCardMoved(result))
     },
     on_milestone_task_moved: fn(result) {
       client_state.pool_msg(pool_messages.MemberMilestoneTaskMoved(result))
     },
-    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
-    select_project_first: i18n.t(model.ui.locale, i18n_text.SelectProjectFirst),
   )
 }
 

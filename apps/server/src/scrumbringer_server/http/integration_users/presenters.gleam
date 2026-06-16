@@ -1,8 +1,6 @@
+import domain/api_token.{type IntegrationUser, IntegrationUser}
 import domain/org_role
 import gleam/json
-import scrumbringer_server/services/integration_users.{
-  type IntegrationUser, IntegrationUser,
-}
 
 pub fn integration_users_response(users: List(IntegrationUser)) -> json.Json {
   json.object([#("integration_users", json.array(users, of: integration_user))])

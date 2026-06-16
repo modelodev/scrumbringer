@@ -1,10 +1,11 @@
-//// Pure milestone list filters.
+//// Milestone list filters and filter state transitions.
 
 import gleam/list
 import gleam/option
 import gleam/string
 
 import domain/milestone.{type MilestoneProgress, Completed}
+import scrumbringer_client/client_state/member/pool as member_pool
 
 /// Current filter settings for the member milestone list.
 pub type Config {
@@ -33,6 +34,27 @@ pub fn by_project(
       list.filter(items, fn(progress) { progress.milestone.project_id == id })
     option.None -> items
   }
+}
+
+pub fn toggle_show_completed(model: member_pool.Model) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_milestones_show_completed: !model.member_milestones_show_completed,
+  )
+}
+
+pub fn toggle_show_empty(model: member_pool.Model) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_milestones_show_empty: !model.member_milestones_show_empty,
+  )
+}
+
+pub fn set_search_query(
+  model: member_pool.Model,
+  query: String,
+) -> member_pool.Model {
+  member_pool.Model(..model, member_milestones_search_query: query)
 }
 
 fn matches_search(progress: MilestoneProgress, query: String) -> Bool {

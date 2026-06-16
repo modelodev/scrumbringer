@@ -27,7 +27,7 @@ pub fn try_update(
   }
 }
 
-pub fn handle_roster_fetched_ok(
+fn handle_roster_fetched_ok(
   model: member_pool.Model,
   members: List(ProjectMember),
 ) -> #(member_pool.Model, effect.Effect(parent_msg)) {
@@ -47,7 +47,7 @@ pub fn handle_roster_fetched_ok(
   )
 }
 
-pub fn handle_roster_fetched_error(
+fn handle_roster_fetched_error(
   model: member_pool.Model,
   err: ApiError,
 ) -> #(member_pool.Model, effect.Effect(parent_msg)) {
@@ -57,7 +57,7 @@ pub fn handle_roster_fetched_error(
   )
 }
 
-pub fn handle_row_toggled(
+fn handle_row_toggled(
   model: member_pool.Model,
   user_id: Int,
 ) -> #(member_pool.Model, effect.Effect(parent_msg)) {

@@ -155,7 +155,7 @@ fn with_auth_check(
 }
 
 /// Handle from date change.
-pub fn handle_from_changed(
+fn handle_from_changed(
   model: admin_metrics.Model,
   from: String,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -163,7 +163,7 @@ pub fn handle_from_changed(
 }
 
 /// Handle to date change.
-pub fn handle_to_changed(
+fn handle_to_changed(
   model: admin_metrics.Model,
   to: String,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -171,7 +171,7 @@ pub fn handle_to_changed(
 }
 
 /// Handle from date change with auto-refresh.
-pub fn handle_from_changed_and_refresh(
+fn handle_from_changed_and_refresh(
   model: admin_metrics.Model,
   from: String,
   context: Context(parent_msg),
@@ -203,7 +203,7 @@ pub fn handle_from_changed_and_refresh(
 }
 
 /// Handle to date change with auto-refresh.
-pub fn handle_to_changed_and_refresh(
+fn handle_to_changed_and_refresh(
   model: admin_metrics.Model,
   to: String,
   context: Context(parent_msg),
@@ -235,7 +235,7 @@ pub fn handle_to_changed_and_refresh(
 }
 
 /// Handle refresh clicked.
-pub fn handle_refresh_clicked(
+fn handle_refresh_clicked(
   model: admin_metrics.Model,
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -261,7 +261,7 @@ pub fn handle_refresh_clicked(
 }
 
 /// Handle quick range button click (sets dates and fetches immediately).
-pub fn handle_quick_range_clicked(
+fn handle_quick_range_clicked(
   model: admin_metrics.Model,
   from: String,
   to: String,
@@ -289,7 +289,7 @@ pub fn handle_quick_range_clicked(
 // =============================================================================
 
 /// Handle rule metrics fetch success.
-pub fn handle_fetched_ok(
+fn handle_fetched_ok(
   model: admin_metrics.Model,
   metrics: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -300,7 +300,7 @@ pub fn handle_fetched_ok(
 }
 
 /// Handle rule metrics fetch error.
-pub fn handle_fetched_error(
+fn handle_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -361,7 +361,7 @@ pub fn init_tab(
 // =============================================================================
 
 /// Handle workflow expansion toggle (to show per-rule metrics).
-pub fn handle_workflow_expanded(
+fn handle_workflow_expanded(
   model: admin_metrics.Model,
   workflow_id: Int,
   context: Context(parent_msg),
@@ -396,7 +396,7 @@ pub fn handle_workflow_expanded(
 }
 
 /// Handle workflow details fetch success.
-pub fn handle_workflow_details_fetched_ok(
+fn handle_workflow_details_fetched_ok(
   model: admin_metrics.Model,
   details: api_rule_metrics.WorkflowMetrics,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -410,7 +410,7 @@ pub fn handle_workflow_details_fetched_ok(
 }
 
 /// Handle workflow details fetch error.
-pub fn handle_workflow_details_fetched_error(
+fn handle_workflow_details_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -424,7 +424,7 @@ pub fn handle_workflow_details_fetched_error(
 }
 
 /// Handle drill-down click on a rule (to see executions).
-pub fn handle_drilldown_clicked(
+fn handle_drilldown_clicked(
   model: admin_metrics.Model,
   rule_id: Int,
   context: Context(parent_msg),
@@ -464,7 +464,7 @@ pub fn handle_drilldown_clicked(
 }
 
 /// Handle drill-down modal close.
-pub fn handle_drilldown_closed(
+fn handle_drilldown_closed(
   model: admin_metrics.Model,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
@@ -480,7 +480,7 @@ pub fn handle_drilldown_closed(
 }
 
 /// Handle rule details fetch success.
-pub fn handle_rule_details_fetched_ok(
+fn handle_rule_details_fetched_ok(
   model: admin_metrics.Model,
   details: api_rule_metrics.RuleMetricsDetailed,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -494,7 +494,7 @@ pub fn handle_rule_details_fetched_ok(
 }
 
 /// Handle rule details fetch error.
-pub fn handle_rule_details_fetched_error(
+fn handle_rule_details_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -505,7 +505,7 @@ pub fn handle_rule_details_fetched_error(
 }
 
 /// Handle executions fetch success.
-pub fn handle_executions_fetched_ok(
+fn handle_executions_fetched_ok(
   model: admin_metrics.Model,
   response: api_rule_metrics.RuleExecutionsResponse,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -519,7 +519,7 @@ pub fn handle_executions_fetched_ok(
 }
 
 /// Handle executions fetch error.
-pub fn handle_executions_fetched_error(
+fn handle_executions_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -530,7 +530,7 @@ pub fn handle_executions_fetched_error(
 }
 
 /// Handle executions pagination.
-pub fn handle_exec_page_changed(
+fn handle_exec_page_changed(
   model: admin_metrics.Model,
   offset: Int,
   context: Context(parent_msg),

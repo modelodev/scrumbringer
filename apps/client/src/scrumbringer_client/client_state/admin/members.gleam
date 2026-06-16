@@ -2,12 +2,25 @@
 
 import gleam/option.{type Option}
 
+import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import domain/project.{type ProjectMember}
 import domain/project_role.{type ProjectRole, Member}
 import domain/remote.{type Remote, NotAsked}
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
+
+/// Confirmation target for releasing every claimed task from one member.
+pub type ReleaseAllTarget {
+  ReleaseAllTarget(user: OrgUser, claimed_count: Int)
+}
+
+/// Represents OrgUsersSearchState.
+pub type OrgUsersSearchState {
+  OrgUsersSearchIdle(query: String, token: Int)
+  OrgUsersSearchLoading(query: String, token: Int)
+  OrgUsersSearchLoaded(query: String, token: Int, results: List(OrgUser))
+  OrgUsersSearchFailed(query: String, token: Int, error: ApiError)
+}
 
 /// Represents members admin state.
 pub type Model {
@@ -30,10 +43,10 @@ pub type Model {
     members_remove_confirm: Option(OrgUser),
     members_remove_in_flight: Bool,
     members_remove_error: Option(String),
-    members_release_confirm: Option(state_types.ReleaseAllTarget),
+    members_release_confirm: Option(ReleaseAllTarget),
     members_release_in_flight: Option(Int),
     members_release_error: Option(String),
-    org_users_search: state_types.OrgUsersSearchState,
+    org_users_search: OrgUsersSearchState,
   )
 }
 
@@ -61,6 +74,6 @@ pub fn default_model() -> Model {
     members_release_confirm: option.None,
     members_release_in_flight: option.None,
     members_release_error: option.None,
-    org_users_search: state_types.OrgUsersSearchIdle("", 0),
+    org_users_search: OrgUsersSearchIdle("", 0),
   )
 }

@@ -18,6 +18,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn claimed_task() -> Task {
   let state =
     task_state.Claimed(
@@ -127,4 +131,7 @@ pub fn my_bar_section_renders_from_config_test() {
   assert_contains(html, "Release card")
   assert_contains(html, "Prepare release")
   assert_contains(html, "Add task to Release card")
+  assert_contains(html, "my-bar-add-task")
+  assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "class=\"btn-icon btn-sm my-bar-add-task\"")
 }

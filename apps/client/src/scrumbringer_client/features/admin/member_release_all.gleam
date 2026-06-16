@@ -24,7 +24,6 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/members as admin_members
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_user_fallback
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -114,8 +113,7 @@ fn with_policy(
 // Confirmation Handlers
 // =============================================================================
 
-/// Handle release-all click (show confirmation).
-pub fn handle_member_release_all_clicked(
+fn handle_member_release_all_clicked(
   model: admin_members.Model,
   user_id: Int,
   claimed_count: Int,
@@ -131,7 +129,7 @@ pub fn handle_member_release_all_clicked(
   #(
     admin_members.Model(
       ..model,
-      members_release_confirm: opt.Some(state_types.ReleaseAllTarget(
+      members_release_confirm: opt.Some(admin_members.ReleaseAllTarget(
         user: user,
         claimed_count: claimed_count,
       )),
@@ -141,8 +139,7 @@ pub fn handle_member_release_all_clicked(
   )
 }
 
-/// Handle release-all cancel.
-pub fn handle_member_release_all_cancelled(
+fn handle_member_release_all_cancelled(
   model: admin_members.Model,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(
@@ -155,8 +152,7 @@ pub fn handle_member_release_all_cancelled(
   )
 }
 
-/// Handle release-all confirmation.
-pub fn handle_member_release_all_confirmed(
+fn handle_member_release_all_confirmed(
   model: admin_members.Model,
   context: Context(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -165,7 +161,7 @@ pub fn handle_member_release_all_confirmed(
     opt.None ->
       case context.selected_project_id, model.members_release_confirm {
         opt.Some(project_id),
-          opt.Some(state_types.ReleaseAllTarget(user: user, ..))
+          opt.Some(admin_members.ReleaseAllTarget(user: user, ..))
         -> {
           let model =
             admin_members.Model(
@@ -191,14 +187,13 @@ pub fn handle_member_release_all_confirmed(
 // Result Handlers
 // =============================================================================
 
-/// Handle release-all success.
-pub fn handle_member_release_all_ok(
+fn handle_member_release_all_ok(
   model: admin_members.Model,
   result: api_projects.ReleaseAllResult,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   let user_id = case model.members_release_confirm {
-    opt.Some(state_types.ReleaseAllTarget(user: user, ..)) -> user.id
+    opt.Some(admin_members.ReleaseAllTarget(user: user, ..)) -> user.id
     opt.None -> 0
   }
   let user_name = release_all_target_user_name(model)
@@ -228,8 +223,7 @@ pub fn handle_member_release_all_ok(
   )
 }
 
-/// Handle release-all error.
-pub fn handle_member_release_all_error(
+fn handle_member_release_all_error(
   model: admin_members.Model,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
@@ -247,14 +241,14 @@ pub fn handle_member_release_all_error(
   )
 }
 
-pub fn release_all_target_user_name(model: admin_members.Model) -> String {
+fn release_all_target_user_name(model: admin_members.Model) -> String {
   case model.members_release_confirm {
-    opt.Some(state_types.ReleaseAllTarget(user: user, ..)) -> user.email
+    opt.Some(admin_members.ReleaseAllTarget(user: user, ..)) -> user.email
     opt.None -> ""
   }
 }
 
-pub fn success_effect(
+fn success_effect(
   result: api_projects.ReleaseAllResult,
   user_name: String,
   feedback: FeedbackContext(parent_msg),
@@ -271,7 +265,7 @@ pub fn success_effect(
   }
 }
 
-pub fn error_message(
+fn error_message(
   err: ApiError,
   user_name: String,
   feedback: FeedbackContext(parent_msg),

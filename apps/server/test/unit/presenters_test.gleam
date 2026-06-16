@@ -2,11 +2,20 @@
 ////
 //// Tests shared optional JSON helpers and presenter-specific fallback logic.
 
+import domain/project_role
+import domain/task.{Task}
+import domain/task_state
+import domain/task_status
+import domain/task_type.{TaskTypeInline}
+import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{None, Some}
 import gleeunit
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
+import scrumbringer_server/http/projects/presenters as project_presenters
+import scrumbringer_server/http/tasks/presenters as task_presenters
+import scrumbringer_server/services/projects_db
 import support/assertions as expect
 
 pub fn main() {
@@ -89,4 +98,102 @@ pub fn workflow_name_or_default_preserves_existing_name_test() {
 pub fn workflow_name_or_default_uses_api_fallback_test() {
   metrics_presenters.workflow_name_or_default(None)
   |> expect.equal("sin_workflow")
+}
+
+pub fn project_json_does_not_expose_internal_org_id_test() {
+  let project =
+    projects_db.ProjectRecord(
+      id: 7,
+      org_id: 99,
+      name: "Core",
+      created_at: "2026-06-15T09:00:00Z",
+      my_role: project_role.Manager,
+      members_count: 3,
+    )
+
+  let body =
+    project
+    |> project_presenters.project
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok("Core") =
+    decode.run(dynamic, decode.field("name", decode.string, decode.success))
+  let assert Error(_) =
+    decode.run(dynamic, decode.field("org_id", decode.int, decode.success))
+}
+
+pub fn project_member_json_does_not_expose_internal_project_id_test() {
+  let member =
+    projects_db.ProjectMemberRecord(
+      project_id: 7,
+      user_id: 42,
+      role: project_role.Member,
+      created_at: "2026-06-15T09:00:00Z",
+      claimed_count: 5,
+    )
+
+  let body =
+    member
+    |> project_presenters.member
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok(42) =
+    decode.run(dynamic, decode.field("user_id", decode.int, decode.success))
+  let assert Error(_) =
+    decode.run(dynamic, decode.field("project_id", decode.int, decode.success))
+}
+
+pub fn task_json_derives_status_and_work_state_from_task_state_test() {
+  let task =
+    Task(
+      id: 1,
+      project_id: 2,
+      type_id: 3,
+      task_type: TaskTypeInline(id: 3, name: "Bug", icon: "bug-ant"),
+      ongoing_by: None,
+      title: "Fix login",
+      description: None,
+      priority: 2,
+      state: task_state.Claimed(
+        claimed_by: 42,
+        claimed_at: "2026-06-15T10:00:00Z",
+        mode: task_status.Ongoing,
+      ),
+      status: task_status.Available,
+      work_state: task_status.WorkAvailable,
+      created_by: 7,
+      created_at: "2026-06-15T09:00:00Z",
+      version: 1,
+      milestone_id: None,
+      card_id: None,
+      card_title: None,
+      card_color: None,
+      has_new_notes: False,
+      blocked_count: 0,
+      dependencies: [],
+    )
+
+  let body =
+    task
+    |> task_presenters.task_json
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok(#(status, work_state, claimed_by, claimed_at)) =
+    decode.run(dynamic, task_lifecycle_decoder())
+
+  status |> expect.equal("claimed")
+  work_state |> expect.equal("ongoing")
+  claimed_by |> expect.equal(42)
+  claimed_at |> expect.equal("2026-06-15T10:00:00Z")
+}
+
+fn task_lifecycle_decoder() -> decode.Decoder(#(String, String, Int, String)) {
+  use status <- decode.field("status", decode.string)
+  use work_state <- decode.field("work_state", decode.string)
+  use claimed_by <- decode.field("claimed_by", decode.int)
+  use claimed_at <- decode.field("claimed_at", decode.string)
+  decode.success(#(status, work_state, claimed_by, claimed_at))
 }

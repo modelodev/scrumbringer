@@ -1,8 +1,9 @@
+import domain/api_token as api_token_domain
 import gleam/json
 import helpers/json as json_helpers
 import scrumbringer_server/services/api_tokens as token_service
 
-pub fn tokens_response(tokens: List(token_service.ApiToken)) -> json.Json {
+pub fn tokens_response(tokens: List(token_service.ApiTokenRecord)) -> json.Json {
   json.object([#("api_tokens", json.array(tokens, of: token))])
 }
 
@@ -15,12 +16,12 @@ pub fn created_token_response(created: token_service.CreatedToken) -> json.Json 
   ])
 }
 
-pub fn token_response(api_token: token_service.ApiToken) -> json.Json {
+pub fn token_response(api_token: token_service.ApiTokenRecord) -> json.Json {
   json.object([#("api_token", token(api_token))])
 }
 
-pub fn token(api_token: token_service.ApiToken) -> json.Json {
-  let token_service.ApiToken(
+pub fn token(api_token: token_service.ApiTokenRecord) -> json.Json {
+  let token_service.ApiTokenRecord(
     id: id,
     org_id: org_id,
     integration_user_id: integration_user_id,
@@ -43,7 +44,7 @@ pub fn token(api_token: token_service.ApiToken) -> json.Json {
     #("integration_user_email", json.string(integration_user_email)),
     #(
       "project_id",
-      json_helpers.option_int_json(token_service.project_grant_to_option(
+      json_helpers.option_int_json(api_token_domain.project_grant_to_option(
         project_grant,
       )),
     ),

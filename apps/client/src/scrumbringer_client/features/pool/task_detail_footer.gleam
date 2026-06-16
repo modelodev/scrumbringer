@@ -11,6 +11,7 @@ import domain/task.{type Task, claimed_by}
 import domain/task_state
 import domain/task_status
 
+import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -99,7 +100,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         t(config, i18n_text.ClaimTask),
         config.on_claim(task.id, task.version),
         button.Primary,
-        config.disable_actions || task.blocked_count > 0,
+        config.disable_actions || !claimability.can_claim(task),
       )
       |> button.view,
     ]

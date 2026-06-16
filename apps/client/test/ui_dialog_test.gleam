@@ -2,6 +2,8 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 import lustre/element/html.{div, text}
+import scrumbringer_client/i18n/locale
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/dialog
 
 fn assert_contains(html: String, text: String) {
@@ -58,4 +60,39 @@ pub fn dialog_view_accepts_localized_close_label_test() {
   let html = element.to_document_string(rendered)
 
   assert_contains(html, "aria-label=\"Cerrar\"")
+}
+
+pub fn submit_button_with_locale_form_targets_external_form_test() {
+  let html =
+    dialog.submit_button_with_locale_form(
+      locale.En,
+      "project-form",
+      True,
+      False,
+      i18n_text.Save,
+      i18n_text.Saving,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "type=\"submit\"")
+  assert_contains(html, "form=\"project-form\"")
+  assert_contains(html, "btn-loading")
+  assert_contains(html, "Saving")
+}
+
+pub fn submit_button_with_locale_click_renders_click_action_test() {
+  let html =
+    dialog.submit_button_with_locale_click(
+      locale.En,
+      "submit",
+      False,
+      True,
+      i18n_text.Create,
+      i18n_text.Creating,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "type=\"button\"")
+  assert_contains(html, "disabled")
+  assert_contains(html, "Create")
 }

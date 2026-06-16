@@ -523,19 +523,9 @@ fn workflow_to_json(workflow: Workflow) -> json.Json {
       #("created_by", json.int(workflow.created_by)),
       #("created_at", json.string(workflow.created_at)),
     ]
-    |> append_fields(project_id_field)
-    |> append_fields(description_field),
+    |> crud_dialog_base.prepend_fields(project_id_field)
+    |> crud_dialog_base.prepend_fields(description_field),
   )
-}
-
-fn append_fields(
-  base: List(#(String, json.Json)),
-  fields: List(#(String, json.Json)),
-) -> List(#(String, json.Json)) {
-  case fields {
-    [] -> base
-    [field, ..rest] -> append_fields([field, ..base], rest)
-  }
 }
 
 // =============================================================================
@@ -572,7 +562,7 @@ fn view_workflow_fields(
           event.on_input(on_name_changed),
           attribute.required(True),
         ]
-        |> maybe_add_aria_label(name_aria_label),
+        |> crud_dialog_base.with_optional_aria_label(name_aria_label),
       ),
     ),
     form_field.view(
@@ -583,7 +573,7 @@ fn view_workflow_fields(
           attribute.value(description),
           event.on_input(on_description_changed),
         ]
-        |> maybe_add_aria_label(description_aria_label),
+        |> crud_dialog_base.with_optional_aria_label(description_aria_label),
       ),
     ),
     form_field.view_checkbox(
@@ -595,16 +585,6 @@ fn view_workflow_fields(
       ]),
     ),
   ]
-}
-
-fn maybe_add_aria_label(
-  attrs: List(attribute.Attribute(Msg)),
-  label: Option(String),
-) -> List(attribute.Attribute(Msg)) {
-  case label {
-    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
-    option.None -> attrs
-  }
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {

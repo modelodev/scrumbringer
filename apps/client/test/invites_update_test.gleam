@@ -7,7 +7,6 @@ import domain/remote
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/types.{
   DialogClosed, DialogOpen, Error as OperationError, Idle, InFlight,
-  InviteLinkForm,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/invites/update as invites_update
@@ -54,30 +53,48 @@ fn invite_link(email: String) -> InviteLink {
   )
 }
 
+fn update(
+  model: admin_invites.Model,
+  msg: admin_messages.Msg,
+) -> #(admin_invites.Model, effect.Effect(Nil), invites_update.AuthPolicy) {
+  let assert option.Some(invites_update.Update(next, fx, policy)) =
+    invites_update.try_update(
+      model,
+      msg,
+      context(),
+      feedback_context(),
+      error_feedback_context(),
+    )
+  #(next, fx, policy)
+}
+
 pub fn links_fetch_success_loads_local_state_test() {
   let links = [invite_link("new@example.test")]
 
-  let #(next, fx) =
-    invites_update.handle_invite_links_fetched_ok(
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      links,
+      admin_messages.InviteLinksFetched(Ok(links)),
     )
 
   let assert True = next.invite_links == remote.Loaded(links)
   let assert True = fx == effect.none()
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn links_fetch_error_sets_failed_local_state_test() {
   let err = ApiError(status: 500, code: "INVITES", message: "Boom")
 
-  let #(next, fx) =
-    invites_update.handle_invite_links_fetched_error(
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      err,
+      admin_messages.InviteLinksFetched(Error(err)),
     )
 
   let assert True = next.invite_links == remote.Failed(err)
   let assert True = fx == effect.none()
+  let assert invites_update.CheckAuth(auth_err) = policy
+  let assert True = auth_err == err
 }
 
 pub fn create_submit_requires_email_test() {
@@ -85,19 +102,20 @@ pub fn create_submit_requires_email_test() {
     admin_invites.Model(
       ..admin_invites.default_model(),
       invite_link_dialog: DialogOpen(
-        form: InviteLinkForm(email: "  "),
+        form: admin_invites.InviteLinkForm(email: "  "),
         operation: Idle,
       ),
     )
 
-  let #(next, fx) =
-    invites_update.handle_invite_link_create_submitted(model, context())
+  let #(next, fx, policy) =
+    update(model, admin_messages.InviteLinkCreateSubmitted)
 
   let assert DialogOpen(
-    form: InviteLinkForm(email: ""),
+    form: admin_invites.InviteLinkForm(email: ""),
     operation: OperationError("Email required"),
   ) = next.invite_link_dialog
   let assert True = fx == effect.none()
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn create_submit_sets_in_flight_and_clears_copy_status_test() {
@@ -105,124 +123,129 @@ pub fn create_submit_sets_in_flight_and_clears_copy_status_test() {
     admin_invites.Model(
       ..admin_invites.default_model(),
       invite_link_dialog: DialogOpen(
-        form: InviteLinkForm(email: " new@example.test "),
+        form: admin_invites.InviteLinkForm(email: " new@example.test "),
         operation: Idle,
       ),
       invite_link_copy_status: option.Some("old"),
     )
 
-  let #(next, _fx) =
-    invites_update.handle_invite_link_create_submitted(model, context())
+  let #(next, _fx, policy) =
+    update(model, admin_messages.InviteLinkCreateSubmitted)
 
   let assert DialogOpen(
-    form: InviteLinkForm(email: "new@example.test"),
+    form: admin_invites.InviteLinkForm(email: "new@example.test"),
     operation: InFlight,
   ) = next.invite_link_dialog
   let assert True = next.invite_link_copy_status == option.None
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn created_success_closes_dialog_and_remembers_link_test() {
   let link = invite_link("new@example.test")
 
-  let #(next, fx) =
-    invites_update.handle_invite_link_created_ok(
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      link,
-      context(),
-      feedback_context(),
+      admin_messages.InviteLinkCreated(Ok(link)),
     )
 
   let assert DialogClosed(operation: Idle) = next.invite_link_dialog
   let assert True = next.invite_link_last == option.Some(link)
   let assert True = next.invite_link_copy_status == option.None
   let assert False = fx == effect.none()
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn regenerated_success_closes_dialog_and_remembers_link_test() {
   let link = invite_link("new@example.test")
 
-  let #(next, fx) =
-    invites_update.handle_invite_link_regenerated_ok(
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      link,
-      context(),
-      feedback_context(),
+      admin_messages.InviteLinkRegenerated(Ok(link)),
     )
 
   let assert DialogClosed(operation: Idle) = next.invite_link_dialog
   let assert True = next.invite_link_last == option.Some(link)
   let assert True = next.invite_link_copy_status == option.None
   let assert False = fx == effect.none()
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn regenerated_error_sets_dialog_error_test() {
-  let #(next, fx) =
-    invites_update.handle_invite_link_regenerated_error(
+  let err = ApiError(status: 500, code: "ERR", message: "No permission")
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      ApiError(status: 500, code: "ERR", message: "No permission"),
-      error_feedback_context(),
+      admin_messages.InviteLinkRegenerated(Error(err)),
     )
 
   let assert DialogClosed(operation: OperationError("No permission")) =
     next.invite_link_dialog
   let assert True = fx == effect.none()
+  let assert invites_update.CheckAuth(auth_err) = policy
+  let assert True = auth_err == err
 }
 
 pub fn created_forbidden_error_uses_local_message_and_feedback_test() {
-  let #(next, fx) =
-    invites_update.handle_invite_link_created_error(
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
-      error_feedback_context(),
+      admin_messages.InviteLinkCreated(Error(err)),
     )
 
   let assert DialogClosed(operation: OperationError("Not permitted")) =
     next.invite_link_dialog
   let assert True = fx != effect.none()
+  let assert invites_update.CheckAuth(auth_err) = policy
+  let assert True = auth_err == err
 }
 
 pub fn regenerated_forbidden_error_uses_local_message_and_feedback_test() {
-  let #(next, fx) =
-    invites_update.handle_invite_link_regenerated_error(
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
+  let #(next, fx, policy) =
+    update(
       admin_invites.default_model(),
-      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
-      error_feedback_context(),
+      admin_messages.InviteLinkRegenerated(Error(err)),
     )
 
   let assert DialogClosed(operation: OperationError("Not permitted")) =
     next.invite_link_dialog
   let assert True = fx != effect.none()
+  let assert invites_update.CheckAuth(auth_err) = policy
+  let assert True = auth_err == err
 }
 
 pub fn copy_clicked_sets_copying_status_test() {
-  let #(next, _fx) =
-    invites_update.handle_invite_link_copy_clicked(
+  let #(next, _fx, policy) =
+    update(
       admin_invites.default_model(),
-      "copy me",
-      context(),
+      admin_messages.InviteLinkCopyClicked("copy me"),
     )
 
   let assert True = next.invite_link_copy_status == option.Some("Copying")
+  let assert invites_update.NoAuthCheck = policy
 }
 
 pub fn copy_finished_sets_success_or_failure_message_test() {
-  let #(copied, copied_fx) =
-    invites_update.handle_invite_link_copy_finished(
+  let #(copied, copied_fx, copied_policy) =
+    update(
       admin_invites.default_model(),
-      True,
-      context(),
+      admin_messages.InviteLinkCopyFinished(True),
     )
-  let #(failed, failed_fx) =
-    invites_update.handle_invite_link_copy_finished(
+  let #(failed, failed_fx, failed_policy) =
+    update(
       admin_invites.default_model(),
-      False,
-      context(),
+      admin_messages.InviteLinkCopyFinished(False),
     )
 
   let assert True = copied.invite_link_copy_status == option.Some("Copied")
   let assert True = failed.invite_link_copy_status == option.Some("Copy failed")
   let assert True = copied_fx == effect.none()
   let assert True = failed_fx == effect.none()
+  let assert invites_update.NoAuthCheck = copied_policy
+  let assert invites_update.NoAuthCheck = failed_policy
 }
 
 pub fn try_update_fetch_error_returns_auth_policy_test() {

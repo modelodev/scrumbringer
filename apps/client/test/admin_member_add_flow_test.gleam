@@ -1,3 +1,4 @@
+import domain/capability.{Capability}
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
@@ -11,10 +12,11 @@ import lustre/element
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/member_add
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/search
 import scrumbringer_client/features/admin/views/members
 import scrumbringer_client/i18n/locale
@@ -55,6 +57,10 @@ fn sample_member(user_id: Int) -> ProjectMember {
   )
 }
 
+fn sample_capability(id: Int, name: String) {
+  Capability(id: id, name: name)
+}
+
 fn base_model() -> client_state.Model {
   client_state.default_model()
   |> client_state.update_core(fn(core) {
@@ -71,12 +77,41 @@ fn with_members_state(
   })
 }
 
+fn with_capabilities_state(
+  model: client_state.Model,
+  f: fn(admin_capabilities.Model) -> admin_capabilities.Model,
+) -> client_state.Model {
+  client_state.update_admin(model, fn(admin) {
+    admin_state.AdminModel(..admin, capabilities: f(admin.capabilities))
+  })
+}
+
 fn member_add_context(model: client_state.Model) -> member_add.Context(String) {
   member_add.Context(
     selected_project_id: model.core.selected_project_id,
     select_user_first: "Select a user first",
     on_member_added: fn(_) { "member-added" },
   )
+}
+
+fn member_add_feedback_context() -> member_add.FeedbackContext(String) {
+  member_add.FeedbackContext(
+    member_added: "Member added",
+    on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+  )
+}
+
+fn member_add_error_feedback_context() -> member_add.ErrorFeedbackContext(
+  String,
+) {
+  member_add.ErrorFeedbackContext(
+    not_permitted: "Not permitted",
+    on_warning_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+  )
+}
+
+fn search_context() -> search.Context(String) {
+  search.Context(on_search_results: fn(_token, _result) { "search-results" })
 }
 
 fn members_config(
@@ -127,7 +162,10 @@ pub fn org_users_search_exact_email_auto_selects_user_test() {
     |> with_members_state(fn(members_state) {
       admin_members.Model(
         ..members_state,
-        org_users_search: state_types.OrgUsersSearchLoading("qa@example.com", 2),
+        org_users_search: admin_members.OrgUsersSearchLoading(
+          "qa@example.com",
+          2,
+        ),
       )
     })
 
@@ -136,8 +174,12 @@ pub fn org_users_search_exact_email_auto_selects_user_test() {
     sample_user(9, "qa@example.com"),
   ]
 
-  let #(next, _fx) =
-    search.handle_org_users_search_results_ok(model.admin.members, 2, users)
+  let assert opt.Some(search.Update(next, _fx, search.NoAuthCheck)) =
+    search.try_update(
+      model.admin.members,
+      admin_messages.OrgUsersSearchResults(2, Ok(users)),
+      search_context(),
+    )
 
   let assert opt.Some(user) = next.members_add_selected_user
   let assert 9 = user.id
@@ -151,7 +193,10 @@ pub fn org_users_search_without_exact_match_clears_selection_test() {
       admin_members.Model(
         ..members_state,
         members_add_selected_user: opt.Some(sample_user(9, "qa@example.com")),
-        org_users_search: state_types.OrgUsersSearchLoading("qa@example.com", 3),
+        org_users_search: admin_members.OrgUsersSearchLoading(
+          "qa@example.com",
+          3,
+        ),
       )
     })
 
@@ -160,8 +205,12 @@ pub fn org_users_search_without_exact_match_clears_selection_test() {
     sample_user(4, "pm@example.com"),
   ]
 
-  let #(next, _fx) =
-    search.handle_org_users_search_results_ok(model.admin.members, 3, users)
+  let assert opt.Some(search.Update(next, _fx, search.NoAuthCheck)) =
+    search.try_update(
+      model.admin.members,
+      admin_messages.OrgUsersSearchResults(3, Ok(users)),
+      search_context(),
+    )
 
   let assert opt.None = next.members_add_selected_user
 }
@@ -173,10 +222,18 @@ pub fn submit_without_selected_user_keeps_add_disabled_state_test() {
       admin_members.Model(..members_state, members_add_selected_user: opt.None)
     })
 
-  let #(next, fx) =
-    member_add.handle_member_add_submitted(
+  let assert opt.Some(member_add.Update(
+    next,
+    fx,
+    member_add.NoAuthCheck,
+    member_add.NoRefresh,
+  )) =
+    member_add.try_update(
       model.admin.members,
+      admin_messages.MemberAddSubmitted,
       member_add_context(model),
+      member_add_feedback_context(),
+      member_add_error_feedback_context(),
     )
 
   let assert False = next.members_add_in_flight
@@ -201,6 +258,136 @@ pub fn members_dialog_shows_selected_user_feedback_test() {
 
   assert_contains(html, "member-add-selected-user")
   assert_contains(html, "qa@example.com")
+  assert_contains(html, "Add member")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "class=\"btn-primary\"")
+}
+
+pub fn members_dialog_search_result_uses_semantic_select_button_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        members_add_dialog_mode: dialog_mode.DialogCreate,
+        org_users_search: admin_members.OrgUsersSearchLoaded(
+          "qa@example.com",
+          4,
+          [sample_user(9, "qa@example.com")],
+        ),
+      )
+    })
+
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "qa@example.com")
+  assert_contains(html, "Select")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-xs")
+  assert_not_contains(html, "class=\"btn btn-secondary btn-xs\"")
+}
+
+pub fn members_dialog_add_submit_uses_semantic_loading_button_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        members_add_dialog_mode: dialog_mode.DialogCreate,
+        members_add_selected_user: opt.Some(sample_user(9, "qa@example.com")),
+        members_add_in_flight: True,
+      )
+    })
+
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "Working")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-loading")
+  assert_not_contains(html, "class=\"btn-loading\"")
+}
+
+pub fn members_remove_dialog_uses_typed_danger_confirm_button_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        members_remove_confirm: opt.Some(sample_user(9, "qa@example.com")),
+        members_remove_in_flight: True,
+      )
+    })
+
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "Remove")
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-loading")
+  assert_not_contains(html, "class=\"btn-danger btn-loading\"")
+}
+
+pub fn members_release_all_dialog_uses_typed_primary_confirm_button_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        members_release_confirm: opt.Some(admin_members.ReleaseAllTarget(
+          user: sample_user(9, "qa@example.com"),
+          claimed_count: 3,
+        )),
+        members_release_in_flight: opt.Some(9),
+      )
+    })
+
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "Release")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-loading")
+  assert_not_contains(html, "class=\"btn-primary btn-loading\"")
+}
+
+pub fn members_capabilities_save_uses_semantic_loading_button_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        org_users_cache: Loaded([sample_user(9, "qa@example.com")]),
+      )
+    })
+    |> with_capabilities_state(fn(capabilities_state) {
+      admin_capabilities.Model(
+        ..capabilities_state,
+        capabilities: Loaded([sample_capability(1, "Backend")]),
+        member_capabilities_dialog_user_id: opt.Some(9),
+        member_capabilities_saving: True,
+      )
+    })
+
+  let rendered =
+    members.view_members(members_config(model, opt.Some(sample_project())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "Saving")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-loading")
+  assert_not_contains(html, "class=\"btn-primary btn-loading\"")
 }
 
 pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
@@ -210,7 +397,7 @@ pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
       admin_members.Model(
         ..members_state,
         members_add_dialog_mode: dialog_mode.DialogCreate,
-        org_users_search: state_types.OrgUsersSearchLoaded(
+        org_users_search: admin_members.OrgUsersSearchLoaded(
           "qa@example.com",
           4,
           [],
@@ -237,9 +424,13 @@ pub fn members_dialog_filters_out_existing_project_members_from_search_results_t
         ..members_state,
         members_add_dialog_mode: dialog_mode.DialogCreate,
         members: Loaded([sample_member(9)]),
-        org_users_search: state_types.OrgUsersSearchLoaded("qa@example.com", 5, [
-          sample_user(9, "qa@example.com"),
-        ]),
+        org_users_search: admin_members.OrgUsersSearchLoaded(
+          "qa@example.com",
+          5,
+          [
+            sample_user(9, "qa@example.com"),
+          ],
+        ),
       )
     })
 

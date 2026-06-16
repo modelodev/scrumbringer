@@ -21,7 +21,10 @@ import domain/workflow.{
 }
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/task_tabs
 
@@ -189,7 +192,7 @@ pub type Msg {
   )
   AdminRuleMetricsExecPageChanged(Int)
   CardsFetched(ApiResult(List(Card)))
-  OpenCardDialog(state_types.CardDialogMode)
+  OpenCardDialog(admin_cards.CardDialogMode)
   CloseCardDialog
   CardCrudCreated(Card)
   CardCrudUpdated(Card)
@@ -202,7 +205,7 @@ pub type Msg {
   CloseCardDetail
   CardMetricsFetched(ApiResult(CardModalMetrics))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
-  OpenWorkflowDialog(state_types.WorkflowDialogMode)
+  OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
   CloseWorkflowDialog
   WorkflowCrudCreated(Workflow)
   WorkflowCrudUpdated(Workflow)
@@ -210,7 +213,7 @@ pub type Msg {
   WorkflowRulesClicked(Int)
   RulesFetched(ApiResult(List(Rule)))
   RulesBackClicked
-  OpenRuleDialog(state_types.RuleDialogMode)
+  OpenRuleDialog(admin_rules.RuleDialogMode)
   CloseRuleDialog
   RuleCrudCreated(Rule)
   RuleCrudUpdated(Rule)
@@ -227,7 +230,7 @@ pub type Msg {
   TemplateDetachFailed(Int, Int, ApiError)
   RuleMetricsFetched(ApiResult(api_rule_metrics.WorkflowMetrics))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
-  OpenTaskTemplateDialog(state_types.TaskTemplateDialogMode)
+  OpenTaskTemplateDialog(admin_task_templates.TaskTemplateDialogMode)
   CloseTaskTemplateDialog
   TaskTemplateCrudCreated(TaskTemplate)
   TaskTemplateCrudUpdated(TaskTemplate)

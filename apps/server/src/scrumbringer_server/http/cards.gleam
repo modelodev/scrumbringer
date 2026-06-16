@@ -21,6 +21,7 @@
 //// - DELETE /api/v1/cards/:card_id
 //// - GET  /api/v1/cards/:card_id/tasks
 
+import domain/card.{type Card}
 import gleam/http
 import gleam/int
 import pog
@@ -270,7 +271,7 @@ fn get_card_for_user(
 fn respond_with_card_if_member(
   db: pog.Connection,
   user_id: Int,
-  card: cards_db.Card,
+  card: Card,
   include_metrics: Bool,
 ) -> wisp.Response {
   case authorization.is_project_member(db, user_id, card.project_id) {
@@ -338,7 +339,7 @@ fn update_card_with_auth(
 fn update_card_in_project(
   req: wisp.Request,
   ctx: auth.Ctx,
-  card: cards_db.Card,
+  card: Card,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
@@ -422,7 +423,7 @@ fn delete_card_with_auth(
 
 fn delete_card_in_project(
   ctx: auth.Ctx,
-  card: cards_db.Card,
+  card: Card,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx

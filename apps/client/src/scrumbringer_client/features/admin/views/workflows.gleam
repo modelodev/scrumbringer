@@ -31,7 +31,7 @@ import domain/remote.{type Remote}
 import domain/workflow.{type Workflow}
 import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
@@ -55,7 +55,7 @@ pub type Config(msg) {
     selected_project_id: opt.Option(Int),
     selected_rules_view: opt.Option(Element(msg)),
     workflows: Remote(List(Workflow)),
-    dialog_mode: opt.Option(state_types.WorkflowDialogMode),
+    dialog_mode: opt.Option(admin_workflows.WorkflowDialogMode),
     on_create_clicked: msg,
     on_rules_clicked: fn(Int) -> msg,
     on_edit_clicked: fn(Workflow) -> msg,
@@ -138,16 +138,16 @@ fn view_workflow_crud_dialog(config: Config(msg)) -> Element(msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, workflow_json, project_id_attr) = case mode {
-        state_types.WorkflowDialogCreate ->
+        admin_workflows.WorkflowDialogCreate ->
           create_dialog_parts(config.selected_project_id)
-        state_types.WorkflowDialogEdit(workflow) ->
+        admin_workflows.WorkflowDialogEdit(workflow) ->
           entity_dialog_parts(
             "edit",
             "workflow",
             workflow_to_property_json(workflow, "edit"),
             workflow.project_id,
           )
-        state_types.WorkflowDialogDelete(workflow) ->
+        admin_workflows.WorkflowDialogDelete(workflow) ->
           entity_dialog_parts(
             "delete",
             "workflow",

@@ -30,7 +30,7 @@ import domain/workflow.{
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/scoped_remote_list
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/api/tasks/task_types as task_types_api
@@ -38,7 +38,7 @@ import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 import scrumbringer_client/api/workflows/task_templates as api_task_templates
 
-pub type WorkflowSuccess {
+type WorkflowSuccess {
   WorkflowCreated
   WorkflowUpdated
   WorkflowDeleted
@@ -53,7 +53,7 @@ pub type WorkflowFeedbackContext(parent_msg) {
   )
 }
 
-pub type RuleSuccess {
+type RuleSuccess {
   RuleCreated
   RuleUpdated
   RuleDeleted
@@ -503,7 +503,7 @@ fn with_template_attachment_auth_check(
   opt.Some(TemplateAttachmentUpdate(state, fx, CheckTemplateAttachmentAuth(err)))
 }
 
-pub type TemplateAttachmentSuccess {
+type TemplateAttachmentSuccess {
   TemplateAttached
   TemplateDetached
 }
@@ -584,39 +584,37 @@ fn with_workflow_effect(
   opt.Some(WorkflowUpdate(state, fx, NoWorkflowAuthCheck))
 }
 
-pub fn workflows_project_fetched_ok(
+fn workflows_project_fetched_ok(
   state: admin_workflows.Model,
   workflows: List(Workflow),
 ) -> admin_workflows.Model {
   admin_workflows.Model(..state, workflows_project: Loaded(workflows))
 }
 
-pub fn workflows_project_fetched_error(
+fn workflows_project_fetched_error(
   state: admin_workflows.Model,
   err: ApiError,
 ) -> admin_workflows.Model {
   admin_workflows.Model(..state, workflows_project: Failed(err))
 }
 
-pub fn open_workflow_dialog(
+fn open_workflow_dialog(
   state: admin_workflows.Model,
-  mode: state_types.WorkflowDialogMode,
+  mode: admin_workflows.WorkflowDialogMode,
 ) -> admin_workflows.Model {
   admin_workflows.Model(..state, workflows_dialog_mode: opt.Some(mode))
 }
 
-pub fn close_workflow_dialog(
-  state: admin_workflows.Model,
-) -> admin_workflows.Model {
+fn close_workflow_dialog(state: admin_workflows.Model) -> admin_workflows.Model {
   admin_workflows.Model(..state, workflows_dialog_mode: opt.None)
 }
 
-pub fn workflow_created(
+fn workflow_created(
   state: admin_workflows.Model,
   workflow: Workflow,
 ) -> admin_workflows.Model {
   let #(org, project) =
-    prepend_for_scope(
+    scoped_remote_list.prepend_for_scope(
       state.workflows_org,
       state.workflows_project,
       workflow.project_id,
@@ -630,18 +628,18 @@ pub fn workflow_created(
   )
 }
 
-pub fn workflow_updated(
+fn workflow_updated(
   state: admin_workflows.Model,
   updated_workflow: Workflow,
 ) -> admin_workflows.Model {
   let org =
-    replace_loaded_by_id(
+    scoped_remote_list.replace_by_id(
       state.workflows_org,
       updated_workflow,
       fn(workflow: Workflow) { workflow.id },
     )
   let project =
-    replace_loaded_by_id(
+    scoped_remote_list.replace_by_id(
       state.workflows_project,
       updated_workflow,
       fn(workflow: Workflow) { workflow.id },
@@ -654,18 +652,18 @@ pub fn workflow_updated(
   )
 }
 
-pub fn workflow_deleted(
+fn workflow_deleted(
   state: admin_workflows.Model,
   workflow_id: Int,
 ) -> admin_workflows.Model {
   let org =
-    remove_loaded_by_id(
+    scoped_remote_list.remove_by_id(
       state.workflows_org,
       workflow_id,
       fn(workflow: Workflow) { workflow.id },
     )
   let project =
-    remove_loaded_by_id(
+    scoped_remote_list.remove_by_id(
       state.workflows_project,
       workflow_id,
       fn(workflow: Workflow) { workflow.id },
@@ -678,7 +676,7 @@ pub fn workflow_deleted(
   )
 }
 
-pub fn rule_created(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
+fn rule_created(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
   let rules = case state.rules {
     Loaded(existing) -> Loaded([rule, ..existing])
     _ -> Loaded([rule])
@@ -687,24 +685,28 @@ pub fn rule_created(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
   admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
 }
 
-pub fn rule_updated(
+fn rule_updated(
   state: admin_rules.Model,
   updated_rule: Rule,
 ) -> admin_rules.Model {
   let rules =
-    replace_loaded_by_id(state.rules, updated_rule, fn(rule: Rule) { rule.id })
+    scoped_remote_list.replace_by_id(state.rules, updated_rule, fn(rule: Rule) {
+      rule.id
+    })
 
   admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
 }
 
-pub fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
+fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
   let rules =
-    remove_loaded_by_id(state.rules, rule_id, fn(rule: Rule) { rule.id })
+    scoped_remote_list.remove_by_id(state.rules, rule_id, fn(rule: Rule) {
+      rule.id
+    })
 
   admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
 }
 
-pub fn workflow_rules_opened(
+fn workflow_rules_opened(
   state: admin_rules.Model,
   workflow_id: Int,
 ) -> admin_rules.Model {
@@ -716,35 +718,35 @@ pub fn workflow_rules_opened(
   )
 }
 
-pub fn rules_fetched_ok(
+fn rules_fetched_ok(
   state: admin_rules.Model,
   rules: List(Rule),
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules: Loaded(rules))
 }
 
-pub fn rules_fetched_error(
+fn rules_fetched_error(
   state: admin_rules.Model,
   err: ApiError,
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules: Failed(err))
 }
 
-pub fn rule_metrics_fetched_ok(
+fn rule_metrics_fetched_ok(
   state: admin_rules.Model,
   metrics: api_rule_metrics.WorkflowMetrics,
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules_metrics: Loaded(metrics))
 }
 
-pub fn rule_metrics_fetched_error(
+fn rule_metrics_fetched_error(
   state: admin_rules.Model,
   err: ApiError,
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules_metrics: Failed(err))
 }
 
-pub fn rules_back_clicked(state: admin_rules.Model) -> admin_rules.Model {
+fn rules_back_clicked(state: admin_rules.Model) -> admin_rules.Model {
   admin_rules.Model(
     ..state,
     rules_workflow_id: opt.None,
@@ -753,24 +755,24 @@ pub fn rules_back_clicked(state: admin_rules.Model) -> admin_rules.Model {
   )
 }
 
-pub fn open_rule_dialog(
+fn open_rule_dialog(
   state: admin_rules.Model,
-  mode: state_types.RuleDialogMode,
+  mode: admin_rules.RuleDialogMode,
 ) -> admin_rules.Model {
   admin_rules.Model(..state, rules_dialog_mode: opt.Some(mode))
 }
 
-pub fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
+fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
   admin_rules.Model(..state, rules_dialog_mode: opt.None)
 }
 
-pub fn attach_template_succeeded(
+fn attach_template_succeeded(
   state: admin_rules.Model,
   rule_id: Int,
   templates: List(RuleTemplate),
 ) -> admin_rules.Model {
   let rules =
-    map_loaded(state.rules, fn(rules) {
+    map_rules_remote(state.rules, fn(rules) {
       list.map(rules, fn(rule) {
         case rule.id == rule_id {
           True -> workflow.Rule(..rule, templates: templates)
@@ -788,11 +790,11 @@ pub fn attach_template_succeeded(
   )
 }
 
-pub fn attach_template_failed(state: admin_rules.Model) -> admin_rules.Model {
+fn attach_template_failed(state: admin_rules.Model) -> admin_rules.Model {
   admin_rules.Model(..state, attach_template_loading: False)
 }
 
-pub fn template_detach_started(
+fn template_detach_started(
   state: admin_rules.Model,
   rule_id: Int,
   template_id: Int,
@@ -806,13 +808,13 @@ pub fn template_detach_started(
   )
 }
 
-pub fn template_detach_succeeded(
+fn template_detach_succeeded(
   state: admin_rules.Model,
   rule_id: Int,
   template_id: Int,
 ) -> admin_rules.Model {
   let rules =
-    map_loaded(state.rules, fn(rules) {
+    map_rules_remote(state.rules, fn(rules) {
       list.map(rules, fn(rule) {
         case rule.id == rule_id {
           True ->
@@ -837,7 +839,7 @@ pub fn template_detach_succeeded(
   )
 }
 
-pub fn template_detach_failed(
+fn template_detach_failed(
   state: admin_rules.Model,
   rule_id: Int,
   template_id: Int,
@@ -851,7 +853,17 @@ pub fn template_detach_failed(
   )
 }
 
-pub fn workflow_success_effect(
+fn map_rules_remote(
+  remote: Remote(List(Rule)),
+  f: fn(List(Rule)) -> List(Rule),
+) -> Remote(List(Rule)) {
+  case remote {
+    Loaded(rules) -> Loaded(f(rules))
+    other -> other
+  }
+}
+
+fn workflow_success_effect(
   success: WorkflowSuccess,
   feedback: WorkflowFeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
@@ -864,7 +876,7 @@ pub fn workflow_success_effect(
   feedback.on_success_toast(message)
 }
 
-pub fn rule_success_effect(
+fn rule_success_effect(
   success: RuleSuccess,
   feedback: RuleFeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
@@ -877,7 +889,7 @@ pub fn rule_success_effect(
   feedback.on_success_toast(message)
 }
 
-pub fn template_attachment_success_effect(
+fn template_attachment_success_effect(
   success: TemplateAttachmentSuccess,
   feedback: TemplateAttachmentFeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
@@ -887,63 +899,4 @@ pub fn template_attachment_success_effect(
   }
 
   feedback.on_success_toast(message)
-}
-
-// =============================================================================
-// Fetch Helpers
-// =============================================================================
-
-/// Fetch workflows for admin panel (project-scoped only).
-fn prepend_for_scope(
-  org: Remote(List(a)),
-  project: Remote(List(a)),
-  project_id: opt.Option(Int),
-  item: a,
-) -> #(Remote(List(a)), Remote(List(a))) {
-  case project_id {
-    opt.Some(_) -> #(org, prepend_loaded_or_new(project, item))
-    opt.None -> #(prepend_loaded_or_new(org, item), project)
-  }
-}
-
-fn prepend_loaded_or_new(remote: Remote(List(a)), item: a) -> Remote(List(a)) {
-  case remote {
-    Loaded(existing) -> Loaded([item, ..existing])
-    _ -> Loaded([item])
-  }
-}
-
-fn replace_loaded_by_id(
-  remote: Remote(List(a)),
-  updated: a,
-  id: fn(a) -> Int,
-) -> Remote(List(a)) {
-  map_loaded(remote, fn(items) {
-    list.map(items, fn(item) {
-      case id(item) == id(updated) {
-        True -> updated
-        False -> item
-      }
-    })
-  })
-}
-
-fn remove_loaded_by_id(
-  remote: Remote(List(a)),
-  target_id: Int,
-  id: fn(a) -> Int,
-) -> Remote(List(a)) {
-  map_loaded(remote, fn(items) {
-    list.filter(items, fn(item) { id(item) != target_id })
-  })
-}
-
-fn map_loaded(
-  remote: Remote(List(a)),
-  f: fn(List(a)) -> List(a),
-) -> Remote(List(a)) {
-  case remote {
-    Loaded(items) -> Loaded(f(items))
-    other -> other
-  }
 }

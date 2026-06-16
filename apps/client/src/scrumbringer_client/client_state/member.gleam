@@ -7,7 +7,6 @@ import scrumbringer_client/client_state/member/now_working as member_now_working
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/client_state/member/skills as member_skills
-import scrumbringer_client/client_state/types as state_types
 
 /// Represents pool member slice.
 pub type PoolModel =
@@ -71,8 +70,8 @@ pub fn reset_drag_state(member: MemberModel) -> MemberModel {
     ..member,
     pool: member_pool.Model(
       ..pool,
-      member_drag: state_types.DragIdle,
-      member_pool_drag: state_types.PoolDragIdle,
+      member_drag: member_pool.DragIdle,
+      member_pool_drag: member_pool.PoolDragIdle,
     ),
   )
 }

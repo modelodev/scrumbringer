@@ -11,6 +11,7 @@ import domain/api_error.{type ApiResult}
 import domain/workflow.{type Rule, type RuleTarget, type RuleTemplate}
 import domain/workflow/codec as workflow_codec
 import scrumbringer_client/api/core
+import scrumbringer_client/api/payload_fields
 
 /// Decoder for rule wrapped in envelope.
 pub fn rule_payload_decoder() -> decode.Decoder(Rule) {
@@ -104,13 +105,7 @@ pub fn update_rule(
         Some(id) -> json.int(id)
       }),
       #("to_state", json.string(workflow.rule_target_to_state_string(target))),
-      #(
-        "active",
-        json.int(case active {
-          True -> 1
-          False -> 0
-        }),
-      ),
+      payload_fields.active_update_field(active),
     ])
   core.request(
     core.Patch,

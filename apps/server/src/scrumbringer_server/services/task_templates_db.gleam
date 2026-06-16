@@ -46,20 +46,24 @@ pub type TaskTemplate {
   )
 }
 
+const unchanged_text_update_value = "__unset__"
+
+const unchanged_positive_int_update_value = 0
+
 // =============================================================================
 // Helpers
 // =============================================================================
 
 fn text_update_value(value: Option(String)) -> String {
-  option_helpers.option_to_value(value, "__unset__")
+  option_helpers.option_to_value(value, unchanged_text_update_value)
 }
 
 fn type_id_update_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
 
 fn priority_update_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
 
 /// Story 4.9 AC20: Includes rules_count from SQL.

@@ -22,6 +22,7 @@ import scrumbringer_client/features/tasks/detail_permissions
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/form_field
 
 pub type Config(msg) {
@@ -163,16 +164,14 @@ pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
         False ->
           case can_edit {
             True ->
-              button(
-                [
-                  attribute.type_("button"),
-                  attribute.class(
-                    "btn btn-sm btn-secondary task-detail-edit-toggle",
-                  ),
-                  event.on_click(config.on_edit_started),
-                ],
-                [text(i18n.t(config.locale, i18n_text.EditTask))],
+              ui_button.text(
+                i18n.t(config.locale, i18n_text.EditTask),
+                config.on_edit_started,
+                ui_button.Secondary,
+                ui_button.EntityAction,
               )
+              |> ui_button.with_class("task-detail-edit-toggle")
+              |> ui_button.view
             False -> element.none()
           }
       },

@@ -35,7 +35,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h1, h2, input, p, text}
+import lustre/element/html.{div, form, h1, h2, input, p, text}
 import lustre/event
 
 import scrumbringer_client/accept_invite
@@ -45,6 +45,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
 import scrumbringer_client/token_flow
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
@@ -78,15 +79,7 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
     False -> t(i18n_text.LoginTitle)
   }
 
-  // L01: Button class with loading state
-  let btn_class = case auth.login_in_flight {
-    True -> "btn-loading"
-    False -> ""
-  }
-  let submit_class = case btn_class {
-    "" -> "auth-submit"
-    _ -> "auth-submit " <> btn_class
-  }
+  let submit_class = login_submit_class(auth.login_in_flight)
 
   div([attribute.class("page auth-page")], [
     h1([], [text(t(i18n_text.AppName))]),
@@ -127,23 +120,15 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
           ]),
         ),
         div([attribute.class("auth-actions")], [
-          // L01: Submit button with loading class
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(auth.login_in_flight),
-              attribute.class(submit_class),
-            ],
-            [text(submit_label)],
-          ),
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("auth-forgot"),
-              event.on_click(config.on_forgot_password_clicked),
-            ],
-            [text(t(i18n_text.ForgotPassword))],
-          ),
+          submit_button(submit_label, auth.login_in_flight, submit_class),
+          ui_button.text(
+            t(i18n_text.ForgotPassword),
+            config.on_forgot_password_clicked,
+            ui_button.Ghost,
+            ui_button.ViewAction,
+          )
+            |> ui_button.with_class("auth-forgot")
+            |> ui_button.view,
         ]),
       ],
     ),
@@ -162,11 +147,6 @@ pub fn view_forgot_password(config: Config(msg)) -> Element(msg) {
   let submit_label = case auth.forgot_password_in_flight {
     True -> t(i18n_text.Working)
     False -> t(i18n_text.GenerateResetLink)
-  }
-
-  let btn_class = case auth.forgot_password_in_flight {
-    True -> "btn-loading"
-    False -> ""
   }
 
   let link = case auth.forgot_password_result {
@@ -201,13 +181,10 @@ pub fn view_forgot_password(config: Config(msg)) -> Element(msg) {
             attribute.required(True),
           ]),
         ),
-        button(
-          [
-            attribute.type_("submit"),
-            attribute.disabled(auth.forgot_password_in_flight),
-            attribute.class(btn_class),
-          ],
-          [text(submit_label)],
+        submit_button(
+          submit_label,
+          auth.forgot_password_in_flight,
+          loading_class(auth.forgot_password_in_flight),
         ),
       ],
     ),
@@ -311,17 +288,7 @@ fn view_accept_invite_form(
       p([], [
         text(t(i18n_text.MinimumPasswordLength)),
       ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(in_flight),
-          attribute.class(case in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [text(submit_label)],
-      ),
+      submit_button(submit_label, in_flight, loading_class(in_flight)),
     ],
   )
 }
@@ -411,17 +378,37 @@ fn view_reset_password_form(
       p([], [
         text(t(i18n_text.MinimumPasswordLength)),
       ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(in_flight),
-          attribute.class(case in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [text(submit_label)],
-      ),
+      submit_button(submit_label, in_flight, loading_class(in_flight)),
     ],
   )
+}
+
+fn submit_button(
+  label: String,
+  disabled: Bool,
+  extra_class: String,
+) -> Element(msg) {
+  let config =
+    ui_button.submit(label, ui_button.Primary, ui_button.GlobalAction)
+    |> ui_button.with_disabled(disabled)
+
+  case extra_class {
+    "" -> config
+    class -> ui_button.with_class(config, class)
+  }
+  |> ui_button.view
+}
+
+fn login_submit_class(in_flight: Bool) -> String {
+  case loading_class(in_flight) {
+    "" -> "auth-submit"
+    class -> "auth-submit " <> class
+  }
+}
+
+fn loading_class(in_flight: Bool) -> String {
+  case in_flight {
+    True -> "btn-loading"
+    False -> ""
+  }
 }

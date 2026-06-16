@@ -23,49 +23,17 @@
 //// - **domain/task_status**: Provides TaskStatus ADT
 
 import domain/card
-import domain/task.{type TaskDependency, TaskDependency}
+import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
 import domain/task_status
+import domain/task_type.{TaskTypeInline}
 import gleam/dynamic/decode
 import gleam/json
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import helpers/option as option_helpers
 import scrumbringer_server/services/service_error.{type ServiceError, Unexpected}
 import scrumbringer_server/sql
-
-/// Task record with type-safe status.
-///
-/// The `status` field uses the `TaskStatus` ADT instead of strings,
-/// enabling compile-time verification of status handling.
-pub type Task {
-  Task(
-    id: Int,
-    project_id: Int,
-    type_id: Int,
-    type_name: String,
-    type_icon: String,
-    title: String,
-    description: Option(String),
-    priority: Int,
-    state: task_state.TaskState,
-    status: task_status.TaskStatus,
-    ongoing_by_user_id: Option(Int),
-    created_by: Int,
-    created_at: String,
-    version: Int,
-    milestone_id: Option(Int),
-    card_id: Option(Int),
-    card_title: Option(String),
-    card_color: Option(card.CardColor),
-    /// Story 5.4 AC4: True if task has notes newer than user's last view.
-    has_new_notes: Bool,
-    /// Story 5.6: Number of incomplete dependencies blocking this task.
-    blocked_count: Int,
-    /// Story 5.6: Dependencies blocking this task.
-    dependencies: List(TaskDependency),
-  )
-}
 
 /// Map a list query row to Task.
 pub fn from_list_row(row: sql.TasksListRow) -> Result(Task, ServiceError) {
@@ -327,14 +295,14 @@ fn from_fields(
     id: id,
     project_id: project_id,
     type_id: type_id,
-    type_name: type_name,
-    type_icon: type_icon,
+    task_type: TaskTypeInline(id: type_id, name: type_name, icon: type_icon),
+    ongoing_by: ongoing_by_from_user_id(ongoing_by_user_id),
     title: title,
     description: option_helpers.string_to_option(description),
     priority: priority,
     state: state,
     status: task_state.to_status(state),
-    ongoing_by_user_id: option_helpers.int_to_option(ongoing_by_user_id),
+    work_state: task_state.to_work_state(state),
     created_by: created_by,
     created_at: created_at,
     version: version,
@@ -346,6 +314,13 @@ fn from_fields(
     blocked_count: blocked_count,
     dependencies: dependencies,
   ))
+}
+
+fn ongoing_by_from_user_id(user_id: Int) -> Option(task_status.OngoingBy) {
+  case option_helpers.int_to_option(user_id) {
+    Some(value) -> Some(task_status.OngoingBy(user_id: value))
+    None -> None
+  }
 }
 
 fn parse_optional_card_color(

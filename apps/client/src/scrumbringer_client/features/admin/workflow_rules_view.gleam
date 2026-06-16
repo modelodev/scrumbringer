@@ -26,7 +26,7 @@ import gleam/set
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  a, button, div, input, label, p, span, table, td, text, th, thead, tr,
+  a, div, input, label, p, span, table, td, text, th, thead, tr,
 }
 import lustre/element/keyed
 import lustre/event
@@ -43,7 +43,6 @@ import domain/workflow/codec as workflow_codec
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
@@ -113,9 +112,13 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 
 pub fn view_workflow_rules(config: Config(msg)) -> Element(msg) {
   div([attribute.class("section")], [
-    button([event.on_click(config.on_back_clicked)], [
-      text(t(config, i18n_text.BackToWorkflows)),
-    ]),
+    ui_button.text(
+      t(config, i18n_text.BackToWorkflows),
+      config.on_back_clicked,
+      ui_button.Secondary,
+      ui_button.ViewAction,
+    )
+      |> ui_button.view,
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Rules,
@@ -365,18 +368,16 @@ fn view_rule_templates_expansion(
         span([attribute.class("templates-title")], [
           text(t(config, i18n_text.AttachedTemplates)),
         ]),
-        button(
-          [
-            attribute.class("btn btn-sm btn-primary"),
-            // Stop propagation to prevent any parent click handlers from interfering
-            event.on_click(config.on_attach_modal_opened(rule.id))
-              |> event.stop_propagation,
-          ],
-          [
-            span([attribute.class("btn-icon-prefix")], [text("+")]),
-            text(t(config, i18n_text.AttachTemplate)),
-          ],
-        ),
+        ui_button.icon_text(
+          t(config, i18n_text.AttachTemplate),
+          config.on_attach_modal_opened(rule.id),
+          icons.Plus,
+          ui_button.Primary,
+          ui_button.EntityAction,
+        )
+          // Stop propagation to prevent any parent click handlers from interfering
+          |> ui_button.with_stop_propagation
+          |> ui_button.view,
       ]),
       case rule.templates {
         // AC13: Empathetic hint for empty templates
@@ -695,16 +696,16 @@ fn view_rule_crud_dialog(config: Config(msg)) -> Element(msg) {
   // Build mode attribute based on dialog mode
   let mode_attr = case config.rules.rules_dialog_mode {
     opt.None -> "closed"
-    opt.Some(state_types.RuleDialogCreate) -> "create"
-    opt.Some(state_types.RuleDialogEdit(_)) -> "edit"
-    opt.Some(state_types.RuleDialogDelete(_)) -> "delete"
+    opt.Some(admin_rules.RuleDialogCreate) -> "create"
+    opt.Some(admin_rules.RuleDialogEdit(_)) -> "edit"
+    opt.Some(admin_rules.RuleDialogDelete(_)) -> "delete"
   }
 
   // Build rule property for edit/delete modes (includes _mode field for component)
   let rule_prop = case config.rules.rules_dialog_mode {
-    opt.Some(state_types.RuleDialogEdit(rule)) ->
+    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
       attribute.property("rule", rule_to_json(rule, "edit"))
-    opt.Some(state_types.RuleDialogDelete(rule)) ->
+    opt.Some(admin_rules.RuleDialogDelete(rule)) ->
       attribute.property("rule", rule_to_json(rule, "delete"))
     _ -> attribute.none()
   }

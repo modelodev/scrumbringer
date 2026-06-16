@@ -2,14 +2,12 @@ import gleam/option
 
 import lustre/effect
 
+import domain/api_token.{type ApiToken, ApiToken, IntegrationUser}
 import domain/api_token_scope
 import domain/org_role
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
-import scrumbringer_client/client_state/types.{
-  type ApiToken, ApiToken, ApiTokensModel, DialogClosed, DialogOpen, Idle,
-  IntegrationUser,
-}
+import scrumbringer_client/client_state/types.{DialogClosed, DialogOpen, Idle}
 import scrumbringer_client/features/admin/api_tokens_update
 import scrumbringer_client/features/admin/msg as admin_messages
 
@@ -51,7 +49,7 @@ fn token(name: String) -> ApiToken {
 
 pub fn api_token_rename_opens_dialog_and_updates_loaded_token_test() {
   let model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..api_tokens_state.default_model(),
       tokens: remote.Loaded([token("old")]),
     )
@@ -79,7 +77,7 @@ pub fn api_token_rename_opens_dialog_and_updates_loaded_token_test() {
 
 pub fn integration_deactivate_clears_confirmation_after_success_test() {
   let model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..api_tokens_state.default_model(),
       integration_users: remote.Loaded([
         IntegrationUser(

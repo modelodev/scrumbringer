@@ -75,6 +75,9 @@ pub fn activate_dialog_renders_counts_from_config_test() {
   assert_contains(html, "Activate milestone")
   assert_contains(html, "3")
   assert_contains(html, "5")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "autofocus")
 }
 
 pub fn delete_dialog_renders_from_config_without_root_model_test() {

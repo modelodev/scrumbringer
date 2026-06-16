@@ -67,6 +67,8 @@ import scrumbringer_client/url_state
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/api_tokens as admin_api_tokens
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -76,7 +78,6 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
 
@@ -487,7 +488,7 @@ fn apply_route_fields(
       let model = case section {
         permissions.Team ->
           client_state.update_admin(model, fn(admin) {
-            let state_types.AssignmentsModel(
+            let assignments_state.AssignmentsModel(
               view_mode: _,
               search_input: search_input,
               search_query: search_query,
@@ -506,7 +507,7 @@ fn apply_route_fields(
             ) = admin.assignments
             admin_state.AdminModel(
               ..admin,
-              assignments: state_types.AssignmentsModel(
+              assignments: assignments_state.AssignmentsModel(
                 view_mode: assignments_view_mode.ByProject,
                 search_input: search_input,
                 search_query: search_query,
@@ -830,7 +831,7 @@ fn apply_assignments_view_from_url(
           case url_state.assignments_view_param(state) {
             opt.Some(view_mode) ->
               client_state.update_admin(model, fn(admin) {
-                let state_types.AssignmentsModel(
+                let assignments_state.AssignmentsModel(
                   view_mode: _,
                   search_input: search_input,
                   search_query: search_query,
@@ -849,7 +850,7 @@ fn apply_assignments_view_from_url(
                 ) = admin.assignments
                 admin_state.AdminModel(
                   ..admin,
-                  assignments: state_types.AssignmentsModel(
+                  assignments: assignments_state.AssignmentsModel(
                     view_mode: view_mode,
                     search_input: search_input,
                     search_query: search_query,
@@ -1053,7 +1054,7 @@ pub fn refresh_section_for_test(
           let api_tokens = admin.api_tokens
           admin_state.AdminModel(
             ..admin,
-            api_tokens: state_types.ApiTokensModel(
+            api_tokens: admin_api_tokens.ApiTokensModel(
               ..api_tokens,
               integration_users: Loading,
               tokens: Loading,
@@ -1363,7 +1364,7 @@ fn refresh_assignments_project_members(
       let #(next_assignments, effects) =
         list.fold(projects, #(assignments, []), fn(state, project) {
           let #(current, fx) = state
-          let state_types.AssignmentsModel(project_members: members, ..) =
+          let assignments_state.AssignmentsModel(project_members: members, ..) =
             current
           let needs_fetch = case dict.get(members, project.id) {
             Ok(remote) -> should_fetch(remote)
@@ -1373,7 +1374,7 @@ fn refresh_assignments_project_members(
             False -> #(current, fx)
             True -> {
               let updated =
-                state_types.AssignmentsModel(
+                assignments_state.AssignmentsModel(
                   ..current,
                   project_members: dict.insert(members, project.id, Loading),
                 )
@@ -1410,7 +1411,7 @@ fn refresh_assignments_user_projects(
       let #(next_assignments, effects) =
         list.fold(users, #(assignments, []), fn(state, user) {
           let #(current, fx) = state
-          let state_types.AssignmentsModel(user_projects: projects, ..) =
+          let assignments_state.AssignmentsModel(user_projects: projects, ..) =
             current
           let needs_fetch = case dict.get(projects, user.id) {
             Ok(remote) -> should_fetch(remote)
@@ -1420,7 +1421,7 @@ fn refresh_assignments_user_projects(
             False -> #(current, fx)
             True -> {
               let updated =
-                state_types.AssignmentsModel(
+                assignments_state.AssignmentsModel(
                   ..current,
                   user_projects: dict.insert(projects, user.id, Loading),
                 )

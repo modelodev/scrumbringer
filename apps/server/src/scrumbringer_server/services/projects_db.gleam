@@ -29,9 +29,9 @@ import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/persisted_role
 import scrumbringer_server/sql
 
-/// Project with user-specific role and member count.
-pub type Project {
-  Project(
+/// Internal project persistence record with user-specific role and member count.
+pub type ProjectRecord {
+  ProjectRecord(
     id: Int,
     org_id: Int,
     name: String,
@@ -41,9 +41,9 @@ pub type Project {
   )
 }
 
-/// Project membership record for a user.
-pub type ProjectMember {
-  ProjectMember(
+/// Internal project membership persistence record for a user.
+pub type ProjectMemberRecord {
+  ProjectMemberRecord(
     project_id: Int,
     user_id: Int,
     role: ProjectRole,
@@ -75,8 +75,8 @@ fn project_from_fields(
   created_at: String,
   my_role: ProjectRole,
   members_count: Int,
-) -> Project {
-  Project(
+) -> ProjectRecord {
+  ProjectRecord(
     id: id,
     org_id: org_id,
     name: name,
@@ -93,7 +93,7 @@ fn project_from_db_fields(
   created_at: String,
   my_role: String,
   members_count: Int,
-) -> Result(Project, pog.QueryError) {
+) -> Result(ProjectRecord, pog.QueryError) {
   use parsed_role <- result.try(persisted_role.project_role(my_role))
   Ok(project_from_fields(
     id,
@@ -111,8 +111,8 @@ fn project_member_from_fields(
   role: ProjectRole,
   created_at: String,
   claimed_count: Int,
-) -> ProjectMember {
-  ProjectMember(
+) -> ProjectMemberRecord {
+  ProjectMemberRecord(
     project_id: project_id,
     user_id: user_id,
     role: role,
@@ -127,7 +127,7 @@ fn project_member_from_db_fields(
   role: String,
   created_at: String,
   claimed_count: Int,
-) -> Result(ProjectMember, pog.QueryError) {
+) -> Result(ProjectMemberRecord, pog.QueryError) {
   use parsed_role <- result.try(persisted_role.project_role(role))
   Ok(project_member_from_fields(
     project_id,
@@ -147,7 +147,7 @@ pub fn create_project(
   org_id: Int,
   created_by: Int,
   name: String,
-) -> Result(Project, pog.QueryError) {
+) -> Result(ProjectRecord, pog.QueryError) {
   use returned <- result.try(sql.projects_create(db, org_id, name, created_by))
 
   use row <- result.try(persisted_field.query_row(returned.rows))
@@ -168,7 +168,7 @@ pub fn create_project(
 pub fn list_projects_for_user(
   db: pog.Connection,
   user_id: Int,
-) -> Result(List(Project), pog.QueryError) {
+) -> Result(List(ProjectRecord), pog.QueryError) {
   use returned <- result.try(sql.projects_for_user(db, user_id))
 
   returned.rows
@@ -187,7 +187,7 @@ pub fn list_projects_for_user(
 pub fn list_projects_for_org(
   db: pog.Connection,
   org_id: Int,
-) -> Result(List(Project), pog.QueryError) {
+) -> Result(List(ProjectRecord), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
@@ -337,7 +337,7 @@ pub fn is_any_project_manager_in_org(
 pub fn list_members(
   db: pog.Connection,
   project_id: Int,
-) -> Result(List(ProjectMember), pog.QueryError) {
+) -> Result(List(ProjectMemberRecord), pog.QueryError) {
   use returned <- result.try(sql.project_members_list(db, project_id))
 
   returned.rows
@@ -361,7 +361,7 @@ pub fn add_member(
   project_id: Int,
   target_user_id: Int,
   role: ProjectRole,
-) -> Result(ProjectMember, AddMemberError) {
+) -> Result(ProjectMemberRecord, AddMemberError) {
   use project_org_id <- result.try(
     fetch_project_org_id(db, project_id)
     |> result.map_error(fn(e) { e }),
@@ -405,7 +405,7 @@ fn insert_member(
   project_id: Int,
   user_id: Int,
   role: ProjectRole,
-) -> Result(ProjectMember, AddMemberError) {
+) -> Result(ProjectMemberRecord, AddMemberError) {
   let role_value = project_role.to_string(role)
   case sql.project_members_insert(db, project_id, user_id, role_value) {
     Ok(pog.Returned(rows: rows, ..)) -> {
@@ -595,7 +595,7 @@ pub fn update_project(
   db: pog.Connection,
   project_id: Int,
   name: String,
-) -> Result(Project, UpdateProjectError) {
+) -> Result(ProjectRecord, UpdateProjectError) {
   case sql.project_update(db, project_id, name) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       Ok(project_from_fields(

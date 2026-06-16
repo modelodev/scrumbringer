@@ -9,19 +9,19 @@ pub fn rules_response(values: List(json.Json)) -> json.Json {
   json.object([#("rules", json.preprocessed_array(values))])
 }
 
-pub fn rule(rule: rules_db.Rule) -> json.Json {
+pub fn rule(rule: rules_db.RuleRecord) -> json.Json {
   rule_with_templates(rule, [])
 }
 
-pub fn rule_response(value: rules_db.Rule) -> json.Json {
+pub fn rule_response(value: rules_db.RuleRecord) -> json.Json {
   json.object([#("rule", rule(value))])
 }
 
 pub fn rule_with_templates(
-  rule: rules_db.Rule,
-  templates: List(rules_db.RuleTemplate),
+  rule: rules_db.RuleRecord,
+  templates: List(workflow.RuleTemplate),
 ) -> json.Json {
-  let rules_db.Rule(
+  let rules_db.RuleRecord(
     id: id,
     workflow_id: workflow_id,
     name: name,
@@ -48,8 +48,8 @@ pub fn rule_with_templates(
   ])
 }
 
-pub fn template(template: rules_db.RuleTemplate) -> json.Json {
-  let rules_db.RuleTemplate(
+pub fn template(template: workflow.RuleTemplate) -> json.Json {
+  let workflow.RuleTemplate(
     id: id,
     org_id: org_id,
     project_id: project_id,
@@ -78,6 +78,6 @@ pub fn template(template: rules_db.RuleTemplate) -> json.Json {
   ])
 }
 
-pub fn templates_response(values: List(rules_db.RuleTemplate)) -> json.Json {
+pub fn templates_response(values: List(workflow.RuleTemplate)) -> json.Json {
   json.object([#("templates", json.array(values, of: template))])
 }

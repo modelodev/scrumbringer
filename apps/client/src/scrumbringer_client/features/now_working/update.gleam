@@ -142,7 +142,7 @@ fn with_auth_check_after(
 }
 
 /// Handle start button click - begins tracking time on a task.
-pub fn handle_start_clicked(
+fn handle_start_clicked(
   model: Model,
   task_id: Int,
   context: Context(parent_msg),
@@ -160,7 +160,7 @@ pub fn handle_start_clicked(
 }
 
 /// Handle pause button click - stops tracking time.
-pub fn handle_pause_clicked(
+fn handle_pause_clicked(
   model: Model,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
@@ -182,7 +182,7 @@ pub fn handle_pause_clicked(
 }
 
 /// Handle timer tick - updates tick counter and sends heartbeat every 60 ticks.
-pub fn handle_ticked(
+fn handle_ticked(
   model: Model,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
@@ -231,7 +231,7 @@ fn schedule_tick(context: Context(parent_msg)) -> Effect(parent_msg) {
 // =============================================================================
 
 /// Handle successful work sessions fetch response.
-pub fn handle_sessions_fetched_ok(
+fn handle_sessions_fetched_ok(
   model: Model,
   payload: WorkSessionsPayload,
   context: Context(parent_msg),
@@ -241,7 +241,7 @@ pub fn handle_sessions_fetched_ok(
 }
 
 /// Handle failed work sessions fetch response.
-pub fn handle_sessions_fetched_error(
+fn handle_sessions_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(parent_msg)) {
@@ -254,7 +254,7 @@ pub fn handle_sessions_fetched_error(
 }
 
 /// Handle successful work session start response.
-pub fn handle_session_started_ok(
+fn handle_session_started_ok(
   model: Model,
   payload: WorkSessionsPayload,
   context: Context(parent_msg),
@@ -264,7 +264,7 @@ pub fn handle_session_started_ok(
 }
 
 /// Handle failed work session start response.
-pub fn handle_session_started_error(
+fn handle_session_started_error(
   model: Model,
   err: ApiError,
   context: Context(parent_msg),
@@ -273,7 +273,7 @@ pub fn handle_session_started_error(
 }
 
 /// Handle successful work session pause response.
-pub fn handle_session_paused_ok(
+fn handle_session_paused_ok(
   model: Model,
   payload: WorkSessionsPayload,
 ) -> #(Model, Effect(parent_msg)) {
@@ -294,7 +294,7 @@ pub fn handle_session_paused_ok(
 }
 
 /// Handle failed work session pause response.
-pub fn handle_session_paused_error(
+fn handle_session_paused_error(
   model: Model,
   err: ApiError,
   context: Context(parent_msg),
@@ -303,7 +303,7 @@ pub fn handle_session_paused_error(
 }
 
 /// Handle successful work session heartbeat response.
-pub fn handle_session_heartbeated_ok(
+fn handle_session_heartbeated_ok(
   model: Model,
   payload: WorkSessionsPayload,
   context: Context(parent_msg),
@@ -313,7 +313,7 @@ pub fn handle_session_heartbeated_ok(
 }
 
 /// Handle failed work session heartbeat response.
-pub fn handle_session_heartbeated_error(
+fn handle_session_heartbeated_error(
   model: Model,
   _err: ApiError,
 ) -> #(Model, Effect(parent_msg)) {

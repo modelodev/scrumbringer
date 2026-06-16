@@ -2,11 +2,12 @@ import gleam/option as opt
 import gleam/string
 import lustre/element
 
+import domain/api_error.{ApiError}
 import domain/card.{type Card, Blue, Card, Pendiente}
 import domain/milestone.{
   type MilestoneProgress, Milestone, MilestoneProgress, Ready,
 }
-import domain/remote.{Loaded, NotAsked}
+import domain/remote.{Failed, Loaded, NotAsked}
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
@@ -105,6 +106,22 @@ pub fn create_dialog_renders_form_and_card_selector_without_root_model_test() {
   assert_contains(html, "No card")
   assert_contains(html, "Release card")
   assert_contains(html, "form=\"task-create-form\"")
+}
+
+pub fn create_dialog_retry_uses_shared_button_classes_test() {
+  let html =
+    create_dialog.view(
+      create_dialog.Config(
+        ..config(),
+        task_types: Failed(ApiError(status: 500, code: "ERR", message: "boom")),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Retry")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "<button type=\"button\">Retry</button>")
 }
 
 pub fn create_dialog_renders_milestone_target_without_card_selector_test() {

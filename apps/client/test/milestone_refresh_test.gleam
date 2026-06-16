@@ -6,7 +6,10 @@ import domain/milestone.{
   MilestoneProgress, Ready,
 }
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/milestones/refresh as milestone_refresh
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 
 pub fn loading_unless_loaded_preserves_loaded_milestones_test() {
@@ -20,77 +23,133 @@ pub fn loading_unless_loaded_preserves_loaded_milestones_test() {
 }
 
 pub fn project_fetched_updates_store_and_waits_until_ready_test() {
-  let store =
-    normalized_store.new()
-    |> milestone_refresh.mark_pending(2)
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestones_store: milestone_refresh.mark_pending(
+        normalized_store.new(),
+        2,
+      ),
+      member_milestones: Loading,
+    )
   let progress = sample_progress(10, Ready)
 
-  let milestone_refresh.ProjectFetched(
-    milestones_store: next_store,
-    milestones: next_milestones,
-    selected_milestone_id: selected_id,
-  ) =
-    milestone_refresh.project_fetched(store, Loading, None, 1, [
-      progress,
-    ])
+  let assert Some(next) =
+    milestone_refresh.try_update(
+      model,
+      pool_messages.MemberProjectMilestonesFetched(1, Ok([progress])),
+    )
 
-  let assert 1 = normalized_store.pending(next_store)
-  let assert Loading = next_milestones
-  let assert None = selected_id
+  let assert 1 = normalized_store.pending(next.member_milestones_store)
+  let assert Loading = next.member_milestones
+  let assert None = next.member_selected_milestone_id
 }
 
 pub fn project_fetched_selects_active_milestone_when_ready_test() {
-  let store =
-    normalized_store.new()
-    |> milestone_refresh.mark_pending(1)
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestones_store: milestone_refresh.mark_pending(
+        normalized_store.new(),
+        1,
+      ),
+      member_milestones: Loading,
+    )
 
-  let milestone_refresh.ProjectFetched(
-    milestones: milestones,
-    selected_milestone_id: selected_id,
-    ..,
-  ) =
-    milestone_refresh.project_fetched(store, Loading, None, 1, [
-      sample_progress(10, Ready),
-      sample_progress(20, Active),
-    ])
+  let assert Some(next) =
+    milestone_refresh.try_update(
+      model,
+      pool_messages.MemberProjectMilestonesFetched(
+        1,
+        Ok([
+          sample_progress(10, Ready),
+          sample_progress(20, Active),
+        ]),
+      ),
+    )
 
-  let assert Loaded([_, _]) = milestones
-  let assert Some(20) = selected_id
+  let assert Loaded([_, _]) = next.member_milestones
+  let assert Some(20) = next.member_selected_milestone_id
 }
 
 pub fn project_fetched_keeps_existing_selection_test() {
-  let store =
-    normalized_store.new()
-    |> milestone_refresh.mark_pending(1)
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestones_store: milestone_refresh.mark_pending(
+        normalized_store.new(),
+        1,
+      ),
+      member_milestones: Loading,
+      member_selected_milestone_id: Some(10),
+    )
 
-  let milestone_refresh.ProjectFetched(selected_milestone_id: selected_id, ..) =
-    milestone_refresh.project_fetched(store, Loading, Some(10), 1, [
-      sample_progress(10, Ready),
-      sample_progress(20, Active),
-    ])
+  let assert Some(next) =
+    milestone_refresh.try_update(
+      model,
+      pool_messages.MemberProjectMilestonesFetched(
+        1,
+        Ok([
+          sample_progress(10, Ready),
+          sample_progress(20, Active),
+        ]),
+      ),
+    )
 
-  let assert Some(10) = selected_id
+  let assert Some(10) = next.member_selected_milestone_id
 }
 
 pub fn project_failed_preserves_loaded_milestones_and_fails_empty_state_test() {
   let progress = sample_progress(10, Ready)
 
-  let #(_loaded_store, loaded_milestones) =
-    milestone_refresh.project_failed(
-      milestone_refresh.mark_pending(normalized_store.new(), 1),
-      Loaded([progress]),
-      api_error(),
+  let loaded_model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestones_store: milestone_refresh.mark_pending(
+        normalized_store.new(),
+        1,
+      ),
+      member_milestones: Loaded([progress]),
     )
-  let #(_empty_store, empty_milestones) =
-    milestone_refresh.project_failed(
-      milestone_refresh.mark_pending(normalized_store.new(), 1),
-      Loading,
-      api_error(),
+  let empty_model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestones_store: milestone_refresh.mark_pending(
+        normalized_store.new(),
+        1,
+      ),
+      member_milestones: Loading,
     )
 
-  let assert Loaded([_progress]) = loaded_milestones
+  let assert Some(loaded_next) =
+    milestone_refresh.try_update(
+      loaded_model,
+      pool_messages.MemberProjectMilestonesFetched(1, Error(api_error())),
+    )
+  let assert Some(empty_next) =
+    milestone_refresh.try_update(
+      empty_model,
+      pool_messages.MemberProjectMilestonesFetched(1, Error(api_error())),
+    )
+
+  let assert Loaded([_progress]) = loaded_next.member_milestones
   let assert Failed(ApiError(status: 500, code: "ERR", message: "boom")) =
-    empty_milestones
+    empty_next.member_milestones
+}
+
+pub fn try_update_ignores_non_refresh_message_test() {
+  let assert None =
+    milestone_refresh.try_update(
+      member_pool.default_model(),
+      pool_messages.GlobalKeyDown(pool_prefs.KeyEvent(
+        key: "Escape",
+        ctrl: False,
+        meta: False,
+        shift: False,
+        is_editing: False,
+        modal_open: False,
+      )),
+    )
 }
 
 fn api_error() {

@@ -72,16 +72,12 @@ fn view_table(config: Config(msg)) -> Element(msg) {
         data_table.column_with_class(
           t(config, i18n_text.Actions),
           fn(u: OrgUser) {
-            action_buttons.task_icon_button_with_class(
+            action_buttons.delete_button_with_disabled_and_testid(
               t(config, i18n_text.DeleteUser),
               config.on_delete_clicked(u.id),
-              icons.Trash,
-              icons.Small,
               is_current_user(config, u.id)
                 || config.model.org_settings_delete_in_flight,
-              "btn-icon btn-xs btn-danger-icon",
-              opt.None,
-              opt.Some("org-user-delete-btn"),
+              "org-user-delete-btn",
             )
           },
           "col-actions",

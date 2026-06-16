@@ -22,10 +22,15 @@ fn context() -> skills_update.Context(Nil) {
 }
 
 pub fn capability_ids_success_loads_edit_state_test() {
-  let #(next, fx) =
-    skills_update.handle_my_capability_ids_fetched_ok(
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
       member_skills.default_model(),
-      [2, 4],
+      pool_messages.MemberMyCapabilityIdsFetched(Ok([2, 4])),
+      context(),
     )
 
   let assert True = next.member_my_capability_ids == remote.Loaded([2, 4])
@@ -54,10 +59,15 @@ pub fn try_update_handles_capability_ids_success_without_auth_test() {
 pub fn project_capabilities_error_sets_failed_state_test() {
   let err = ApiError(status: 500, code: "CAPABILITIES", message: "Boom")
 
-  let #(next, fx) =
-    skills_update.handle_project_capabilities_fetched_error(
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
       member_skills.default_model(),
-      err,
+      pool_messages.MemberProjectCapabilitiesFetched(Error(err)),
+      context(),
     )
 
   let assert True = next.member_capabilities == remote.Failed(err)
@@ -67,10 +77,15 @@ pub fn project_capabilities_error_sets_failed_state_test() {
 pub fn project_capabilities_success_loads_state_test() {
   let capabilities = [Capability(id: 1, name: "Backend")]
 
-  let #(next, fx) =
-    skills_update.handle_project_capabilities_fetched_ok(
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
       member_skills.default_model(),
-      capabilities,
+      pool_messages.MemberProjectCapabilitiesFetched(Ok(capabilities)),
+      context(),
     )
 
   let assert True = next.member_capabilities == remote.Loaded(capabilities)
@@ -78,8 +93,16 @@ pub fn project_capabilities_success_loads_state_test() {
 }
 
 pub fn toggle_capability_defaults_missing_id_to_selected_test() {
-  let #(next, fx) =
-    skills_update.handle_toggle_capability(member_skills.default_model(), 7)
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
+      member_skills.default_model(),
+      pool_messages.MemberToggleCapability(7),
+      context(),
+    )
 
   let assert Ok(True) = dict.get(next.member_my_capability_ids_edit, 7)
   let assert True = fx == effect.none()
@@ -108,7 +131,16 @@ pub fn toggle_capability_flips_existing_id_test() {
       member_my_capability_ids_edit: dict.from_list([#(7, True)]),
     )
 
-  let #(next, fx) = skills_update.handle_toggle_capability(model, 7)
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
+      model,
+      pool_messages.MemberToggleCapability(7),
+      context(),
+    )
 
   let assert Ok(False) = dict.get(next.member_my_capability_ids_edit, 7)
   let assert True = fx == effect.none()
@@ -122,8 +154,16 @@ pub fn save_clicked_sets_in_flight_when_context_is_complete_test() {
       member_my_capabilities_error: option.Some("old error"),
     )
 
-  let #(next, _fx) =
-    skills_update.handle_save_capabilities_clicked(model, context())
+  let assert option.Some(skills_update.Update(
+    next,
+    _fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
+      model,
+      pool_messages.MemberSaveCapabilitiesClicked,
+      context(),
+    )
 
   let assert True = next.member_my_capabilities_in_flight
   let assert True = next.member_my_capabilities_error == option.None
@@ -137,9 +177,18 @@ pub fn save_error_records_message_and_stops_in_flight_test() {
     )
   let err = ApiError(status: 500, code: "SAVE", message: "Save failed")
 
-  let #(next, fx) =
-    skills_update.handle_save_capabilities_error(model, err, context())
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.CheckAuth(auth_err),
+  )) =
+    skills_update.try_update(
+      model,
+      pool_messages.MemberMyCapabilityIdsSaved(Error(err)),
+      context(),
+    )
 
+  let assert True = auth_err == err
   let assert False = next.member_my_capabilities_in_flight
   let assert True =
     next.member_my_capabilities_error == option.Some("Save failed")
@@ -180,8 +229,16 @@ pub fn save_success_updates_ids_and_emits_feedback_test() {
       member_my_capability_ids_edit: dict.from_list([#(99, True)]),
     )
 
-  let #(next, fx) =
-    skills_update.handle_save_capabilities_ok(model, [1, 2], context())
+  let assert option.Some(skills_update.Update(
+    next,
+    fx,
+    skills_update.NoAuthCheck,
+  )) =
+    skills_update.try_update(
+      model,
+      pool_messages.MemberMyCapabilityIdsSaved(Ok([1, 2])),
+      context(),
+    )
 
   let assert False = next.member_my_capabilities_in_flight
   let assert True = next.member_my_capability_ids == remote.Loaded([1, 2])

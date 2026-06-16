@@ -32,6 +32,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
@@ -444,17 +445,10 @@ fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
                   text(i18n.t(config.locale, i18n_text.Preferences)),
                 ],
               ),
-              button(
-                [
-                  attribute.class("btn-icon-only"),
-                  attribute.type_("button"),
-                  attribute.attribute(
-                    "aria-label",
-                    i18n.t(config.locale, i18n_text.Close),
-                  ),
-                  event.on_click(config.on_preferences_toggle),
-                ],
-                [icons.nav_icon(icons.Close, icons.Small)],
+              profile_icon_button(
+                i18n.t(config.locale, i18n_text.Close),
+                icons.Close,
+                config.on_preferences_toggle,
               ),
             ]),
             div([attribute.class("preferences-popup-content")], [
@@ -532,20 +526,17 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
       None -> element.none()
     },
     div([attribute.class("profile-actions")], [
-      button(
-        [
-          attribute.class("btn-icon-only"),
-          attribute.attribute("data-testid", "preferences-btn"),
-          attribute.type_("button"),
-          attribute.attribute(
-            "title",
-            i18n.t(config.locale, i18n_text.Preferences),
-          ),
-          attribute.attribute(
-            "aria-label",
-            i18n.t(config.locale, i18n_text.Preferences),
-          ),
-          attribute.attribute("aria-haspopup", "dialog"),
+      profile_icon_button_config(
+        i18n.t(config.locale, i18n_text.Preferences),
+        icons.Cog,
+        config.on_preferences_toggle,
+      )
+        |> ui_button.with_testid("preferences-btn")
+        |> ui_button.with_attribute(attribute.attribute(
+          "aria-haspopup",
+          "dialog",
+        ))
+        |> ui_button.with_attribute(
           attribute.attribute(
             "aria-expanded",
             case config.preferences_popup_open {
@@ -553,24 +544,40 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
               False -> "false"
             },
           ),
-          event.on_click(config.on_preferences_toggle),
-        ],
-        [icons.nav_icon(icons.Cog, icons.Small)],
-      ),
-      button(
-        [
-          attribute.class("btn-icon-only btn-logout"),
-          attribute.attribute("data-testid", "logout-btn"),
-          attribute.type_("button"),
-          attribute.attribute("title", i18n.t(config.locale, i18n_text.Logout)),
-          attribute.attribute(
-            "aria-label",
-            i18n.t(config.locale, i18n_text.Logout),
-          ),
-          event.on_click(config.on_logout),
-        ],
-        [icons.nav_icon(icons.Logout, icons.Small)],
-      ),
+        )
+        |> ui_button.view,
+      profile_icon_button_config(
+        i18n.t(config.locale, i18n_text.Logout),
+        icons.Logout,
+        config.on_logout,
+      )
+        |> ui_button.with_class("btn-logout")
+        |> ui_button.with_testid("logout-btn")
+        |> ui_button.view,
     ]),
   ])
+}
+
+fn profile_icon_button(
+  label: String,
+  icon: icons.NavIcon,
+  on_click: msg,
+) -> Element(msg) {
+  profile_icon_button_config(label, icon, on_click)
+  |> ui_button.view
+}
+
+fn profile_icon_button_config(
+  label: String,
+  icon: icons.NavIcon,
+  on_click: msg,
+) -> ui_button.Config(msg) {
+  ui_button.icon(
+    label,
+    on_click,
+    icon,
+    ui_button.Neutral,
+    ui_button.GlobalAction,
+  )
+  |> ui_button.with_class("btn-icon-only")
 }

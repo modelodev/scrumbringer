@@ -14,7 +14,6 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
@@ -43,6 +42,31 @@ pub type MilestoneDialog {
 pub type MilestoneDragItem {
   MilestoneDragCard(card_id: Int, from_milestone_id: Int)
   MilestoneDragTask(task_id: Int, from_milestone_id: Int)
+}
+
+/// State during drag-and-drop of a task card.
+pub type DragState {
+  DragIdle
+  DragPending(task_id: Int)
+  DragActive(task_id: Int, offset_x: Int, offset_y: Int)
+}
+
+/// Drag-to-claim state for pool interactions.
+pub type PoolDragState {
+  PoolDragIdle
+  PoolDragPendingRect
+  PoolDragDragging(over_my_tasks: Bool, rect: Rect)
+}
+
+/// Rectangle geometry for hit testing.
+pub type Rect {
+  Rect(left: Int, top: Int, width: Int, height: Int)
+}
+
+/// Tests if a point (x, y) is inside the rectangle (inclusive bounds).
+pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
+  let Rect(left: left, top: top, width: width, height: height) = rect
+  x >= left && x <= left + width && y >= top && y <= top + height
 }
 
 /// Represents member pool state.
@@ -95,8 +119,8 @@ pub type Model {
     member_create_milestone_id: Option(Int),
     member_create_in_flight: Bool,
     member_create_error: Option(String),
-    member_drag: state_types.DragState,
-    member_pool_drag: state_types.PoolDragState,
+    member_drag: DragState,
+    member_pool_drag: PoolDragState,
     member_pool_touch_task_id: Option(Int),
     member_pool_touch_longpress: Option(Int),
     member_pool_touch_client_x: Int,
@@ -168,8 +192,8 @@ pub fn default_model() -> Model {
     member_create_milestone_id: option.None,
     member_create_in_flight: False,
     member_create_error: option.None,
-    member_drag: state_types.DragIdle,
-    member_pool_drag: state_types.PoolDragIdle,
+    member_drag: DragIdle,
+    member_pool_drag: PoolDragIdle,
     member_pool_touch_task_id: option.None,
     member_pool_touch_longpress: option.None,
     member_pool_touch_client_x: 0,

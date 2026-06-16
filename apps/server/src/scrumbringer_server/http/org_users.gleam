@@ -309,7 +309,7 @@ fn list_user_projects(req: wisp.Request, ctx: auth.Ctx, user_id_str: String) {
 fn fetch_user_projects(
   db: pog.Connection,
   user_id: Int,
-) -> Result(List(projects_db.Project), wisp.Response) {
+) -> Result(List(projects_db.ProjectRecord), wisp.Response) {
   case projects_db.list_projects_for_user(db, user_id) {
     Ok(projects) -> Ok(projects)
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
@@ -382,7 +382,7 @@ fn add_project_member(
   project_id: Int,
   target_user_id: Int,
   role: project_role.ProjectRole,
-) -> Result(projects_db.ProjectMember, wisp.Response) {
+) -> Result(projects_db.ProjectMemberRecord, wisp.Response) {
   case projects_db.add_member(db, project_id, target_user_id, role) {
     Ok(member) -> Ok(member)
     Error(error) -> Error(add_project_member_error_response(error))

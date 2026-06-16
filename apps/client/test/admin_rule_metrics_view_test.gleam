@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/option
 import gleam/string
 import lustre/element
 
@@ -21,6 +22,61 @@ fn workflow_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
     evaluated_count: 9,
     applied_count: 6,
     suppressed_count: 3,
+  )
+}
+
+fn rule_summary() -> api_rule_metrics.RuleMetricsSummary {
+  api_rule_metrics.RuleMetricsSummary(
+    rule_id: 22,
+    rule_name: "Escalate blocked work",
+    evaluated_count: 5,
+    applied_count: 2,
+    suppressed_count: 3,
+  )
+}
+
+fn workflow_metrics() -> api_rule_metrics.WorkflowMetrics {
+  api_rule_metrics.WorkflowMetrics(
+    workflow_id: 11,
+    workflow_name: "Escalation workflow",
+    rules: [rule_summary()],
+  )
+}
+
+fn rule_details() -> api_rule_metrics.RuleMetricsDetailed {
+  api_rule_metrics.RuleMetricsDetailed(
+    rule_id: 22,
+    rule_name: "Escalate blocked work",
+    evaluated_count: 5,
+    applied_count: 2,
+    suppressed_count: 3,
+    suppression_breakdown: api_rule_metrics.SuppressionBreakdown(
+      idempotent: 1,
+      not_user_triggered: 1,
+      not_matching: 1,
+      inactive: 0,
+    ),
+  )
+}
+
+fn execution() -> api_rule_metrics.RuleExecution {
+  api_rule_metrics.RuleExecution(
+    id: 101,
+    origin_type: "task",
+    origin_id: 42,
+    outcome: "applied",
+    suppression_reason: "",
+    user_id: 7,
+    user_email: "member@example.com",
+    created_at: "2026-06-08T10:00:00Z",
+  )
+}
+
+fn executions_response() -> api_rule_metrics.RuleExecutionsResponse {
+  api_rule_metrics.RuleExecutionsResponse(
+    rule_id: 22,
+    executions: [execution()],
+    pagination: api_rule_metrics.Pagination(limit: 20, offset: 20, total: 45),
   )
 }
 
@@ -77,4 +133,51 @@ pub fn rule_metrics_view_renders_empty_state_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "No automation executions found in the selected range.")
+}
+
+pub fn rule_metrics_view_detail_action_uses_semantic_button_test() {
+  let html =
+    rule_metrics_view.view_rule_metrics(
+      rule_metrics_view.Config(
+        ..config(),
+        model: admin_metrics.Model(
+          ..config().model,
+          admin_rule_metrics_expanded_workflow: option.Some(11),
+          admin_rule_metrics_workflow_details: Loaded(workflow_metrics()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Escalate blocked work")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-xs")
+  assert_contains(html, "aria-label=\"View Details\"")
+}
+
+pub fn rule_metrics_view_pagination_uses_semantic_accessible_buttons_test() {
+  let html =
+    rule_metrics_view.view_rule_metrics(
+      rule_metrics_view.Config(
+        ..config(),
+        model: admin_metrics.Model(
+          ..config().model,
+          admin_rule_metrics_drilldown_rule_id: option.Some(22),
+          admin_rule_metrics_rule_details: Loaded(rule_details()),
+          admin_rule_metrics_executions: Loaded(executions_response()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "2 / 3")
+  assert_contains(html, "btn-close")
+  assert_contains(html, "aria-label=\"Close\"")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "aria-label=\"First page\"")
+  assert_contains(html, "aria-label=\"Previous page\"")
+  assert_contains(html, "aria-label=\"Next page\"")
+  assert_contains(html, "aria-label=\"Last page\"")
 }

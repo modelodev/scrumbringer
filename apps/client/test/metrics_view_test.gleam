@@ -2,7 +2,9 @@ import gleam/string
 import gleeunit
 import lustre/element
 
-import domain/metrics.{NoSample, OrgMetricsOverview, WindowDays}
+import domain/metrics.{
+  NoSample, OrgMetricsOverview, OrgMetricsProjectOverview, WindowDays,
+}
 import domain/remote.{Loaded, NotAsked}
 import gleam/option as opt
 
@@ -15,6 +17,10 @@ pub fn main() {
 
 fn assert_contains(text: String, fragment: String) {
   let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
 }
 
 pub fn overview_no_sample_renders_label_test() {
@@ -35,7 +41,23 @@ pub fn overview_no_sample_renders_label_test() {
       avg_claim_to_complete_ms: opt.None,
       avg_time_in_claimed_ms: opt.None,
       stale_claims_count: 0,
-      by_project: [],
+      by_project: [
+        OrgMetricsProjectOverview(
+          project_id: 7,
+          project_name: "Core",
+          available_count: 1,
+          claimed_count: 2,
+          ongoing_count: 1,
+          released_count: 1,
+          completed_count: 1,
+          release_rate_percent: opt.Some(50),
+          pool_flow_ratio_percent: opt.Some(80),
+          wip_count: 2,
+          avg_claim_to_complete_ms: opt.None,
+          avg_time_in_claimed_ms: opt.None,
+          stale_claims_count: 0,
+        ),
+      ],
     )
 
   let config =
@@ -52,4 +74,9 @@ pub fn overview_no_sample_renders_label_test() {
   assert_contains(html, "Flow health")
   assert_contains(html, "No sample (n=0)")
   assert_contains(html, "Time to first claim")
+  assert_contains(html, "Core")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-xs")
+  assert_not_contains(html, "class=\"btn-xs\"")
 }

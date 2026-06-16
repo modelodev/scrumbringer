@@ -9,7 +9,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
-import scrumbringer_client/features/milestones/update as milestones_workflow
+import scrumbringer_client/features/milestones/dialog_update as milestone_dialog_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/preferences as pool_preferences
 import scrumbringer_client/pool_prefs
@@ -50,7 +50,7 @@ pub fn try_update(
   }
 }
 
-pub fn handle(
+fn handle(
   model: Model,
   event: pool_prefs.KeyEvent,
 ) -> #(Model, Effect(parent_msg)) {
@@ -122,7 +122,7 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
     )
     _, _, _, _, True -> {
       let #(pool, fx) =
-        milestones_workflow.handle_milestone_dialog_closed(model.pool)
+        milestone_dialog_update.handle_milestone_dialog_closed(model.pool)
       #(Model(..model, pool: pool), fx)
     }
     _, _, True, _, _ -> #(

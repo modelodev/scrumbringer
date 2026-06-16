@@ -1,9 +1,12 @@
+import gleam/option.{Some}
 import gleam/string
 import lustre/element
 import scrumbringer_client/features/admin/org_user_fallback
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 import scrumbringer_client/ui/attribute_value
+import scrumbringer_client/ui/card_section_header
+import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
@@ -37,6 +40,21 @@ pub fn empty_state_view_renders_title_description_and_action_test() {
   let assert True = string.contains(html, "Try again")
   let assert True = string.contains(html, "Retry")
   let assert True = string.contains(html, "empty-state-no-results")
+}
+
+pub fn empty_state_action_uses_semantic_button_test() {
+  let state =
+    empty_state.new("magnifying-glass", "No results", "Try again")
+    |> empty_state.with_action("Retry", "msg")
+
+  let html =
+    empty_state.view(state)
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "btn-primary")
+  let assert True = string.contains(html, "btn-entity-action")
+  let assert True = string.contains(html, "type=\"button\"")
+  let assert False = string.contains(html, "type=\"submit\"")
 }
 
 pub fn empty_state_simple_renders_description_test() {
@@ -75,6 +93,60 @@ pub fn empty_state_error_notice_renders_alert_role_test() {
   let assert True = string.contains(html, "empty-state-error")
   let assert True = string.contains(html, "role=\"alert\"")
   let assert True = string.contains(html, "Could not load data")
+}
+
+pub fn card_section_header_uses_shared_button_classes_test() {
+  let html =
+    card_section_header.view(card_section_header.Config(
+      title: "Notes",
+      button_label: "Add note",
+      button_disabled: False,
+      on_button_click: "msg",
+    ))
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "card-section-header")
+  let assert True = string.contains(html, "btn-primary")
+  let assert True = string.contains(html, "btn-entity-action")
+  let assert True = string.contains(html, "btn-sm")
+  let assert False = string.contains(html, "btn btn-sm btn-primary")
+}
+
+pub fn card_section_header_extended_keeps_compat_button_class_test() {
+  let html =
+    card_section_header.view_extended(card_section_header.ExtendedConfig(
+      title: "Tasks",
+      button_label: "Add task",
+      button_disabled: True,
+      on_button_click: "msg",
+      container_class: Some("detail-section-header"),
+      button_class: Some("task-section-action"),
+    ))
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "detail-section-header")
+  let assert True = string.contains(html, "task-section-action")
+  let assert True = string.contains(html, "btn-primary")
+  let assert True = string.contains(html, "disabled")
+  let assert False = string.contains(html, "btn btn-sm btn-primary")
+}
+
+pub fn copyable_input_uses_shared_button_test() {
+  let html =
+    copyable_input.view(
+      "Invite link",
+      "https://example.test/i",
+      "msg",
+      "Copy",
+      Some("Copied"),
+    )
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "Invite link")
+  let assert True = string.contains(html, "readonly")
+  let assert True = string.contains(html, "btn-secondary")
+  let assert True = string.contains(html, "btn-entity-action")
+  let assert True = string.contains(html, "type=\"button\"")
 }
 
 pub fn error_notice_renders_error_text_test() {

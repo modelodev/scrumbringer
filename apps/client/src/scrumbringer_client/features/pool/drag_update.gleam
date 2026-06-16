@@ -20,7 +20,7 @@ import scrumbringer_client/features/pool/highlight as pool_highlight
 import scrumbringer_client/features/pool/hover_notes as pool_hover_notes
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/touch as pool_touch
-import scrumbringer_client/features/tasks/update as tasks_workflow
+import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 
 pub type Model {
   Model(
@@ -32,7 +32,7 @@ pub type Model {
 
 pub type Context(parent_msg) {
   Context(
-    task_mutation: tasks_workflow.TaskMutationContext(parent_msg),
+    task_mutation: task_mutation_update.MutationContext(parent_msg),
     on_canvas_rect_fetched: fn(Int, Int) -> parent_msg,
     on_drag_offset_resolved: fn(Int, Int, Int) -> parent_msg,
     on_my_tasks_rect_fetched: fn(Int, Int, Int, Int) -> parent_msg,
@@ -83,7 +83,7 @@ pub fn try_update(
   }
 }
 
-pub fn touch_started(
+fn touch_started(
   model: Model,
   task_id: Int,
   client_x: Int,
@@ -108,7 +108,7 @@ pub fn touch_started(
   )
 }
 
-pub fn hover_opened(
+fn hover_opened(
   model: Model,
   task_id: Int,
   context: Context(parent_msg),
@@ -117,11 +117,11 @@ pub fn hover_opened(
   #(open_blocker_highlight(next, task_id), fx)
 }
 
-pub fn hover_closed(model: Model) -> #(Model, Effect(parent_msg)) {
+fn hover_closed(model: Model) -> #(Model, Effect(parent_msg)) {
   #(Model(..model, pool: pool_highlight.clear(model.pool)), effect.none())
 }
 
-pub fn task_focused(
+fn task_focused(
   model: Model,
   task_id: Int,
   context: Context(parent_msg),
@@ -130,11 +130,11 @@ pub fn task_focused(
   #(open_blocker_highlight(next, task_id), fx)
 }
 
-pub fn task_blurred(model: Model) -> #(Model, Effect(parent_msg)) {
+fn task_blurred(model: Model) -> #(Model, Effect(parent_msg)) {
   hover_closed(model)
 }
 
-pub fn task_created_feedback(
+fn task_created_feedback(
   model: Model,
   task_id: Int,
 ) -> #(Model, Effect(parent_msg)) {
@@ -144,10 +144,7 @@ pub fn task_created_feedback(
   )
 }
 
-pub fn highlight_expired(
-  model: Model,
-  task_id: Int,
-) -> #(Model, Effect(parent_msg)) {
+fn highlight_expired(model: Model, task_id: Int) -> #(Model, Effect(parent_msg)) {
   #(
     Model(..model, pool: pool_highlight.expire(model.pool, task_id)),
     effect.none(),
@@ -158,7 +155,7 @@ fn open_blocker_highlight(model: Model, task_id: Int) -> Model {
   Model(..model, pool: pool_highlight.blocking_for_task(model.pool, task_id))
 }
 
-pub fn touch_ended(
+fn touch_ended(
   model: Model,
   task_id: Int,
   context: Context(parent_msg),
@@ -176,7 +173,7 @@ pub fn touch_ended(
   }
 }
 
-pub fn long_press_check(
+fn long_press_check(
   model: Model,
   task_id: Int,
   context: Context(parent_msg),
@@ -199,7 +196,7 @@ pub fn long_press_check(
   }
 }
 
-pub fn drag_to_claim_armed(
+fn drag_to_claim_armed(
   model: Model,
   armed: Bool,
 ) -> #(Model, Effect(parent_msg)) {
@@ -209,7 +206,7 @@ pub fn drag_to_claim_armed(
   )
 }
 
-pub fn my_tasks_rect_fetched(
+fn my_tasks_rect_fetched(
   model: Model,
   left: Int,
   top: Int,
@@ -231,7 +228,7 @@ pub fn my_tasks_rect_fetched(
   )
 }
 
-pub fn canvas_rect_fetched(
+fn canvas_rect_fetched(
   model: Model,
   left: Int,
   top: Int,
@@ -249,7 +246,7 @@ pub fn canvas_rect_fetched(
   )
 }
 
-pub fn drag_started(
+fn drag_started(
   model: Model,
   task_id: Int,
   client_x: Int,
@@ -282,7 +279,7 @@ pub fn drag_started(
   )
 }
 
-pub fn drag_moved(
+fn drag_moved(
   model: Model,
   client_x: Int,
   client_y: Int,
@@ -315,7 +312,7 @@ pub fn drag_moved(
   }
 }
 
-pub fn drag_offset_resolved(
+fn drag_offset_resolved(
   model: Model,
   task_id: Int,
   offset_x: Int,
@@ -330,7 +327,7 @@ pub fn drag_offset_resolved(
   )
 }
 
-pub fn hover_notes_fetched(
+fn hover_notes_fetched(
   model: Model,
   task_id: Int,
   result: ApiResult(List(TaskNote)),
@@ -366,7 +363,7 @@ fn ensure_hover_notes(
   }
 }
 
-pub fn drag_ended(
+fn drag_ended(
   model: Model,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
@@ -396,7 +393,7 @@ fn claim_drop(
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
   let #(pool, fx) =
-    tasks_workflow.handle_claim_dropped(
+    task_mutation_update.handle_claim_dropped(
       model.pool,
       task_id,
       context.task_mutation,

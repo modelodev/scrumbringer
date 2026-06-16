@@ -3,10 +3,10 @@ inventory_version: 1
 coverage:
   primary_root: "apps/client/src/"
   secondary_roots: ["shared/src/"]
-  src_modules_found: 371
-  src_modules_inventoried: 175
+  src_modules_found: 400
+  src_modules_inventoried: 196
   complete: no
-  notes: "Inventario parcial de la SPA y el dominio compartido; actualizado tras el refactor de APIs de workflows y métricas operativas."
+  notes: "Inventario parcial de la SPA y el dominio compartido; actualizado tras el refactor de routes admin/pool y APIs de workflows/métricas operativas."
 
 repo_summary:
   target_runtime: js
@@ -107,6 +107,16 @@ module_index:
   - { module: "features/admin/rule_metrics", path: "apps/client/src/scrumbringer_client/features/admin/rule_metrics.gleam" }
   - { module: "features/admin/search", path: "apps/client/src/scrumbringer_client/features/admin/search.gleam" }
   - { module: "features/admin/update", path: "apps/client/src/scrumbringer_client/features/admin/update.gleam" }
+  - { module: "features/admin/assignments_route", path: "apps/client/src/scrumbringer_client/features/admin/assignments_route.gleam" }
+  - { module: "features/admin/api_tokens_route", path: "apps/client/src/scrumbringer_client/features/admin/api_tokens_route.gleam" }
+  - { module: "features/admin/capabilities_route", path: "apps/client/src/scrumbringer_client/features/admin/capabilities_route.gleam" }
+  - { module: "features/admin/projects_route", path: "apps/client/src/scrumbringer_client/features/admin/projects_route.gleam" }
+  - { module: "features/admin/invites_route", path: "apps/client/src/scrumbringer_client/features/admin/invites_route.gleam" }
+  - { module: "features/admin/task_types_route", path: "apps/client/src/scrumbringer_client/features/admin/task_types_route.gleam" }
+  - { module: "features/admin/org_settings_route", path: "apps/client/src/scrumbringer_client/features/admin/org_settings_route.gleam" }
+  - { module: "features/admin/members_route", path: "apps/client/src/scrumbringer_client/features/admin/members_route.gleam" }
+  - { module: "features/admin/route_support", path: "apps/client/src/scrumbringer_client/features/admin/route_support.gleam" }
+  - { module: "features/admin/api_tokens_update", path: "apps/client/src/scrumbringer_client/features/admin/api_tokens_update.gleam" }
   - { module: "features/admin/views/members", path: "apps/client/src/scrumbringer_client/features/admin/views/members.gleam" }
   - { module: "features/admin/views/workflows", path: "apps/client/src/scrumbringer_client/features/admin/views/workflows.gleam" }
   - { module: "features/admin/workflows", path: "apps/client/src/scrumbringer_client/features/admin/workflows.gleam" }
@@ -122,18 +132,30 @@ module_index:
   - { module: "features/invites/view", path: "apps/client/src/scrumbringer_client/features/invites/view.gleam" }
   - { module: "features/metrics/update", path: "apps/client/src/scrumbringer_client/features/metrics/update.gleam" }
   - { module: "features/metrics/view", path: "apps/client/src/scrumbringer_client/features/metrics/view.gleam" }
+  - { module: "features/milestones/create_update", path: "apps/client/src/scrumbringer_client/features/milestones/create_update.gleam" }
+  - { module: "features/milestones/dialog_update", path: "apps/client/src/scrumbringer_client/features/milestones/dialog_update.gleam" }
+  - { module: "features/milestones/expansion", path: "apps/client/src/scrumbringer_client/features/milestones/expansion.gleam" }
+  - { module: "features/milestones/movement_update", path: "apps/client/src/scrumbringer_client/features/milestones/movement_update.gleam" }
   - { module: "features/my_bar/view", path: "apps/client/src/scrumbringer_client/features/my_bar/view.gleam" }
   - { module: "features/now_working/update", path: "apps/client/src/scrumbringer_client/features/now_working/update.gleam" }
   - { module: "features/now_working/mobile", path: "apps/client/src/scrumbringer_client/features/now_working/mobile.gleam" }
   - { module: "features/now_working/panel", path: "apps/client/src/scrumbringer_client/features/now_working/panel.gleam" }
   - { module: "features/pool/dialogs", path: "apps/client/src/scrumbringer_client/features/pool/dialogs.gleam" }
+  - { module: "features/pool/metrics_route", path: "apps/client/src/scrumbringer_client/features/pool/metrics_route.gleam" }
+  - { module: "features/pool/positions_route", path: "apps/client/src/scrumbringer_client/features/pool/positions_route.gleam" }
+  - { module: "features/pool/rule_metrics_route", path: "apps/client/src/scrumbringer_client/features/pool/rule_metrics_route.gleam" }
+  - { module: "features/pool/skills_route", path: "apps/client/src/scrumbringer_client/features/pool/skills_route.gleam" }
+  - { module: "features/pool/task_route", path: "apps/client/src/scrumbringer_client/features/pool/task_route.gleam" }
   - { module: "features/pool/update", path: "apps/client/src/scrumbringer_client/features/pool/update.gleam" }
   - { module: "features/pool/view", path: "apps/client/src/scrumbringer_client/features/pool/view.gleam" }
   - { module: "features/projects/update", path: "apps/client/src/scrumbringer_client/features/projects/update.gleam" }
   - { module: "features/projects/view", path: "apps/client/src/scrumbringer_client/features/projects/view.gleam" }
   - { module: "features/skills/update", path: "apps/client/src/scrumbringer_client/features/skills/update.gleam" }
   - { module: "features/task_types/update", path: "apps/client/src/scrumbringer_client/features/task_types/update.gleam" }
-  - { module: "features/tasks/update", path: "apps/client/src/scrumbringer_client/features/tasks/update.gleam" }
+  - { module: "features/tasks/create_update", path: "apps/client/src/scrumbringer_client/features/tasks/create_update.gleam" }
+  - { module: "features/tasks/detail_update", path: "apps/client/src/scrumbringer_client/features/tasks/detail_update.gleam" }
+  - { module: "features/tasks/mutation_update", path: "apps/client/src/scrumbringer_client/features/tasks/mutation_update.gleam" }
+  - { module: "features/tasks/notes_update", path: "apps/client/src/scrumbringer_client/features/tasks/notes_update.gleam" }
   - { module: "features/cards/view", path: "apps/client/src/scrumbringer_client/features/cards/view.gleam" }
   - { module: "features/layout/responsive_drawer", path: "apps/client/src/scrumbringer_client/features/layout/responsive_drawer.gleam" }
   - { module: "features/layout/three_panel_layout", path: "apps/client/src/scrumbringer_client/features/layout/three_panel_layout.gleam" }

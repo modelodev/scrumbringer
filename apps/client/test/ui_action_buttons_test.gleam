@@ -41,3 +41,20 @@ pub fn delete_button_uses_danger_icon_contract_test() {
   assert_contains(html, "data-testid=\"delete-testid\"")
   assert_contains(html, "aria-label=\"Delete\"")
 }
+
+pub fn delete_button_with_disabled_and_testid_preserves_contract_test() {
+  let html =
+    action_buttons.delete_button_with_disabled_and_testid(
+      "Delete user",
+      "msg",
+      True,
+      "delete-user-testid",
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "btn-danger-icon")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "disabled")
+  assert_contains(html, "data-testid=\"delete-user-testid\"")
+  assert_contains(html, "aria-label=\"Delete user\"")
+}

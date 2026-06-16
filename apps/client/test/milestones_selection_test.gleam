@@ -5,6 +5,7 @@ import domain/milestone.{
   type MilestoneProgress, type MilestoneState, Active, Completed, Milestone,
   MilestoneProgress, Ready,
 }
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/milestones/selection
 
 fn milestone(id: Int, state: MilestoneState) -> MilestoneProgress {
@@ -70,4 +71,19 @@ pub fn milestones_selection_uses_first_item_when_no_active_or_ready_test() {
 
 pub fn milestones_selection_returns_none_for_empty_list_test() {
   let assert opt.None = selection.selected_progress([], opt.None)
+}
+
+pub fn milestones_selection_selects_id_and_clears_dialog_flags_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_milestone_dialog_in_flight: True,
+      member_milestone_dialog_error: opt.Some("Broken"),
+    )
+
+  let next = selection.select_milestone(model, 77)
+
+  let assert opt.Some(77) = next.member_selected_milestone_id
+  let assert False = next.member_milestone_dialog_in_flight
+  let assert opt.None = next.member_milestone_dialog_error
 }

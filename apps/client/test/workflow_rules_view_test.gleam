@@ -13,7 +13,6 @@ import domain/workflow.{
 }
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/workflow_rules_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
@@ -155,11 +154,16 @@ pub fn workflow_rules_view_renders_rules_from_config_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "Rules - Release automation")
+  assert_contains(html, "Back to Workflows")
   assert_contains(html, "Complete bug workflow")
   assert_contains(html, "Bug")
   assert_contains(html, "Bug triage")
   assert_contains(html, "4")
   assert_contains(html, "2")
+  assert_contains(html, "btn-view-action")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "btn-icon-text")
+  let assert False = string.contains(html, "btn btn-sm btn-primary")
 }
 
 pub fn workflow_rules_view_renders_empty_state_from_config_without_root_model_test() {
@@ -182,7 +186,7 @@ pub fn workflow_rules_view_renders_crud_dialog_from_config_without_root_model_te
         ..config(),
         rules: admin_rules.Model(
           ..rules_state(),
-          rules_dialog_mode: opt.Some(state_types.RuleDialogCreate),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
         ),
       ),
     )

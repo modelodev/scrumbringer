@@ -15,8 +15,8 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task mutations (claim/release/complete - see features/tasks/update.gleam)
-//// - Task creation (see features/tasks/update.gleam)
+//// - Task mutations (claim/release/complete - see features/tasks/mutation_update.gleam)
+//// - Task creation (see features/tasks/create_update.gleam)
 //// - View rendering (see features/pool/view.gleam)
 ////
 //// ## Relations
@@ -28,121 +28,29 @@
 import gleam/option as opt
 import lustre/effect
 
-import domain/api_error.{type ApiError}
-import domain/task
-import scrumbringer_client/api/tasks/active as active_api
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
-import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/metrics as member_metrics
-import scrumbringer_client/client_state/member/notes as member_notes
-import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/member/positions as member_positions
-import scrumbringer_client/client_state/member/skills as member_skills
-import scrumbringer_client/features/admin/rule_metrics as rule_metrics_workflow
-import scrumbringer_client/features/auth/helpers as auth_helpers
-import scrumbringer_client/features/metrics/update as metrics_workflow
 import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
-import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/card_detail_update
 import scrumbringer_client/features/pool/drag_update
 import scrumbringer_client/features/pool/filters_route
+import scrumbringer_client/features/pool/metrics_route
 import scrumbringer_client/features/pool/milestones_route
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/people_route
-import scrumbringer_client/features/pool/position_update
+import scrumbringer_client/features/pool/positions_route
 import scrumbringer_client/features/pool/preferences_effect
 import scrumbringer_client/features/pool/refresh_update
+import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/pool/rule_metrics_route
 import scrumbringer_client/features/pool/shortcut_update
-import scrumbringer_client/features/pool/task_created_feedback
-import scrumbringer_client/features/pool/task_created_update
+import scrumbringer_client/features/pool/skills_route
+import scrumbringer_client/features/pool/task_route
 import scrumbringer_client/features/pool/view_mode_route
-import scrumbringer_client/features/skills/update as skills_workflow
-import scrumbringer_client/features/tasks/dependency_update as dependency_workflow
-import scrumbringer_client/features/tasks/detail_permissions
-import scrumbringer_client/features/tasks/detail_update as task_detail_update
-import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
-import scrumbringer_client/features/tasks/update as tasks_workflow
-import scrumbringer_client/helpers/lookup as helpers_lookup
-import scrumbringer_client/i18n/i18n
-import scrumbringer_client/i18n/text as i18n_text
-
-fn task_created_feedback_config(
-  model: client_state.Model,
-) -> task_created_feedback.Config {
-  task_created_feedback.Config(
-    locale: model.ui.locale,
-    status_filter: model.member.pool.member_filters_status,
-    work_filters: available_tasks.Config(
-      tasks: model.member.pool.member_tasks,
-      task_types: model.member.pool.member_task_types,
-      my_capability_ids: model.member.skills.member_my_capability_ids,
-      type_filter: model.member.pool.member_filters_type_id,
-      capability_filter: model.member.pool.member_filters_capability_id,
-      search_query: model.member.pool.member_filters_q,
-      capability_scope: model.member.pool.member_capability_scope,
-    ),
-  )
-}
-
-fn task_created_update_context() -> task_created_update.Context(
-  client_state.Msg,
-) {
-  task_created_update.Context(
-    on_task_created_feedback: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskCreatedFeedback(task_id))
-    },
-    on_highlight_expired: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberHighlightExpired(task_id))
-    },
-    on_toast: app_effects.toast_effect_with_action,
-  )
-}
-
-fn task_created_effect(
-  model: client_state.Model,
-  task: task.Task,
-) -> effect.Effect(client_state.Msg) {
-  task_created_update.effects(
-    task_created_feedback_config(model),
-    task,
-    task_created_update_context(),
-  )
-}
-
-fn update_member_pool(
-  model: client_state.Model,
-  f: fn(member_pool.Model) -> member_pool.Model,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(..member, pool: f(pool))
-  })
-}
-
-fn update_member_positions(
-  model: client_state.Model,
-  f: fn(member_positions.Model) -> member_positions.Model,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let positions = member.positions
-    member_state.MemberModel(..member, positions: f(positions))
-  })
-}
-
-fn update_member_notes(
-  model: client_state.Model,
-  f: fn(member_notes.Model) -> member_notes.Model,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let notes = member.notes
-    member_state.MemberModel(..member, notes: f(notes))
-  })
-}
 
 fn pool_shortcut_model(model: client_state.Model) -> shortcut_update.Model {
   shortcut_update.Model(
@@ -206,62 +114,6 @@ fn update_pool_card_detail_model(
   })
 }
 
-fn task_dependencies_model(
-  model: client_state.Model,
-) -> dependency_workflow.DependenciesModel {
-  dependency_workflow.DependenciesModel(
-    pool: model.member.pool,
-    dependencies: model.member.dependencies,
-  )
-}
-
-fn update_task_dependencies_model(
-  model: client_state.Model,
-  local: dependency_workflow.DependenciesModel,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    member_state.MemberModel(
-      ..member,
-      pool: local.pool,
-      dependencies: local.dependencies,
-    )
-  })
-}
-
-fn task_detail_model(
-  model: client_state.Model,
-) -> tasks_workflow.TaskDetailModel {
-  tasks_workflow.TaskDetailModel(
-    pool: model.member.pool,
-    notes: model.member.notes,
-    dependencies: model.member.dependencies,
-  )
-}
-
-fn update_task_detail_model(
-  model: client_state.Model,
-  local: tasks_workflow.TaskDetailModel,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    member_state.MemberModel(
-      ..member,
-      pool: local.pool,
-      notes: local.notes,
-      dependencies: local.dependencies,
-    )
-  })
-}
-
-fn update_member_skills(
-  model: client_state.Model,
-  f: fn(member_skills.Model) -> member_skills.Model,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let skills = member.skills
-    member_state.MemberModel(..member, skills: f(skills))
-  })
-}
-
 fn now_working_model(model: client_state.Model) -> now_working_workflow.Model {
   now_working_workflow.Model(
     now_working: model.member.now_working,
@@ -298,187 +150,11 @@ fn now_working_context() -> now_working_workflow.Context(client_state.Msg) {
   )
 }
 
-fn rule_metrics_context() -> rule_metrics_workflow.Context(client_state.Msg) {
-  rule_metrics_workflow.Context(
-    on_rule_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.AdminRuleMetricsFetched(result))
-    },
-    on_workflow_details_fetched: fn(result) {
-      client_state.pool_msg(
-        pool_messages.AdminRuleMetricsWorkflowDetailsFetched(result),
-      )
-    },
-    on_rule_details_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.AdminRuleMetricsRuleDetailsFetched(
-        result,
-      ))
-    },
-    on_executions_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.AdminRuleMetricsExecutionsFetched(
-        result,
-      ))
-    },
-  )
-}
-
-fn task_create_context(
-  model: client_state.Model,
-) -> tasks_workflow.CreateContext(client_state.Msg) {
-  tasks_workflow.CreateContext(
-    selected_project_id: model.core.selected_project_id,
-    on_task_types_fetched: fn(project_id, result) {
-      client_state.pool_msg(pool_messages.MemberTaskTypesFetched(
-        project_id,
-        result,
-      ))
-    },
-    on_task_created: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskCreated(result))
-    },
-    select_project_first: i18n.t(model.ui.locale, i18n_text.SelectProjectFirst),
-    title_required: i18n.t(model.ui.locale, i18n_text.TitleRequired),
-    title_too_long_max_56: i18n.t(model.ui.locale, i18n_text.TitleTooLongMax56),
-    type_required: i18n.t(model.ui.locale, i18n_text.TypeRequired),
-    priority_must_be_1_to_5: i18n.t(
-      model.ui.locale,
-      i18n_text.PriorityMustBe1To5,
-    ),
-  )
-}
-
-fn selected_task_detail(model: client_state.Model) -> opt.Option(task.Task) {
-  case model.member.notes.member_notes_task_id {
-    opt.Some(task_id) ->
-      helpers_lookup.find_task_by_id_in_cache(
-        model.member.pool.member_tasks,
-        model.member.pool.member_tasks_by_project,
-        task_id,
-      )
-    opt.None -> opt.None
-  }
-}
-
-fn can_edit_selected_task(
-  model: client_state.Model,
-  current_task: task.Task,
-) -> Bool {
-  let current_user_id = case model.core.user {
-    opt.Some(user) -> opt.Some(user.id)
-    opt.None -> opt.None
-  }
-
-  detail_permissions.can_edit(current_user_id, current_task)
-}
-
-fn task_detail_edit_context(
-  model: client_state.Model,
-) -> tasks_workflow.TaskDetailEditContext(client_state.Msg) {
-  let maybe_task = selected_task_detail(model)
-  let can_edit = case maybe_task {
-    opt.Some(current_task) -> can_edit_selected_task(model, current_task)
-    opt.None -> False
-  }
-
-  tasks_workflow.TaskDetailEditContext(
-    current_task: maybe_task,
-    can_edit: can_edit,
-    on_task_updated: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskUpdated(result))
-    },
-    title_required: i18n.t(model.ui.locale, i18n_text.TitleRequired),
-    title_too_long_max_56: i18n.t(model.ui.locale, i18n_text.TitleTooLongMax56),
-    type_required: i18n.t(model.ui.locale, i18n_text.TypeRequired),
-    priority_must_be_1_to_5: i18n.t(
-      model.ui.locale,
-      i18n_text.PriorityMustBe1To5,
-    ),
-  )
-}
-
-fn task_detail_update_success_context(
-  model: client_state.Model,
-) -> task_detail_update.SuccessContext(client_state.Msg) {
-  task_detail_update.SuccessContext(
-    task_updated: i18n.t(model.ui.locale, i18n_text.TaskUpdated),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn task_detail_update_error_context() -> task_detail_update.ErrorContext(
-  client_state.Msg,
-) {
-  task_detail_update.ErrorContext(
-    on_warning_toast: app_effects.toast_warning,
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
-fn task_detail_dispatch_context(
-  model: client_state.Model,
-) -> tasks_workflow.TaskDetailDispatchContext(client_state.Msg) {
-  tasks_workflow.TaskDetailDispatchContext(
-    open_context: task_detail_context(),
-    edit_context: task_detail_edit_context(model),
-    success_context: task_detail_update_success_context(model),
-    error_context: task_detail_update_error_context(),
-  )
-}
-
-fn note_context(
-  model: client_state.Model,
-) -> tasks_workflow.NoteContext(client_state.Msg) {
-  tasks_workflow.NoteContext(
-    content_required: i18n.t(model.ui.locale, i18n_text.ContentRequired),
-    note_added: i18n.t(model.ui.locale, i18n_text.NoteAdded),
-    on_note_added: fn(result) {
-      client_state.pool_msg(pool_messages.MemberNoteAdded(result))
-    },
-    on_note_deleted: fn(note_id, result) {
-      client_state.pool_msg(pool_messages.MemberNoteDeleted(note_id, result))
-    },
-    on_notes_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberNotesFetched(result))
-    },
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn dependency_context(
-  model: client_state.Model,
-) -> dependency_workflow.DependencyContext(client_state.Msg) {
-  dependency_workflow.DependencyContext(
-    selected_task_id: model.member.notes.member_notes_task_id,
-    selected_task: selected_task_detail(model),
-    on_dependency_candidates_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberDependencyCandidatesFetched(
-        result,
-      ))
-    },
-    on_dependency_added: fn(result) {
-      client_state.pool_msg(pool_messages.MemberDependencyAdded(result))
-    },
-    on_dependency_removed: fn(depends_on_task_id, result) {
-      client_state.pool_msg(pool_messages.MemberDependencyRemoved(
-        depends_on_task_id,
-        result,
-      ))
-    },
-  )
-}
-
-fn dependency_feedback_context() -> dependency_workflow.DependencyFeedbackContext(
-  client_state.Msg,
-) {
-  dependency_workflow.DependencyFeedbackContext(
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
 fn pool_drag_context(
   model: client_state.Model,
 ) -> drag_update.Context(client_state.Msg) {
   drag_update.Context(
-    task_mutation: task_mutation_context(model),
+    task_mutation: task_route.mutation_context(model),
     on_canvas_rect_fetched: fn(left, top) {
       client_state.pool_msg(pool_messages.MemberCanvasRectFetched(left, top))
     },
@@ -512,22 +188,6 @@ fn pool_drag_context(
   )
 }
 
-fn position_update_context(
-  model: client_state.Model,
-) -> position_update.Context(client_state.Msg) {
-  position_update.Context(
-    selected_project_id: model.core.selected_project_id,
-    invalid_xy: i18n.t(model.ui.locale, i18n_text.InvalidXY),
-    on_position_saved: fn(result) {
-      client_state.pool_msg(pool_messages.MemberPositionSaved(result))
-    },
-    on_positions_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberPositionsFetched(result))
-    },
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
 fn card_detail_context() -> card_detail_update.Context(client_state.Msg) {
   card_detail_update.Context(
     on_card_marked: fn(_result) { client_state.NoOp },
@@ -535,160 +195,6 @@ fn card_detail_context() -> card_detail_update.Context(client_state.Msg) {
       client_state.pool_msg(pool_messages.CardMetricsFetched(result))
     },
   )
-}
-
-fn skills_context(
-  model: client_state.Model,
-) -> skills_workflow.Context(client_state.Msg) {
-  skills_workflow.Context(
-    selected_project_id: model.core.selected_project_id,
-    user_id: selected_user_id(model),
-    on_my_capability_ids_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(result))
-    },
-    on_my_capability_ids_saved: fn(result) {
-      client_state.pool_msg(pool_messages.MemberMyCapabilityIdsSaved(result))
-    },
-    skills_saved: i18n.t(model.ui.locale, i18n_text.SkillsSaved),
-    on_success_toast: app_effects.toast_success,
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
-fn task_detail_context() -> tasks_workflow.TaskDetailContext(client_state.Msg) {
-  tasks_workflow.TaskDetailContext(
-    on_notes_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberNotesFetched(result))
-    },
-    on_dependencies_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberDependenciesFetched(result))
-    },
-    on_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskMetricsFetched(result))
-    },
-  )
-}
-
-fn task_mutation_context(
-  model: client_state.Model,
-) -> tasks_workflow.TaskMutationContext(client_state.Msg) {
-  tasks_workflow.TaskMutationContext(
-    current_user_id: selected_user_id(model),
-    on_task_claimed: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskClaimed(result))
-    },
-    on_task_released: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskReleased(result))
-    },
-    on_task_completed: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskCompleted(result))
-    },
-  )
-}
-
-fn task_mutation_success_context(
-  model: client_state.Model,
-) -> task_mutation_update.Context(client_state.Msg) {
-  task_mutation_update.Context(
-    task_claimed: i18n.t(model.ui.locale, i18n_text.TaskClaimed),
-    task_released: i18n.t(model.ui.locale, i18n_text.TaskReleased),
-    task_completed: i18n.t(model.ui.locale, i18n_text.TaskCompleted),
-    on_success_toast: app_effects.toast_success,
-    on_work_sessions_refetch: refetch_work_sessions_effect,
-  )
-}
-
-fn task_mutation_error_context(
-  model: client_state.Model,
-) -> task_mutation_update.ErrorContext(client_state.Msg) {
-  task_mutation_update.ErrorContext(
-    labels: task_mutation_update.ErrorLabels(
-      task_not_found: i18n.t(model.ui.locale, i18n_text.TaskNotFound),
-      task_already_claimed: i18n.t(
-        model.ui.locale,
-        i18n_text.TaskAlreadyClaimed,
-      ),
-      task_blocked_by_dependencies: i18n.t(
-        model.ui.locale,
-        i18n_text.TaskBlockedByDependencies,
-      ),
-      task_version_conflict: i18n.t(
-        model.ui.locale,
-        i18n_text.TaskVersionConflict,
-      ),
-      task_mutation_rolled_back: i18n.t(
-        model.ui.locale,
-        i18n_text.TaskMutationRolledBack,
-      ),
-    ),
-    on_warning_toast: app_effects.toast_warning,
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
-fn task_mutation_dispatch_context(
-  model: client_state.Model,
-) -> tasks_workflow.TaskMutationDispatchContext(client_state.Msg) {
-  tasks_workflow.TaskMutationDispatchContext(
-    mutation_context: task_mutation_context(model),
-    success_context: task_mutation_success_context(model),
-    error_context: task_mutation_error_context(model),
-  )
-}
-
-fn refetch_work_sessions_effect() -> effect.Effect(client_state.Msg) {
-  active_api.get_work_sessions(fn(result) {
-    client_state.pool_msg(pool_messages.MemberWorkSessionsFetched(result))
-  })
-}
-
-fn update_member_metrics(
-  model: client_state.Model,
-  f: fn(member_metrics.Model) -> member_metrics.Model,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let metrics = member.metrics
-    member_state.MemberModel(..member, metrics: f(metrics))
-  })
-}
-
-fn update_admin_metrics(
-  model: client_state.Model,
-  f: fn(admin_metrics.Model) -> admin_metrics.Model,
-) -> client_state.Model {
-  client_state.update_admin(model, fn(admin) {
-    let metrics = admin.metrics
-    admin_state.AdminModel(..admin, metrics: f(metrics))
-  })
-}
-
-fn selected_user_id(model: client_state.Model) -> opt.Option(Int) {
-  model.core.user
-  |> opt.map(fn(user) { user.id })
-}
-
-fn apply_auth_check_before(
-  model: client_state.Model,
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> auth_helpers.handle_401_or(model, err, apply_update)
-  }
-}
-
-fn apply_auth_check_after(
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> {
-      let #(next, fx) = apply_update()
-      auth_helpers.handle_401_or(next, err, fn() { #(next, fx) })
-    }
-  }
 }
 
 // =============================================================================
@@ -952,41 +458,7 @@ fn try_pool_metrics_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    metrics_workflow.try_update(
-      model.member.metrics,
-      model.admin.metrics,
-      inner,
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_metrics_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_metrics_update(
-  model: client_state.Model,
-  update: metrics_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case update {
-    metrics_workflow.MemberUpdate(metrics, fx, auth_policy) ->
-      apply_auth_check_before(model, metrics_auth_error(auth_policy), fn() {
-        #(update_member_metrics(model, fn(_) { metrics }), fx)
-      })
-    metrics_workflow.AdminUpdate(metrics, fx, auth_policy) ->
-      apply_auth_check_before(model, metrics_auth_error(auth_policy), fn() {
-        #(update_admin_metrics(model, fn(_) { metrics }), fx)
-      })
-  }
-}
-
-fn metrics_auth_error(
-  policy: metrics_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    metrics_workflow.NoAuthCheck -> opt.None
-    metrics_workflow.CheckAuth(err) -> opt.Some(err)
-  }
+  metrics_route.try_update(model, inner)
 }
 
 fn update_without_metrics(
@@ -1005,36 +477,7 @@ fn try_pool_rule_metrics_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    rule_metrics_workflow.try_update(
-      model.admin.metrics,
-      inner,
-      rule_metrics_context(),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_rule_metrics_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_rule_metrics_update(
-  model: client_state.Model,
-  update: rule_metrics_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let rule_metrics_workflow.Update(metrics, fx, auth_policy) = update
-
-  apply_auth_check_before(model, rule_metrics_auth_error(auth_policy), fn() {
-    #(update_admin_metrics(model, fn(_) { metrics }), fx)
-  })
-}
-
-fn rule_metrics_auth_error(
-  policy: rule_metrics_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    rule_metrics_workflow.NoAuthCheck -> opt.None
-    rule_metrics_workflow.CheckAuth(err) -> opt.Some(err)
-  }
+  rule_metrics_route.try_update(model, inner)
 }
 
 fn update_without_rule_metrics(
@@ -1053,34 +496,7 @@ fn try_pool_skills_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    skills_workflow.try_update(
-      model.member.skills,
-      inner,
-      skills_context(model),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_skills_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_skills_update(
-  model: client_state.Model,
-  update: skills_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let skills_workflow.Update(skills, fx, auth_policy) = update
-
-  apply_auth_check_before(model, skills_auth_error(auth_policy), fn() {
-    #(update_member_skills(model, fn(_) { skills }), fx)
-  })
-}
-
-fn skills_auth_error(policy: skills_workflow.AuthPolicy) -> opt.Option(ApiError) {
-  case policy {
-    skills_workflow.NoAuthCheck -> opt.None
-    skills_workflow.CheckAuth(err) -> opt.Some(err)
-  }
+  skills_route.try_update(model, inner)
 }
 
 fn update_without_skills(
@@ -1130,9 +546,9 @@ fn apply_now_working_auth_policy(
   case auth_policy {
     now_working_workflow.NoAuthCheck -> apply_update()
     now_working_workflow.CheckAuthBefore(err) ->
-      apply_auth_check_before(model, opt.Some(err), apply_update)
+      route_support.apply_auth_check_before(model, opt.Some(err), apply_update)
     now_working_workflow.CheckAuthAfter(err) ->
-      apply_auth_check_after(opt.Some(err), apply_update)
+      route_support.apply_auth_check_after(opt.Some(err), apply_update)
   }
 }
 
@@ -1152,36 +568,7 @@ fn try_pool_positions_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    position_update.try_update(
-      model.member.positions,
-      inner,
-      position_update_context(model),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_positions_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_positions_update(
-  model: client_state.Model,
-  update: position_update.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let position_update.Update(positions, fx, auth_policy) = update
-
-  apply_auth_check_before(model, position_auth_error(auth_policy), fn() {
-    #(update_member_positions(model, fn(_) { positions }), fx)
-  })
-}
-
-fn position_auth_error(
-  policy: position_update.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    position_update.NoAuthCheck -> opt.None
-    position_update.CheckAuth(err) -> opt.Some(err)
-  }
+  positions_route.try_update(model, inner)
 }
 
 fn update_without_positions(
@@ -1190,268 +577,13 @@ fn update_without_positions(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_dependencies_update(model, inner) {
+  case task_route.try_update(model, inner, member_refresh) {
     opt.Some(result) -> result
-    opt.None -> update_without_dependencies(model, inner, member_refresh)
+    opt.None -> update_without_task_route(model, inner)
   }
 }
 
-fn try_pool_dependencies_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    dependency_workflow.try_update(
-      task_dependencies_model(model),
-      inner,
-      dependency_context(model),
-      dependency_feedback_context(),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_dependencies_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_dependencies_update(
-  model: client_state.Model,
-  update: dependency_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let dependency_workflow.Update(local, fx, auth_policy) = update
-
-  apply_auth_check_before(model, dependency_auth_error(auth_policy), fn() {
-    #(update_task_dependencies_model(model, local), fx)
-  })
-}
-
-fn dependency_auth_error(
-  policy: dependency_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    dependency_workflow.NoAuthCheck -> opt.None
-    dependency_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn update_without_dependencies(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_notes_update(model, inner) {
-    opt.Some(result) -> result
-    opt.None -> update_without_notes(model, inner, member_refresh)
-  }
-}
-
-fn try_pool_notes_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    tasks_workflow.try_note_update(
-      model.member.notes,
-      inner,
-      note_context(model),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_notes_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_notes_update(
-  model: client_state.Model,
-  update: tasks_workflow.NoteUpdate(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let tasks_workflow.NoteUpdate(notes, fx, auth_policy) = update
-
-  apply_auth_check_before(model, tasks_auth_error(auth_policy), fn() {
-    #(update_member_notes(model, fn(_) { notes }), fx)
-  })
-}
-
-fn tasks_auth_error(policy: tasks_workflow.AuthPolicy) -> opt.Option(ApiError) {
-  case policy {
-    tasks_workflow.NoAuthCheck -> opt.None
-    tasks_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn update_without_notes(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_task_create_update(model, inner, member_refresh) {
-    opt.Some(result) -> result
-    opt.None -> update_without_task_create(model, inner, member_refresh)
-  }
-}
-
-fn try_pool_task_create_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    tasks_workflow.try_task_create_update(
-      model.member.pool,
-      inner,
-      task_create_context(model),
-    )
-  {
-    opt.Some(update) ->
-      opt.Some(apply_pool_task_create_update(model, update, member_refresh))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_task_create_update(
-  model: client_state.Model,
-  update: tasks_workflow.TaskCreateUpdate(client_state.Msg),
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let tasks_workflow.TaskCreateUpdate(pool, fx, policy) = update
-
-  apply_task_create_policy(model, policy, member_refresh, fn() {
-    #(update_member_pool(model, fn(_) { pool }), fx)
-  })
-}
-
-fn apply_task_create_policy(
-  model: client_state.Model,
-  policy: tasks_workflow.TaskCreatePolicy,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case policy {
-    tasks_workflow.NoTaskCreatePolicy -> apply_update()
-    tasks_workflow.RefreshMemberAfterTaskCreated(task) -> {
-      let #(next, fx) = apply_update()
-      let #(next, refresh_fx) = member_refresh(next)
-      let post_create_fx = task_created_effect(next, task)
-      #(next, effect.batch([fx, refresh_fx, post_create_fx]))
-    }
-    tasks_workflow.CheckTaskCreateAuthBefore(err) ->
-      apply_auth_check_before(model, opt.Some(err), apply_update)
-  }
-}
-
-fn update_without_task_create(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_task_mutation_update(model, inner, member_refresh) {
-    opt.Some(result) -> result
-    opt.None -> update_without_task_mutation(model, inner)
-  }
-}
-
-fn try_pool_task_mutation_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    tasks_workflow.try_task_mutation_update(
-      model.member.pool,
-      inner,
-      task_mutation_dispatch_context(model),
-    )
-  {
-    opt.Some(update) ->
-      opt.Some(apply_pool_task_mutation_update(model, update, member_refresh))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_task_mutation_update(
-  model: client_state.Model,
-  update: tasks_workflow.TaskMutationUpdate(client_state.Msg),
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let tasks_workflow.TaskMutationUpdate(pool, fx, policy) = update
-
-  apply_task_mutation_policy(policy, member_refresh, fn() {
-    #(update_member_pool(model, fn(_) { pool }), fx)
-  })
-}
-
-fn apply_task_mutation_policy(
-  policy: tasks_workflow.TaskMutationPolicy,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case policy {
-    tasks_workflow.NoTaskMutationPolicy -> apply_update()
-    tasks_workflow.RefreshMemberAfterTaskMutationSuccess -> {
-      let #(next, fx) = apply_update()
-      let #(next, refresh_fx) = member_refresh(next)
-      #(next, effect.batch([fx, refresh_fx]))
-    }
-    tasks_workflow.CheckTaskMutationAuthAfter(err) ->
-      apply_auth_check_after(opt.Some(err), apply_update)
-  }
-}
-
-fn update_without_task_mutation(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_task_detail_update(model, inner) {
-    opt.Some(result) -> result
-    opt.None -> update_without_task_detail(model, inner)
-  }
-}
-
-fn try_pool_task_detail_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    tasks_workflow.try_task_detail_update(
-      task_detail_model(model),
-      inner,
-      task_detail_dispatch_context(model),
-    )
-  {
-    opt.Some(update) -> opt.Some(apply_pool_task_detail_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_pool_task_detail_update(
-  model: client_state.Model,
-  update: tasks_workflow.TaskDetailUpdate(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let tasks_workflow.TaskDetailUpdate(local, fx, auth_policy) = update
-
-  apply_auth_check_after(task_detail_auth_error(auth_policy), fn() {
-    #(update_task_detail_model(model, local), fx)
-  })
-}
-
-fn task_detail_auth_error(
-  policy: tasks_workflow.TaskDetailAuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    tasks_workflow.NoTaskDetailAuthCheck -> opt.None
-    tasks_workflow.CheckTaskDetailAuthAfter(err) -> opt.Some(err)
-  }
-}
-
-fn update_without_task_detail(
+fn update_without_task_route(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
@@ -1502,7 +634,7 @@ fn update_without_view_mode(
     pool_messages.MemberProjectTasksFetched(_, _)
     | pool_messages.MemberTaskTypesFetched(_, _) -> #(model, effect.none())
 
-    // Handled by tasks_workflow.try_task_create_update before this dispatch.
+    // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberCreateDialogOpened
     | pool_messages.MemberCreateDialogOpenedWithCard(_)
     | pool_messages.MemberCreateDialogClosed
@@ -1515,7 +647,7 @@ fn update_without_view_mode(
     | pool_messages.MemberCreateSubmitted
     | pool_messages.MemberTaskCreated(_) -> #(model, effect.none())
 
-    // Handled by tasks_workflow.try_task_mutation_update before this dispatch.
+    // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberClaimClicked(_, _)
     | pool_messages.MemberReleaseClicked(_, _)
     | pool_messages.MemberCompleteClicked(_, _)
@@ -1532,13 +664,13 @@ fn update_without_view_mode(
     | pool_messages.MemberWorkSessionHeartbeated(_)
     | pool_messages.NowWorkingTicked -> #(model, effect.none())
 
-    // Handled by metrics_workflow.try_update before this dispatch.
+    // Handled by metrics_route.try_update before this dispatch.
     pool_messages.MemberMetricsFetched(_)
     | pool_messages.AdminMetricsOverviewFetched(_)
     | pool_messages.AdminMetricsProjectTasksFetched(_)
     | pool_messages.AdminMetricsUsersFetched(_) -> #(model, effect.none())
 
-    // Handled by rule_metrics_workflow.try_update before this dispatch.
+    // Handled by rule_metrics_route.try_update before this dispatch.
     pool_messages.AdminRuleMetricsFetched(_)
     | pool_messages.AdminRuleMetricsFromChanged(_)
     | pool_messages.AdminRuleMetricsToChanged(_)
@@ -1557,14 +689,14 @@ fn update_without_view_mode(
       effect.none(),
     )
 
-    // Handled by skills_workflow.try_update before this dispatch.
+    // Handled by skills_route.try_update before this dispatch.
     pool_messages.MemberMyCapabilityIdsFetched(_)
     | pool_messages.MemberProjectCapabilitiesFetched(_)
     | pool_messages.MemberToggleCapability(_)
     | pool_messages.MemberSaveCapabilitiesClicked
     | pool_messages.MemberMyCapabilityIdsSaved(_) -> #(model, effect.none())
 
-    // Handled by position_update.try_update before this dispatch.
+    // Handled by positions_route.try_update before this dispatch.
     pool_messages.MemberPositionsFetched(_)
     | pool_messages.MemberPositionEditOpened(_)
     | pool_messages.MemberPositionEditClosed
@@ -1573,7 +705,7 @@ fn update_without_view_mode(
     | pool_messages.MemberPositionEditSubmitted
     | pool_messages.MemberPositionSaved(_) -> #(model, effect.none())
 
-    // Handled by tasks_workflow.try_task_detail_update before this dispatch.
+    // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberTaskDetailsOpened(_)
     | pool_messages.MemberTaskDetailsClosed
     | pool_messages.MemberTaskDetailTabClicked(_)
@@ -1589,7 +721,7 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskUpdated(_)
     | pool_messages.MemberTaskMetricsFetched(_) -> #(model, effect.none())
 
-    // Handled by dependency_workflow.try_update before this dispatch.
+    // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberDependenciesFetched(_)
     | pool_messages.MemberDependencyDialogOpened
     | pool_messages.MemberDependencyDialogClosed
@@ -1601,7 +733,7 @@ fn update_without_view_mode(
     | pool_messages.MemberDependencyRemoveClicked(_)
     | pool_messages.MemberDependencyRemoved(_, _) -> #(model, effect.none())
 
-    // Handled by tasks_workflow.try_note_update before this dispatch.
+    // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberNotesFetched(_)
     | pool_messages.MemberNoteContentChanged(_)
     | pool_messages.MemberNoteDialogOpened

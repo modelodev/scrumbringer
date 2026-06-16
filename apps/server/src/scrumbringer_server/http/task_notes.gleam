@@ -20,6 +20,7 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `services/task_notes_db.gleam` for persistence
 
+import domain/task.{type Task, type TaskNote, TaskNote}
 import gleam/http
 import gleam/result
 import pog
@@ -29,7 +30,6 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/notes/mutations as note_mutations
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/task_notes/presenters as note_presenters
-import scrumbringer_server/persistence/tasks/mappers as task_mappers
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/authorization
 import scrumbringer_server/services/store_state.{type StoredUser}
@@ -236,7 +236,7 @@ fn get_note(
   db: pog.Connection,
   task_id: Int,
   note_id: Int,
-) -> Result(task_notes_db.TaskNote, wisp.Response) {
+) -> Result(TaskNote, wisp.Response) {
   case task_notes_db.get_note(db, task_id, note_id) {
     Ok(note) -> Ok(note)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -258,9 +258,9 @@ fn can_delete_note(
   db: pog.Connection,
   user: StoredUser,
   project_id: Int,
-  note: task_notes_db.TaskNote,
+  note: TaskNote,
 ) -> Bool {
-  let task_notes_db.TaskNote(user_id: author_id, ..) = note
+  let TaskNote(user_id: author_id, ..) = note
 
   case
     authorization.require_project_manager_with_org_bypass(db, user, project_id)
@@ -274,7 +274,7 @@ fn require_task_access(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
-) -> Result(task_mappers.Task, wisp.Response) {
+) -> Result(Task, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(task) -> Ok(task)
     Error(error) -> Error(service_error_response.to_database_response(error))

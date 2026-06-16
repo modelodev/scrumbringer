@@ -7,10 +7,10 @@ import domain/task.{type TaskNote, TaskNote}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/tasks/update as tasks_update
+import scrumbringer_client/features/tasks/notes_update
 
-fn note_context() -> tasks_update.NoteContext(Nil) {
-  tasks_update.NoteContext(
+fn note_context() -> notes_update.Context(Nil) {
+  notes_update.Context(
     content_required: "Content required",
     note_added: "Note added",
     on_note_added: fn(_result) { Nil },
@@ -35,10 +35,11 @@ fn sample_error() -> ApiError {
 }
 
 pub fn local_note_content_changed_updates_content_test() {
-  let #(next, fx) =
-    tasks_update.handle_note_content_changed(
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
       member_notes.default_model(),
-      "draft",
+      pool_messages.MemberNoteContentChanged("draft"),
+      note_context(),
     )
 
   let assert "draft" = next.member_note_content
@@ -46,25 +47,33 @@ pub fn local_note_content_changed_updates_content_test() {
 }
 
 pub fn local_note_dialog_opened_and_closed_updates_dialog_state_test() {
-  let #(opened, open_fx) =
-    tasks_update.handle_note_dialog_opened(
+  let assert Some(notes_update.Update(opened, open_fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
       member_notes.Model(
         ..member_notes.default_model(),
         member_note_error: Some("old"),
       ),
+      pool_messages.MemberNoteDialogOpened,
+      note_context(),
     )
 
   let assert dialog_mode.DialogCreate = opened.member_note_dialog_mode
   let assert None = opened.member_note_error
   let assert True = open_fx == effect.none()
 
-  let #(closed, close_fx) =
-    tasks_update.handle_note_dialog_closed(
+  let assert Some(notes_update.Update(
+    closed,
+    close_fx,
+    notes_update.NoAuthCheck,
+  )) =
+    notes_update.try_update(
       member_notes.Model(
         ..opened,
         member_note_content: "draft",
         member_note_error: Some("old"),
       ),
+      pool_messages.MemberNoteDialogClosed,
+      note_context(),
     )
 
   let assert dialog_mode.DialogClosed = closed.member_note_dialog_mode
@@ -81,7 +90,12 @@ pub fn local_note_submitted_empty_sets_content_required_test() {
       member_note_content: "   ",
     )
 
-  let #(next, fx) = tasks_update.handle_note_submitted(model, note_context())
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNoteSubmitted,
+      note_context(),
+    )
 
   let assert Some("Content required") = next.member_note_error
   let assert False = next.member_note_in_flight
@@ -97,7 +111,12 @@ pub fn local_note_submitted_with_content_sets_in_flight_test() {
       member_note_error: Some("old"),
     )
 
-  let #(next, fx) = tasks_update.handle_note_submitted(model, note_context())
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNoteSubmitted,
+      note_context(),
+    )
 
   let assert True = next.member_note_in_flight
   let assert None = next.member_note_error
@@ -115,8 +134,12 @@ pub fn local_note_added_ok_prepends_note_and_closes_dialog_test() {
       member_note_dialog_mode: dialog_mode.DialogCreate,
     )
 
-  let #(next, fx) =
-    tasks_update.handle_note_added_ok(model, sample_note(), note_context())
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNoteAdded(Ok(sample_note())),
+      note_context(),
+    )
 
   let expected = remote.Loaded([sample_note(), previous])
   let assert True = next.member_notes == expected
@@ -134,17 +157,26 @@ pub fn local_note_added_error_sets_error_and_retries_when_task_selected_test() {
       member_note_in_flight: True,
     )
 
-  let #(next, fx) =
-    tasks_update.handle_note_added_error(model, sample_error(), note_context())
+  let assert Some(notes_update.Update(
+    next,
+    fx,
+    notes_update.CheckAuth(policy_err),
+  )) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNoteAdded(Error(sample_error())),
+      note_context(),
+    )
 
+  let assert True = policy_err == sample_error()
   let assert False = next.member_note_in_flight
   let assert Some("boom") = next.member_note_error
   let assert True = fx != effect.none()
 }
 
 pub fn note_try_update_content_changed_without_auth_test() {
-  let assert Some(tasks_update.NoteUpdate(next, fx, tasks_update.NoAuthCheck)) =
-    tasks_update.try_note_update(
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
       member_notes.default_model(),
       pool_messages.MemberNoteContentChanged("draft"),
       note_context(),
@@ -163,12 +195,12 @@ pub fn note_try_update_added_error_checks_auth_test() {
       member_note_in_flight: True,
     )
 
-  let assert Some(tasks_update.NoteUpdate(
+  let assert Some(notes_update.Update(
     next,
     fx,
-    tasks_update.CheckAuth(policy_err),
+    notes_update.CheckAuth(policy_err),
   )) =
-    tasks_update.try_note_update(
+    notes_update.try_update(
       model,
       pool_messages.MemberNoteAdded(Error(err)),
       note_context(),
@@ -182,7 +214,7 @@ pub fn note_try_update_added_error_checks_auth_test() {
 
 pub fn note_try_update_ignores_non_note_messages_test() {
   let assert None =
-    tasks_update.try_note_update(
+    notes_update.try_update(
       member_notes.default_model(),
       pool_messages.MemberPoolFiltersToggled,
       note_context(),

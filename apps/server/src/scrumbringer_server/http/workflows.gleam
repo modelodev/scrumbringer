@@ -191,7 +191,7 @@ fn require_workflow_update_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-) -> Result(#(pog.Connection, Int, workflows_db.Workflow), wisp.Response) {
+) -> Result(#(pog.Connection, Int, workflows_db.WorkflowRecord), wisp.Response) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
   use workflow_id <- result.try(api.parse_id(workflow_id_str))
   let auth.Ctx(db: db, ..) = ctx
@@ -207,10 +207,9 @@ fn require_workflow_update_access(
 fn update_project_workflow(
   db: pog.Connection,
   workflow_id: Int,
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
   payload: workflow_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use active_value <- result.try(normalize_active(payload.active))
   use _ <- result.try(update_metadata_if_needed(
     db,
     workflow_id,
@@ -223,7 +222,7 @@ fn update_project_workflow(
     workflow_id,
     workflow.org_id,
     workflow.project_id,
-    active_value,
+    payload.active,
   ))
 
   get_workflow_response(db, workflow_id)
@@ -269,7 +268,7 @@ fn require_workflow_manager_access(
   db: pog.Connection,
   user: StoredUser,
   workflow_id: Int,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   use workflow <- result.try(get_workflow(db, workflow_id))
   use _ <- result.try(require_workflow_manager(db, user, workflow))
   Ok(workflow)
@@ -278,7 +277,7 @@ fn require_workflow_manager_access(
 fn require_workflow_manager(
   db: pog.Connection,
   user: StoredUser,
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
 ) -> Result(Nil, wisp.Response) {
   case
     authorization.require_project_manager(
@@ -296,7 +295,7 @@ fn require_workflow_manager(
 fn list_workflows_db(
   db: pog.Connection,
   project_id: Int,
-) -> Result(List(workflows_db.Workflow), wisp.Response) {
+) -> Result(List(workflows_db.WorkflowRecord), wisp.Response) {
   case workflows_db.list_project_workflows(db, project_id) {
     Ok(workflows) -> Ok(workflows)
     Error(_) -> Error(database_error_response())
@@ -306,7 +305,7 @@ fn list_workflows_db(
 fn get_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
     Error(error) -> Error(workflow_error_response(error))
@@ -329,15 +328,6 @@ fn decode_update_payload(
   |> result.map_error(fn(_) {
     api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   })
-}
-
-fn normalize_active(active: Option(Int)) -> Result(Option(Bool), wisp.Response) {
-  case active {
-    None -> Ok(None)
-    Some(0) -> Ok(Some(False))
-    Some(1) -> Ok(Some(True))
-    Some(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
-  }
 }
 
 fn update_metadata_if_needed(

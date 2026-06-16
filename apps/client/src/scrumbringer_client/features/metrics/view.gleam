@@ -16,8 +16,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, h3, p, text}
-import lustre/event
+import lustre/element/html.{div, h2, h3, p, text}
 
 import domain/metrics.{
   type Health, type OrgMetricsBucket, type OrgMetricsOverview,
@@ -40,6 +39,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/remote as ui_remote
@@ -402,13 +402,14 @@ fn view_by_project_table(
         }),
         data_table.column(i18n.t(config.locale, i18n_text.Drill), fn(p) {
           let OrgMetricsProjectOverview(project_id: project_id, ..) = p
-          button(
-            [
-              attribute.class("btn-xs"),
-              event.on_click(config.on_project_selected(project_id)),
-            ],
-            [text(i18n.t(config.locale, i18n_text.View))],
+          ui_button.text(
+            i18n.t(config.locale, i18n_text.View),
+            config.on_project_selected(project_id),
+            ui_button.Secondary,
+            ui_button.EntityAction,
           )
+          |> ui_button.with_size(ui_button.ExtraSmall)
+          |> ui_button.view
         }),
       ])
       |> data_table.with_rows(by_project, fn(p) {

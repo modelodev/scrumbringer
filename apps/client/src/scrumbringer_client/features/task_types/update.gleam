@@ -13,7 +13,7 @@
 //// ## Non-responsibilities
 ////
 //// - API calls (see `api/tasks/task_types.gleam`)
-//// - Task creation (see `features/tasks/update.gleam`)
+//// - Task creation (see `features/tasks/create_update.gleam`)
 ////
 //// ## Relations
 ////
@@ -35,7 +35,6 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{Failed, Loaded}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 
 pub type Context(parent_msg) {
@@ -47,7 +46,7 @@ pub type Context(parent_msg) {
   )
 }
 
-pub type Success {
+type Success {
   TaskTypeCreated
   TaskTypeUpdated
   TaskTypeDeleted
@@ -245,7 +244,7 @@ fn permission_warning_effect(
 // =============================================================================
 
 /// Handle task types fetch success.
-pub fn handle_task_types_fetched_ok(
+fn handle_task_types_fetched_ok(
   model: admin_task_types.Model,
   task_types: List(TaskType),
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -256,7 +255,7 @@ pub fn handle_task_types_fetched_ok(
 }
 
 /// Handle task types fetch error.
-pub fn handle_task_types_fetched_error(
+fn handle_task_types_fetched_error(
   model: admin_task_types.Model,
   err: ApiError,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -268,20 +267,20 @@ pub fn handle_task_types_fetched_error(
 // =============================================================================
 
 /// Handle task type create dialog open.
-pub fn handle_task_type_dialog_opened(
+fn handle_task_type_dialog_opened(
   model: admin_task_types.Model,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   #(
     admin_task_types.Model(
       ..model,
-      task_types_dialog_mode: opt.Some(state_types.TaskTypeDialogCreate),
+      task_types_dialog_mode: opt.Some(admin_task_types.TaskTypeDialogCreate),
     ),
     effect.none(),
   )
 }
 
 /// Handle task type create dialog close.
-pub fn handle_task_type_dialog_closed(
+fn handle_task_type_dialog_closed(
   model: admin_task_types.Model,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   #(
@@ -295,7 +294,7 @@ pub fn handle_task_type_dialog_closed(
       task_types_create_in_flight: False,
       task_types_create_capability_id: opt.None,
       task_types_create_error: opt.None,
-      task_types_icon_preview: state_types.IconIdle,
+      task_types_icon_preview: admin_task_types.IconIdle,
     ),
     effect.none(),
   )
@@ -306,7 +305,7 @@ pub fn handle_task_type_dialog_closed(
 // =============================================================================
 
 /// Handle task type create name input change.
-pub fn handle_task_type_create_name_changed(
+fn handle_task_type_create_name_changed(
   model: admin_task_types.Model,
   name: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -318,14 +317,14 @@ pub fn handle_task_type_create_name_changed(
 
 /// Handle task type create icon input change.
 /// With the catalog approach, icons are validated instantly against the curated catalog.
-pub fn handle_task_type_create_icon_changed(
+fn handle_task_type_create_icon_changed(
   model: admin_task_types.Model,
   icon: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   // Import icon_catalog for validation
   let preview_state = case icon == "" {
-    True -> state_types.IconIdle
-    False -> state_types.IconOk
+    True -> admin_task_types.IconIdle
+    False -> admin_task_types.IconOk
     // All icons from picker are valid catalog icons
   }
   #(
@@ -339,30 +338,33 @@ pub fn handle_task_type_create_icon_changed(
 }
 
 /// Handle task type icon loaded.
-pub fn handle_task_type_icon_loaded(
-  model: admin_task_types.Model,
-) -> #(admin_task_types.Model, Effect(parent_msg)) {
-  #(
-    admin_task_types.Model(..model, task_types_icon_preview: state_types.IconOk),
-    effect.none(),
-  )
-}
-
-/// Handle task type icon error.
-pub fn handle_task_type_icon_errored(
+fn handle_task_type_icon_loaded(
   model: admin_task_types.Model,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   #(
     admin_task_types.Model(
       ..model,
-      task_types_icon_preview: state_types.IconError,
+      task_types_icon_preview: admin_task_types.IconOk,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle task type icon error.
+fn handle_task_type_icon_errored(
+  model: admin_task_types.Model,
+) -> #(admin_task_types.Model, Effect(parent_msg)) {
+  #(
+    admin_task_types.Model(
+      ..model,
+      task_types_icon_preview: admin_task_types.IconError,
     ),
     effect.none(),
   )
 }
 
 /// Handle icon picker search input change.
-pub fn handle_task_type_create_icon_search_changed(
+fn handle_task_type_create_icon_search_changed(
   model: admin_task_types.Model,
   search: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -373,7 +375,7 @@ pub fn handle_task_type_create_icon_search_changed(
 }
 
 /// Handle icon picker category tab change.
-pub fn handle_task_type_create_icon_category_changed(
+fn handle_task_type_create_icon_category_changed(
   model: admin_task_types.Model,
   category: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -384,7 +386,7 @@ pub fn handle_task_type_create_icon_category_changed(
 }
 
 /// Handle task type create capability dropdown change.
-pub fn handle_task_type_create_capability_changed(
+fn handle_task_type_create_capability_changed(
   model: admin_task_types.Model,
   value: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -404,7 +406,7 @@ pub fn handle_task_type_create_capability_changed(
 }
 
 /// Handle task type create form submission.
-pub fn handle_task_type_create_submitted(
+fn handle_task_type_create_submitted(
   model: admin_task_types.Model,
   context: Context(parent_msg),
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -502,7 +504,7 @@ fn submit_task_type(
 }
 
 /// Handle task type created success.
-pub fn handle_task_type_created_ok(
+fn handle_task_type_created_ok(
   model: admin_task_types.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -517,14 +519,14 @@ pub fn handle_task_type_created_ok(
       task_types_create_icon_category: "all",
       task_types_create_capability_id: opt.None,
       task_types_create_error: opt.None,
-      task_types_icon_preview: state_types.IconIdle,
+      task_types_icon_preview: admin_task_types.IconIdle,
     ),
     success_effect(TaskTypeCreated, feedback),
   )
 }
 
 /// Handle task type created error.
-pub fn handle_task_type_created_error(
+fn handle_task_type_created_error(
   model: admin_task_types.Model,
   message: String,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
@@ -543,9 +545,9 @@ pub fn handle_task_type_created_error(
 // =============================================================================
 
 /// Handle task type dialog open (using new component pattern).
-pub fn handle_open_task_type_dialog(
+fn handle_open_task_type_dialog(
   model: admin_task_types.Model,
-  mode: state_types.TaskTypeDialogMode,
+  mode: admin_task_types.TaskTypeDialogMode,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   #(
     admin_task_types.Model(..model, task_types_dialog_mode: opt.Some(mode)),
@@ -554,7 +556,7 @@ pub fn handle_open_task_type_dialog(
 }
 
 /// Handle task type dialog close (using new component pattern).
-pub fn handle_close_task_type_dialog(
+fn handle_close_task_type_dialog(
   model: admin_task_types.Model,
 ) -> #(admin_task_types.Model, Effect(parent_msg)) {
   #(
@@ -564,7 +566,7 @@ pub fn handle_close_task_type_dialog(
 }
 
 /// Handle task type created from component event.
-pub fn handle_task_type_crud_created(
+fn handle_task_type_crud_created(
   model: admin_task_types.Model,
   _task_type: TaskType,
   feedback: FeedbackContext(parent_msg),
@@ -576,7 +578,7 @@ pub fn handle_task_type_crud_created(
 }
 
 /// Handle task type updated from component event.
-pub fn handle_task_type_crud_updated(
+fn handle_task_type_crud_updated(
   model: admin_task_types.Model,
   task_type: TaskType,
   feedback: FeedbackContext(parent_msg),
@@ -606,7 +608,7 @@ pub fn handle_task_type_crud_updated(
 }
 
 /// Handle task type deleted from component event.
-pub fn handle_task_type_crud_deleted(
+fn handle_task_type_crud_deleted(
   model: admin_task_types.Model,
   type_id: Int,
   feedback: FeedbackContext(parent_msg),
@@ -627,7 +629,7 @@ pub fn handle_task_type_crud_deleted(
   )
 }
 
-pub fn success_effect(
+fn success_effect(
   success: Success,
   context: FeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {

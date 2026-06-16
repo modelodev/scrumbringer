@@ -17,6 +17,15 @@ fn context() -> rule_metrics.Context(String) {
   )
 }
 
+fn update(
+  model: admin_metrics.Model,
+  inner: pool_messages.Msg,
+) -> rule_metrics.Update(String) {
+  let assert option.Some(update) =
+    rule_metrics.try_update(model, inner, context())
+  update
+}
+
 fn workflow_summary(id: Int) -> api_rule_metrics.OrgWorkflowMetricsSummary {
   api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: id,
@@ -62,10 +71,10 @@ fn executions_response(rule_id: Int) -> api_rule_metrics.RuleExecutionsResponse 
 }
 
 pub fn from_changed_updates_local_date_without_effect_test() {
-  let #(next, fx) =
-    rule_metrics.handle_from_changed(
+  let rule_metrics.Update(next, fx, _) =
+    update(
       admin_metrics.default_model(),
-      "2026-01-01",
+      pool_messages.AdminRuleMetricsFromChanged("2026-01-01"),
     )
 
   let assert "2026-01-01" = next.admin_rule_metrics_from
@@ -117,8 +126,11 @@ pub fn from_changed_and_refresh_waits_for_complete_range_test() {
       admin_rule_metrics_to: "",
     )
 
-  let #(next, fx) =
-    rule_metrics.handle_from_changed_and_refresh(model, "2026-01-01", context())
+  let rule_metrics.Update(next, fx, _) =
+    update(
+      model,
+      pool_messages.AdminRuleMetricsFromChangedAndRefresh("2026-01-01"),
+    )
 
   let assert "2026-01-01" = next.admin_rule_metrics_from
   let assert NotAsked = next.admin_rule_metrics
@@ -132,8 +144,11 @@ pub fn from_changed_and_refresh_fetches_when_range_is_complete_test() {
       admin_rule_metrics_to: "2026-01-31",
     )
 
-  let #(next, fx) =
-    rule_metrics.handle_from_changed_and_refresh(model, "2026-01-01", context())
+  let rule_metrics.Update(next, fx, _) =
+    update(
+      model,
+      pool_messages.AdminRuleMetricsFromChangedAndRefresh("2026-01-01"),
+    )
 
   let assert "2026-01-01" = next.admin_rule_metrics_from
   let assert Loading = next.admin_rule_metrics
@@ -141,12 +156,13 @@ pub fn from_changed_and_refresh_fetches_when_range_is_complete_test() {
 }
 
 pub fn quick_range_sets_dates_and_fetches_test() {
-  let #(next, fx) =
-    rule_metrics.handle_quick_range_clicked(
+  let rule_metrics.Update(next, fx, _) =
+    update(
       admin_metrics.default_model(),
-      "2026-01-01",
-      "2026-01-31",
-      context(),
+      pool_messages.AdminRuleMetricsQuickRangeClicked(
+        "2026-01-01",
+        "2026-01-31",
+      ),
     )
 
   let assert "2026-01-01" = next.admin_rule_metrics_from
@@ -158,8 +174,11 @@ pub fn quick_range_sets_dates_and_fetches_test() {
 pub fn fetched_ok_sets_loaded_metrics_test() {
   let metrics = [workflow_summary(7)]
 
-  let #(next, fx) =
-    rule_metrics.handle_fetched_ok(admin_metrics.default_model(), metrics)
+  let rule_metrics.Update(next, fx, _) =
+    update(
+      admin_metrics.default_model(),
+      pool_messages.AdminRuleMetricsFetched(Ok(metrics)),
+    )
 
   let assert Loaded([summary]) = next.admin_rule_metrics
   let assert 7 = summary.workflow_id
@@ -169,8 +188,11 @@ pub fn fetched_ok_sets_loaded_metrics_test() {
 pub fn fetched_error_sets_failed_metrics_test() {
   let err = ApiError(status: 500, code: "RULE_METRICS", message: "Boom")
 
-  let #(next, fx) =
-    rule_metrics.handle_fetched_error(admin_metrics.default_model(), err)
+  let rule_metrics.Update(next, fx, _) =
+    update(
+      admin_metrics.default_model(),
+      pool_messages.AdminRuleMetricsFetched(Error(err)),
+    )
 
   let assert Failed(_) = next.admin_rule_metrics
   let assert True = fx == effect.none()
@@ -184,7 +206,8 @@ pub fn workflow_expanded_collapses_current_workflow_test() {
       admin_rule_metrics_workflow_details: Loaded(workflow_details(7)),
     )
 
-  let #(next, fx) = rule_metrics.handle_workflow_expanded(model, 7, context())
+  let rule_metrics.Update(next, fx, _) =
+    update(model, pool_messages.AdminRuleMetricsWorkflowExpanded(7))
 
   let assert option.None = next.admin_rule_metrics_expanded_workflow
   let assert NotAsked = next.admin_rule_metrics_workflow_details
@@ -192,11 +215,10 @@ pub fn workflow_expanded_collapses_current_workflow_test() {
 }
 
 pub fn workflow_expanded_fetches_new_workflow_details_test() {
-  let #(next, fx) =
-    rule_metrics.handle_workflow_expanded(
+  let rule_metrics.Update(next, fx, _) =
+    update(
       admin_metrics.default_model(),
-      7,
-      context(),
+      pool_messages.AdminRuleMetricsWorkflowExpanded(7),
     )
 
   let assert option.Some(7) = next.admin_rule_metrics_expanded_workflow
@@ -213,7 +235,8 @@ pub fn drilldown_clicked_fetches_rule_details_and_executions_test() {
       admin_rule_metrics_exec_offset: 40,
     )
 
-  let #(next, fx) = rule_metrics.handle_drilldown_clicked(model, 9, context())
+  let rule_metrics.Update(next, fx, _) =
+    update(model, pool_messages.AdminRuleMetricsDrilldownClicked(9))
 
   let assert option.Some(9) = next.admin_rule_metrics_drilldown_rule_id
   let assert Loading = next.admin_rule_metrics_rule_details
@@ -232,7 +255,8 @@ pub fn drilldown_closed_resets_drilldown_state_test() {
       admin_rule_metrics_exec_offset: 20,
     )
 
-  let #(next, fx) = rule_metrics.handle_drilldown_closed(model)
+  let rule_metrics.Update(next, fx, _) =
+    update(model, pool_messages.AdminRuleMetricsDrilldownClosed)
 
   let assert option.None = next.admin_rule_metrics_drilldown_rule_id
   let assert NotAsked = next.admin_rule_metrics_rule_details
@@ -242,11 +266,10 @@ pub fn drilldown_closed_resets_drilldown_state_test() {
 }
 
 pub fn exec_page_changed_ignores_missing_drilldown_rule_test() {
-  let #(next, fx) =
-    rule_metrics.handle_exec_page_changed(
+  let rule_metrics.Update(next, fx, _) =
+    update(
       admin_metrics.default_model(),
-      20,
-      context(),
+      pool_messages.AdminRuleMetricsExecPageChanged(20),
     )
 
   let assert option.None = next.admin_rule_metrics_drilldown_rule_id
@@ -263,7 +286,8 @@ pub fn exec_page_changed_fetches_current_drilldown_rule_test() {
       admin_rule_metrics_to: "2026-01-31",
     )
 
-  let #(next, fx) = rule_metrics.handle_exec_page_changed(model, 20, context())
+  let rule_metrics.Update(next, fx, _) =
+    update(model, pool_messages.AdminRuleMetricsExecPageChanged(20))
 
   let assert Loading = next.admin_rule_metrics_executions
   let assert 20 = next.admin_rule_metrics_exec_offset

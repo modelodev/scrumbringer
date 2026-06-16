@@ -8,9 +8,9 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, p, text}
-import lustre/event
+import lustre/element/html.{div, h2, p, text}
 
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icon_catalog
 
@@ -106,9 +106,8 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
     ]),
     case action {
       opt.Some(EmptyStateAction(label:, on_click:)) ->
-        button([attribute.type_("submit"), event.on_click(on_click)], [
-          text(label),
-        ])
+        button.text(label, on_click, button.Primary, button.EntityAction)
+        |> button.view
       opt.None -> element.none()
     },
   ])

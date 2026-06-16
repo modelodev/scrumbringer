@@ -6,7 +6,10 @@ import domain/remote
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
+import scrumbringer_client/client_state/member/dependencies as member_dependencies
+import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/detail_update
 import scrumbringer_client/ui/toast
 
@@ -21,6 +24,43 @@ fn error_context() -> detail_update.ErrorContext(Nil) {
   detail_update.ErrorContext(
     on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
+  )
+}
+
+fn open_context() -> detail_update.Context(Nil) {
+  detail_update.Context(
+    on_notes_fetched: fn(_result) { Nil },
+    on_dependencies_fetched: fn(_result) { Nil },
+    on_metrics_fetched: fn(_result) { Nil },
+  )
+}
+
+fn edit_context() -> detail_update.EditContext(Nil) {
+  detail_update.EditContext(
+    current_task: Some(sample_task()),
+    can_edit: True,
+    on_task_updated: fn(_result) { Nil },
+    title_required: "Title required",
+    title_too_long_max_56: "Title too long",
+    type_required: "Type required",
+    priority_must_be_1_to_5: "Priority must be 1-5",
+  )
+}
+
+fn dispatch_context() -> detail_update.DispatchContext(Nil) {
+  detail_update.DispatchContext(
+    open_context: open_context(),
+    edit_context: edit_context(),
+    success_context: success_context(),
+    error_context: error_context(),
+  )
+}
+
+fn detail_model(pool: member_pool.Model) -> detail_update.Model {
+  detail_update.Model(
+    pool: pool,
+    notes: member_notes.default_model(),
+    dependencies: member_dependencies.default_model(),
   )
 }
 
@@ -62,12 +102,18 @@ pub fn detail_update_ok_replaces_task_and_emits_success_toast_test() {
       member_task_detail_edit_error: Some("old"),
     )
 
-  let #(next, fx) = detail_update.updated_ok(model, updated, success_context())
+  let assert Some(detail_update.Update(next, fx, policy)) =
+    detail_update.try_update(
+      detail_model(model),
+      pool_messages.MemberTaskUpdated(Ok(updated)),
+      dispatch_context(),
+    )
 
-  let assert True = next.member_tasks == remote.Loaded([updated])
-  let assert False = next.member_task_detail_editing
-  let assert False = next.member_task_detail_edit_in_flight
-  let assert None = next.member_task_detail_edit_error
+  let assert True = next.pool.member_tasks == remote.Loaded([updated])
+  let assert False = next.pool.member_task_detail_editing
+  let assert False = next.pool.member_task_detail_edit_in_flight
+  let assert None = next.pool.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
 
@@ -80,10 +126,17 @@ pub fn detail_update_error_sets_local_error_and_emits_feedback_test() {
       member_task_detail_edit_error: None,
     )
 
-  let #(next, fx) = detail_update.updated_error(model, err, error_context())
+  let assert Some(detail_update.Update(next, fx, policy)) =
+    detail_update.try_update(
+      detail_model(model),
+      pool_messages.MemberTaskUpdated(Error(err)),
+      dispatch_context(),
+    )
 
-  let assert False = next.member_task_detail_edit_in_flight
-  let assert Some("boom") = next.member_task_detail_edit_error
+  let assert False = next.pool.member_task_detail_edit_in_flight
+  let assert Some("boom") = next.pool.member_task_detail_edit_error
+  let assert detail_update.CheckAuthAfter(auth_err) = policy
+  let assert True = auth_err == err
   let assert True = fx != effect.none()
 }
 

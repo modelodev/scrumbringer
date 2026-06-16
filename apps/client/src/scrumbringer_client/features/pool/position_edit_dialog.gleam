@@ -4,7 +4,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, input, text}
+import lustre/element/html.{input}
 import lustre/event
 
 import scrumbringer_client/i18n/i18n
@@ -62,22 +62,13 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_close),
-      button(
-        [
-          attribute.type_("button"),
-          attribute.disabled(config.in_flight),
-          attribute.class(case config.in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-          event.on_click(config.on_submit),
-        ],
-        [
-          text(case config.in_flight {
-            True -> t(config, i18n_text.Saving)
-            False -> t(config, i18n_text.Save)
-          }),
-        ],
+      dialog.submit_button_with_locale_click(
+        config.locale,
+        config.on_submit,
+        config.in_flight,
+        False,
+        i18n_text.Save,
+        i18n_text.Saving,
       ),
     ],
   )

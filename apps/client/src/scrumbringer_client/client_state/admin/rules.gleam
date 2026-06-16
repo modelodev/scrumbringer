@@ -6,14 +6,20 @@ import gleam/set
 import domain/remote.{type Remote, NotAsked}
 import domain/workflow.{type Rule}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
-import scrumbringer_client/client_state/types as state_types
+
+/// Dialog mode for Rule CRUD operations.
+pub type RuleDialogMode {
+  RuleDialogCreate
+  RuleDialogEdit(Rule)
+  RuleDialogDelete(Rule)
+}
 
 /// Represents rule admin state.
 pub type Model {
   Model(
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
-    rules_dialog_mode: Option(state_types.RuleDialogMode),
+    rules_dialog_mode: Option(RuleDialogMode),
     rules_expanded: set.Set(Int),
     attach_template_modal: Option(Int),
     attach_template_selected: Option(Int),

@@ -3,7 +3,6 @@
 ////
 
 import gleam/option.{type Option}
-import gleam/string
 
 import lustre/element.{type Element}
 
@@ -21,7 +20,7 @@ pub type ConfirmConfig(msg) {
     is_open: Bool,
     is_loading: Bool,
     error: Option(String),
-    confirm_class: String,
+    confirm_intent: button.Intent,
   )
 }
 
@@ -36,7 +35,7 @@ pub fn view(config: ConfirmConfig(msg)) -> Element(msg) {
     is_open: is_open,
     is_loading: is_loading,
     error: error,
-    confirm_class: confirm_class,
+    confirm_intent: confirm_intent,
   ) = config
 
   dialog.view(
@@ -61,19 +60,22 @@ pub fn view(config: ConfirmConfig(msg)) -> Element(msg) {
       button.text(
         confirm_label,
         on_confirm,
-        confirm_intent(confirm_class),
+        confirm_intent,
         button.EntityAction,
       )
         |> button.with_disabled(is_loading)
-        |> button.with_class(confirm_class)
+        |> with_loading_class(is_loading)
         |> button.view,
     ],
   )
 }
 
-fn confirm_intent(confirm_class: String) -> button.Intent {
-  case string.contains(confirm_class, "danger") {
-    True -> button.Danger
-    False -> button.Primary
+fn with_loading_class(
+  config: button.Config(msg),
+  is_loading: Bool,
+) -> button.Config(msg) {
+  case is_loading {
+    True -> button.with_class(config, "btn-loading")
+    False -> config
   }
 }

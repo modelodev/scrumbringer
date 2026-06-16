@@ -70,7 +70,7 @@ fn with_policy(
   opt.Some(Update(model, fx, auth_policy))
 }
 
-pub fn handle_members_fetched_ok(
+fn handle_members_fetched_ok(
   model: admin_members.Model,
   members: List(ProjectMember),
   context: Context(parent_msg),
@@ -93,7 +93,7 @@ pub fn handle_members_fetched_ok(
   #(admin_members.Model(..model, members: Loaded(members)), preload_fx)
 }
 
-pub fn handle_members_fetched_error(
+fn handle_members_fetched_error(
   model: admin_members.Model,
   err: ApiError,
 ) -> #(admin_members.Model, Effect(parent_msg)) {

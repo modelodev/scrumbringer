@@ -103,7 +103,7 @@ pub fn try_update(
 // =============================================================================
 
 /// Handle successful my capability IDs fetch.
-pub fn handle_my_capability_ids_fetched_ok(
+fn handle_my_capability_ids_fetched_ok(
   model: member_skills.Model,
   ids: List(Int),
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -118,7 +118,7 @@ pub fn handle_my_capability_ids_fetched_ok(
 }
 
 /// Handle failed my capability IDs fetch.
-pub fn handle_my_capability_ids_fetched_error(
+fn handle_my_capability_ids_fetched_error(
   model: member_skills.Model,
   err: ApiError,
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -129,7 +129,7 @@ pub fn handle_my_capability_ids_fetched_error(
 }
 
 /// Handle successful project capabilities fetch.
-pub fn handle_project_capabilities_fetched_ok(
+fn handle_project_capabilities_fetched_ok(
   model: member_skills.Model,
   capabilities: List(Capability),
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -140,7 +140,7 @@ pub fn handle_project_capabilities_fetched_ok(
 }
 
 /// Handle failed project capabilities fetch.
-pub fn handle_project_capabilities_fetched_error(
+fn handle_project_capabilities_fetched_error(
   model: member_skills.Model,
   err: ApiError,
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -155,7 +155,7 @@ pub fn handle_project_capabilities_fetched_error(
 // =============================================================================
 
 /// Toggle a capability checkbox in the edit state.
-pub fn handle_toggle_capability(
+fn handle_toggle_capability(
   model: member_skills.Model,
   id: Int,
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -182,7 +182,7 @@ pub fn handle_toggle_capability(
 // =============================================================================
 
 /// Handle save capabilities button click.
-pub fn handle_save_capabilities_clicked(
+fn handle_save_capabilities_clicked(
   model: member_skills.Model,
   context: Context(parent_msg),
 ) -> #(member_skills.Model, Effect(parent_msg)) {
@@ -217,7 +217,7 @@ pub fn handle_save_capabilities_clicked(
 }
 
 /// Handle successful save capabilities response.
-pub fn handle_save_capabilities_ok(
+fn handle_save_capabilities_ok(
   model: member_skills.Model,
   ids: List(Int),
   context: Context(parent_msg),
@@ -233,7 +233,7 @@ pub fn handle_save_capabilities_ok(
 }
 
 /// Handle failed save capabilities response.
-pub fn handle_save_capabilities_error(
+fn handle_save_capabilities_error(
   model: member_skills.Model,
   err: ApiError,
   context: Context(parent_msg),

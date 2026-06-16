@@ -23,9 +23,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, input, label, option, p, select, span, text,
-}
+import lustre/element/html.{div, input, label, option, p, select, span, text}
 import lustre/event
 
 import domain/capability.{type Capability}
@@ -38,7 +36,6 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/member_role as project_member_role
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/i18n
@@ -46,6 +43,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
@@ -313,22 +311,22 @@ fn view_member_role_cell(
 
 fn view_add_member_dialog(config: Config(msg)) -> Element(msg) {
   let search_query = case config.members.org_users_search {
-    state_types.OrgUsersSearchIdle(query, _)
-    | state_types.OrgUsersSearchLoading(query, _)
-    | state_types.OrgUsersSearchLoaded(query, _, _)
-    | state_types.OrgUsersSearchFailed(query, _, _) -> query
+    admin_members.OrgUsersSearchIdle(query, _)
+    | admin_members.OrgUsersSearchLoading(query, _)
+    | admin_members.OrgUsersSearchLoaded(query, _, _)
+    | admin_members.OrgUsersSearchFailed(query, _, _) -> query
   }
 
   let search_results = case config.members.org_users_search {
-    state_types.OrgUsersSearchIdle(_, _) -> NotAsked
-    state_types.OrgUsersSearchLoading(_, _) -> Loading
-    state_types.OrgUsersSearchLoaded(_, _, users) ->
+    admin_members.OrgUsersSearchIdle(_, _) -> NotAsked
+    admin_members.OrgUsersSearchLoading(_, _) -> Loading
+    admin_members.OrgUsersSearchLoaded(_, _, users) ->
       Loaded(
         list.filter(users, fn(user) {
           !is_already_project_member(config, user.id)
         }),
       )
-    state_types.OrgUsersSearchFailed(_, _, err) -> Failed(err)
+    admin_members.OrgUsersSearchFailed(_, _, err) -> Failed(err)
   }
 
   let empty_label = case search_results {
@@ -379,24 +377,7 @@ fn view_add_member_dialog(config: Config(msg)) -> Element(msg) {
                 )
                   |> badge.view_with_class("search-select-role"),
               ]),
-              button(
-                [
-                  attribute.class(case is_selected {
-                    True -> "btn btn-primary btn-xs"
-                    False -> "btn btn-secondary btn-xs"
-                  }),
-                  attribute.disabled(is_selected),
-                  event.on_click(config.on_member_add_user_selected(u.id)),
-                ],
-                [
-                  text(
-                    t(config, case is_selected {
-                      True -> i18n_text.Selected
-                      False -> i18n_text.Select
-                    }),
-                  ),
-                ],
-              ),
+              member_select_button(config, u.id, is_selected),
             ],
           )
         },
@@ -452,27 +433,55 @@ fn view_add_member_dialog(config: Config(msg)) -> Element(msg) {
         config.locale,
         config.on_add_dialog_closed,
       ),
-      button(
-        [
-          event.on_click(config.on_member_add_submitted),
-          attribute.disabled(
-            config.members.members_add_in_flight
-            || config.members.members_add_selected_user == opt.None,
-          ),
-          attribute.class(case config.members.members_add_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case config.members.members_add_in_flight {
-            True -> t(config, i18n_text.Working)
-            False -> t(config, i18n_text.AddMember)
-          }),
-        ],
-      ),
+      member_add_submit_button(config),
     ],
   )
+}
+
+fn member_select_button(
+  config: Config(msg),
+  user_id: Int,
+  is_selected: Bool,
+) -> Element(msg) {
+  ui_button.text(
+    t(config, case is_selected {
+      True -> i18n_text.Selected
+      False -> i18n_text.Select
+    }),
+    config.on_member_add_user_selected(user_id),
+    case is_selected {
+      True -> ui_button.Primary
+      False -> ui_button.Secondary
+    },
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_size(ui_button.ExtraSmall)
+  |> ui_button.with_disabled(is_selected)
+  |> ui_button.view
+}
+
+fn member_add_submit_button(config: Config(msg)) -> Element(msg) {
+  let is_in_flight = config.members.members_add_in_flight
+  let disabled =
+    is_in_flight || config.members.members_add_selected_user == opt.None
+
+  let button =
+    ui_button.text(
+      case is_in_flight {
+        True -> t(config, i18n_text.Working)
+        False -> t(config, i18n_text.AddMember)
+      },
+      config.on_member_add_submitted,
+      ui_button.Primary,
+      ui_button.EntityAction,
+    )
+    |> ui_button.with_disabled(disabled)
+
+  case is_in_flight {
+    True -> ui_button.with_class(button, "btn-loading")
+    False -> button
+  }
+  |> ui_button.view
 }
 
 fn is_already_project_member(config: Config(msg), user_id: Int) -> Bool {
@@ -491,68 +500,55 @@ fn view_remove_member_dialog(
   project_name: String,
   user: OrgUser,
 ) -> Element(msg) {
-  confirm_dialog.view(
-    confirm_dialog.ConfirmConfig(
-      title: t(config, i18n_text.RemoveMemberTitle),
-      body: [
-        p([], [
-          text(t(
-            config,
-            i18n_text.RemoveMemberConfirm(user.email, project_name),
-          )),
-        ]),
-      ],
-      confirm_label: case config.members.members_remove_in_flight {
-        True -> t(config, i18n_text.Removing)
-        False -> t(config, i18n_text.Remove)
-      },
-      cancel_label: t(config, i18n_text.Cancel),
-      on_confirm: config.on_member_remove_confirmed,
-      on_cancel: config.on_member_remove_cancelled,
-      is_open: True,
-      is_loading: config.members.members_remove_in_flight,
-      error: config.members.members_remove_error,
-      confirm_class: case config.members.members_remove_in_flight {
-        True -> "btn-danger btn-loading"
-        False -> "btn-danger"
-      },
-    ),
-  )
+  confirm_dialog.view(confirm_dialog.ConfirmConfig(
+    title: t(config, i18n_text.RemoveMemberTitle),
+    body: [
+      p([], [
+        text(t(config, i18n_text.RemoveMemberConfirm(user.email, project_name))),
+      ]),
+    ],
+    confirm_label: case config.members.members_remove_in_flight {
+      True -> t(config, i18n_text.Removing)
+      False -> t(config, i18n_text.Remove)
+    },
+    cancel_label: t(config, i18n_text.Cancel),
+    on_confirm: config.on_member_remove_confirmed,
+    on_cancel: config.on_member_remove_cancelled,
+    is_open: True,
+    is_loading: config.members.members_remove_in_flight,
+    error: config.members.members_remove_error,
+    confirm_intent: ui_button.Danger,
+  ))
 }
 
 fn view_release_all_dialog(
   config: Config(msg),
   project_name: String,
-  target: state_types.ReleaseAllTarget,
+  target: admin_members.ReleaseAllTarget,
 ) -> Element(msg) {
-  let state_types.ReleaseAllTarget(user: user, claimed_count: claimed_count) =
+  let admin_members.ReleaseAllTarget(user: user, claimed_count: claimed_count) =
     target
   let _ = project_name
 
-  confirm_dialog.view(
-    confirm_dialog.ConfirmConfig(
-      title: t(config, i18n_text.ReleaseAllConfirmTitle),
-      body: [
-        p([], [
-          text(t(
-            config,
-            i18n_text.ReleaseAllConfirmBody(claimed_count, user.email),
-          )),
-        ]),
-      ],
-      confirm_label: t(config, i18n_text.Release),
-      cancel_label: t(config, i18n_text.Cancel),
-      on_confirm: config.on_member_release_all_confirmed,
-      on_cancel: config.on_member_release_all_cancelled,
-      is_open: True,
-      is_loading: config.members.members_release_in_flight == opt.Some(user.id),
-      error: config.members.members_release_error,
-      confirm_class: case config.members.members_release_in_flight {
-        opt.Some(_) -> "btn-primary btn-loading"
-        opt.None -> "btn-primary"
-      },
-    ),
-  )
+  confirm_dialog.view(confirm_dialog.ConfirmConfig(
+    title: t(config, i18n_text.ReleaseAllConfirmTitle),
+    body: [
+      p([], [
+        text(t(
+          config,
+          i18n_text.ReleaseAllConfirmBody(claimed_count, user.email),
+        )),
+      ]),
+    ],
+    confirm_label: t(config, i18n_text.Release),
+    cancel_label: t(config, i18n_text.Cancel),
+    on_confirm: config.on_member_release_all_confirmed,
+    on_cancel: config.on_member_release_all_cancelled,
+    is_open: True,
+    is_loading: config.members.members_release_in_flight == opt.Some(user.id),
+    error: config.members.members_release_error,
+    confirm_intent: ui_button.Primary,
+  ))
 }
 
 /// Member capabilities dialog (AC11-14).
@@ -638,25 +634,30 @@ fn view_member_capabilities_dialog(
         config.locale,
         config.on_member_capabilities_closed,
       ),
-      button(
-        [
-          event.on_click(config.on_member_capabilities_save_clicked),
-          attribute.disabled(
-            config.capabilities.member_capabilities_saving
-            || config.capabilities.member_capabilities_loading,
-          ),
-          attribute.class(case config.capabilities.member_capabilities_saving {
-            True -> "btn-primary btn-loading"
-            False -> "btn-primary"
-          }),
-        ],
-        [
-          text(case config.capabilities.member_capabilities_saving {
-            True -> t(config, i18n_text.Saving)
-            False -> t(config, i18n_text.Save)
-          }),
-        ],
-      ),
+      member_capabilities_save_button(config),
     ],
   )
+}
+
+fn member_capabilities_save_button(config: Config(msg)) -> Element(msg) {
+  let is_saving = config.capabilities.member_capabilities_saving
+  let button =
+    ui_button.text(
+      case is_saving {
+        True -> t(config, i18n_text.Saving)
+        False -> t(config, i18n_text.Save)
+      },
+      config.on_member_capabilities_save_clicked,
+      ui_button.Primary,
+      ui_button.EntityAction,
+    )
+    |> ui_button.with_disabled(
+      is_saving || config.capabilities.member_capabilities_loading,
+    )
+
+  case is_saving {
+    True -> ui_button.with_class(button, "btn-loading")
+    False -> button
+  }
+  |> ui_button.view
 }

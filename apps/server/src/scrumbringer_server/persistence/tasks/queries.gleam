@@ -24,13 +24,14 @@
 //// - **task_events_db.gleam**: Records audit events
 
 import domain/field_update
+import domain/task.{type Task}
 import domain/task_status
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import helpers/option as option_helpers
 import pog
-import scrumbringer_server/persistence/tasks/mappers.{type Task}
+import scrumbringer_server/persistence/tasks/mappers
 import scrumbringer_server/services/service_error
 import scrumbringer_server/services/task_events_db
 import scrumbringer_server/services/work_sessions_db
@@ -40,6 +41,20 @@ import scrumbringer_server/sql
 pub type ReleaseAllResult {
   ReleaseAllResult(released_count: Int, task_ids: List(Int))
 }
+
+const no_optional_id_filter_value = 0
+
+const no_optional_id_create_value = 0
+
+const no_search_filter_value = ""
+
+const unchanged_text_update_value = "__unset__"
+
+const unchanged_positive_int_update_value = 0
+
+const unchanged_optional_id_update_value = -1
+
+const cleared_optional_id_update_value = 0
 
 /// List tasks for a project with optional filters.
 /// Story 5.4: Now uses user_id for has_new_notes calculation.
@@ -87,27 +102,27 @@ fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String 
 }
 
 fn optional_id_filter_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, no_optional_id_filter_value)
 }
 
 fn search_filter_value(value: Option(String)) -> String {
-  option_helpers.option_to_value(value, "")
+  option_helpers.option_to_value(value, no_search_filter_value)
 }
 
 fn optional_id_create_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, no_optional_id_create_value)
 }
 
 fn text_update_value(value: Option(String)) -> String {
-  option_helpers.option_to_value(value, "__unset__")
+  option_helpers.option_to_value(value, unchanged_text_update_value)
 }
 
 fn priority_update_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
 
 fn type_id_update_value(value: Option(Int)) -> Int {
-  option_helpers.option_to_value(value, 0)
+  option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
 
 fn milestone_id_update_value(
@@ -122,8 +137,8 @@ fn card_id_update_value(value: field_update.FieldUpdate(Option(Int))) -> Int {
 
 fn optional_id_update_value(value: field_update.FieldUpdate(Option(Int))) -> Int {
   case value {
-    field_update.Unchanged -> -1
-    field_update.Set(None) -> 0
+    field_update.Unchanged -> unchanged_optional_id_update_value
+    field_update.Set(None) -> cleared_optional_id_update_value
     field_update.Set(Some(id)) -> id
   }
 }

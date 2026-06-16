@@ -101,7 +101,7 @@ pub fn changed_input_value(
   }
 }
 
-pub fn handle_member_role_change_requested(
+fn handle_member_role_change_requested(
   model: admin_members.Model,
   user_id: Int,
   new_role: ProjectRole,
@@ -121,7 +121,7 @@ pub fn handle_member_role_change_requested(
   }
 }
 
-pub fn handle_member_role_changed_ok(
+fn handle_member_role_changed_ok(
   model: admin_members.Model,
   result: api_projects.RoleChangeResult,
   context: FeedbackContext(parent_msg),

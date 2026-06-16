@@ -4,14 +4,20 @@ import gleam/option.{type Option}
 
 import domain/card.{type Card, type CardState}
 import domain/remote.{type Remote, NotAsked}
-import scrumbringer_client/client_state/types as state_types
+
+/// Dialog mode for Card CRUD operations.
+pub type CardDialogMode {
+  CardDialogCreate
+  CardDialogEdit(Int)
+  CardDialogDelete(Int)
+}
 
 /// Represents card admin state.
 pub type Model {
   Model(
     cards: Remote(List(Card)),
     cards_project_id: Option(Int),
-    cards_dialog_mode: Option(state_types.CardDialogMode),
+    cards_dialog_mode: Option(CardDialogMode),
     cards_create_milestone_id: Option(Int),
     cards_show_empty: Bool,
     cards_show_completed: Bool,

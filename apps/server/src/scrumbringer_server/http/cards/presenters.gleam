@@ -5,10 +5,9 @@ import gleam/int
 import gleam/json
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
-import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/metrics_db
 
-pub fn card(card: cards_db.Card) -> json.Json {
+pub fn card(card: domain_card.Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
@@ -25,15 +24,15 @@ pub fn card(card: cards_db.Card) -> json.Json {
   ])
 }
 
-pub fn cards(cards: List(cards_db.Card)) -> json.Json {
+pub fn cards(cards: List(domain_card.Card)) -> json.Json {
   json.array(cards, of: card)
 }
 
-pub fn cards_response(values: List(cards_db.Card)) -> json.Json {
+pub fn cards_response(values: List(domain_card.Card)) -> json.Json {
   json.object([#("cards", cards(values))])
 }
 
-pub fn card_response(value: cards_db.Card) -> json.Json {
+pub fn card_response(value: domain_card.Card) -> json.Json {
   json.object([#("card", card(value))])
 }
 

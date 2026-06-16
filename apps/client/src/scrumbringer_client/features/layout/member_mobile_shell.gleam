@@ -4,12 +4,12 @@
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, text}
-import lustre/event
+import lustre/element/html.{div, text}
 
 import scrumbringer_client/features/layout/responsive_drawer
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/icons
 
 pub type Config(msg) {
@@ -59,31 +59,45 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 
 fn view_topbar(config: Config(msg)) -> Element(msg) {
   div([attribute.class("mobile-topbar")], [
-    button(
-      [
-        attribute.class("mobile-menu-btn"),
-        attribute.attribute("data-testid", "mobile-menu-btn"),
-        attribute.attribute("aria-label", "Open navigation menu"),
-        attribute.attribute("aria-expanded", bool_attr(config.left_drawer_open)),
-        event.on_click(config.on_left_drawer_toggle),
-      ],
-      [icons.view_heroicon_inline("bars-3", 24, config.theme)],
+    drawer_button(
+      "Open navigation menu",
+      icons.Menu,
+      "mobile-menu-btn",
+      config.left_drawer_open,
+      config.on_left_drawer_toggle,
     ),
     div([attribute.class("topbar-title-mobile")], [text(config.title)]),
-    button(
-      [
-        attribute.class("mobile-user-btn"),
-        attribute.attribute("data-testid", "mobile-user-btn"),
-        attribute.attribute("aria-label", "Open activity panel"),
-        attribute.attribute(
-          "aria-expanded",
-          bool_attr(config.right_drawer_open),
-        ),
-        event.on_click(config.on_right_drawer_toggle),
-      ],
-      [icons.view_heroicon_inline("user-circle", 24, config.theme)],
+    drawer_button(
+      "Open activity panel",
+      icons.UserCircle,
+      "mobile-user-btn",
+      config.right_drawer_open,
+      config.on_right_drawer_toggle,
     ),
   ])
+}
+
+fn drawer_button(
+  label: String,
+  icon: icons.NavIcon,
+  class_name: String,
+  is_open: Bool,
+  on_click: msg,
+) -> Element(msg) {
+  ui_button.icon(
+    label,
+    on_click,
+    icon,
+    ui_button.Neutral,
+    ui_button.GlobalAction,
+  )
+  |> ui_button.with_class(class_name)
+  |> ui_button.with_testid(class_name)
+  |> ui_button.with_attribute(attribute.attribute(
+    "aria-expanded",
+    bool_attr(is_open),
+  ))
+  |> ui_button.view
 }
 
 fn bool_attr(value: Bool) -> String {

@@ -3,16 +3,16 @@ import gleam/option
 import gleam/string
 import lustre/element
 
+import domain/api_token.{
+  type ApiToken, type IntegrationUser, ApiToken, IntegrationUser,
+}
 import domain/api_token_scope
 import domain/org_role
 import domain/project.{type Project, Project}
 import domain/project_role
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
-import scrumbringer_client/client_state/types.{
-  type ApiToken, type ApiTokensModel, type IntegrationUser, ApiToken,
-  ApiTokensModel, DialogOpen, Idle, IntegrationUser,
-}
+import scrumbringer_client/client_state/types.{DialogOpen, Idle}
 import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/i18n/locale
 
@@ -71,15 +71,15 @@ fn token() -> ApiToken {
   )
 }
 
-fn model() -> ApiTokensModel {
-  ApiTokensModel(
+fn model() -> api_tokens_state.Model {
+  api_tokens_state.ApiTokensModel(
     ..api_tokens_state.default_model(),
     integration_users: remote.Loaded([integration_user()]),
     tokens: remote.Loaded([token()]),
   )
 }
 
-fn config(model: ApiTokensModel) -> api_tokens_view.Config(String) {
+fn config(model: api_tokens_state.Model) -> api_tokens_view.Config(String) {
   api_tokens_view.Config(
     locale: locale.En,
     model: model,
@@ -122,6 +122,10 @@ pub fn api_tokens_view_has_single_primary_creation_flow_test() {
   assert_contains(html, "admin-surface-content")
   assert_not_contains(html, "admin-card api-token-list-card")
   assert_contains(html, "Create API token")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "btn-icon-text")
+  assert_not_contains(html, "class=\"btn btn-primary\"")
   assert_not_contains(html, "Create integration user")
   assert_contains(html, "n8n production")
   assert_contains(html, "n8n")
@@ -132,12 +136,12 @@ pub fn api_tokens_view_has_single_primary_creation_flow_test() {
 
 pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_test() {
   let open_model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model(),
       token_dialog: api_tokens_state.default_model().token_dialog,
     )
   let open_model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..open_model,
       token_dialog: DialogOpen(
         form: api_tokens_state.default_token_form(),
@@ -160,7 +164,7 @@ pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_
 
 pub fn api_tokens_view_renders_secret_copy_control_test() {
   let with_secret =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model(),
       created_token: option.Some("sbt_public_secret"),
       token_secret_copy_status: option.Some("Copied"),
@@ -173,6 +177,10 @@ pub fn api_tokens_view_renders_secret_copy_control_test() {
   assert_contains(html, "sbt_public_secret")
   assert_contains(html, "Copy")
   assert_contains(html, "Copied")
+  assert_contains(html, "Dismiss")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "class=\"btn-secondary\"")
 }
 
 pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
@@ -184,7 +192,7 @@ pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
       active_token_count: 0,
     )
   let model =
-    ApiTokensModel(
+    api_tokens_state.ApiTokensModel(
       ..model(),
       integration_users: remote.Loaded([integration_user(), idle_user]),
     )
@@ -200,7 +208,11 @@ pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
 pub fn api_tokens_view_hides_revoke_action_for_revoked_tokens_test() {
   let revoked_token =
     ApiToken(..token(), revoked_at: option.Some("2026-01-02T10:00:00Z"))
-  let model = ApiTokensModel(..model(), tokens: remote.Loaded([revoked_token]))
+  let model =
+    api_tokens_state.ApiTokensModel(
+      ..model(),
+      tokens: remote.Loaded([revoked_token]),
+    )
 
   let html =
     api_tokens_view.view(config(model))

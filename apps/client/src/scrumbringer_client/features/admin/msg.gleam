@@ -1,6 +1,7 @@
 //// Admin feature messages.
 
 import domain/api_error.{type ApiResult}
+import domain/api_token
 import domain/api_token_scope
 import domain/capability.{type Capability}
 import domain/org.{type InviteLink, type OrgUser}
@@ -11,7 +12,8 @@ import domain/task_type.{type TaskType}
 
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/assignments as assignments_state
+import scrumbringer_client/client_state/admin/task_types as admin_task_types
 
 /// Represents AdminMsg.
 pub type Msg {
@@ -104,7 +106,7 @@ pub type Msg {
   AssignmentsSearchDebounced(String)
   AssignmentsProjectMembersFetched(Int, ApiResult(List(ProjectMember)))
   AssignmentsUserProjectsFetched(Int, ApiResult(List(Project)))
-  AssignmentsInlineAddStarted(state_types.AssignmentsAddContext)
+  AssignmentsInlineAddStarted(assignments_state.AssignmentsAddContext)
   AssignmentsInlineAddSearchChanged(String)
   AssignmentsInlineAddSelectionChanged(String)
   AssignmentsInlineAddRoleChanged(ProjectRole)
@@ -124,8 +126,8 @@ pub type Msg {
   )
   AssignmentsProjectToggled(Int)
   AssignmentsUserToggled(Int)
-  IntegrationUsersFetched(ApiResult(List(state_types.IntegrationUser)))
-  ApiTokensFetched(ApiResult(List(state_types.ApiToken)))
+  IntegrationUsersFetched(ApiResult(List(api_token.IntegrationUser)))
+  ApiTokensFetched(ApiResult(List(api_token.ApiToken)))
   ApiTokenCreateDialogOpened
   ApiTokenCreateDialogClosed
   ApiTokenNameChanged(String)
@@ -134,7 +136,7 @@ pub type Msg {
   ApiTokenScopeToggled(api_token_scope.Scope)
   ApiTokenExpiresAtChanged(String)
   ApiTokenCreateSubmitted
-  ApiTokenCreated(ApiResult(state_types.CreatedApiToken))
+  ApiTokenCreated(ApiResult(api_token.CreatedApiToken))
   ApiTokenCreatedSecretDismissed
   ApiTokenCreatedSecretCopyClicked(String)
   ApiTokenCreatedSecretCopyFinished(Bool)
@@ -142,7 +144,7 @@ pub type Msg {
   ApiTokenRenameCancelled
   ApiTokenRenameNameChanged(String)
   ApiTokenRenameSubmitted
-  ApiTokenRenamed(ApiResult(state_types.ApiToken))
+  ApiTokenRenamed(ApiResult(api_token.ApiToken))
   ApiTokenRevokeClicked(Int)
   ApiTokenRevokeCancelled
   ApiTokenRevokeConfirmed
@@ -163,7 +165,7 @@ pub type Msg {
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
   TaskTypeCreated(ApiResult(TaskType))
-  OpenTaskTypeDialog(state_types.TaskTypeDialogMode)
+  OpenTaskTypeDialog(admin_task_types.TaskTypeDialogMode)
   CloseTaskTypeDialog
   TaskTypeCrudCreated(TaskType)
   TaskTypeCrudUpdated(TaskType)

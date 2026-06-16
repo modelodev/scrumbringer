@@ -37,7 +37,7 @@ fn admin_user() -> user.User {
   )
 }
 
-pub fn handle_login_submitted_ignores_when_in_flight_test() {
+pub fn login_submitted_ignores_when_in_flight_test() {
   let model =
     auth_state.AuthModel(
       ..auth_state.default_model(),
@@ -45,7 +45,8 @@ pub fn handle_login_submitted_ignores_when_in_flight_test() {
       login_error: Some("err"),
     )
 
-  let #(next, fx, action) = auth_update.handle_login_submitted(model, context())
+  let #(next, fx, action) =
+    auth_update.update(model, auth_messages.LoginSubmitted, context())
 
   let assert True = next.login_in_flight
   let assert Some("err") = next.login_error
@@ -53,7 +54,7 @@ pub fn handle_login_submitted_ignores_when_in_flight_test() {
   let assert auth_update.NoAction = action
 }
 
-pub fn handle_login_submitted_sets_in_flight_and_clears_error_test() {
+pub fn login_submitted_sets_in_flight_and_clears_error_test() {
   let model =
     auth_state.AuthModel(
       ..auth_state.default_model(),
@@ -62,14 +63,14 @@ pub fn handle_login_submitted_sets_in_flight_and_clears_error_test() {
     )
 
   let #(next, _fx, action) =
-    auth_update.handle_login_submitted(model, context())
+    auth_update.update(model, auth_messages.LoginSubmitted, context())
 
   let assert True = next.login_in_flight
   let assert None = next.login_error
   let assert auth_update.NoAction = action
 }
 
-pub fn handle_login_finished_ok_resets_local_auth_and_emits_action_test() {
+pub fn login_finished_ok_resets_local_auth_and_emits_action_test() {
   let model =
     auth_state.AuthModel(
       ..auth_state.default_model(),
@@ -78,7 +79,11 @@ pub fn handle_login_finished_ok_resets_local_auth_and_emits_action_test() {
     )
 
   let #(next, fx, action) =
-    auth_update.handle_login_finished_ok(model, admin_user())
+    auth_update.update(
+      model,
+      auth_messages.LoginFinished(Ok(admin_user())),
+      context(),
+    )
 
   let assert False = next.login_in_flight
   let assert "" = next.login_password

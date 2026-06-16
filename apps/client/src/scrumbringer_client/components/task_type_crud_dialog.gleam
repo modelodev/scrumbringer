@@ -581,20 +581,10 @@ fn view_name_field(
         attribute.autofocus(True),
         event.on_input(on_input),
       ]
-      |> maybe_add_placeholder(placeholder),
+      |> crud_dialog_base.with_optional_placeholder(placeholder),
     ),
     view_name_hint(hint),
   ])
-}
-
-fn maybe_add_placeholder(
-  attrs: List(attribute.Attribute(Msg)),
-  placeholder: Option(String),
-) -> List(attribute.Attribute(Msg)) {
-  case placeholder {
-    Some(text) -> [attribute.placeholder(text), ..attrs]
-    None -> attrs
-  }
 }
 
 fn view_name_hint(hint: Option(String)) -> Element(Msg) {
@@ -646,14 +636,14 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       crud_dialog_base.view_cancel_button_with_class(
         model.locale,
         CloseRequested,
-        "btn btn-secondary btn-sm",
+        "",
       ),
       crud_dialog_base.view_primary_action_button(
         CreateSubmitted,
         model.create_in_flight,
         i18n_t(model.locale, i18n_text.CreateTaskType),
         i18n_t(model.locale, i18n_text.Creating),
-        "btn btn-primary btn-compact",
+        "btn-compact",
       ),
     ],
   )
@@ -701,14 +691,14 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       crud_dialog_base.view_cancel_button_with_class(
         model.locale,
         EditCancelled,
-        "btn btn-secondary btn-sm",
+        "",
       ),
       crud_dialog_base.view_primary_action_button(
         EditSubmitted,
         model.edit_in_flight,
         i18n_t(model.locale, i18n_text.Save),
         i18n_t(model.locale, i18n_text.Saving),
-        "btn btn-primary btn-compact",
+        "btn-compact",
       ),
     ],
   )
@@ -751,7 +741,7 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
       crud_dialog_base.view_cancel_button_with_class(
         model.locale,
         DeleteCancelled,
-        "btn btn-secondary",
+        "",
       ),
       crud_dialog_base.view_danger_action_button(
         DeleteConfirmed,
@@ -759,7 +749,7 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
         model.delete_in_flight || task_type.tasks_count > 0,
         i18n_t(model.locale, i18n_text.Delete),
         i18n_t(model.locale, i18n_text.Deleting),
-        "btn btn-danger",
+        "",
       ),
     ],
   )

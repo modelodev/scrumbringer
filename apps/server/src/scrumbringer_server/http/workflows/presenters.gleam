@@ -4,12 +4,14 @@ import gleam/json
 import helpers/json as json_helpers
 import scrumbringer_server/services/workflows_db
 
-pub fn workflows_response(values: List(workflows_db.Workflow)) -> json.Json {
+pub fn workflows_response(
+  values: List(workflows_db.WorkflowRecord),
+) -> json.Json {
   json.object([#("workflows", json.array(values, of: workflow))])
 }
 
-pub fn workflow(workflow: workflows_db.Workflow) -> json.Json {
-  let workflows_db.Workflow(
+pub fn workflow(workflow: workflows_db.WorkflowRecord) -> json.Json {
+  let workflows_db.WorkflowRecord(
     id: id,
     org_id: org_id,
     project_id: project_id,
@@ -34,6 +36,6 @@ pub fn workflow(workflow: workflows_db.Workflow) -> json.Json {
   ])
 }
 
-pub fn workflow_response(value: workflows_db.Workflow) -> json.Json {
+pub fn workflow_response(value: workflows_db.WorkflowRecord) -> json.Json {
   json.object([#("workflow", workflow(value))])
 }

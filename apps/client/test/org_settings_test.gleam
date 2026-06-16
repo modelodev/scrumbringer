@@ -38,7 +38,7 @@ fn context() -> org_settings.Context(String) {
   )
 }
 
-fn feedback_context() -> org_settings.FeedbackContext(Nil) {
+fn try_feedback_context() -> org_settings.FeedbackContext(String) {
   org_settings.FeedbackContext(
     role_updated: "Role updated",
     user_deleted: "User deleted",
@@ -48,14 +48,13 @@ fn feedback_context() -> org_settings.FeedbackContext(Nil) {
   )
 }
 
-fn try_feedback_context() -> org_settings.FeedbackContext(String) {
-  org_settings.FeedbackContext(
-    role_updated: "Role updated",
-    user_deleted: "User deleted",
-    not_permitted: "Not permitted",
-    on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
-    on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
-  )
+fn update(
+  model: admin_members.Model,
+  inner: admin_messages.Msg,
+) -> org_settings.Update(String) {
+  let assert opt.Some(update) =
+    org_settings.try_update(model, inner, context(), try_feedback_context())
+  update
 }
 
 pub fn current_user_after_saved_updates_matching_user_test() {
@@ -99,12 +98,8 @@ pub fn saved_ok_updates_org_settings_users_list_test() {
     )
   let updated_org_user = make_org_user(42, org_role.Admin)
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_saved_ok(
-      model,
-      updated_org_user,
-      feedback_context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsSaved(42, Ok(updated_org_user)))
 
   let assert Loaded([user]) = next.org_settings_users
   let assert org_role.Admin = user.org_role
@@ -120,12 +115,8 @@ pub fn saved_ok_updates_org_users_cache_test() {
     )
   let updated_org_user = make_org_user(42, org_role.Admin)
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_saved_ok(
-      model,
-      updated_org_user,
-      feedback_context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsSaved(42, Ok(updated_org_user)))
 
   let assert Loaded([user]) = next.org_users_cache
   let assert org_role.Admin = user.org_role
@@ -142,12 +133,8 @@ pub fn saved_ok_clears_in_flight_and_error_state_test() {
     )
   let updated_org_user = make_org_user(42, org_role.Admin)
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_saved_ok(
-      model,
-      updated_org_user,
-      feedback_context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsSaved(42, Ok(updated_org_user)))
 
   let assert False = next.org_settings_save_in_flight
   let assert opt.None = next.org_settings_error
@@ -163,13 +150,8 @@ pub fn role_changed_triggers_save_when_role_diff_test() {
       org_settings_users: Loaded([user]),
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_role_changed_with_context(
-      model,
-      1,
-      org_role.Admin,
-      context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsRoleChanged(1, org_role.Admin))
 
   let assert True = next.org_settings_save_in_flight
   let assert opt.None = next.org_settings_error
@@ -185,13 +167,8 @@ pub fn role_changed_noop_when_role_is_same_test() {
       org_settings_users: Loaded([user]),
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_role_changed_with_context(
-      model,
-      1,
-      org_role.Member,
-      context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsRoleChanged(1, org_role.Member))
 
   let assert False = next.org_settings_save_in_flight
   let assert True = fx == effect.none()
@@ -206,13 +183,8 @@ pub fn role_changed_ignored_when_in_flight_test() {
       org_settings_save_in_flight: True,
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_role_changed_with_context(
-      model,
-      1,
-      org_role.Admin,
-      context(),
-    )
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsRoleChanged(1, org_role.Admin))
 
   let assert True = next.org_settings_save_in_flight
   let assert True = fx == effect.none()
@@ -225,7 +197,8 @@ pub fn delete_clicked_uses_cache_or_fallback_test() {
       org_users_cache: Loaded([make_org_user(9, org_role.Member)]),
     )
 
-  let #(next, fx) = org_settings.handle_org_settings_delete_clicked(model, 9)
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsDeleteClicked(9))
 
   let assert opt.Some(user) = next.org_settings_delete_confirm
   let assert 9 = user.id
@@ -240,8 +213,8 @@ pub fn delete_confirmed_sets_in_flight_test() {
       org_settings_delete_confirm: opt.Some(make_org_user(9, org_role.Member)),
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_delete_confirmed(model, context())
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsDeleteConfirmed)
 
   let assert True = next.org_settings_delete_in_flight
   let assert opt.None = next.org_settings_delete_error
@@ -261,8 +234,8 @@ pub fn deleted_ok_removes_user_from_lists_test() {
       org_settings_delete_error: opt.Some("old error"),
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_deleted_ok(model, feedback_context())
+  let org_settings.Update(next, fx, _, _) =
+    update(model, admin_messages.OrgSettingsDeleted(Ok(Nil)))
 
   let assert Loaded([settings_user]) = next.org_settings_users
   let assert 10 = settings_user.id
@@ -277,16 +250,15 @@ pub fn deleted_ok_removes_user_from_lists_test() {
 pub fn fetched_errors_store_failed_remote_test() {
   let err = ApiError(status: 500, code: "ERR", message: "failed")
 
-  let #(next_cache, _) =
-    org_settings.handle_org_users_cache_fetched_error(
+  let org_settings.Update(next_cache, _, _, _) =
+    update(
       admin_members.default_model(),
-      err,
+      admin_messages.OrgUsersCacheFetched(Error(err)),
     )
-  let #(next_settings, _) =
-    org_settings.handle_org_settings_users_fetched_error(
+  let org_settings.Update(next_settings, _, _, _) =
+    update(
       admin_members.default_model(),
-      err,
-      feedback_context(),
+      admin_messages.OrgSettingsUsersFetched(Error(err)),
     )
 
   let assert Failed(_) = next_cache.org_users_cache
@@ -296,11 +268,10 @@ pub fn fetched_errors_store_failed_remote_test() {
 pub fn users_fetched_forbidden_error_emits_warning_feedback_test() {
   let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_users_fetched_error(
+  let org_settings.Update(next, fx, _, _) =
+    update(
       admin_members.default_model(),
-      err,
-      feedback_context(),
+      admin_messages.OrgSettingsUsersFetched(Error(err)),
     )
 
   let assert Failed(_) = next.org_settings_users
@@ -314,12 +285,13 @@ pub fn saved_forbidden_error_clears_in_flight_and_emits_feedback_test() {
       org_settings_save_in_flight: True,
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_saved_error(
+  let org_settings.Update(next, fx, _, _) =
+    update(
       model,
-      42,
-      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
-      feedback_context(),
+      admin_messages.OrgSettingsSaved(
+        42,
+        Error(ApiError(status: 403, code: "FORBIDDEN", message: "backend")),
+      ),
     )
 
   let assert False = next.org_settings_save_in_flight
@@ -334,12 +306,13 @@ pub fn saved_generic_error_sets_inline_error_without_feedback_test() {
       org_settings_save_in_flight: True,
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_saved_error(
+  let org_settings.Update(next, fx, _, _) =
+    update(
       model,
-      42,
-      ApiError(status: 500, code: "ERR", message: "Boom"),
-      feedback_context(),
+      admin_messages.OrgSettingsSaved(
+        42,
+        Error(ApiError(status: 500, code: "ERR", message: "Boom")),
+      ),
     )
 
   let assert False = next.org_settings_save_in_flight
@@ -355,11 +328,12 @@ pub fn deleted_forbidden_error_sets_local_message_and_feedback_test() {
       org_settings_delete_in_flight: True,
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_deleted_error(
+  let org_settings.Update(next, fx, _, _) =
+    update(
       model,
-      ApiError(status: 403, code: "FORBIDDEN", message: "backend"),
-      feedback_context(),
+      admin_messages.OrgSettingsDeleted(
+        Error(ApiError(status: 403, code: "FORBIDDEN", message: "backend")),
+      ),
     )
 
   let assert False = next.org_settings_delete_in_flight
@@ -374,11 +348,12 @@ pub fn deleted_generic_error_sets_local_message_without_feedback_test() {
       org_settings_delete_in_flight: True,
     )
 
-  let #(next, fx) =
-    org_settings.handle_org_settings_deleted_error(
+  let org_settings.Update(next, fx, _, _) =
+    update(
       model,
-      ApiError(status: 500, code: "ERR", message: "Boom"),
-      feedback_context(),
+      admin_messages.OrgSettingsDeleted(
+        Error(ApiError(status: 500, code: "ERR", message: "Boom")),
+      ),
     )
 
   let assert False = next.org_settings_delete_in_flight

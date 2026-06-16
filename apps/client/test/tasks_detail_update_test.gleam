@@ -12,7 +12,6 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/detail_update
-import scrumbringer_client/features/tasks/update as tasks_update
 import scrumbringer_client/ui/task_tabs
 
 fn sample_metrics() -> TaskModalMetrics {
@@ -32,11 +31,8 @@ fn sample_error() -> ApiError {
   ApiError(status: 500, code: "ERR", message: "boom")
 }
 
-fn edit_context(
-  current_task,
-  can_edit,
-) -> tasks_update.TaskDetailEditContext(Nil) {
-  tasks_update.TaskDetailEditContext(
+fn edit_context(current_task, can_edit) -> detail_update.EditContext(Nil) {
+  detail_update.EditContext(
     current_task: current_task,
     can_edit: can_edit,
     on_task_updated: fn(_result) { Nil },
@@ -61,25 +57,38 @@ fn error_context() -> detail_update.ErrorContext(Nil) {
   )
 }
 
-fn detail_context() -> tasks_update.TaskDetailContext(Nil) {
-  tasks_update.TaskDetailContext(
+fn detail_context() -> detail_update.Context(Nil) {
+  detail_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
     on_metrics_fetched: fn(_result) { Nil },
   )
 }
 
-fn dispatch_context() -> tasks_update.TaskDetailDispatchContext(Nil) {
-  tasks_update.TaskDetailDispatchContext(
+fn dispatch_context() -> detail_update.DispatchContext(Nil) {
+  dispatch_context_with_edit(Some(sample_task()), True)
+}
+
+fn dispatch_context_with_edit(
+  current_task,
+  can_edit,
+) -> detail_update.DispatchContext(Nil) {
+  detail_update.DispatchContext(
     open_context: detail_context(),
-    edit_context: edit_context(Some(sample_task()), True),
+    edit_context: edit_context(current_task, can_edit),
     success_context: success_context(),
     error_context: error_context(),
   )
 }
 
-fn detail_model(pool: member_pool.Model) -> tasks_update.TaskDetailModel {
-  tasks_update.TaskDetailModel(
+fn apply_pool_update(model, message, context) {
+  let assert Some(detail_update.Update(next, fx, policy)) =
+    detail_update.try_update(detail_model(model), message, context)
+  #(next.pool, fx, policy)
+}
+
+fn detail_model(pool: member_pool.Model) -> detail_update.Model {
+  detail_update.Model(
     pool: pool,
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
@@ -113,11 +122,11 @@ fn sample_task() -> Task {
   )
 }
 
-pub fn try_task_detail_update_tab_clicked_sets_tab_without_auth_test() {
+pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
   let model = detail_model(member_pool.default_model())
 
-  let assert Some(tasks_update.TaskDetailUpdate(next, fx, auth_policy)) =
-    tasks_update.try_task_detail_update(
+  let assert Some(detail_update.Update(next, fx, auth_policy)) =
+    detail_update.try_update(
       model,
       pool_messages.MemberTaskDetailTabClicked(task_tabs.MetricsTab),
       dispatch_context(),
@@ -126,11 +135,11 @@ pub fn try_task_detail_update_tab_clicked_sets_tab_without_auth_test() {
   let assert task_tabs.MetricsTab = next.pool.member_task_detail_tab
   let assert True = next.notes == model.notes
   let assert True = next.dependencies == model.dependencies
-  let assert tasks_update.NoTaskDetailAuthCheck = auth_policy
+  let assert detail_update.NoAuthCheck = auth_policy
   let assert True = fx == effect.none()
 }
 
-pub fn try_task_detail_update_error_checks_auth_after_local_feedback_test() {
+pub fn try_update_error_checks_auth_after_local_feedback_test() {
   let err = sample_error()
   let model =
     detail_model(
@@ -141,13 +150,13 @@ pub fn try_task_detail_update_error_checks_auth_after_local_feedback_test() {
       ),
     )
 
-  let assert Some(tasks_update.TaskDetailUpdate(next, fx, auth_policy)) =
-    tasks_update.try_task_detail_update(
+  let assert Some(detail_update.Update(next, fx, auth_policy)) =
+    detail_update.try_update(
       model,
       pool_messages.MemberTaskUpdated(Error(err)),
       dispatch_context(),
     )
-  let assert tasks_update.CheckTaskDetailAuthAfter(auth_err) = auth_policy
+  let assert detail_update.CheckAuthAfter(auth_err) = auth_policy
 
   let assert False = next.pool.member_task_detail_edit_in_flight
   let assert Some("boom") = next.pool.member_task_detail_edit_error
@@ -155,9 +164,9 @@ pub fn try_task_detail_update_error_checks_auth_after_local_feedback_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn try_task_detail_update_ignores_non_detail_messages_test() {
+pub fn try_update_ignores_non_detail_messages_test() {
   let assert None =
-    tasks_update.try_task_detail_update(
+    detail_update.try_update(
       detail_model(member_pool.default_model()),
       pool_messages.MemberPoolFiltersToggled,
       dispatch_context(),
@@ -165,40 +174,44 @@ pub fn try_task_detail_update_ignores_non_detail_messages_test() {
 }
 
 pub fn local_task_detail_tab_clicked_sets_tab_test() {
-  let #(next, fx) =
-    tasks_update.handle_task_detail_tab_clicked(
+  let #(next, fx, policy) =
+    apply_pool_update(
       member_pool.default_model(),
-      task_tabs.MetricsTab,
+      pool_messages.MemberTaskDetailTabClicked(task_tabs.MetricsTab),
+      dispatch_context(),
     )
 
   let assert task_tabs.MetricsTab = next.member_task_detail_tab
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
 pub fn local_task_detail_edit_started_sets_edit_values_when_allowed_test() {
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_started(
+  let #(next, fx, policy) =
+    apply_pool_update(
       member_pool.default_model(),
-      Some(sample_task()),
-      True,
+      pool_messages.MemberTaskDetailEditStarted,
+      dispatch_context_with_edit(Some(sample_task()), True),
     )
 
   let assert True = next.member_task_detail_editing
   let assert "Prepare release" = next.member_task_detail_edit_title
   let assert "Review checklist." = next.member_task_detail_edit_description
   let assert None = next.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
 pub fn local_task_detail_edit_started_ignores_disallowed_task_test() {
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_started(
+  let #(next, fx, policy) =
+    apply_pool_update(
       member_pool.default_model(),
-      Some(sample_task()),
-      False,
+      pool_messages.MemberTaskDetailEditStarted,
+      dispatch_context_with_edit(Some(sample_task()), False),
     )
 
   let assert False = next.member_task_detail_editing
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
@@ -213,14 +226,19 @@ pub fn local_task_detail_edit_cancelled_restores_task_values_test() {
       member_task_detail_edit_error: Some("error"),
     )
 
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_cancelled(model, Some(sample_task()))
+  let #(next, fx, policy) =
+    apply_pool_update(
+      model,
+      pool_messages.MemberTaskDetailEditCancelled,
+      dispatch_context_with_edit(Some(sample_task()), True),
+    )
 
   let assert False = next.member_task_detail_editing
   let assert "Prepare release" = next.member_task_detail_edit_title
   let assert "Review checklist." = next.member_task_detail_edit_description
   let assert False = next.member_task_detail_edit_in_flight
   let assert None = next.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
@@ -232,11 +250,16 @@ pub fn local_task_detail_edit_title_changed_clears_error_test() {
       member_task_detail_edit_error: Some("error"),
     )
 
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_title_changed(model, "New")
+  let #(next, fx, policy) =
+    apply_pool_update(
+      model,
+      pool_messages.MemberTaskDetailEditTitleChanged("New"),
+      dispatch_context(),
+    )
 
   let assert "New" = next.member_task_detail_edit_title
   let assert None = next.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
@@ -248,14 +271,16 @@ pub fn local_task_detail_edit_submitted_blank_title_sets_error_test() {
       member_task_detail_edit_description: "Review checklist.",
     )
 
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_submitted(
+  let #(next, fx, policy) =
+    apply_pool_update(
       model,
-      edit_context(Some(sample_task()), True),
+      pool_messages.MemberTaskDetailEditSubmitted,
+      dispatch_context_with_edit(Some(sample_task()), True),
     )
 
   let assert Some("Title required") = next.member_task_detail_edit_error
   let assert False = next.member_task_detail_edit_in_flight
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
@@ -271,16 +296,18 @@ pub fn local_task_detail_edit_submitted_unchanged_stops_editing_test() {
       member_task_detail_edit_error: Some("old"),
     )
 
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_submitted(
+  let #(next, fx, policy) =
+    apply_pool_update(
       model,
-      edit_context(Some(sample_task()), True),
+      pool_messages.MemberTaskDetailEditSubmitted,
+      dispatch_context_with_edit(Some(sample_task()), True),
     )
 
   let assert False = next.member_task_detail_editing
   let assert "Prepare release" = next.member_task_detail_edit_title
   let assert "Review checklist." = next.member_task_detail_edit_description
   let assert None = next.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
@@ -295,16 +322,18 @@ pub fn local_task_detail_edit_submitted_changed_sets_in_flight_test() {
       member_task_detail_edit_type_id: "1",
     )
 
-  let #(next, fx) =
-    tasks_update.handle_task_detail_edit_submitted(
+  let #(next, fx, policy) =
+    apply_pool_update(
       model,
-      edit_context(Some(sample_task()), True),
+      pool_messages.MemberTaskDetailEditSubmitted,
+      dispatch_context_with_edit(Some(sample_task()), True),
     )
 
   let assert "Updated title" = next.member_task_detail_edit_title
   let assert "Updated description" = next.member_task_detail_edit_description
   let assert True = next.member_task_detail_edit_in_flight
   let assert None = next.member_task_detail_edit_error
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
 
@@ -325,7 +354,12 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
       member_task_detail_edit_error: Some("old"),
     )
 
-  let #(next, fx) = tasks_update.handle_task_updated_ok(model, updated)
+  let #(next, fx, policy) =
+    apply_pool_update(
+      model,
+      pool_messages.MemberTaskUpdated(Ok(updated)),
+      dispatch_context(),
+    )
 
   let assert True = next.member_tasks == remote.Loaded([updated])
   let assert False = next.member_task_detail_editing
@@ -333,7 +367,8 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
   let assert "Updated description" = next.member_task_detail_edit_description
   let assert False = next.member_task_detail_edit_in_flight
   let assert None = next.member_task_detail_edit_error
-  let assert True = fx == effect.none()
+  let assert detail_update.NoAuthCheck = policy
+  let assert True = fx != effect.none()
 }
 
 pub fn local_task_updated_error_sets_edit_error_test() {
@@ -344,33 +379,45 @@ pub fn local_task_updated_error_sets_edit_error_test() {
       member_task_detail_edit_error: None,
     )
 
-  let #(next, fx) = tasks_update.handle_task_updated_error(model, "boom")
+  let err = sample_error()
+  let #(next, fx, policy) =
+    apply_pool_update(
+      model,
+      pool_messages.MemberTaskUpdated(Error(err)),
+      dispatch_context(),
+    )
 
   let assert False = next.member_task_detail_edit_in_flight
   let assert Some("boom") = next.member_task_detail_edit_error
-  let assert True = fx == effect.none()
+  let assert detail_update.CheckAuthAfter(auth_err) = policy
+  let assert True = auth_err == err
+  let assert True = fx != effect.none()
 }
 
 pub fn local_task_metrics_fetched_ok_sets_loaded_metrics_test() {
   let metrics = sample_metrics()
-  let #(next, fx) =
-    tasks_update.handle_task_metrics_fetched_ok(
+  let #(next, fx, policy) =
+    apply_pool_update(
       member_pool.default_model(),
-      metrics,
+      pool_messages.MemberTaskMetricsFetched(Ok(metrics)),
+      dispatch_context(),
     )
 
   let assert True = next.member_task_detail_metrics == remote.Loaded(metrics)
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
 
 pub fn local_task_metrics_fetched_error_sets_failed_metrics_test() {
   let err = sample_error()
-  let #(next, fx) =
-    tasks_update.handle_task_metrics_fetched_error(
+  let #(next, fx, policy) =
+    apply_pool_update(
       member_pool.default_model(),
-      err,
+      pool_messages.MemberTaskMetricsFetched(Error(err)),
+      dispatch_context(),
     )
 
   let assert True = next.member_task_detail_metrics == remote.Failed(err)
+  let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }

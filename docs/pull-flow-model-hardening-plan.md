@@ -79,21 +79,24 @@ The naming is misleading:
 - The SQL query name says `update_task_claimed_by_user`, while the SQL predicate
   also allows `status = 'available'`.
 
-The current claim flow does not enforce blocked server-side. The UI opens a
-blocked-claim confirmation in some paths, and drag/drop can still submit a
-claim. This makes `blocked` a warning rather than a hard readiness rule.
+The original claim flow did not enforce blocked server-side. The UI opened a
+blocked-claim confirmation in some paths, and drag/drop could still submit a
+claim. That made `blocked` a warning rather than a hard readiness rule. The
+implemented cleanup now makes blocked tasks non-claimable and keeps these
+details as historical context for the hardening work.
 
 ### Client UI
 
-The client already hides or disables claim actions in several blocked surfaces,
-but it also has a blocked claim override:
+The client already hides or disables claim actions in several blocked surfaces.
+The earlier blocked claim override has been retired:
 
 - `member_blocked_claim_task`
 - `MemberBlockedClaimCancelled`
 - `MemberBlockedClaimConfirmed`
 - `blocked_claim_modal`
 
-This should be removed if blocked means non-claimable.
+These names are kept here as historical audit markers only. They should not
+reappear if blocked means non-claimable.
 
 The org section currently uses the `Assignments` section, route, messages, and
 labels for project/team membership management. The visible product term should
@@ -296,14 +299,14 @@ second blocked interpretation beside it.
 
 Required cleanup:
 
-- Remove `member_blocked_claim_task` from pool state.
-- Remove `MemberBlockedClaimCancelled` and `MemberBlockedClaimConfirmed`.
-- Delete `blocked_claim_modal` and its tests after replacing expectations with
-  "blocked tasks do not submit claim".
-- Remove modal i18n keys and feedback strings that only support blocked override.
-- Centralize client claimability in one helper, for example
-  `can_claim_task(task) -> Bool`, and use it from card, row, detail footer,
-  touch/click, and drag/drop handling.
+- Done: remove `member_blocked_claim_task` from pool state.
+- Done: remove `MemberBlockedClaimCancelled` and `MemberBlockedClaimConfirmed`.
+- Done: delete `blocked_claim_modal` and its tests after replacing expectations
+  with "blocked tasks do not submit claim".
+- Done: remove modal i18n keys and feedback strings that only support blocked
+  override.
+- Done: centralize client claimability in `features/tasks/claimability.gleam`
+  and use it from card, row, detail footer, click, and drag/drop handling.
 - Rename `update_task_claimed_by_user` and generated query bindings to
   `update_editable_task` so comments, function names, and SQL predicates all
   describe the same rule.
@@ -354,10 +357,10 @@ Update the API contract to say:
 
 ### 4. Simplify Client Blocked Claim UX
 
-1. Remove `member_blocked_claim_task` from pool state.
-2. Remove blocked claim messages and handlers.
-3. Delete or retire `blocked_claim_modal`.
-4. Make direct click, detail footer, list row, canvas card, touch, and drag/drop
+1. Done: remove `member_blocked_claim_task` from pool state.
+2. Done: remove blocked claim messages and handlers.
+3. Done: delete `blocked_claim_modal`.
+4. Done: make direct click, detail footer, list row, canvas card, and drag/drop
    share one helper rule: blocked tasks do not submit claim.
 5. Keep dependency visibility through blocked badge, task details, and blocker
    highlighting.

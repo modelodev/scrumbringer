@@ -2,10 +2,8 @@
 ////
 //// Card notes provide context and decisions at the card level.
 
-import domain/org_role
-import domain/project_role
+import domain/card.{type CardNote, CardNote}
 import gleam/list
-import gleam/option.{type Option}
 import gleam/result
 import pog
 import scrumbringer_server/services/persisted_field
@@ -14,21 +12,6 @@ import scrumbringer_server/services/service_error.{
   type ServiceError, DbError, NotFound,
 }
 import scrumbringer_server/sql
-
-/// A note attached to a card.
-pub type CardNote {
-  CardNote(
-    id: Int,
-    card_id: Int,
-    user_id: Int,
-    content: String,
-    created_at: String,
-    // AC20: Author info for tooltip
-    author_email: String,
-    author_project_role: Option(project_role.ProjectRole),
-    author_org_role: org_role.OrgRole,
-  )
-}
 
 /// Lists all notes for a card, ordered by creation time.
 pub fn list_notes_for_card(

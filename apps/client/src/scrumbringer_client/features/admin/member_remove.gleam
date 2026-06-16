@@ -147,7 +147,7 @@ fn permission_warning_effect(
 // Confirmation Handlers
 // =============================================================================
 
-pub fn handle_member_remove_clicked(
+fn handle_member_remove_clicked(
   model: admin_members.Model,
   user_id: Int,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -169,7 +169,7 @@ pub fn handle_member_remove_clicked(
   )
 }
 
-pub fn handle_member_remove_cancelled(
+fn handle_member_remove_cancelled(
   model: admin_members.Model,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(
@@ -182,7 +182,7 @@ pub fn handle_member_remove_cancelled(
   )
 }
 
-pub fn handle_member_remove_confirmed(
+fn handle_member_remove_confirmed(
   model: admin_members.Model,
   context: Context(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -215,7 +215,7 @@ pub fn handle_member_remove_confirmed(
 // Result Handlers
 // =============================================================================
 
-pub fn handle_member_removed_ok(
+fn handle_member_removed_ok(
   model: admin_members.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -230,7 +230,7 @@ pub fn handle_member_removed_ok(
   )
 }
 
-pub fn handle_member_removed_error(
+fn handle_member_removed_error(
   model: admin_members.Model,
   message: String,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -244,8 +244,6 @@ pub fn handle_member_removed_error(
   )
 }
 
-pub fn success_effect(
-  context: FeedbackContext(parent_msg),
-) -> Effect(parent_msg) {
+fn success_effect(context: FeedbackContext(parent_msg)) -> Effect(parent_msg) {
   context.on_success_toast(context.member_removed)
 }

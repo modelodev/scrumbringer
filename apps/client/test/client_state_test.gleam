@@ -1,9 +1,7 @@
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import scrumbringer_client/client_state.{
-  rect_contains_point, remote_to_resource_state,
-}
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state.{remote_to_resource_state}
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/hydration
 
 // =============================================================================
@@ -11,65 +9,65 @@ import scrumbringer_client/hydration
 // =============================================================================
 
 pub fn rect_contains_point_center_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
-  let assert True = rect_contains_point(rect, 50, 50)
+  let assert True = member_pool.rect_contains_point(rect, 50, 50)
 }
 
 pub fn rect_contains_point_top_left_corner_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
   // Inclusive bounds - point at top-left corner
-  let assert True = rect_contains_point(rect, 10, 10)
+  let assert True = member_pool.rect_contains_point(rect, 10, 10)
 }
 
 pub fn rect_contains_point_bottom_right_corner_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
   // Inclusive bounds - point at bottom-right corner (10 + 100 = 110)
-  let assert True = rect_contains_point(rect, 110, 110)
+  let assert True = member_pool.rect_contains_point(rect, 110, 110)
 }
 
 pub fn rect_contains_point_outside_left_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
-  let assert False = rect_contains_point(rect, 5, 50)
+  let assert False = member_pool.rect_contains_point(rect, 5, 50)
 }
 
 pub fn rect_contains_point_outside_right_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
-  let assert False = rect_contains_point(rect, 115, 50)
+  let assert False = member_pool.rect_contains_point(rect, 115, 50)
 }
 
 pub fn rect_contains_point_outside_top_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
-  let assert False = rect_contains_point(rect, 50, 5)
+  let assert False = member_pool.rect_contains_point(rect, 50, 5)
 }
 
 pub fn rect_contains_point_outside_bottom_test() {
-  let rect = state_types.Rect(left: 10, top: 10, width: 100, height: 100)
+  let rect = member_pool.Rect(left: 10, top: 10, width: 100, height: 100)
 
-  let assert False = rect_contains_point(rect, 50, 115)
+  let assert False = member_pool.rect_contains_point(rect, 50, 115)
 }
 
 pub fn rect_contains_point_zero_origin_test() {
-  let rect = state_types.Rect(left: 0, top: 0, width: 50, height: 50)
+  let rect = member_pool.Rect(left: 0, top: 0, width: 50, height: 50)
 
-  let assert True = rect_contains_point(rect, 0, 0)
+  let assert True = member_pool.rect_contains_point(rect, 0, 0)
 
-  let assert True = rect_contains_point(rect, 25, 25)
+  let assert True = member_pool.rect_contains_point(rect, 25, 25)
 
-  let assert True = rect_contains_point(rect, 50, 50)
+  let assert True = member_pool.rect_contains_point(rect, 50, 50)
 }
 
 pub fn rect_contains_point_negative_coords_outside_test() {
-  let rect = state_types.Rect(left: 0, top: 0, width: 50, height: 50)
+  let rect = member_pool.Rect(left: 0, top: 0, width: 50, height: 50)
 
-  let assert False = rect_contains_point(rect, -1, 25)
+  let assert False = member_pool.rect_contains_point(rect, -1, 25)
 
-  let assert False = rect_contains_point(rect, 25, -1)
+  let assert False = member_pool.rect_contains_point(rect, 25, -1)
 }
 
 // =============================================================================

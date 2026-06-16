@@ -347,7 +347,7 @@ fn require_rule_metrics_access(
 fn fetch_rule(
   db: pog.Connection,
   rule_id: Int,
-) -> Result(rules_db.Rule, wisp.Response) {
+) -> Result(rules_db.RuleRecord, wisp.Response) {
   case rules_db.get_rule(db, rule_id) {
     Ok(rule) -> Ok(rule)
     Error(_) -> Error(not_found_response())
@@ -358,7 +358,7 @@ fn fetch_workflow(
   db: pog.Connection,
   workflow_id: Int,
   message: String,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
     Error(_) -> Error(api.error(404, "NOT_FOUND", message))
@@ -368,8 +368,8 @@ fn fetch_workflow(
 fn workflow_from_rule(
   db,
   user: StoredUser,
-  rule: rules_db.Rule,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+  rule: rules_db.RuleRecord,
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   case workflows_db.get_workflow(db, rule.workflow_id) {
     Ok(workflow) -> authorize_workflow_access(db, user, workflow)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Workflow not found"))
@@ -379,7 +379,7 @@ fn workflow_from_rule(
 fn require_workflow_access(
   db: pog.Connection,
   user: StoredUser,
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
 ) -> Result(Nil, wisp.Response) {
   authorization.require_project_manager_with_org_bypass(
     db,
@@ -399,8 +399,8 @@ fn database_error_response() -> wisp.Response {
 fn authorize_workflow_access(
   db: pog.Connection,
   user: StoredUser,
-  workflow: workflows_db.Workflow,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+  workflow: workflows_db.WorkflowRecord,
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   case
     authorization.require_project_manager_with_org_bypass(
       db,

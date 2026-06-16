@@ -4,6 +4,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 import gleam/result
+import scrumbringer_server/http/payload_fields
 
 pub type CreatePayload {
   CreatePayload(name: String, description: String, active: Bool)
@@ -13,7 +14,7 @@ pub type UpdatePayload {
   UpdatePayload(
     name: Option(String),
     description: Option(String),
-    active: Option(Int),
+    active: Option(Bool),
   )
 }
 
@@ -48,7 +49,7 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
     use active <- decode.optional_field(
       "active",
       None,
-      decode.optional(decode.int),
+      payload_fields.optional_active_flag_decoder(),
     )
     decode.success(UpdatePayload(
       name: name,

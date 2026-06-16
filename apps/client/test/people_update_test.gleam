@@ -33,8 +33,11 @@ pub fn roster_success_filters_expansions_for_missing_members_test() {
       )
     }
 
-  let #(next_pool, fx) =
-    people_update.handle_roster_fetched_ok(pool, [member(10)])
+  let assert Some(#(next_pool, fx)) =
+    people_update.try_update(
+      pool,
+      pool_messages.MemberPeopleRosterFetched(Ok([member(10)])),
+    )
 
   let expected_roster = remote.Loaded([member(10)])
   let assert True = next_pool.people_roster == expected_roster
@@ -56,8 +59,11 @@ pub fn try_update_handles_roster_success_test() {
 }
 
 pub fn row_toggle_uses_collapsed_default_test() {
-  let #(next_pool, fx) =
-    people_update.handle_row_toggled(member_pool.default_model(), 10)
+  let assert Some(#(next_pool, fx)) =
+    people_update.try_update(
+      member_pool.default_model(),
+      pool_messages.MemberPeopleRowToggled(10),
+    )
 
   let assert Ok(people_state.Expanded) =
     dict.get(next_pool.people_expansions, 10)
@@ -78,8 +84,11 @@ pub fn try_update_handles_row_toggle_test() {
 
 pub fn roster_error_sets_failed_state_test() {
   let err = ApiError(status: 500, code: "E_PEOPLE", message: "Server error")
-  let #(next_pool, fx) =
-    people_update.handle_roster_fetched_error(member_pool.default_model(), err)
+  let assert Some(#(next_pool, fx)) =
+    people_update.try_update(
+      member_pool.default_model(),
+      pool_messages.MemberPeopleRosterFetched(Error(err)),
+    )
 
   let assert True = next_pool.people_roster == remote.Failed(err)
   let assert True = fx == effect.none()

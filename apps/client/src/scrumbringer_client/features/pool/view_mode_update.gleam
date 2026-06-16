@@ -32,7 +32,7 @@ pub fn try_update(
   }
 }
 
-pub fn view_mode_changed(
+fn view_mode_changed(
   model: member_pool.Model,
   mode: view_mode.ViewMode,
   context: Context,

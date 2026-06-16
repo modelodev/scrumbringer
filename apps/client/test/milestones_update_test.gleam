@@ -20,8 +20,9 @@ import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/milestones/dialog_update as milestone_dialog_update
 import scrumbringer_client/features/milestones/ids as milestone_ids
+import scrumbringer_client/features/milestones/movement_update as milestone_movement_update
 import scrumbringer_client/features/milestones/update as milestones_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_update
@@ -59,10 +60,15 @@ fn local_context(selected_project_id) -> milestones_update.Context(Nil) {
     on_milestone_created: fn(_result) { Nil },
     on_milestone_updated: fn(_result) { Nil },
     on_milestone_deleted: fn(_milestone_id, _result) { Nil },
-    on_milestone_card_moved: fn(_result) { Nil },
-    on_milestone_task_moved: fn(_result) { Nil },
     name_required: "Name required",
     select_project_first: "Select project first",
+  )
+}
+
+fn movement_context() -> milestone_movement_update.Context(Nil) {
+  milestone_movement_update.Context(
+    on_milestone_card_moved: fn(_result) { Nil },
+    on_milestone_task_moved: fn(_result) { Nil },
   )
 }
 
@@ -205,14 +211,18 @@ pub fn local_milestone_create_submit_requires_name_test() {
       ),
     )
 
-  let #(next, fx) =
-    milestones_update.handle_milestone_create_submitted(
+  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
+    milestone_dialog_update.try_update(
       model,
+      pool_messages.MemberMilestoneCreateSubmitted,
       local_context(Some(8)),
+      feedback_context(),
     )
 
   next.member_milestone_dialog_error |> assert_equal(Some("Name required"))
   let assert True = fx == effect.none()
+  policy |> assert_equal(milestones_update.NoRefresh)
+  root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
 pub fn local_milestone_create_submit_requires_project_test() {
@@ -225,15 +235,19 @@ pub fn local_milestone_create_submit_requires_project_test() {
       ),
     )
 
-  let #(next, fx) =
-    milestones_update.handle_milestone_create_submitted(
+  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
+    milestone_dialog_update.try_update(
       model,
+      pool_messages.MemberMilestoneCreateSubmitted,
       local_context(None),
+      feedback_context(),
     )
 
   next.member_milestone_dialog_error
   |> assert_equal(Some("Select project first"))
   let assert True = fx == effect.none()
+  policy |> assert_equal(milestones_update.NoRefresh)
+  root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
 pub fn local_milestone_create_submit_sets_in_flight_test() {
@@ -246,14 +260,18 @@ pub fn local_milestone_create_submit_sets_in_flight_test() {
       ),
     )
 
-  let #(next, _fx) =
-    milestones_update.handle_milestone_create_submitted(
+  let assert Some(milestones_update.Update(next, _fx, policy, root_policy)) =
+    milestone_dialog_update.try_update(
       model,
+      pool_messages.MemberMilestoneCreateSubmitted,
       local_context(Some(8)),
+      feedback_context(),
     )
 
   next.member_milestone_dialog_in_flight |> assert_equal(True)
   next.member_milestone_dialog_error |> assert_equal(None)
+  policy |> assert_equal(milestones_update.NoRefresh)
+  root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
 pub fn local_milestone_edit_clicked_uses_loaded_milestone_test() {
@@ -263,7 +281,13 @@ pub fn local_milestone_edit_clicked_uses_loaded_milestone_test() {
       member_milestones: Loaded([sample_progress(9)]),
     )
 
-  let #(next, fx) = milestones_update.handle_milestone_edit_clicked(model, 9)
+  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
+    milestone_dialog_update.try_update(
+      model,
+      pool_messages.MemberMilestoneEditClicked(9),
+      local_context(Some(8)),
+      feedback_context(),
+    )
 
   next.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogEdit(
@@ -272,6 +296,8 @@ pub fn local_milestone_edit_clicked_uses_loaded_milestone_test() {
     description: "Desc",
   ))
   let assert True = fx == effect.none()
+  policy |> assert_equal(milestones_update.NoRefresh)
+  root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
 pub fn local_milestone_deleted_ok_clears_matching_selection_test() {
@@ -286,12 +312,23 @@ pub fn local_milestone_deleted_ok_clears_matching_selection_test() {
       member_selected_milestone_id: Some(9),
     )
 
-  let #(next, fx) = milestones_update.handle_milestone_deleted_ok(model, 9)
+  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
+    milestone_dialog_update.try_update(
+      model,
+      pool_messages.MemberMilestoneDeleted(9, Ok(Nil)),
+      local_context(Some(8)),
+      feedback_context(),
+    )
 
   next.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogClosed)
   next.member_selected_milestone_id |> assert_equal(None)
   let assert True = fx == effect.none()
+  policy
+  |> assert_equal(milestones_update.RefreshWithSuccess(
+    milestones_update.MilestoneDeleted,
+  ))
+  root_policy |> assert_equal(milestones_update.NoRootPolicy)
 }
 
 pub fn milestone_success_effect_uses_feedback_context_test() {
@@ -600,7 +637,7 @@ pub fn milestone_create_then_create_card_from_details_sets_context_test() {
   after_card_click.member.pool.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogClosed)
   after_card_click.admin.cards.cards_dialog_mode
-  |> assert_equal(Some(state_types.CardDialogCreate))
+  |> assert_equal(Some(admin_cards.CardDialogCreate))
   after_card_click.admin.cards.cards_create_milestone_id
   |> assert_equal(Some(44))
 }
@@ -899,8 +936,6 @@ pub fn milestone_member_pool_update_toggles_filter_locally_test() {
     milestones_update.try_member_pool_update(
       pool,
       pool_messages.MemberMilestonesShowCompletedToggled,
-      local_context(Some(1)),
-      feedback_context(),
     )
 
   next.member_milestones_show_completed |> assert_equal(True)
@@ -916,8 +951,6 @@ pub fn milestone_member_pool_update_details_selects_without_metrics_effect_test(
     milestones_update.try_member_pool_update(
       pool,
       pool_messages.MemberMilestoneDetailsClicked(77),
-      local_context(Some(1)),
-      feedback_context(),
     )
 
   next.member_selected_milestone_id |> assert_equal(Some(77))
@@ -932,7 +965,7 @@ pub fn milestone_member_pool_update_created_ok_requests_refresh_test() {
   let pool = client_state.default_model().member.pool
 
   let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
+    milestone_dialog_update.try_update(
       pool,
       pool_messages.MemberMilestoneCreated(Ok(sample_milestone(33))),
       local_context(Some(1)),
@@ -953,7 +986,7 @@ pub fn milestone_member_pool_update_update_error_stays_local_test() {
   let err = ApiError(status: 500, code: "SERVER_ERROR", message: "boom")
 
   let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
+    milestone_dialog_update.try_update(
       pool,
       pool_messages.MemberMilestoneUpdated(Error(err)),
       local_context(Some(1)),
@@ -975,10 +1008,10 @@ pub fn milestone_member_pool_update_card_move_uses_local_pool_test() {
     )
 
   let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
+    milestone_movement_update.try_update(
       pool,
       pool_messages.MemberMilestoneCardMoveClicked(30, 10, 20),
-      local_context(Some(1)),
+      movement_context(),
       feedback_context(),
     )
 
@@ -998,10 +1031,10 @@ pub fn milestone_member_pool_update_drop_task_clears_drag_item_test() {
     )
 
   let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
+    milestone_movement_update.try_update(
       pool,
       pool_messages.MemberMilestoneDroppedOn(20),
-      local_context(Some(1)),
+      movement_context(),
       feedback_context(),
     )
 
@@ -1009,37 +1042,6 @@ pub fn milestone_member_pool_update_drop_task_clears_drag_item_test() {
   let assert True = fx != effect.none()
   policy |> assert_equal(milestones_update.NoRefresh)
   root_policy |> assert_equal(milestones_update.NoRootPolicy)
-}
-
-pub fn milestone_member_pool_update_create_card_requests_root_policy_test() {
-  let pool =
-    member_pool.Model(
-      ..client_state.default_model().member.pool,
-      member_milestone_dialog: member_pool.MilestoneDialogEdit(
-        id: 89,
-        name: "M",
-        description: "",
-      ),
-      member_milestone_dialog_in_flight: True,
-      member_milestone_dialog_error: Some("stale"),
-    )
-
-  let assert Some(milestones_update.Update(next, fx, policy, root_policy)) =
-    milestones_update.try_member_pool_update(
-      pool,
-      pool_messages.MemberMilestoneCreateCardClicked(89),
-      local_context(Some(1)),
-      feedback_context(),
-    )
-
-  next.member_milestone_dialog
-  |> assert_equal(member_pool.MilestoneDialogClosed)
-  next.member_milestone_dialog_in_flight |> assert_equal(False)
-  next.member_milestone_dialog_error |> assert_equal(None)
-  let assert True = fx == effect.none()
-  policy |> assert_equal(milestones_update.NoRefresh)
-  root_policy
-  |> assert_equal(milestones_update.OpenCardForMilestone(89))
 }
 
 pub fn milestone_member_pool_update_ignores_unrelated_message_test() {
@@ -1055,8 +1057,6 @@ pub fn milestone_member_pool_update_ignores_unrelated_message_test() {
       is_editing: False,
       modal_open: False,
     )),
-    local_context(Some(1)),
-    feedback_context(),
   )
   |> assert_equal(None)
 }
@@ -1145,7 +1145,7 @@ pub fn milestone_create_card_click_opens_card_dialog_with_milestone_test() {
   next.member.pool.member_milestone_dialog
   |> assert_equal(member_pool.MilestoneDialogClosed)
   next.admin.cards.cards_dialog_mode
-  |> assert_equal(Some(state_types.CardDialogCreate))
+  |> assert_equal(Some(admin_cards.CardDialogCreate))
   next.admin.cards.cards_create_milestone_id |> assert_equal(Some(89))
 }
 
@@ -1187,7 +1187,7 @@ pub fn close_card_dialog_without_milestone_context_has_no_focus_effect_test() {
   let #(opened, _fx_open) =
     pool_update.update(
       model,
-      pool_messages.OpenCardDialog(state_types.CardDialogCreate),
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate),
       test_context(),
     )
 
@@ -1254,12 +1254,12 @@ pub fn global_create_card_from_milestones_opens_pool_create_without_milestone_te
   let #(next, _fx) =
     pool_update.update(
       after_milestone_create,
-      pool_messages.OpenCardDialog(state_types.CardDialogCreate),
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate),
       test_context(),
     )
 
   next.admin.cards.cards_dialog_mode
-  |> assert_equal(Some(state_types.CardDialogCreate))
+  |> assert_equal(Some(admin_cards.CardDialogCreate))
   next.admin.cards.cards_create_milestone_id |> assert_equal(None)
 }
 

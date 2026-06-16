@@ -73,13 +73,13 @@ pub type Organization {
 }
 
 /// A project within an organization.
-pub type Project {
-  Project(id: Int, org_id: Int, name: String, created_at: String)
+pub type StoredProject {
+  StoredProject(id: Int, org_id: Int, name: String, created_at: String)
 }
 
 /// A user's membership in a project.
-pub type ProjectMember {
-  ProjectMember(
+pub type StoredProjectMember {
+  StoredProjectMember(
     project_id: Int,
     user_id: Int,
     role: ProjectRole,
@@ -121,8 +121,8 @@ pub type State {
     next_user_id: Int,
     users_by_id: dict.Dict(Int, StoredUser),
     user_id_by_email: dict.Dict(String, Int),
-    projects_by_id: dict.Dict(Int, Project),
-    project_members: dict.Dict(#(Int, Int), ProjectMember),
+    projects_by_id: dict.Dict(Int, StoredProject),
+    project_members: dict.Dict(#(Int, Int), StoredProjectMember),
     invites_by_code: dict.Dict(String, OrgInvite),
   )
 }

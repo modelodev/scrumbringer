@@ -32,6 +32,7 @@ import scrumbringer_client/api/tasks/capabilities as capabilities_api
 import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/api_tokens as admin_api_tokens
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -41,7 +42,6 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_state/selectors as state_selectors
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/hydration
@@ -590,7 +590,7 @@ fn hydrate_integration_users_request(
       let api_tokens = admin.api_tokens
       admin_state.AdminModel(
         ..admin,
-        api_tokens: state_types.ApiTokensModel(
+        api_tokens: admin_api_tokens.ApiTokensModel(
           ..api_tokens,
           integration_users: Loading,
         ),
@@ -624,7 +624,10 @@ fn hydrate_api_tokens_request(
       let api_tokens = admin.api_tokens
       admin_state.AdminModel(
         ..admin,
-        api_tokens: state_types.ApiTokensModel(..api_tokens, tokens: Loading),
+        api_tokens: admin_api_tokens.ApiTokensModel(
+          ..api_tokens,
+          tokens: Loading,
+        ),
       )
     })
 

@@ -653,8 +653,8 @@ fn view_card_fields(
           event.on_input(on_title_changed),
           attribute.required(True),
         ]
-        |> maybe_add_aria_label(title_aria_label)
-        |> maybe_add_autofocus(autofocus_title),
+        |> crud_dialog_base.with_optional_aria_label(title_aria_label)
+        |> crud_dialog_base.with_autofocus_when(autofocus_title),
       ),
     ),
     form_field.view(
@@ -665,7 +665,7 @@ fn view_card_fields(
           attribute.value(description),
           event.on_input(on_description_changed),
         ]
-        |> maybe_add_aria_label(description_aria_label),
+        |> crud_dialog_base.with_optional_aria_label(description_aria_label),
       ),
     ),
     form_field.view(
@@ -679,26 +679,6 @@ fn view_card_fields(
       ),
     ),
   ]
-}
-
-fn maybe_add_aria_label(
-  attrs: List(attribute.Attribute(Msg)),
-  label: Option(String),
-) -> List(attribute.Attribute(Msg)) {
-  case label {
-    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
-    option.None -> attrs
-  }
-}
-
-fn maybe_add_autofocus(
-  attrs: List(attribute.Attribute(Msg)),
-  should_autofocus: Bool,
-) -> List(attribute.Attribute(Msg)) {
-  case should_autofocus {
-    True -> [attribute.autofocus(True), ..attrs]
-    False -> attrs
-  }
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {

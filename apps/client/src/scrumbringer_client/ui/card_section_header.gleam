@@ -60,7 +60,7 @@ pub type ExtendedConfig(msg) {
     on_button_click: msg,
     /// Optional container CSS class (defaults to "card-section-header")
     container_class: Option(String),
-    /// Optional button CSS class (defaults to "btn btn-sm btn-primary")
+    /// Optional compatibility class appended to the shared button classes.
     button_class: Option(String),
   )
 }
@@ -69,7 +69,7 @@ pub type ExtendedConfig(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   view_internal(
     "card-section-header",
-    "btn btn-sm btn-primary",
+    None,
     config.title,
     config.button_label,
     config.button_disabled,
@@ -81,7 +81,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 pub fn view_with_class(class: String, config: Config(msg)) -> Element(msg) {
   view_internal(
     class,
-    "btn btn-sm btn-primary",
+    None,
     config.title,
     config.button_label,
     config.button_disabled,
@@ -95,13 +95,9 @@ pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
     Some(c) -> c
     None -> "card-section-header"
   }
-  let button_class = case config.button_class {
-    Some(c) -> c
-    None -> "btn btn-sm btn-primary"
-  }
   view_internal(
     container_class,
-    button_class,
+    config.button_class,
     config.title,
     config.button_label,
     config.button_disabled,
@@ -115,7 +111,7 @@ pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
 
 fn view_internal(
   container_class: String,
-  button_class: String,
+  button_class: Option(String),
   title: String,
   button_label: String,
   button_disabled: Bool,
@@ -130,7 +126,17 @@ fn view_internal(
       button.EntityAction,
     )
       |> button.with_disabled(button_disabled)
-      |> button.with_class(button_class)
+      |> with_compat_class(button_class)
       |> button.view,
   ])
+}
+
+fn with_compat_class(
+  config: button.Config(msg),
+  class_name: Option(String),
+) -> button.Config(msg) {
+  case class_name {
+    Some(class) -> config |> button.with_class(class)
+    None -> config
+  }
 }

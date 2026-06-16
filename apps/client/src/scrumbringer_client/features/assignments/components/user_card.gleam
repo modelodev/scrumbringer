@@ -17,7 +17,7 @@ import domain/project.{type Project}
 import domain/project_role.{type ProjectRole, Manager, Member, to_string}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/admin/member_role as project_member_role
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -25,6 +25,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
@@ -33,11 +34,11 @@ import scrumbringer_client/ui/loading
 pub type Config(msg) {
   Config(
     locale: Locale,
-    assignments: state_types.AssignmentsModel,
+    assignments: assignments_state.AssignmentsModel,
     all_projects: Remote(List(Project)),
     metrics: Remote(List(OrgMetricsUserOverview)),
     on_user_toggled: fn(Int) -> msg,
-    on_inline_add_started: fn(state_types.AssignmentsAddContext) -> msg,
+    on_inline_add_started: fn(assignments_state.AssignmentsAddContext) -> msg,
     on_role_changed: fn(Int, Int, ProjectRole) -> msg,
     on_remove_confirmed: msg,
     on_remove_cancelled: msg,
@@ -84,7 +85,7 @@ pub fn view_rows(
   let metrics_summary = view_user_metrics_summary(config, user.id)
 
   let is_inline_add = case assignments.inline_add_context {
-    opt.Some(state_types.AddProjectToUser(id)) -> id == user.id
+    opt.Some(assignments_state.AddProjectToUser(id)) -> id == user.id
     _ -> False
   }
 
@@ -129,17 +130,15 @@ pub fn view_rows(
       case is_inline_add {
         True -> view_inline_add(config, projects)
         False ->
-          button(
-            [
-              attribute.class("btn-sm btn-secondary"),
-              event.on_click(
-                config.on_inline_add_started(state_types.AddProjectToUser(
-                  user.id,
-                )),
-              ),
-            ],
-            [text(t(i18n_text.UserProjectsAdd))],
+          ui_button.text(
+            t(i18n_text.UserProjectsAdd),
+            config.on_inline_add_started(assignments_state.AddProjectToUser(
+              user.id,
+            )),
+            ui_button.Secondary,
+            ui_button.EntityAction,
           )
+          |> ui_button.view
       },
     ])
 
@@ -292,22 +291,23 @@ fn view_project_row(
     case is_confirming {
       True ->
         div([attribute.class("assignments-row-actions")], [
-          button(
-            [
-              attribute.class("btn-xs btn-danger"),
-              attribute.attribute("title", remove_label),
-              attribute.attribute("aria-label", remove_label),
-              event.on_click(config.on_remove_confirmed),
-            ],
-            [text(t(i18n_text.Remove))],
-          ),
-          button(
-            [
-              attribute.class("btn-xs btn-secondary"),
-              event.on_click(config.on_remove_cancelled),
-            ],
-            [text(t(i18n_text.Cancel))],
-          ),
+          ui_button.text(
+            t(i18n_text.Remove),
+            config.on_remove_confirmed,
+            ui_button.Danger,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_size(ui_button.ExtraSmall)
+            |> ui_button.with_accessible_label(remove_label)
+            |> ui_button.view,
+          ui_button.text(
+            t(i18n_text.Cancel),
+            config.on_remove_cancelled,
+            ui_button.Secondary,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_size(ui_button.ExtraSmall)
+            |> ui_button.view,
         ])
       False ->
         action_buttons.delete_button(
@@ -377,27 +377,27 @@ fn view_inline_add(
         ],
       ),
       div([attribute.class("assignments-inline-add-actions")], [
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            attribute.disabled(is_disabled),
-            event.on_click(config.on_inline_add_cancelled),
-          ],
-          [text(t(i18n_text.Cancel))],
-        ),
-        button(
-          [
-            attribute.class("btn-xs btn-primary"),
-            attribute.disabled(is_disabled || selected == opt.None),
-            event.on_click(config.on_inline_add_submitted),
-          ],
-          [
-            text(case is_disabled {
-              True -> t(i18n_text.Working)
-              False -> t(i18n_text.Add)
-            }),
-          ],
-        ),
+        ui_button.text(
+          t(i18n_text.Cancel),
+          config.on_inline_add_cancelled,
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.with_size(ui_button.ExtraSmall)
+          |> ui_button.with_disabled(is_disabled)
+          |> ui_button.view,
+        ui_button.text(
+          case is_disabled {
+            True -> t(i18n_text.Working)
+            False -> t(i18n_text.Add)
+          },
+          config.on_inline_add_submitted,
+          ui_button.Primary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.with_size(ui_button.ExtraSmall)
+          |> ui_button.with_disabled(is_disabled || selected == opt.None)
+          |> ui_button.view,
       ]),
     ]),
   ])

@@ -3,6 +3,7 @@ import gleam/option.{None, Some}
 import domain/milestone.{
   type MilestoneState, Active, Completed, Milestone, MilestoneProgress, Ready,
 }
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/milestones/filters
 
 fn progress(
@@ -104,4 +105,28 @@ pub fn milestones_filters_by_project_keeps_all_without_selected_project_test() {
   let assert [first, second] = filtered
   let assert 1 = first.milestone.id
   let assert 2 = second.milestone.id
+}
+
+pub fn milestones_filters_toggle_show_completed_state_test() {
+  let model = member_pool.default_model()
+
+  let next = filters.toggle_show_completed(model)
+
+  let assert True = next.member_milestones_show_completed
+}
+
+pub fn milestones_filters_toggle_show_empty_state_test() {
+  let model = member_pool.default_model()
+
+  let next = filters.toggle_show_empty(model)
+
+  let assert True = next.member_milestones_show_empty
+}
+
+pub fn milestones_filters_set_search_query_state_test() {
+  let model = member_pool.default_model()
+
+  let next = filters.set_search_query(model, "release")
+
+  let assert "release" = next.member_milestones_search_query
 }

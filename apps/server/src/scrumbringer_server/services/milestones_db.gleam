@@ -33,6 +33,10 @@ pub type MilestoneError {
   DbError(pog.QueryError)
 }
 
+const empty_description_create_value = ""
+
+const unchanged_text_update_value = "__unset__"
+
 pub fn is_completed(row: MilestoneWithProgress) -> Bool {
   milestone_domain.MilestoneProgress(
     milestone: row.milestone,
@@ -125,11 +129,11 @@ pub fn update_milestone(
 }
 
 fn description_text(description: Option(String)) -> String {
-  option_helpers.option_to_value(description, "")
+  option_helpers.option_to_value(description, empty_description_create_value)
 }
 
 fn text_update_value(value: Option(String)) -> String {
-  option_helpers.option_to_value(value, "__unset__")
+  option_helpers.option_to_value(value, unchanged_text_update_value)
 }
 
 pub fn delete_milestone(

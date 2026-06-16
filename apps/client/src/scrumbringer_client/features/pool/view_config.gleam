@@ -19,9 +19,6 @@ import scrumbringer_client/client_state/member/now_working as now_working_state
 import scrumbringer_client/client_state/member/pool as member_pool_state
 import scrumbringer_client/client_state/member/positions as positions_state
 import scrumbringer_client/client_state/member/skills as skills_state
-import scrumbringer_client/client_state/types.{
-  PoolDragDragging, PoolDragIdle, PoolDragPendingRect,
-}
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
@@ -120,9 +117,9 @@ fn right_panel_config(
   user: User,
 ) -> pool_view.RightPanelConfig(msg) {
   let #(drag_armed, drag_over) = case context.pool.member_pool_drag {
-    PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
-    PoolDragPendingRect -> #(True, False)
-    PoolDragIdle -> #(False, False)
+    member_pool_state.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
+    member_pool_state.PoolDragPendingRect -> #(True, False)
+    member_pool_state.PoolDragIdle -> #(False, False)
   }
 
   pool_view.RightPanelConfig(

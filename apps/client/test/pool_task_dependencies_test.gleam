@@ -86,9 +86,32 @@ pub fn task_dependencies_dialog_filters_candidates_test() {
   assert_contains(html, "This task depends on")
   assert_contains(html, "API client")
   assert_contains(html, "dependency-candidate selected")
+  assert_contains(html, "type=\"submit\"")
+  assert_contains(html, "form=\"task-dependency-form\"")
   assert_not_contains(html, "Current task")
   assert_not_contains(html, "Finished API")
   assert_not_contains(html, "Other task")
+}
+
+pub fn task_dependencies_dialog_renders_loading_submit_state_test() {
+  let html =
+    task_dependencies.view(
+      task_dependencies.Config(
+        ..config(
+          dependencies: remote.Loaded([]),
+          dialog_mode: dialog_mode.DialogCreate,
+          search_query: "api",
+          candidates: remote.Loaded([sample_task(12, "API client", Available)]),
+          selected_task_id: Some(12),
+        ),
+        add_in_flight: True,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "btn-loading")
+  assert_contains(html, "Adding")
+  assert_contains(html, "disabled")
 }
 
 fn config(

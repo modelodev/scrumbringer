@@ -27,7 +27,6 @@ import domain/project.{type ProjectMember}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 
 // API modules
@@ -175,8 +174,7 @@ fn permission_warning_effect(
 // Dialog Open/Close Handlers
 // =============================================================================
 
-/// Handle member add dialog open.
-pub fn handle_member_add_dialog_opened(
+fn handle_member_add_dialog_opened(
   model: admin_members.Model,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(
@@ -185,14 +183,13 @@ pub fn handle_member_add_dialog_opened(
       members_add_dialog_mode: dialog_mode.DialogCreate,
       members_add_selected_user: opt.None,
       members_add_error: opt.None,
-      org_users_search: state_types.OrgUsersSearchIdle("", 0),
+      org_users_search: admin_members.OrgUsersSearchIdle("", 0),
     ),
     effect.none(),
   )
 }
 
-/// Handle member add dialog close.
-pub fn handle_member_add_dialog_closed(
+fn handle_member_add_dialog_closed(
   model: admin_members.Model,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(
@@ -201,7 +198,7 @@ pub fn handle_member_add_dialog_closed(
       members_add_dialog_mode: dialog_mode.DialogClosed,
       members_add_selected_user: opt.None,
       members_add_error: opt.None,
-      org_users_search: state_types.OrgUsersSearchIdle("", 0),
+      org_users_search: admin_members.OrgUsersSearchIdle("", 0),
     ),
     effect.none(),
   )
@@ -211,21 +208,19 @@ pub fn handle_member_add_dialog_closed(
 // Selection Handlers
 // =============================================================================
 
-/// Handle member add role dropdown change.
-pub fn handle_member_add_role_changed(
+fn handle_member_add_role_changed(
   model: admin_members.Model,
   role: ProjectRole,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(admin_members.Model(..model, members_add_role: role), effect.none())
 }
 
-/// Handle member add user selection.
-pub fn handle_member_add_user_selected(
+fn handle_member_add_user_selected(
   model: admin_members.Model,
   user_id: Int,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   let selected = case model.org_users_search {
-    state_types.OrgUsersSearchLoaded(_, _, users) ->
+    admin_members.OrgUsersSearchLoaded(_, _, users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(user) -> opt.Some(user)
         Error(_) -> opt.None
@@ -244,8 +239,7 @@ pub fn handle_member_add_user_selected(
 // Submission Handlers
 // =============================================================================
 
-/// Handle member add form submission.
-pub fn handle_member_add_submitted(
+fn handle_member_add_submitted(
   model: admin_members.Model,
   context: Context(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -287,8 +281,7 @@ pub fn handle_member_add_submitted(
 // Result Handlers
 // =============================================================================
 
-/// Handle member added success.
-pub fn handle_member_added_ok(
+fn handle_member_added_ok(
   model: admin_members.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -302,8 +295,7 @@ pub fn handle_member_added_ok(
   )
 }
 
-/// Handle member added error.
-pub fn handle_member_added_error(
+fn handle_member_added_error(
   model: admin_members.Model,
   message: String,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -317,8 +309,6 @@ pub fn handle_member_added_error(
   )
 }
 
-pub fn success_effect(
-  context: FeedbackContext(parent_msg),
-) -> Effect(parent_msg) {
+fn success_effect(context: FeedbackContext(parent_msg)) -> Effect(parent_msg) {
   context.on_success_toast(context.member_added)
 }

@@ -61,8 +61,8 @@ pub fn decode_create_task(
       description: description,
       priority: priority,
       type_id: type_id,
-      card_id: card_id,
-      milestone_id: milestone_id,
+      card_id: normalize_optional_id(card_id),
+      milestone_id: normalize_optional_id(milestone_id),
     ))
   }
 

@@ -284,6 +284,8 @@ pub fn task_detail_modal_renders_edit_controls_for_owner_test() {
     |> element.to_document_string
 
   assert_contains(html, "task-detail-edit-toggle")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
   assert_contains(html, "Edit task")
 }
 

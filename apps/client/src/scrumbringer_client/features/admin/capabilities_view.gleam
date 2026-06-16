@@ -5,7 +5,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, input, label, p, span, text}
+import lustre/element/html.{div, form, input, label, p, span, text}
 import lustre/event
 
 import domain/capability.{type Capability}
@@ -22,6 +22,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
@@ -52,6 +53,22 @@ pub type Config(msg) {
   )
 }
 
+type NameDialogConfig(msg) {
+  NameDialogConfig(
+    title: i18n_text.Text,
+    is_open: Bool,
+    error: opt.Option(String),
+    form_id: String,
+    name: String,
+    in_flight: Bool,
+    submit_label: i18n_text.Text,
+    loading_label: i18n_text.Text,
+    on_close: msg,
+    on_name_changed: fn(String) -> msg,
+    on_submitted: msg,
+  )
+}
+
 pub fn view(config: Config(msg)) -> Element(msg) {
   admin_surface.view(
     section_header.view_with_action(
@@ -77,97 +94,71 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_create_dialog(config: Config(msg)) -> Element(msg) {
-  let is_open = case config.capabilities.capabilities_dialog_mode {
-    dialog_mode.DialogCreate -> True
-    _ -> False
-  }
-
-  dialog.view(
-    dialog.DialogConfig(
-      title: t(config, i18n_text.CreateCapability),
-      icon: opt.None,
-      size: dialog.DialogSm,
+  view_name_dialog(
+    config,
+    NameDialogConfig(
+      title: i18n_text.CreateCapability,
+      is_open: config.capabilities.capabilities_dialog_mode
+        == dialog_mode.DialogCreate,
+      error: config.capabilities.capabilities_create_error,
+      form_id: "capability-create-form",
+      name: config.capabilities.capabilities_create_name,
+      in_flight: config.capabilities.capabilities_create_in_flight,
+      submit_label: i18n_text.Create,
+      loading_label: i18n_text.Creating,
       on_close: config.on_create_closed,
+      on_name_changed: config.on_create_name_changed,
+      on_submitted: config.on_create_submitted,
     ),
-    is_open,
-    config.capabilities.capabilities_create_error,
-    [
-      form(
-        [
-          event.on_submit(fn(_) { config.on_create_submitted }),
-          attribute.id("capability-create-form"),
-        ],
-        [
-          form_field.view(
-            t(config, i18n_text.Name),
-            input([
-              attribute.type_("text"),
-              attribute.value(config.capabilities.capabilities_create_name),
-              event.on_input(config.on_create_name_changed),
-              attribute.required(True),
-              attribute.placeholder(t(
-                config,
-                i18n_text.CapabilityNamePlaceholder,
-              )),
-              attribute.attribute("aria-label", "Capability name"),
-            ]),
-          ),
-        ],
-      ),
-    ],
-    [
-      dialog.cancel_button_with_locale(config.locale, config.on_create_closed),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("capability-create-form"),
-          attribute.disabled(config.capabilities.capabilities_create_in_flight),
-          attribute.class(
-            case config.capabilities.capabilities_create_in_flight {
-              True -> "btn-loading"
-              False -> ""
-            },
-          ),
-        ],
-        [
-          text(case config.capabilities.capabilities_create_in_flight {
-            True -> t(config, i18n_text.Creating)
-            False -> t(config, i18n_text.Create)
-          }),
-        ],
-      ),
-    ],
   )
 }
 
 fn view_edit_dialog(config: Config(msg)) -> Element(msg) {
-  let is_open = case config.capabilities.capabilities_dialog_mode {
-    dialog_mode.DialogEdit -> True
-    _ -> False
-  }
+  view_name_dialog(
+    config,
+    NameDialogConfig(
+      title: i18n_text.EditCapability,
+      is_open: config.capabilities.capabilities_dialog_mode
+        == dialog_mode.DialogEdit,
+      error: config.capabilities.capability_edit_error,
+      form_id: "capability-edit-form",
+      name: config.capabilities.capability_edit_name,
+      in_flight: config.capabilities.capability_edit_in_flight,
+      submit_label: i18n_text.Save,
+      loading_label: i18n_text.Saving,
+      on_close: config.on_edit_closed,
+      on_name_changed: config.on_edit_name_changed,
+      on_submitted: config.on_edit_submitted,
+    ),
+  )
+}
 
+fn view_name_dialog(
+  config: Config(msg),
+  name_dialog: NameDialogConfig(msg),
+) -> Element(msg) {
   dialog.view(
     dialog.DialogConfig(
-      title: t(config, i18n_text.EditCapability),
+      title: t(config, name_dialog.title),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: config.on_edit_closed,
+      on_close: name_dialog.on_close,
     ),
-    is_open,
-    config.capabilities.capability_edit_error,
+    name_dialog.is_open,
+    name_dialog.error,
     [
       form(
         [
-          event.on_submit(fn(_) { config.on_edit_submitted }),
-          attribute.id("capability-edit-form"),
+          event.on_submit(fn(_) { name_dialog.on_submitted }),
+          attribute.id(name_dialog.form_id),
         ],
         [
           form_field.view(
             t(config, i18n_text.Name),
             input([
               attribute.type_("text"),
-              attribute.value(config.capabilities.capability_edit_name),
-              event.on_input(config.on_edit_name_changed),
+              attribute.value(name_dialog.name),
+              event.on_input(name_dialog.on_name_changed),
               attribute.required(True),
               attribute.placeholder(t(
                 config,
@@ -180,23 +171,14 @@ fn view_edit_dialog(config: Config(msg)) -> Element(msg) {
       ),
     ],
     [
-      dialog.cancel_button_with_locale(config.locale, config.on_edit_closed),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("capability-edit-form"),
-          attribute.disabled(config.capabilities.capability_edit_in_flight),
-          attribute.class(case config.capabilities.capability_edit_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case config.capabilities.capability_edit_in_flight {
-            True -> t(config, i18n_text.Saving)
-            False -> t(config, i18n_text.Save)
-          }),
-        ],
+      dialog.cancel_button_with_locale(config.locale, name_dialog.on_close),
+      dialog.submit_button_with_locale_form(
+        config.locale,
+        name_dialog.form_id,
+        name_dialog.in_flight,
+        False,
+        name_dialog.submit_label,
+        name_dialog.loading_label,
       ),
     ],
   )
@@ -226,20 +208,19 @@ fn view_delete_dialog(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_delete_closed),
-      button(
-        [
-          attribute.type_("button"),
-          attribute.class("btn btn-danger"),
-          attribute.disabled(config.capabilities.capability_delete_in_flight),
-          event.on_click(config.on_delete_submitted),
-        ],
-        [
-          text(case config.capabilities.capability_delete_in_flight {
-            True -> t(config, i18n_text.Deleting)
-            False -> t(config, i18n_text.Delete)
-          }),
-        ],
-      ),
+      ui_button.text(
+        case config.capabilities.capability_delete_in_flight {
+          True -> t(config, i18n_text.Deleting)
+          False -> t(config, i18n_text.Delete)
+        },
+        config.on_delete_submitted,
+        ui_button.Danger,
+        ui_button.EntityAction,
+      )
+        |> ui_button.with_disabled(
+          config.capabilities.capability_delete_in_flight,
+        )
+        |> ui_button.view,
     ],
   )
 }
@@ -344,22 +325,20 @@ fn view_members_dialog(config: Config(msg), capability_id: Int) -> Element(msg) 
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_members_closed),
-      button(
-        [
-          attribute.class("btn-primary"),
-          event.on_click(config.on_members_save_clicked),
-          attribute.disabled(
-            config.capabilities.capability_members_saving
-            || config.capabilities.capability_members_loading,
-          ),
-        ],
-        [
-          text(case config.capabilities.capability_members_saving {
-            True -> t(config, i18n_text.Saving)
-            False -> t(config, i18n_text.Save)
-          }),
-        ],
-      ),
+      ui_button.text(
+        case config.capabilities.capability_members_saving {
+          True -> t(config, i18n_text.Saving)
+          False -> t(config, i18n_text.Save)
+        },
+        config.on_members_save_clicked,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+        |> ui_button.with_disabled(
+          config.capabilities.capability_members_saving
+          || config.capabilities.capability_members_loading,
+        )
+        |> ui_button.view,
     ],
   )
 }

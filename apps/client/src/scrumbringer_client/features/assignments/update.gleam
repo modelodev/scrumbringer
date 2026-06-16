@@ -16,7 +16,7 @@ import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{type ProjectRole, Member}
 import domain/remote.{type Remote, Loaded, Loading, from_result, should_fetch}
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/permissions
 
 import scrumbringer_client/api/org as api_org
@@ -60,7 +60,7 @@ pub type RootPolicy {
 
 pub type Update(parent_msg) {
   Update(
-    state_types.AssignmentsModel,
+    assignments_state.AssignmentsModel,
     Effect(parent_msg),
     AuthPolicy,
     RootPolicy,
@@ -68,7 +68,7 @@ pub type Update(parent_msg) {
 }
 
 pub fn try_update(
-  model: state_types.AssignmentsModel,
+  model: assignments_state.AssignmentsModel,
   inner: admin_messages.Msg,
   context: Context(parent_msg),
   feedback: FeedbackContext(parent_msg),
@@ -216,27 +216,27 @@ pub fn try_update(
 }
 
 fn without_auth_check(
-  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  result: #(assignments_state.AssignmentsModel, Effect(parent_msg)),
 ) -> opt.Option(Update(parent_msg)) {
   without_auth_check_with_root(result, NoRootPolicy)
 }
 
 fn without_auth_check_with_root(
-  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  result: #(assignments_state.AssignmentsModel, Effect(parent_msg)),
   root_policy: RootPolicy,
 ) -> opt.Option(Update(parent_msg)) {
   with_policy(result, NoAuthCheck, root_policy)
 }
 
 fn with_auth_check(
-  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  result: #(assignments_state.AssignmentsModel, Effect(parent_msg)),
   err: ApiError,
 ) -> opt.Option(Update(parent_msg)) {
   with_policy(result, CheckAuth(err), NoRootPolicy)
 }
 
 fn with_auth_check_after_update(
-  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  result: #(assignments_state.AssignmentsModel, Effect(parent_msg)),
   err: ApiError,
   root_policy: RootPolicy,
 ) -> opt.Option(Update(parent_msg)) {
@@ -244,7 +244,7 @@ fn with_auth_check_after_update(
 }
 
 fn with_policy(
-  result: #(state_types.AssignmentsModel, Effect(parent_msg)),
+  result: #(assignments_state.AssignmentsModel, Effect(parent_msg)),
   auth_policy: AuthPolicy,
   root_policy: RootPolicy,
 ) -> opt.Option(Update(parent_msg)) {
@@ -257,54 +257,55 @@ fn with_policy(
 // =============================================================================
 
 fn set_project_members_state(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   project_id: Int,
   state: Remote(List(ProjectMember)),
-) -> state_types.AssignmentsModel {
-  let state_types.AssignmentsModel(project_members: project_members, ..) =
+) -> assignments_state.AssignmentsModel {
+  let assignments_state.AssignmentsModel(project_members: project_members, ..) =
     assignments
-  state_types.AssignmentsModel(
+  assignments_state.AssignmentsModel(
     ..assignments,
     project_members: dict.insert(project_members, project_id, state),
   )
 }
 
 fn set_user_projects_state(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   user_id: Int,
   state: Remote(List(Project)),
-) -> state_types.AssignmentsModel {
-  let state_types.AssignmentsModel(user_projects: user_projects, ..) =
+) -> assignments_state.AssignmentsModel {
+  let assignments_state.AssignmentsModel(user_projects: user_projects, ..) =
     assignments
-  state_types.AssignmentsModel(
+  assignments_state.AssignmentsModel(
     ..assignments,
     user_projects: dict.insert(user_projects, user_id, state),
   )
 }
 
 fn toggle_expanded_project(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   project_id: Int,
-) -> state_types.AssignmentsModel {
-  let state_types.AssignmentsModel(expanded_projects: expanded, ..) =
+) -> assignments_state.AssignmentsModel {
+  let assignments_state.AssignmentsModel(expanded_projects: expanded, ..) =
     assignments
   let next = case set.contains(expanded, project_id) {
     True -> set.delete(expanded, project_id)
     False -> set.insert(expanded, project_id)
   }
-  state_types.AssignmentsModel(..assignments, expanded_projects: next)
+  assignments_state.AssignmentsModel(..assignments, expanded_projects: next)
 }
 
 fn toggle_expanded_user(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   user_id: Int,
-) -> state_types.AssignmentsModel {
-  let state_types.AssignmentsModel(expanded_users: expanded, ..) = assignments
+) -> assignments_state.AssignmentsModel {
+  let assignments_state.AssignmentsModel(expanded_users: expanded, ..) =
+    assignments
   let next = case set.contains(expanded, user_id) {
     True -> set.delete(expanded, user_id)
     False -> set.insert(expanded, user_id)
   }
-  state_types.AssignmentsModel(..assignments, expanded_users: next)
+  assignments_state.AssignmentsModel(..assignments, expanded_users: next)
 }
 
 fn update_project_role(project: Project, role: ProjectRole) -> Project {
@@ -350,11 +351,11 @@ fn update_user_projects_role(
 }
 
 fn current_role_for_assignment(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
 ) -> opt.Option(ProjectRole) {
-  let state_types.AssignmentsModel(
+  let assignments_state.AssignmentsModel(
     project_members: project_members,
     user_projects: user_projects,
     ..,
@@ -379,9 +380,9 @@ fn current_role_for_assignment(
 }
 
 fn clear_inline_add(
-  assignments: state_types.AssignmentsModel,
-) -> state_types.AssignmentsModel {
-  state_types.AssignmentsModel(
+  assignments: assignments_state.AssignmentsModel,
+) -> assignments_state.AssignmentsModel {
+  assignments_state.AssignmentsModel(
     ..assignments,
     inline_add_context: opt.None,
     inline_add_selection: opt.None,
@@ -391,12 +392,12 @@ fn clear_inline_add(
 }
 
 fn apply_role_change(
-  assignments: state_types.AssignmentsModel,
+  assignments: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   new_role: ProjectRole,
-) -> state_types.AssignmentsModel {
-  let state_types.AssignmentsModel(
+) -> assignments_state.AssignmentsModel {
+  let assignments_state.AssignmentsModel(
     project_members: project_members,
     user_projects: user_projects,
     ..,
@@ -419,45 +420,54 @@ fn apply_role_change(
       )
     Error(_) -> user_projects
   }
-  state_types.AssignmentsModel(
+  assignments_state.AssignmentsModel(
     ..assignments,
     project_members: updated_project_members,
     user_projects: updated_user_projects,
   )
 }
 
-pub fn handle_assignments_view_mode_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_view_mode_changed(
+  model: assignments_state.AssignmentsModel,
   view_mode: assignments_view_mode.AssignmentsViewMode,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  #(state_types.AssignmentsModel(..model, view_mode: view_mode), effect.none())
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  #(
+    assignments_state.AssignmentsModel(..model, view_mode: view_mode),
+    effect.none(),
+  )
 }
 
-pub fn handle_assignments_search_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_search_changed(
+  model: assignments_state.AssignmentsModel,
   value: String,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  #(state_types.AssignmentsModel(..model, search_input: value), effect.none())
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  #(
+    assignments_state.AssignmentsModel(..model, search_input: value),
+    effect.none(),
+  )
 }
 
-pub fn handle_assignments_search_debounced(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_search_debounced(
+  model: assignments_state.AssignmentsModel,
   value: String,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  #(state_types.AssignmentsModel(..model, search_query: value), effect.none())
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  #(
+    assignments_state.AssignmentsModel(..model, search_query: value),
+    effect.none(),
+  )
 }
 
-pub fn handle_assignments_project_toggled(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_project_toggled(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(toggle_expanded_project(model, project_id), effect.none())
 }
 
-pub fn handle_assignments_user_toggled(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_user_toggled(
+  model: assignments_state.AssignmentsModel,
   user_id: Int,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(toggle_expanded_user(model, user_id), effect.none())
 }
 
@@ -465,20 +475,20 @@ pub fn handle_assignments_user_toggled(
 // Data fetch results
 // =============================================================================
 
-pub fn handle_assignments_project_members_fetched(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_project_members_fetched(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   result: Result(List(ProjectMember), ApiError),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let remote_state = from_result(result)
   #(set_project_members_state(model, project_id, remote_state), effect.none())
 }
 
-pub fn handle_assignments_user_projects_fetched(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_user_projects_fetched(
+  model: assignments_state.AssignmentsModel,
   user_id: Int,
   result: Result(List(Project), ApiError),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let remote_state = from_result(result)
   #(set_user_projects_state(model, user_id, remote_state), effect.none())
 }
@@ -487,12 +497,12 @@ pub fn handle_assignments_user_projects_fetched(
 // Inline add flows
 // =============================================================================
 
-pub fn handle_assignments_inline_add_started(
-  model: state_types.AssignmentsModel,
-  context: state_types.AssignmentsAddContext,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+fn handle_assignments_inline_add_started(
+  model: assignments_state.AssignmentsModel,
+  context: assignments_state.AssignmentsAddContext,
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model,
       inline_add_context: opt.Some(context),
       inline_add_selection: opt.None,
@@ -504,42 +514,45 @@ pub fn handle_assignments_inline_add_started(
   )
 }
 
-pub fn handle_assignments_inline_add_search_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_inline_add_search_changed(
+  model: assignments_state.AssignmentsModel,
   value: String,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(
-    state_types.AssignmentsModel(..model, inline_add_search: value),
+    assignments_state.AssignmentsModel(..model, inline_add_search: value),
     effect.none(),
   )
 }
 
-pub fn handle_assignments_inline_add_selection_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_inline_add_selection_changed(
+  model: assignments_state.AssignmentsModel,
   value: String,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let selection = case int.parse(value) {
     Ok(id) -> opt.Some(id)
     Error(_) -> opt.None
   }
   #(
-    state_types.AssignmentsModel(..model, inline_add_selection: selection),
+    assignments_state.AssignmentsModel(..model, inline_add_selection: selection),
     effect.none(),
   )
 }
 
-pub fn handle_assignments_inline_add_role_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_inline_add_role_changed(
+  model: assignments_state.AssignmentsModel,
   role: ProjectRole,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  #(state_types.AssignmentsModel(..model, inline_add_role: role), effect.none())
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  #(
+    assignments_state.AssignmentsModel(..model, inline_add_role: role),
+    effect.none(),
+  )
 }
 
-pub fn handle_assignments_inline_add_submitted(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_inline_add_submitted(
+  model: assignments_state.AssignmentsModel,
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  let state_types.AssignmentsModel(
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  let assignments_state.AssignmentsModel(
     inline_add_context: context,
     inline_add_selection: selection,
     inline_add_role: role,
@@ -551,9 +564,14 @@ pub fn handle_assignments_inline_add_submitted(
     True -> #(model, effect.none())
     False ->
       case context, selection {
-        opt.Some(state_types.AddUserToProject(project_id)), opt.Some(user_id) -> {
+        opt.Some(assignments_state.AddUserToProject(project_id)),
+          opt.Some(user_id)
+        -> {
           let model =
-            state_types.AssignmentsModel(..model, inline_add_in_flight: True)
+            assignments_state.AssignmentsModel(
+              ..model,
+              inline_add_in_flight: True,
+            )
           let fx =
             api_projects.add_project_member(
               project_id,
@@ -566,9 +584,14 @@ pub fn handle_assignments_inline_add_submitted(
           #(model, fx)
         }
 
-        opt.Some(state_types.AddProjectToUser(user_id)), opt.Some(project_id) -> {
+        opt.Some(assignments_state.AddProjectToUser(user_id)),
+          opt.Some(project_id)
+        -> {
           let model =
-            state_types.AssignmentsModel(..model, inline_add_in_flight: True)
+            assignments_state.AssignmentsModel(
+              ..model,
+              inline_add_in_flight: True,
+            )
           let fx =
             api_org.add_user_to_project(user_id, project_id, role, fn(result) {
               callbacks.on_user_project_added(user_id, result)
@@ -581,18 +604,18 @@ pub fn handle_assignments_inline_add_submitted(
   }
 }
 
-pub fn handle_assignments_inline_add_cancelled(
-  model: state_types.AssignmentsModel,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+fn handle_assignments_inline_add_cancelled(
+  model: assignments_state.AssignmentsModel,
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(clear_inline_add(model), effect.none())
 }
 
-pub fn handle_assignments_project_member_added_ok(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_project_member_added_ok(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   member: ProjectMember,
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let model = clear_inline_add(model)
   let model =
     model
@@ -611,20 +634,20 @@ pub fn handle_assignments_project_member_added_ok(
   #(model, effect.batch(effects))
 }
 
-pub fn handle_assignments_project_member_added_error(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_project_member_added_error(
+  model: assignments_state.AssignmentsModel,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(clear_inline_add(model), error_effect(err, feedback))
 }
 
-pub fn handle_assignments_user_project_added_ok(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_user_project_added_ok(
+  model: assignments_state.AssignmentsModel,
   user_id: Int,
   project: Project,
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let model = clear_inline_add(model)
   let model =
     model
@@ -643,11 +666,11 @@ pub fn handle_assignments_user_project_added_ok(
   #(model, effect.batch(effects))
 }
 
-pub fn handle_assignments_user_project_added_error(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_user_project_added_error(
+  model: assignments_state.AssignmentsModel,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(clear_inline_add(model), error_effect(err, feedback))
 }
 
@@ -655,13 +678,13 @@ pub fn handle_assignments_user_project_added_error(
 // Remove + Role Change
 // =============================================================================
 
-pub fn handle_assignments_remove_clicked(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_remove_clicked(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model,
       inline_remove_confirm: opt.Some(#(project_id, user_id)),
     ),
@@ -669,23 +692,26 @@ pub fn handle_assignments_remove_clicked(
   )
 }
 
-pub fn handle_assignments_remove_cancelled(
-  model: state_types.AssignmentsModel,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+fn handle_assignments_remove_cancelled(
+  model: assignments_state.AssignmentsModel,
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(
-    state_types.AssignmentsModel(..model, inline_remove_confirm: opt.None),
+    assignments_state.AssignmentsModel(..model, inline_remove_confirm: opt.None),
     effect.none(),
   )
 }
 
-pub fn handle_assignments_remove_confirmed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_remove_confirmed(
+  model: assignments_state.AssignmentsModel,
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   case model.inline_remove_confirm {
     opt.Some(#(project_id, user_id)) -> {
       let model =
-        state_types.AssignmentsModel(..model, inline_remove_confirm: opt.None)
+        assignments_state.AssignmentsModel(
+          ..model,
+          inline_remove_confirm: opt.None,
+        )
       let fx =
         api_projects.remove_project_member(project_id, user_id, fn(result) {
           callbacks.on_remove_completed(project_id, user_id, result)
@@ -696,12 +722,12 @@ pub fn handle_assignments_remove_confirmed(
   }
 }
 
-pub fn handle_assignments_remove_completed_ok(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_remove_completed_ok(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
-  let state_types.AssignmentsModel(
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  let assignments_state.AssignmentsModel(
     project_members: project_members,
     user_projects: user_projects,
     ..,
@@ -725,7 +751,7 @@ pub fn handle_assignments_remove_completed_ok(
     _ -> user_projects
   }
   #(
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model,
       project_members: updated_project_members,
       user_projects: updated_user_projects,
@@ -734,34 +760,34 @@ pub fn handle_assignments_remove_completed_ok(
   )
 }
 
-pub fn handle_assignments_remove_completed_error(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_remove_completed_error(
+  model: assignments_state.AssignmentsModel,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(model, error_effect(err, feedback))
 }
 
-pub fn error_effect(
+fn error_effect(
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
   feedback.on_error_toast(err.message)
 }
 
-pub fn handle_assignments_role_changed(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_role_changed(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   new_role: ProjectRole,
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let previous_role = current_role_for_assignment(model, project_id, user_id)
   let model =
     model
     |> apply_role_change(project_id, user_id, new_role)
     |> fn(updated) {
-      state_types.AssignmentsModel(
+      assignments_state.AssignmentsModel(
         ..updated,
         role_change_in_flight: opt.Some(#(project_id, user_id)),
         role_change_previous: case previous_role {
@@ -779,15 +805,15 @@ pub fn handle_assignments_role_changed(
   #(model, fx)
 }
 
-pub fn handle_assignments_role_change_completed_ok(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_role_change_completed_ok(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   result: api_projects.RoleChangeResult,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let updated = apply_role_change(model, project_id, user_id, result.role)
   #(
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..updated,
       role_change_in_flight: opt.None,
       role_change_previous: opt.None,
@@ -796,19 +822,19 @@ pub fn handle_assignments_role_change_completed_ok(
   )
 }
 
-pub fn handle_assignments_role_change_completed_error(
-  model: state_types.AssignmentsModel,
+fn handle_assignments_role_change_completed_error(
+  model: assignments_state.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   _err: ApiError,
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   let updated = case model.role_change_previous {
     opt.Some(#(pid, uid, previous)) if pid == project_id && uid == user_id ->
       apply_role_change(model, project_id, user_id, previous)
     _ -> model
   }
   #(
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..updated,
       role_change_in_flight: opt.None,
       role_change_previous: opt.None,
@@ -822,16 +848,16 @@ pub fn handle_assignments_role_change_completed_error(
 // =============================================================================
 
 pub fn start_user_projects_fetch(
-  model: state_types.AssignmentsModel,
+  model: assignments_state.AssignmentsModel,
   users: List(OrgUser),
   callbacks: Context(parent_msg),
-) -> #(state_types.AssignmentsModel, Effect(parent_msg)) {
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   case callbacks.active_section {
     permissions.Team -> {
       let #(next_assignments, effects) =
         list.fold(users, #(model, []), fn(state, user) {
           let #(current, fx) = state
-          let state_types.AssignmentsModel(user_projects: projects, ..) =
+          let assignments_state.AssignmentsModel(user_projects: projects, ..) =
             current
           let needs_fetch = case dict.get(projects, user.id) {
             Ok(remote) -> should_fetch(remote)

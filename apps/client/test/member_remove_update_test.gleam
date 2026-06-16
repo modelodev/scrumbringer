@@ -19,28 +19,14 @@ fn user(id: Int, email: String) -> OrgUser {
   )
 }
 
-fn context(selected_project_id) -> member_remove.Context(Nil) {
+fn context(selected_project_id) -> member_remove.Context(String) {
   member_remove.Context(
     selected_project_id: selected_project_id,
-    on_member_removed: fn(_result) { Nil },
-  )
-}
-
-fn feedback_context() -> member_remove.FeedbackContext(Nil) {
-  member_remove.FeedbackContext(
-    member_removed: "Member removed",
-    on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
-  )
-}
-
-fn try_context() -> member_remove.Context(String) {
-  member_remove.Context(
-    selected_project_id: option.Some(3),
     on_member_removed: fn(_result) { "member-removed" },
   )
 }
 
-fn try_feedback_context() -> member_remove.FeedbackContext(String) {
+fn feedback_context() -> member_remove.FeedbackContext(String) {
   member_remove.FeedbackContext(
     member_removed: "Member removed",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
@@ -54,7 +40,25 @@ fn error_feedback_context() -> member_remove.ErrorFeedbackContext(String) {
   )
 }
 
-pub fn remove_clicked_uses_cached_org_user_test() {
+fn update(model: admin_members.Model, msg: admin_messages.Msg) {
+  update_with_context(model, msg, context(option.Some(3)))
+}
+
+fn update_with_context(
+  model: admin_members.Model,
+  msg: admin_messages.Msg,
+  context: member_remove.Context(String),
+) {
+  member_remove.try_update(
+    model,
+    msg,
+    context,
+    feedback_context(),
+    error_feedback_context(),
+  )
+}
+
+pub fn try_update_remove_clicked_uses_cached_org_user_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
@@ -62,7 +66,12 @@ pub fn remove_clicked_uses_cached_org_user_test() {
       members_remove_error: option.Some("old"),
     )
 
-  let #(next, fx) = member_remove.handle_member_remove_clicked(model, 7)
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.NoRefresh,
+  )) = update(model, admin_messages.MemberRemoveClicked(7))
 
   let assert option.Some(selected) = next.members_remove_confirm
   let assert "member@example.com" = selected.email
@@ -70,16 +79,21 @@ pub fn remove_clicked_uses_cached_org_user_test() {
   let assert True = fx == effect.none()
 }
 
-pub fn remove_clicked_uses_fallback_when_user_missing_test() {
-  let #(next, fx) =
-    member_remove.handle_member_remove_clicked(admin_members.default_model(), 9)
+pub fn try_update_remove_clicked_uses_fallback_when_user_missing_test() {
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.NoRefresh,
+  )) =
+    update(admin_members.default_model(), admin_messages.MemberRemoveClicked(9))
 
   let assert option.Some(selected) = next.members_remove_confirm
   let assert "User #9" = selected.email
   let assert True = fx == effect.none()
 }
 
-pub fn remove_cancelled_clears_dialog_and_error_test() {
+pub fn try_update_remove_cancelled_clears_dialog_and_error_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
@@ -87,28 +101,42 @@ pub fn remove_cancelled_clears_dialog_and_error_test() {
       members_remove_error: option.Some("old"),
     )
 
-  let #(next, fx) = member_remove.handle_member_remove_cancelled(model)
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.NoRefresh,
+  )) = update(model, admin_messages.MemberRemoveCancelled)
 
   let assert option.None = next.members_remove_confirm
   let assert option.None = next.members_remove_error
   let assert True = fx == effect.none()
 }
 
-pub fn remove_confirmed_ignores_missing_project_test() {
+pub fn try_update_remove_confirmed_ignores_missing_project_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
       members_remove_confirm: option.Some(user(7, "member@example.com")),
     )
 
-  let #(next, fx) =
-    member_remove.handle_member_remove_confirmed(model, context(option.None))
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.NoRefresh,
+  )) =
+    update_with_context(
+      model,
+      admin_messages.MemberRemoveConfirmed,
+      context(option.None),
+    )
 
   let assert False = next.members_remove_in_flight
   let assert True = fx == effect.none()
 }
 
-pub fn remove_confirmed_sets_in_flight_when_valid_test() {
+pub fn try_update_remove_confirmed_sets_in_flight_when_valid_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
@@ -116,14 +144,19 @@ pub fn remove_confirmed_sets_in_flight_when_valid_test() {
       members_remove_error: option.Some("old"),
     )
 
-  let #(next, _fx) =
-    member_remove.handle_member_remove_confirmed(model, context(option.Some(3)))
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.NoRefresh,
+  )) = update(model, admin_messages.MemberRemoveConfirmed)
 
   let assert True = next.members_remove_in_flight
   let assert option.None = next.members_remove_error
+  let assert False = fx == effect.none()
 }
 
-pub fn removed_ok_closes_dialog_test() {
+pub fn try_update_removed_ok_closes_dialog_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
@@ -132,8 +165,12 @@ pub fn removed_ok_closes_dialog_test() {
       members_remove_error: option.Some("old"),
     )
 
-  let #(next, fx) =
-    member_remove.handle_member_removed_ok(model, feedback_context())
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.NoAuthCheck,
+    member_remove.RefreshSection,
+  )) = update(model, admin_messages.MemberRemoved(Ok(Nil)))
 
   let assert False = next.members_remove_in_flight
   let assert option.None = next.members_remove_confirm
@@ -141,19 +178,25 @@ pub fn removed_ok_closes_dialog_test() {
   let assert False = fx == effect.none()
 }
 
-pub fn removed_error_sets_message_test() {
+pub fn try_update_removed_error_sets_message_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
       members_remove_in_flight: True,
     )
+  let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
 
-  let #(next, fx) =
-    member_remove.handle_member_removed_error(model, "Not permitted")
+  let assert option.Some(member_remove.Update(
+    next,
+    fx,
+    member_remove.CheckAuth(auth_err),
+    member_remove.NoRefresh,
+  )) = update(model, admin_messages.MemberRemoved(Error(err)))
 
   let assert False = next.members_remove_in_flight
   let assert option.Some("Not permitted") = next.members_remove_error
-  let assert True = fx == effect.none()
+  let assert True = auth_err == err
+  let assert False = fx == effect.none()
 }
 
 pub fn try_update_remove_clicked_returns_local_update_test() {
@@ -168,14 +211,7 @@ pub fn try_update_remove_clicked_returns_local_update_test() {
     fx,
     member_remove.NoAuthCheck,
     member_remove.NoRefresh,
-  )) =
-    member_remove.try_update(
-      model,
-      admin_messages.MemberRemoveClicked(7),
-      try_context(),
-      try_feedback_context(),
-      error_feedback_context(),
-    )
+  )) = update(model, admin_messages.MemberRemoveClicked(7))
 
   let assert option.Some(selected) = next.members_remove_confirm
   let assert 7 = selected.id
@@ -195,14 +231,7 @@ pub fn try_update_member_removed_ok_requests_refresh_test() {
     fx,
     member_remove.NoAuthCheck,
     member_remove.RefreshSection,
-  )) =
-    member_remove.try_update(
-      model,
-      admin_messages.MemberRemoved(Ok(Nil)),
-      try_context(),
-      try_feedback_context(),
-      error_feedback_context(),
-    )
+  )) = update(model, admin_messages.MemberRemoved(Ok(Nil)))
 
   let assert False = next.members_remove_in_flight
   let assert option.None = next.members_remove_confirm
@@ -222,14 +251,7 @@ pub fn try_update_member_removed_forbidden_returns_auth_policy_test() {
     fx,
     member_remove.CheckAuth(auth_err),
     member_remove.NoRefresh,
-  )) =
-    member_remove.try_update(
-      model,
-      admin_messages.MemberRemoved(Error(err)),
-      try_context(),
-      try_feedback_context(),
-      error_feedback_context(),
-    )
+  )) = update(model, admin_messages.MemberRemoved(Error(err)))
 
   let assert option.Some("Not permitted") = next.members_remove_error
   let assert True = auth_err == err
@@ -238,11 +260,8 @@ pub fn try_update_member_removed_forbidden_returns_auth_policy_test() {
 
 pub fn try_update_ignores_non_member_remove_messages_test() {
   let assert option.None =
-    member_remove.try_update(
+    update(
       admin_members.default_model(),
       admin_messages.InviteCreateDialogOpened,
-      try_context(),
-      try_feedback_context(),
-      error_feedback_context(),
     )
 }

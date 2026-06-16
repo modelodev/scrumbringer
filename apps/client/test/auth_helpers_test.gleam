@@ -6,7 +6,6 @@ import lustre/effect
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/auth/helpers
 
 pub fn reset_to_login_clears_user_and_drag_state_test() {
@@ -32,10 +31,10 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_drag: state_types.DragActive(1, 5, 5),
-          member_pool_drag: state_types.PoolDragDragging(
+          member_drag: member_pool.DragActive(1, 5, 5),
+          member_pool_drag: member_pool.PoolDragDragging(
             over_my_tasks: True,
-            rect: state_types.Rect(left: 0, top: 0, width: 10, height: 10),
+            rect: member_pool.Rect(left: 0, top: 0, width: 10, height: 10),
           ),
         ),
       )
@@ -54,8 +53,8 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
 
   let assert client_state.Login = page
   let assert None = user
-  let assert state_types.DragIdle = member_drag
-  let assert state_types.PoolDragIdle = member_pool_drag
+  let assert member_pool.DragIdle = member_drag
+  let assert member_pool.PoolDragIdle = member_pool_drag
 }
 
 pub fn handle_auth_error_returns_login_for_401_test() {

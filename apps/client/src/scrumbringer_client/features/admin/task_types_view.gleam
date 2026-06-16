@@ -16,7 +16,6 @@ import domain/task/codec as task_codec
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -68,15 +67,15 @@ fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, type_json) = case mode {
-        state_types.TaskTypeDialogCreate -> #("create", attribute.none())
-        state_types.TaskTypeDialogEdit(task_type) -> #(
+        admin_task_types.TaskTypeDialogCreate -> #("create", attribute.none())
+        admin_task_types.TaskTypeDialogEdit(task_type) -> #(
           "edit",
           attribute.property(
             "task-type",
             task_type_to_property_json(task_type, "edit"),
           ),
         )
-        state_types.TaskTypeDialogDelete(task_type) -> #(
+        admin_task_types.TaskTypeDialogDelete(task_type) -> #(
           "delete",
           attribute.property(
             "task-type",

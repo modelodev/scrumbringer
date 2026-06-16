@@ -33,7 +33,13 @@ import lustre/element/html.{form, input, option as html_option, select, text}
 import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/card.{
+  Cerrada, EnCurso, Pendiente, state_to_string as card_state_to_string,
+}
 import domain/task/codec as task_codec
+import domain/task_status.{
+  Available, Claimed, Completed, Taken, task_status_to_string,
+}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
   type Rule, rule_resource_type, rule_task_type_id, rule_to_state_string,
@@ -665,19 +671,9 @@ fn rule_to_json(rule: Rule) -> json.Json {
       #("active", json.bool(rule.active)),
       #("created_at", json.string(rule.created_at)),
     ]
-    |> append_fields(goal_field)
-    |> append_fields(task_type_field),
+    |> crud_dialog_base.prepend_fields(goal_field)
+    |> crud_dialog_base.prepend_fields(task_type_field),
   )
-}
-
-fn append_fields(
-  base: List(#(String, json.Json)),
-  fields: List(#(String, json.Json)),
-) -> List(#(String, json.Json)) {
-  case fields {
-    [] -> base
-    [field, ..rest] -> append_fields([field, ..base], rest)
-  }
 }
 
 // =============================================================================
@@ -720,7 +716,7 @@ fn view_rule_fields(
           event.on_input(on_name_changed),
           attribute.required(True),
         ]
-        |> maybe_add_aria_label(name_aria_label),
+        |> crud_dialog_base.with_optional_aria_label(name_aria_label),
       ),
     ),
     form_field.view(
@@ -731,7 +727,7 @@ fn view_rule_fields(
           attribute.value(goal),
           event.on_input(on_goal_changed),
         ]
-        |> maybe_add_aria_label(goal_aria_label),
+        |> crud_dialog_base.with_optional_aria_label(goal_aria_label),
       ),
     ),
     form_field.view(
@@ -766,16 +762,6 @@ fn view_rule_fields(
       ]),
     ),
   ]
-}
-
-fn maybe_add_aria_label(
-  attrs: List(attribute.Attribute(Msg)),
-  label: Option(String),
-) -> List(attribute.Attribute(Msg)) {
-  case label {
-    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
-    option.None -> attrs
-  }
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
@@ -1028,14 +1014,26 @@ pub fn state_options_for_resource_type(
 ) -> List(#(String, String)) {
   case resource_type {
     "task" -> [
-      #("available", t(locale, i18n_text.TaskStateAvailable)),
-      #("claimed", t(locale, i18n_text.TaskStateClaimed)),
-      #("completed", t(locale, i18n_text.TaskStateCompleted)),
+      #(
+        task_status_to_string(Available),
+        t(locale, i18n_text.TaskStateAvailable),
+      ),
+      #(
+        task_status_to_string(Claimed(Taken)),
+        t(locale, i18n_text.TaskStateClaimed),
+      ),
+      #(
+        task_status_to_string(Completed),
+        t(locale, i18n_text.TaskStateCompleted),
+      ),
     ]
     _ -> [
-      #("pendiente", t(locale, i18n_text.CardStatePendiente)),
-      #("en_curso", t(locale, i18n_text.CardStateEnCurso)),
-      #("cerrada", t(locale, i18n_text.CardStateCerrada)),
+      #(
+        card_state_to_string(Pendiente),
+        t(locale, i18n_text.CardStatePendiente),
+      ),
+      #(card_state_to_string(EnCurso), t(locale, i18n_text.CardStateEnCurso)),
+      #(card_state_to_string(Cerrada), t(locale, i18n_text.CardStateCerrada)),
     ]
   }
 }

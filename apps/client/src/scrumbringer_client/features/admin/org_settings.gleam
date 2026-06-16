@@ -163,7 +163,7 @@ fn with_policy(
 // =============================================================================
 
 /// Handle org users cache fetch success.
-pub fn handle_org_users_cache_fetched_ok(
+fn handle_org_users_cache_fetched_ok(
   model: admin_members.Model,
   users: List(OrgUser),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -171,7 +171,7 @@ pub fn handle_org_users_cache_fetched_ok(
 }
 
 /// Handle org users cache fetch error.
-pub fn handle_org_users_cache_fetched_error(
+fn handle_org_users_cache_fetched_error(
   model: admin_members.Model,
   err: ApiError,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -183,7 +183,7 @@ pub fn handle_org_users_cache_fetched_error(
 // =============================================================================
 
 /// Handle org settings users fetch success.
-pub fn handle_org_settings_users_fetched_ok(
+fn handle_org_settings_users_fetched_ok(
   model: admin_members.Model,
   users: List(OrgUser),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -200,7 +200,7 @@ pub fn handle_org_settings_users_fetched_ok(
 }
 
 /// Handle org settings users fetch error.
-pub fn handle_org_settings_users_fetched_error(
+fn handle_org_settings_users_fetched_error(
   model: admin_members.Model,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
@@ -215,7 +215,7 @@ pub fn handle_org_settings_users_fetched_error(
 // Role Change Handlers
 // =============================================================================
 
-pub fn handle_org_settings_role_changed_with_context(
+fn handle_org_settings_role_changed_with_context(
   model: admin_members.Model,
   user_id: Int,
   org_role: org_role.OrgRole,
@@ -255,7 +255,7 @@ pub fn handle_org_settings_role_changed_with_context(
 // =============================================================================
 
 /// Handle org settings delete click (show confirmation).
-pub fn handle_org_settings_delete_clicked(
+fn handle_org_settings_delete_clicked(
   model: admin_members.Model,
   user_id: Int,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -278,7 +278,7 @@ pub fn handle_org_settings_delete_clicked(
 }
 
 /// Handle org settings delete cancel.
-pub fn handle_org_settings_delete_cancelled(
+fn handle_org_settings_delete_cancelled(
   model: admin_members.Model,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   #(
@@ -292,7 +292,7 @@ pub fn handle_org_settings_delete_cancelled(
 }
 
 /// Handle org settings delete confirmation.
-pub fn handle_org_settings_delete_confirmed(
+fn handle_org_settings_delete_confirmed(
   model: admin_members.Model,
   context: Context(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -324,7 +324,7 @@ pub fn handle_org_settings_delete_confirmed(
 // =============================================================================
 
 /// Handle org settings save success.
-pub fn handle_org_settings_saved_ok(
+fn handle_org_settings_saved_ok(
   model: admin_members.Model,
   updated: OrgUser,
   feedback: FeedbackContext(parent_msg),
@@ -362,7 +362,7 @@ pub fn handle_org_settings_saved_ok(
 }
 
 /// Handle org settings delete success.
-pub fn handle_org_settings_deleted_ok(
+fn handle_org_settings_deleted_ok(
   model: admin_members.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
@@ -399,7 +399,7 @@ pub fn handle_org_settings_deleted_ok(
 }
 
 /// Handle org settings delete error.
-pub fn handle_org_settings_deleted_error(
+fn handle_org_settings_deleted_error(
   model: admin_members.Model,
   err: ApiError,
   feedback: FeedbackContext(parent_msg),
@@ -417,7 +417,7 @@ pub fn handle_org_settings_deleted_error(
 }
 
 /// Handle org settings save error.
-pub fn handle_org_settings_saved_error(
+fn handle_org_settings_saved_error(
   model: admin_members.Model,
   user_id: Int,
   err: ApiError,

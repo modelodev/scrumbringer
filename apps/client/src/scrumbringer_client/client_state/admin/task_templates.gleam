@@ -4,14 +4,20 @@ import gleam/option.{type Option}
 
 import domain/remote.{type Remote, NotAsked}
 import domain/workflow.{type TaskTemplate}
-import scrumbringer_client/client_state/types as state_types
+
+/// Dialog mode for Task Template CRUD operations.
+pub type TaskTemplateDialogMode {
+  TaskTemplateDialogCreate
+  TaskTemplateDialogEdit(TaskTemplate)
+  TaskTemplateDialogDelete(TaskTemplate)
+}
 
 /// Represents task template admin state.
 pub type Model {
   Model(
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
-    task_templates_dialog_mode: Option(state_types.TaskTemplateDialogMode),
+    task_templates_dialog_mode: Option(TaskTemplateDialogMode),
   )
 }
 

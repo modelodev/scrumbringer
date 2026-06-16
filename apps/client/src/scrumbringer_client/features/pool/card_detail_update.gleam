@@ -41,7 +41,7 @@ pub fn try_update(
   }
 }
 
-pub fn opened(
+fn opened(
   model: Model,
   card_id: Int,
   context: Context(parent_msg),
@@ -58,11 +58,11 @@ pub fn opened(
   )
 }
 
-pub fn closed(model: Model) -> #(Model, Effect(parent_msg)) {
+fn closed(model: Model) -> #(Model, Effect(parent_msg)) {
   #(Model(..model, pool: card_detail.handle_closed(model.pool)), effect.none())
 }
 
-pub fn metrics_fetched_ok(
+fn metrics_fetched_ok(
   model: Model,
   metrics: CardModalMetrics,
 ) -> #(Model, Effect(parent_msg)) {
@@ -75,7 +75,7 @@ pub fn metrics_fetched_ok(
   )
 }
 
-pub fn metrics_fetched_error(
+fn metrics_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(parent_msg)) {

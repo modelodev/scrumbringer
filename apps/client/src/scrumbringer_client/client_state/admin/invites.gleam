@@ -6,11 +6,16 @@ import domain/org.{type InviteLink}
 import domain/remote.{type Remote, NotAsked}
 import scrumbringer_client/client_state/types as state_types
 
+/// Form state for invite link dialog.
+pub type InviteLinkForm {
+  InviteLinkForm(email: String)
+}
+
 /// Represents invite link admin state.
 pub type Model {
   Model(
     invite_links: Remote(List(InviteLink)),
-    invite_link_dialog: state_types.DialogState(state_types.InviteLinkForm),
+    invite_link_dialog: state_types.DialogState(InviteLinkForm),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
     invite_link_invalidate_confirm: Option(String),

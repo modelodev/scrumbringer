@@ -104,4 +104,25 @@ pub fn project_card_renders_expanded_members_from_config_test() {
   assert_contains(html, "1 person")
   assert_contains(html, "member@example.com")
   assert_contains(html, "Add member")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+}
+
+pub fn project_card_confirm_remove_uses_semantic_accessible_buttons_test() {
+  let assignments =
+    assignments_state.AssignmentsModel(
+      ..assignments_state.default_model(),
+      inline_remove_confirm: opt.Some(#(11, 7)),
+    )
+  let cfg = project_card.Config(..config(), assignments:)
+
+  let html =
+    project_card.view_rows(cfg, project(), remote.Loaded([member()]), True)
+    |> element.fragment
+    |> element.to_document_string
+
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "aria-label=\"Remove: member@example.com\"")
 }

@@ -770,6 +770,10 @@ pub type Text {
   SuppressionInactive
   RecentExecutions
   NoExecutions
+  FirstPage
+  PreviousPage
+  NextPage
+  LastPage
   Origin
   Outcome
   Timestamp

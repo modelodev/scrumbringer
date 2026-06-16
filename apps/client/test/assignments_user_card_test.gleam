@@ -83,4 +83,25 @@ pub fn user_card_renders_expanded_projects_from_config_test() {
   assert_contains(html, "Platform")
   assert_contains(html, "Add to project")
   assert_contains(html, "Claimed: 2")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+}
+
+pub fn user_card_confirm_remove_uses_semantic_accessible_buttons_test() {
+  let assignments =
+    assignments_state.AssignmentsModel(
+      ..assignments_state.default_model(),
+      inline_remove_confirm: opt.Some(#(11, 7)),
+    )
+  let cfg = user_card.Config(..config(), assignments:)
+
+  let html =
+    user_card.view_rows(cfg, user(), remote.Loaded([project()]), True)
+    |> element.fragment
+    |> element.to_document_string
+
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "btn-entity-action")
+  assert_contains(html, "aria-label=\"Remove: Platform\"")
 }

@@ -73,7 +73,12 @@ pub fn card_detail_update_opened_updates_pool_cards_and_effects_test() {
       ),
     )
 
-  let #(next, fx) = card_detail_update.opened(model, 7, context())
+  let assert Some(#(next, fx)) =
+    card_detail_update.try_update(
+      model,
+      pool_messages.OpenCardDetail(7),
+      context(),
+    )
 
   let assert Some(7) = next.pool.card_detail_open
   let assert Loading = next.pool.card_detail_metrics
@@ -94,7 +99,12 @@ pub fn card_detail_update_closed_clears_pool_detail_test() {
       ),
     )
 
-  let #(next, fx) = card_detail_update.closed(model)
+  let assert Some(#(next, fx)) =
+    card_detail_update.try_update(
+      model,
+      pool_messages.CloseCardDetail,
+      context(),
+    )
 
   let assert None = next.pool.card_detail_open
   let assert NotAsked = next.pool.card_detail_metrics
@@ -102,8 +112,12 @@ pub fn card_detail_update_closed_clears_pool_detail_test() {
 }
 
 pub fn card_detail_update_metrics_ok_sets_loaded_test() {
-  let #(next, fx) =
-    card_detail_update.metrics_fetched_ok(local_model(), metrics())
+  let assert Some(#(next, fx)) =
+    card_detail_update.try_update(
+      local_model(),
+      pool_messages.CardMetricsFetched(Ok(metrics())),
+      context(),
+    )
 
   let assert Loaded(loaded) = next.pool.card_detail_metrics
   let assert 4 = loaded.tasks_total
@@ -113,7 +127,12 @@ pub fn card_detail_update_metrics_ok_sets_loaded_test() {
 pub fn card_detail_update_metrics_error_sets_failed_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
 
-  let #(next, fx) = card_detail_update.metrics_fetched_error(local_model(), err)
+  let assert Some(#(next, fx)) =
+    card_detail_update.try_update(
+      local_model(),
+      pool_messages.CardMetricsFetched(Error(err)),
+      context(),
+    )
 
   let assert Failed(stored_err) = next.pool.card_detail_metrics
   let assert "boom" = stored_err.message

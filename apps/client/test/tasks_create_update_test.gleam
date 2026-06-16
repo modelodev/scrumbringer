@@ -8,10 +8,10 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/tasks/update as tasks_update
+import scrumbringer_client/features/tasks/create_update
 
-fn local_context(selected_project_id) -> tasks_update.CreateContext(Nil) {
-  tasks_update.CreateContext(
+fn local_context(selected_project_id) -> create_update.Context(Nil) {
+  create_update.Context(
     selected_project_id: selected_project_id,
     on_task_types_fetched: fn(_project_id, _result) { Nil },
     on_task_created: fn(_result) { Nil },
@@ -51,15 +51,15 @@ fn sample_task() -> Task {
 }
 
 pub fn try_task_create_update_opened_returns_local_update_test() {
-  let assert Some(tasks_update.TaskCreateUpdate(next, fx, policy)) =
-    tasks_update.try_task_create_update(
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
       member_pool.default_model(),
       pool_messages.MemberCreateDialogOpened,
       local_context(None),
     )
 
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
-  let assert tasks_update.NoTaskCreatePolicy = policy
+  let assert create_update.NoPolicy = policy
   let assert True = fx == effect.none()
 }
 
@@ -73,13 +73,13 @@ pub fn try_task_create_update_success_requests_refresh_with_task_test() {
       member_create_title: "Ship task",
     )
 
-  let assert Some(tasks_update.TaskCreateUpdate(next, fx, policy)) =
-    tasks_update.try_task_create_update(
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
       model,
       pool_messages.MemberTaskCreated(Ok(task)),
       local_context(None),
     )
-  let assert tasks_update.RefreshMemberAfterTaskCreated(created_task) = policy
+  let assert create_update.RefreshMemberAfterCreated(created_task) = policy
 
   let assert True = created_task == task
   let assert dialog_mode.DialogClosed = next.member_create_dialog_mode
@@ -97,13 +97,13 @@ pub fn try_task_create_update_error_checks_auth_before_local_fallback_test() {
       member_create_error: None,
     )
 
-  let assert Some(tasks_update.TaskCreateUpdate(next, fx, policy)) =
-    tasks_update.try_task_create_update(
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
       model,
       pool_messages.MemberTaskCreated(Error(err)),
       local_context(None),
     )
-  let assert tasks_update.CheckTaskCreateAuthBefore(auth_err) = policy
+  let assert create_update.CheckAuthBefore(auth_err) = policy
 
   let assert True = auth_err == err
   let assert False = next.member_create_in_flight
@@ -113,7 +113,7 @@ pub fn try_task_create_update_error_checks_auth_before_local_fallback_test() {
 
 pub fn try_task_create_update_ignores_non_create_messages_test() {
   let assert None =
-    tasks_update.try_task_create_update(
+    create_update.try_update(
       member_pool.default_model(),
       pool_messages.MemberPoolFiltersToggled,
       local_context(None),
@@ -121,13 +121,14 @@ pub fn try_task_create_update_ignores_non_create_messages_test() {
 }
 
 pub fn local_create_dialog_opened_with_card_sets_card_context_test() {
-  let #(next, fx) =
-    tasks_update.handle_create_dialog_opened_with_card(
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
       member_pool.default_model(),
-      42,
+      pool_messages.MemberCreateDialogOpenedWithCard(42),
       local_context(None),
     )
 
+  let assert create_update.NoPolicy = policy
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert Some(42) = next.member_create_card_id
   let assert None = next.member_create_milestone_id
@@ -145,8 +146,14 @@ pub fn local_create_dialog_closed_clears_create_context_test() {
       member_create_milestone_id: Some(9),
     )
 
-  let #(next, fx) = tasks_update.handle_create_dialog_closed(model)
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberCreateDialogClosed,
+      local_context(None),
+    )
 
+  let assert create_update.NoPolicy = policy
   let assert dialog_mode.DialogClosed = next.member_create_dialog_mode
   let assert None = next.member_create_error
   let assert None = next.member_create_card_id
@@ -163,9 +170,14 @@ pub fn local_create_submitted_without_project_sets_context_error_test() {
       member_create_priority: "3",
     )
 
-  let #(next, fx) =
-    tasks_update.handle_create_submitted(model, local_context(None))
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberCreateSubmitted,
+      local_context(None),
+    )
 
+  let assert create_update.NoPolicy = policy
   let assert Some("Select a project first") = next.member_create_error
   let assert False = next.member_create_in_flight
   let assert True = fx == effect.none()
@@ -185,8 +197,14 @@ pub fn local_task_created_ok_resets_create_dialog_test() {
       member_create_milestone_id: Some(9),
     )
 
-  let #(next, fx) = tasks_update.handle_task_created_ok(model)
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(Ok(sample_task())),
+      local_context(None),
+    )
 
+  let assert create_update.RefreshMemberAfterCreated(_) = policy
   let assert dialog_mode.DialogClosed = next.member_create_dialog_mode
   let assert False = next.member_create_in_flight
   let assert "" = next.member_create_title
@@ -206,8 +224,16 @@ pub fn local_task_created_error_sets_error_message_test() {
       member_create_error: None,
     )
 
-  let #(next, fx) = tasks_update.handle_task_created_error(model, "boom")
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(
+        Error(ApiError(status: 500, code: "ERR", message: "boom")),
+      ),
+      local_context(None),
+    )
 
+  let assert create_update.CheckAuthBefore(_) = policy
   let assert False = next.member_create_in_flight
   let assert Some("boom") = next.member_create_error
   let assert True = fx == effect.none()

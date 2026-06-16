@@ -6,14 +6,33 @@ import gleam/option as opt
 import domain/api_error.{type ApiError}
 import domain/milestone.{type MilestoneProgress, Active, Ready}
 import domain/remote.{type Remote, Failed, Loaded, Loading}
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/state/normalized_store as store
 
-pub type ProjectFetched {
+type ProjectFetched {
   ProjectFetched(
     milestones_store: store.NormalizedStore(Int, MilestoneProgress),
     milestones: Remote(List(MilestoneProgress)),
     selected_milestone_id: opt.Option(Int),
   )
+}
+
+pub fn try_update(
+  model: member_pool.Model,
+  inner: pool_messages.Msg,
+) -> opt.Option(member_pool.Model) {
+  case inner {
+    pool_messages.MemberProjectMilestonesFetched(project_id, Ok(milestones)) ->
+      milestones_fetched(model, project_id, milestones)
+      |> opt.Some
+
+    pool_messages.MemberProjectMilestonesFetched(_project_id, Error(err)) ->
+      milestones_failed(model, err)
+      |> opt.Some
+
+    _ -> opt.None
+  }
 }
 
 pub fn mark_pending(
@@ -32,7 +51,7 @@ pub fn loading_unless_loaded(
   }
 }
 
-pub fn project_fetched(
+fn project_fetched(
   milestones_store: store.NormalizedStore(Int, MilestoneProgress),
   current: Remote(List(MilestoneProgress)),
   current_selected_id: opt.Option(Int),
@@ -57,7 +76,7 @@ pub fn project_fetched(
   )
 }
 
-pub fn project_failed(
+fn project_failed(
   milestones_store: store.NormalizedStore(Int, MilestoneProgress),
   current: Remote(List(MilestoneProgress)),
   err: ApiError,
@@ -72,6 +91,46 @@ pub fn project_failed(
   }
 
   #(next_store, next_milestones)
+}
+
+fn milestones_fetched(
+  model: member_pool.Model,
+  project_id: Int,
+  milestones: List(MilestoneProgress),
+) -> member_pool.Model {
+  let ProjectFetched(
+    milestones_store: next_store,
+    milestones: next_milestones,
+    selected_milestone_id: next_selected,
+  ) =
+    project_fetched(
+      model.member_milestones_store,
+      model.member_milestones,
+      model.member_selected_milestone_id,
+      project_id,
+      milestones,
+    )
+
+  member_pool.Model(
+    ..model,
+    member_milestones_store: next_store,
+    member_milestones: next_milestones,
+    member_selected_milestone_id: next_selected,
+  )
+}
+
+fn milestones_failed(
+  model: member_pool.Model,
+  err: ApiError,
+) -> member_pool.Model {
+  let #(next_store, next_milestones) =
+    project_failed(model.member_milestones_store, model.member_milestones, err)
+
+  member_pool.Model(
+    ..model,
+    member_milestones_store: next_store,
+    member_milestones: next_milestones,
+  )
 }
 
 fn keep_selected_milestone(

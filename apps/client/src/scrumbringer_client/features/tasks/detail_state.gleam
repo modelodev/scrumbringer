@@ -134,25 +134,7 @@ pub fn start_edit(
   can_edit: Bool,
 ) -> member_pool.Model {
   case maybe_task, can_edit {
-    opt.Some(task), True ->
-      member_pool.Model(
-        ..pool,
-        member_task_detail_editing: True,
-        member_task_detail_edit_title: task.title,
-        member_task_detail_edit_description: detail_edit_form.task_description_text(
-          task,
-        ),
-        member_task_detail_edit_priority: int.to_string(task.priority),
-        member_task_detail_edit_type_id: int.to_string(
-          detail_edit_form.task_type_id(task),
-        ),
-        member_task_detail_edit_card_id: id_to_form_value(task.card_id),
-        member_task_detail_edit_milestone_id: id_to_form_value(
-          task.milestone_id,
-        ),
-        member_task_detail_edit_in_flight: False,
-        member_task_detail_edit_error: opt.None,
-      )
+    opt.Some(_), True -> apply_edit_fields(pool, edit_fields(maybe_task), True)
     _, _ -> pool
   }
 }
@@ -162,27 +144,28 @@ pub fn cancel_edit(
   maybe_task: opt.Option(Task),
 ) -> member_pool.Model {
   case maybe_task {
-    opt.Some(task) ->
-      member_pool.Model(
-        ..pool,
-        member_task_detail_editing: False,
-        member_task_detail_edit_title: task.title,
-        member_task_detail_edit_description: detail_edit_form.task_description_text(
-          task,
-        ),
-        member_task_detail_edit_priority: int.to_string(task.priority),
-        member_task_detail_edit_type_id: int.to_string(
-          detail_edit_form.task_type_id(task),
-        ),
-        member_task_detail_edit_card_id: id_to_form_value(task.card_id),
-        member_task_detail_edit_milestone_id: id_to_form_value(
-          task.milestone_id,
-        ),
-        member_task_detail_edit_in_flight: False,
-        member_task_detail_edit_error: opt.None,
-      )
+    opt.Some(_) -> apply_edit_fields(pool, edit_fields(maybe_task), False)
     opt.None -> pool
   }
+}
+
+fn apply_edit_fields(
+  pool: member_pool.Model,
+  fields: EditFields,
+  editing: Bool,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..pool,
+    member_task_detail_editing: editing,
+    member_task_detail_edit_title: fields.title,
+    member_task_detail_edit_description: fields.description,
+    member_task_detail_edit_priority: fields.priority,
+    member_task_detail_edit_type_id: fields.type_id,
+    member_task_detail_edit_card_id: fields.card_id,
+    member_task_detail_edit_milestone_id: fields.milestone_id,
+    member_task_detail_edit_in_flight: False,
+    member_task_detail_edit_error: opt.None,
+  )
 }
 
 pub fn change_edit_title(

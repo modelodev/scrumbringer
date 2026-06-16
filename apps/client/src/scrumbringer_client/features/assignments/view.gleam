@@ -20,7 +20,7 @@ import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/projects/view as projects_view
@@ -38,7 +38,7 @@ import scrumbringer_client/ui/section_header
 pub type Config(msg) {
   Config(
     locale: Locale,
-    assignments: state_types.AssignmentsModel,
+    assignments: assignments_state.AssignmentsModel,
     projects: Remote(List(Project)),
     org_users: Remote(List(OrgUser)),
     project_card: project_card.Config(msg),

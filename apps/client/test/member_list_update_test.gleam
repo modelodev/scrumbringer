@@ -28,10 +28,10 @@ fn sample_member(user_id: Int) {
 pub fn members_fetched_ok_loads_members_and_preloads_capabilities_test() {
   let members = [sample_member(7), sample_member(8)]
 
-  let #(next, fx) =
-    member_list.handle_members_fetched_ok(
+  let assert option.Some(member_list.Update(next, fx, member_list.NoAuthCheck)) =
+    member_list.try_update(
       admin_members.default_model(),
-      members,
+      admin_messages.MembersFetched(Ok(members)),
       context(option.Some(3)),
     )
 
@@ -42,10 +42,10 @@ pub fn members_fetched_ok_loads_members_and_preloads_capabilities_test() {
 pub fn members_fetched_ok_without_project_does_not_preload_test() {
   let members = [sample_member(7)]
 
-  let #(next, fx) =
-    member_list.handle_members_fetched_ok(
+  let assert option.Some(member_list.Update(next, fx, member_list.NoAuthCheck)) =
+    member_list.try_update(
       admin_members.default_model(),
-      members,
+      admin_messages.MembersFetched(Ok(members)),
       context(option.None),
     )
 
@@ -56,10 +56,19 @@ pub fn members_fetched_ok_without_project_does_not_preload_test() {
 pub fn members_fetched_error_sets_failed_remote_test() {
   let err = ApiError(status: 500, code: "DB", message: "Database error")
 
-  let #(next, fx) =
-    member_list.handle_members_fetched_error(admin_members.default_model(), err)
+  let assert option.Some(member_list.Update(
+    next,
+    fx,
+    member_list.CheckAuth(auth_err),
+  )) =
+    member_list.try_update(
+      admin_members.default_model(),
+      admin_messages.MembersFetched(Error(err)),
+      context(option.Some(3)),
+    )
 
   let assert True = next.members == remote.Failed(err)
+  let assert True = auth_err == err
   let assert True = fx == effect.none()
 }
 

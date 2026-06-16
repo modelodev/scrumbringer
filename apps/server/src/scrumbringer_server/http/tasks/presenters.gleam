@@ -15,14 +15,15 @@
 //// ```
 
 import domain/card
-import domain/task.{type TaskDependency, TaskDependency}
+import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{type TaskStatus}
+import domain/task_status.{
+  type OngoingBy, type TaskStatus, type WorkState, OngoingBy,
+}
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
-import scrumbringer_server/persistence/tasks/mappers.{type Task, Task}
 import scrumbringer_server/services/metrics_db
 import scrumbringer_server/services/task_types_db
 
@@ -83,14 +84,14 @@ pub fn task_json(task: Task) -> json.Json {
     id: id,
     project_id: project_id,
     type_id: type_id,
-    type_name: type_name,
-    type_icon: type_icon,
+    task_type: task_type,
+    ongoing_by: ongoing_by,
     title: title,
     description: description,
     priority: priority,
     state: state,
-    status: status,
-    ongoing_by_user_id: ongoing_by_user_id,
+    status: _status,
+    work_state: _work_state,
     created_by: created_by,
     created_at: created_at,
     version: version,
@@ -106,6 +107,8 @@ pub fn task_json(task: Task) -> json.Json {
   let claimed_by = task_state.claimed_by(state)
   let claimed_at = task_state.claimed_at(state)
   let completed_at = task_state.completed_at(state)
+  let status = task_state.to_status(state)
+  let work_state = task_state.to_work_state(state)
 
   json.object([
     #("id", json.int(id)),
@@ -115,16 +118,16 @@ pub fn task_json(task: Task) -> json.Json {
       "task_type",
       json.object([
         #("id", json.int(type_id)),
-        #("name", json.string(type_name)),
-        #("icon", json.string(type_icon)),
+        #("name", json.string(task_type.name)),
+        #("icon", json.string(task_type.icon)),
       ]),
     ),
-    #("ongoing_by", ongoing_by_json(ongoing_by_user_id)),
+    #("ongoing_by", ongoing_by_json(ongoing_by)),
     #("title", json.string(title)),
     #("description", json_helpers.option_string_json(description)),
     #("priority", json.int(priority)),
     #("status", json.string(status_to_string(status))),
-    #("work_state", json.string(status_to_work_state(status))),
+    #("work_state", json.string(work_state_to_string(work_state))),
     #("created_by", json.int(created_by)),
     #("claimed_by", json_helpers.option_int_json(claimed_by)),
     #("claimed_at", json_helpers.option_string_json(claimed_at)),
@@ -222,10 +225,10 @@ pub fn task_metrics_response(
 /// ongoing_by_json(Some(123))  // {"user_id": 123}
 /// ongoing_by_json(None)       // null
 /// ```
-pub fn ongoing_by_json(value: Option(Int)) -> json.Json {
+pub fn ongoing_by_json(value: Option(OngoingBy)) -> json.Json {
   case value {
     None -> json.null()
-    Some(user_id) ->
+    Some(OngoingBy(user_id: user_id)) ->
       json.object([
         #("user_id", json.int(user_id)),
       ])
@@ -259,8 +262,6 @@ fn status_to_string(status: TaskStatus) -> String {
 /// status_to_work_state(Claimed(Ongoing)) // "ongoing"
 /// status_to_work_state(Completed)        // "completed"
 /// ```
-fn status_to_work_state(status: TaskStatus) -> String {
-  status
-  |> task_status.to_work_state
-  |> task_status.work_state_to_string
+fn work_state_to_string(work_state: WorkState) -> String {
+  task_status.work_state_to_string(work_state)
 }

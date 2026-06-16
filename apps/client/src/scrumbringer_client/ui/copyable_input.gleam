@@ -2,8 +2,9 @@ import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/element as lelement
-import lustre/element/html.{button, div, input, label, text}
-import lustre/event
+import lustre/element/html.{div, input, label, text}
+
+import scrumbringer_client/ui/button
 
 pub fn view(
   label_text: String,
@@ -20,7 +21,8 @@ pub fn view(
         attribute.value(value),
         attribute.readonly(True),
       ]),
-      button([event.on_click(on_copy)], [text(copy_label)]),
+      button.text(copy_label, on_copy, button.Secondary, button.EntityAction)
+        |> button.view,
     ]),
     case status {
       Some(msg) -> div([attribute.class("hint")], [text(msg)])

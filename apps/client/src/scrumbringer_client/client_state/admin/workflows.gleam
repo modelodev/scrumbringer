@@ -4,14 +4,20 @@ import gleam/option.{type Option}
 
 import domain/remote.{type Remote, NotAsked}
 import domain/workflow.{type Workflow}
-import scrumbringer_client/client_state/types as state_types
+
+/// Dialog mode for Workflow CRUD operations.
+pub type WorkflowDialogMode {
+  WorkflowDialogCreate
+  WorkflowDialogEdit(Workflow)
+  WorkflowDialogDelete(Workflow)
+}
 
 /// Represents workflow admin state.
 pub type Model {
   Model(
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
-    workflows_dialog_mode: Option(state_types.WorkflowDialogMode),
+    workflows_dialog_mode: Option(WorkflowDialogMode),
   )
 }
 

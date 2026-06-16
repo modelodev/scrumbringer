@@ -26,12 +26,12 @@
 
 import domain/field_update
 import domain/milestone
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{type TaskStatus, Available, Claimed, Completed}
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
-import scrumbringer_server/persistence/tasks/mappers as task_mappers
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/milestones_db
@@ -351,7 +351,6 @@ fn handle_create_task(
 fn normalize_card_id(card_id: Option(Int)) -> Result(Option(Int), Error) {
   case card_id {
     None -> Ok(None)
-    Some(0) -> Ok(None)
     Some(id) if id > 0 -> Ok(Some(id))
     Some(_) -> Error(ValidationError("Invalid card_id"))
   }
@@ -408,14 +407,14 @@ fn update_task_for_current(
   user_id: Int,
   version: Int,
   updates: TaskUpdates,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   use Nil <- result.try(authorize_task_edit(current, user_id))
   update_editable_task(db, task_id, user_id, version, updates, current)
 }
 
 fn authorize_task_edit(
-  current: task_mappers.Task,
+  current: domain_task.Task,
   user_id: Int,
 ) -> Result(Nil, Error) {
   case current.state {
@@ -432,7 +431,7 @@ fn update_editable_task(
   user_id: Int,
   version: Int,
   updates: TaskUpdates,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   use _ <- validation.validate_type_update(
     db,
@@ -476,7 +475,7 @@ fn update_editable_task(
 fn validate_placement_update(
   db: pog.Connection,
   user_id: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
   updates: TaskUpdates,
 ) -> Result(Nil, Error) {
   use _ <- result.try(validate_card_update(
@@ -523,7 +522,7 @@ fn validate_card_update(
 
 fn validate_milestone_update(
   db: pog.Connection,
-  current: task_mappers.Task,
+  current: domain_task.Task,
   target_card_id: Option(Int),
   milestone_update: field_update.FieldUpdate(Option(Int)),
 ) -> Result(Nil, Error) {
@@ -649,7 +648,7 @@ fn claim_task_for_current(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case current.status, current.blocked_count {
     Claimed(_), _ -> Error(AlreadyClaimed)
@@ -666,7 +665,7 @@ fn claim_available_task(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
     Ok(task) -> claim_task_success(db, task_id, user_id, org_id, current, task)
@@ -687,8 +686,8 @@ fn claim_task_success(
   task_id: Int,
   user_id: Int,
   org_id: Int,
-  current: task_mappers.Task,
-  task: task_mappers.Task,
+  current: domain_task.Task,
+  task: domain_task.Task,
 ) -> Result(Response, Error) {
   let ctx =
     rules_engine.TaskContext(
@@ -740,7 +739,7 @@ fn release_task_for_current(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case current.status {
     Available | Completed -> Error(InvalidTransition)
@@ -755,7 +754,7 @@ fn release_task_for_claimed(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
@@ -770,7 +769,7 @@ fn release_task_for_owner(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   let _ =
     work_sessions_db.close_session_for_task(
@@ -800,8 +799,8 @@ fn release_task_success(
   task_id: Int,
   user_id: Int,
   org_id: Int,
-  current: task_mappers.Task,
-  task: task_mappers.Task,
+  current: domain_task.Task,
+  task: domain_task.Task,
 ) -> Result(Response, Error) {
   let ctx =
     rules_engine.TaskContext(
@@ -853,7 +852,7 @@ fn complete_task_for_current(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case current.status {
     Available | Completed -> Error(InvalidTransition)
@@ -868,7 +867,7 @@ fn complete_task_for_claimed(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
@@ -883,7 +882,7 @@ fn complete_task_for_owner(
   user_id: Int,
   org_id: Int,
   version: Int,
-  current: task_mappers.Task,
+  current: domain_task.Task,
 ) -> Result(Response, Error) {
   let _ =
     work_sessions_db.close_session_for_task(
@@ -913,8 +912,8 @@ fn complete_task_success(
   task_id: Int,
   user_id: Int,
   org_id: Int,
-  current: task_mappers.Task,
-  task: task_mappers.Task,
+  current: domain_task.Task,
+  task: domain_task.Task,
 ) -> Result(Response, Error) {
   let ctx =
     rules_engine.TaskContext(
@@ -973,7 +972,7 @@ fn detect_conflict(
   }
 }
 
-fn conflict_from_task(current: task_mappers.Task) -> Result(Response, Error) {
+fn conflict_from_task(current: domain_task.Task) -> Result(Response, Error) {
   case current.status, current.blocked_count {
     Claimed(_), _ ->
       Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))

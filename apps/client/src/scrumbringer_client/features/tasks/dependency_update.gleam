@@ -125,7 +125,7 @@ fn with_auth_check(
   opt.Some(Update(model, fx, CheckAuth(err)))
 }
 
-pub fn handle_dependencies_fetched_ok(
+fn handle_dependencies_fetched_ok(
   model: DependenciesModel,
   deps: List(TaskDependency),
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -138,7 +138,7 @@ pub fn handle_dependencies_fetched_ok(
   )
 }
 
-pub fn handle_dependencies_fetched_error(
+fn handle_dependencies_fetched_error(
   model: DependenciesModel,
   err: ApiError,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -151,7 +151,7 @@ pub fn handle_dependencies_fetched_error(
   )
 }
 
-pub fn handle_dependency_dialog_opened(
+fn handle_dependency_dialog_opened(
   model: DependenciesModel,
   context: DependencyContext(parent_msg),
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -175,7 +175,7 @@ pub fn handle_dependency_dialog_opened(
   }
 }
 
-pub fn handle_dependency_dialog_closed(
+fn handle_dependency_dialog_closed(
   model: DependenciesModel,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
   #(
@@ -187,7 +187,7 @@ pub fn handle_dependency_dialog_closed(
   )
 }
 
-pub fn handle_dependency_search_changed(
+fn handle_dependency_search_changed(
   model: DependenciesModel,
   value: String,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -200,7 +200,7 @@ pub fn handle_dependency_search_changed(
   )
 }
 
-pub fn handle_dependency_candidates_fetched_ok(
+fn handle_dependency_candidates_fetched_ok(
   model: DependenciesModel,
   tasks: List(Task),
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -216,7 +216,7 @@ pub fn handle_dependency_candidates_fetched_ok(
   )
 }
 
-pub fn handle_dependency_candidates_fetched_error(
+fn handle_dependency_candidates_fetched_error(
   model: DependenciesModel,
   err: ApiError,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -229,7 +229,7 @@ pub fn handle_dependency_candidates_fetched_error(
   )
 }
 
-pub fn handle_dependency_selected(
+fn handle_dependency_selected(
   model: DependenciesModel,
   task_id: Int,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -242,7 +242,7 @@ pub fn handle_dependency_selected(
   )
 }
 
-pub fn handle_dependency_add_submitted(
+fn handle_dependency_add_submitted(
   model: DependenciesModel,
   context: DependencyContext(parent_msg),
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -292,7 +292,7 @@ fn submit_dependency_add_for_task(
   )
 }
 
-pub fn handle_dependency_added_ok(
+fn handle_dependency_added_ok(
   model: DependenciesModel,
   dep: TaskDependency,
   context: DependencyContext(parent_msg),
@@ -307,7 +307,7 @@ pub fn handle_dependency_added_ok(
   #(DependenciesModel(pool: pool, dependencies: dependencies), effect.none())
 }
 
-pub fn handle_dependency_added_error(
+fn handle_dependency_added_error(
   model: DependenciesModel,
   err: ApiError,
 ) -> #(DependenciesModel, Effect(parent_msg)) {
@@ -320,7 +320,7 @@ pub fn handle_dependency_added_error(
   )
 }
 
-pub fn handle_dependency_remove_clicked(
+fn handle_dependency_remove_clicked(
   model: DependenciesModel,
   depends_on_task_id: Int,
   context: DependencyContext(parent_msg),
@@ -354,7 +354,7 @@ pub fn handle_dependency_remove_clicked(
   }
 }
 
-pub fn handle_dependency_removed_ok(
+fn handle_dependency_removed_ok(
   model: DependenciesModel,
   depends_on_task_id: Int,
   context: DependencyContext(parent_msg),
@@ -369,7 +369,7 @@ pub fn handle_dependency_removed_ok(
   #(DependenciesModel(pool: pool, dependencies: dependencies), effect.none())
 }
 
-pub fn handle_dependency_removed_error(
+fn handle_dependency_removed_error(
   model: DependenciesModel,
   err: ApiError,
   context: DependencyFeedbackContext(parent_msg),

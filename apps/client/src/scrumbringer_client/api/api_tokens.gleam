@@ -9,13 +9,14 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
+import domain/api_token
 import domain/api_token_scope
 import domain/org_role/codec as org_role_codec
 import scrumbringer_client/api/core
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 
 pub fn list_integration_users(
-  to_msg: fn(ApiResult(List(state_types.IntegrationUser))) -> msg,
+  to_msg: fn(ApiResult(List(api_token.IntegrationUser))) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Get,
@@ -27,7 +28,7 @@ pub fn list_integration_users(
 }
 
 pub fn list_tokens(
-  to_msg: fn(ApiResult(List(state_types.ApiToken))) -> msg,
+  to_msg: fn(ApiResult(List(api_token.ApiToken))) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Get,
@@ -39,8 +40,8 @@ pub fn list_tokens(
 }
 
 pub fn create_token(
-  form: state_types.ApiTokenForm,
-  to_msg: fn(ApiResult(state_types.CreatedApiToken)) -> msg,
+  form: api_tokens_state.Form,
+  to_msg: fn(ApiResult(api_token.CreatedApiToken)) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Post,
@@ -54,7 +55,7 @@ pub fn create_token(
 pub fn rename_token(
   id: Int,
   name: String,
-  to_msg: fn(ApiResult(state_types.ApiToken)) -> msg,
+  to_msg: fn(ApiResult(api_token.ApiToken)) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Patch,
@@ -87,13 +88,13 @@ pub fn deactivate_integration_user(
 }
 
 pub fn integration_user_payload_decoder() -> decode.Decoder(
-  state_types.IntegrationUser,
+  api_token.IntegrationUser,
 ) {
   decode.field("integration_user", integration_user_decoder(), decode.success)
 }
 
 pub fn integration_users_payload_decoder() -> decode.Decoder(
-  List(state_types.IntegrationUser),
+  List(api_token.IntegrationUser),
 ) {
   decode.field(
     "integration_users",
@@ -102,29 +103,32 @@ pub fn integration_users_payload_decoder() -> decode.Decoder(
   )
 }
 
-pub fn tokens_payload_decoder() -> decode.Decoder(List(state_types.ApiToken)) {
+pub fn tokens_payload_decoder() -> decode.Decoder(List(api_token.ApiToken)) {
   decode.field("api_tokens", decode.list(token_decoder()), decode.success)
 }
 
-pub fn token_payload_decoder() -> decode.Decoder(state_types.ApiToken) {
+pub fn token_payload_decoder() -> decode.Decoder(api_token.ApiToken) {
   decode.field("api_token", token_decoder(), decode.success)
 }
 
 pub fn created_token_payload_decoder() -> decode.Decoder(
-  state_types.CreatedApiToken,
+  api_token.CreatedApiToken,
 ) {
-  use api_token <- decode.field("api_token", token_decoder())
+  use api_token_value <- decode.field("api_token", token_decoder())
   use token <- decode.field("token", decode.string)
-  decode.success(state_types.CreatedApiToken(api_token: api_token, token: token))
+  decode.success(api_token.CreatedApiToken(
+    api_token: api_token_value,
+    token: token,
+  ))
 }
 
-pub fn integration_user_decoder() -> decode.Decoder(state_types.IntegrationUser) {
+pub fn integration_user_decoder() -> decode.Decoder(api_token.IntegrationUser) {
   use id <- decode.field("id", decode.int)
   use email <- decode.field("email", decode.string)
   use org_role <- decode.field("org_role", org_role_codec.org_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
   use active_token_count <- decode.field("active_token_count", decode.int)
-  decode.success(state_types.IntegrationUser(
+  decode.success(api_token.IntegrationUser(
     id: id,
     email: email,
     org_role: org_role,
@@ -133,7 +137,7 @@ pub fn integration_user_decoder() -> decode.Decoder(state_types.IntegrationUser)
   ))
 }
 
-pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
+pub fn token_decoder() -> decode.Decoder(api_token.ApiToken) {
   use id <- decode.field("id", decode.int)
   use org_id <- decode.field("org_id", decode.int)
   use integration_user_id <- decode.field("integration_user_id", decode.int)
@@ -150,7 +154,7 @@ pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
   use expires_at <- decode.field("expires_at", core.nullable_string())
   use revoked_at <- decode.field("revoked_at", core.nullable_string())
   use expired <- decode.field("expired", decode.bool)
-  decode.success(state_types.ApiToken(
+  decode.success(api_token.ApiToken(
     id: id,
     org_id: org_id,
     integration_user_id: integration_user_id,
@@ -167,7 +171,7 @@ pub fn token_decoder() -> decode.Decoder(state_types.ApiToken) {
   ))
 }
 
-fn token_body(form: state_types.ApiTokenForm) -> json.Json {
+fn token_body(form: api_tokens_state.Form) -> json.Json {
   json.object([
     #("name", json.string(string.trim(form.name))),
     #("integration", json.string(string.trim(form.integration))),

@@ -14,7 +14,6 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/view as admin_view
 
 fn assert_contains(text: String, fragment: String) {
@@ -135,7 +134,7 @@ pub fn cards_view_does_not_render_local_crud_dialog_test() {
         cards: admin_cards.Model(
           ..cards,
           cards: Loaded([sample_card()]),
-          cards_dialog_mode: opt.Some(state_types.CardDialogDelete(1)),
+          cards_dialog_mode: opt.Some(admin_cards.CardDialogDelete(1)),
         ),
       )
     })
@@ -156,7 +155,7 @@ pub fn cards_view_passes_milestone_context_to_dialog_test() {
         ..admin,
         cards: admin_cards.Model(
           ..cards,
-          cards_dialog_mode: opt.Some(state_types.CardDialogCreate),
+          cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
           cards_create_milestone_id: opt.Some(89),
         ),
       )
@@ -189,7 +188,7 @@ pub fn cards_view_without_context_keeps_milestone_attributes_empty_test() {
         ..admin,
         cards: admin_cards.Model(
           ..cards,
-          cards_dialog_mode: opt.Some(state_types.CardDialogCreate),
+          cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
           cards_create_milestone_id: opt.None,
         ),
       )

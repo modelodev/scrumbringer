@@ -20,24 +20,21 @@ fn sample_member(user_id: Int, role: ProjectRole) {
   )
 }
 
-fn feedback_context() -> member_role.FeedbackContext(Nil) {
-  member_role.FeedbackContext(
-    role_updated: "Role updated",
-    cannot_demote_last_manager: "Cannot demote last manager",
-    on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
-    on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
-    on_error_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
-  )
-}
-
-fn try_context() -> member_role.Context(String) {
+fn context() -> member_role.Context(String) {
   member_role.Context(
     selected_project_id: option.Some(3),
     on_member_role_changed: fn(_) { "role-changed" },
   )
 }
 
-fn try_feedback_context() -> member_role.FeedbackContext(String) {
+fn no_project_context() -> member_role.Context(String) {
+  member_role.Context(
+    selected_project_id: option.None,
+    on_member_role_changed: fn(_) { "role-changed" },
+  )
+}
+
+fn feedback_context() -> member_role.FeedbackContext(String) {
   member_role.FeedbackContext(
     role_updated: "Role updated",
     cannot_demote_last_manager: "Cannot demote last manager",
@@ -45,6 +42,18 @@ fn try_feedback_context() -> member_role.FeedbackContext(String) {
     on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
   )
+}
+
+fn update(model: admin_members.Model, msg: admin_messages.Msg) {
+  update_with_context(model, msg, context())
+}
+
+fn update_with_context(
+  model: admin_members.Model,
+  msg: admin_messages.Msg,
+  context: member_role.Context(String),
+) {
+  member_role.try_update(model, msg, context, feedback_context())
 }
 
 pub fn input_value_parses_known_project_roles_test() {
@@ -62,26 +71,19 @@ pub fn changed_input_value_rejects_invalid_or_unchanged_values_test() {
   let assert Error(_) = member_role.changed_input_value("owner", Member)
 }
 
-pub fn role_change_request_without_project_is_noop_test() {
-  let context =
-    member_role.Context(
-      selected_project_id: option.None,
-      on_member_role_changed: fn(_) { "role-changed" },
-    )
-
-  let #(next, fx) =
-    member_role.handle_member_role_change_requested(
+pub fn try_update_role_change_request_without_project_is_noop_test() {
+  let assert option.Some(member_role.Update(next, fx, member_role.NoAuthCheck)) =
+    update_with_context(
       admin_members.default_model(),
-      9,
-      Manager,
-      context,
+      admin_messages.MemberRoleChangeRequested(9, Manager),
+      no_project_context(),
     )
 
   let assert NotAsked = next.members
   let assert True = fx == effect.none()
 }
 
-pub fn role_change_success_updates_only_matching_member_test() {
+pub fn try_update_role_change_success_updates_only_matching_member_test() {
   let model =
     admin_members.Model(
       ..admin_members.default_model(),
@@ -98,8 +100,8 @@ pub fn role_change_success_updates_only_matching_member_test() {
       previous_role: Member,
     )
 
-  let #(next, fx) =
-    member_role.handle_member_role_changed_ok(model, result, feedback_context())
+  let assert option.Some(member_role.Update(next, fx, member_role.NoAuthCheck)) =
+    update(model, admin_messages.MemberRoleChanged(Ok(result)))
 
   let assert Loaded(members) = next.members
   let assert [updated, untouched] = members
@@ -132,11 +134,9 @@ pub fn role_change_generic_error_uses_backend_error_test() {
 
 pub fn try_update_role_change_request_returns_local_update_test() {
   let assert option.Some(member_role.Update(next, _fx, member_role.NoAuthCheck)) =
-    member_role.try_update(
+    update(
       admin_members.default_model(),
       admin_messages.MemberRoleChangeRequested(9, Manager),
-      try_context(),
-      try_feedback_context(),
     )
 
   let assert NotAsked = next.members
@@ -160,12 +160,7 @@ pub fn try_update_role_changed_ok_updates_matching_member_test() {
     )
 
   let assert option.Some(member_role.Update(next, fx, member_role.NoAuthCheck)) =
-    member_role.try_update(
-      model,
-      admin_messages.MemberRoleChanged(Ok(result)),
-      try_context(),
-      try_feedback_context(),
-    )
+    update(model, admin_messages.MemberRoleChanged(Ok(result)))
 
   let assert Loaded([updated, _]) = next.members
   let assert Manager = updated.role
@@ -180,11 +175,9 @@ pub fn try_update_role_changed_error_returns_auth_policy_test() {
     fx,
     member_role.CheckAuth(auth_err),
   )) =
-    member_role.try_update(
+    update(
       admin_members.default_model(),
       admin_messages.MemberRoleChanged(Error(err)),
-      try_context(),
-      try_feedback_context(),
     )
 
   let assert NotAsked = next.members
@@ -194,10 +187,8 @@ pub fn try_update_role_changed_error_returns_auth_policy_test() {
 
 pub fn try_update_ignores_non_member_role_messages_test() {
   let assert option.None =
-    member_role.try_update(
+    update(
       admin_members.default_model(),
       admin_messages.InviteCreateDialogOpened,
-      try_context(),
-      try_feedback_context(),
     )
 }

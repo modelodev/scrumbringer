@@ -78,10 +78,24 @@ fn feedback_context() -> dependency_update.DependencyFeedbackContext(Nil) {
   })
 }
 
+fn run(
+  model: dependency_update.DependenciesModel,
+  inner: pool_messages.Msg,
+  context: dependency_update.DependencyContext(Nil),
+) -> #(dependency_update.DependenciesModel, effect.Effect(Nil)) {
+  let assert Some(dependency_update.Update(next, fx, _policy)) =
+    dependency_update.try_update(model, inner, context, feedback_context())
+  #(next, fx)
+}
+
 pub fn local_dependencies_fetched_ok_sets_loaded_dependencies_test() {
   let dep = sample_dependency()
   let #(next, fx) =
-    dependency_update.handle_dependencies_fetched_ok(local_model(), [dep])
+    run(
+      local_model(),
+      pool_messages.MemberDependenciesFetched(Ok([dep])),
+      local_context(Some(42), Some(sample_task())),
+    )
 
   let assert True =
     next.dependencies.member_dependencies == remote.Loaded([dep])
@@ -90,8 +104,9 @@ pub fn local_dependencies_fetched_ok_sets_loaded_dependencies_test() {
 
 pub fn local_dependency_dialog_opened_loads_candidates_for_selected_task_test() {
   let #(next, fx) =
-    dependency_update.handle_dependency_dialog_opened(
+    run(
       local_model(),
+      pool_messages.MemberDependencyDialogOpened,
       local_context(Some(42), Some(sample_task())),
     )
 
@@ -115,8 +130,9 @@ pub fn local_dependency_add_submitted_sets_in_flight_test() {
     )
 
   let #(next, fx) =
-    dependency_update.handle_dependency_add_submitted(
+    run(
       model,
+      pool_messages.MemberDependencyAddSubmitted,
       local_context(Some(42), Some(sample_task())),
     )
 
@@ -142,9 +158,9 @@ pub fn local_dependency_added_ok_updates_dependencies_and_blocked_count_test() {
     )
 
   let #(next, fx) =
-    dependency_update.handle_dependency_added_ok(
+    run(
       model,
-      dep,
+      pool_messages.MemberDependencyAdded(Ok(dep)),
       local_context(Some(42), Some(task)),
     )
 
@@ -175,9 +191,9 @@ pub fn local_dependency_removed_ok_removes_dependency_and_decrements_count_test(
     )
 
   let #(next, fx) =
-    dependency_update.handle_dependency_removed_ok(
+    run(
       model,
-      11,
+      pool_messages.MemberDependencyRemoved(11, Ok(Nil)),
       local_context(Some(42), Some(task)),
     )
 
@@ -199,10 +215,10 @@ pub fn local_dependency_removed_error_clears_in_flight_test() {
     )
 
   let #(next, fx) =
-    dependency_update.handle_dependency_removed_error(
+    run(
       model,
-      sample_error(),
-      feedback_context(),
+      pool_messages.MemberDependencyRemoved(11, Error(sample_error())),
+      local_context(Some(42), Some(sample_task())),
     )
 
   let assert None = next.dependencies.member_dependency_remove_in_flight

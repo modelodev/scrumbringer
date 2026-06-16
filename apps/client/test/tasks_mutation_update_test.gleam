@@ -10,11 +10,10 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/mutation_update
-import scrumbringer_client/features/tasks/update as tasks_update
 import scrumbringer_client/ui/toast
 
-fn mutation_context() -> tasks_update.TaskMutationContext(Nil) {
-  tasks_update.TaskMutationContext(
+fn mutation_context() -> mutation_update.MutationContext(Nil) {
+  mutation_update.MutationContext(
     current_user_id: Some(7),
     on_task_claimed: fn(_result) { Nil },
     on_task_released: fn(_result) { Nil },
@@ -40,8 +39,8 @@ fn error_context() -> mutation_update.ErrorContext(Nil) {
   )
 }
 
-fn dispatch_context() -> tasks_update.TaskMutationDispatchContext(Nil) {
-  tasks_update.TaskMutationDispatchContext(
+fn dispatch_context() -> mutation_update.DispatchContext(Nil) {
+  mutation_update.DispatchContext(
     mutation_context: mutation_context(),
     success_context: success_context(),
     error_context: error_context(),
@@ -81,17 +80,17 @@ fn pool_with_tasks(tasks: List(Task)) -> member_pool.Model {
   )
 }
 
-pub fn try_task_mutation_update_claim_clicked_sets_local_policy_test() {
+pub fn try_update_claim_clicked_sets_local_policy_test() {
   let task = sample_task(42, task_state.Available)
 
-  let assert Some(tasks_update.TaskMutationUpdate(next, fx, policy)) =
-    tasks_update.try_task_mutation_update(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       pool_with_tasks([task]),
       pool_messages.MemberClaimClicked(42, 3),
       dispatch_context(),
     )
 
-  let assert tasks_update.NoTaskMutationPolicy = policy
+  let assert mutation_update.NoPolicy = policy
   let assert True = next.member_task_mutation_in_flight
   let assert Some(42) = next.member_task_mutation_task_id
   let assert Some([task]) = next.member_tasks_snapshot
@@ -99,7 +98,7 @@ pub fn try_task_mutation_update_claim_clicked_sets_local_policy_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn try_task_mutation_update_success_requests_member_refresh_test() {
+pub fn try_update_success_requests_member_refresh_test() {
   let model =
     member_pool.Model(
       ..pool_with_tasks([sample_task(42, task_state.Available)]),
@@ -108,8 +107,8 @@ pub fn try_task_mutation_update_success_requests_member_refresh_test() {
       member_tasks_snapshot: Some([]),
     )
 
-  let assert Some(tasks_update.TaskMutationUpdate(next, fx, policy)) =
-    tasks_update.try_task_mutation_update(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       model,
       pool_messages.MemberTaskReleased(
         Ok(sample_task(42, task_state.Available)),
@@ -117,14 +116,14 @@ pub fn try_task_mutation_update_success_requests_member_refresh_test() {
       dispatch_context(),
     )
 
-  let assert tasks_update.RefreshMemberAfterTaskMutationSuccess = policy
+  let assert mutation_update.RefreshMemberAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
   let assert True = fx != effect.none()
 }
 
-pub fn try_task_mutation_update_error_checks_auth_after_rollback_test() {
+pub fn try_update_error_checks_auth_after_rollback_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
   let original = sample_task(42, task_state.Available)
   let model =
@@ -135,13 +134,13 @@ pub fn try_task_mutation_update_error_checks_auth_after_rollback_test() {
       member_tasks_snapshot: Some([original]),
     )
 
-  let assert Some(tasks_update.TaskMutationUpdate(next, fx, policy)) =
-    tasks_update.try_task_mutation_update(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       model,
       pool_messages.MemberTaskCompleted(Error(err)),
       dispatch_context(),
     )
-  let assert tasks_update.CheckTaskMutationAuthAfter(auth_err) = policy
+  let assert mutation_update.CheckAuthAfter(auth_err) = policy
 
   let assert True = auth_err == err
   let assert True = next.member_tasks == remote.Loaded([original])
@@ -151,9 +150,9 @@ pub fn try_task_mutation_update_error_checks_auth_after_rollback_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn try_task_mutation_update_ignores_non_mutation_messages_test() {
+pub fn try_update_ignores_non_mutation_messages_test() {
   let assert None =
-    tasks_update.try_task_mutation_update(
+    mutation_update.try_update(
       pool_with_tasks([]),
       pool_messages.MemberPoolFiltersToggled,
       dispatch_context(),
@@ -163,14 +162,14 @@ pub fn try_task_mutation_update_ignores_non_mutation_messages_test() {
 pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
   let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
 
-  let #(next, fx) =
-    tasks_update.handle_claim_clicked(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       pool_with_tasks([task]),
-      42,
-      3,
-      mutation_context(),
+      pool_messages.MemberClaimClicked(42, 3),
+      dispatch_context(),
     )
 
+  let assert mutation_update.NoPolicy = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
@@ -180,14 +179,14 @@ pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
 pub fn local_claim_clicked_applies_optimistic_claim_test() {
   let task = sample_task(42, task_state.Available)
 
-  let #(next, fx) =
-    tasks_update.handle_claim_clicked(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       pool_with_tasks([task]),
-      42,
-      3,
-      mutation_context(),
+      pool_messages.MemberClaimClicked(42, 3),
+      dispatch_context(),
     )
 
+  let assert mutation_update.NoPolicy = policy
   let assert True = next.member_task_mutation_in_flight
   let assert Some(42) = next.member_task_mutation_task_id
   let assert Some([task]) = next.member_tasks_snapshot
@@ -199,7 +198,7 @@ pub fn local_claim_dropped_marks_in_flight_without_optimistic_claim_test() {
   let task = sample_task(42, task_state.Available)
 
   let #(next, fx) =
-    tasks_update.handle_claim_dropped(
+    mutation_update.handle_claim_dropped(
       pool_with_tasks([task]),
       42,
       mutation_context(),
@@ -216,7 +215,7 @@ pub fn local_claim_dropped_blocked_task_does_not_submit_test() {
   let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
 
   let #(next, fx) =
-    tasks_update.handle_claim_dropped(
+    mutation_update.handle_claim_dropped(
       pool_with_tasks([task]),
       42,
       mutation_context(),
@@ -239,14 +238,14 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
       ),
     )
 
-  let #(next, fx) =
-    tasks_update.handle_release_clicked(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       pool_with_tasks([task]),
-      42,
-      3,
-      mutation_context(),
+      pool_messages.MemberReleaseClicked(42, 3),
+      dispatch_context(),
     )
 
+  let assert mutation_update.NoPolicy = policy
   let expected = sample_task(42, task_state.Available)
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
@@ -264,14 +263,14 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
       ),
     )
 
-  let #(next, fx) =
-    tasks_update.handle_complete_clicked(
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
       pool_with_tasks([task]),
-      42,
-      3,
-      mutation_context(),
+      pool_messages.MemberCompleteClicked(42, 3),
+      dispatch_context(),
     )
 
+  let assert mutation_update.NoPolicy = policy
   let expected = sample_task(42, task_state.Completed(completed_at: ""))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
@@ -287,12 +286,18 @@ pub fn local_task_claimed_ok_clears_optimistic_state_test() {
       member_tasks_snapshot: Some([]),
     )
 
-  let #(next, fx) = tasks_update.handle_task_claimed_ok(model)
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      model,
+      pool_messages.MemberTaskClaimed(Ok(sample_task(42, task_state.Available))),
+      dispatch_context(),
+    )
 
+  let assert mutation_update.RefreshMemberAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
-  let assert True = fx == effect.none()
+  let assert True = fx != effect.none()
 }
 
 pub fn mutation_success_claim_does_not_refetch_work_sessions_test() {
@@ -398,13 +403,21 @@ pub fn local_mutation_error_restores_snapshot_and_clears_state_test() {
       member_tasks_snapshot: Some([original]),
     )
 
-  let #(next, fx) = tasks_update.handle_mutation_error(model)
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      model,
+      pool_messages.MemberTaskClaimed(
+        Error(ApiError(status: 500, code: "ERR", message: "boom")),
+      ),
+      dispatch_context(),
+    )
 
+  let assert mutation_update.CheckAuthAfter(_) = policy
   let assert True = next.member_tasks == remote.Loaded([original])
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
-  let assert True = fx == effect.none()
+  let assert True = fx != effect.none()
 }
 
 fn labels() -> mutation_update.ErrorLabels {

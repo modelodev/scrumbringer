@@ -31,9 +31,11 @@ import scrumbringer_server/services/service_error.{
 }
 import scrumbringer_server/sql
 
-/// Workflow record with active flag and rule count.
-pub type Workflow {
-  Workflow(
+const unchanged_text_value = "__unset__"
+
+/// Persisted workflow record with active flag and rule count.
+pub type WorkflowRecord {
+  WorkflowRecord(
     id: Int,
     org_id: Int,
     project_id: Int,
@@ -51,7 +53,7 @@ pub type Workflow {
 // =============================================================================
 
 fn text_update_value(value: Option(String)) -> String {
-  option_helpers.option_to_value(value, "__unset__")
+  option_helpers.option_to_value(value, unchanged_text_value)
 }
 
 fn workflow_from_fields(
@@ -64,8 +66,8 @@ fn workflow_from_fields(
   rule_count: Int,
   created_by: Int,
   created_at: String,
-) -> Workflow {
-  Workflow(
+) -> WorkflowRecord {
+  WorkflowRecord(
     id: id,
     org_id: org_id,
     project_id: project_id,
@@ -78,7 +80,7 @@ fn workflow_from_fields(
   )
 }
 
-fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> Workflow {
+fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> WorkflowRecord {
   workflow_from_fields(
     row.id,
     row.org_id,
@@ -92,7 +94,7 @@ fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> Workflow {
   )
 }
 
-fn from_get_row(row: sql.WorkflowsGetRow) -> Workflow {
+fn from_get_row(row: sql.WorkflowsGetRow) -> WorkflowRecord {
   workflow_from_fields(
     row.id,
     row.org_id,
@@ -106,7 +108,7 @@ fn from_get_row(row: sql.WorkflowsGetRow) -> Workflow {
   )
 }
 
-fn from_create_row(row: sql.WorkflowsCreateRow) -> Workflow {
+fn from_create_row(row: sql.WorkflowsCreateRow) -> WorkflowRecord {
   workflow_from_fields(
     row.id,
     row.org_id,
@@ -120,7 +122,7 @@ fn from_create_row(row: sql.WorkflowsCreateRow) -> Workflow {
   )
 }
 
-fn from_update_row(row: sql.WorkflowsUpdateRow) -> Workflow {
+fn from_update_row(row: sql.WorkflowsUpdateRow) -> WorkflowRecord {
   workflow_from_fields(
     row.id,
     row.org_id,
@@ -145,7 +147,7 @@ fn from_update_row(row: sql.WorkflowsUpdateRow) -> Workflow {
 pub fn list_project_workflows(
   db: pog.Connection,
   project_id: Int,
-) -> Result(List(Workflow), pog.QueryError) {
+) -> Result(List(WorkflowRecord), pog.QueryError) {
   use returned <- result.try(sql.workflows_list_for_project(db, project_id))
 
   returned.rows
@@ -160,7 +162,7 @@ pub fn list_project_workflows(
 pub fn get_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(Workflow, ServiceError) {
+) -> Result(WorkflowRecord, ServiceError) {
   case sql.workflows_get(db, workflow_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_get_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -180,7 +182,7 @@ pub fn create_workflow(
   description: String,
   active: Bool,
   created_by: Int,
-) -> Result(Workflow, ServiceError) {
+) -> Result(WorkflowRecord, ServiceError) {
   case
     sql.workflows_create(
       db,
@@ -232,7 +234,7 @@ pub fn update_workflow(
   project_id: Int,
   name: Option(String),
   description: Option(String),
-) -> Result(Workflow, ServiceError) {
+) -> Result(WorkflowRecord, ServiceError) {
   case
     sql.workflows_update(
       db,

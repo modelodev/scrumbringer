@@ -20,6 +20,7 @@
 //// - Uses `services/projects_db` for persistence
 //// - Uses `http/auth` and `http/csrf` for auth and CSRF validation
 
+import domain/api_token as api_token_domain
 import domain/org_role
 import gleam/http
 import gleam/list
@@ -33,7 +34,6 @@ import scrumbringer_server/http/projects/payloads as project_payloads
 import scrumbringer_server/http/projects/presenters as project_presenters
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/api_tokens
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
@@ -192,7 +192,7 @@ fn create_project(
   ctx: auth.Ctx,
   user: StoredUser,
   payload: project_payloads.ProjectNamePayload,
-) -> Result(projects_db.Project, wisp.Response) {
+) -> Result(projects_db.ProjectRecord, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.create_project(db, user.org_id, user.id, payload.name) {
     Ok(project) -> Ok(project)
@@ -252,7 +252,7 @@ fn update_project(
   ctx: auth.Ctx,
   project_id: Int,
   payload: project_payloads.ProjectNamePayload,
-) -> Result(projects_db.Project, wisp.Response) {
+) -> Result(projects_db.ProjectRecord, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.update_project(db, project_id, payload.name) {
     Ok(project) -> Ok(project)
@@ -322,9 +322,9 @@ fn list_projects_for_principal(db, user: StoredUser, principal: auth.Principal) 
     auth.WebPrincipal(_) -> projects_db.list_projects_for_user(db, user.id)
     auth.ApiTokenPrincipal(_, token) ->
       case token.project_grant {
-        api_tokens.AllProjects ->
+        api_token_domain.AllProjects ->
           projects_db.list_projects_for_org(db, user.org_id)
-        api_tokens.ProjectOnly(project_id) -> {
+        api_token_domain.ProjectOnly(project_id) -> {
           use projects <- result.try(projects_db.list_projects_for_org(
             db,
             user.org_id,
@@ -386,7 +386,7 @@ fn add_member(
   ctx: auth.Ctx,
   project_id: Int,
   payload: project_payloads.MemberPayload,
-) -> Result(projects_db.ProjectMember, wisp.Response) {
+) -> Result(projects_db.ProjectMemberRecord, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.add_member(db, project_id, payload.user_id, payload.role) {
     Ok(member) -> Ok(member)

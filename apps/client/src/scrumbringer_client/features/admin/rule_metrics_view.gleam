@@ -29,6 +29,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
@@ -36,6 +37,7 @@ import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
+import scrumbringer_client/ui/modal_close_button
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/ui/skeleton
 
@@ -380,13 +382,14 @@ fn view_workflow_rule_metrics_row(
         ]),
       ]),
       td([], [
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            event.on_click(config.on_drilldown_clicked(rule_metrics.rule_id)),
-          ],
-          [text(t(config, i18n_text.ViewDetails))],
-        ),
+        ui_button.text(
+          t(config, i18n_text.ViewDetails),
+          config.on_drilldown_clicked(rule_metrics.rule_id),
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+        |> ui_button.with_size(ui_button.ExtraSmall)
+        |> ui_button.view,
       ]),
     ]),
   )
@@ -403,12 +406,10 @@ fn view_rule_drilldown_modal(config: Config(msg)) -> Element(msg) {
             h3([], [
               text(t(config, i18n_text.RuleMetricsDrilldown)),
             ]),
-            button(
-              [
-                attribute.class("btn-close"),
-                event.on_click(config.on_drilldown_closed),
-              ],
-              [text("X")],
+            modal_close_button.view_with_label_and_class(
+              t(config, i18n_text.Close),
+              "btn-close",
+              config.on_drilldown_closed,
             ),
           ]),
           div([attribute.class("modal-body")], [
@@ -620,56 +621,55 @@ fn view_executions_pagination(
     True -> element.none()
     False ->
       div([attribute.class("pagination")], [
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            attribute.disabled(pagination.offset == 0),
-            event.on_click(config.on_exec_page_changed(0)),
-          ],
-          [text("<<")],
+        pagination_button(
+          label: "<<",
+          accessible_label: t(config, i18n_text.FirstPage),
+          disabled: pagination.offset == 0,
+          on_click: config.on_exec_page_changed(0),
         ),
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            attribute.disabled(pagination.offset == 0),
-            event.on_click(
-              config.on_exec_page_changed(int.max(
-                0,
-                pagination.offset - pagination.limit,
-              )),
-            ),
-          ],
-          [text("<")],
+        pagination_button(
+          label: "<",
+          accessible_label: t(config, i18n_text.PreviousPage),
+          disabled: pagination.offset == 0,
+          on_click: config.on_exec_page_changed(int.max(
+            0,
+            pagination.offset - pagination.limit,
+          )),
         ),
         span([attribute.class("page-info")], [
           text(
             int.to_string(current_page) <> " / " <> int.to_string(total_pages),
           ),
         ]),
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            attribute.disabled(
-              pagination.offset + pagination.limit >= pagination.total,
-            ),
-            event.on_click(config.on_exec_page_changed(
-              pagination.offset + pagination.limit,
-            )),
-          ],
-          [text(">")],
+        pagination_button(
+          label: ">",
+          accessible_label: t(config, i18n_text.NextPage),
+          disabled: pagination.offset + pagination.limit >= pagination.total,
+          on_click: config.on_exec_page_changed(
+            pagination.offset + pagination.limit,
+          ),
         ),
-        button(
-          [
-            attribute.class("btn-xs btn-secondary"),
-            attribute.disabled(
-              pagination.offset + pagination.limit >= pagination.total,
-            ),
-            event.on_click(config.on_exec_page_changed(
-              { total_pages - 1 } * pagination.limit,
-            )),
-          ],
-          [text(">>")],
+        pagination_button(
+          label: ">>",
+          accessible_label: t(config, i18n_text.LastPage),
+          disabled: pagination.offset + pagination.limit >= pagination.total,
+          on_click: config.on_exec_page_changed(
+            { total_pages - 1 } * pagination.limit,
+          ),
         ),
       ])
   }
+}
+
+fn pagination_button(
+  label label: String,
+  accessible_label accessible_label: String,
+  disabled disabled: Bool,
+  on_click on_click: msg,
+) -> Element(msg) {
+  ui_button.text(label, on_click, ui_button.Secondary, ui_button.EntityAction)
+  |> ui_button.with_size(ui_button.ExtraSmall)
+  |> ui_button.with_disabled(disabled)
+  |> ui_button.with_accessible_label(accessible_label)
+  |> ui_button.view
 }

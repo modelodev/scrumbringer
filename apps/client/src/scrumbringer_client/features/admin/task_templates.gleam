@@ -16,24 +16,24 @@
 //// - **features/pool/update.gleam**: Routes task template messages here
 //// - **client_update.gleam**: Calls fetch_task_templates for admin sections
 
-import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
-import domain/remote.{type Remote, Failed, Loaded, Loading}
+import domain/remote.{Failed, Loaded, Loading}
 import domain/workflow.{type TaskTemplate}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type TaskTemplateDialogMode, pool_msg, update_admin,
+  type Model, type Msg, pool_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/features/admin/scoped_remote_list
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/api/workflows/task_templates as api_task_templates
 
-pub type Success {
+type Success {
   TaskTemplateCreated
   TaskTemplateUpdated
   TaskTemplateDeleted
@@ -119,23 +119,23 @@ fn with_auth_check(
   opt.Some(Update(state, fx, CheckAuth(err)))
 }
 
-pub fn project_fetched_ok(
+fn project_fetched_ok(
   state: admin_task_templates.Model,
   templates: List(TaskTemplate),
 ) -> admin_task_templates.Model {
   admin_task_templates.Model(..state, task_templates_project: Loaded(templates))
 }
 
-pub fn project_fetched_error(
+fn project_fetched_error(
   state: admin_task_templates.Model,
   err: ApiError,
 ) -> admin_task_templates.Model {
   admin_task_templates.Model(..state, task_templates_project: Failed(err))
 }
 
-pub fn open_dialog(
+fn open_dialog(
   state: admin_task_templates.Model,
-  mode: TaskTemplateDialogMode,
+  mode: admin_task_templates.TaskTemplateDialogMode,
 ) -> admin_task_templates.Model {
   admin_task_templates.Model(
     ..state,
@@ -143,18 +143,16 @@ pub fn open_dialog(
   )
 }
 
-pub fn close_dialog(
-  state: admin_task_templates.Model,
-) -> admin_task_templates.Model {
+fn close_dialog(state: admin_task_templates.Model) -> admin_task_templates.Model {
   admin_task_templates.Model(..state, task_templates_dialog_mode: opt.None)
 }
 
-pub fn template_created(
+fn template_created(
   state: admin_task_templates.Model,
   template: TaskTemplate,
 ) -> admin_task_templates.Model {
   let #(org, project) =
-    prepend_for_scope(
+    scoped_remote_list.prepend_for_scope(
       state.task_templates_org,
       state.task_templates_project,
       template.project_id,
@@ -168,18 +166,18 @@ pub fn template_created(
   )
 }
 
-pub fn template_updated(
+fn template_updated(
   state: admin_task_templates.Model,
   updated_template: TaskTemplate,
 ) -> admin_task_templates.Model {
   let org =
-    replace_loaded_by_id(
+    scoped_remote_list.replace_by_id(
       state.task_templates_org,
       updated_template,
       fn(template: TaskTemplate) { template.id },
     )
   let project =
-    replace_loaded_by_id(
+    scoped_remote_list.replace_by_id(
       state.task_templates_project,
       updated_template,
       fn(template: TaskTemplate) { template.id },
@@ -192,18 +190,18 @@ pub fn template_updated(
   )
 }
 
-pub fn template_deleted(
+fn template_deleted(
   state: admin_task_templates.Model,
   template_id: Int,
 ) -> admin_task_templates.Model {
   let org =
-    remove_loaded_by_id(
+    scoped_remote_list.remove_by_id(
       state.task_templates_org,
       template_id,
       fn(template: TaskTemplate) { template.id },
     )
   let project =
-    remove_loaded_by_id(
+    scoped_remote_list.remove_by_id(
       state.task_templates_project,
       template_id,
       fn(template: TaskTemplate) { template.id },
@@ -216,7 +214,7 @@ pub fn template_deleted(
   )
 }
 
-pub fn success_effect(
+fn success_effect(
   success: Success,
   feedback: FeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
@@ -253,60 +251,6 @@ pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
       #(model, fetch_effect)
     }
     opt.None -> #(model, effect.none())
-  }
-}
-
-fn prepend_for_scope(
-  org: Remote(List(a)),
-  project: Remote(List(a)),
-  project_id: opt.Option(Int),
-  item: a,
-) -> #(Remote(List(a)), Remote(List(a))) {
-  case project_id {
-    opt.Some(_) -> #(org, prepend_loaded_or_new(project, item))
-    opt.None -> #(prepend_loaded_or_new(org, item), project)
-  }
-}
-
-fn prepend_loaded_or_new(remote: Remote(List(a)), item: a) -> Remote(List(a)) {
-  case remote {
-    Loaded(existing) -> Loaded([item, ..existing])
-    _ -> Loaded([item])
-  }
-}
-
-fn replace_loaded_by_id(
-  remote: Remote(List(a)),
-  updated: a,
-  id: fn(a) -> Int,
-) -> Remote(List(a)) {
-  map_loaded(remote, fn(items) {
-    list.map(items, fn(item) {
-      case id(item) == id(updated) {
-        True -> updated
-        False -> item
-      }
-    })
-  })
-}
-
-fn remove_loaded_by_id(
-  remote: Remote(List(a)),
-  target_id: Int,
-  id: fn(a) -> Int,
-) -> Remote(List(a)) {
-  map_loaded(remote, fn(items) {
-    list.filter(items, fn(item) { id(item) != target_id })
-  })
-}
-
-fn map_loaded(
-  remote: Remote(List(a)),
-  f: fn(List(a)) -> List(a),
-) -> Remote(List(a)) {
-  case remote {
-    Loaded(items) -> Loaded(f(items))
-    other -> other
   }
 }
 

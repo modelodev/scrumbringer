@@ -17,6 +17,10 @@ fn assert_contains(html: String, text: String) {
   let assert True = string.contains(html, text)
 }
 
+fn assert_not_contains(html: String, text: String) {
+  let assert False = string.contains(html, text)
+}
+
 fn base_config(
   my_tasks: List(Task),
   active_tasks: List(right_panel.ActiveTaskInfo),
@@ -154,6 +158,8 @@ pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
   assert_contains(html, "aria-labelledby=\"preferences-popup-title\"")
   assert_contains(html, "id=\"preferences-popup-title\"")
   assert_contains(html, "aria-label=\"Close\"")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "btn-icon")
   assert_contains(html, "Theme")
   assert_contains(html, "Language")
 }
@@ -186,4 +192,10 @@ pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
   assert_contains(html, "aria-haspopup=\"dialog\"")
   assert_contains(html, "aria-expanded=\"true\"")
   assert_contains(html, "aria-label=\"Logout\"")
+  assert_contains(html, "data-testid=\"preferences-btn\"")
+  assert_contains(html, "data-testid=\"logout-btn\"")
+  assert_contains(html, "btn-global-action")
+  assert_contains(html, "btn-icon")
+  assert_not_contains(html, "class=\"btn-icon-only\"")
+  assert_not_contains(html, "class=\"btn-icon-only btn-logout\"")
 }

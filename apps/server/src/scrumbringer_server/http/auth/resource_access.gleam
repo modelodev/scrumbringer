@@ -1,14 +1,13 @@
 //// Project restriction checks for Bearer tokens.
 
+import domain/api_token as api_token_domain
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
-import scrumbringer_server/services/api_tokens.{
-  type VerifiedToken, AllProjects, ProjectOnly,
-}
+import scrumbringer_server/services/api_tokens.{type VerifiedToken}
 import scrumbringer_server/services/persisted_field
 
 pub type AccessError {
@@ -25,8 +24,8 @@ pub fn require_token_project(
   segments: List(String),
 ) -> Result(Nil, AccessError) {
   case token.project_grant {
-    AllProjects -> Ok(Nil)
-    ProjectOnly(project_id) ->
+    api_token_domain.AllProjects -> Ok(Nil)
+    api_token_domain.ProjectOnly(project_id) ->
       require_matching_project(db, project_id, method, segments)
   }
 }

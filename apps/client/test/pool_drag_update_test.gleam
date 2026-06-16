@@ -13,12 +13,11 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/drag
 import scrumbringer_client/features/pool/drag_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/touch
-import scrumbringer_client/features/tasks/update as tasks_update
+import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 
 fn local_model() -> drag_update.Model {
   drag_update.Model(
@@ -30,7 +29,7 @@ fn local_model() -> drag_update.Model {
 
 fn context() -> drag_update.Context(Nil) {
   drag_update.Context(
-    task_mutation: tasks_update.TaskMutationContext(
+    task_mutation: task_mutation_update.MutationContext(
       current_user_id: None,
       on_task_claimed: fn(_result: ApiResult(Task)) { Nil },
       on_task_released: fn(_result: ApiResult(Task)) { Nil },
@@ -84,7 +83,12 @@ fn dependency(depends_on_task_id: Int) -> TaskDependency {
 }
 
 pub fn drag_update_canvas_rect_updates_position_origin_test() {
-  let #(next, _fx) = drag_update.canvas_rect_fetched(local_model(), 10, 20)
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      local_model(),
+      pool_messages.MemberCanvasRectFetched(10, 20),
+      context(),
+    )
 
   let assert 10 = next.positions.member_canvas_left
   let assert 20 = next.positions.member_canvas_top
@@ -106,7 +110,12 @@ pub fn drag_update_active_move_updates_position_and_pool_test() {
       ),
     )
 
-  let #(next, _fx) = drag_update.drag_moved(model, 40, 70)
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      model,
+      pool_messages.MemberDragMoved(40, 70),
+      context(),
+    )
 
   let assert Ok(#(27, 46)) =
     dict.get(next.positions.member_positions_by_task, 7)
@@ -117,7 +126,12 @@ pub fn drag_update_touch_end_without_longpress_opens_preview_test() {
   let model =
     drag_update.Model(..local_model(), pool: drag_update_local_touch_started(7))
 
-  let #(next, _fx) = drag_update.touch_ended(model, 7, context())
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      model,
+      pool_messages.MemberPoolTouchEnded(7),
+      context(),
+    )
 
   let assert Some(7) = next.pool.member_pool_preview_task_id
   let assert None = next.pool.member_pool_touch_task_id
@@ -134,7 +148,12 @@ pub fn drag_update_hover_open_sets_blocking_highlight_test() {
       ),
     )
 
-  let #(next, _fx) = drag_update.hover_opened(model, 1, context())
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      model,
+      pool_messages.MemberTaskHoverOpened(1),
+      context(),
+    )
 
   let assert member_pool.BlockingHighlight(1, [2], 1) =
     next.pool.member_highlight_state
@@ -152,8 +171,10 @@ pub fn drag_update_focus_and_blur_manage_blocking_highlight_test() {
       ),
     )
 
-  let #(focused, _fx) = drag_update.task_focused(model, 1, context())
-  let #(blurred, _fx) = drag_update.task_blurred(focused)
+  let assert Some(#(focused, _focus_fx)) =
+    drag_update.try_update(model, pool_messages.MemberTaskFocused(1), context())
+  let assert Some(#(blurred, _blur_fx)) =
+    drag_update.try_update(focused, pool_messages.MemberTaskBlurred, context())
 
   let assert member_pool.BlockingHighlight(1, [2], 0) =
     focused.pool.member_highlight_state
@@ -170,7 +191,12 @@ pub fn drag_update_highlight_expired_clears_matching_created_highlight_test() {
       ),
     )
 
-  let #(next, _fx) = drag_update.highlight_expired(model, 21)
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      model,
+      pool_messages.MemberHighlightExpired(21),
+      context(),
+    )
 
   let assert member_pool.NoHighlight = next.pool.member_highlight_state
 }
@@ -183,7 +209,7 @@ pub fn drag_update_try_update_handles_drag_message_test() {
       context(),
     )
 
-  let assert state_types.PoolDragPendingRect = next.pool.member_pool_drag
+  let assert member_pool.PoolDragPendingRect = next.pool.member_pool_drag
 }
 
 pub fn drag_update_try_update_ignores_non_drag_message_test() {

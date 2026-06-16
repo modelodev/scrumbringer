@@ -42,15 +42,32 @@ pub fn start_clicked_ignores_in_flight_state_test() {
       ),
     )
 
-  let #(next, fx) =
-    now_working_update.handle_start_clicked(initial, 5, context())
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.NoAuthCheck,
+  )) =
+    now_working_update.try_update(
+      initial,
+      pool_messages.MemberNowWorkingStartClicked(5),
+      context(),
+    )
 
   let assert True = next.now_working.member_now_working_in_flight
   let assert True = fx == effect.none()
 }
 
 pub fn pause_clicked_without_active_session_is_noop_test() {
-  let #(next, fx) = now_working_update.handle_pause_clicked(model(), context())
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.NoAuthCheck,
+  )) =
+    now_working_update.try_update(
+      model(),
+      pool_messages.MemberNowWorkingPauseClicked,
+      context(),
+    )
 
   let assert True = next == model()
   let assert True = fx == effect.none()
@@ -66,7 +83,16 @@ pub fn tick_without_active_session_stops_running_test() {
       ),
     )
 
-  let #(next, fx) = now_working_update.handle_ticked(initial, context())
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.NoAuthCheck,
+  )) =
+    now_working_update.try_update(
+      initial,
+      pool_messages.NowWorkingTicked,
+      context(),
+    )
 
   let assert 1 = next.now_working.now_working_tick
   let assert False = next.now_working.now_working_tick_running
@@ -76,9 +102,18 @@ pub fn tick_without_active_session_stops_running_test() {
 pub fn sessions_fetch_error_sets_failed_sessions_test() {
   let err = ApiError(status: 500, code: "SESSIONS", message: "Boom")
 
-  let #(next, fx) =
-    now_working_update.handle_sessions_fetched_error(model(), err)
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.CheckAuthBefore(policy_err),
+  )) =
+    now_working_update.try_update(
+      model(),
+      pool_messages.MemberWorkSessionsFetched(Error(err)),
+      context(),
+    )
 
+  let assert True = policy_err == err
   let assert True = next.metrics.member_work_sessions == remote.Failed(err)
   let assert True = fx == effect.none()
 }
@@ -94,9 +129,18 @@ pub fn session_start_error_clears_in_flight_and_records_error_test() {
     )
   let err = ApiError(status: 500, code: "START", message: "Cannot start")
 
-  let #(next, fx) =
-    now_working_update.handle_session_started_error(initial, err, context())
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.CheckAuthAfter(policy_err),
+  )) =
+    now_working_update.try_update(
+      initial,
+      pool_messages.MemberWorkSessionStarted(Error(err)),
+      context(),
+    )
 
+  let assert True = policy_err == err
   let assert False = next.now_working.member_now_working_in_flight
   let assert True =
     next.now_working.member_now_working_error == option.Some("Cannot start")
@@ -114,9 +158,18 @@ pub fn session_pause_error_clears_in_flight_and_records_error_test() {
     )
   let err = ApiError(status: 500, code: "PAUSE", message: "Cannot pause")
 
-  let #(next, fx) =
-    now_working_update.handle_session_paused_error(initial, err, context())
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.CheckAuthAfter(policy_err),
+  )) =
+    now_working_update.try_update(
+      initial,
+      pool_messages.MemberWorkSessionPaused(Error(err)),
+      context(),
+    )
 
+  let assert True = policy_err == err
   let assert False = next.now_working.member_now_working_in_flight
   let assert True =
     next.now_working.member_now_working_error == option.Some("Cannot pause")
@@ -134,8 +187,16 @@ pub fn session_pause_success_with_no_sessions_stops_timer_test() {
       ),
     )
 
-  let #(next, fx) =
-    now_working_update.handle_session_paused_ok(initial, payload([]))
+  let assert option.Some(now_working_update.Update(
+    next,
+    fx,
+    now_working_update.NoAuthCheck,
+  )) =
+    now_working_update.try_update(
+      initial,
+      pool_messages.MemberWorkSessionPaused(Ok(payload([]))),
+      context(),
+    )
 
   let assert False = next.now_working.member_now_working_in_flight
   let assert False = next.now_working.now_working_tick_running

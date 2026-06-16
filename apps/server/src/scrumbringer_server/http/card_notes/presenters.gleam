@@ -1,18 +1,18 @@
 //// JSON presenters for card note endpoints.
 
+import domain/card.{type CardNote, CardNote}
 import domain/org_role
 import domain/project_role
 import gleam/json
 import helpers/json as json_helpers
 import scrumbringer_server/http/notes/presenters as note_presenters
-import scrumbringer_server/services/card_notes_db
 
-pub fn notes_response(values: List(card_notes_db.CardNote)) -> json.Json {
+pub fn notes_response(values: List(CardNote)) -> json.Json {
   note_presenters.notes_response(values, note)
 }
 
-pub fn note(note: card_notes_db.CardNote) -> json.Json {
-  let card_notes_db.CardNote(
+pub fn note(note: CardNote) -> json.Json {
+  let CardNote(
     id: id,
     card_id: card_id,
     user_id: user_id,
@@ -40,6 +40,6 @@ pub fn note(note: card_notes_db.CardNote) -> json.Json {
   ])
 }
 
-pub fn note_response(value: card_notes_db.CardNote) -> json.Json {
+pub fn note_response(value: CardNote) -> json.Json {
   note_presenters.note_response(value, note)
 }

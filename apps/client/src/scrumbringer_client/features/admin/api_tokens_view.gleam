@@ -6,17 +6,15 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, form, input, label, option, p, select, text,
-}
+import lustre/element/html.{div, form, input, label, option, p, select, text}
 import lustre/event
 
+import domain/api_token.{type ApiToken, type IntegrationUser}
 import domain/api_token_scope
 import domain/project.{type Project}
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 import scrumbringer_client/client_state/types.{
-  type ApiToken, type ApiTokenForm, type ApiTokensModel, type IntegrationUser,
   DialogClosed, DialogOpen, Error as OperationError, InFlight,
 }
 import scrumbringer_client/i18n/i18n
@@ -25,6 +23,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/admin_surface
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
@@ -36,7 +35,7 @@ import scrumbringer_client/utils/format_date
 pub type Config(msg) {
   Config(
     locale: Locale,
-    model: ApiTokensModel,
+    model: api_tokens_state.Model,
     projects: List(Project),
     on_token_create_opened: msg,
     on_token_create_closed: msg,
@@ -66,16 +65,14 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     section_header.view_with_action(
       icons.Cog,
       t(config, i18n_text.AdminApiTokens),
-      button(
-        [
-          attribute.class("btn btn-primary"),
-          event.on_click(config.on_token_create_opened),
-        ],
-        [
-          icons.nav_icon(icons.Plus, icons.Small),
-          text(t(config, i18n_text.CreateApiToken)),
-        ],
-      ),
+      ui_button.icon_text(
+        t(config, i18n_text.CreateApiToken),
+        config.on_token_create_opened,
+        icons.Plus,
+        ui_button.Primary,
+        ui_button.GlobalAction,
+      )
+        |> ui_button.view,
     ),
     div([], [
       view_created_secret(config),
@@ -110,13 +107,13 @@ fn view_created_secret(config: Config(msg)) -> Element(msg) {
           t(config, i18n_text.Copy),
           config.model.token_secret_copy_status,
         ),
-        button(
-          [
-            attribute.class("btn-secondary"),
-            event.on_click(config.on_token_secret_dismissed),
-          ],
-          [text(t(config, i18n_text.Dismiss))],
-        ),
+        ui_button.text(
+          t(config, i18n_text.Dismiss),
+          config.on_token_secret_dismissed,
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.view,
       ])
   }
 }
@@ -310,7 +307,14 @@ fn view_token_dialog(config: Config(msg)) -> Element(msg) {
         config.locale,
         config.on_token_create_closed,
       ),
-      submit_button(config, in_flight, config.on_token_create_submitted),
+      dialog.submit_button_with_locale_click(
+        config.locale,
+        config.on_token_create_submitted,
+        in_flight,
+        False,
+        i18n_text.Create,
+        i18n_text.Creating,
+      ),
     ],
   )
 }
@@ -344,14 +348,14 @@ fn view_rename_dialog(config: Config(msg)) -> Element(msg) {
         config.locale,
         config.on_token_rename_cancelled,
       ),
-      button(
-        [
-          attribute.type_("button"),
-          attribute.disabled(in_flight),
-          event.on_click(config.on_token_rename_submitted),
-        ],
-        [text(t(config, i18n_text.Save))],
-      ),
+      ui_button.text(
+        t(config, i18n_text.Save),
+        config.on_token_rename_submitted,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+        |> ui_button.with_disabled(in_flight)
+        |> ui_button.view,
     ],
   )
 }
@@ -378,13 +382,13 @@ fn view_revoke_dialog(config: Config(msg)) -> Element(msg) {
         config.locale,
         config.on_token_revoke_cancelled,
       ),
-      button(
-        [
-          attribute.class("btn-danger"),
-          event.on_click(config.on_token_revoke_confirmed),
-        ],
-        [text(t(config, i18n_text.Revoke))],
-      ),
+      ui_button.text(
+        t(config, i18n_text.Revoke),
+        config.on_token_revoke_confirmed,
+        ui_button.Danger,
+        ui_button.EntityAction,
+      )
+        |> ui_button.view,
     ],
   )
 }
@@ -411,20 +415,20 @@ fn view_deactivate_integration_dialog(config: Config(msg)) -> Element(msg) {
         config.locale,
         config.on_integration_deactivate_cancelled,
       ),
-      button(
-        [
-          attribute.class("btn-danger"),
-          event.on_click(config.on_integration_deactivate_confirmed),
-        ],
-        [text(t(config, i18n_text.DeactivateIntegration))],
-      ),
+      ui_button.text(
+        t(config, i18n_text.DeactivateIntegration),
+        config.on_integration_deactivate_confirmed,
+        ui_button.Danger,
+        ui_button.EntityAction,
+      )
+        |> ui_button.view,
     ],
   )
 }
 
 fn view_scope_checkboxes(
   config: Config(msg),
-  form: ApiTokenForm,
+  form: api_tokens_state.Form,
 ) -> Element(msg) {
   div([attribute.class("scope-matrix")], [
     label([], [text(t(config, i18n_text.Scopes))]),
@@ -449,7 +453,7 @@ type ScopeRow {
 
 fn scope_row(
   config: Config(msg),
-  form: ApiTokenForm,
+  form: api_tokens_state.Form,
   row: ScopeRow,
 ) -> Element(msg) {
   let ScopeRow(label: row_label, read: read_scope, write: write_scope) = row
@@ -462,7 +466,7 @@ fn scope_row(
 
 fn scope_cell(
   config: Config(msg),
-  form: ApiTokenForm,
+  form: api_tokens_state.Form,
   scope: opt.Option(api_token_scope.Scope),
 ) -> Element(msg) {
   case scope {
@@ -473,7 +477,7 @@ fn scope_cell(
 
 fn scope_checkbox(
   config: Config(msg),
-  form: ApiTokenForm,
+  form: api_tokens_state.Form,
   scope: api_token_scope.Scope,
 ) -> Element(msg) {
   let scope_value = api_token_scope.to_string(scope)
@@ -511,8 +515,8 @@ fn project_options(
 }
 
 fn token_dialog_info(
-  model: ApiTokensModel,
-) -> #(Bool, ApiTokenForm, opt.Option(String), Bool) {
+  model: api_tokens_state.Model,
+) -> #(Bool, api_tokens_state.Form, opt.Option(String), Bool) {
   case model.token_dialog {
     DialogOpen(form: form, operation: operation) -> #(
       True,
@@ -530,7 +534,7 @@ fn token_dialog_info(
 }
 
 fn rename_dialog_info(
-  model: ApiTokensModel,
+  model: api_tokens_state.Model,
 ) -> #(Bool, String, opt.Option(String), Bool) {
   case model.token_rename_dialog {
     DialogOpen(form: form, operation: operation) -> {
@@ -698,28 +702,4 @@ fn deactivate_integration_name(config: Config(msg)) -> String {
 
 fn t(config: Config(msg), key: i18n_text.Text) -> String {
   i18n.t(config.locale, key)
-}
-
-fn submit_button(
-  config: Config(msg),
-  in_flight: Bool,
-  on_click: msg,
-) -> Element(msg) {
-  button(
-    [
-      attribute.type_("button"),
-      attribute.disabled(in_flight),
-      attribute.class(case in_flight {
-        True -> "btn-loading"
-        False -> ""
-      }),
-      event.on_click(on_click),
-    ],
-    [
-      text(case in_flight {
-        True -> t(config, i18n_text.Creating)
-        False -> t(config, i18n_text.Create)
-      }),
-    ],
-  )
 }

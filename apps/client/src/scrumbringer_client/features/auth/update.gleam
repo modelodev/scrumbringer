@@ -65,14 +65,14 @@ pub type Context(parent_msg) {
 // Login Handlers
 // =============================================================================
 
-pub fn handle_login_email_changed(
+fn handle_login_email_changed(
   model: auth_state.AuthModel,
   email: String,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
   #(auth_state.AuthModel(..model, login_email: email), effect.none(), NoAction)
 }
 
-pub fn handle_login_password_changed(
+fn handle_login_password_changed(
   model: auth_state.AuthModel,
   password: String,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -83,7 +83,7 @@ pub fn handle_login_password_changed(
   )
 }
 
-pub fn handle_login_submitted(
+fn handle_login_submitted(
   model: auth_state.AuthModel,
   context: Context(parent_msg),
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -101,7 +101,7 @@ pub fn handle_login_submitted(
   }
 }
 
-pub fn handle_login_dom_values_read(
+fn handle_login_dom_values_read(
   model: auth_state.AuthModel,
   raw_email: String,
   raw_password: String,
@@ -145,7 +145,7 @@ fn login_validation_error(
   )
 }
 
-pub fn handle_login_finished_ok(
+fn handle_login_finished_ok(
   model: auth_state.AuthModel,
   user: User,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -156,7 +156,7 @@ pub fn handle_login_finished_ok(
   )
 }
 
-pub fn handle_login_finished_error(
+fn handle_login_finished_error(
   model: auth_state.AuthModel,
   err: ApiError,
   context: Context(parent_msg),
@@ -181,7 +181,7 @@ pub fn handle_login_finished_error(
 // Forgot Password Handlers
 // =============================================================================
 
-pub fn handle_forgot_password_clicked(
+fn handle_forgot_password_clicked(
   model: auth_state.AuthModel,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
   let open = !model.forgot_password_open
@@ -200,7 +200,7 @@ pub fn handle_forgot_password_clicked(
   )
 }
 
-pub fn handle_forgot_password_email_changed(
+fn handle_forgot_password_email_changed(
   model: auth_state.AuthModel,
   email: String,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -216,7 +216,7 @@ pub fn handle_forgot_password_email_changed(
   )
 }
 
-pub fn handle_forgot_password_submitted(
+fn handle_forgot_password_submitted(
   model: auth_state.AuthModel,
   context: Context(parent_msg),
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -254,7 +254,7 @@ pub fn handle_forgot_password_submitted(
   }
 }
 
-pub fn handle_forgot_password_finished_ok(
+fn handle_forgot_password_finished_ok(
   model: auth_state.AuthModel,
   reset: api_auth.PasswordReset,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -271,7 +271,7 @@ pub fn handle_forgot_password_finished_ok(
   )
 }
 
-pub fn handle_forgot_password_finished_error(
+fn handle_forgot_password_finished_error(
   model: auth_state.AuthModel,
   err: ApiError,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -286,7 +286,7 @@ pub fn handle_forgot_password_finished_error(
   )
 }
 
-pub fn handle_forgot_password_copy_clicked(
+fn handle_forgot_password_copy_clicked(
   model: auth_state.AuthModel,
   context: Context(parent_msg),
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -309,7 +309,7 @@ pub fn handle_forgot_password_copy_clicked(
   }
 }
 
-pub fn handle_forgot_password_copy_finished(
+fn handle_forgot_password_copy_finished(
   model: auth_state.AuthModel,
   ok: Bool,
   context: Context(parent_msg),
@@ -329,7 +329,7 @@ pub fn handle_forgot_password_copy_finished(
   )
 }
 
-pub fn handle_forgot_password_dismissed(
+fn handle_forgot_password_dismissed(
   model: auth_state.AuthModel,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
   #(
@@ -348,20 +348,20 @@ pub fn handle_forgot_password_dismissed(
 // Logout Handlers
 // =============================================================================
 
-pub fn handle_logout_clicked(
+fn handle_logout_clicked(
   model: auth_state.AuthModel,
   context: Context(parent_msg),
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
   #(model, api_auth.logout(context.on_logout_finished), NoAction)
 }
 
-pub fn handle_logout_finished_ok(
+fn handle_logout_finished_ok(
   model: auth_state.AuthModel,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
   #(model, effect.none(), LogoutSucceeded)
 }
 
-pub fn handle_logout_finished_error(
+fn handle_logout_finished_error(
   model: auth_state.AuthModel,
   err: ApiError,
 ) -> #(auth_state.AuthModel, Effect(parent_msg), Action) {
@@ -401,7 +401,7 @@ pub fn reset_password_effect(
   }
 }
 
-pub fn handle_accept_invite_msg(
+fn handle_accept_invite_msg(
   model: auth_state.AuthModel,
   inner: accept_invite.Msg,
   context: Context(parent_msg),
@@ -431,7 +431,7 @@ pub fn handle_accept_invite_msg(
   }
 }
 
-pub fn handle_reset_password_msg(
+fn handle_reset_password_msg(
   model: auth_state.AuthModel,
   inner: reset_password.Msg,
   context: Context(parent_msg),

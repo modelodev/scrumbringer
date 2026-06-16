@@ -3,7 +3,7 @@ import gleam/option
 
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, form, input, p, text, textarea}
+import lustre/element/html.{form, input, p, text, textarea}
 import lustre/event
 
 import domain/milestone.{type MilestoneProgress}
@@ -12,6 +12,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
@@ -73,29 +74,26 @@ fn view_activate_dialog(config: Config(msg)) -> Element(msg) {
           p([], [text(t(config, i18n_text.MilestoneActivationWarning))]),
         ],
         [
-          button(
-            [
-              attribute.type_("button"),
-              attribute.autofocus(True),
-              attribute.disabled(config.in_flight),
-              event.on_click(config.on_close),
-            ],
-            [text(t(config, i18n_text.Cancel))],
-          ),
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("btn btn-danger"),
-              attribute.disabled(config.in_flight),
-              event.on_click(config.on_activate_clicked(progress.milestone.id)),
-            ],
-            [
-              text(case config.in_flight {
-                True -> t(config, i18n_text.ActivatingMilestone)
-                False -> t(config, i18n_text.ActivateMilestone)
-              }),
-            ],
-          ),
+          ui_button.text(
+            t(config, i18n_text.Cancel),
+            config.on_close,
+            ui_button.Secondary,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_autofocus(True)
+            |> ui_button.with_disabled(config.in_flight)
+            |> ui_button.view,
+          ui_button.text(
+            case config.in_flight {
+              True -> t(config, i18n_text.ActivatingMilestone)
+              False -> t(config, i18n_text.ActivateMilestone)
+            },
+            config.on_activate_clicked(progress.milestone.id),
+            ui_button.Danger,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_disabled(config.in_flight)
+            |> ui_button.view,
         ],
       )
     option.None -> none()
@@ -134,9 +132,9 @@ fn view_create_dialog(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_close),
-      dialog.submit_button_with_locale_attrs(
+      dialog.submit_button_with_locale_form(
         config.locale,
-        [attribute.form("milestone-create-form")],
+        "milestone-create-form",
         config.in_flight,
         False,
         i18n_text.Create,
@@ -178,9 +176,9 @@ fn view_edit_dialog(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_close),
-      dialog.submit_button_with_locale_attrs(
+      dialog.submit_button_with_locale_form(
         config.locale,
-        [attribute.form("milestone-edit-form")],
+        "milestone-edit-form",
         config.in_flight,
         False,
         i18n_text.Save,
@@ -208,7 +206,7 @@ fn view_delete_dialog(config: Config(msg)) -> Element(msg) {
     is_open: is_open,
     is_loading: config.in_flight,
     error: config.error,
-    confirm_class: "btn-danger",
+    confirm_intent: ui_button.Danger,
   ))
 }
 

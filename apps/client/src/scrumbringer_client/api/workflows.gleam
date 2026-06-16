@@ -11,6 +11,7 @@ import domain/api_error.{type ApiResult}
 import domain/workflow.{type Workflow}
 import domain/workflow/codec as workflow_codec
 import scrumbringer_client/api/core
+import scrumbringer_client/api/payload_fields
 
 /// Decoder for workflow wrapped in envelope.
 pub fn workflow_payload_decoder() -> decode.Decoder(Workflow) {
@@ -75,13 +76,7 @@ pub fn update_workflow(
     json.object([
       #("name", json.string(name)),
       #("description", json.string(description)),
-      #(
-        "active",
-        json.int(case active {
-          True -> 1
-          False -> 0
-        }),
-      ),
+      payload_fields.active_update_field(active),
     ])
   core.request(
     core.Patch,

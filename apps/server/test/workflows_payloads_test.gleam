@@ -38,12 +38,28 @@ pub fn decode_update_payload_test() {
   let assert Ok(payloads.UpdatePayload(
     name: Some("Updated"),
     description: None,
-    active: Some(1),
+    active: Some(True),
+  )) = payloads.decode_update(dynamic)
+}
+
+pub fn decode_update_payload_decodes_inactive_flag_test() {
+  let assert Ok(dynamic) = json.parse("{\"active\":0}", decode.dynamic)
+
+  let assert Ok(payloads.UpdatePayload(
+    name: None,
+    description: None,
+    active: Some(False),
   )) = payloads.decode_update(dynamic)
 }
 
 pub fn decode_update_payload_rejects_wrong_active_type_test() {
   let assert Ok(dynamic) = json.parse("{\"active\":true}", decode.dynamic)
+
+  let assert Error(Nil) = payloads.decode_update(dynamic)
+}
+
+pub fn decode_update_payload_rejects_unknown_active_flag_test() {
+  let assert Ok(dynamic) = json.parse("{\"active\":2}", decode.dynamic)
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
 }

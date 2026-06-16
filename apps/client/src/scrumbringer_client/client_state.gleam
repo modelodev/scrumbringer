@@ -2,21 +2,18 @@
 ////
 //// ## Mission
 ////
-//// Centralizes all state-related type definitions for the Scrumbringer client
-//// application. This module serves as the single source of truth for the
-//// application's state model, page navigation, remote data handling, and
-//// message types.
+//// Defines the root state shell for the Scrumbringer client application.
+//// Feature-specific state lives in `client_state/*` owner modules and is
+//// composed here through the root model and message types.
 ////
 //// ## Responsibilities
 ////
 //// - Define the `Model` type containing all application state
 //// - Define page variants (`Page`) for client-side routing
-//// - Define remote data loading states (`Remote`) for async operations
 //// - Define all message variants (`Msg`) for the Lustre update cycle
-//// - Define UI state types (`IconPreview`, `DragState`, `Rect`)
+//// - Expose root-level aliases required by the Lustre shell
 //// - Define navigation mode (`NavMode`) for history management
-//// - Provide smart constructors (`default_model`) for state initialization
-//// - Provide geometry helpers tied to state types (e.g., `rect_contains_point`)
+//// - Provide `default_model` for state initialization
 ////
 //// ## Non-responsibilities
 ////
@@ -38,10 +35,11 @@
 ////
 //// ## Line Count Justification
 ////
-//// ~750 lines: Contains all Model, Msg, Page, Remote types for the SPA.
-//// Splitting by feature would scatter related types and break the TEA
-//// pattern's expectation of a unified Model definition. Gleam's exhaustive
-//// pattern matching ensures type safety across this large variant set.
+//// This module contains the root `Model`, `Msg`, `CoreModel`, `Page` and
+//// navigation types for the SPA. Slice-specific state, dialog modes and
+//// interaction state live in their owner modules under `client_state/*`.
+//// The root still stays public so update functions can use Gleam record
+//// update syntax.
 ////
 //// ## Relations
 ////
@@ -49,12 +47,7 @@
 ////   init, update, and view functions
 //// - **api/***: Provides API types used in `Model` and `Msg`
 //// - **router.gleam**: Provides `Route` type used in `NavigateTo` message
-//// - **accept_invite.gleam**: Child component with its own `Model` and `Msg`
-//// - **reset_password.gleam**: Child component with its own `Model` and `Msg`
 //// - **permissions.gleam**: Provides `AdminSection` type
-//// - **router.gleam**: Provides typed routes and URL state
-//// - **pool_prefs.gleam**: Provides `ViewMode` and `KeyEvent` types
-//// - **theme.gleam**: Provides `Theme` type
 //// - **i18n/locale.gleam**: Provides `Locale` type
 
 import gleam/option.{type Option}
@@ -115,49 +108,11 @@ pub type Page {
   Member
 }
 
-// ----------------------------------------------------------------------------
-// UI state types
-// ----------------------------------------------------------------------------
-
-pub type IconPreview =
-  state_types.IconPreview
-
 pub type OperationState =
   state_types.OperationState
 
 pub type DialogState(form) =
   state_types.DialogState(form)
-
-pub type InviteLinkForm =
-  state_types.InviteLinkForm
-
-pub type DragState =
-  state_types.DragState
-
-pub type PoolDragState =
-  state_types.PoolDragState
-
-pub type Rect =
-  state_types.Rect
-
-pub type CardDialogMode =
-  state_types.CardDialogMode
-
-pub type WorkflowDialogMode =
-  state_types.WorkflowDialogMode
-
-pub type TaskTemplateDialogMode =
-  state_types.TaskTemplateDialogMode
-
-pub type RuleDialogMode =
-  state_types.RuleDialogMode
-
-pub type TaskTypeDialogMode =
-  state_types.TaskTypeDialogMode
-
-pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
-  state_types.rect_contains_point(rect, x, y)
-}
 
 // ----------------------------------------------------------------------------
 // Navigation mode
@@ -182,12 +137,9 @@ pub type NavMode {
 /// This type holds all client-side state including:
 /// - Authentication and user info
 /// - Current page and navigation state
-/// - UI preferences (theme, locale, mobile detection)
-/// - Form inputs and validation state
-/// - Remote data caches and loading states
-/// - Child component states (accept_invite, reset_password)
-/// - Drag-and-drop state
-/// - Filter and search state
+/// - Current admin section
+/// - Root project cache
+/// - Selected project
 pub type CoreModel {
   CoreModel(
     page: Page,
@@ -214,21 +166,6 @@ pub type MobileDrawerState =
 /// Represents SidebarCollapse.
 pub type SidebarCollapse =
   ui_state.SidebarCollapse
-
-pub type OrgUsersSearchState =
-  state_types.OrgUsersSearchState
-
-pub type ProjectDialogForm =
-  state_types.ProjectDialogForm
-
-pub type AssignmentsAddContext =
-  state_types.AssignmentsAddContext
-
-pub type ReleaseAllTarget =
-  state_types.ReleaseAllTarget
-
-pub type AssignmentsModel =
-  state_types.AssignmentsModel
 
 pub type AdminModel =
   admin_state.AdminModel
@@ -406,25 +343,22 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// ```gleam
 /// let model = Model(
 ///   ..default_model(),
-///   page: Admin,
-///   user: option.Some(current_user),
-///   theme: loaded_theme,
+///   core: CoreModel(..default_model().core, page: Admin),
 /// )
 /// ```
 ///
-/// ## Size Justification (~155 lines)
+/// ## Size Justification
 ///
-/// Initializes all 100+ Model fields with sensible defaults. The Model type
-/// has grown to encompass the entire SPA state including:
+/// Initializes the root shell and delegates feature-specific defaults to their
+/// owner modules. The root model intentionally composes:
 /// - Authentication and navigation state
-/// - Form fields for all dialogs (login, forgot password, create task, etc.)
-/// - Remote data caches for all API resources
-/// - Drag-and-drop and canvas positioning state
-/// - Filter and preference states
+/// - Admin feature state
+/// - Member workspace state
+/// - UI preferences and layout state
+/// - Root project cache and selected project
 ///
-/// A single constructor call is clearer than spreading initialization across
-/// multiple functions. The function is pure, has no branching, and serves as
-/// the single source of truth for initial state.
+/// A single root constructor call keeps application initialization explicit
+/// while each slice remains responsible for its own defaults.
 ///
 /// ## Defaults
 ///
@@ -435,8 +369,6 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// - All `Int` counters start as `0`
 /// - All `Dict` fields start empty
 /// - `page` defaults to `Login`
-/// - `member_create_priority` defaults to `"3"` (medium)
-/// - `members_add_role` defaults to `Member`
 pub fn default_model() -> Model {
   Model(
     core: CoreModel(

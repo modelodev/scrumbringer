@@ -15,7 +15,6 @@ import domain/project.{ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_state/admin/members as admin_members
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 
 pub type Context(parent_msg) {
@@ -82,25 +81,25 @@ fn with_policy(
 // Search Input Handlers
 // =============================================================================
 
-pub fn handle_org_users_search_changed(
+fn handle_org_users_search_changed(
   model: admin_members.Model,
   query: String,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   let next_state = case model.org_users_search {
-    state_types.OrgUsersSearchIdle(_, token) ->
-      state_types.OrgUsersSearchIdle(query, token)
-    state_types.OrgUsersSearchLoading(_, token) ->
-      state_types.OrgUsersSearchLoading(query, token)
-    state_types.OrgUsersSearchLoaded(_, token, results) ->
-      state_types.OrgUsersSearchLoaded(query, token, results)
-    state_types.OrgUsersSearchFailed(_, token, err) ->
-      state_types.OrgUsersSearchFailed(query, token, err)
+    admin_members.OrgUsersSearchIdle(_, token) ->
+      admin_members.OrgUsersSearchIdle(query, token)
+    admin_members.OrgUsersSearchLoading(_, token) ->
+      admin_members.OrgUsersSearchLoading(query, token)
+    admin_members.OrgUsersSearchLoaded(_, token, results) ->
+      admin_members.OrgUsersSearchLoaded(query, token, results)
+    admin_members.OrgUsersSearchFailed(_, token, err) ->
+      admin_members.OrgUsersSearchFailed(query, token, err)
   }
 
   #(admin_members.Model(..model, org_users_search: next_state), effect.none())
 }
 
-pub fn handle_org_users_search_debounced(
+fn handle_org_users_search_debounced(
   model: admin_members.Model,
   query: String,
   context: Context(parent_msg),
@@ -111,7 +110,7 @@ pub fn handle_org_users_search_debounced(
     True -> #(
       admin_members.Model(
         ..model,
-        org_users_search: state_types.OrgUsersSearchIdle(query, current_token),
+        org_users_search: admin_members.OrgUsersSearchIdle(query, current_token),
       ),
       effect.none(),
     )
@@ -120,7 +119,7 @@ pub fn handle_org_users_search_debounced(
       let model =
         admin_members.Model(
           ..model,
-          org_users_search: state_types.OrgUsersSearchLoading(query, token),
+          org_users_search: admin_members.OrgUsersSearchLoading(query, token),
         )
 
       #(
@@ -133,12 +132,12 @@ pub fn handle_org_users_search_debounced(
   }
 }
 
-fn current_search_token(search: state_types.OrgUsersSearchState) -> Int {
+fn current_search_token(search: admin_members.OrgUsersSearchState) -> Int {
   case search {
-    state_types.OrgUsersSearchIdle(_, token)
-    | state_types.OrgUsersSearchLoading(_, token)
-    | state_types.OrgUsersSearchLoaded(_, token, _)
-    | state_types.OrgUsersSearchFailed(_, token, _) -> token
+    admin_members.OrgUsersSearchIdle(_, token)
+    | admin_members.OrgUsersSearchLoading(_, token)
+    | admin_members.OrgUsersSearchLoaded(_, token, _)
+    | admin_members.OrgUsersSearchFailed(_, token, _) -> token
   }
 }
 
@@ -146,13 +145,13 @@ fn current_search_token(search: state_types.OrgUsersSearchState) -> Int {
 // Search Results Handlers
 // =============================================================================
 
-pub fn handle_org_users_search_results_ok(
+fn handle_org_users_search_results_ok(
   model: admin_members.Model,
   token: Int,
   users: List(OrgUser),
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   case model.org_users_search {
-    state_types.OrgUsersSearchLoading(query, current_token)
+    admin_members.OrgUsersSearchLoading(query, current_token)
       if token == current_token
     -> {
       let selected_user = exact_non_member_match(model, query, users)
@@ -160,7 +159,7 @@ pub fn handle_org_users_search_results_ok(
       #(
         admin_members.Model(
           ..model,
-          org_users_search: state_types.OrgUsersSearchLoaded(
+          org_users_search: admin_members.OrgUsersSearchLoaded(
             query,
             current_token,
             users,
@@ -207,18 +206,18 @@ fn is_already_project_member(model: admin_members.Model, user_id: Int) -> Bool {
   }
 }
 
-pub fn handle_org_users_search_results_error(
+fn handle_org_users_search_results_error(
   model: admin_members.Model,
   token: Int,
   err: ApiError,
 ) -> #(admin_members.Model, Effect(parent_msg)) {
   case model.org_users_search {
-    state_types.OrgUsersSearchLoading(query, current_token)
+    admin_members.OrgUsersSearchLoading(query, current_token)
       if token == current_token
     -> #(
       admin_members.Model(
         ..model,
-        org_users_search: state_types.OrgUsersSearchFailed(
+        org_users_search: admin_members.OrgUsersSearchFailed(
           query,
           current_token,
           err,

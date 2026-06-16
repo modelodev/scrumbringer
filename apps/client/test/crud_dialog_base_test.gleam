@@ -2,12 +2,15 @@ import gleam/option
 import gleam/string
 import lustre/effect
 import lustre/element
+import lustre/element/html
 import scrumbringer_client/components/crud_dialog_base.{
   EmptyRequiredText, InvalidOptionalInt, optional_int_or_none,
-  optional_text_input_value, parse_optional_int, required_text, submit_if_idle,
-  view_cancel_button, view_cancel_button_with_class, view_danger_action_button,
-  view_danger_button, view_dialog_error, view_dialog_frame, view_dialog_shell,
-  view_form_error, view_primary_action_button, view_submit_button,
+  optional_text_input_value, parse_optional_int, prepend_fields, required_text,
+  submit_if_idle, view_cancel_button, view_cancel_button_with_class,
+  view_danger_action_button, view_danger_button, view_dialog_error,
+  view_dialog_frame, view_dialog_shell, view_form_error,
+  view_primary_action_button, view_submit_button, with_autofocus_when,
+  with_optional_aria_label, with_optional_placeholder,
 }
 import scrumbringer_client/i18n/locale
 
@@ -21,6 +24,11 @@ pub fn optional_text_input_value_uses_empty_input_for_absent_text_test() {
 
 pub fn optional_text_input_value_preserves_present_text_test() {
   let assert "done" = optional_text_input_value(option.Some("done"))
+}
+
+pub fn prepend_fields_preserves_existing_payload_merge_order_test() {
+  let assert [#("extra_b", 2), #("extra_a", 1), #("base", 0)] =
+    prepend_fields([#("base", 0)], [#("extra_a", 1), #("extra_b", 2)])
 }
 
 pub fn required_text_trims_valid_input_test() {
@@ -74,11 +82,12 @@ pub fn view_cancel_button_renders_localized_text_test() {
 
 pub fn view_cancel_button_with_class_preserves_classes_test() {
   let html =
-    view_cancel_button_with_class(locale.En, Nil, "btn btn-secondary")
+    view_cancel_button_with_class(locale.En, Nil, "dialog-cancel")
     |> element.to_document_string
 
   assert_contains(html, "Cancel")
-  assert_contains(html, "btn btn-secondary")
+  assert_contains(html, "btn-secondary")
+  assert_contains(html, "dialog-cancel")
 }
 
 pub fn view_dialog_error_renders_standard_error_block_test() {
@@ -97,6 +106,36 @@ pub fn view_form_error_renders_compact_error_block_test() {
 
   assert_contains(html, "form-error")
   assert_contains(html, "Missing name")
+}
+
+pub fn optional_field_attributes_are_added_only_when_present_test() {
+  let html =
+    html.input(
+      []
+      |> with_optional_aria_label(option.Some("Visible label"))
+      |> with_optional_placeholder(option.Some("Type here"))
+      |> with_autofocus_when(True),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "aria-label=\"Visible label\"")
+  assert_contains(html, "placeholder=\"Type here\"")
+  assert_contains(html, "autofocus")
+}
+
+pub fn optional_field_attributes_are_omitted_when_absent_test() {
+  let html =
+    html.input(
+      []
+      |> with_optional_aria_label(option.None)
+      |> with_optional_placeholder(option.None)
+      |> with_autofocus_when(False),
+    )
+    |> element.to_document_string
+
+  let assert False = string.contains(html, "aria-label")
+  let assert False = string.contains(html, "placeholder")
+  let assert False = string.contains(html, "autofocus")
 }
 
 pub fn view_dialog_shell_renders_standard_structure_test() {
@@ -151,12 +190,13 @@ pub fn view_submit_button_renders_form_and_loading_state_test() {
 
 pub fn view_primary_action_button_renders_button_action_test() {
   let html =
-    view_primary_action_button(Nil, True, "Create", "Creating", "btn primary")
+    view_primary_action_button(Nil, True, "Create", "Creating", "btn-compact")
     |> element.to_document_string
 
   assert_contains(html, "type=\"button\"")
   assert_contains(html, "disabled")
-  assert_contains(html, "btn primary")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-compact")
   assert_contains(html, "Creating")
 }
 
@@ -178,12 +218,13 @@ pub fn view_danger_action_button_renders_extra_disabled_state_test() {
       True,
       "Delete",
       "Deleting",
-      "btn btn-danger",
+      "danger-compat",
     )
     |> element.to_document_string
 
   assert_contains(html, "type=\"button\"")
   assert_contains(html, "disabled")
-  assert_contains(html, "btn btn-danger")
+  assert_contains(html, "btn-danger")
+  assert_contains(html, "danger-compat")
   assert_contains(html, "Delete")
 }

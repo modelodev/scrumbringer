@@ -44,8 +44,12 @@ import domain/user.{type User}
 import domain/view_mode
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/features/i18n/msg as i18n_messages
@@ -777,21 +781,21 @@ fn admin_workflow_callbacks() -> admin_workflows_config.Callbacks(
 ) {
   admin_workflows_config.Callbacks(
     on_create_clicked: client_state.pool_msg(pool_messages.OpenWorkflowDialog(
-      state_types.WorkflowDialogCreate,
+      admin_workflows.WorkflowDialogCreate,
     )),
     on_rules_clicked: fn(workflow_id) {
       client_state.pool_msg(pool_messages.WorkflowRulesClicked(workflow_id))
     },
     on_edit_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogEdit(
+        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
           workflow,
         )),
       )
     },
     on_delete_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogDelete(
+        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
           workflow,
         )),
       )
@@ -856,19 +860,21 @@ fn admin_task_template_callbacks() -> admin_task_templates_view_config.Callbacks
 ) {
   admin_task_templates_view_config.Callbacks(
     on_create_clicked: client_state.pool_msg(
-      pool_messages.OpenTaskTemplateDialog(state_types.TaskTemplateDialogCreate),
+      pool_messages.OpenTaskTemplateDialog(
+        admin_task_templates.TaskTemplateDialogCreate,
+      ),
     ),
     on_edit_clicked: fn(template) {
       client_state.pool_msg(
-        pool_messages.OpenTaskTemplateDialog(state_types.TaskTemplateDialogEdit(
-          template,
-        )),
+        pool_messages.OpenTaskTemplateDialog(
+          admin_task_templates.TaskTemplateDialogEdit(template),
+        ),
       )
     },
     on_delete_clicked: fn(template) {
       client_state.pool_msg(
         pool_messages.OpenTaskTemplateDialog(
-          state_types.TaskTemplateDialogDelete(template),
+          admin_task_templates.TaskTemplateDialogDelete(template),
         ),
       )
     },
@@ -891,19 +897,19 @@ fn admin_workflow_rule_callbacks() -> admin_workflow_rules_config.Callbacks(
   admin_workflow_rules_config.Callbacks(
     on_back_clicked: client_state.pool_msg(pool_messages.RulesBackClicked),
     on_create_clicked: client_state.pool_msg(pool_messages.OpenRuleDialog(
-      state_types.RuleDialogCreate,
+      admin_rules.RuleDialogCreate,
     )),
     on_rule_expanded: fn(rule_id) {
       client_state.pool_msg(pool_messages.RuleExpandToggled(rule_id))
     },
     on_edit_clicked: fn(rule) {
       client_state.pool_msg(
-        pool_messages.OpenRuleDialog(state_types.RuleDialogEdit(rule)),
+        pool_messages.OpenRuleDialog(admin_rules.RuleDialogEdit(rule)),
       )
     },
     on_delete_clicked: fn(rule) {
       client_state.pool_msg(
-        pool_messages.OpenRuleDialog(state_types.RuleDialogDelete(rule)),
+        pool_messages.OpenRuleDialog(admin_rules.RuleDialogDelete(rule)),
       )
     },
     on_attach_modal_opened: fn(rule_id) {
@@ -1159,7 +1165,7 @@ fn build_left_panel(
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(pool_messages.MemberCreateDialogOpened),
     on_new_card: client_state.pool_msg(pool_messages.OpenCardDialog(
-      state_types.CardDialogCreate,
+      admin_cards.CardDialogCreate,
     )),
     on_navigate_pool: client_state.NavigateTo(
       member_route_for(view_mode.Pool),
@@ -1445,12 +1451,12 @@ fn milestone_callbacks() -> milestones_view.Callbacks(client_state.Msg) {
     },
     on_card_edit: fn(card_id) {
       client_state.pool_msg(
-        pool_messages.OpenCardDialog(state_types.CardDialogEdit(card_id)),
+        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
       )
     },
     on_card_delete: fn(card_id) {
       client_state.pool_msg(
-        pool_messages.OpenCardDialog(state_types.CardDialogDelete(card_id)),
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
       )
     },
   )
@@ -1486,12 +1492,12 @@ fn kanban_config(
     },
     on_card_edit: fn(card_id) {
       client_state.pool_msg(
-        pool_messages.OpenCardDialog(state_types.CardDialogEdit(card_id)),
+        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
       )
     },
     on_card_delete: fn(card_id) {
       client_state.pool_msg(
-        pool_messages.OpenCardDialog(state_types.CardDialogDelete(card_id)),
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
       )
     },
     on_task_click: fn(task_id) {
@@ -1645,9 +1651,9 @@ fn resolved_task_card_color(model: client_state.Model, task: Task) {
 
 fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
   case model.member.pool.member_pool_drag {
-    state_types.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
-    state_types.PoolDragPendingRect -> #(True, False)
-    state_types.PoolDragIdle -> #(False, False)
+    member_pool.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
+    member_pool.PoolDragPendingRect -> #(True, False)
+    member_pool.PoolDragIdle -> #(False, False)
   }
 }
 

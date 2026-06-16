@@ -2,15 +2,38 @@
 
 import gleam/option
 
+import domain/api_token.{type ApiToken, type IntegrationUser}
 import domain/api_token_scope
-import domain/remote.{NotAsked}
+import domain/remote.{type Remote, NotAsked}
 import scrumbringer_client/client_state/types as state_types
 
-pub type Model =
-  state_types.ApiTokensModel
+/// Form state for creating an API token.
+pub type Form {
+  ApiTokenForm(
+    name: String,
+    integration: String,
+    project_id: option.Option(Int),
+    scopes: List(api_token_scope.Scope),
+    expires_at: String,
+  )
+}
 
-pub fn default_token_form() -> state_types.ApiTokenForm {
-  state_types.ApiTokenForm(
+/// State for the integration users and API tokens admin section.
+pub type Model {
+  ApiTokensModel(
+    integration_users: Remote(List(IntegrationUser)),
+    tokens: Remote(List(ApiToken)),
+    token_dialog: state_types.DialogState(Form),
+    token_rename_dialog: state_types.DialogState(#(Int, String)),
+    created_token: option.Option(String),
+    token_secret_copy_status: option.Option(String),
+    revoke_confirm: option.Option(Int),
+    integration_deactivate_confirm: option.Option(Int),
+  )
+}
+
+pub fn default_token_form() -> Form {
+  ApiTokenForm(
     name: "",
     integration: "",
     project_id: option.None,
@@ -24,7 +47,7 @@ pub fn default_scopes() -> List(api_token_scope.Scope) {
 }
 
 pub fn default_model() -> Model {
-  state_types.ApiTokensModel(
+  ApiTokensModel(
     integration_users: NotAsked,
     tokens: NotAsked,
     token_dialog: state_types.DialogClosed(operation: state_types.Idle),

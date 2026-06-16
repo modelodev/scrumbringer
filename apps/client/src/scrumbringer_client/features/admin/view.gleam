@@ -37,7 +37,11 @@ import domain/task as domain_task
 import scrumbringer_client/client_state.{
   type Model, type Msg, NoOp, admin_msg, pool_msg,
 }
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/task_types as admin_task_types
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/features/admin/cards_view
@@ -298,18 +302,18 @@ fn task_types_config(
     model: model.admin.task_types,
     capabilities: model.admin.capabilities.capabilities,
     on_create_opened: admin_msg(admin_messages.OpenTaskTypeDialog(
-      state_types.TaskTypeDialogCreate,
+      admin_task_types.TaskTypeDialogCreate,
     )),
     on_edit_opened: fn(task_type) {
       admin_msg(
-        admin_messages.OpenTaskTypeDialog(state_types.TaskTypeDialogEdit(
+        admin_messages.OpenTaskTypeDialog(admin_task_types.TaskTypeDialogEdit(
           task_type,
         )),
       )
     },
     on_delete_opened: fn(task_type) {
       admin_msg(
-        admin_messages.OpenTaskTypeDialog(state_types.TaskTypeDialogDelete(
+        admin_messages.OpenTaskTypeDialog(admin_task_types.TaskTypeDialogDelete(
           task_type,
         )),
       )
@@ -377,7 +381,7 @@ fn cards_config(
     milestones: model.member.pool.member_milestones,
     detail_modal: detail_modal,
     on_create_opened: pool_msg(pool_messages.OpenCardDialog(
-      state_types.CardDialogCreate,
+      admin_cards.CardDialogCreate,
     )),
     on_search_changed: fn(value) {
       pool_msg(pool_messages.CardsSearchChanged(value))
@@ -392,10 +396,10 @@ fn cards_config(
       pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id))
     },
     on_edit_opened: fn(id) {
-      pool_msg(pool_messages.OpenCardDialog(state_types.CardDialogEdit(id)))
+      pool_msg(pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(id)))
     },
     on_delete_opened: fn(id) {
-      pool_msg(pool_messages.OpenCardDialog(state_types.CardDialogDelete(id)))
+      pool_msg(pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(id)))
     },
     on_dialog_closed: pool_msg(pool_messages.CloseCardDialog),
     on_card_created: fn(card) { pool_msg(pool_messages.CardCrudCreated(card)) },
@@ -487,21 +491,21 @@ pub fn view_workflows(
 fn workflow_callbacks() -> workflows_config.Callbacks(Msg) {
   workflows_config.Callbacks(
     on_create_clicked: pool_msg(pool_messages.OpenWorkflowDialog(
-      state_types.WorkflowDialogCreate,
+      admin_workflows.WorkflowDialogCreate,
     )),
     on_rules_clicked: fn(workflow_id) {
       pool_msg(pool_messages.WorkflowRulesClicked(workflow_id))
     },
     on_edit_clicked: fn(workflow) {
       pool_msg(
-        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogEdit(
+        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
           workflow,
         )),
       )
     },
     on_delete_clicked: fn(workflow) {
       pool_msg(
-        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogDelete(
+        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
           workflow,
         )),
       )
@@ -522,16 +526,16 @@ fn workflow_rule_callbacks() -> workflow_rules_view_config.Callbacks(Msg) {
   workflow_rules_view_config.Callbacks(
     on_back_clicked: pool_msg(pool_messages.RulesBackClicked),
     on_create_clicked: pool_msg(pool_messages.OpenRuleDialog(
-      state_types.RuleDialogCreate,
+      admin_rules.RuleDialogCreate,
     )),
     on_rule_expanded: fn(rule_id) {
       pool_msg(pool_messages.RuleExpandToggled(rule_id))
     },
     on_edit_clicked: fn(rule) {
-      pool_msg(pool_messages.OpenRuleDialog(state_types.RuleDialogEdit(rule)))
+      pool_msg(pool_messages.OpenRuleDialog(admin_rules.RuleDialogEdit(rule)))
     },
     on_delete_clicked: fn(rule) {
-      pool_msg(pool_messages.OpenRuleDialog(state_types.RuleDialogDelete(rule)))
+      pool_msg(pool_messages.OpenRuleDialog(admin_rules.RuleDialogDelete(rule)))
     },
     on_attach_modal_opened: fn(rule_id) {
       pool_msg(pool_messages.AttachTemplateModalOpened(rule_id))
@@ -572,19 +576,19 @@ pub fn view_task_templates(
 fn task_template_callbacks() -> task_templates_view_config.Callbacks(Msg) {
   task_templates_view_config.Callbacks(
     on_create_clicked: pool_msg(pool_messages.OpenTaskTemplateDialog(
-      state_types.TaskTemplateDialogCreate,
+      admin_task_templates.TaskTemplateDialogCreate,
     )),
     on_edit_clicked: fn(template) {
       pool_msg(
-        pool_messages.OpenTaskTemplateDialog(state_types.TaskTemplateDialogEdit(
-          template,
-        )),
+        pool_messages.OpenTaskTemplateDialog(
+          admin_task_templates.TaskTemplateDialogEdit(template),
+        ),
       )
     },
     on_delete_clicked: fn(template) {
       pool_msg(
         pool_messages.OpenTaskTemplateDialog(
-          state_types.TaskTemplateDialogDelete(template),
+          admin_task_templates.TaskTemplateDialogDelete(template),
         ),
       )
     },

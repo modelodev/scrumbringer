@@ -1,11 +1,46 @@
-//// Effectful feedback workflow for task mutation results.
+//// Task mutation workflow for claim/release/complete operations.
 
+import gleam/option as opt
 import gleam/string
 
 import lustre/effect.{type Effect}
 
-import domain/api_error.{type ApiError}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/task.{type Task}
+import scrumbringer_client/api/tasks/operations as task_operations_api
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/claimability
+import scrumbringer_client/features/tasks/mutation_state
+import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/ui/toast
+
+pub type MutationContext(parent_msg) {
+  MutationContext(
+    current_user_id: opt.Option(Int),
+    on_task_claimed: fn(ApiResult(Task)) -> parent_msg,
+    on_task_released: fn(ApiResult(Task)) -> parent_msg,
+    on_task_completed: fn(ApiResult(Task)) -> parent_msg,
+  )
+}
+
+pub type DispatchContext(parent_msg) {
+  DispatchContext(
+    mutation_context: MutationContext(parent_msg),
+    success_context: Context(parent_msg),
+    error_context: ErrorContext(parent_msg),
+  )
+}
+
+pub type Policy {
+  NoPolicy
+  RefreshMemberAfterSuccess
+  CheckAuthAfter(ApiError)
+}
+
+pub type Update(parent_msg) {
+  Update(member_pool.Model, Effect(parent_msg), Policy)
+}
 
 pub type Success {
   Claimed
@@ -41,7 +76,222 @@ pub type ErrorContext(parent_msg) {
   )
 }
 
-pub fn success_effect(
+pub fn try_update(
+  model: member_pool.Model,
+  inner: pool_messages.Msg,
+  context: DispatchContext(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  case inner {
+    pool_messages.MemberClaimClicked(task_id, version) ->
+      handle_claim_clicked(model, task_id, version, context.mutation_context)
+      |> without_policy
+
+    pool_messages.MemberReleaseClicked(task_id, version) ->
+      handle_release_clicked(model, task_id, version, context.mutation_context)
+      |> without_policy
+
+    pool_messages.MemberCompleteClicked(task_id, version) ->
+      handle_complete_clicked(model, task_id, version, context.mutation_context)
+      |> without_policy
+
+    pool_messages.MemberTaskClaimed(Ok(_)) ->
+      success(model, handle_task_claimed_ok, Claimed, context.success_context)
+
+    pool_messages.MemberTaskReleased(Ok(_)) ->
+      success(model, handle_task_released_ok, Released, context.success_context)
+
+    pool_messages.MemberTaskCompleted(Ok(_)) ->
+      success(
+        model,
+        handle_task_completed_ok,
+        Completed,
+        context.success_context,
+      )
+
+    pool_messages.MemberTaskClaimed(Error(err))
+    | pool_messages.MemberTaskReleased(Error(err))
+    | pool_messages.MemberTaskCompleted(Error(err)) ->
+      mutation_error(model, err, context.error_context)
+
+    _ -> opt.None
+  }
+}
+
+fn without_policy(
+  result: #(member_pool.Model, Effect(parent_msg)),
+) -> opt.Option(Update(parent_msg)) {
+  let #(model, fx) = result
+  opt.Some(Update(model, fx, NoPolicy))
+}
+
+fn success(
+  model: member_pool.Model,
+  transition: fn(member_pool.Model) -> #(member_pool.Model, Effect(parent_msg)),
+  success: Success,
+  context: Context(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  let #(model, local_fx) = transition(model)
+  opt.Some(Update(
+    model,
+    effect.batch([local_fx, success_effect(success, context)]),
+    RefreshMemberAfterSuccess,
+  ))
+}
+
+fn mutation_error(
+  model: member_pool.Model,
+  err: ApiError,
+  context: ErrorContext(parent_msg),
+) -> opt.Option(Update(parent_msg)) {
+  let #(model, local_fx) = handle_mutation_error(model)
+  opt.Some(Update(
+    model,
+    effect.batch([local_fx, error_effect(err, context)]),
+    CheckAuthAfter(err),
+  ))
+}
+
+/// Handle claim button click with optimistic update.
+/// Immediately marks task as claimed locally, sends API request.
+fn handle_claim_clicked(
+  model: member_pool.Model,
+  task_id: Int,
+  version: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case model.member_task_mutation_in_flight {
+    True -> #(model, effect.none())
+    False ->
+      case helpers_lookup.find_task_by_id(model.member_tasks, task_id) {
+        opt.Some(task) ->
+          case claimability.can_claim(task) {
+            True -> submit_claim(model, task_id, version, context)
+            False -> #(model, effect.none())
+          }
+        _ -> #(model, effect.none())
+      }
+  }
+}
+
+/// Handle drag/drop claim without changing the current task list optimistically.
+pub fn handle_claim_dropped(
+  model: member_pool.Model,
+  task_id: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case
+    helpers_lookup.find_task_by_id(model.member_tasks, task_id),
+    model.member_task_mutation_in_flight
+  {
+    opt.Some(task), False ->
+      case claimability.can_claim(task) {
+        True -> #(
+          mutation_state.start_dropped_claim(model),
+          task_operations_api.claim_task(
+            task_id,
+            task.version,
+            context.on_task_claimed,
+          ),
+        )
+        False -> #(model, effect.none())
+      }
+    opt.Some(_), _ -> #(model, effect.none())
+    opt.None, _ -> #(model, effect.none())
+  }
+}
+
+fn submit_claim(
+  model: member_pool.Model,
+  task_id: Int,
+  version: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(
+    mutation_state.start_claim(model, task_id, context.current_user_id),
+    task_operations_api.claim_task(task_id, version, context.on_task_claimed),
+  )
+}
+
+/// Handle release button click with optimistic update.
+/// Immediately marks task as available locally, sends API request.
+fn handle_release_clicked(
+  model: member_pool.Model,
+  task_id: Int,
+  version: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case model.member_task_mutation_in_flight {
+    True -> #(model, effect.none())
+    False -> #(
+      mutation_state.start_release(model, task_id),
+      task_operations_api.release_task(
+        task_id,
+        version,
+        context.on_task_released,
+      ),
+    )
+  }
+}
+
+/// Handle complete button click with optimistic update.
+/// Immediately marks task as completed locally, sends API request.
+fn handle_complete_clicked(
+  model: member_pool.Model,
+  task_id: Int,
+  version: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case model.member_task_mutation_in_flight {
+    True -> #(model, effect.none())
+    False -> #(
+      mutation_state.start_complete(model, task_id),
+      task_operations_api.complete_task(
+        task_id,
+        version,
+        context.on_task_completed,
+      ),
+    )
+  }
+}
+
+/// Clear optimistic state after successful mutation.
+fn clear_optimistic_state(model: member_pool.Model) -> member_pool.Model {
+  mutation_state.clear(model)
+}
+
+/// Handle successful task claim.
+/// Clears snapshot and refreshes from server for authoritative state.
+fn handle_task_claimed_ok(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(clear_optimistic_state(model), effect.none())
+}
+
+/// Handle successful task release.
+/// Clears snapshot and refreshes from server for authoritative state.
+fn handle_task_released_ok(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(clear_optimistic_state(model), effect.none())
+}
+
+/// Handle successful task completion.
+/// Clears snapshot and refreshes from server for authoritative state.
+fn handle_task_completed_ok(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(clear_optimistic_state(model), effect.none())
+}
+
+/// Handle mutation error.
+/// Restores snapshot and clears optimistic state.
+fn handle_mutation_error(
+  model: member_pool.Model,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(mutation_state.restore_and_clear(model), effect.none())
+}
+
+fn success_effect(
   success: Success,
   context: Context(parent_msg),
 ) -> Effect(parent_msg) {
@@ -68,7 +318,7 @@ fn success_message(success: Success, context: Context(parent_msg)) -> String {
   }
 }
 
-pub fn error_effect(
+fn error_effect(
   err: ApiError,
   context: ErrorContext(parent_msg),
 ) -> Effect(parent_msg) {

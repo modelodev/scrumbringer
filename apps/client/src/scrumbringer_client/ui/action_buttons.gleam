@@ -223,6 +223,26 @@ pub fn delete_button_with_testid(
   )
 }
 
+/// Creates a delete button with disabled state and a data-testid attribute.
+pub fn delete_button_with_disabled_and_testid(
+  title: String,
+  on_click: msg,
+  disabled: Bool,
+  testid: String,
+) -> Element(msg) {
+  icon_button(
+    title,
+    on_click,
+    icons.Trash,
+    ui_button.Danger,
+    SizeXs,
+    disabled,
+    "",
+    None,
+    Some(testid),
+  )
+}
+
 /// Creates an add button with plus icon.
 pub fn add_button_with_size(
   title: String,

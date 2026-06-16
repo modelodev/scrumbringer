@@ -196,7 +196,7 @@ fn require_create_rule_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-) -> Result(#(workflows_db.Workflow, pog.Connection), wisp.Response) {
+) -> Result(#(workflows_db.WorkflowRecord, pog.Connection), wisp.Response) {
   use #(_, workflow, db) <- result.try(load_workflow_access(
     req,
     ctx,
@@ -207,7 +207,7 @@ fn require_create_rule_access(
 }
 
 fn create_rule_flow(
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
   db: pog.Connection,
   payload: rule_payloads.CreatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
@@ -237,7 +237,7 @@ fn require_update_rule_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   rule_id_str: String,
-) -> Result(#(rules_db.Rule, pog.Connection), wisp.Response) {
+) -> Result(#(rules_db.RuleRecord, pog.Connection), wisp.Response) {
   use #(rule, _workflow, db) <- result.try(load_rule_access(
     req,
     ctx,
@@ -248,11 +248,10 @@ fn require_update_rule_access(
 }
 
 fn update_rule_flow(
-  rule: rules_db.Rule,
+  rule: rules_db.RuleRecord,
   db: pog.Connection,
   payload: rule_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use active_value <- result.try(normalize_active(payload.active))
   use target_value <- result.try(resolve_update_target(
     rule.target,
     payload.resource_type,
@@ -267,7 +266,7 @@ fn update_rule_flow(
       payload.name,
       payload.goal,
       target_value,
-      active_value,
+      payload.active,
     )
   {
     Ok(rule) -> Ok(api.ok(rule_presenters.rule_response(rule)))
@@ -295,7 +294,7 @@ fn require_attach_template_access(
   ctx: auth.Ctx,
   rule_id_str: String,
   template_id_str: String,
-) -> Result(#(rules_db.Rule, pog.Connection, Int), wisp.Response) {
+) -> Result(#(rules_db.RuleRecord, pog.Connection, Int), wisp.Response) {
   use #(rule, workflow, db) <- result.try(load_rule_access(
     req,
     ctx,
@@ -308,7 +307,7 @@ fn require_attach_template_access(
 }
 
 fn attach_template_flow(
-  rule: rules_db.Rule,
+  rule: rules_db.RuleRecord,
   db: pog.Connection,
   template_id: Int,
   execution_order: Int,
@@ -344,7 +343,10 @@ fn load_workflow_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-) -> Result(#(StoredUser, workflows_db.Workflow, pog.Connection), wisp.Response) {
+) -> Result(
+  #(StoredUser, workflows_db.WorkflowRecord, pog.Connection),
+  wisp.Response,
+) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
   use workflow_id <- result.try(api.parse_id(workflow_id_str))
   let auth.Ctx(db: db, ..) = ctx
@@ -358,7 +360,7 @@ fn load_rule_access(
   ctx: auth.Ctx,
   rule_id_str: String,
 ) -> Result(
-  #(rules_db.Rule, workflows_db.Workflow, pog.Connection),
+  #(rules_db.RuleRecord, workflows_db.WorkflowRecord, pog.Connection),
   wisp.Response,
 ) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
@@ -373,7 +375,7 @@ fn load_rule_access(
 fn require_project_manager(
   db: pog.Connection,
   user: StoredUser,
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
 ) -> Result(Nil, wisp.Response) {
   authorization.require_project_manager_simple(
     db,
@@ -386,7 +388,7 @@ fn require_project_manager(
 fn get_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(workflows_db.Workflow, wisp.Response) {
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
@@ -396,7 +398,7 @@ fn get_workflow(
 fn get_rule(
   db: pog.Connection,
   rule_id: Int,
-) -> Result(rules_db.Rule, wisp.Response) {
+) -> Result(rules_db.RuleRecord, wisp.Response) {
   case rules_db.get_rule(db, rule_id) {
     Ok(rule) -> Ok(rule)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
@@ -406,14 +408,17 @@ fn get_rule(
 fn list_rules_for_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(List(rules_db.Rule), wisp.Response) {
+) -> Result(List(rules_db.RuleRecord), wisp.Response) {
   case rules_db.list_rules_for_workflow(db, workflow_id) {
     Ok(rules) -> Ok(rules)
     Error(_) -> Error(database_error_response())
   }
 }
 
-fn list_rules_with_templates(db: pog.Connection, rules: List(rules_db.Rule)) {
+fn list_rules_with_templates(
+  db: pog.Connection,
+  rules: List(rules_db.RuleRecord),
+) {
   list.try_map(rules, fn(rule) {
     case rules_db.list_rule_templates(db, rule.id) {
       Ok(templates) -> Ok(rule_presenters.rule_with_templates(rule, templates))
@@ -541,15 +546,6 @@ fn rule_target_error_response(
   }
 }
 
-fn normalize_active(active: Option(Int)) -> Result(Option(Bool), wisp.Response) {
-  case active {
-    None -> Ok(None)
-    Some(0) -> Ok(Some(False))
-    Some(1) -> Ok(Some(True))
-    Some(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
-  }
-}
-
 fn delete_rule_db(
   db: pog.Connection,
   rule_id: Int,
@@ -565,7 +561,7 @@ fn attach_rule_template_db(
   rule_id: Int,
   template_id: Int,
   execution_order: Int,
-) -> Result(List(rules_db.RuleTemplate), wisp.Response) {
+) -> Result(List(workflow.RuleTemplate), wisp.Response) {
   case rules_db.attach_template(db, rule_id, template_id, execution_order) {
     Ok(Nil) ->
       case rules_db.list_rule_templates(db, rule_id) {
@@ -590,9 +586,9 @@ fn detach_rule_template_db(
 
 fn workflow_from_rule(
   db: pog.Connection,
-  rule: rules_db.Rule,
-) -> Result(workflows_db.Workflow, wisp.Response) {
-  let rules_db.Rule(workflow_id: workflow_id, ..) = rule
+  rule: rules_db.RuleRecord,
+) -> Result(workflows_db.WorkflowRecord, wisp.Response) {
+  let rules_db.RuleRecord(workflow_id: workflow_id, ..) = rule
 
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
@@ -602,10 +598,10 @@ fn workflow_from_rule(
 
 fn validate_template_scope(
   db: pog.Connection,
-  workflow: workflows_db.Workflow,
+  workflow: workflows_db.WorkflowRecord,
   template_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  let workflows_db.Workflow(org_id: org_id, project_id: project_id, ..) =
+  let workflows_db.WorkflowRecord(org_id: org_id, project_id: project_id, ..) =
     workflow
 
   case task_templates_db.get_template(db, template_id) {

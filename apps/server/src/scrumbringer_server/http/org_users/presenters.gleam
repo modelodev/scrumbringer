@@ -34,15 +34,17 @@ pub fn user_response(value: org_users_db.OrgUser) -> json.Json {
   json.object([#("user", user(value))])
 }
 
-pub fn user_projects(projects: List(projects_db.Project)) -> json.Json {
+pub fn user_projects(projects: List(projects_db.ProjectRecord)) -> json.Json {
   json.array(projects, of: user_project)
 }
 
-pub fn user_projects_response(values: List(projects_db.Project)) -> json.Json {
+pub fn user_projects_response(
+  values: List(projects_db.ProjectRecord),
+) -> json.Json {
   json.object([#("projects", user_projects(values))])
 }
 
-fn user_project(project: projects_db.Project) -> json.Json {
+fn user_project(project: projects_db.ProjectRecord) -> json.Json {
   json.object([
     #("id", json.int(project.id)),
     #("name", json.string(project.name)),
@@ -53,7 +55,7 @@ fn user_project(project: projects_db.Project) -> json.Json {
 pub fn project_member(
   project_id: Int,
   project_name: String,
-  member: projects_db.ProjectMember,
+  member: projects_db.ProjectMemberRecord,
 ) -> json.Json {
   json.object([
     #("id", json.int(project_id)),
@@ -65,7 +67,7 @@ pub fn project_member(
 pub fn project_member_response(
   project_id: Int,
   project_name: String,
-  member: projects_db.ProjectMember,
+  member: projects_db.ProjectMemberRecord,
 ) -> json.Json {
   json.object([
     #("project", project_member(project_id, project_name, member)),

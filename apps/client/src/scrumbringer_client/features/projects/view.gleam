@@ -21,7 +21,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{button, div, form, input, p, text}
+import lustre/element/html.{div, form, input, p, text}
 import lustre/event
 
 import domain/project.{type Project}
@@ -30,12 +30,12 @@ import domain/remote.{type Remote}
 import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{
   type OperationState, DialogOpen, Error as OpError, InFlight,
-  ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit,
 }
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
@@ -104,12 +104,10 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight, error) = case
     config.project_dialog.projects_dialog
   {
-    DialogOpen(form: ProjectDialogCreate(name: name), operation: op) -> #(
-      True,
-      name,
-      operation_in_flight(op),
-      operation_error(op),
-    )
+    DialogOpen(
+      form: projects_state.ProjectDialogCreate(name: name),
+      operation: op,
+    ) -> #(True, name, operation_in_flight(op), operation_error(op))
     _ -> #(False, "", False, opt.None)
   }
 
@@ -149,9 +147,9 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
         config.locale,
         config.on_create_dialog_closed,
       ),
-      dialog.submit_button_with_locale_attrs(
+      dialog.submit_button_with_locale_form(
         config.locale,
-        [attribute.form("project-create-form")],
+        "project-create-form",
         in_flight,
         False,
         i18n_text.Create,
@@ -166,12 +164,10 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight, error) = case
     config.project_dialog.projects_dialog
   {
-    DialogOpen(form: ProjectDialogEdit(id: _, name: name), operation: op) -> #(
-      True,
-      name,
-      operation_in_flight(op),
-      operation_error(op),
-    )
+    DialogOpen(
+      form: projects_state.ProjectDialogEdit(id: _, name: name),
+      operation: op,
+    ) -> #(True, name, operation_in_flight(op), operation_error(op))
     _ -> #(False, "", False, opt.None)
   }
 
@@ -211,9 +207,9 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
         config.locale,
         config.on_edit_dialog_closed,
       ),
-      dialog.submit_button_with_locale_attrs(
+      dialog.submit_button_with_locale_form(
         config.locale,
-        [attribute.form("project-edit-form")],
+        "project-edit-form",
         in_flight,
         False,
         i18n_text.Save,
@@ -226,11 +222,10 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
 /// Delete confirmation dialog (Story 4.8 AC39).
 fn view_projects_delete_confirm(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight) = case config.project_dialog.projects_dialog {
-    DialogOpen(form: ProjectDialogDelete(id: _, name: name), operation: op) -> #(
-      True,
-      name,
-      operation_in_flight(op),
-    )
+    DialogOpen(
+      form: projects_state.ProjectDialogDelete(id: _, name: name),
+      operation: op,
+    ) -> #(True, name, operation_in_flight(op))
     _ -> #(False, "", False)
   }
 
@@ -258,19 +253,17 @@ fn view_projects_delete_confirm(config: Config(msg)) -> element.Element(msg) {
         config.locale,
         config.on_delete_confirm_closed,
       ),
-      button(
-        [
-          attribute.class("btn-danger"),
-          attribute.disabled(in_flight),
-          event.on_click(config.on_delete_submitted),
-        ],
-        [
-          text(case in_flight {
-            True -> t(config, i18n_text.Deleting)
-            False -> t(config, i18n_text.Delete)
-          }),
-        ],
-      ),
+      ui_button.text(
+        case in_flight {
+          True -> t(config, i18n_text.Deleting)
+          False -> t(config, i18n_text.Delete)
+        },
+        config.on_delete_submitted,
+        ui_button.Danger,
+        ui_button.EntityAction,
+      )
+        |> ui_button.with_disabled(in_flight)
+        |> ui_button.view,
     ],
   )
 }

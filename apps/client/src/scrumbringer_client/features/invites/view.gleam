@@ -27,13 +27,14 @@ import domain/org.{
 }
 import scrumbringer_client/client_state/admin/invites as invites_state
 import scrumbringer_client/client_state/types.{
-  DialogClosed, DialogOpen, Error, InFlight, InviteLinkForm,
+  DialogClosed, DialogOpen, Error, InFlight,
 }
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
@@ -224,7 +225,7 @@ fn view_invalidate_confirm(config: Config(msg)) -> Element(msg) {
         is_loading: config.invites.invite_link_invalidate_in_flight
           == opt.Some(email),
         error: opt.None,
-        confirm_class: "btn-danger",
+        confirm_intent: ui_button.Danger,
       ))
   }
 }
@@ -280,11 +281,10 @@ fn invite_dialog_info(
   invites: invites_state.Model,
 ) -> #(Bool, String, opt.Option(String), Bool) {
   let #(open, email, operation) = case invites.invite_link_dialog {
-    DialogOpen(form: InviteLinkForm(email: email), operation: operation) -> #(
-      True,
-      email,
-      operation,
-    )
+    DialogOpen(
+      form: invites_state.InviteLinkForm(email: email),
+      operation: operation,
+    ) -> #(True, email, operation)
     DialogClosed(operation: operation) -> #(False, "", operation)
   }
 

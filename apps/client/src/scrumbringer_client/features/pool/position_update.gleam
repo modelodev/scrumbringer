@@ -91,62 +91,62 @@ fn with_auth_check(
   opt.Some(Update(model, fx, CheckAuth(err)))
 }
 
-pub fn fetched_ok(
+fn fetched_ok(
   model: member_positions.Model,
   positions: List(TaskPosition),
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_fetched_ok(model, positions)
 }
 
-pub fn fetched_error(
+fn fetched_error(
   model: member_positions.Model,
   _err: ApiError,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   #(model, effect.none())
 }
 
-pub fn opened(
+fn opened(
   model: member_positions.Model,
   task_id: Int,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_opened(model, task_id)
 }
 
-pub fn closed(
+fn closed(
   model: member_positions.Model,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_closed(model)
 }
 
-pub fn x_changed(
+fn x_changed(
   model: member_positions.Model,
   value: String,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_x_changed(model, value)
 }
 
-pub fn y_changed(
+fn y_changed(
   model: member_positions.Model,
   value: String,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_y_changed(model, value)
 }
 
-pub fn submitted(
+fn submitted(
   model: member_positions.Model,
   context: Context(parent_msg),
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_submitted(model, edit_context(context))
 }
 
-pub fn saved_ok(
+fn saved_ok(
   model: member_positions.Model,
   position: TaskPosition,
 ) -> #(member_positions.Model, Effect(parent_msg)) {
   position_edit.handle_saved_ok(model, position)
 }
 
-pub fn saved_error(
+fn saved_error(
   model: member_positions.Model,
   err: ApiError,
   context: Context(parent_msg),

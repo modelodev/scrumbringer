@@ -6,7 +6,6 @@ import domain/api_error.{ApiError}
 import domain/remote
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/task_types/update as task_types_update
 
@@ -47,26 +46,58 @@ fn error_feedback_context() -> task_types_update.ErrorFeedbackContext(Nil) {
   )
 }
 
+fn update(
+  model: admin_task_types.Model,
+  msg: admin_messages.Msg,
+  selected_project_id: option.Option(Int),
+) -> #(
+  admin_task_types.Model,
+  effect.Effect(Nil),
+  task_types_update.AuthPolicy,
+  task_types_update.RefreshPolicy,
+) {
+  let assert option.Some(task_types_update.Update(
+    next,
+    fx,
+    auth_policy,
+    refresh_policy,
+  )) =
+    task_types_update.try_update(
+      model,
+      msg,
+      context(selected_project_id),
+      feedback_context(),
+      error_feedback_context(),
+    )
+
+  #(next, fx, auth_policy, refresh_policy)
+}
+
 pub fn fetched_ok_loads_task_types_test() {
   let task_types = [task_type(1, "Bug")]
 
-  let #(next, fx) =
-    task_types_update.handle_task_types_fetched_ok(
+  let #(next, fx, auth_policy, refresh_policy) =
+    update(
       admin_task_types.default_model(),
-      task_types,
+      admin_messages.TaskTypesFetched(Ok(task_types)),
+      option.None,
     )
 
   let assert True = next.task_types == remote.Loaded([task_type(1, "Bug")])
   let assert True = fx == effect.none()
+  let assert task_types_update.NoAuthCheck = auth_policy
+  let assert task_types_update.NoRefresh = refresh_policy
 }
 
 pub fn create_dialog_opened_sets_create_mode_test() {
-  let #(next, fx) =
-    task_types_update.handle_task_type_dialog_opened(
+  let #(next, fx, _, _) =
+    update(
       admin_task_types.default_model(),
+      admin_messages.TaskTypeCreateDialogOpened,
+      option.None,
     )
 
-  let assert option.Some(state_types.TaskTypeDialogCreate) =
+  let assert option.Some(admin_task_types.TaskTypeDialogCreate) =
     next.task_types_dialog_mode
   let assert True = fx == effect.none()
 }
@@ -75,7 +106,7 @@ pub fn create_dialog_closed_resets_form_state_test() {
   let model =
     admin_task_types.Model(
       ..admin_task_types.default_model(),
-      task_types_dialog_mode: option.Some(state_types.TaskTypeDialogCreate),
+      task_types_dialog_mode: option.Some(admin_task_types.TaskTypeDialogCreate),
       task_types_create_name: "Bug",
       task_types_create_icon: "bug",
       task_types_create_icon_search: "bu",
@@ -83,10 +114,11 @@ pub fn create_dialog_closed_resets_form_state_test() {
       task_types_create_capability_id: option.Some("7"),
       task_types_create_in_flight: True,
       task_types_create_error: option.Some("error"),
-      task_types_icon_preview: state_types.IconOk,
+      task_types_icon_preview: admin_task_types.IconOk,
     )
 
-  let #(next, fx) = task_types_update.handle_task_type_dialog_closed(model)
+  let #(next, fx, _, _) =
+    update(model, admin_messages.TaskTypeCreateDialogClosed, option.None)
 
   let assert option.None = next.task_types_dialog_mode
   let assert "" = next.task_types_create_name
@@ -96,31 +128,41 @@ pub fn create_dialog_closed_resets_form_state_test() {
   let assert option.None = next.task_types_create_capability_id
   let assert False = next.task_types_create_in_flight
   let assert option.None = next.task_types_create_error
-  let assert state_types.IconIdle = next.task_types_icon_preview
+  let assert admin_task_types.IconIdle = next.task_types_icon_preview
   let assert True = fx == effect.none()
 }
 
 pub fn field_handlers_update_create_form_test() {
-  let #(model, _) =
-    task_types_update.handle_task_type_create_name_changed(
+  let #(model, _, _, _) =
+    update(
       admin_task_types.default_model(),
-      "Bug",
+      admin_messages.TaskTypeCreateNameChanged("Bug"),
+      option.None,
     )
-  let #(model, _) =
-    task_types_update.handle_task_type_create_icon_changed(model, "bug")
-  let #(model, _) =
-    task_types_update.handle_task_type_create_icon_search_changed(model, "bu")
-  let #(model, _) =
-    task_types_update.handle_task_type_create_icon_category_changed(
+  let #(model, _, _, _) =
+    update(model, admin_messages.TaskTypeCreateIconChanged("bug"), option.None)
+  let #(model, _, _, _) =
+    update(
       model,
-      "work",
+      admin_messages.TaskTypeCreateIconSearchChanged("bu"),
+      option.None,
     )
-  let #(next, fx) =
-    task_types_update.handle_task_type_create_capability_changed(model, "7")
+  let #(model, _, _, _) =
+    update(
+      model,
+      admin_messages.TaskTypeCreateIconCategoryChanged("work"),
+      option.None,
+    )
+  let #(next, fx, _, _) =
+    update(
+      model,
+      admin_messages.TaskTypeCreateCapabilityChanged("7"),
+      option.None,
+    )
 
   let assert "Bug" = next.task_types_create_name
   let assert "bug" = next.task_types_create_icon
-  let assert state_types.IconOk = next.task_types_icon_preview
+  let assert admin_task_types.IconOk = next.task_types_icon_preview
   let assert "bu" = next.task_types_create_icon_search
   let assert "work" = next.task_types_create_icon_category
   let assert option.Some("7") = next.task_types_create_capability_id
@@ -135,11 +177,8 @@ pub fn create_submit_requires_selected_project_test() {
       task_types_create_icon: "bug",
     )
 
-  let #(next, fx) =
-    task_types_update.handle_task_type_create_submitted(
-      model,
-      context(option.None),
-    )
+  let #(next, fx, _, _) =
+    update(model, admin_messages.TaskTypeCreateSubmitted, option.None)
 
   let assert option.Some("Select project first") = next.task_types_create_error
   let assert False = next.task_types_create_in_flight
@@ -154,11 +193,8 @@ pub fn create_submit_requires_name_and_icon_test() {
       task_types_create_icon: "",
     )
 
-  let #(next, fx) =
-    task_types_update.handle_task_type_create_submitted(
-      model,
-      context(option.Some(3)),
-    )
+  let #(next, fx, _, _) =
+    update(model, admin_messages.TaskTypeCreateSubmitted, option.Some(3))
 
   let assert option.Some("Name and icon required") =
     next.task_types_create_error
@@ -176,11 +212,8 @@ pub fn create_submit_sets_in_flight_when_valid_test() {
       task_types_create_error: option.Some("old"),
     )
 
-  let #(next, _fx) =
-    task_types_update.handle_task_type_create_submitted(
-      model,
-      context(option.Some(3)),
-    )
+  let #(next, _fx, _, _) =
+    update(model, admin_messages.TaskTypeCreateSubmitted, option.Some(3))
 
   let assert True = next.task_types_create_in_flight
   let assert option.None = next.task_types_create_error
@@ -190,7 +223,7 @@ pub fn created_ok_closes_dialog_and_resets_form_test() {
   let model =
     admin_task_types.Model(
       ..admin_task_types.default_model(),
-      task_types_dialog_mode: option.Some(state_types.TaskTypeDialogCreate),
+      task_types_dialog_mode: option.Some(admin_task_types.TaskTypeDialogCreate),
       task_types_create_name: "Bug",
       task_types_create_icon: "bug",
       task_types_create_icon_search: "bu",
@@ -198,11 +231,15 @@ pub fn created_ok_closes_dialog_and_resets_form_test() {
       task_types_create_capability_id: option.Some("7"),
       task_types_create_in_flight: True,
       task_types_create_error: option.Some("old"),
-      task_types_icon_preview: state_types.IconOk,
+      task_types_icon_preview: admin_task_types.IconOk,
     )
 
-  let #(next, fx) =
-    task_types_update.handle_task_type_created_ok(model, feedback_context())
+  let #(next, fx, auth_policy, refresh_policy) =
+    update(
+      model,
+      admin_messages.TaskTypeCreated(Ok(task_type(1, "Bug"))),
+      option.Some(7),
+    )
 
   let assert option.None = next.task_types_dialog_mode
   let assert False = next.task_types_create_in_flight
@@ -212,8 +249,10 @@ pub fn created_ok_closes_dialog_and_resets_form_test() {
   let assert "all" = next.task_types_create_icon_category
   let assert option.None = next.task_types_create_capability_id
   let assert option.None = next.task_types_create_error
-  let assert state_types.IconIdle = next.task_types_icon_preview
+  let assert admin_task_types.IconIdle = next.task_types_icon_preview
   let assert False = fx == effect.none()
+  let assert task_types_update.NoAuthCheck = auth_policy
+  let assert task_types_update.RefreshSection = refresh_policy
 }
 
 pub fn crud_updated_replaces_loaded_task_type_test() {
@@ -222,15 +261,15 @@ pub fn crud_updated_replaces_loaded_task_type_test() {
       ..admin_task_types.default_model(),
       task_types: remote.Loaded([task_type(1, "Bug"), task_type(2, "Feature")]),
       task_types_dialog_mode: option.Some(
-        state_types.TaskTypeDialogEdit(task_type(1, "Bug")),
+        admin_task_types.TaskTypeDialogEdit(task_type(1, "Bug")),
       ),
     )
 
-  let #(next, fx) =
-    task_types_update.handle_task_type_crud_updated(
+  let #(next, fx, _, _) =
+    update(
       model,
-      task_type(1, "Incident"),
-      feedback_context(),
+      admin_messages.TaskTypeCrudUpdated(task_type(1, "Incident")),
+      option.None,
     )
 
   let assert True =
@@ -249,16 +288,12 @@ pub fn crud_deleted_removes_loaded_task_type_test() {
       ..admin_task_types.default_model(),
       task_types: remote.Loaded([task_type(1, "Bug"), task_type(2, "Feature")]),
       task_types_dialog_mode: option.Some(
-        state_types.TaskTypeDialogDelete(task_type(1, "Bug")),
+        admin_task_types.TaskTypeDialogDelete(task_type(1, "Bug")),
       ),
     )
 
-  let #(next, fx) =
-    task_types_update.handle_task_type_crud_deleted(
-      model,
-      1,
-      feedback_context(),
-    )
+  let #(next, fx, _, _) =
+    update(model, admin_messages.TaskTypeCrudDeleted(1), option.None)
 
   let assert True = next.task_types == remote.Loaded([task_type(2, "Feature")])
   let assert option.None = next.task_types_dialog_mode

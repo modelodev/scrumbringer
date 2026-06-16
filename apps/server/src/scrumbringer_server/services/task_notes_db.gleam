@@ -3,6 +3,7 @@
 //// Task notes allow users to add comments and discussion threads to tasks.
 //// Notes are stored with their author and timestamp for audit purposes.
 
+import domain/task.{type TaskNote, TaskNote}
 import gleam/list
 import gleam/result
 import pog
@@ -11,17 +12,6 @@ import scrumbringer_server/services/service_error.{
   type ServiceError, DbError, NotFound,
 }
 import scrumbringer_server/sql
-
-/// A note attached to a task.
-pub type TaskNote {
-  TaskNote(
-    id: Int,
-    task_id: Int,
-    user_id: Int,
-    content: String,
-    created_at: String,
-  )
-}
 
 /// Lists all notes for a task, ordered by creation time.
 ///

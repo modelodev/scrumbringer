@@ -1,6 +1,6 @@
 //// Integration user persistence.
 
-import domain/org_role
+import domain/api_token.{type IntegrationUser, IntegrationUser}
 import gleam/dynamic/decode
 import gleam/list
 import gleam/result
@@ -8,16 +8,6 @@ import gleam/string
 import pog
 import scrumbringer_server/services/persisted_field
 import scrumbringer_server/services/persisted_role
-
-pub type IntegrationUser {
-  IntegrationUser(
-    id: Int,
-    email: String,
-    org_role: org_role.OrgRole,
-    created_at: String,
-    active_token_count: Int,
-  )
-}
 
 pub type IntegrationUserError {
   EmailRequired

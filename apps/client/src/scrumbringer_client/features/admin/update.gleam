@@ -26,37 +26,17 @@ import gleam/option as opt
 
 import lustre/effect
 
-import domain/api_error.{type ApiError}
-import domain/project.{type Project}
-import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
-import scrumbringer_client/client_state/admin as admin_state
-import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
-import scrumbringer_client/client_state/admin/invites as admin_invites
-import scrumbringer_client/client_state/admin/projects as admin_projects
-import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/assignments_route
+import scrumbringer_client/features/admin/capabilities_route
+import scrumbringer_client/features/admin/invites_route
+import scrumbringer_client/features/admin/members_route
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/assignments/update as assignments_workflow
-import scrumbringer_client/features/capabilities/update as capabilities_workflow
-import scrumbringer_client/features/invites/update as invite_links_workflow
-import scrumbringer_client/features/projects/project_list
-import scrumbringer_client/features/projects/update as projects_workflow
-import scrumbringer_client/features/task_types/update as task_types_workflow
-import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/router
+import scrumbringer_client/features/admin/org_settings_route
+import scrumbringer_client/features/admin/projects_route
+import scrumbringer_client/features/admin/task_types_route
 
-import scrumbringer_client/features/admin/api_tokens_update
-import scrumbringer_client/features/admin/member_add_update
-import scrumbringer_client/features/admin/member_list_update
-import scrumbringer_client/features/admin/member_release_all_update
-import scrumbringer_client/features/admin/member_remove_update
-import scrumbringer_client/features/admin/member_role_update
-import scrumbringer_client/features/admin/member_root
-import scrumbringer_client/features/admin/org_settings
-import scrumbringer_client/features/admin/search_update
-import scrumbringer_client/features/auth/helpers as auth_helpers
-import scrumbringer_client/i18n/i18n
+import scrumbringer_client/features/admin/api_tokens_route
 
 // =============================================================================
 // Dispatch
@@ -77,16 +57,8 @@ pub fn update(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    projects_workflow.try_update(
-      model.admin.projects,
-      inner,
-      projects_context(model),
-      projects_feedback_context(model),
-      projects_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_projects_update(model, update)
+  case projects_route.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_projects(model, inner, ctx)
   }
 }
@@ -96,16 +68,8 @@ fn update_without_projects(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    invite_links_workflow.try_update(
-      model.admin.invites,
-      inner,
-      invite_links_context(model),
-      invite_links_feedback_context(model),
-      invite_links_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_invites_update(model, update)
+  case invites_route.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_invites(model, inner, ctx)
   }
 }
@@ -115,16 +79,8 @@ fn update_without_invites(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    capabilities_workflow.try_update(
-      model.admin.capabilities,
-      inner,
-      capabilities_context(model),
-      capabilities_feedback_context(model),
-      capabilities_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_capabilities_update(model, update)
+  case capabilities_route.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_capabilities(model, inner, ctx)
   }
 }
@@ -134,16 +90,9 @@ fn update_without_capabilities(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    task_types_workflow.try_update(
-      model.admin.task_types,
-      inner,
-      task_types_context(model),
-      task_types_feedback_context(model),
-      task_types_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_task_types_update(model, update, ctx)
+  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
+  case task_types_route.try_update(model, inner, refresh_section_for_test) {
+    opt.Some(result) -> result
     opt.None -> update_without_task_types(model, inner, ctx)
   }
 }
@@ -153,26 +102,20 @@ fn update_without_task_types(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case member_list_update.try_update(model, inner) {
+  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
+  case members_route.try_update(model, inner, refresh_section_for_test) {
     opt.Some(result) -> result
-    opt.None -> update_without_member_list(model, inner, ctx)
+    opt.None -> update_without_members(model, inner, ctx)
   }
 }
 
-fn update_without_member_list(
+fn update_without_members(
   model: client_state.Model,
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    org_settings.try_update(
-      model.admin.members,
-      inner,
-      org_settings_context(),
-      org_settings_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_org_settings_update(model, update)
+  case org_settings_route.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_org_settings(model, inner, ctx)
   }
 }
@@ -182,72 +125,8 @@ fn update_without_org_settings(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
-  case member_add_update.try_update(model, inner, refresh_section_for_test) {
+  case assignments_route.try_update(model, inner) {
     opt.Some(result) -> result
-    opt.None -> update_without_member_add(model, inner, ctx)
-  }
-}
-
-fn update_without_member_add(
-  model: client_state.Model,
-  inner: admin_messages.Msg,
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
-  case member_remove_update.try_update(model, inner, refresh_section_for_test) {
-    opt.Some(result) -> result
-    opt.None -> update_without_member_remove(model, inner, ctx)
-  }
-}
-
-fn update_without_member_remove(
-  model: client_state.Model,
-  inner: admin_messages.Msg,
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case member_release_all_update.try_update(model, inner) {
-    opt.Some(result) -> result
-    opt.None -> update_without_member_release_all(model, inner, ctx)
-  }
-}
-
-fn update_without_member_release_all(
-  model: client_state.Model,
-  inner: admin_messages.Msg,
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case member_role_update.try_update(model, inner) {
-    opt.Some(result) -> result
-    opt.None -> update_without_member_role(model, inner, ctx)
-  }
-}
-
-fn update_without_member_role(
-  model: client_state.Model,
-  inner: admin_messages.Msg,
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case search_update.try_update(model, inner) {
-    opt.Some(result) -> result
-    opt.None -> update_without_org_users_search(model, inner, ctx)
-  }
-}
-
-fn update_without_org_users_search(
-  model: client_state.Model,
-  inner: admin_messages.Msg,
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    assignments_workflow.try_update(
-      model.admin.assignments,
-      inner,
-      assignments_context(model),
-      assignments_feedback_context(),
-    )
-  {
-    opt.Some(update) -> apply_assignments_update(model, update)
     opt.None -> update_without_assignments(model, inner, ctx)
   }
 }
@@ -257,14 +136,8 @@ fn update_without_assignments(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    api_tokens_update.try_update(
-      model.admin.api_tokens,
-      inner,
-      api_tokens_context(model),
-    )
-  {
-    opt.Some(update) -> apply_api_tokens_update(model, update)
+  case api_tokens_route.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_api_tokens(model, inner, ctx)
   }
 }
@@ -278,7 +151,7 @@ fn update_without_api_tokens(
     // Handled by the root update before this dispatch.
     admin_messages.ProjectsFetched(_) -> #(model, effect.none())
 
-    // Handled by projects_workflow.try_update before this dispatch.
+    // Handled by projects_route.try_update before this dispatch.
     admin_messages.ProjectCreateDialogOpened
     | admin_messages.ProjectCreateDialogClosed
     | admin_messages.ProjectCreateNameChanged(_)
@@ -294,7 +167,7 @@ fn update_without_api_tokens(
     | admin_messages.ProjectDeleteSubmitted
     | admin_messages.ProjectDeleted(_) -> #(model, effect.none())
 
-    // Handled by invite_links_workflow.try_update before this dispatch.
+    // Handled by invites_route.try_update before this dispatch.
     admin_messages.InviteCreateDialogOpened
     | admin_messages.InviteCreateDialogClosed
     | admin_messages.InviteLinkEmailChanged(_)
@@ -310,7 +183,7 @@ fn update_without_api_tokens(
     | admin_messages.InviteLinkCopyClicked(_)
     | admin_messages.InviteLinkCopyFinished(_) -> #(model, effect.none())
 
-    // Handled by capabilities_workflow.try_update before this dispatch.
+    // Handled by capabilities_route.try_update before this dispatch.
     admin_messages.CapabilitiesFetched(_)
     | admin_messages.CapabilityCreateDialogOpened
     | admin_messages.CapabilityCreateDialogClosed
@@ -342,7 +215,7 @@ fn update_without_api_tokens(
     // Handled by member_list.try_update before this dispatch.
     admin_messages.MembersFetched(_) -> #(model, effect.none())
 
-    // Handled by org_settings.try_update before this dispatch.
+    // Handled by org_settings_route.try_update before this dispatch.
     admin_messages.OrgUsersCacheFetched(_)
     | admin_messages.OrgSettingsUsersFetched(_)
     | admin_messages.OrgSettingsRoleChanged(_, _)
@@ -381,7 +254,7 @@ fn update_without_api_tokens(
     | admin_messages.OrgUsersSearchDebounced(_)
     | admin_messages.OrgUsersSearchResults(_, _) -> #(model, effect.none())
 
-    // Handled by assignments_workflow.try_update before this dispatch.
+    // Handled by assignments_route.try_update before this dispatch.
     admin_messages.AssignmentsViewModeChanged(_)
     | admin_messages.AssignmentsSearchChanged(_)
     | admin_messages.AssignmentsSearchDebounced(_)
@@ -393,7 +266,7 @@ fn update_without_api_tokens(
       effect.none(),
     )
 
-    // Handled by assignments_workflow.try_update before this dispatch.
+    // Handled by assignments_route.try_update before this dispatch.
     admin_messages.AssignmentsInlineAddStarted(_)
     | admin_messages.AssignmentsInlineAddSearchChanged(_)
     | admin_messages.AssignmentsInlineAddSelectionChanged(_)
@@ -406,7 +279,7 @@ fn update_without_api_tokens(
       effect.none(),
     )
 
-    // Handled by assignments_workflow.try_update before this dispatch.
+    // Handled by assignments_route.try_update before this dispatch.
     admin_messages.AssignmentsRemoveClicked(_, _)
     | admin_messages.AssignmentsRemoveCancelled
     | admin_messages.AssignmentsRemoveConfirmed
@@ -415,14 +288,14 @@ fn update_without_api_tokens(
       effect.none(),
     )
 
-    // Handled by assignments_workflow.try_update before this dispatch.
+    // Handled by assignments_route.try_update before this dispatch.
     admin_messages.AssignmentsRoleChanged(_, _, _)
     | admin_messages.AssignmentsRoleChangeCompleted(_, _, _) -> #(
       model,
       effect.none(),
     )
 
-    // Handled by api_tokens_update.try_update before this dispatch.
+    // Handled by api_tokens_route.try_update before this dispatch.
     admin_messages.IntegrationUsersFetched(_)
     | admin_messages.ApiTokensFetched(_)
     | admin_messages.ApiTokenCreateDialogOpened
@@ -451,7 +324,7 @@ fn update_without_api_tokens(
     | admin_messages.IntegrationDeactivateConfirmed
     | admin_messages.IntegrationDeactivated(_, _) -> #(model, effect.none())
 
-    // Handled by task_types_workflow.try_update before this dispatch.
+    // Handled by task_types_route.try_update before this dispatch.
     admin_messages.TaskTypesFetched(_)
     | admin_messages.TaskTypeCreateDialogOpened
     | admin_messages.TaskTypeCreateDialogClosed
@@ -470,658 +343,4 @@ fn update_without_api_tokens(
     | admin_messages.TaskTypeCrudUpdated(_)
     | admin_messages.TaskTypeCrudDeleted(_) -> #(model, effect.none())
   }
-}
-
-fn apply_auth_check_before(
-  model: client_state.Model,
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> auth_helpers.handle_401_or(model, err, apply_update)
-  }
-}
-
-fn apply_auth_check_after(
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> {
-      let #(next, fx) = apply_update()
-      auth_helpers.handle_401_or(next, err, fn() { #(next, fx) })
-    }
-  }
-}
-
-fn apply_org_settings_update(
-  model: client_state.Model,
-  update: org_settings.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let org_settings.Update(members, local_fx, auth_policy, root_policy) = update
-
-  apply_auth_check_before(model, org_settings_auth_error(auth_policy), fn() {
-    let model = member_root.set_members(model, members)
-
-    case root_policy {
-      org_settings.NoRootPolicy -> #(model, local_fx)
-
-      org_settings.StartAssignmentsFetch(users) -> {
-        let #(model, assignments_fx) =
-          apply_assignments_transition(model, fn(assignments) {
-            assignments_workflow.start_user_projects_fetch(
-              assignments,
-              users,
-              assignments_context(model),
-            )
-          })
-        #(model, effect.batch([local_fx, assignments_fx]))
-      }
-
-      org_settings.UpdateCurrentUser(updated) -> {
-        let user =
-          org_settings.current_user_after_saved(model.core.user, updated)
-        let model =
-          client_state.update_core(model, fn(core) {
-            client_state.CoreModel(..core, user: user)
-          })
-        #(model, local_fx)
-      }
-    }
-  })
-}
-
-fn org_settings_auth_error(
-  policy: org_settings.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    org_settings.NoAuthCheck -> opt.None
-    org_settings.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn api_tokens_context(
-  model: client_state.Model,
-) -> api_tokens_update.Context(client_state.Msg) {
-  api_tokens_update.Context(
-    on_integration_users_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.IntegrationUsersFetched(result))
-    },
-    on_tokens_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.ApiTokensFetched(result))
-    },
-    on_token_created: fn(result) {
-      client_state.admin_msg(admin_messages.ApiTokenCreated(result))
-    },
-    on_token_renamed: fn(result) {
-      client_state.admin_msg(admin_messages.ApiTokenRenamed(result))
-    },
-    on_token_revoked: fn(id, result) {
-      client_state.admin_msg(admin_messages.ApiTokenRevoked(id, result))
-    },
-    on_integration_deactivated: fn(id, result) {
-      client_state.admin_msg(admin_messages.IntegrationDeactivated(id, result))
-    },
-    on_token_secret_copy_finished: fn(ok) {
-      client_state.admin_msg(admin_messages.ApiTokenCreatedSecretCopyFinished(
-        ok,
-      ))
-    },
-    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
-    integration_required: i18n.t(model.ui.locale, i18n_text.IntegrationRequired),
-    scope_required: i18n.t(model.ui.locale, i18n_text.ScopeRequired),
-    copying: i18n.t(model.ui.locale, i18n_text.Copying),
-    copied: i18n.t(model.ui.locale, i18n_text.Copied),
-    copy_failed: i18n.t(model.ui.locale, i18n_text.CopyFailed),
-  )
-}
-
-fn api_tokens_auth_error(
-  policy: api_tokens_update.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    api_tokens_update.NoAuthCheck -> opt.None
-    api_tokens_update.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_api_tokens_update(
-  model: client_state.Model,
-  update: api_tokens_update.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let api_tokens_update.Update(api_tokens, local_fx, auth_policy) = update
-
-  apply_auth_check_before(model, api_tokens_auth_error(auth_policy), fn() {
-    let model =
-      client_state.update_admin(model, fn(admin) {
-        admin_state.AdminModel(..admin, api_tokens: api_tokens)
-      })
-    #(model, local_fx)
-  })
-}
-
-fn update_assignments(
-  admin: admin_state.AdminModel,
-  f: fn(state_types.AssignmentsModel) -> state_types.AssignmentsModel,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, assignments: f(admin.assignments))
-}
-
-fn apply_assignments_update(
-  model: client_state.Model,
-  update: assignments_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let assignments_workflow.Update(
-    assignments,
-    local_fx,
-    auth_policy,
-    root_policy,
-  ) = update
-  let apply_update = fn() {
-    let model =
-      client_state.update_admin(model, fn(admin) {
-        update_assignments(admin, fn(_) { assignments })
-      })
-
-    let root_fx = case root_policy {
-      assignments_workflow.NoRootPolicy -> effect.none()
-      assignments_workflow.ReplaceAssignmentsView(view_mode) ->
-        router.replace_team_view(view_mode)
-      assignments_workflow.MemberRoleSuccessFeedback ->
-        member_role_update.success_effect(model)
-      assignments_workflow.MemberRoleErrorFeedback(err) ->
-        member_role_update.error_effect(model, err)
-    }
-
-    #(model, effect.batch([local_fx, root_fx]))
-  }
-
-  case assignments_auth_timing(auth_policy) {
-    NoAssignmentsAuthCheck -> apply_update()
-    CheckAssignmentsAuthBefore(err) ->
-      apply_auth_check_before(model, opt.Some(err), apply_update)
-    CheckAssignmentsAuthAfter(err) ->
-      apply_auth_check_after(opt.Some(err), apply_update)
-  }
-}
-
-type AssignmentsAuthTiming {
-  NoAssignmentsAuthCheck
-  CheckAssignmentsAuthBefore(ApiError)
-  CheckAssignmentsAuthAfter(ApiError)
-}
-
-fn assignments_auth_timing(
-  policy: assignments_workflow.AuthPolicy,
-) -> AssignmentsAuthTiming {
-  case policy {
-    assignments_workflow.NoAuthCheck -> NoAssignmentsAuthCheck
-    assignments_workflow.CheckAuth(err) -> CheckAssignmentsAuthBefore(err)
-    assignments_workflow.CheckAuthAfterUpdate(err) ->
-      CheckAssignmentsAuthAfter(err)
-  }
-}
-
-fn apply_assignments_transition(
-  model: client_state.Model,
-  transition: fn(state_types.AssignmentsModel) ->
-    #(state_types.AssignmentsModel, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let #(assignments, fx) = transition(model.admin.assignments)
-  #(
-    client_state.update_admin(model, fn(admin) {
-      update_assignments(admin, fn(_) { assignments })
-    }),
-    fx,
-  )
-}
-
-fn assignments_context(
-  model: client_state.Model,
-) -> assignments_workflow.Context(client_state.Msg) {
-  assignments_workflow.Context(
-    active_section: model.core.active_section,
-    on_project_members_fetched: fn(project_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsProjectMembersFetched(
-        project_id,
-        result,
-      ))
-    },
-    on_user_projects_fetched: fn(user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsUserProjectsFetched(
-        user_id,
-        result,
-      ))
-    },
-    on_project_member_added: fn(project_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsProjectMemberAdded(
-        project_id,
-        result,
-      ))
-    },
-    on_user_project_added: fn(user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsUserProjectAdded(
-        user_id,
-        result,
-      ))
-    },
-    on_remove_completed: fn(project_id, user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsRemoveCompleted(
-        project_id,
-        user_id,
-        result,
-      ))
-    },
-    on_role_change_completed: fn(project_id, user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsRoleChangeCompleted(
-        project_id,
-        user_id,
-        result,
-      ))
-    },
-  )
-}
-
-fn assignments_feedback_context() -> assignments_workflow.FeedbackContext(
-  client_state.Msg,
-) {
-  assignments_workflow.FeedbackContext(on_error_toast: app_effects.toast_error)
-}
-
-fn org_settings_context() -> org_settings.Context(client_state.Msg) {
-  org_settings.Context(
-    on_org_settings_saved: fn(user_id, result) {
-      client_state.admin_msg(admin_messages.OrgSettingsSaved(user_id, result))
-    },
-    on_org_settings_deleted: fn(result) {
-      client_state.admin_msg(admin_messages.OrgSettingsDeleted(result))
-    },
-  )
-}
-
-fn org_settings_feedback_context(
-  model: client_state.Model,
-) -> org_settings.FeedbackContext(client_state.Msg) {
-  org_settings.FeedbackContext(
-    role_updated: i18n.t(model.ui.locale, i18n_text.RoleUpdated),
-    user_deleted: i18n.t(model.ui.locale, i18n_text.UserDeleted),
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_success_toast: app_effects.toast_success,
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn update_capabilities(
-  admin: admin_state.AdminModel,
-  f: fn(admin_capabilities.Model) -> admin_capabilities.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, capabilities: f(admin.capabilities))
-}
-
-fn update_task_types(
-  admin: admin_state.AdminModel,
-  f: fn(admin_task_types.Model) -> admin_task_types.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, task_types: f(admin.task_types))
-}
-
-fn apply_capabilities_update(
-  model: client_state.Model,
-  update: capabilities_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let capabilities_workflow.Update(capabilities, fx, auth_policy) = update
-
-  apply_auth_check_before(model, capabilities_auth_error(auth_policy), fn() {
-    #(
-      client_state.update_admin(model, fn(admin) {
-        update_capabilities(admin, fn(_) { capabilities })
-      }),
-      fx,
-    )
-  })
-}
-
-fn capabilities_auth_error(
-  policy: capabilities_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    capabilities_workflow.NoAuthCheck -> opt.None
-    capabilities_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_task_types_update(
-  model: client_state.Model,
-  update: task_types_workflow.Update(client_state.Msg),
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
-  let task_types_workflow.Update(
-    task_types,
-    local_fx,
-    auth_policy,
-    refresh_policy,
-  ) = update
-
-  apply_auth_check_before(model, task_types_auth_error(auth_policy), fn() {
-    let model =
-      client_state.update_admin(model, fn(admin) {
-        update_task_types(admin, fn(_) { task_types })
-      })
-    let #(model, refresh_fx) = case refresh_policy {
-      task_types_workflow.NoRefresh -> #(model, effect.none())
-      task_types_workflow.RefreshSection -> refresh_section_for_test(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
-}
-
-fn task_types_auth_error(
-  policy: task_types_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    task_types_workflow.NoAuthCheck -> opt.None
-    task_types_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn capabilities_context(
-  model: client_state.Model,
-) -> capabilities_workflow.Context(client_state.Msg) {
-  capabilities_workflow.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_member_capabilities_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(result))
-    },
-    on_member_capabilities_saved: fn(result) {
-      client_state.admin_msg(admin_messages.MemberCapabilitiesSaved(result))
-    },
-    on_capability_members_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.CapabilityMembersFetched(result))
-    },
-    on_capability_members_saved: fn(result) {
-      client_state.admin_msg(admin_messages.CapabilityMembersSaved(result))
-    },
-    on_capability_created: fn(result) {
-      client_state.admin_msg(admin_messages.CapabilityCreated(result))
-    },
-    on_capability_updated: fn(result) {
-      client_state.admin_msg(admin_messages.CapabilityUpdated(result))
-    },
-    on_capability_deleted: fn(result) {
-      client_state.admin_msg(admin_messages.CapabilityDeleted(result))
-    },
-    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
-  )
-}
-
-fn capabilities_feedback_context(
-  model: client_state.Model,
-) -> capabilities_workflow.FeedbackContext(client_state.Msg) {
-  capabilities_workflow.FeedbackContext(
-    capability_created: i18n.t(model.ui.locale, i18n_text.CapabilityCreated),
-    capability_updated: i18n.t(model.ui.locale, i18n_text.CapabilityUpdated),
-    capability_deleted: i18n.t(model.ui.locale, i18n_text.CapabilityDeleted),
-    member_capabilities_saved: i18n.t(model.ui.locale, i18n_text.SkillsSaved),
-    capability_members_saved: i18n.t(model.ui.locale, i18n_text.MembersSaved),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn capabilities_error_feedback_context(
-  model: client_state.Model,
-) -> capabilities_workflow.ErrorFeedbackContext(client_state.Msg) {
-  capabilities_workflow.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn task_types_context(
-  model: client_state.Model,
-) -> task_types_workflow.Context(client_state.Msg) {
-  task_types_workflow.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_task_type_created: fn(result) {
-      client_state.admin_msg(admin_messages.TaskTypeCreated(result))
-    },
-    select_project_first: i18n.t(model.ui.locale, i18n_text.SelectProjectFirst),
-    name_and_icon_required: i18n.t(
-      model.ui.locale,
-      i18n_text.NameAndIconRequired,
-    ),
-  )
-}
-
-fn task_types_feedback_context(
-  model: client_state.Model,
-) -> task_types_workflow.FeedbackContext(client_state.Msg) {
-  task_types_workflow.FeedbackContext(
-    task_type_created: i18n.t(model.ui.locale, i18n_text.TaskTypeCreated),
-    task_type_updated: i18n.t(model.ui.locale, i18n_text.TaskTypeUpdated),
-    task_type_deleted: i18n.t(model.ui.locale, i18n_text.TaskTypeDeleted),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn task_types_error_feedback_context(
-  model: client_state.Model,
-) -> task_types_workflow.ErrorFeedbackContext(client_state.Msg) {
-  task_types_workflow.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn update_invites(
-  admin: admin_state.AdminModel,
-  f: fn(admin_invites.Model) -> admin_invites.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, invites: f(admin.invites))
-}
-
-fn update_projects(
-  admin: admin_state.AdminModel,
-  f: fn(admin_projects.Model) -> admin_projects.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, projects: f(admin.projects))
-}
-
-fn apply_projects_update(
-  model: client_state.Model,
-  update: projects_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let projects_workflow.Update(projects, fx, auth_policy, core_policy) = update
-
-  apply_auth_check_before(model, projects_auth_error(auth_policy), fn() {
-    let model = apply_projects_core_policy(model, core_policy)
-    #(
-      client_state.update_admin(model, fn(admin) {
-        update_projects(admin, fn(_) { projects })
-      }),
-      fx,
-    )
-  })
-}
-
-fn projects_auth_error(
-  policy: projects_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    projects_workflow.NoAuthCheck -> opt.None
-    projects_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_projects_core_policy(
-  model: client_state.Model,
-  policy: projects_workflow.CorePolicy,
-) -> client_state.Model {
-  case policy {
-    projects_workflow.NoCoreChange -> model
-    projects_workflow.CoreProjectCreated(project) ->
-      projects_after_created(model, project)
-    projects_workflow.CoreProjectUpdated(project) ->
-      projects_after_updated(model, project)
-    projects_workflow.CoreProjectDeleted(deleted_id) ->
-      projects_after_deleted(model, deleted_id)
-  }
-}
-
-fn projects_context(
-  model: client_state.Model,
-) -> projects_workflow.Context(client_state.Msg) {
-  projects_workflow.Context(
-    on_project_created: fn(result) {
-      client_state.admin_msg(admin_messages.ProjectCreated(result))
-    },
-    on_project_updated: fn(result) {
-      client_state.admin_msg(admin_messages.ProjectUpdated(result))
-    },
-    on_project_deleted: fn(result) {
-      client_state.admin_msg(admin_messages.ProjectDeleted(result))
-    },
-    name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
-  )
-}
-
-fn projects_feedback_context(
-  model: client_state.Model,
-) -> projects_workflow.FeedbackContext(client_state.Msg) {
-  projects_workflow.FeedbackContext(
-    project_created: i18n.t(model.ui.locale, i18n_text.ProjectCreated),
-    project_updated: i18n.t(model.ui.locale, i18n_text.Saved),
-    project_deleted: i18n.t(model.ui.locale, i18n_text.Deleted),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn projects_error_feedback_context(
-  model: client_state.Model,
-) -> projects_workflow.ErrorFeedbackContext(client_state.Msg) {
-  projects_workflow.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
-fn projects_after_created(
-  model: client_state.Model,
-  project: Project,
-) -> client_state.Model {
-  client_state.update_core(model, fn(core) {
-    client_state.CoreModel(
-      ..core,
-      projects: project_list.prepend_or_single(core.projects, project),
-      selected_project_id: opt.Some(project.id),
-    )
-  })
-}
-
-fn projects_after_updated(
-  model: client_state.Model,
-  project: Project,
-) -> client_state.Model {
-  client_state.update_core(model, fn(core) {
-    client_state.CoreModel(
-      ..core,
-      projects: project_list.update_name(core.projects, project),
-    )
-  })
-}
-
-fn projects_after_deleted(
-  model: client_state.Model,
-  deleted_id: opt.Option(Int),
-) -> client_state.Model {
-  client_state.update_core(model, fn(core) {
-    client_state.CoreModel(
-      ..core,
-      projects: project_list.remove(core.projects, deleted_id),
-      selected_project_id: project_list.selected_after_delete(
-        core.selected_project_id,
-        deleted_id,
-      ),
-    )
-  })
-}
-
-fn apply_invites_update(
-  model: client_state.Model,
-  update: invite_links_workflow.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let invite_links_workflow.Update(invites, fx, auth_policy) = update
-
-  apply_auth_check_before(model, invite_links_auth_error(auth_policy), fn() {
-    #(
-      client_state.update_admin(model, fn(admin) {
-        update_invites(admin, fn(_) { invites })
-      }),
-      fx,
-    )
-  })
-}
-
-fn invite_links_auth_error(
-  policy: invite_links_workflow.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    invite_links_workflow.NoAuthCheck -> opt.None
-    invite_links_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn invite_links_context(
-  model: client_state.Model,
-) -> invite_links_workflow.Context(client_state.Msg) {
-  invite_links_workflow.Context(
-    on_links_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.InviteLinksFetched(result))
-    },
-    on_link_created: fn(result) {
-      client_state.admin_msg(admin_messages.InviteLinkCreated(result))
-    },
-    on_link_regenerated: fn(result) {
-      client_state.admin_msg(admin_messages.InviteLinkRegenerated(result))
-    },
-    on_link_invalidated: fn(result) {
-      client_state.admin_msg(admin_messages.InviteLinkInvalidated(result))
-    },
-    on_copy_finished: fn(ok) {
-      client_state.admin_msg(admin_messages.InviteLinkCopyFinished(ok))
-    },
-    email_required: i18n.t(model.ui.locale, i18n_text.EmailRequired),
-    copying: i18n.t(model.ui.locale, i18n_text.Copying),
-    copied: i18n.t(model.ui.locale, i18n_text.Copied),
-    copy_failed: i18n.t(model.ui.locale, i18n_text.CopyFailed),
-  )
-}
-
-fn invite_links_feedback_context(
-  model: client_state.Model,
-) -> invite_links_workflow.FeedbackContext(client_state.Msg) {
-  invite_links_workflow.FeedbackContext(
-    invite_link_created: i18n.t(model.ui.locale, i18n_text.InviteLinkCreated),
-    invite_link_regenerated: i18n.t(
-      model.ui.locale,
-      i18n_text.InviteLinkRegenerated,
-    ),
-    invite_link_invalidated: i18n.t(
-      model.ui.locale,
-      i18n_text.InviteLinkInvalidated,
-    ),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn invite_links_error_feedback_context(
-  model: client_state.Model,
-) -> invite_links_workflow.ErrorFeedbackContext(client_state.Msg) {
-  invite_links_workflow.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-  )
 }

@@ -33,6 +33,20 @@ pub fn decode_create_task_payload_defaults_description_test() {
     payloads.decode_create_task(dynamic)
 }
 
+pub fn decode_create_task_payload_normalizes_non_positive_optional_ids_test() {
+  let assert Ok(dynamic) =
+    json.parse(
+      "{\"title\":\"Task\",\"priority\":1,\"type_id\":2,\"card_id\":0,\"milestone_id\":-1}",
+      decode.dynamic,
+    )
+
+  let assert Ok(payloads.CreateTaskPayload(
+    card_id: None,
+    milestone_id: None,
+    ..,
+  )) = payloads.decode_create_task(dynamic)
+}
+
 pub fn decode_create_task_payload_rejects_missing_priority_test() {
   let assert Ok(dynamic) =
     json.parse("{\"title\":\"Task\",\"type_id\":2}", decode.dynamic)

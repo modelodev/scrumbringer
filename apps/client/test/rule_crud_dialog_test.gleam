@@ -21,8 +21,8 @@ import scrumbringer_client/components/rule_crud_dialog.{
   CreateToStateChanged, DeleteCancelled, DeleteConfirmed, EditActiveChanged,
   EditCancelled, EditGoalChanged, EditNameChanged, EditResourceTypeChanged,
   EditSubmitted, EditTaskTypeIdChanged, EditToStateChanged, LocaleReceived,
-  ModeReceived, Model, WorkflowIdReceived, view_create_dialog_for_test,
-  view_edit_dialog_for_test,
+  ModeReceived, Model, WorkflowIdReceived, state_options_for_resource_type,
+  view_create_dialog_for_test, view_edit_dialog_for_test,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
 
@@ -425,6 +425,16 @@ pub fn edit_dialog_renders_shared_rule_fields_test() {
   assert_contains(html, "Bug")
   assert_contains(html, "Target State")
   assert_contains(html, "Completed")
+}
+
+pub fn task_state_options_use_canonical_values_test() {
+  let assert [#("available", _), #("claimed", _), #("completed", _)] =
+    state_options_for_resource_type(En, "task")
+}
+
+pub fn card_state_options_use_canonical_values_test() {
+  let assert [#("pendiente", _), #("en_curso", _), #("cerrada", _)] =
+    state_options_for_resource_type(En, "card")
 }
 
 // =============================================================================

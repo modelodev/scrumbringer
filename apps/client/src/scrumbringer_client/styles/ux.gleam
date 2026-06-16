@@ -566,9 +566,6 @@ pub fn css() -> List(String) {
     ".task-blocked-inline { margin-left: 6px; }",
     ".task-blocked-card { font-size: var(--sb-font-xs); }",
     ".task-item-meta { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }",
-    ".blocked-claim-title { font-weight: var(--sb-weight-semibold); margin-bottom: 6px; }",
-    ".blocked-claim-warning { color: var(--sb-muted); margin-bottom: 8px; }",
-    ".blocked-claim-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }",
     // Modal footer
     ".task-detail-modal .modal-footer { padding: 12px 20px; border-top: 1px solid var(--sb-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--sb-surface); flex: 0 0 auto; }",
     ".task-detail-footer { align-items: center; }",

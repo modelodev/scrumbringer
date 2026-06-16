@@ -26,7 +26,6 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/card.{type Card, Card, parse_state}
 import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/client_state/admin/cards as admin_cards
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/api/cards as api_cards
@@ -135,7 +134,7 @@ fn with_policies(
 // =============================================================================
 
 /// Handle cards fetch success.
-pub fn handle_cards_fetched_ok(
+fn handle_cards_fetched_ok(
   model: admin_cards.Model,
   cards: List(Card),
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
@@ -143,7 +142,7 @@ pub fn handle_cards_fetched_ok(
 }
 
 /// Handle cards fetch error.
-pub fn handle_cards_fetched_error(
+fn handle_cards_fetched_error(
   model: admin_cards.Model,
   err: ApiError,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
@@ -155,9 +154,9 @@ pub fn handle_cards_fetched_error(
 // =============================================================================
 
 /// Handle opening a card dialog (create, edit, or delete).
-pub fn handle_open_card_dialog(
+fn handle_open_card_dialog(
   model: admin_cards.Model,
-  mode: state_types.CardDialogMode,
+  mode: admin_cards.CardDialogMode,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
   let create_milestone_id =
     resolve_create_milestone_for_mode(mode, model.cards_create_milestone_id)
@@ -173,11 +172,11 @@ pub fn handle_open_card_dialog(
 }
 
 fn resolve_create_milestone_for_mode(
-  mode: state_types.CardDialogMode,
+  mode: admin_cards.CardDialogMode,
   current: opt.Option(Int),
 ) -> opt.Option(Int) {
   case mode {
-    state_types.CardDialogCreate -> opt.None
+    admin_cards.CardDialogCreate -> opt.None
     _ -> current
   }
 }
@@ -189,7 +188,7 @@ pub fn handle_open_card_dialog_for_milestone(
   #(
     admin_cards.Model(
       ..model,
-      cards_dialog_mode: opt.Some(state_types.CardDialogCreate),
+      cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
       cards_create_milestone_id: opt.Some(milestone_id),
     ),
     effect.none(),
@@ -197,7 +196,7 @@ pub fn handle_open_card_dialog_for_milestone(
 }
 
 /// Handle closing any open card dialog.
-pub fn handle_close_card_dialog(
+fn handle_close_card_dialog(
   model: admin_cards.Model,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
   #(
@@ -216,7 +215,7 @@ pub fn handle_close_card_dialog(
 
 /// Handle card created event from component.
 /// Adds the new card to the list and shows a toast.
-pub fn handle_card_crud_created(
+fn handle_card_crud_created(
   model: admin_cards.Model,
   card: Card,
   context: CrudFeedbackContext(parent_msg),
@@ -238,7 +237,7 @@ pub fn handle_card_crud_created(
 
 /// Handle card updated event from component.
 /// Updates the card in the list and shows a toast.
-pub fn handle_card_crud_updated(
+fn handle_card_crud_updated(
   model: admin_cards.Model,
   updated_card: Card,
   context: CrudFeedbackContext(parent_msg),
@@ -268,7 +267,7 @@ pub fn handle_card_crud_updated(
 
 /// Handle card deleted event from component.
 /// Removes the card from the list and shows a toast.
-pub fn handle_card_crud_deleted(
+fn handle_card_crud_deleted(
   model: admin_cards.Model,
   card_id: Int,
   context: CrudFeedbackContext(parent_msg),
@@ -308,7 +307,7 @@ pub fn handle_card_viewed(
   admin_cards.Model(..model, cards: cards)
 }
 
-pub fn handle_show_empty_toggled(
+fn handle_show_empty_toggled(
   model: admin_cards.Model,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
   #(
@@ -317,7 +316,7 @@ pub fn handle_show_empty_toggled(
   )
 }
 
-pub fn handle_show_completed_toggled(
+fn handle_show_completed_toggled(
   model: admin_cards.Model,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
   #(
@@ -329,7 +328,7 @@ pub fn handle_show_completed_toggled(
   )
 }
 
-pub fn handle_state_filter_changed(
+fn handle_state_filter_changed(
   model: admin_cards.Model,
   state_str: String,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
@@ -345,7 +344,7 @@ pub fn handle_state_filter_changed(
   #(admin_cards.Model(..model, cards_state_filter: filter), effect.none())
 }
 
-pub fn handle_search_changed(
+fn handle_search_changed(
   model: admin_cards.Model,
   query: String,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {

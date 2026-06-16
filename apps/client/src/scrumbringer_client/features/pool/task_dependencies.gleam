@@ -215,24 +215,13 @@ fn dependency_dialog(config: Config(msg)) -> Element(msg) {
     ],
     [
       dialog.cancel_button_with_locale(config.locale, config.on_dialog_closed),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("task-dependency-form"),
-          attribute.disabled(
-            config.add_in_flight || opt.is_none(config.selected_task_id),
-          ),
-          attribute.class(case config.add_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case config.add_in_flight {
-            True -> t(config, i18n_text.Adding)
-            False -> t(config, i18n_text.Add)
-          }),
-        ],
+      dialog.submit_button_with_locale_form(
+        config.locale,
+        "task-dependency-form",
+        config.add_in_flight,
+        opt.is_none(config.selected_task_id),
+        i18n_text.Add,
+        i18n_text.Adding,
       ),
     ],
   )

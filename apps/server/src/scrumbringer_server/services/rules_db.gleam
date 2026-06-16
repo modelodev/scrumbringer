@@ -33,9 +33,9 @@ import scrumbringer_server/services/service_error.{
 }
 import scrumbringer_server/sql
 
-/// Rule record with a typed target.
-pub type Rule {
-  Rule(
+/// Persisted rule record with a typed target and without loaded templates.
+pub type RuleRecord {
+  RuleRecord(
     id: Int,
     workflow_id: Int,
     name: String,
@@ -46,30 +46,13 @@ pub type Rule {
   )
 }
 
-/// Template associated with a rule, including execution order.
-pub type RuleTemplate {
-  RuleTemplate(
-    id: Int,
-    org_id: Int,
-    project_id: Option(Int),
-    name: String,
-    description: Option(String),
-    type_id: Int,
-    type_name: String,
-    priority: Int,
-    created_by: Int,
-    created_at: String,
-    execution_order: Int,
-  )
-}
-
 // =============================================================================
 // Helpers
 // =============================================================================
 
 fn rule_from_list_row(
   row: sql.RulesListForWorkflowRow,
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   rule_from_fields(
     id: row.id,
     workflow_id: row.workflow_id,
@@ -83,7 +66,7 @@ fn rule_from_list_row(
   )
 }
 
-fn rule_from_get_row(row: sql.RulesGetRow) -> Result(Rule, ServiceError) {
+fn rule_from_get_row(row: sql.RulesGetRow) -> Result(RuleRecord, ServiceError) {
   rule_from_fields(
     id: row.id,
     workflow_id: row.workflow_id,
@@ -97,7 +80,9 @@ fn rule_from_get_row(row: sql.RulesGetRow) -> Result(Rule, ServiceError) {
   )
 }
 
-fn rule_from_create_row(row: sql.RulesCreateRow) -> Result(Rule, ServiceError) {
+fn rule_from_create_row(
+  row: sql.RulesCreateRow,
+) -> Result(RuleRecord, ServiceError) {
   rule_from_fields(
     id: row.id,
     workflow_id: row.workflow_id,
@@ -111,7 +96,9 @@ fn rule_from_create_row(row: sql.RulesCreateRow) -> Result(Rule, ServiceError) {
   )
 }
 
-fn rule_from_update_row(row: sql.RulesUpdateRow) -> Result(Rule, ServiceError) {
+fn rule_from_update_row(
+  row: sql.RulesUpdateRow,
+) -> Result(RuleRecord, ServiceError) {
   rule_from_fields(
     id: row.id,
     workflow_id: row.workflow_id,
@@ -135,14 +122,14 @@ fn rule_from_fields(
   to_state to_state: String,
   active active: Bool,
   created_at created_at: String,
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   use target <- result.try(parse_stored_target(
     resource_type,
     task_type_id,
     to_state,
   ))
 
-  Ok(Rule(
+  Ok(RuleRecord(
     id: id,
     workflow_id: workflow_id,
     name: name,
@@ -155,8 +142,8 @@ fn rule_from_fields(
 
 fn template_from_row(
   row: sql.RuleTemplatesListForRuleRow,
-) -> Result(RuleTemplate, ServiceError) {
-  Ok(RuleTemplate(
+) -> Result(workflow.RuleTemplate, ServiceError) {
+  Ok(workflow.RuleTemplate(
     id: row.id,
     org_id: row.org_id,
     project_id: option_helpers.int_to_option(row.project_id),
@@ -223,7 +210,7 @@ fn parse_stored_target(
 pub fn list_rules_for_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(List(Rule), ServiceError) {
+) -> Result(List(RuleRecord), ServiceError) {
   use returned <- result.try(
     sql.rules_list_for_workflow(db, workflow_id)
     |> result.map_error(DbError),
@@ -236,7 +223,10 @@ pub fn list_rules_for_workflow(
 ///
 /// Example:
 ///   get_rule(db, rule_id)
-pub fn get_rule(db: pog.Connection, rule_id: Int) -> Result(Rule, ServiceError) {
+pub fn get_rule(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(RuleRecord, ServiceError) {
   case sql.rules_get(db, rule_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> rule_from_get_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -255,7 +245,7 @@ pub fn create_rule(
   goal: String,
   target: workflow.RuleTarget,
   active: Bool,
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   let #(resource_type_value, task_type_value, to_state_value) =
     workflow.rule_target_to_db_values(target)
 
@@ -280,7 +270,7 @@ fn create_rule_in_db(
   task_type_value: Int,
   to_state_value: String,
   active: Bool,
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   case
     sql.rules_create(
       db,
@@ -328,7 +318,7 @@ pub fn update_rule(
   goal: Option(String),
   target: Option(workflow.RuleTarget),
   active: Option(Bool),
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   case sql.rules_get(db, rule_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       update_rule_with_row(db, rule_id, row, name, goal, target, active)
@@ -345,7 +335,7 @@ fn update_rule_with_row(
   goal: Option(String),
   target: Option(workflow.RuleTarget),
   active: Option(Bool),
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   let name_value = option_helpers.option_to_value(name, row.name)
   let goal_value = option_helpers.option_to_value(goal, row.goal)
   let active_value = option_helpers.option_to_value(active, row.active)
@@ -384,7 +374,7 @@ fn update_rule_in_db(
   task_type_param: Int,
   to_state_param: String,
   active_flag: Int,
-) -> Result(Rule, ServiceError) {
+) -> Result(RuleRecord, ServiceError) {
   case
     sql.rules_update(
       db,
@@ -444,7 +434,7 @@ pub fn delete_rule(
 pub fn list_rule_templates(
   db: pog.Connection,
   rule_id: Int,
-) -> Result(List(RuleTemplate), ServiceError) {
+) -> Result(List(workflow.RuleTemplate), ServiceError) {
   use returned <- result.try(
     sql.rule_templates_list_for_rule(db, rule_id)
     |> result.map_error(DbError),

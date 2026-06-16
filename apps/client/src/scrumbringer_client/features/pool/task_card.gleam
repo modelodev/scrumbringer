@@ -5,7 +5,7 @@ import gleam/string
 import domain/card.{type CardColor}
 import domain/task.{type Task, type TaskNote, Task}
 import domain/task_state
-import domain/task_status.{Available, Claimed}
+import domain/task_status.{Claimed}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
@@ -13,6 +13,7 @@ import lustre/event
 
 import scrumbringer_client/features/pool/labels as pool_labels
 import scrumbringer_client/features/pool/task_hover
+import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
@@ -55,14 +56,8 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let Task(
-    id: id,
-    task_type: task_type,
-    title: title,
-    status: status,
-    blocked_count: blocked_count,
-    ..,
-  ) = config.task
+  let Task(id: id, task_type: task_type, title: title, status: status, ..) =
+    config.task
 
   let is_mine =
     task_state.claimed_by(config.task.state) == config.current_user_id
@@ -77,7 +72,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     )
   let style = card_style(config.x, config.y)
   let top_left_action = top_left_action(config.locale, status, is_mine, config)
-  let claim_action = claim_action(config.locale, status, blocked_count, config)
+  let claim_action = claim_action(config.locale, config)
   let drag_handle = drag_handle(config.locale, config.on_drag_started)
   let complete_action = complete_action(config.locale, is_mine, config)
 
@@ -239,33 +234,24 @@ fn top_left_action(
   }
 }
 
-fn claim_action(
-  locale: Locale,
-  status,
-  blocked_count: Int,
-  config: Config(msg),
-) -> Element(msg) {
-  case status, blocked_count {
-    Available, 0 -> claim_primary_action(locale, config)
-    _, _ -> element.none()
+fn claim_action(locale: Locale, config: Config(msg)) -> Element(msg) {
+  case claimability.can_claim(config.task) {
+    True -> claim_primary_action(locale, config)
+    False -> element.none()
   }
 }
 
 fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {
   let descriptive_label = task_state_ui.next_action(locale, config.task.status)
 
-  button(
-    [
-      attribute.class("task-card-primary-action"),
-      attribute.attribute("title", descriptive_label),
-      attribute.attribute("aria-label", descriptive_label),
-      attribute.attribute("type", "button"),
-      attribute.disabled(config.disable_actions),
-      event.on_click(config.on_claim),
-    ],
-    [
-      icons.nav_icon(icons.HandRaised, icons.Small),
-    ],
+  task_actions.claim_icon(
+    descriptive_label,
+    config.on_claim,
+    action_buttons.SizeXs,
+    config.disable_actions,
+    "task-card-primary-action",
+    option.None,
+    option.None,
   )
 }
 

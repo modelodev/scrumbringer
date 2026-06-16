@@ -9,7 +9,7 @@ import domain/project_role.{Manager, Member}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/assignments_view_mode
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/update as assignments_update
 import scrumbringer_client/permissions.{Team}
@@ -18,8 +18,8 @@ fn assert_equal(actual: a, expected: a) {
   let assert True = actual == expected
 }
 
-fn model() -> state_types.AssignmentsModel {
-  state_types.AssignmentsModel(
+fn model() -> assignments_state.AssignmentsModel {
+  assignments_state.AssignmentsModel(
     view_mode: assignments_view_mode.ByProject,
     search_input: "",
     search_query: "",
@@ -75,18 +75,27 @@ fn context() -> assignments_update.Context(Nil) {
   )
 }
 
+fn update(
+  model: assignments_state.AssignmentsModel,
+  inner: admin_messages.Msg,
+) -> assignments_update.Update(Nil) {
+  let assert option.Some(update) =
+    assignments_update.try_update(model, inner, context(), feedback_context())
+  update
+}
+
 pub fn view_mode_change_preserves_search_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       search_input: "alpha",
       search_query: "alpha",
     )
 
-  let #(next, fx) =
-    assignments_update.handle_assignments_view_mode_changed(
+  let assignments_update.Update(next, fx, _, _) =
+    update(
       initial,
-      assignments_view_mode.ByUser,
+      admin_messages.AssignmentsViewModeChanged(assignments_view_mode.ByUser),
     )
 
   next.view_mode |> assert_equal(assignments_view_mode.ByUser)
@@ -96,7 +105,8 @@ pub fn view_mode_change_preserves_search_test() {
 }
 
 pub fn try_update_view_mode_returns_root_policy_test() {
-  let initial = state_types.AssignmentsModel(..model(), search_input: "alpha")
+  let initial =
+    assignments_state.AssignmentsModel(..model(), search_input: "alpha")
 
   let assert option.Some(assignments_update.Update(
     next,
@@ -157,9 +167,9 @@ pub fn try_update_ignores_non_assignment_messages_test() {
 
 pub fn try_update_inline_add_submitted_starts_project_member_request_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
-      inline_add_context: option.Some(state_types.AddUserToProject(7)),
+      inline_add_context: option.Some(assignments_state.AddUserToProject(7)),
       inline_add_selection: option.Some(9),
     )
 
@@ -185,9 +195,9 @@ pub fn try_update_inline_add_submitted_starts_project_member_request_test() {
 pub fn try_update_inline_add_error_clears_state_and_checks_auth_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
-      inline_add_context: option.Some(state_types.AddUserToProject(7)),
+      inline_add_context: option.Some(assignments_state.AddUserToProject(7)),
       inline_add_selection: option.Some(9),
       inline_add_search: "ana",
       inline_add_in_flight: True,
@@ -217,7 +227,7 @@ pub fn try_update_inline_add_error_clears_state_and_checks_auth_test() {
 
 pub fn try_update_remove_confirmed_starts_request_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       inline_remove_confirm: option.Some(#(7, 9)),
     )
@@ -243,7 +253,7 @@ pub fn try_update_remove_confirmed_starts_request_test() {
 
 pub fn try_update_remove_completed_ok_updates_loaded_caches_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       project_members: dict.from_list([
         #(7, Loaded([member(9, Member), member(10, Member)])),
@@ -299,7 +309,7 @@ pub fn try_update_remove_completed_error_returns_auth_policy_test() {
 
 pub fn try_update_role_change_completed_ok_returns_feedback_policy_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       project_members: dict.from_list([
         #(7, Loaded([member(9, Member)])),
@@ -350,7 +360,7 @@ pub fn try_update_role_change_completed_error_rolls_back_then_checks_auth_test()
       message: "Cannot demote last manager",
     )
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       project_members: dict.from_list([
         #(7, Loaded([member(9, Manager)])),
@@ -389,7 +399,7 @@ pub fn try_update_role_change_completed_error_rolls_back_then_checks_auth_test()
 
 pub fn inline_add_started_resets_selection_and_role_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       inline_add_selection: option.Some(99),
       inline_add_search: "old",
@@ -397,14 +407,16 @@ pub fn inline_add_started_resets_selection_and_role_test() {
       inline_add_in_flight: True,
     )
 
-  let #(next, fx) =
-    assignments_update.handle_assignments_inline_add_started(
+  let assignments_update.Update(next, fx, _, _) =
+    update(
       initial,
-      state_types.AddUserToProject(7),
+      admin_messages.AssignmentsInlineAddStarted(
+        assignments_state.AddUserToProject(7),
+      ),
     )
 
   next.inline_add_context
-  |> assert_equal(option.Some(state_types.AddUserToProject(7)))
+  |> assert_equal(option.Some(assignments_state.AddUserToProject(7)))
   next.inline_add_selection |> assert_equal(option.None)
   next.inline_add_search |> assert_equal("")
   next.inline_add_role |> assert_equal(Member)
@@ -414,7 +426,7 @@ pub fn inline_add_started_resets_selection_and_role_test() {
 
 pub fn role_change_error_restores_previous_role_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       project_members: dict.from_list([
         #(7, Loaded([member(9, Member)])),
@@ -424,23 +436,19 @@ pub fn role_change_error_restores_previous_role_test() {
       ]),
     )
 
-  let #(changed, _) =
-    assignments_update.handle_assignments_role_changed(
-      initial,
-      7,
-      9,
-      Manager,
-      context(),
-    )
-  let #(next, fx) =
-    assignments_update.handle_assignments_role_change_completed_error(
+  let assignments_update.Update(changed, _, _, _) =
+    update(initial, admin_messages.AssignmentsRoleChanged(7, 9, Manager))
+  let assignments_update.Update(next, fx, _, _) =
+    update(
       changed,
-      7,
-      9,
-      ApiError(
-        status: 422,
-        code: "LAST_MANAGER",
-        message: "Cannot demote last manager",
+      admin_messages.AssignmentsRoleChangeCompleted(
+        7,
+        9,
+        Error(ApiError(
+          status: 422,
+          code: "LAST_MANAGER",
+          message: "Cannot demote last manager",
+        )),
       ),
     )
 
@@ -455,19 +463,21 @@ pub fn role_change_error_restores_previous_role_test() {
 
 pub fn project_member_added_error_clears_inline_add_and_emits_feedback_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
-      inline_add_context: option.Some(state_types.AddUserToProject(9)),
+      inline_add_context: option.Some(assignments_state.AddUserToProject(9)),
       inline_add_selection: option.Some(7),
       inline_add_search: "ana",
       inline_add_in_flight: True,
     )
 
-  let #(next, fx) =
-    assignments_update.handle_assignments_project_member_added_error(
+  let assignments_update.Update(next, fx, _, _) =
+    update(
       initial,
-      ApiError(status: 500, code: "ERR", message: "boom"),
-      feedback_context(),
+      admin_messages.AssignmentsProjectMemberAdded(
+        9,
+        Error(ApiError(status: 500, code: "ERR", message: "boom")),
+      ),
     )
 
   next.inline_add_context |> assert_equal(option.None)
@@ -479,16 +489,19 @@ pub fn project_member_added_error_clears_inline_add_and_emits_feedback_test() {
 
 pub fn remove_completed_error_preserves_model_and_emits_feedback_test() {
   let initial =
-    state_types.AssignmentsModel(
+    assignments_state.AssignmentsModel(
       ..model(),
       inline_remove_confirm: option.Some(#(7, 9)),
     )
 
-  let #(next, fx) =
-    assignments_update.handle_assignments_remove_completed_error(
+  let assignments_update.Update(next, fx, _, _) =
+    update(
       initial,
-      ApiError(status: 500, code: "ERR", message: "boom"),
-      feedback_context(),
+      admin_messages.AssignmentsRemoveCompleted(
+        7,
+        9,
+        Error(ApiError(status: 500, code: "ERR", message: "boom")),
+      ),
     )
 
   next |> assert_equal(initial)

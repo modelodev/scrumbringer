@@ -32,9 +32,8 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type Project}
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
-  type DialogState, type OperationState, type ProjectDialogForm, DialogClosed,
-  DialogOpen, Error as OpError, Idle, InFlight, ProjectDialogCreate,
-  ProjectDialogDelete, ProjectDialogEdit,
+  type DialogState, type OperationState, DialogClosed, DialogOpen,
+  Error as OpError, Idle, InFlight,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
 
@@ -47,7 +46,7 @@ pub type Context(parent_msg) {
   )
 }
 
-pub type Success {
+type Success {
   ProjectCreated
   ProjectUpdated
   ProjectDeleted
@@ -202,33 +201,39 @@ fn with_policies(
 // =============================================================================
 
 /// Handle project create dialog opened.
-pub fn handle_project_create_dialog_opened(
+fn handle_project_create_dialog_opened(
   model: admin_projects.Model,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(
     set_projects_dialog(
       model,
-      DialogOpen(form: ProjectDialogCreate(name: ""), operation: Idle),
+      DialogOpen(
+        form: admin_projects.ProjectDialogCreate(name: ""),
+        operation: Idle,
+      ),
     ),
     effect.none(),
   )
 }
 
 /// Handle project create dialog closed.
-pub fn handle_project_create_dialog_closed(
+fn handle_project_create_dialog_closed(
   model: admin_projects.Model,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
 /// Handle project create name input change.
-pub fn handle_project_create_name_changed(
+fn handle_project_create_name_changed(
   model: admin_projects.Model,
   name: String,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let next_state = case model.projects_dialog {
-    DialogOpen(form: ProjectDialogCreate(name: _), operation: op) ->
-      DialogOpen(form: ProjectDialogCreate(name: name), operation: op)
+    DialogOpen(form: admin_projects.ProjectDialogCreate(name: _), operation: op) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogCreate(name: name),
+        operation: op,
+      )
     other -> other
   }
 
@@ -236,13 +241,15 @@ pub fn handle_project_create_name_changed(
 }
 
 /// Handle project create form submission.
-pub fn handle_project_create_submitted(
+fn handle_project_create_submitted(
   model: admin_projects.Model,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
-    DialogOpen(form: ProjectDialogCreate(name: name), operation: op) ->
-      submit_project_create(model, name, operation_in_flight(op), context)
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(name: name),
+      operation: op,
+    ) -> submit_project_create(model, name, operation_in_flight(op), context)
     _ -> #(model, effect.none())
   }
 }
@@ -288,7 +295,7 @@ fn submit_project_create_valid(
 }
 
 /// Handle project created success.
-pub fn handle_project_created_ok(
+fn handle_project_created_ok(
   model: admin_projects.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
@@ -299,7 +306,7 @@ pub fn handle_project_created_ok(
 }
 
 /// Handle project created error.
-pub fn handle_project_created_error(
+fn handle_project_created_error(
   model: admin_projects.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -307,7 +314,7 @@ pub fn handle_project_created_error(
   let message = error_message(err, feedback)
 
   case model.projects_dialog {
-    DialogOpen(form: ProjectDialogCreate(name: _), ..) -> #(
+    DialogOpen(form: admin_projects.ProjectDialogCreate(name: _), ..) -> #(
       set_projects_dialog(
         model,
         update_project_dialog_error(model.projects_dialog, message),
@@ -323,7 +330,7 @@ pub fn handle_project_created_error(
 // =============================================================================
 
 /// Handle project edit dialog opened.
-pub fn handle_project_edit_dialog_opened(
+fn handle_project_edit_dialog_opened(
   model: admin_projects.Model,
   project_id: Int,
   project_name: String,
@@ -332,7 +339,10 @@ pub fn handle_project_edit_dialog_opened(
     set_projects_dialog(
       model,
       DialogOpen(
-        form: ProjectDialogEdit(id: project_id, name: project_name),
+        form: admin_projects.ProjectDialogEdit(
+          id: project_id,
+          name: project_name,
+        ),
         operation: Idle,
       ),
     ),
@@ -341,20 +351,26 @@ pub fn handle_project_edit_dialog_opened(
 }
 
 /// Handle project edit dialog closed.
-pub fn handle_project_edit_dialog_closed(
+fn handle_project_edit_dialog_closed(
   model: admin_projects.Model,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
 /// Handle project edit name input change.
-pub fn handle_project_edit_name_changed(
+fn handle_project_edit_name_changed(
   model: admin_projects.Model,
   name: String,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let next_state = case model.projects_dialog {
-    DialogOpen(form: ProjectDialogEdit(id: id, name: _), operation: op) ->
-      DialogOpen(form: ProjectDialogEdit(id: id, name: name), operation: op)
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(id: id, name: _),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(id: id, name: name),
+        operation: op,
+      )
     other -> other
   }
 
@@ -362,13 +378,13 @@ pub fn handle_project_edit_name_changed(
 }
 
 /// Handle project edit form submission.
-pub fn handle_project_edit_submitted(
+fn handle_project_edit_submitted(
   model: admin_projects.Model,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
     DialogOpen(
-      form: ProjectDialogEdit(id: project_id, name: name),
+      form: admin_projects.ProjectDialogEdit(id: project_id, name: name),
       operation: op,
     ) ->
       submit_project_edit(
@@ -428,7 +444,7 @@ fn submit_project_edit_valid(
 }
 
 /// Handle project updated success.
-pub fn handle_project_updated_ok(
+fn handle_project_updated_ok(
   model: admin_projects.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
@@ -439,7 +455,7 @@ pub fn handle_project_updated_ok(
 }
 
 /// Handle project updated error.
-pub fn handle_project_updated_error(
+fn handle_project_updated_error(
   model: admin_projects.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -447,7 +463,7 @@ pub fn handle_project_updated_error(
   let message = error_message(err, feedback)
 
   case model.projects_dialog {
-    DialogOpen(form: ProjectDialogEdit(id: _, name: _), ..) -> #(
+    DialogOpen(form: admin_projects.ProjectDialogEdit(id: _, name: _), ..) -> #(
       set_projects_dialog(
         model,
         update_project_dialog_error(model.projects_dialog, message),
@@ -463,7 +479,7 @@ pub fn handle_project_updated_error(
 // =============================================================================
 
 /// Handle project delete confirm opened.
-pub fn handle_project_delete_confirm_opened(
+fn handle_project_delete_confirm_opened(
   model: admin_projects.Model,
   project_id: Int,
   project_name: String,
@@ -472,7 +488,10 @@ pub fn handle_project_delete_confirm_opened(
     set_projects_dialog(
       model,
       DialogOpen(
-        form: ProjectDialogDelete(id: project_id, name: project_name),
+        form: admin_projects.ProjectDialogDelete(
+          id: project_id,
+          name: project_name,
+        ),
         operation: Idle,
       ),
     ),
@@ -481,20 +500,20 @@ pub fn handle_project_delete_confirm_opened(
 }
 
 /// Handle project delete confirm closed.
-pub fn handle_project_delete_confirm_closed(
+fn handle_project_delete_confirm_closed(
   model: admin_projects.Model,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   #(set_projects_dialog(model, DialogClosed(operation: Idle)), effect.none())
 }
 
 /// Handle project delete submission.
-pub fn handle_project_delete_submitted(
+fn handle_project_delete_submitted(
   model: admin_projects.Model,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
     DialogOpen(
-      form: ProjectDialogDelete(id: project_id, name: _name),
+      form: admin_projects.ProjectDialogDelete(id: project_id, name: _name),
       operation: op,
     ) ->
       case operation_in_flight(op) {
@@ -516,7 +535,7 @@ pub fn handle_project_delete_submitted(
 }
 
 /// Handle project deleted success.
-pub fn handle_project_deleted_ok(
+fn handle_project_deleted_ok(
   model: admin_projects.Model,
   feedback: FeedbackContext(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
@@ -527,7 +546,7 @@ pub fn handle_project_deleted_ok(
 }
 
 /// Handle project deleted error.
-pub fn handle_project_deleted_error(
+fn handle_project_deleted_error(
   model: admin_projects.Model,
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
@@ -535,7 +554,7 @@ pub fn handle_project_deleted_error(
   let message = error_message(err, feedback)
 
   case model.projects_dialog {
-    DialogOpen(form: ProjectDialogDelete(id: _, name: _), ..) -> #(
+    DialogOpen(form: admin_projects.ProjectDialogDelete(id: _, name: _), ..) -> #(
       set_projects_dialog(
         model,
         update_project_dialog_idle(model.projects_dialog),
@@ -559,15 +578,15 @@ fn operation_in_flight(operation: OperationState) -> Bool {
 
 fn set_projects_dialog(
   _model: admin_projects.Model,
-  dialog: DialogState(ProjectDialogForm),
+  dialog: DialogState(admin_projects.ProjectDialogForm),
 ) -> admin_projects.Model {
   admin_projects.Model(projects_dialog: dialog)
 }
 
 fn update_project_dialog_error(
-  dialog: DialogState(ProjectDialogForm),
+  dialog: DialogState(admin_projects.ProjectDialogForm),
   message: String,
-) -> DialogState(ProjectDialogForm) {
+) -> DialogState(admin_projects.ProjectDialogForm) {
   case dialog {
     DialogOpen(form: form, ..) ->
       DialogOpen(form: form, operation: OpError(message))
@@ -576,8 +595,8 @@ fn update_project_dialog_error(
 }
 
 fn update_project_dialog_in_flight(
-  dialog: DialogState(ProjectDialogForm),
-) -> DialogState(ProjectDialogForm) {
+  dialog: DialogState(admin_projects.ProjectDialogForm),
+) -> DialogState(admin_projects.ProjectDialogForm) {
   case dialog {
     DialogOpen(form: form, ..) -> DialogOpen(form: form, operation: InFlight)
     DialogClosed(..) -> DialogClosed(operation: InFlight)
@@ -585,22 +604,22 @@ fn update_project_dialog_in_flight(
 }
 
 fn update_project_dialog_idle(
-  dialog: DialogState(ProjectDialogForm),
-) -> DialogState(ProjectDialogForm) {
+  dialog: DialogState(admin_projects.ProjectDialogForm),
+) -> DialogState(admin_projects.ProjectDialogForm) {
   case dialog {
     DialogOpen(form: form, ..) -> DialogOpen(form: form, operation: Idle)
     DialogClosed(..) -> DialogClosed(operation: Idle)
   }
 }
 
-pub fn success_effect(
+fn success_effect(
   success: Success,
   context: FeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
   context.on_success_toast(success_message(success, context))
 }
 
-pub fn error_message(
+fn error_message(
   err: ApiError,
   feedback: ErrorFeedbackContext(parent_msg),
 ) -> String {
@@ -640,11 +659,12 @@ fn success_message(success: Success, context: FeedbackContext(parent_msg)) {
   }
 }
 
-pub fn project_dialog_delete_id(
-  dialog: DialogState(ProjectDialogForm),
+fn project_dialog_delete_id(
+  dialog: DialogState(admin_projects.ProjectDialogForm),
 ) -> opt.Option(Int) {
   case dialog {
-    DialogOpen(form: ProjectDialogDelete(id: id, name: _), ..) -> opt.Some(id)
+    DialogOpen(form: admin_projects.ProjectDialogDelete(id: id, name: _), ..) ->
+      opt.Some(id)
     _ -> opt.None
   }
 }

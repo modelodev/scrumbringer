@@ -7,7 +7,7 @@ import gleam/list
 import gleam/result
 import pog
 
-import domain/task.{type TaskDependency, TaskDependency}
+import domain/task.{type Task, type TaskDependency, TaskDependency}
 import domain/task_status.{Completed}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -17,7 +17,6 @@ import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/tasks/payload_responses
 import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/persistence/tasks/mappers.{type Task}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}

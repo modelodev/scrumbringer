@@ -38,9 +38,8 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, h3, p, span, text}
+import lustre/element/html.{div, h2, h3, p, span, text}
 import lustre/element/keyed
-import lustre/event
 
 import domain/card
 import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
@@ -60,6 +59,7 @@ import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/icons
 
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
@@ -281,16 +281,13 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
       // [+] button to create task in this card (Story 4.12 AC8-9, AC16)
       case card_id, card_title {
         opt.Some(id), opt.Some(title) ->
-          button(
-            [
-              attribute.class("btn-icon btn-sm my-bar-add-task"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.NewTaskInCard(title)),
-              ),
-              event.on_click(config.on_create_task_in_card(id)),
-            ],
-            [text("+")],
+          action_buttons.add_icon_button_with_size_and_testid(
+            i18n.t(config.locale, i18n_text.NewTaskInCard(title)),
+            config.on_create_task_in_card(id),
+            action_buttons.SizeSm,
+            icons.Plus,
+            opt.None,
+            opt.Some("my-bar-add-task"),
           )
         _, _ -> element.none()
       },

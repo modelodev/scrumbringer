@@ -12,7 +12,7 @@
 //// - Derive card state from task counts
 
 import domain/card.{
-  type CardColor, type CardState, Pendiente, UnknownCardColor,
+  type Card, type CardColor, type CardState, Card, Pendiente, UnknownCardColor,
   derive_state as shared_derive_state,
   optional_color_to_string as shared_optional_color_to_string,
   parse_optional_color as shared_parse_optional_color,
@@ -30,23 +30,9 @@ import scrumbringer_server/sql
 // Types
 // =============================================================================
 
-/// A card with its derived state.
-pub type Card {
-  Card(
-    id: Int,
-    project_id: Int,
-    milestone_id: Option(Int),
-    title: String,
-    description: String,
-    color: Option(CardColor),
-    state: CardState,
-    task_count: Int,
-    completed_count: Int,
-    created_by: Int,
-    created_at: String,
-    has_new_notes: Bool,
-  )
-}
+const no_milestone_create_value = 0
+
+const no_milestone_update_value = -1
 
 /// Errors for card operations.
 pub type CardError {
@@ -275,10 +261,14 @@ pub fn update_card(
   let col = shared_optional_color_to_string(color)
 
   case
-    sql.cards_update(db, card_id, title, desc, col, case milestone_id {
-      Some(id) -> id
-      None -> -1
-    })
+    sql.cards_update(
+      db,
+      card_id,
+      title,
+      desc,
+      col,
+      milestone_id_update_value(milestone_id),
+    )
   {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
@@ -348,7 +338,11 @@ fn description_text(description: Option(String)) -> String {
 }
 
 fn milestone_id_create_value(milestone_id: Option(Int)) -> Int {
-  option_helpers.option_to_value(milestone_id, 0)
+  option_helpers.option_to_value(milestone_id, no_milestone_create_value)
+}
+
+fn milestone_id_update_value(milestone_id: Option(Int)) -> Int {
+  option_helpers.option_to_value(milestone_id, no_milestone_update_value)
 }
 
 fn validate_milestone_for_create(

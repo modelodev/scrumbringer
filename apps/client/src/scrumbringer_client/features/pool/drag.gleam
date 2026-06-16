@@ -3,21 +3,17 @@
 import gleam/option
 
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/types.{
-  type PoolDragState, DragActive, DragIdle, DragPending, PoolDragDragging,
-  PoolDragIdle, PoolDragPendingRect, Rect, rect_contains_point,
-}
 
 pub fn drag_to_claim_armed(
   model: member_pool.Model,
   armed: Bool,
 ) -> member_pool.Model {
   let next_drag = case armed, model.member_pool_drag {
-    True, PoolDragDragging(rect: rect, ..) ->
-      PoolDragDragging(over_my_tasks: False, rect: rect)
-    True, PoolDragPendingRect -> PoolDragPendingRect
-    True, PoolDragIdle -> PoolDragPendingRect
-    False, _ -> PoolDragIdle
+    True, member_pool.PoolDragDragging(rect: rect, ..) ->
+      member_pool.PoolDragDragging(over_my_tasks: False, rect: rect)
+    True, member_pool.PoolDragPendingRect -> member_pool.PoolDragPendingRect
+    True, member_pool.PoolDragIdle -> member_pool.PoolDragPendingRect
+    False, _ -> member_pool.PoolDragIdle
   }
 
   member_pool.Model(..model, member_pool_drag: next_drag)
@@ -30,13 +26,16 @@ pub fn my_tasks_rect_fetched(
   width: Int,
   height: Int,
 ) -> member_pool.Model {
-  let rect = Rect(left: left, top: top, width: width, height: height)
+  let rect =
+    member_pool.Rect(left: left, top: top, width: width, height: height)
   let next_drag = case model.member_pool_drag, model.member_drag {
-    PoolDragDragging(over_my_tasks: over, ..), _ ->
-      PoolDragDragging(over_my_tasks: over, rect: rect)
-    PoolDragPendingRect, DragIdle -> PoolDragIdle
-    PoolDragPendingRect, _ -> PoolDragDragging(over_my_tasks: False, rect: rect)
-    PoolDragIdle, _ -> PoolDragIdle
+    member_pool.PoolDragDragging(over_my_tasks: over, ..), _ ->
+      member_pool.PoolDragDragging(over_my_tasks: over, rect: rect)
+    member_pool.PoolDragPendingRect, member_pool.DragIdle ->
+      member_pool.PoolDragIdle
+    member_pool.PoolDragPendingRect, _ ->
+      member_pool.PoolDragDragging(over_my_tasks: False, rect: rect)
+    member_pool.PoolDragIdle, _ -> member_pool.PoolDragIdle
   }
 
   member_pool.Model(..model, member_pool_drag: next_drag)
@@ -45,8 +44,8 @@ pub fn my_tasks_rect_fetched(
 pub fn start(model: member_pool.Model, task_id: Int) -> member_pool.Model {
   member_pool.Model(
     ..model,
-    member_drag: DragPending(task_id),
-    member_pool_drag: PoolDragPendingRect,
+    member_drag: member_pool.DragPending(task_id),
+    member_pool_drag: member_pool.PoolDragPendingRect,
   )
 }
 
@@ -71,13 +70,13 @@ pub fn offset_resolved(
   offset_y: Int,
 ) -> member_pool.Model {
   let updated = case model.member_drag {
-    DragPending(drag_task_id) ->
+    member_pool.DragPending(drag_task_id) ->
       case drag_task_id == task_id {
-        True -> DragActive(task_id, offset_x, offset_y)
+        True -> member_pool.DragActive(task_id, offset_x, offset_y)
         False -> model.member_drag
       }
-    DragActive(_, _, _) -> model.member_drag
-    DragIdle -> DragIdle
+    member_pool.DragActive(_, _, _) -> model.member_drag
+    member_pool.DragIdle -> member_pool.DragIdle
   }
 
   member_pool.Model(..model, member_drag: updated)
@@ -85,21 +84,21 @@ pub fn offset_resolved(
 
 pub fn is_idle(model: member_pool.Model) -> Bool {
   case model.member_drag {
-    DragIdle -> True
+    member_pool.DragIdle -> True
     _ -> False
   }
 }
 
 pub fn is_pending(model: member_pool.Model) -> Bool {
   case model.member_drag {
-    DragPending(_) -> True
+    member_pool.DragPending(_) -> True
     _ -> False
   }
 }
 
 pub fn active(model: member_pool.Model) -> option.Option(#(Int, Int, Int)) {
   case model.member_drag {
-    DragActive(task_id, offset_x, offset_y) ->
+    member_pool.DragActive(task_id, offset_x, offset_y) ->
       option.Some(#(task_id, offset_x, offset_y))
     _ -> option.None
   }
@@ -107,14 +106,15 @@ pub fn active(model: member_pool.Model) -> option.Option(#(Int, Int, Int)) {
 
 pub fn task_id(model: member_pool.Model) -> option.Option(Int) {
   case model.member_drag {
-    DragIdle -> option.None
-    DragPending(task_id) | DragActive(task_id, _, _) -> option.Some(task_id)
+    member_pool.DragIdle -> option.None
+    member_pool.DragPending(task_id) | member_pool.DragActive(task_id, _, _) ->
+      option.Some(task_id)
   }
 }
 
 pub fn is_over_my_tasks(model: member_pool.Model) -> Bool {
   case model.member_pool_drag {
-    PoolDragDragging(over_my_tasks: over, ..) -> over
+    member_pool.PoolDragDragging(over_my_tasks: over, ..) -> over
     _ -> False
   }
 }
@@ -122,31 +122,31 @@ pub fn is_over_my_tasks(model: member_pool.Model) -> Bool {
 pub fn clear(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,
-    member_drag: DragIdle,
-    member_pool_drag: PoolDragIdle,
+    member_drag: member_pool.DragIdle,
+    member_pool_drag: member_pool.PoolDragIdle,
   )
 }
 
 fn pool_drag_over_my_tasks(
-  drag_state: PoolDragState,
+  drag_state: member_pool.PoolDragState,
   client_x: Int,
   client_y: Int,
 ) -> Bool {
   case drag_state {
-    PoolDragDragging(rect: rect, ..) ->
-      rect_contains_point(rect, client_x, client_y)
+    member_pool.PoolDragDragging(rect: rect, ..) ->
+      member_pool.rect_contains_point(rect, client_x, client_y)
     _ -> False
   }
 }
 
 fn next_pool_drag_state(
-  drag_state: PoolDragState,
+  drag_state: member_pool.PoolDragState,
   over_my_tasks: Bool,
-) -> PoolDragState {
+) -> member_pool.PoolDragState {
   case drag_state {
-    PoolDragDragging(rect: rect, ..) ->
-      PoolDragDragging(over_my_tasks: over_my_tasks, rect: rect)
-    PoolDragPendingRect -> PoolDragPendingRect
-    PoolDragIdle -> PoolDragIdle
+    member_pool.PoolDragDragging(rect: rect, ..) ->
+      member_pool.PoolDragDragging(over_my_tasks: over_my_tasks, rect: rect)
+    member_pool.PoolDragPendingRect -> member_pool.PoolDragPendingRect
+    member_pool.PoolDragIdle -> member_pool.PoolDragIdle
   }
 }

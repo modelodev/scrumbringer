@@ -17,9 +17,9 @@ import gleam/set
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
@@ -152,7 +152,7 @@ pub fn filter_projects_by_name_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           search_query: "alpha",
@@ -195,7 +195,7 @@ pub fn project_collapsed_hides_members_test() {
           ..admin.members,
           org_users_cache: Loaded([org_user]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
             #(project.id, Loaded([member])),
@@ -238,7 +238,7 @@ pub fn project_expanded_shows_members_test() {
           ..admin.members,
           org_users_cache: Loaded([org_user]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
             #(project.id, Loaded([member])),
@@ -274,7 +274,7 @@ pub fn user_without_projects_shows_badge_test() {
           ..admin.members,
           org_users_cache: Loaded([user]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           user_projects: dict.insert(dict.new(), user.id, Loaded([])),
@@ -298,7 +298,7 @@ pub fn project_without_members_shows_badge_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           project_members: dict.from_list([
@@ -363,7 +363,7 @@ pub fn project_metrics_summary_renders_counts_test() {
           ..admin.metrics,
           admin_metrics_overview: Loaded(overview),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           expanded_projects: set.insert(
@@ -414,7 +414,7 @@ pub fn user_metrics_summary_renders_counts_test() {
           ..admin.metrics,
           admin_metrics_users: Loaded([metrics]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           user_projects: dict.insert(dict.new(), user.id, Loaded([])),
@@ -441,7 +441,7 @@ pub fn empty_state_when_no_projects_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
         ),
@@ -464,7 +464,7 @@ pub fn empty_state_when_no_users_test() {
           ..admin.members,
           org_users_cache: Loaded([]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
         ),
@@ -506,7 +506,7 @@ pub fn empty_state_when_only_admin_user_test() {
           ..admin_model.members,
           org_users_cache: Loaded([admin_org_user]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin_model.assignments,
           view_mode: assignments_view_mode.ByUser,
         ),
@@ -544,7 +544,7 @@ pub fn filter_users_by_email_test() {
           ..admin.members,
           org_users_cache: Loaded([user_admin, user_member]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           search_query: "admin",
@@ -576,7 +576,7 @@ pub fn assignments_renders_table_layout_project_mode_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
         ),
@@ -619,7 +619,7 @@ pub fn assignments_expansion_row_toggles_test() {
           ..admin.members,
           org_users_cache: Loaded([org_user]),
         ),
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
             #(project.id, Loaded([member])),
@@ -633,7 +633,7 @@ pub fn assignments_expansion_row_toggles_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        assignments: state_types.AssignmentsModel(
+        assignments: assignments_state.AssignmentsModel(
           ..admin.assignments,
           expanded_projects: set.insert(admin.assignments.expanded_projects, 1),
         ),

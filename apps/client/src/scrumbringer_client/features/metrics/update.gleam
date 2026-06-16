@@ -90,7 +90,7 @@ pub fn try_update(
 // =============================================================================
 
 /// Handle successful member metrics fetch.
-pub fn handle_member_metrics_fetched_ok(
+fn handle_member_metrics_fetched_ok(
   model: member_metrics.Model,
   metrics: MyMetrics,
 ) -> #(member_metrics.Model, Effect(parent_msg)) {
@@ -101,7 +101,7 @@ pub fn handle_member_metrics_fetched_ok(
 }
 
 /// Handle failed member metrics fetch.
-pub fn handle_member_metrics_fetched_error(
+fn handle_member_metrics_fetched_error(
   model: member_metrics.Model,
   err: ApiError,
 ) -> #(member_metrics.Model, Effect(parent_msg)) {
@@ -113,7 +113,7 @@ pub fn handle_member_metrics_fetched_error(
 // =============================================================================
 
 /// Handle successful admin metrics overview fetch.
-pub fn handle_admin_overview_fetched_ok(
+fn handle_admin_overview_fetched_ok(
   model: admin_metrics.Model,
   overview: OrgMetricsOverview,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -124,7 +124,7 @@ pub fn handle_admin_overview_fetched_ok(
 }
 
 /// Handle failed admin metrics overview fetch.
-pub fn handle_admin_overview_fetched_error(
+fn handle_admin_overview_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -139,7 +139,7 @@ pub fn handle_admin_overview_fetched_error(
 // =============================================================================
 
 /// Handle successful admin metrics project tasks fetch.
-pub fn handle_admin_project_tasks_fetched_ok(
+fn handle_admin_project_tasks_fetched_ok(
   model: admin_metrics.Model,
   payload: OrgMetricsProjectTasksPayload,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -156,7 +156,7 @@ pub fn handle_admin_project_tasks_fetched_ok(
 }
 
 /// Handle failed admin metrics project tasks fetch.
-pub fn handle_admin_project_tasks_fetched_error(
+fn handle_admin_project_tasks_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -170,7 +170,7 @@ pub fn handle_admin_project_tasks_fetched_error(
 // Admin Metrics Users Handlers
 // =============================================================================
 
-pub fn handle_admin_users_fetched_ok(
+fn handle_admin_users_fetched_ok(
   model: admin_metrics.Model,
   users: List(OrgMetricsUserOverview),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
@@ -180,7 +180,7 @@ pub fn handle_admin_users_fetched_ok(
   )
 }
 
-pub fn handle_admin_users_fetched_error(
+fn handle_admin_users_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {

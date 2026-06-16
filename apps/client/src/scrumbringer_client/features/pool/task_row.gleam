@@ -10,6 +10,7 @@ import domain/card.{type CardColor}
 import domain/task.{type Task, Task}
 
 import scrumbringer_client/features/pool/labels as pool_labels
+import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
@@ -33,12 +34,10 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let Task(title: title, task_type: task_type, blocked_count: blocked_count, ..) =
-    config.task
+  let Task(title: title, task_type: task_type, ..) = config.task
 
-  let claim_actions = case blocked_count > 0 {
-    True -> []
-    False ->
+  let claim_actions = case claimability.can_claim(config.task) {
+    True ->
       task_actions.claim_only(
         pool_labels.claim_this_task(config.locale),
         config.on_claim,
@@ -48,6 +47,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         opt.None,
         opt.None,
       )
+    False -> []
   }
 
   let border_class = task_color.card_border_class(config.card_color)

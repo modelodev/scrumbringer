@@ -7,7 +7,7 @@ import domain/project.{type Project, Project}
 import domain/project_role
 import domain/remote.{Loaded}
 import domain/workflow.{type Workflow, Workflow}
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/views/workflows
 import scrumbringer_client/i18n/locale
 
@@ -84,7 +84,7 @@ pub fn workflows_view_renders_crud_dialog_from_config_without_root_model_test() 
     workflows.view_workflows(
       workflows.Config(
         ..config(),
-        dialog_mode: opt.Some(state_types.WorkflowDialogCreate),
+        dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
       ),
     )
     |> element.to_document_string

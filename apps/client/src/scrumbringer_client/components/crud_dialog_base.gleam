@@ -12,12 +12,12 @@ import gleam/string
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, p, span, text}
-import lustre/event
+import lustre/element/html.{div, p, span, text}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/modal_header
 
 pub type OptionalIntParseError {
@@ -40,6 +40,15 @@ pub fn optional_text_input_value(value: Option(String)) -> String {
   case value {
     option.None -> ""
     option.Some(text) -> text
+  }
+}
+
+/// Prepends optional payload fields while preserving the existing CRUD payload
+/// merge behaviour.
+pub fn prepend_fields(base: List(a), fields: List(a)) -> List(a) {
+  case fields {
+    [] -> base
+    [field, ..rest] -> prepend_fields([field, ..base], rest)
   }
 }
 
@@ -127,9 +136,13 @@ pub fn optional_int_or_none(value: String) -> Option(Int) {
 
 /// Renders a localized cancel button for CRUD dialog footers.
 pub fn view_cancel_button(locale: Locale, on_click_msg: msg) -> Element(msg) {
-  button([attribute.type_("button"), event.on_click(on_click_msg)], [
-    text(i18n.t(locale, i18n_text.Cancel)),
-  ])
+  ui_button.text(
+    i18n.t(locale, i18n_text.Cancel),
+    on_click_msg,
+    ui_button.Secondary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.view
 }
 
 /// Renders a localized cancel button with dialog-specific classes.
@@ -138,14 +151,61 @@ pub fn view_cancel_button_with_class(
   on_click_msg: msg,
   class_name: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class(class_name),
-      attribute.type_("button"),
-      event.on_click(on_click_msg),
-    ],
-    [text(i18n.t(locale, i18n_text.Cancel))],
+  ui_button.text(
+    i18n.t(locale, i18n_text.Cancel),
+    on_click_msg,
+    ui_button.Secondary,
+    ui_button.EntityAction,
   )
+  |> with_compat_class(class_name)
+  |> ui_button.view
+}
+
+fn loading_label(in_flight: Bool, idle_label: String, in_flight_label: String) {
+  case in_flight {
+    True -> in_flight_label
+    False -> idle_label
+  }
+}
+
+fn with_loading_class(
+  button: ui_button.Config(msg),
+  in_flight: Bool,
+) -> ui_button.Config(msg) {
+  case in_flight {
+    True -> button |> ui_button.with_class("btn-loading")
+    False -> button
+  }
+}
+
+fn with_compat_class(
+  button: ui_button.Config(msg),
+  class_name: String,
+) -> ui_button.Config(msg) {
+  case string.is_empty(class_name) {
+    True -> button
+    False -> button |> ui_button.with_class(class_name)
+  }
+}
+
+fn with_loading_or_compat_class(
+  button: ui_button.Config(msg),
+  in_flight: Bool,
+  class_name: String,
+) -> ui_button.Config(msg) {
+  with_compat_class(button, class_name)
+  |> with_loading_class(in_flight)
+}
+
+fn primary_action_button(
+  label: String,
+  on_click_msg: msg,
+  in_flight: Bool,
+  class_name: String,
+) -> ui_button.Config(msg) {
+  ui_button.text(label, on_click_msg, ui_button.Primary, ui_button.EntityAction)
+  |> ui_button.with_disabled(in_flight)
+  |> with_loading_or_compat_class(in_flight, class_name)
 }
 
 /// Renders the standard CRUD dialog error block.
@@ -168,6 +228,41 @@ pub fn view_form_error(error: Option(String)) -> Element(msg) {
       div([attribute.class("form-error")], [text(message)])
 
     option.None -> element.none()
+  }
+}
+
+/// Adds an aria-label only when a dialog field needs an explicit accessible
+/// label beyond its visible form label.
+pub fn with_optional_aria_label(
+  attrs: List(attribute.Attribute(msg)),
+  label: Option(String),
+) -> List(attribute.Attribute(msg)) {
+  case label {
+    option.Some(value) -> [attribute.attribute("aria-label", value), ..attrs]
+    option.None -> attrs
+  }
+}
+
+/// Adds a placeholder only when the form copy calls for an input hint.
+pub fn with_optional_placeholder(
+  attrs: List(attribute.Attribute(msg)),
+  placeholder: Option(String),
+) -> List(attribute.Attribute(msg)) {
+  case placeholder {
+    option.Some(value) -> [attribute.placeholder(value), ..attrs]
+    option.None -> attrs
+  }
+}
+
+/// Adds autofocus to the first field only for create dialogs that should focus
+/// immediately after opening.
+pub fn with_autofocus_when(
+  attrs: List(attribute.Attribute(msg)),
+  should_autofocus: Bool,
+) -> List(attribute.Attribute(msg)) {
+  case should_autofocus {
+    True -> [attribute.autofocus(True), ..attrs]
+    False -> attrs
   }
 }
 
@@ -221,23 +316,15 @@ pub fn view_submit_button(
   idle_label: String,
   in_flight_label: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.type_("submit"),
-      attribute.form(form_id),
-      attribute.disabled(in_flight),
-      attribute.class(case in_flight {
-        True -> "btn-loading"
-        False -> ""
-      }),
-    ],
-    [
-      text(case in_flight {
-        True -> in_flight_label
-        False -> idle_label
-      }),
-    ],
+  ui_button.submit(
+    loading_label(in_flight, idle_label, in_flight_label),
+    ui_button.Primary,
+    ui_button.EntityAction,
   )
+  |> ui_button.with_form(form_id)
+  |> ui_button.with_disabled(in_flight)
+  |> with_loading_class(in_flight)
+  |> ui_button.view
 }
 
 /// Renders a button-based primary CRUD action for forms that submit by message.
@@ -248,20 +335,13 @@ pub fn view_primary_action_button(
   in_flight_label: String,
   class_name: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class(class_name),
-      attribute.type_("button"),
-      attribute.disabled(in_flight),
-      event.on_click(on_click_msg),
-    ],
-    [
-      text(case in_flight {
-        True -> in_flight_label
-        False -> idle_label
-      }),
-    ],
+  primary_action_button(
+    loading_label(in_flight, idle_label, in_flight_label),
+    on_click_msg,
+    in_flight,
+    class_name,
   )
+  |> ui_button.view
 }
 
 /// Renders the standard danger action button used by CRUD delete dialogs.
@@ -271,19 +351,15 @@ pub fn view_danger_button(
   idle_label: String,
   in_flight_label: String,
 ) -> Element(msg) {
-  button(
-    [
-      event.on_click(on_click_msg),
-      attribute.disabled(in_flight),
-      attribute.class("btn-danger"),
-    ],
-    [
-      text(case in_flight {
-        True -> in_flight_label
-        False -> idle_label
-      }),
-    ],
+  ui_button.text(
+    loading_label(in_flight, idle_label, in_flight_label),
+    on_click_msg,
+    ui_button.Danger,
+    ui_button.EntityAction,
   )
+  |> ui_button.with_disabled(in_flight)
+  |> with_loading_class(in_flight)
+  |> ui_button.view
 }
 
 /// Renders the common small delete confirmation dialog used by CRUD custom
@@ -325,20 +401,15 @@ pub fn view_danger_action_button(
   in_flight_label: String,
   class_name: String,
 ) -> Element(msg) {
-  button(
-    [
-      attribute.class(class_name),
-      attribute.type_("button"),
-      attribute.disabled(disabled),
-      event.on_click(on_click_msg),
-    ],
-    [
-      text(case in_flight {
-        True -> in_flight_label
-        False -> idle_label
-      }),
-    ],
+  ui_button.text(
+    loading_label(in_flight, idle_label, in_flight_label),
+    on_click_msg,
+    ui_button.Danger,
+    ui_button.EntityAction,
   )
+  |> ui_button.with_disabled(disabled)
+  |> with_loading_or_compat_class(in_flight, class_name)
+  |> ui_button.view
 }
 
 /// Decodes create mode.

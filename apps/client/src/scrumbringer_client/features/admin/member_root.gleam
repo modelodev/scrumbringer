@@ -7,7 +7,7 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/members as admin_members
-import scrumbringer_client/features/auth/helpers as auth_helpers
+import scrumbringer_client/features/admin/route_support
 
 pub fn set_members(
   model: client_state.Model,
@@ -31,8 +31,5 @@ pub fn apply_auth_check_before(
   auth_error: opt.Option(ApiError),
   apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> auth_helpers.handle_401_or(model, err, apply_update)
-  }
+  route_support.apply_auth_check_before(model, auth_error, apply_update)
 }

@@ -11,9 +11,9 @@ import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/workflows as workflows_workflow
-import scrumbringer_client/features/auth/helpers as auth_helpers
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
+import scrumbringer_client/features/pool/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 
@@ -83,12 +83,16 @@ fn apply_cards_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let cards_workflow.Update(cards, fx, auth_policy, focus_policy) = update
 
-  apply_auth_check_before(model, cards_auth_error(auth_policy), fn() {
-    #(
-      root.set_admin_cards(model, cards),
-      apply_cards_focus_policy(model, focus_policy, fx, close_focus_target),
-    )
-  })
+  route_support.apply_auth_check_before(
+    model,
+    cards_auth_error(auth_policy),
+    fn() {
+      #(
+        root.set_admin_cards(model, cards),
+        apply_cards_focus_policy(model, focus_policy, fx, close_focus_target),
+      )
+    },
+  )
 }
 
 fn apply_cards_focus_policy(
@@ -133,9 +137,11 @@ fn apply_workflows_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let workflows_workflow.WorkflowUpdate(workflows, fx, auth_policy) = update
 
-  apply_auth_check_before(model, workflow_auth_error(auth_policy), fn() {
-    #(root.set_admin_workflows(model, workflows), fx)
-  })
+  route_support.apply_auth_check_before(
+    model,
+    workflow_auth_error(auth_policy),
+    fn() { #(root.set_admin_workflows(model, workflows), fx) },
+  )
 }
 
 fn try_rule_crud_update(
@@ -161,9 +167,11 @@ fn apply_rules_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let workflows_workflow.RulesUpdate(rules, fx, auth_policy) = update
 
-  apply_auth_check_before(model, rules_auth_error(auth_policy), fn() {
-    #(root.set_admin_rules(model, rules), fx)
-  })
+  route_support.apply_auth_check_before(
+    model,
+    rules_auth_error(auth_policy),
+    fn() { #(root.set_admin_rules(model, rules), fx) },
+  )
 }
 
 fn try_template_attachment_crud_update(
@@ -191,7 +199,7 @@ fn apply_template_attachment_update(
   let workflows_workflow.TemplateAttachmentUpdate(local, fx, auth_policy) =
     update
 
-  apply_auth_check_before(
+  route_support.apply_auth_check_before(
     model,
     template_attachment_auth_error(auth_policy),
     fn() { #(set_template_attachment_model(model, local), fx) },
@@ -220,9 +228,11 @@ fn apply_task_templates_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_templates_workflow.Update(task_templates, fx, auth_policy) = update
 
-  apply_auth_check_before(model, task_templates_auth_error(auth_policy), fn() {
-    #(root.set_admin_task_templates(model, task_templates), fx)
-  })
+  route_support.apply_auth_check_before(
+    model,
+    task_templates_auth_error(auth_policy),
+    fn() { #(root.set_admin_task_templates(model, task_templates), fx) },
+  )
 }
 
 fn rules_context(
@@ -406,16 +416,5 @@ fn task_templates_auth_error(
   case policy {
     task_templates_workflow.NoAuthCheck -> opt.None
     task_templates_workflow.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_auth_check_before(
-  model: client_state.Model,
-  auth_error: opt.Option(ApiError),
-  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_error {
-    opt.None -> apply_update()
-    opt.Some(err) -> auth_helpers.handle_401_or(model, err, apply_update)
   }
 }

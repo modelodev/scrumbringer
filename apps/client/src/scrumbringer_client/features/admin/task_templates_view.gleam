@@ -21,7 +21,7 @@ import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
 import domain/workflow/codec as workflow_codec
 
-import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -44,7 +44,7 @@ pub type Config(msg) {
     selected_project: opt.Option(Project),
     selected_project_id: opt.Option(Int),
     templates: Remote(List(TaskTemplate)),
-    dialog_mode: opt.Option(state_types.TaskTemplateDialogMode),
+    dialog_mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
     task_types: Remote(List(TaskType)),
     on_create_clicked: msg,
     on_edit_clicked: fn(TaskTemplate) -> msg,
@@ -144,16 +144,16 @@ fn view_task_template_crud_dialog(config: Config(msg)) -> Element(msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, template_json, project_id_attr) = case mode {
-        state_types.TaskTemplateDialogCreate ->
+        admin_task_templates.TaskTemplateDialogCreate ->
           create_dialog_parts(config.selected_project_id)
-        state_types.TaskTemplateDialogEdit(template) ->
+        admin_task_templates.TaskTemplateDialogEdit(template) ->
           entity_dialog_parts(
             "edit",
             "template",
             task_template_to_property_json(template, "edit"),
             template.project_id,
           )
-        state_types.TaskTemplateDialogDelete(template) ->
+        admin_task_templates.TaskTemplateDialogDelete(template) ->
           entity_dialog_parts(
             "delete",
             "template",

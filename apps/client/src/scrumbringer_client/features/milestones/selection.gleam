@@ -1,6 +1,7 @@
 import domain/milestone.{type MilestoneProgress, Active, Ready}
 import gleam/list
 import gleam/option
+import scrumbringer_client/client_state/member/pool as member_pool
 
 pub fn selected_progress(
   items: List(MilestoneProgress),
@@ -14,6 +15,18 @@ pub fn selected_progress(
       }
     option.None -> default_selected_progress(items)
   }
+}
+
+pub fn select_milestone(
+  model: member_pool.Model,
+  milestone_id: Int,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_selected_milestone_id: option.Some(milestone_id),
+    member_milestone_dialog_in_flight: False,
+    member_milestone_dialog_error: option.None,
+  )
 }
 
 fn default_selected_progress(

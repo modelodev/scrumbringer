@@ -7,7 +7,6 @@ import domain/capability.{Capability}
 import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
@@ -72,7 +71,7 @@ pub fn task_types_view_renders_crud_dialog_from_config_without_root_model_test()
   let model =
     admin_task_types.Model(
       ..admin_task_types.default_model(),
-      task_types_dialog_mode: opt.Some(state_types.TaskTypeDialogCreate),
+      task_types_dialog_mode: opt.Some(admin_task_types.TaskTypeDialogCreate),
     )
 
   let html =

@@ -40,8 +40,18 @@ pub fn position_update_fetched_error_is_local_noop_test() {
       member_positions_by_task: dict.from_list([#(7, #(12, 34))]),
     )
 
-  let #(next, fx) = position_update.fetched_error(model, error())
+  let assert Some(position_update.Update(
+    next,
+    fx,
+    position_update.CheckAuth(policy_err),
+  )) =
+    position_update.try_update(
+      model,
+      pool_messages.MemberPositionsFetched(Error(error())),
+      context(),
+    )
 
+  let assert True = policy_err == error()
   let assert Ok(#(12, 34)) = dict.get(next.member_positions_by_task, 7)
   let assert True = fx == effect.none()
 }
@@ -54,7 +64,12 @@ pub fn position_update_saved_ok_updates_dict_and_closes_test() {
       member_position_edit_in_flight: True,
     )
 
-  let #(next, fx) = position_update.saved_ok(model, position(7, 44, 55))
+  let assert Some(position_update.Update(next, fx, position_update.NoAuthCheck)) =
+    position_update.try_update(
+      model,
+      pool_messages.MemberPositionSaved(Ok(position(7, 44, 55))),
+      context(),
+    )
 
   let assert False = next.member_position_edit_in_flight
   let assert None = next.member_position_edit_task
@@ -69,8 +84,18 @@ pub fn position_update_saved_error_sets_error_and_refetches_test() {
       member_position_edit_in_flight: True,
     )
 
-  let #(next, fx) = position_update.saved_error(model, error(), context())
+  let assert Some(position_update.Update(
+    next,
+    fx,
+    position_update.CheckAuth(policy_err),
+  )) =
+    position_update.try_update(
+      model,
+      pool_messages.MemberPositionSaved(Error(error())),
+      context(),
+    )
 
+  let assert True = policy_err == error()
   let assert False = next.member_position_edit_in_flight
   let assert Some("boom") = next.member_position_edit_error
   let assert False = fx == effect.none()
@@ -85,7 +110,12 @@ pub fn position_update_submitted_invalid_uses_context_message_test() {
       member_position_edit_y: "12",
     )
 
-  let #(next, fx) = position_update.submitted(model, context())
+  let assert Some(position_update.Update(next, fx, position_update.NoAuthCheck)) =
+    position_update.try_update(
+      model,
+      pool_messages.MemberPositionEditSubmitted,
+      context(),
+    )
 
   let assert Some("Invalid XY") = next.member_position_edit_error
   let assert False = next.member_position_edit_in_flight

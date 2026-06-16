@@ -3,6 +3,7 @@
 //// Tokens are opaque high-entropy Bearer credentials. Only their SHA-256 hash
 //// is persisted; the full token is returned once at creation time.
 
+import domain/api_token as api_token_domain
 import domain/api_token_scope
 import gleam/bit_array
 import gleam/crypto
@@ -19,13 +20,13 @@ import scrumbringer_server/services/persisted_field
 
 pub const token_prefix = "sbt"
 
-pub type ApiToken {
-  ApiToken(
+pub type ApiTokenRecord {
+  ApiTokenRecord(
     id: Int,
     org_id: Int,
     integration_user_id: Int,
     integration_user_email: String,
-    project_grant: ProjectGrant,
+    project_grant: api_token_domain.ProjectGrant,
     name: String,
     public_id: String,
     scopes: List(api_token_scope.Scope),
@@ -38,7 +39,7 @@ pub type ApiToken {
 }
 
 pub type CreatedToken {
-  CreatedToken(token: ApiToken, bearer: String)
+  CreatedToken(token: ApiTokenRecord, bearer: String)
 }
 
 pub type VerifiedToken {
@@ -46,14 +47,9 @@ pub type VerifiedToken {
     token_id: Int,
     integration_user_id: Int,
     org_id: Int,
-    project_grant: ProjectGrant,
+    project_grant: api_token_domain.ProjectGrant,
     scopes: List(api_token_scope.Scope),
   )
-}
-
-pub type ProjectGrant {
-  AllProjects
-  ProjectOnly(Int)
 }
 
 pub type ApiTokenError {
@@ -103,7 +99,7 @@ pub fn create(
   use name <- result.try(validate_name(name))
   use scopes <- result.try(validate_scopes(scopes))
   use expires_at <- result.try(validate_expires_at(expires_at))
-  let project_grant = project_grant_from_option(project_id)
+  let project_grant = api_token_domain.project_grant_from_option(project_id)
   use Nil <- result.try(ensure_integration_user(db, org_id, integration_user_id))
   use Nil <- result.try(ensure_project_exists(db, org_id, project_grant))
 
@@ -135,7 +131,7 @@ pub fn create_for_integration(
   use name <- result.try(validate_name(name))
   use scopes <- result.try(validate_scopes(scopes))
   use expires_at <- result.try(validate_expires_at(expires_at))
-  let project_grant = project_grant_from_option(project_id)
+  let project_grant = api_token_domain.project_grant_from_option(project_id)
 
   let integration = string.trim(integration)
 
@@ -144,7 +140,7 @@ pub fn create_for_integration(
       integration_users.find_or_create(tx, org_id, integration)
       |> result.map_error(integration_user_error_to_api_token_error),
     )
-    let integration_users.IntegrationUser(id: integration_user_id, ..) =
+    let api_token_domain.IntegrationUser(id: integration_user_id, ..) =
       integration_user
 
     use Nil <- result.try(ensure_project_exists(tx, org_id, project_grant))
@@ -181,7 +177,9 @@ pub fn verify_bearer(
         token_id: row.id,
         integration_user_id: row.integration_user_id,
         org_id: row.org_id,
-        project_grant: project_grant_from_option(row.project_id),
+        project_grant: api_token_domain.project_grant_from_option(
+          row.project_id,
+        ),
         scopes: scopes,
       ))
     }
@@ -191,7 +189,7 @@ pub fn verify_bearer(
 pub fn list_for_org(
   db: pog.Connection,
   org_id: Int,
-) -> Result(List(ApiToken), ApiTokenError) {
+) -> Result(List(ApiTokenRecord), ApiTokenError) {
   use rows <- result.try(
     query_token_rows(
       db,
@@ -231,7 +229,7 @@ pub fn rename(
   org_id: Int,
   token_id: Int,
   name: String,
-) -> Result(ApiToken, ApiTokenError) {
+) -> Result(ApiTokenRecord, ApiTokenError) {
   use name <- result.try(validate_name(name))
 
   use returned <- result.try(
@@ -339,20 +337,6 @@ pub fn scope_to_string(scope: api_token_scope.Scope) -> String {
   api_token_scope.to_string(scope)
 }
 
-pub fn project_grant_from_option(project_id: Option(Int)) -> ProjectGrant {
-  case project_id {
-    None -> AllProjects
-    Some(project_id) -> ProjectOnly(project_id)
-  }
-}
-
-pub fn project_grant_to_option(project_grant: ProjectGrant) -> Option(Int) {
-  case project_grant {
-    AllProjects -> None
-    ProjectOnly(project_id) -> Some(project_id)
-  }
-}
-
 pub fn public_id_from_bearer(bearer: String) -> Result(String, ApiTokenError) {
   case string.split(bearer, "_") {
     ["sbt", public_id, secret] if public_id != "" && secret != "" ->
@@ -366,7 +350,10 @@ pub fn hash_token(token: String) -> String {
   |> bit_array.base64_url_encode(False)
 }
 
-fn get(db: pog.Connection, token_id: Int) -> Result(ApiToken, ApiTokenError) {
+fn get(
+  db: pog.Connection,
+  token_id: Int,
+) -> Result(ApiTokenRecord, ApiTokenError) {
   use row <- result.try(find_by_id(db, token_id))
   token_from_row(db, row)
 }
@@ -374,14 +361,14 @@ fn get(db: pog.Connection, token_id: Int) -> Result(ApiToken, ApiTokenError) {
 fn token_from_row(
   db: pog.Connection,
   row: TokenRow,
-) -> Result(ApiToken, ApiTokenError) {
+) -> Result(ApiTokenRecord, ApiTokenError) {
   use scopes <- result.try(list_scopes(db, row.id))
-  Ok(ApiToken(
+  Ok(ApiTokenRecord(
     id: row.id,
     org_id: row.org_id,
     integration_user_id: row.integration_user_id,
     integration_user_email: row.integration_user_email,
-    project_grant: project_grant_from_option(row.project_id),
+    project_grant: api_token_domain.project_grant_from_option(row.project_id),
     name: row.name,
     public_id: row.public_id,
     scopes: scopes,
@@ -474,11 +461,11 @@ fn ensure_integration_user(
 fn ensure_project_exists(
   db: pog.Connection,
   org_id: Int,
-  project_grant: ProjectGrant,
+  project_grant: api_token_domain.ProjectGrant,
 ) -> Result(Nil, ApiTokenError) {
   case project_grant {
-    AllProjects -> Ok(Nil)
-    ProjectOnly(project_id) -> {
+    api_token_domain.AllProjects -> Ok(Nil)
+    api_token_domain.ProjectOnly(project_id) -> {
       let decoder = {
         use exists <- decode.field(0, decode.bool)
         decode.success(exists)
@@ -507,7 +494,7 @@ fn create_token_record(
   db: pog.Connection,
   org_id: Int,
   integration_user_id: Int,
-  project_grant: ProjectGrant,
+  project_grant: api_token_domain.ProjectGrant,
   created_by: Int,
   name: String,
   scopes: List(api_token_scope.Scope),
@@ -539,7 +526,7 @@ fn insert_token(
   db: pog.Connection,
   org_id: Int,
   integration_user_id: Int,
-  project_grant: ProjectGrant,
+  project_grant: api_token_domain.ProjectGrant,
   created_by: Int,
   name: String,
   public_id: String,
@@ -554,7 +541,7 @@ fn insert_token(
     |> pog.parameter(pog.int(integration_user_id))
     |> pog.parameter(pog.nullable(
       pog.int,
-      project_grant_to_option(project_grant),
+      api_token_domain.project_grant_to_option(project_grant),
     ))
     |> pog.parameter(pog.int(created_by))
     |> pog.parameter(pog.text(name))
