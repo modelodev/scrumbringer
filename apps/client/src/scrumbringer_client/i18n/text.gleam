@@ -559,6 +559,7 @@ pub type Text {
   PendingChanges
   ProjectsSummary(count: Int, summary: String)
   DeleteUser
+  DeleteOwnUserBlocked
   ConfirmDeleteUser(user_email: String)
   UserDeleted
 

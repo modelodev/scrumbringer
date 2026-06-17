@@ -361,10 +361,7 @@ fn work_items_config(
     },
     on_card_toggle: config.on_card_toggle,
     on_view_kanban: config.on_view_kanban,
-    card_header_actions: fn(card) {
-      let card_domain.Card(id: card_id, title: card_title, ..) = card
-      card_header_actions(config, card_id, card_title)
-    },
+    card_header_actions: fn(card) { card_header_actions(config, card) },
     on_task_open: config.on_task_open,
     on_task_claim: config.on_task_claim,
     on_card_drag_started: fn(card_id) {
@@ -458,17 +455,17 @@ fn is_ready_milestone(config: Config(msg), milestone_id: Int) -> Bool {
 
 fn card_header_actions(
   config: Config(msg),
-  card_id: Int,
-  card_title: String,
+  card: card_domain.Card,
 ) -> List(Element(msg)) {
   milestone_card_actions.view(milestone_card_actions.Config(
     locale: config.locale,
-    card_id: card_id,
-    card_title: card_title,
+    card_id: card.id,
+    card_title: card.title,
+    task_count: card.task_count,
     can_manage: config.can_manage,
-    on_create_task: config.on_card_create_task(card_id),
-    on_edit: config.on_card_edit(card_id),
-    on_delete: config.on_card_delete(card_id),
+    on_create_task: config.on_card_create_task(card.id),
+    on_edit: config.on_card_edit(card.id),
+    on_delete: config.on_card_delete(card.id),
   ))
 }
 

@@ -459,7 +459,7 @@ pub fn milestones_view_hides_actions_for_non_managers_test() {
   string.contains(html, "milestone-delete-button:7") |> assert_false
 }
 
-pub fn milestones_view_delete_button_only_for_ready_test() {
+pub fn milestones_view_blocks_delete_for_ready_non_empty_milestone_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -475,8 +475,22 @@ pub fn milestones_view_delete_button_only_for_ready_test() {
     |> element.to_document_string
 
   string.contains(html, "milestone-delete-button:1") |> assert_true
-  string.contains(html, "milestone-delete-button:2") |> assert_false
-  string.contains(html, "milestone-delete-button:3") |> assert_false
+  string.contains(html, "btn-delete-blocked") |> assert_true
+  string.contains(html, "Milestone must be ready and empty") |> assert_true
+}
+
+pub fn milestones_view_blocks_delete_for_non_ready_selected_milestone_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(2, Active)]))
+    |> with_selected_milestone(2)
+    |> view_milestones
+    |> element.to_document_string
+
+  string.contains(html, "milestone-delete-button:2") |> assert_true
+  string.contains(html, "btn-delete-blocked") |> assert_true
+  string.contains(html, "Milestone must be ready and empty") |> assert_true
 }
 
 pub fn milestones_view_blocks_activate_when_another_active_exists_test() {

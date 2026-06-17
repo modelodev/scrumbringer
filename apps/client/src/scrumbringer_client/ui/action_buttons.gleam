@@ -21,6 +21,13 @@ pub type ButtonSize {
   SizeSm
 }
 
+/// Stable availability of an entity action.
+pub type Availability {
+  Available
+  Busy
+  Blocked(reason: String)
+}
+
 fn button_size(size: ButtonSize) -> ui_button.Size {
   case size {
     SizeXs -> ui_button.ExtraSmall
@@ -74,6 +81,23 @@ fn icon_button(
   |> ui_button.with_disabled(disabled)
   |> with_optional_class(extra_class)
   |> with_optional_tooltip(tooltip)
+  |> with_optional_testid(testid)
+  |> ui_button.view
+}
+
+fn blocked_icon_button(
+  reason: String,
+  on_click: msg,
+  icon: icons.NavIcon,
+  intent: ui_button.Intent,
+  size: ButtonSize,
+  extra_class: String,
+  testid: Option(String),
+) -> Element(msg) {
+  ui_button.icon(reason, on_click, icon, intent, ui_button.EntityAction)
+  |> ui_button.with_size(button_size(size))
+  |> with_optional_class(extra_class)
+  |> ui_button.with_blocked_reason(reason)
   |> with_optional_testid(testid)
   |> ui_button.view
 }
@@ -239,6 +263,39 @@ pub fn delete_button_with_disabled_and_testid(
     disabled,
     "",
     None,
+    Some(testid),
+  )
+}
+
+/// Creates a delete button from an explicit action availability.
+pub fn delete_button_with_availability_and_testid(
+  title: String,
+  on_click: msg,
+  availability: Availability,
+  testid: String,
+) -> Element(msg) {
+  case availability {
+    Available -> delete_button_with_testid(title, on_click, testid)
+    Busy ->
+      delete_button_with_disabled_and_testid(title, on_click, True, testid)
+    Blocked(reason) ->
+      delete_button_blocked_with_testid(reason, on_click, testid)
+  }
+}
+
+/// Creates a delete button for blocked destructive actions.
+pub fn delete_button_blocked_with_testid(
+  reason: String,
+  on_click: msg,
+  testid: String,
+) -> Element(msg) {
+  blocked_icon_button(
+    reason,
+    on_click,
+    icons.Trash,
+    ui_button.Danger,
+    SizeXs,
+    "btn-delete-blocked",
     Some(testid),
   )
 }

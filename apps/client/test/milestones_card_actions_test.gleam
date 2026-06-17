@@ -17,6 +17,7 @@ fn config(can_manage: Bool) -> card_actions.Config(String) {
     locale: locale.En,
     card_id: 42,
     card_title: "Release card",
+    task_count: 0,
     can_manage: can_manage,
     on_create_task: "create-task",
     on_edit: "edit",
@@ -44,4 +45,14 @@ pub fn milestones_card_actions_hide_management_actions_without_permission_test()
   assert_contains(html, "Add task to Release card")
   assert_not_contains(html, "Edit card")
   assert_not_contains(html, "Delete card")
+}
+
+pub fn milestones_card_actions_block_delete_when_card_has_tasks_test() {
+  let html = render(card_actions.Config(..config(True), task_count: 2))
+
+  assert_contains(html, "milestone-card-delete-action")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "Cannot delete: has tasks")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  assert_contains(html, "aria-disabled=\"true\"")
 }

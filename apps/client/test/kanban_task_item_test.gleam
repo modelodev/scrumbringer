@@ -1,4 +1,4 @@
-import domain/card.{Card, Pendiente}
+import domain/card.{Card, EnCurso, Pendiente}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
@@ -214,6 +214,25 @@ pub fn kanban_card_shows_notes_indicator_test() {
     |> element.to_document_string
 
   assert_contains(html, "card-notes-indicator")
+}
+
+pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
+  let config = base_config([available_task()])
+  let card = case config.cards {
+    [first, ..] -> card.Card(..first, state: EnCurso)
+    [] -> panic
+  }
+
+  let html =
+    kanban_board.KanbanConfig(..config, cards: [card], is_pm_or_admin: True)
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"kanban-card-delete-action\"")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "title=\"Cannot delete: has tasks\"")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  assert_contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {

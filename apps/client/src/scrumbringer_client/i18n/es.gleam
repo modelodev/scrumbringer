@@ -312,7 +312,7 @@ pub fn translate(text: Text) -> String {
     text.MilestoneUpdateFailed -> "No se pudo actualizar el hito"
     text.MilestoneDeleted -> "Hito eliminado"
     text.MilestoneDeleteFailed -> "No se pudo eliminar el hito"
-    text.MilestoneDeleteNotAllowed -> "El hito debe estar listo y vacio"
+    text.MilestoneDeleteNotAllowed -> "El hito debe estar listo y vacío"
     text.MilestoneAlreadyActive -> "Ya hay otro hito activo"
     text.MilestoneActivationIrreversible ->
       "El hito no se puede activar en su estado actual"
@@ -665,6 +665,7 @@ pub fn translate(text: Text) -> String {
         _ -> int.to_string(count) <> ": " <> summary
       }
     text.DeleteUser -> "Eliminar usuario"
+    text.DeleteOwnUserBlocked -> "No puedes eliminar tu propio usuario"
     text.ConfirmDeleteUser(user_email) ->
       "¿Eliminar al usuario \"" <> user_email <> "\"?"
     text.UserDeleted -> "Usuario eliminado"

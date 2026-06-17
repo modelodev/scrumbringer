@@ -377,6 +377,7 @@ pub fn css() -> List(String) {
     ".kanban-card .card-surface-header-actions { gap: 4px; }",
     ".kanban-card .card-surface-header-actions .btn-icon:not(.btn-add-task) { background: transparent; border-color: transparent; color: var(--sb-muted); opacity: 0.48; }",
     ".kanban-card .card-surface-header-actions .btn-icon:not(.btn-add-task):hover, .kanban-card .card-surface-header-actions .btn-icon:not(.btn-add-task):focus-visible { background: var(--sb-elevated); border-color: var(--sb-border); color: var(--sb-primary); opacity: 1; }",
+    ".kanban-card .card-surface-header-actions .btn-icon.btn-delete-blocked, .kanban-card .card-surface-header-actions .btn-icon.btn-delete-blocked:hover, .kanban-card .card-surface-header-actions .btn-icon.btn-delete-blocked:focus-visible { background: transparent; border-color: transparent; color: var(--sb-muted); opacity: 0.62; }",
     ".card-notes-indicator { font-weight: var(--sb-weight-semibold); color: var(--sb-warning-text); }",
     ".card-surface-description, .kanban-card-desc { font-size: var(--sb-font-sm); color: var(--sb-muted); line-height: var(--sb-line-body); }",
     ".kanban-card-progress { display: flex; align-items: center; gap: 8px; }",

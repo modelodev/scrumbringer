@@ -99,6 +99,50 @@ pub fn cards_view_renders_detail_button_test() {
   assert_contains(html, "card-detail-open")
 }
 
+pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(..cards, cards: Loaded([sample_card()])),
+      )
+    })
+
+  let html =
+    admin_view.view_cards(model, opt.Some(sample_project()))
+    |> element.to_document_string
+
+  assert_contains(html, "card-delete-btn")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  assert_contains(html, "aria-disabled=\"true\"")
+}
+
+pub fn cards_view_keeps_delete_available_for_empty_cards_test() {
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(
+          ..cards,
+          cards: Loaded([Card(..sample_card(), task_count: 0)]),
+          cards_show_empty: True,
+        ),
+      )
+    })
+
+  let html =
+    admin_view.view_cards(model, opt.Some(sample_project()))
+    |> element.to_document_string
+
+  assert_contains(html, "card-delete-btn")
+  assert_contains(html, "aria-label=\"Delete Card\"")
+}
+
 pub fn cards_view_renders_detail_modal_when_open_test() {
   let model =
     base_model()

@@ -649,6 +649,7 @@ pub fn translate(text: Text) -> String {
         _ -> int.to_string(count) <> ": " <> summary
       }
     text.DeleteUser -> "Delete user"
+    text.DeleteOwnUserBlocked -> "Cannot delete your own user"
     text.ConfirmDeleteUser(user_email) ->
       "Delete user \"" <> user_email <> "\"?"
     text.UserDeleted -> "User deleted"

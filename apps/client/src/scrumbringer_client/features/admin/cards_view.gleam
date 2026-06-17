@@ -324,11 +324,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
                 config.on_edit_opened(c.id),
                 "card-edit-btn",
               ),
-              action_buttons.delete_button_with_testid(
-                t(config, i18n_text.DeleteCard),
-                config.on_delete_opened(c.id),
-                "card-delete-btn",
-              ),
+              delete_card_action(config, c),
             ])
           },
           "col-actions",
@@ -337,6 +333,25 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
       ])
       |> data_table.with_key(fn(c) { int.to_string(c.id) }),
   )
+}
+
+fn delete_card_action(config: Config(msg), card: Card) -> Element(msg) {
+  action_buttons.delete_button_with_availability_and_testid(
+    t(config, i18n_text.DeleteCard),
+    config.on_delete_opened(card.id),
+    card_delete_availability(config, card),
+    "card-delete-btn",
+  )
+}
+
+fn card_delete_availability(
+  config: Config(msg),
+  card: Card,
+) -> action_buttons.Availability {
+  case card.task_count > 0 {
+    True -> action_buttons.Blocked(t(config, i18n_text.CardDeleteBlocked))
+    False -> action_buttons.Available
+  }
 }
 
 fn resolve_create_milestone_name(config: Config(msg)) -> opt.Option(String) {

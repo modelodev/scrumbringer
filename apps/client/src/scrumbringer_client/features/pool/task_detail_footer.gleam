@@ -96,13 +96,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
   let is_mine = claimed_by(task) == config.current_user_id
   case task_state.to_work_state(task.state) {
     task_status.WorkAvailable -> [
-      text_button(
-        t(config, i18n_text.ClaimTask),
-        config.on_claim(task.id, task.version),
-        button.Primary,
-        config.disable_actions || !claimability.can_claim(task),
-      )
-      |> button.view,
+      claim_button(config, task),
     ]
 
     task_status.WorkClaimed | task_status.WorkOngoing ->
@@ -128,6 +122,29 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
 
     task_status.WorkCompleted -> []
   }
+}
+
+fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
+  let blocked_by_dependencies = task.blocked_count > 0
+  let base_button =
+    button.text(
+      t(config, i18n_text.ClaimTask),
+      config.on_claim(task.id, task.version),
+      button.Primary,
+      button.EntityAction,
+    )
+
+  case config.disable_actions, blocked_by_dependencies {
+    True, _ -> button.with_disabled(base_button, True)
+    False, True ->
+      button.with_blocked_reason(
+        base_button,
+        t(config, i18n_text.TaskBlockedByDependencies),
+      )
+    False, False ->
+      button.with_disabled(base_button, !claimability.can_claim(task))
+  }
+  |> button.view
 }
 
 fn text_button(

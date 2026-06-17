@@ -57,7 +57,9 @@ pub fn org_settings_view_renders_table_from_config_without_root_model_test() {
   assert_contains(html, "data-testid=\"org-user-delete-btn\"")
   assert_contains(html, "btn-danger-icon")
   assert_contains(html, "btn-entity-action")
-  assert_contains(html, "disabled")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "data-tooltip=\"Cannot delete your own user\"")
+  assert_contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn org_settings_view_renders_delete_dialog_from_config_without_root_model_test() {

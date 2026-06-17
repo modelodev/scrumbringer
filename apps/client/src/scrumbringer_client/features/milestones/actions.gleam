@@ -115,13 +115,31 @@ fn edit_button(config: Config(msg), milestone_id: Int) -> Element(msg) {
 }
 
 fn delete_button(config: Config(msg), milestone_id: Int) -> Element(msg) {
-  case config.can_manage, config.progress.milestone.state {
-    True, Ready ->
-      action_buttons.delete_button_with_testid(
+  case config.can_manage {
+    True ->
+      action_buttons.delete_button_with_availability_and_testid(
         i18n.t(config.locale, i18n_text.DeleteMilestone),
         config.on_delete(milestone_id),
+        milestone_delete_availability(config),
         "milestone-delete-button:" <> int.to_string(milestone_id),
       )
-    _, _ -> none()
+    False -> none()
+  }
+}
+
+fn milestone_delete_availability(
+  config: Config(msg),
+) -> action_buttons.Availability {
+  let is_ready = config.progress.milestone.state == Ready
+  let is_empty =
+    config.progress.cards_total == 0 && config.progress.tasks_total == 0
+
+  case is_ready && is_empty {
+    True -> action_buttons.Available
+    False ->
+      action_buttons.Blocked(i18n.t(
+        config.locale,
+        i18n_text.MilestoneDeleteNotAllowed,
+      ))
   }
 }

@@ -70,7 +70,9 @@ pub fn task_types_table_renders_capability_name_test() {
   assert_not_contains(html, ">1<")
   assert_contains(html, "cell-number")
   assert_contains(html, "aria-label=\"Edit Task Type\"")
-  assert_contains(html, "aria-label=\"Delete Task Type\"")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has 7 tasks\"")
+  assert_contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn task_types_table_renders_none_when_no_capability_test() {

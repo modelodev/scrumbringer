@@ -65,6 +65,26 @@ pub fn task_types_view_renders_list_from_config_without_root_model_test() {
   assert_contains(html, ">None<")
   assert_contains(html, "task-type-edit-btn")
   assert_contains(html, "task-type-delete-btn")
+  assert_contains(html, "btn-delete-blocked")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has 3 tasks\"")
+  assert_contains(html, "aria-disabled=\"true\"")
+}
+
+pub fn task_types_view_keeps_delete_available_when_type_has_no_tasks_test() {
+  let model =
+    admin_task_types.Model(
+      ..admin_task_types.default_model(),
+      task_types: Loaded([
+        TaskType(..task_type(7, "Chore", opt.None), tasks_count: 0),
+      ]),
+    )
+
+  let html =
+    task_types_view.view(config(model))
+    |> element.to_document_string
+
+  assert_contains(html, "task-type-delete-btn")
+  assert_contains(html, "aria-label=\"Delete Task Type\"")
 }
 
 pub fn task_types_view_renders_crud_dialog_from_config_without_root_model_test() {

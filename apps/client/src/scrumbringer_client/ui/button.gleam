@@ -67,6 +67,7 @@ pub opaque type Config(msg) {
     id: Option(String),
     testid: Option(String),
     tooltip: Option(String),
+    aria_disabled: Bool,
     stop_propagation: Bool,
     extra_attrs: List(Attribute(msg)),
   )
@@ -95,6 +96,7 @@ pub fn text(
     id: None,
     testid: None,
     tooltip: None,
+    aria_disabled: False,
     stop_propagation: False,
     extra_attrs: [],
   )
@@ -118,6 +120,7 @@ pub fn submit(label: String, intent: Intent, scope: Scope) -> Config(msg) {
     id: None,
     testid: None,
     tooltip: None,
+    aria_disabled: False,
     stop_propagation: False,
     extra_attrs: [],
   )
@@ -147,6 +150,7 @@ pub fn icon(
     id: None,
     testid: None,
     tooltip: None,
+    aria_disabled: False,
     stop_propagation: False,
     extra_attrs: [],
   )
@@ -176,6 +180,7 @@ pub fn icon_text(
     id: None,
     testid: None,
     tooltip: None,
+    aria_disabled: False,
     stop_propagation: False,
     extra_attrs: [],
   )
@@ -233,6 +238,21 @@ pub fn with_tooltip(config: Config(msg), tooltip: String) -> Config(msg) {
   Config(..config, tooltip: Some(tooltip))
 }
 
+/// Marks an action as blocked by a stable product rule.
+///
+/// Blocked actions remain focusable and expose their reason through the
+/// accessible label and tooltip. They intentionally carry no click handler.
+pub fn with_blocked_reason(config: Config(msg), reason: String) -> Config(msg) {
+  Config(
+    ..config,
+    on_click: None,
+    disabled: False,
+    aria_disabled: True,
+    accessible_label: Some(reason),
+    tooltip: Some(reason),
+  )
+}
+
 /// Prevents the click event from bubbling to parent interactive containers.
 pub fn with_stop_propagation(config: Config(msg)) -> Config(msg) {
   Config(..config, stop_propagation: True)
@@ -260,6 +280,7 @@ fn attrs(config: Config(msg)) {
     id:,
     testid:,
     tooltip:,
+    aria_disabled:,
     stop_propagation:,
     extra_attrs:,
     ..,
@@ -284,9 +305,15 @@ fn attrs(config: Config(msg)) {
       extra_attrs,
     )
 
+  let with_aria_disabled = case aria_disabled {
+    True -> list.append(base, [attribute.attribute("aria-disabled", "true")])
+    False -> base
+  }
+
   let with_click = case on_click {
-    Some(msg) -> list.append(base, [click_attr(msg, stop_propagation)])
-    None -> base
+    Some(msg) ->
+      list.append(with_aria_disabled, [click_attr(msg, stop_propagation)])
+    None -> with_aria_disabled
   }
 
   let with_form = case form_id {

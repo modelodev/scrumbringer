@@ -38,7 +38,9 @@ pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
     |> element.to_document_string
 
   assert_contains(html, "Claim task")
-  assert_contains(html, "disabled")
+  assert_contains(html, "data-tooltip=\"Task has incomplete dependencies\"")
+  assert_contains(html, "aria-disabled=\"true\"")
+  assert_not_contains(html, " disabled")
   assert_not_contains(html, "Release")
   assert_not_contains(html, "Complete")
 }

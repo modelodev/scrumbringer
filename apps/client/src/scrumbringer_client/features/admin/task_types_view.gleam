@@ -155,22 +155,50 @@ fn view_list(config: Config(msg)) -> Element(msg) {
         ),
         data_table.column_with_class(
           t(config, i18n_text.Actions),
-          fn(tt: TaskType) {
-            action_buttons.edit_delete_row_with_testid(
-              edit_title: t(config, i18n_text.EditTaskType),
-              edit_click: config.on_edit_opened(tt),
-              edit_testid: "task-type-edit-btn",
-              delete_title: t(config, i18n_text.DeleteTaskType),
-              delete_click: config.on_delete_opened(tt),
-              delete_testid: "task-type-delete-btn",
-            )
-          },
+          fn(tt: TaskType) { task_type_actions(config, tt) },
           "col-actions",
           "cell-actions",
         ),
       ])
       |> data_table.with_key(fn(tt) { int.to_string(tt.id) }),
   )
+}
+
+fn task_type_actions(config: Config(msg), task_type: TaskType) -> Element(msg) {
+  div([], [
+    action_buttons.edit_button_with_testid(
+      t(config, i18n_text.EditTaskType),
+      config.on_edit_opened(task_type),
+      "task-type-edit-btn",
+    ),
+    delete_task_type_action(config, task_type),
+  ])
+}
+
+fn delete_task_type_action(
+  config: Config(msg),
+  task_type: TaskType,
+) -> Element(msg) {
+  action_buttons.delete_button_with_availability_and_testid(
+    t(config, i18n_text.DeleteTaskType),
+    config.on_delete_opened(task_type),
+    task_type_delete_availability(config, task_type),
+    "task-type-delete-btn",
+  )
+}
+
+fn task_type_delete_availability(
+  config: Config(msg),
+  task_type: TaskType,
+) -> action_buttons.Availability {
+  case task_type.tasks_count > 0 {
+    True ->
+      action_buttons.Blocked(t(
+        config,
+        i18n_text.TaskTypeHasTasks(task_type.tasks_count),
+      ))
+    False -> action_buttons.Available
+  }
 }
 
 fn task_type_to_property_json(task_type: TaskType, mode: String) -> json.Json {

@@ -10,6 +10,7 @@ pub type Config(msg) {
     locale: Locale,
     card_id: Int,
     card_title: String,
+    task_count: Int,
     can_manage: Bool,
     on_create_task: msg,
     on_edit: msg,
@@ -32,12 +33,25 @@ pub fn view(config: Config(msg)) -> List(Element(msg)) {
         config.on_edit,
         action_buttons.SizeXs,
       ),
-      action_buttons.delete_button_with_size(
-        i18n.t(config.locale, i18n_text.DeleteCardTooltip),
-        config.on_delete,
-        action_buttons.SizeXs,
-      ),
+      delete_card_action(config),
     ]
     False -> [create_task_action]
+  }
+}
+
+fn delete_card_action(config: Config(msg)) -> Element(msg) {
+  action_buttons.delete_button_with_availability_and_testid(
+    i18n.t(config.locale, i18n_text.DeleteCardTooltip),
+    config.on_delete,
+    card_delete_availability(config),
+    "milestone-card-delete-action",
+  )
+}
+
+fn card_delete_availability(config: Config(msg)) -> action_buttons.Availability {
+  case config.task_count > 0 {
+    True ->
+      action_buttons.Blocked(i18n.t(config.locale, i18n_text.CardDeleteBlocked))
+    False -> action_buttons.Available
   }
 }

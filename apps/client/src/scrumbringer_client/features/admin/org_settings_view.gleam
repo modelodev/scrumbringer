@@ -71,21 +71,36 @@ fn view_table(config: Config(msg)) -> Element(msg) {
         }),
         data_table.column_with_class(
           t(config, i18n_text.Actions),
-          fn(u: OrgUser) {
-            action_buttons.delete_button_with_disabled_and_testid(
-              t(config, i18n_text.DeleteUser),
-              config.on_delete_clicked(u.id),
-              is_current_user(config, u.id)
-                || config.model.org_settings_delete_in_flight,
-              "org-user-delete-btn",
-            )
-          },
+          fn(u: OrgUser) { delete_user_action(config, u) },
           "col-actions",
           "cell-actions",
         ),
       ])
       |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
       |> data_table.view()
+  }
+}
+
+fn delete_user_action(config: Config(msg), user: OrgUser) -> Element(msg) {
+  action_buttons.delete_button_with_availability_and_testid(
+    t(config, i18n_text.DeleteUser),
+    config.on_delete_clicked(user.id),
+    user_delete_availability(config, user),
+    "org-user-delete-btn",
+  )
+}
+
+fn user_delete_availability(
+  config: Config(msg),
+  user: OrgUser,
+) -> action_buttons.Availability {
+  case is_current_user(config, user.id) {
+    True -> action_buttons.Blocked(t(config, i18n_text.DeleteOwnUserBlocked))
+    False ->
+      case config.model.org_settings_delete_in_flight {
+        True -> action_buttons.Busy
+        False -> action_buttons.Available
+      }
   }
 }
 

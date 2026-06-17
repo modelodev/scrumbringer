@@ -185,3 +185,24 @@ pub fn button_can_carry_specific_accessibility_attributes_test() {
   assert_contains(html, "btn-global-action")
   assert_contains(html, "btn-icon")
 }
+
+pub fn blocked_reason_removes_click_and_keeps_button_focusable_test() {
+  let html =
+    button.icon(
+      "Delete card",
+      "msg",
+      icons.Trash,
+      button.Danger,
+      button.EntityAction,
+    )
+    |> button.with_blocked_reason("Cannot delete: has tasks")
+    |> button.view
+    |> element.to_document_string
+
+  assert_contains(html, "aria-disabled=\"true\"")
+  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  assert_contains(html, "aria-label=\"Cannot delete: has tasks\"")
+  assert_contains(html, "title=\"Cannot delete: has tasks\"")
+  let assert False = string.contains(html, " disabled")
+  let assert False = string.contains(html, "data-lustre-on-click")
+}

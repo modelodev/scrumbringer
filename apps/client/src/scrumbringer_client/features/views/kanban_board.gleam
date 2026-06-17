@@ -284,7 +284,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
     on_card_click: option.Some(config.on_card_click(cwp.card.id)),
     on_task_click: config.on_task_click,
     on_task_claim: config.on_task_claim,
-    header_actions: header_actions(config, cwp.card.id, cwp.card.title),
+    header_actions: header_actions(config, cwp.card),
     footer_actions: [],
     root_attributes: [
       attribute.attribute("data-testid", "card-item"),
@@ -342,15 +342,11 @@ fn view_health_chip(
   |> signal_chip.view
 }
 
-fn header_actions(
-  config: KanbanConfig(msg),
-  card_id: Int,
-  card_title: String,
-) -> List(Element(msg)) {
+fn header_actions(config: KanbanConfig(msg), card: Card) -> List(Element(msg)) {
   let create_task_action =
     action_buttons.create_task_in_card_button(
-      i18n.t(config.locale, i18n_text.NewTaskInCard(card_title)),
-      config.on_create_task_in_card(card_id),
+      i18n.t(config.locale, i18n_text.NewTaskInCard(card.title)),
+      config.on_create_task_in_card(card.id),
     )
 
   case config.is_pm_or_admin {
@@ -358,16 +354,32 @@ fn header_actions(
       create_task_action,
       action_buttons.edit_button_with_size(
         i18n.t(config.locale, i18n_text.EditCardTooltip),
-        config.on_card_edit(card_id),
+        config.on_card_edit(card.id),
         action_buttons.SizeXs,
       ),
-      action_buttons.delete_button_with_size(
-        i18n.t(config.locale, i18n_text.DeleteCardTooltip),
-        config.on_card_delete(card_id),
-        action_buttons.SizeXs,
-      ),
+      delete_card_action(config, card),
     ]
     False -> [create_task_action]
+  }
+}
+
+fn delete_card_action(config: KanbanConfig(msg), card: Card) -> Element(msg) {
+  action_buttons.delete_button_with_availability_and_testid(
+    i18n.t(config.locale, i18n_text.DeleteCardTooltip),
+    config.on_card_delete(card.id),
+    card_delete_availability(config, card),
+    "kanban-card-delete-action",
+  )
+}
+
+fn card_delete_availability(
+  config: KanbanConfig(msg),
+  card: Card,
+) -> action_buttons.Availability {
+  case card.task_count > 0 {
+    True ->
+      action_buttons.Blocked(i18n.t(config.locale, i18n_text.CardDeleteBlocked))
+    False -> action_buttons.Available
   }
 }
 
