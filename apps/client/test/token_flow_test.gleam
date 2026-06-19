@@ -111,7 +111,7 @@ pub fn completed_success_moves_to_done_and_emits_action_test() {
   let #(model, _) = token_flow.init("token")
 
   let #(next, action) =
-    token_flow.update(model, token_flow.Completed(Ok(7)), default_error_state)
+    token_flow.update(model, token_flow.Finished(Ok(7)), default_error_state)
 
   let assert token_flow.Model(state: token_flow.Done, ..) = next
   let assert token_flow.Succeeded(7) = action
@@ -140,7 +140,7 @@ pub fn completed_error_uses_handler_and_sets_submit_error_test() {
   let err = ApiError(status: 403, code: "SUBMIT_FAILED", message: "Nope")
 
   let #(next, action) =
-    token_flow.update(model, token_flow.Completed(Error(err)), error_to_invalid)
+    token_flow.update(model, token_flow.Finished(Error(err)), error_to_invalid)
 
   let assert token_flow.Model(
     state: token_flow.Invalid(code: "SUBMIT_FAILED", message: "Nope"),

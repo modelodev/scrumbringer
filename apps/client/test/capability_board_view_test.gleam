@@ -1,6 +1,6 @@
 import domain/api_error.{ApiError}
 import domain/capability.{Capability}
-import domain/card.{Card, EnCurso}
+import domain/card.{Active, Card}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote
@@ -65,11 +65,11 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
       Card(
         id: 1,
         project_id: 1,
-        milestone_id: None,
+        parent_card_id: None,
         title: "Sprint",
         description: "",
         color: Some(card.Blue),
-        state: EnCurso,
+        state: Active,
         task_count: 3,
         completed_count: 0,
         created_by: 1,
@@ -123,7 +123,7 @@ fn task_with(
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -164,7 +164,7 @@ fn taken_task(id: Int, title: String, type_id: Int) -> Task {
 }
 
 fn completed_task(id: Int, title: String, type_id: Int) -> Task {
-  let state = task_state.Completed(completed_at: "2026-01-01T00:00:00Z")
+  let state = task_state.Done(completed_at: "2026-01-01T00:00:00Z")
   task_with(id, title, type_id, state)
 }
 
@@ -183,7 +183,7 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
         taken_task(2, "Frontend takeover", 1),
         claimed_task(3, "Backend API", 2),
         available_task(4, "Docs refresh", 3),
-        completed_task(5, "Completed task", 1),
+        completed_task(5, "Done task", 1),
       ]),
     )
     |> capability_board.view
@@ -212,7 +212,7 @@ pub fn capability_board_groups_active_tasks_into_three_columns_test() {
   assert_contains(html, "Frontend takeover")
   assert_contains(html, "Backend API")
   assert_contains(html, "Docs refresh")
-  assert_not_contains(html, "Completed task")
+  assert_not_contains(html, "Done task")
   assert_contains(html, "task-item card-border-blue")
   assert_contains(html, "task-card-identity-swatch")
   assert_contains(html, "title=\"Sprint\"")

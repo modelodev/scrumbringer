@@ -1,7 +1,7 @@
 # API tokens Bearer
 
 ScrumBringer permite que sistemas externos usen tokens Bearer para consultar y
-operar sobre proyectos, tasks, cards, notes y milestones sin depender de la
+operar sobre proyectos, tasks, cards, notes y card trees sin depender de la
 sesion web del navegador.
 
 ## Modelo
@@ -42,8 +42,8 @@ Scopes disponibles:
 - `cards:write`
 - `notes:read`
 - `notes:write`
-- `milestones:read`
-- `milestones:write`
+- `card trees:read`
+- `card trees:write`
 
 Administracion y workflows no estan disponibles mediante Bearer en la primera
 version.
@@ -132,12 +132,12 @@ curl -fsS \
   "$BASE_URL/api/v1/tasks/$TASK_ID/notes"
 ```
 
-Listar milestones:
+Listar card trees:
 
 ```bash
 curl -fsS \
   -H "Authorization: Bearer $TOKEN" \
-  "$BASE_URL/api/v1/projects/$PROJECT_ID/milestones"
+  "$BASE_URL/api/v1/projects/$PROJECT_ID/card trees"
 ```
 
 ## Auditoria

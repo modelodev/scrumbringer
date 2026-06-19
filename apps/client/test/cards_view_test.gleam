@@ -8,7 +8,7 @@
 import gleam/list
 import gleam/option
 
-import domain/card.{Cerrada, EnCurso, Pendiente, all_colors}
+import domain/card.{Active, Closed, Draft, all_colors}
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 
@@ -105,26 +105,26 @@ pub fn initials_class_none_test() {
 // =============================================================================
 
 pub fn derive_state_no_tasks_pendiente_test() {
-  let assert Pendiente = card.derive_state(0, 0, 0)
+  let assert Draft = card.derive_state(0, 0, 0)
 }
 
 pub fn derive_state_all_completed_cerrada_test() {
-  let assert Cerrada = card.derive_state(3, 3, 0)
+  let assert Closed = card.derive_state(3, 3, 0)
 }
 
 pub fn derive_state_some_claimed_en_curso_test() {
   // 3 tasks, 1 completed, 1 available (means 1 claimed/ongoing)
-  let assert EnCurso = card.derive_state(3, 1, 1)
+  let assert Active = card.derive_state(3, 1, 1)
 }
 
 pub fn derive_state_all_available_pendiente_test() {
   // 3 tasks, 0 completed, 3 available
-  let assert Pendiente = card.derive_state(3, 0, 3)
+  let assert Draft = card.derive_state(3, 0, 3)
 }
 
 pub fn derive_state_one_completed_en_curso_test() {
   // 5 tasks, 1 completed, 2 available (means 2 claimed/ongoing)
-  let assert EnCurso = card.derive_state(5, 1, 2)
+  let assert Active = card.derive_state(5, 1, 2)
 }
 
 // =============================================================================
@@ -132,30 +132,30 @@ pub fn derive_state_one_completed_en_curso_test() {
 // =============================================================================
 
 pub fn state_to_string_pendiente_test() {
-  let assert "pendiente" = card.state_to_string(Pendiente)
+  let assert "pendiente" = card.state_to_string(Draft)
 }
 
 pub fn state_to_string_en_curso_test() {
-  let assert "en_curso" = card.state_to_string(EnCurso)
+  let assert "en_curso" = card.state_to_string(Active)
 }
 
 pub fn state_to_string_cerrada_test() {
-  let assert "cerrada" = card.state_to_string(Cerrada)
+  let assert "cerrada" = card.state_to_string(Closed)
 }
 
 pub fn state_from_string_pendiente_test() {
-  let assert Ok(Pendiente) = card.state_from_string("pendiente")
+  let assert Ok(Draft) = card.state_from_string("pendiente")
 }
 
 pub fn state_from_string_en_curso_test() {
-  let assert Ok(EnCurso) = card.state_from_string("en_curso")
+  let assert Ok(Active) = card.state_from_string("en_curso")
 }
 
 pub fn state_from_string_cerrada_test() {
-  let assert Ok(Cerrada) = card.state_from_string("cerrada")
+  let assert Ok(Closed) = card.state_from_string("cerrada")
 }
 
 pub fn state_from_string_invalid_returns_error_test() {
-  let assert Error(card.UnknownCardState("invalid")) =
+  let assert Error(card.UnknownCardPhase("invalid")) =
     card.state_from_string("invalid")
 }

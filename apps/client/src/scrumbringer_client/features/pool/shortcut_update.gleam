@@ -9,7 +9,6 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
-import scrumbringer_client/features/milestones/dialog_update as milestone_dialog_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/preferences as pool_preferences
 import scrumbringer_client/pool_prefs
@@ -105,12 +104,10 @@ fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {
 fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
   case
     model.pool.member_create_dialog_mode,
-    model.pool.member_milestone_dialog,
     opt.is_some(model.notes.member_notes_task_id),
-    opt.is_some(model.positions.member_position_edit_task),
-    is_closable_milestone_dialog(model.pool.member_milestone_dialog)
+    opt.is_some(model.positions.member_position_edit_task)
   {
-    dialog_mode.DialogCreate, _, _, _, _ -> #(
+    dialog_mode.DialogCreate, _, _ -> #(
       Model(
         ..model,
         pool: member_pool.Model(
@@ -120,19 +117,14 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, _, _, _, True -> {
-      let #(pool, fx) =
-        milestone_dialog_update.handle_milestone_dialog_closed(model.pool)
-      #(Model(..model, pool: pool), fx)
-    }
-    _, _, True, _, _ -> #(
+    _, True, _ -> #(
       Model(
         ..model,
         notes: member_notes.Model(..model.notes, member_notes_task_id: opt.None),
       ),
       effect.none(),
     )
-    _, _, _, True, _ -> #(
+    _, _, True -> #(
       Model(
         ..model,
         positions: member_positions.Model(
@@ -143,16 +135,7 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, _, _, _, _ -> #(model, effect.none())
-  }
-}
-
-fn is_closable_milestone_dialog(dialog: member_pool.MilestoneDialog) -> Bool {
-  case dialog {
-    member_pool.MilestoneDialogActivate(_) -> True
-    member_pool.MilestoneDialogEdit(..) -> True
-    member_pool.MilestoneDialogDelete(..) -> True
-    _ -> False
+    _, _, _ -> #(model, effect.none())
   }
 }
 

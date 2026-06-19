@@ -134,7 +134,7 @@ fn dependency_row(config: Config(msg), dep: TaskDependency) -> Element(msg) {
   let status_label = task_state.label(config.locale, status)
 
   let status_note = case status {
-    task_status.Completed -> status_label
+    task_status.Done -> status_label
     task_status.Claimed(_) ->
       case claimed_by {
         opt.Some(email) -> t(config, i18n_text.ClaimedBy) <> " " <> email
@@ -144,7 +144,7 @@ fn dependency_row(config: Config(msg), dep: TaskDependency) -> Element(msg) {
   }
 
   let icon = case status {
-    task_status.Completed -> icons.nav_icon(icons.CheckCircle, icons.Small)
+    task_status.Done -> icons.nav_icon(icons.CheckCircle, icons.Small)
     _ -> icons.nav_icon(icons.Warning, icons.Small)
   }
 
@@ -236,7 +236,7 @@ fn filtered_candidates(
     Loaded(tasks) -> {
       let candidates =
         list.filter(tasks, fn(task) {
-          task.id != current_task_id && task.status != task_status.Completed
+          task.id != current_task_id && task.status != task_status.Done
         })
 
       case string.is_empty(query) {

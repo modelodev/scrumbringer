@@ -44,7 +44,7 @@ pub fn from_db_ongoing_test() {
 }
 
 pub fn from_db_completed_test() {
-  let assert Ok(task_state.Completed("2026-01-01T00:00:00Z")) =
+  let assert Ok(task_state.Done("2026-01-01T00:00:00Z")) =
     task_state.from_db(
       "completed",
       False,
@@ -60,7 +60,7 @@ pub fn from_db_rejects_unknown_status_test() {
 }
 
 pub fn from_db_rejects_completed_with_claim_test() {
-  let assert Error(task_state.CompletedWithClaim) =
+  let assert Error(task_state.DoneWithClaim) =
     task_state.from_db(
       "completed",
       False,

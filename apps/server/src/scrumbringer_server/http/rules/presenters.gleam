@@ -3,7 +3,7 @@
 import domain/workflow
 import gleam/json
 import helpers/json as json_helpers
-import scrumbringer_server/services/rules_db
+import scrumbringer_server/use_case/rules_db
 
 pub fn rules_response(values: List(json.Json)) -> json.Json {
   json.object([#("rules", json.preprocessed_array(values))])

@@ -3,8 +3,8 @@
 import domain/project.{type ProjectDepthName, ProjectDepthName}
 import domain/project_role
 import gleam/json
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/projects_db
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/projects_db
 
 pub fn projects(projects: List(projects_db.ProjectRecord)) -> json.Json {
   json.array(projects, of: project)

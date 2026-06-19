@@ -34,13 +34,13 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, type CardNote, CardNote, Cerrada}
-import domain/card/codec as card_codec
+import domain/card.{type Card, type CardNote, CardNote, Closed}
+import domain/card/card_codec
 import domain/metrics.{type CardModalMetrics}
 import domain/task.{type Task, claimed_by}
-import domain/task/codec as task_codec
+import domain/task/task_codec
 import domain/task_state
-import domain/task_status.{Available, Completed}
+import domain/task_status.{Available, Done}
 
 import domain/api_error.{type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
@@ -260,8 +260,8 @@ fn task_decoder() -> Decoder(Task) {
     decode.optional(decode.string),
   )
   use version <- decode.field("version", decode.int)
-  use milestone_id <- decode.optional_field(
-    "milestone_id",
+  use parent_card_id <- decode.optional_field(
+    "parent_card_id",
     option.None,
     decode.optional(decode.int),
   )
@@ -314,7 +314,7 @@ fn task_decoder() -> Decoder(Task) {
     created_at: created_at,
     due_date: due_date,
     version: version,
-    milestone_id: milestone_id,
+    parent_card_id: parent_card_id,
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
@@ -821,7 +821,7 @@ fn view_create_task_action(
 }
 
 fn view_move_action(card: Card) -> Element(Msg) {
-  case card.state == Cerrada {
+  case card.state == Closed {
     True -> element.none()
     False ->
       ui_button.icon_text(
@@ -1074,7 +1074,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
 
 fn view_task_status(task: Task) -> Element(Msg) {
   let status_icon = case task.status {
-    Completed -> "\u{2705}"
+    Done -> "\u{2705}"
     task_status.Claimed(_) -> "\u{1F7E1}"
     Available -> "\u{26AA}"
   }
@@ -1260,7 +1260,7 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
               int.to_string(metrics.tasks_total),
             ),
             detail_metrics.view_row(
-              t(model.locale, i18n_text.MetricsTasksCompleted),
+              t(model.locale, i18n_text.MetricsTasksDone),
               int.to_string(metrics.tasks_completed),
             ),
             detail_metrics.view_row(
@@ -1299,7 +1299,7 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
                 badge.Warning,
               ),
               badge.quick(
-                t(model.locale, i18n_text.MetricsTasksCompleted)
+                t(model.locale, i18n_text.MetricsTasksDone)
                   <> ": "
                   <> int.to_string(metrics.tasks_completed),
                 badge.Success,

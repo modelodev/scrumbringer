@@ -5,7 +5,7 @@ import gleam/option.{type Option, None, Some}
 
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, Task}
-import domain/task_status.{Completed}
+import domain/task_status.{Done}
 
 pub fn incomplete_dependencies(task: Task) -> List(TaskDependency) {
   let Task(dependencies: dependencies, ..) = task
@@ -40,7 +40,7 @@ pub fn hidden_count(tasks: Remote(List(Task)), blocker_ids: List(Int)) -> Int {
 }
 
 fn is_incomplete(dep: TaskDependency) -> Bool {
-  dep.status != Completed
+  dep.status != Done
 }
 
 fn visible_count(tasks: Remote(List(Task)), blocker_ids: List(Int)) -> Int {

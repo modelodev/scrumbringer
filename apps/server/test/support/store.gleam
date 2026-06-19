@@ -7,8 +7,8 @@ import gleam/erlang/process
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/result
-import scrumbringer_server/services/auth_logic
-import scrumbringer_server/services/store_state as ss
+import scrumbringer_server/use_case/auth_logic
+import scrumbringer_server/use_case/store_state as ss
 
 /// Opaque store handle wrapping an actor subject.
 pub opaque type Store {

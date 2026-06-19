@@ -34,10 +34,10 @@ import lustre/element/html.{
 import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/task/codec as task_codec
+import domain/task/task_codec
 import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows/task_templates as api_task_templates
 import scrumbringer_client/components/crud_dialog_base

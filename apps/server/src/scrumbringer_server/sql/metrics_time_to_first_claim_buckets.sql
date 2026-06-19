@@ -3,7 +3,7 @@ with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
-  from task_events
+  from audit_events
   where org_id = $1
     and event_type = 'task_claimed'
     and created_at >= now() - ($2 || ' days')::interval

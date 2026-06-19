@@ -8,7 +8,7 @@ import gleam/result
 import pog
 
 import domain/task.{type Task, type TaskDependency, TaskDependency}
-import domain/task_status.{Completed}
+import domain/task_status.{Done}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
@@ -17,10 +17,10 @@ import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/tasks/payload_responses
 import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/service_error
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/task_dependencies_db
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/task_dependencies_db
 import wisp
 
 pub fn handle_task_dependencies(
@@ -273,7 +273,7 @@ fn require_dependency_not_completed(
   depends_on_task: Task,
 ) -> Result(Nil, wisp.Response) {
   case depends_on_task.status {
-    Completed ->
+    Done ->
       Error(api.error(
         422,
         "VALIDATION_ERROR",

@@ -2,13 +2,13 @@ import gleam/json
 import gleam/option.{None, Some}
 
 import domain/task.{Task, TaskDependency}
-import domain/task/codec
+import domain/task/task_codec as codec
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 
 pub fn task_due_date_roundtrip_test() {
   let body =
-    "{\"id\":42,\"project_id\":1,\"type_id\":2,\"task_type\":{\"id\":2,\"name\":\"Feature\",\"icon\":\"sparkles\"},\"ongoing_by\":null,\"title\":\"Ship deadline\",\"description\":null,\"priority\":3,\"status\":\"available\",\"created_by\":7,\"claimed_by\":null,\"claimed_at\":null,\"completed_at\":null,\"created_at\":\"2026-06-18T10:00:00Z\",\"version\":1,\"milestone_id\":null,\"card_id\":null,\"card_title\":null,\"card_color\":null,\"due_date\":\"2026-06-20\",\"has_new_notes\":false,\"blocked_count\":0,\"dependencies\":[]}"
+    "{\"id\":42,\"project_id\":1,\"type_id\":2,\"task_type\":{\"id\":2,\"name\":\"Feature\",\"icon\":\"sparkles\"},\"ongoing_by\":null,\"title\":\"Ship deadline\",\"description\":null,\"priority\":3,\"status\":\"available\",\"created_by\":7,\"claimed_by\":null,\"claimed_at\":null,\"completed_at\":null,\"created_at\":\"2026-06-18T10:00:00Z\",\"version\":1,\"parent_card_id\":null,\"card_id\":null,\"card_title\":null,\"card_color\":null,\"due_date\":\"2026-06-20\",\"has_new_notes\":false,\"blocked_count\":0,\"dependencies\":[]}"
 
   let assert Ok(Task(
     id: 42,

@@ -14,9 +14,9 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Password hashing (see `services/password.gleam`)
-//// - JWT operations (see `services/jwt.gleam`)
-//// - Database operations (see `persistence/auth/`)
+//// - Password hashing (see `use_case/password.gleam`)
+//// - JWT operations (see `use_case/jwt.gleam`)
+//// - Database operations (see `repository/auth/`)
 
 import domain/api_token_scope
 import gleam/bit_array
@@ -36,15 +36,15 @@ import scrumbringer_server/http/auth/scopes
 import scrumbringer_server/http/client_ip
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/json_payload
-import scrumbringer_server/persistence/auth/login as auth_login
-import scrumbringer_server/persistence/auth/registration as auth_registration
-import scrumbringer_server/services/api_tokens
-import scrumbringer_server/services/auth_logic
-import scrumbringer_server/services/jwt
-import scrumbringer_server/services/org_invite_links_db
-import scrumbringer_server/services/rate_limit
-import scrumbringer_server/services/store_state
-import scrumbringer_server/services/time
+import scrumbringer_server/repository/auth/login as auth_login
+import scrumbringer_server/repository/auth/registration as auth_registration
+import scrumbringer_server/use_case/api_tokens
+import scrumbringer_server/use_case/auth_logic
+import scrumbringer_server/use_case/jwt
+import scrumbringer_server/use_case/org_invite_links_db
+import scrumbringer_server/use_case/rate_limit
+import scrumbringer_server/use_case/store_state
+import scrumbringer_server/use_case/time
 import wisp
 
 /// Context shared by auth HTTP handlers (DB + JWT secret).

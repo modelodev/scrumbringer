@@ -2,7 +2,7 @@
 
 import gleam/json
 import helpers/json as json_helpers
-import scrumbringer_server/services/org_invite_links_db
+import scrumbringer_server/use_case/org_invite_links_db
 
 pub fn links(links: List(org_invite_links_db.OrgInviteLink)) -> json.Json {
   json.array(links, of: link)

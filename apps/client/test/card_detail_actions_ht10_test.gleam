@@ -3,8 +3,8 @@ import gleam/option as opt
 import gleam/string
 import lustre/element
 
-import domain/card.{type Card, type CardState, Card, Cerrada, EnCurso, Pendiente}
-import domain/remote.{Loaded, NotAsked}
+import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
+import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
@@ -16,11 +16,11 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
-fn card(id: Int, parent_id: opt.Option(Int), state: CardState) -> Card {
+fn card(id: Int, parent_id: opt.Option(Int), state: CardPhase) -> Card {
   Card(
     id: id,
     project_id: 7,
-    milestone_id: parent_id,
+    parent_card_id: parent_id,
     title: "Card " <> int.to_string(id),
     description: "",
     color: opt.None,
@@ -52,7 +52,7 @@ fn task(id: Int, card_id: opt.Option(Int), created_by: Int) -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,
     version: 1,
-    milestone_id: opt.None,
+    parent_card_id: opt.None,
     card_id: card_id,
     card_title: opt.None,
     card_color: opt.None,
@@ -81,10 +81,8 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
     priority: "3",
     type_id: "1",
     card_id: card_id,
-    milestone_id: opt.None,
     in_flight: False,
     task_types: Loaded([task_type()]),
-    milestones: NotAsked,
     cards: cards,
     on_close: "close",
     on_submit: "submit",
@@ -99,15 +97,15 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
 
 pub fn empty_card_detail_offers_create_card_or_task_test() {
   let policy =
-    detail_policy.policy_for(card(1, opt.None, Pendiente), [], [], True, True)
+    detail_policy.policy_for(card(1, opt.None, Draft), [], [], True, True)
 
   let assert True = policy.can_create_card
   let assert True = policy.can_create_task
 }
 
 pub fn card_group_detail_offers_create_card_only_test() {
-  let parent = card(1, opt.None, Pendiente)
-  let child = card(2, opt.Some(1), Pendiente)
+  let parent = card(1, opt.None, Draft)
+  let child = card(2, opt.Some(1), Draft)
   let policy = detail_policy.policy_for(parent, [child], [], True, True)
 
   let assert True = policy.can_create_card
@@ -115,7 +113,7 @@ pub fn card_group_detail_offers_create_card_only_test() {
 }
 
 pub fn task_group_detail_offers_create_task_only_test() {
-  let parent = card(1, opt.None, Pendiente)
+  let parent = card(1, opt.None, Draft)
   let policy =
     detail_policy.policy_for(parent, [], [task(9, opt.Some(1), 4)], True, True)
 
@@ -134,9 +132,7 @@ pub fn pool_create_task_explains_root_pool_manage_flow_impact_test() {
 
 pub fn draft_card_create_task_does_not_auto_claim_test() {
   let html =
-    create_dialog.view(
-      create_config(opt.Some(1), [card(1, opt.None, Pendiente)]),
-    )
+    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
     |> element.to_document_string
 
   assert_contains(html, "will not be auto-claimed")
@@ -144,9 +140,7 @@ pub fn draft_card_create_task_does_not_auto_claim_test() {
 
 pub fn draft_card_create_task_explains_prepared_until_activation_test() {
   let html =
-    create_dialog.view(
-      create_config(opt.Some(1), [card(1, opt.None, Pendiente)]),
-    )
+    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
     |> element.to_document_string
 
   assert_contains(html, "prepared until this card is activated")
@@ -154,7 +148,7 @@ pub fn draft_card_create_task_explains_prepared_until_activation_test() {
 
 pub fn active_card_create_task_adds_task_to_pool_test() {
   let html =
-    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, EnCurso)]))
+    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
   assert_contains(html, "enter the Pool")
@@ -162,18 +156,18 @@ pub fn active_card_create_task_adds_task_to_pool_test() {
 
 pub fn active_card_create_task_explains_pool_entry_test() {
   let html =
-    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, EnCurso)]))
+    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
   assert_contains(html, "available for someone with the matching capability")
 }
 
 pub fn move_card_dialog_lists_only_valid_same_level_destinations_test() {
-  let moving = card(3, opt.Some(1), Pendiente)
-  let root = card(1, opt.None, Pendiente)
-  let valid_parent = card(2, opt.None, Pendiente)
-  let too_deep = card(4, opt.Some(2), Pendiente)
-  let task_group = Card(..card(5, opt.None, Pendiente), task_count: 1)
+  let moving = card(3, opt.Some(1), Draft)
+  let root = card(1, opt.None, Draft)
+  let valid_parent = card(2, opt.None, Draft)
+  let too_deep = card(4, opt.Some(2), Draft)
+  let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
 
   let options =
     detail_policy.move_destinations(moving, [
@@ -190,7 +184,7 @@ pub fn move_card_dialog_lists_only_valid_same_level_destinations_test() {
 pub fn delete_disabled_when_card_has_operational_history_test() {
   let policy =
     detail_policy.policy_for(
-      Card(..card(1, opt.None, Pendiente), task_count: 1),
+      Card(..card(1, opt.None, Draft), task_count: 1),
       [],
       [task(9, opt.Some(1), 4)],
       True,
@@ -204,7 +198,7 @@ pub fn delete_disabled_when_card_has_operational_history_test() {
 
 pub fn closed_card_detail_disables_create_actions_with_reason_test() {
   let policy =
-    detail_policy.policy_for(card(1, opt.None, Cerrada), [], [], True, True)
+    detail_policy.policy_for(card(1, opt.None, Closed), [], [], True, True)
 
   let assert False = policy.can_create_card
   let assert False = policy.can_create_task
@@ -213,8 +207,8 @@ pub fn closed_card_detail_disables_create_actions_with_reason_test() {
 }
 
 pub fn move_card_dialog_explains_invalid_destinations_test() {
-  let moving = card(3, opt.Some(1), Pendiente)
-  let task_group = Card(..card(5, opt.None, Pendiente), task_count: 1)
+  let moving = card(3, opt.Some(1), Draft)
+  let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
   let explanation =
     detail_policy.invalid_move_explanation(moving, task_group, [])
 

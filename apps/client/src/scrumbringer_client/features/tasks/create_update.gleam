@@ -255,7 +255,6 @@ fn submit_create(
       submission.priority,
       submission.type_id,
       submission.card_id,
-      submission.milestone_id,
       context.on_task_created,
     ),
   )

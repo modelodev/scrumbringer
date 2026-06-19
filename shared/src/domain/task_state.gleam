@@ -9,23 +9,23 @@ import gleam/option.{type Option, None, Some}
 pub type TaskState {
   Available
   Claimed(claimed_by: Int, claimed_at: String, mode: status.ClaimedState)
-  Completed(completed_at: String)
+  Done(completed_at: String)
 }
 
 pub type TaskStateError {
   ClaimedMissingUser
   ClaimedMissingAt
-  CompletedMissingAt
-  CompletedWithClaim
+  DoneMissingAt
+  DoneWithClaim
   AvailableWithClaim
   UnknownStatus(String)
 }
 
-pub fn to_status(state: TaskState) -> status.TaskStatus {
+pub fn to_status(state: TaskState) -> status.TaskPhase {
   case state {
     Available -> status.Available
     Claimed(mode: mode, ..) -> status.Claimed(mode)
-    Completed(completed_at: _) -> status.Completed
+    Done(completed_at: _) -> status.Done
   }
 }
 
@@ -34,7 +34,7 @@ pub fn to_work_state(state: TaskState) -> status.WorkState {
     Available -> status.WorkAvailable
     Claimed(mode: status.Taken, ..) -> status.WorkClaimed
     Claimed(mode: status.Ongoing, ..) -> status.WorkOngoing
-    Completed(completed_at: _) -> status.WorkCompleted
+    Done(completed_at: _) -> status.WorkDone
   }
 }
 
@@ -54,7 +54,7 @@ pub fn claimed_at(state: TaskState) -> Option(String) {
 
 pub fn completed_at(state: TaskState) -> Option(String) {
   case state {
-    Completed(completed_at: at) -> Some(at)
+    Done(completed_at: at) -> Some(at)
     _ -> None
   }
 }
@@ -88,9 +88,9 @@ pub fn from_db(
 
     "completed" ->
       case claimed_by, completed_at {
-        Some(_), _ -> Error(CompletedWithClaim)
-        None, Some(at) -> Ok(Completed(completed_at: at))
-        None, None -> Error(CompletedMissingAt)
+        Some(_), _ -> Error(DoneWithClaim)
+        None, Some(at) -> Ok(Done(completed_at: at))
+        None, None -> Error(DoneMissingAt)
       }
 
     other -> Error(UnknownStatus(other))
@@ -109,6 +109,6 @@ pub fn to_db(
       Some(at),
       None,
     )
-    Completed(completed_at: at) -> #("completed", False, None, None, Some(at))
+    Done(completed_at: at) -> #("completed", False, None, None, Some(at))
   }
 }

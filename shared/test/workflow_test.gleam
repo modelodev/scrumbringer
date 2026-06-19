@@ -5,12 +5,12 @@ import domain/task_status
 import domain/workflow
 
 pub fn parse_rule_target_returns_typed_task_target_test() {
-  let assert Ok(workflow.TaskRule(task_status.Completed, Some(1))) =
+  let assert Ok(workflow.TaskRule(task_status.Done, Some(1))) =
     workflow.parse_rule_target("task", Some(1), "completed")
 }
 
 pub fn parse_rule_target_returns_typed_card_target_test() {
-  let assert Ok(workflow.CardRule(card.Cerrada)) =
+  let assert Ok(workflow.CardRule(card.Closed)) =
     workflow.parse_rule_target("card", None, "cerrada")
 }
 

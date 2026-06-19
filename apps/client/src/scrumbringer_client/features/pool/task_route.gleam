@@ -502,7 +502,7 @@ pub fn mutation_context(
       client_state.pool_msg(pool_messages.MemberTaskReleased(result))
     },
     on_task_completed: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskCompleted(result))
+      client_state.pool_msg(pool_messages.MemberTaskDone(result))
     },
   )
 }
@@ -513,7 +513,7 @@ fn task_mutation_success_context(
   task_mutation_update.Context(
     task_claimed: i18n.t(model.ui.locale, i18n_text.TaskClaimed),
     task_released: i18n.t(model.ui.locale, i18n_text.TaskReleased),
-    task_completed: i18n.t(model.ui.locale, i18n_text.TaskCompleted),
+    task_completed: i18n.t(model.ui.locale, i18n_text.TaskDone),
     on_success_toast: app_effects.toast_success,
     on_work_sessions_refetch: refetch_work_sessions_effect,
   )

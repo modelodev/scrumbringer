@@ -28,7 +28,7 @@ pub fn completed_task_is_read_only_for_claimant_test() {
   let assert False =
     detail_permissions.can_edit(
       Some(7),
-      task(task_state.Completed("2026-06-14T12:00:00Z")),
+      task(task_state.Done("2026-06-14T12:00:00Z")),
     )
 }
 
@@ -57,7 +57,7 @@ fn task(state: task_state.TaskState) -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

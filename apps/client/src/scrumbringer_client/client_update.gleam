@@ -41,7 +41,6 @@ import scrumbringer_client/assignments_view_mode
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
@@ -59,7 +58,6 @@ import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
-import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
 import scrumbringer_client/token_flow
 import scrumbringer_client/ui/toast
@@ -91,7 +89,6 @@ import scrumbringer_client/features/auth/root_context as auth_context
 import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
-import scrumbringer_client/features/milestones/refresh as milestone_refresh
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
@@ -748,7 +745,7 @@ fn handle_auth_action(
         replace_url_fn,
       )
 
-    auth_workflow.PasswordResetCompleted -> {
+    auth_workflow.PasswordResetDone -> {
       let model =
         client_state.update_core(model, fn(core) {
           client_state.CoreModel(..core, page: client_state.Login)
@@ -1608,9 +1605,6 @@ fn reset_member_tasks(
           member_task_types: NotAsked,
           member_task_types_pending: 0,
           member_task_types_by_project: dict.new(),
-          member_milestones_store: normalized_store.new(),
-          member_milestones: NotAsked,
-          member_milestone_activate_in_flight_id: opt.None,
           people_roster: NotAsked,
           people_expansions: dict.new(),
         ),
@@ -1664,16 +1658,6 @@ fn refresh_member_data(
       })
     })
 
-  let member_milestone_effects =
-    list.map(project_ids, fn(project_id) {
-      api_milestones.list_milestones(project_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberProjectMilestonesFetched(
-          project_id,
-          result,
-        ))
-      })
-    })
-
   let roster_project_id = case model.core.selected_project_id, project_ids {
     opt.Some(project_id), _ -> opt.Some(project_id)
     opt.None, [project_id, ..] -> opt.Some(project_id)
@@ -1705,7 +1689,7 @@ fn refresh_member_data(
         task_type_effects,
         list.append(
           [positions_effect, roster_effect, org_users_effect],
-          list.append(member_card_effects, member_milestone_effects),
+          member_card_effects,
         ),
       ),
     )
@@ -1736,14 +1720,6 @@ fn refresh_member_data(
             list.length(project_ids),
           ),
           member_cards: card_refresh.loading_unless_loaded(pool.member_cards),
-          member_milestones_store: milestone_refresh.mark_pending(
-            pool.member_milestones_store,
-            list.length(project_ids),
-          ),
-          member_milestones: milestone_refresh.loading_unless_loaded(
-            pool.member_milestones,
-          ),
-          member_milestone_activate_in_flight_id: opt.None,
         ),
       )
     })

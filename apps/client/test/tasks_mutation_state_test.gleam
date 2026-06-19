@@ -25,7 +25,7 @@ fn sample_task(id: Int, state: task_state.TaskState) -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -98,7 +98,7 @@ pub fn mutation_state_start_complete_sets_completed_state_test() {
 
   let next = mutation_state.start_complete(pool_with_tasks([task]), 42)
   let expected =
-    remote.Loaded([sample_task(42, task_state.Completed(completed_at: ""))])
+    remote.Loaded([sample_task(42, task_state.Done(completed_at: ""))])
 
   let assert True = next.member_tasks == expected
   let assert True = next.member_task_mutation_in_flight

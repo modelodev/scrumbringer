@@ -29,9 +29,9 @@ import scrumbringer_client/client_ffi
 
 // Import types from shared domain
 import domain/capability.{type Capability}
-import domain/capability/codec as capability_codec
+import domain/capability/capability_codec
 import domain/org.{type InviteLink, type OrgInvite, type OrgUser}
-import domain/org/codec as org_codec
+import domain/org/org_codec
 import domain/org_role
 import domain/project_role.{type ProjectRole}
 
@@ -112,7 +112,7 @@ pub fn delete_org_user(
 // =============================================================================
 
 import domain/project.{type Project}
-import domain/project/codec as project_codec
+import domain/project/project_codec
 
 /// List projects that a user is a member of.
 pub fn list_user_projects(

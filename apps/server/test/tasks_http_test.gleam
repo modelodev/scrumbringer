@@ -678,7 +678,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   |> expect.is_true
 }
 
-pub fn task_events_persist_for_lifecycle_actions_test() {
+pub fn audit_events_persist_for_lifecycle_actions_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -705,19 +705,19 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  count_task_events(db, task_id, "task_created") |> expect.equal(1)
-  count_task_events_for_actor(db, task_id, admin_id, "task_created")
+  count_audit_events(db, task_id, "task_created") |> expect.equal(1)
+  count_audit_events_for_actor(db, task_id, admin_id, "task_created")
   |> expect.equal(1)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  count_task_events(db, task_id, "task_claimed") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_claimed") |> expect.equal(1)
 
   release_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
-  count_task_events(db, task_id, "task_released") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_released") |> expect.equal(1)
 
   claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
   complete_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
-  count_task_events(db, task_id, "task_completed") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_completed") |> expect.equal(1)
 }
 
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
@@ -1156,9 +1156,9 @@ pub fn task_dependencies_reject_completed_dependency_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Deps Completed")
+  create_project(handler, session, csrf, "Deps Done")
   let project_id =
-    single_int(db, "select id from projects where name = 'Deps Completed'", [])
+    single_int(db, "select id from projects where name = 'Deps Done'", [])
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1180,16 +1180,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       type_id,
     )
   let task_completed =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Task Completed",
-      "",
-      1,
-      type_id,
-    )
+    create_task(handler, session, csrf, project_id, "Task Done", "", 1, type_id)
 
   let claim_status =
     claim_task(
@@ -1284,11 +1275,11 @@ pub fn blocked_task_claim_succeeds_after_dependency_completed_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Blocked Claim Completed")
+  create_project(handler, session, csrf, "Blocked Claim Done")
   let project_id =
     single_int(
       db,
-      "select id from projects where name = 'Blocked Claim Completed'",
+      "select id from projects where name = 'Blocked Claim Done'",
       [],
     )
 
@@ -2161,16 +2152,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     )
 
   let completed_id =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Completed",
-      "",
-      3,
-      bug_type_id,
-    )
+    create_task(handler, session, csrf, project_id, "Done", "", 3, bug_type_id)
 
   claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
   claim_task(handler, session, csrf, completed_id, 1) |> expect.equal(200)
@@ -2222,7 +2204,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(completed_res, 200)
   decode_task_titles(simulate.read_body(completed_res))
-  |> expect.equal(["Completed"])
+  |> expect.equal(["Done"])
 
   let type_res =
     handler(
@@ -2239,7 +2221,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(type_res, 200)
   decode_task_titles(simulate.read_body(type_res))
-  |> expect.equal(["Completed", "Available"])
+  |> expect.equal(["Done", "Available"])
 
   let invalid_status_res =
     handler(
@@ -2872,19 +2854,19 @@ fn task_version(db: pog.Connection, task_id: Int) -> Int {
   single_int(db, "select version from tasks where id = $1", [pog.int(task_id)])
 }
 
-fn count_task_events(
+fn count_audit_events(
   db: pog.Connection,
   task_id: Int,
   event_type: String,
 ) -> Int {
   single_int(
     db,
-    "select count(*) from task_events where task_id = $1 and event_type = $2",
+    "select count(*) from audit_events where task_id = $1 and event_type = $2",
     [pog.int(task_id), pog.text(event_type)],
   )
 }
 
-fn count_task_events_for_actor(
+fn count_audit_events_for_actor(
   db: pog.Connection,
   task_id: Int,
   actor_user_id: Int,
@@ -2892,7 +2874,7 @@ fn count_task_events_for_actor(
 ) -> Int {
   single_int(
     db,
-    "select count(*) from task_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
+    "select count(*) from audit_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
     [pog.int(task_id), pog.int(actor_user_id), pog.text(event_type)],
   )
 }

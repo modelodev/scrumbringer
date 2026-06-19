@@ -2,8 +2,8 @@ import domain/org_role
 import gleam/bit_array
 import gleam/crypto
 import gleam/json
-import scrumbringer_server/services/jwt
-import scrumbringer_server/services/time
+import scrumbringer_server/use_case/jwt
+import scrumbringer_server/use_case/time
 import support/assertions as expect
 
 const secret_a = <<"secret-a":utf8>>

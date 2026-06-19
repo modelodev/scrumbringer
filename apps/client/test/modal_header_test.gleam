@@ -88,7 +88,7 @@ pub fn renders_icon_when_provided_test() {
 
 pub fn renders_badges_when_provided_test() {
   // Given: Config with badges
-  let badge = span([], [text("Pendiente")])
+  let badge = span([], [text("Draft")])
   let config = Config(..default_config(), badges: [badge])
 
   // When: Render
@@ -96,7 +96,7 @@ pub fn renders_badges_when_provided_test() {
 
   // Then: Badges container is present
   assert_contains(html, "modal-header-badges")
-  assert_contains(html, "Pendiente")
+  assert_contains(html, "Draft")
 }
 
 pub fn hides_badges_when_empty_test() {

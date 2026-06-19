@@ -43,7 +43,7 @@ pub fn view_workflows(
   empty_label: String,
   workflows: List(metrics.WorkflowBreakdown),
 ) -> Element(msg) {
-  div([attribute.class("milestone-workflows")], [
+  div([attribute.class("card_tree-workflows")], [
     span([attribute.class("detail-label")], [text(label)]),
     div([attribute.class("metrics-workflow-list")], [
       case workflows {

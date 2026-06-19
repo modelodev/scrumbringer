@@ -39,7 +39,7 @@ import domain/workflow.{
   type Rule, type TaskTemplate, type Workflow, rule_resource_type,
   rule_task_type_id, rule_to_state_string,
 }
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules

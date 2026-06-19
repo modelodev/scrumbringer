@@ -6,7 +6,7 @@ import domain/card.{type Card, type CardColor}
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type WorkSession, WorkSession}
 import domain/task_state
-import domain/task_status.{Completed, Taken}
+import domain/task_status.{Done, Taken}
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/helpers/time as helpers_time
 
@@ -62,7 +62,7 @@ pub fn my_cards(
       True -> {
         let completed =
           list.count(card_tasks, fn(task) {
-            task_state.to_status(task.state) == Completed
+            task_state.to_status(task.state) == Done
           })
         Ok(right_panel.MyCardProgress(
           card_id: card.id,

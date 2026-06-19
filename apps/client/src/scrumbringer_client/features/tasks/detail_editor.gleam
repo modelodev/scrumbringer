@@ -12,7 +12,6 @@ import lustre/element/html.{
 import lustre/event
 
 import domain/card.{type Card}
-import domain/milestone.{type MilestoneProgress, Completed}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_state
@@ -35,12 +34,10 @@ pub type Config(msg) {
     edit_priority: String,
     edit_type_id: String,
     edit_card_id: String,
-    edit_milestone_id: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
     task_types: Remote(List(TaskType)),
     cards: List(Card),
-    milestones: Remote(List(MilestoneProgress)),
     on_edit_started: msg,
     on_edit_cancelled: msg,
     on_title_changed: fn(String) -> msg,
@@ -48,7 +45,6 @@ pub type Config(msg) {
     on_priority_changed: fn(String) -> msg,
     on_type_id_changed: fn(String) -> msg,
     on_card_id_changed: fn(String) -> msg,
-    on_milestone_id_changed: fn(String) -> msg,
     on_submitted: msg,
   )
 }
@@ -63,8 +59,8 @@ pub fn permission_hint(
 ) -> opt.Option(String) {
   case current_task.state, can_edit_task(config, current_task) {
     _, True -> opt.None
-    task_state.Completed(_), False ->
-      opt.Some(i18n.t(config.locale, i18n_text.TaskEditCompletedReadOnly))
+    task_state.Done(_), False ->
+      opt.Some(i18n.t(config.locale, i18n_text.TaskEditDoneReadOnly))
     _, False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
   }
 }
@@ -84,7 +80,6 @@ pub fn is_dirty(config: Config(msg), current_task: Task) -> Bool {
   || effective_type_id(config, current_task)
   != int.to_string(task_type_id(current_task))
   || config.edit_card_id != id_to_string(current_task.card_id)
-  || config.edit_milestone_id != id_to_string(current_task.milestone_id)
 }
 
 pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
@@ -133,7 +128,6 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
       view_edit_section(i18n.t(config.locale, i18n_text.TaskEditLocation), [
         div([attribute.class("task-detail-edit-grid")], [
           view_card_field(config),
-          view_milestone_field(config),
         ]),
       ]),
       form_field.hint(i18n.t(config.locale, i18n_text.TaskEditKeyboardHint)),
@@ -300,72 +294,6 @@ fn view_card_field(config: Config(msg)) -> Element(msg) {
       ],
     ),
   )
-}
-
-fn view_milestone_field(config: Config(msg)) -> Element(msg) {
-  let control =
-    select(
-      [
-        attribute.value(config.edit_milestone_id),
-        attribute.disabled(
-          config.edit_in_flight
-          || config.edit_card_id != ""
-          || !remote_loaded(config.milestones),
-        ),
-        event.on_input(config.on_milestone_id_changed),
-      ],
-      milestone_options(config),
-    )
-
-  case milestone_hint(config) {
-    opt.Some(hint) ->
-      form_field.with_hint(
-        i18n.t(config.locale, i18n_text.MilestoneLabel),
-        control,
-        hint,
-      )
-    opt.None ->
-      form_field.view(i18n.t(config.locale, i18n_text.MilestoneLabel), control)
-  }
-}
-
-fn milestone_hint(config: Config(msg)) -> opt.Option(String) {
-  case config.edit_card_id != "" {
-    True ->
-      opt.Some(i18n.t(config.locale, i18n_text.TaskMilestoneInheritedFromCard))
-    False -> opt.None
-  }
-}
-
-fn milestone_options(config: Config(msg)) -> List(Element(msg)) {
-  let selected = config.edit_milestone_id
-
-  case config.milestones {
-    Loaded(milestones) -> [
-      empty_option(i18n.t(config.locale, i18n_text.NoMilestone), selected),
-      ..milestones
-      |> list.filter(fn(progress) {
-        let value = int.to_string(progress.milestone.id)
-        progress.milestone.state != Completed || selected == value
-      })
-      |> list.map(fn(progress) {
-        let value = int.to_string(progress.milestone.id)
-        select_option(value, progress.milestone.name, selected)
-      })
-    ]
-    Loading -> [
-      empty_option(i18n.t(config.locale, i18n_text.LoadingEllipsis), selected),
-    ]
-    NotAsked -> [
-      empty_option(i18n.t(config.locale, i18n_text.NoMilestone), selected),
-    ]
-    Failed(_) -> [
-      empty_option(
-        i18n.t(config.locale, i18n_text.MilestonesLoadError),
-        selected,
-      ),
-    ]
-  }
 }
 
 fn empty_option(label: String, selected: String) -> Element(msg) {

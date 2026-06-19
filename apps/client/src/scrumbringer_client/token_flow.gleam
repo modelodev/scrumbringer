@@ -34,7 +34,7 @@ pub type Msg(result) {
   TokenValidated(ApiResult(String))
   PasswordChanged(String)
   Submitted
-  Completed(ApiResult(result))
+  Finished(ApiResult(result))
   ErrorDismissed
 }
 
@@ -112,9 +112,9 @@ pub fn update(
 
     Submitted -> handle_submitted(model)
 
-    Completed(Ok(result)) -> #(Model(..model, state: Done), Succeeded(result))
+    Finished(Ok(result)) -> #(Model(..model, state: Done), Succeeded(result))
 
-    Completed(Error(err)) ->
+    Finished(Error(err)) ->
       handle_completed_error(model, err, submit_error_state)
 
     ErrorDismissed -> #(Model(..model, submit_error: option.None), NoOp)

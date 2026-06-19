@@ -1117,7 +1117,7 @@ select
   coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
   coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
   coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-from task_events
+from audit_events
 where actor_user_id = $1
   and created_at >= now() - ($2 || ' days')::interval;
 "
@@ -1187,7 +1187,7 @@ with event_counts as (
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
     coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-  from task_events
+  from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
 ), task_counts as (
@@ -1306,7 +1306,7 @@ with event_counts as (
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
     coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-  from task_events e
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.project_id
@@ -1507,7 +1507,7 @@ with task_scope as (
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
     coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as complete_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
-  from task_events e
+  from audit_events e
   where e.project_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.task_id
@@ -1578,7 +1578,7 @@ with per_user as (
     actor_user_id,
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claims,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as releases
-  from task_events
+  from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
   group by actor_user_id
@@ -1652,7 +1652,7 @@ with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
-  from task_events
+  from audit_events
   where org_id = $1
     and event_type = 'task_claimed'
     and created_at >= now() - ($2 || ' days')::interval
@@ -1725,7 +1725,7 @@ with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
-  from task_events
+  from audit_events
   where org_id = $1
     and event_type = 'task_claimed'
     and created_at >= now() - ($2 || ' days')::interval
@@ -1808,7 +1808,7 @@ with event_counts as (
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
     coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
-  from task_events e
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.actor_user_id
@@ -1844,14 +1844,14 @@ order by u.email asc;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_activate` query
-/// defined in `./src/scrumbringer_server/sql/milestones_activate.sql`.
+/// A row you get from running the `card_trees_activate` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_activate.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesActivateRow {
-  MilestonesActivateRow(
+pub type CardTreesActivateRow {
+  CardTreesActivateRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -1867,16 +1867,16 @@ pub type MilestonesActivateRow {
   )
 }
 
-/// name: activate_milestone
+/// name: activate_card_tree
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_activate(
+pub fn card_trees_activate(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-) -> Result(pog.Returned(MilestonesActivateRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesActivateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -1890,7 +1890,7 @@ pub fn milestones_activate(
     use completed_at <- decode.field(9, decode.string)
     use cards_released <- decode.field(10, decode.int)
     use tasks_released <- decode.field(11, decode.int)
-    decode.success(MilestonesActivateRow(
+    decode.success(CardTreesActivateRow(
       id:,
       project_id:,
       name:,
@@ -1906,7 +1906,7 @@ pub fn milestones_activate(
     ))
   }
 
-  "-- name: activate_milestone
+  "-- name: activate_card_tree
 with project_lock as (
   select id
   from projects
@@ -1915,13 +1915,13 @@ with project_lock as (
 ), has_active as (
   select exists(
     select 1
-    from milestones
+    from card_trees
     where project_id = $2
       and state = 'active'
       and id != $1
   ) as blocked
 ), updated as (
-  update milestones m
+  update card_trees m
   set
     state = 'active',
     activated_at = now()
@@ -1951,14 +1951,14 @@ left join lateral (
   select count(*) as cards_released
   from cards c
   where c.project_id = u.project_id
-    and c.milestone_id = u.id
+    and c.parent_card_id = u.id
 ) c on true
 left join lateral (
   select count(*) as tasks_released
   from tasks t
   left join cards c on c.id = t.card_id
   where t.project_id = u.project_id
-    and coalesce(t.milestone_id, c.milestone_id) = u.id
+    and coalesce(t.parent_card_id, c.parent_card_id) = u.id
 ) t on true;
 "
   |> pog.query
@@ -1968,14 +1968,14 @@ left join lateral (
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_create` query
-/// defined in `./src/scrumbringer_server/sql/milestones_create.sql`.
+/// A row you get from running the `card_trees_create` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_create.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesCreateRow {
-  MilestonesCreateRow(
+pub type CardTreesCreateRow {
+  CardTreesCreateRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -1989,18 +1989,18 @@ pub type MilestonesCreateRow {
   )
 }
 
-/// name: create_milestone
+/// name: create_card_tree
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_create(
+pub fn card_trees_create(
   db: pog.Connection,
   arg_1: Int,
   arg_2: String,
   arg_3: String,
   arg_4: Int,
-) -> Result(pog.Returned(MilestonesCreateRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -2012,7 +2012,7 @@ pub fn milestones_create(
     use created_at <- decode.field(7, decode.string)
     use activated_at <- decode.field(8, decode.string)
     use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesCreateRow(
+    decode.success(CardTreesCreateRow(
       id:,
       project_id:,
       name:,
@@ -2026,13 +2026,13 @@ pub fn milestones_create(
     ))
   }
 
-  "-- name: create_milestone
-insert into milestones (project_id, name, description, position, created_by)
+  "-- name: create_card_tree
+insert into card_trees (project_id, name, description, position, created_by)
 values (
   $1,
   $2,
   nullif($3, ''),
-  coalesce((select max(position) + 1 from milestones where project_id = $1), 0),
+  coalesce((select max(position) + 1 from card_trees where project_id = $1), 0),
   $4
 )
 returning
@@ -2056,40 +2056,40 @@ returning
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_delete` query
-/// defined in `./src/scrumbringer_server/sql/milestones_delete.sql`.
+/// A row you get from running the `card_trees_delete` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_delete.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesDeleteRow {
-  MilestonesDeleteRow(id: Int)
+pub type CardTreesDeleteRow {
+  CardTreesDeleteRow(id: Int)
 }
 
-/// name: milestones_delete
+/// name: card_trees_delete
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_delete(
+pub fn card_trees_delete(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(MilestonesDeleteRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesDeleteRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    decode.success(MilestonesDeleteRow(id:))
+    decode.success(CardTreesDeleteRow(id:))
   }
 
-  "-- name: milestones_delete
+  "-- name: card_trees_delete
 with deleted as (
-  delete from milestones m
+  delete from card_trees m
   where m.id = $1
     and m.state = 'ready'
     and not exists (
-      select 1 from cards c where c.milestone_id = m.id
+      select 1 from cards c where c.parent_card_id = m.id
     )
     and not exists (
-      select 1 from tasks t where t.milestone_id = m.id
+      select 1 from tasks t where t.parent_card_id = m.id
     )
   returning id
 )
@@ -2101,14 +2101,14 @@ select id from deleted;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_get` query
-/// defined in `./src/scrumbringer_server/sql/milestones_get.sql`.
+/// A row you get from running the `card_trees_get` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_get.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesGetRow {
-  MilestonesGetRow(
+pub type CardTreesGetRow {
+  CardTreesGetRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -2122,15 +2122,15 @@ pub type MilestonesGetRow {
   )
 }
 
-/// name: get_milestone
+/// name: get_card_tree
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_get(
+pub fn card_trees_get(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(MilestonesGetRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesGetRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -2142,7 +2142,7 @@ pub fn milestones_get(
     use created_at <- decode.field(7, decode.string)
     use activated_at <- decode.field(8, decode.string)
     use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesGetRow(
+    decode.success(CardTreesGetRow(
       id:,
       project_id:,
       name:,
@@ -2156,7 +2156,7 @@ pub fn milestones_get(
     ))
   }
 
-  "-- name: get_milestone
+  "-- name: get_card_tree
 select
   m.id,
   m.project_id,
@@ -2168,7 +2168,7 @@ select
   to_char(m.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   coalesce(to_char(m.activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
   coalesce(to_char(m.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at
-from milestones m
+from card_trees m
 where m.id = $1;
 "
   |> pog.query
@@ -2177,33 +2177,33 @@ where m.id = $1;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_get_effective_for_task` query
-/// defined in `./src/scrumbringer_server/sql/milestones_get_effective_for_task.sql`.
+/// A row you get from running the `card_trees_get_effective_for_task` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_get_effective_for_task.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesGetEffectiveForTaskRow {
-  MilestonesGetEffectiveForTaskRow(milestone_id: Int)
+pub type CardTreesGetEffectiveForTaskRow {
+  CardTreesGetEffectiveForTaskRow(parent_card_id: Int)
 }
 
-/// name: get_effective_milestone_for_task
+/// name: get_effective_card_tree_for_task
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_get_effective_for_task(
+pub fn card_trees_get_effective_for_task(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(MilestonesGetEffectiveForTaskRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesGetEffectiveForTaskRow), pog.QueryError) {
   let decoder = {
-    use milestone_id <- decode.field(0, decode.int)
-    decode.success(MilestonesGetEffectiveForTaskRow(milestone_id:))
+    use parent_card_id <- decode.field(0, decode.int)
+    decode.success(CardTreesGetEffectiveForTaskRow(parent_card_id:))
   }
 
-  "-- name: get_effective_milestone_for_task
+  "-- name: get_effective_card_tree_for_task
 select
-  coalesce(t.milestone_id, c.milestone_id, 0) as milestone_id
+  coalesce(t.parent_card_id, c.parent_card_id, 0) as parent_card_id
 from tasks t
 left join cards c on c.id = t.card_id
 where t.id = $1;
@@ -2214,14 +2214,14 @@ where t.id = $1;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_list` query
-/// defined in `./src/scrumbringer_server/sql/milestones_list.sql`.
+/// A row you get from running the `card_trees_list` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_list.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesListRow {
-  MilestonesListRow(
+pub type CardTreesListRow {
+  CardTreesListRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -2239,15 +2239,15 @@ pub type MilestonesListRow {
   )
 }
 
-/// name: list_milestones_for_project
+/// name: list_card_trees_for_project
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_list(
+pub fn card_trees_list(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(MilestonesListRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -2263,7 +2263,7 @@ pub fn milestones_list(
     use cards_completed <- decode.field(11, decode.int)
     use tasks_total <- decode.field(12, decode.int)
     use tasks_completed <- decode.field(13, decode.int)
-    decode.success(MilestonesListRow(
+    decode.success(CardTreesListRow(
       id:,
       project_id:,
       name:,
@@ -2281,7 +2281,7 @@ pub fn milestones_list(
     ))
   }
 
-  "-- name: list_milestones_for_project
+  "-- name: list_card_trees_for_project
 select
   m.id,
   m.project_id,
@@ -2297,7 +2297,7 @@ select
   coalesce(c.cards_completed, 0) as cards_completed,
   coalesce(t.tasks_total, 0) as tasks_total,
   coalesce(t.tasks_completed, 0) as tasks_completed
-from milestones m
+from card_trees m
 left join lateral (
   select
     count(*) as cards_total,
@@ -2310,7 +2310,7 @@ left join lateral (
     from cards c
     left join tasks t on t.card_id = c.id
     where c.project_id = m.project_id
-      and c.milestone_id = m.id
+      and c.parent_card_id = m.id
     group by c.id
   ) cd
 ) c on true
@@ -2321,7 +2321,7 @@ left join lateral (
   from tasks t
   where t.project_id = m.project_id
     and t.card_id is null
-    and t.milestone_id = m.id
+    and t.parent_card_id = m.id
 ) t on true
 where m.project_id = $1
 order by m.position asc, m.created_at asc;
@@ -2332,14 +2332,14 @@ order by m.position asc, m.created_at asc;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_recompute_completion` query
-/// defined in `./src/scrumbringer_server/sql/milestones_recompute_completion.sql`.
+/// A row you get from running the `card_trees_recompute_completion` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_recompute_completion.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesRecomputeCompletionRow {
-  MilestonesRecomputeCompletionRow(
+pub type CardTreesRecomputeCompletionRow {
+  CardTreesRecomputeCompletionRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -2353,15 +2353,15 @@ pub type MilestonesRecomputeCompletionRow {
   )
 }
 
-/// name: recompute_milestone_completion
+/// name: recompute_card_tree_completion
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_recompute_completion(
+pub fn card_trees_recompute_completion(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(MilestonesRecomputeCompletionRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesRecomputeCompletionRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -2373,7 +2373,7 @@ pub fn milestones_recompute_completion(
     use created_at <- decode.field(7, decode.string)
     use activated_at <- decode.field(8, decode.string)
     use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesRecomputeCompletionRow(
+    decode.success(CardTreesRecomputeCompletionRow(
       id:,
       project_id:,
       name:,
@@ -2387,7 +2387,7 @@ pub fn milestones_recompute_completion(
     ))
   }
 
-  "-- name: recompute_milestone_completion
+  "-- name: recompute_card_tree_completion
 with stats as (
   select
     m.id,
@@ -2396,7 +2396,7 @@ with stats as (
       select count(*)
       from cards c
       where c.project_id = m.project_id
-        and c.milestone_id = m.id
+        and c.parent_card_id = m.id
     ), 0) as cards_total,
     coalesce((
       select count(*)
@@ -2408,7 +2408,7 @@ with stats as (
         from cards c
         left join tasks t on t.card_id = c.id
         where c.project_id = m.project_id
-          and c.milestone_id = m.id
+          and c.parent_card_id = m.id
         group by c.id
       ) x
       where x.task_count > 0
@@ -2419,20 +2419,20 @@ with stats as (
       from tasks t
       where t.project_id = m.project_id
         and t.card_id is null
-        and t.milestone_id = m.id
+        and t.parent_card_id = m.id
     ), 0) as tasks_total,
     coalesce((
       select count(*)
       from tasks t
       where t.project_id = m.project_id
         and t.card_id is null
-        and t.milestone_id = m.id
+        and t.parent_card_id = m.id
         and t.status = 'completed'
     ), 0) as tasks_completed
-  from milestones m
+  from card_trees m
   where m.id = $1
 ), updated as (
-  update milestones m
+  update card_trees m
   set
     state = case
       when (s.cards_total = 0 and s.tasks_total = 0) then m.state
@@ -2471,14 +2471,14 @@ from updated;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `milestones_update` query
-/// defined in `./src/scrumbringer_server/sql/milestones_update.sql`.
+/// A row you get from running the `card_trees_update` query
+/// defined in `./src/scrumbringer_server/sql/card_trees_update.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type MilestonesUpdateRow {
-  MilestonesUpdateRow(
+pub type CardTreesUpdateRow {
+  CardTreesUpdateRow(
     id: Int,
     project_id: Int,
     name: String,
@@ -2492,17 +2492,17 @@ pub type MilestonesUpdateRow {
   )
 }
 
-/// name: milestones_update
+/// name: card_trees_update
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn milestones_update(
+pub fn card_trees_update(
   db: pog.Connection,
   arg_1: Int,
   arg_2: String,
   arg_3: String,
-) -> Result(pog.Returned(MilestonesUpdateRow), pog.QueryError) {
+) -> Result(pog.Returned(CardTreesUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -2514,7 +2514,7 @@ pub fn milestones_update(
     use created_at <- decode.field(7, decode.string)
     use activated_at <- decode.field(8, decode.string)
     use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesUpdateRow(
+    decode.success(CardTreesUpdateRow(
       id:,
       project_id:,
       name:,
@@ -2528,8 +2528,8 @@ pub fn milestones_update(
     ))
   }
 
-  "-- name: milestones_update
-update milestones
+  "-- name: card_trees_update
+update card_trees
 set
   name = case when $2 = '__unset__' then name else $2 end,
   description = case
@@ -5269,8 +5269,8 @@ order by t.created_at desc;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `task_events_insert` query
-/// defined in `./src/scrumbringer_server/sql/task_events_insert.sql`.
+/// A row you get from running the `audit_events_insert` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5279,12 +5279,12 @@ pub type TaskEventsInsertRow {
   TaskEventsInsertRow(id: Int)
 }
 
-/// name: task_events_insert
+/// name: audit_events_insert
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn task_events_insert(
+pub fn audit_events_insert(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
@@ -5297,8 +5297,8 @@ pub fn task_events_insert(
     decode.success(TaskEventsInsertRow(id:))
   }
 
-  "-- name: task_events_insert
-insert into task_events (
+  "-- name: audit_events_insert
+insert into audit_events (
   org_id,
   project_id,
   task_id,
@@ -6501,7 +6501,7 @@ pub type TasksClaimRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6543,7 +6543,7 @@ pub fn tasks_claim(
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
     use card_id <- decode.field(14, decode.int)
-    use milestone_id <- decode.field(15, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
@@ -6571,7 +6571,7 @@ pub fn tasks_claim(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -6626,7 +6626,7 @@ with updated as (
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6699,7 +6699,7 @@ pub type TasksCompleteRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6741,7 +6741,7 @@ pub fn tasks_complete(
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
     use card_id <- decode.field(14, decode.int)
-    use milestone_id <- decode.field(15, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
@@ -6769,7 +6769,7 @@ pub fn tasks_complete(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -6820,7 +6820,7 @@ with updated as (
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6893,7 +6893,7 @@ pub type TasksCreateRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6943,7 +6943,7 @@ pub fn tasks_create(
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
     use card_id <- decode.field(14, decode.int)
-    use milestone_id <- decode.field(15, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
@@ -6971,7 +6971,7 @@ pub fn tasks_create(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -7044,7 +7044,7 @@ with type_ok as (
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7104,7 +7104,7 @@ pub type TasksGetForUserRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     card_title: String,
     card_color: String,
     pool_lifetime_s: Int,
@@ -7145,7 +7145,7 @@ pub fn tasks_get_for_user(
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
     use card_id <- decode.field(18, decode.int)
-    use milestone_id <- decode.field(19, decode.int)
+    use parent_card_id <- decode.field(19, decode.int)
     use card_title <- decode.field(20, decode.string)
     use card_color <- decode.field(21, decode.string)
     use pool_lifetime_s <- decode.field(22, decode.int)
@@ -7173,7 +7173,7 @@ pub fn tasks_get_for_user(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       card_title:,
       card_color:,
       pool_lifetime_s:,
@@ -7221,7 +7221,7 @@ select
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  0 as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
@@ -7297,7 +7297,7 @@ pub type TasksListRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     card_title: String,
     card_color: String,
     pool_lifetime_s: Int,
@@ -7344,7 +7344,7 @@ pub fn tasks_list(
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
     use card_id <- decode.field(18, decode.int)
-    use milestone_id <- decode.field(19, decode.int)
+    use parent_card_id <- decode.field(19, decode.int)
     use card_title <- decode.field(20, decode.string)
     use card_color <- decode.field(21, decode.string)
     use pool_lifetime_s <- decode.field(22, decode.int)
@@ -7373,7 +7373,7 @@ pub fn tasks_list(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       card_title:,
       card_color:,
       pool_lifetime_s:,
@@ -7422,7 +7422,7 @@ select
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  0 as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
@@ -7668,7 +7668,7 @@ pub type TasksReleaseRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -7710,7 +7710,7 @@ pub fn tasks_release(
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
     use card_id <- decode.field(14, decode.int)
-    use milestone_id <- decode.field(15, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
@@ -7738,7 +7738,7 @@ pub fn tasks_release(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -7783,7 +7783,7 @@ with updated as (
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7905,7 +7905,7 @@ pub type TasksUpdateRow {
     due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -7953,7 +7953,7 @@ pub fn tasks_update(
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
     use card_id <- decode.field(14, decode.int)
-    use milestone_id <- decode.field(15, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
@@ -7981,7 +7981,7 @@ pub fn tasks_update(
       due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -8035,7 +8035,7 @@ where id = $1
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id

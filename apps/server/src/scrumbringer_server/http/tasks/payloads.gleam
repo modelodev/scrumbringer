@@ -5,7 +5,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import scrumbringer_server/services/workflows/types as workflow_types
+import scrumbringer_server/use_case/workflows/types as workflow_types
 
 pub type CreateTaskPayload {
   CreateTaskPayload(
@@ -14,7 +14,7 @@ pub type CreateTaskPayload {
     priority: Int,
     type_id: Int,
     card_id: Option(Int),
-    milestone_id: Option(Int),
+    parent_card_id: Option(Int),
   )
 }
 
@@ -51,8 +51,8 @@ pub fn decode_create_task(
       None,
       decode.optional(decode.int),
     )
-    use milestone_id <- decode.optional_field(
-      "milestone_id",
+    use parent_card_id <- decode.optional_field(
+      "parent_card_id",
       None,
       decode.optional(decode.int),
     )
@@ -62,7 +62,7 @@ pub fn decode_create_task(
       priority: priority,
       type_id: type_id,
       card_id: normalize_optional_id(card_id),
-      milestone_id: normalize_optional_id(milestone_id),
+      parent_card_id: normalize_optional_id(parent_card_id),
     ))
   }
 
@@ -102,7 +102,7 @@ pub fn decode_update_task(
     decode.run(data, decoder)
     |> result.map_error(fn(_) { InvalidJson }),
   )
-  use milestone_update <- result.try(decode_milestone_update(data))
+  use card_tree_update <- result.try(decode_card_tree_update(data))
   use card_update <- result.try(decode_card_update(data))
 
   let #(version, title, description, priority, type_id) = payload
@@ -113,7 +113,7 @@ pub fn decode_update_task(
       description: field_update.from_option(description),
       priority: field_update.from_option(priority),
       type_id: field_update.from_option(type_id),
-      milestone_id: milestone_update,
+      parent_card_id: card_tree_update,
       card_id: card_update,
     ),
   ))
@@ -163,11 +163,13 @@ pub fn decode_task_type(data: Dynamic) -> Result(TaskTypePayload, DecodeError) {
   )
 }
 
-fn decode_milestone_update(
+fn decode_card_tree_update(
   data: Dynamic,
 ) -> Result(field_update.FieldUpdate(Option(Int)), DecodeError) {
-  decode_optional_id_update(data, "milestone_id")
-  |> result.map(fn(update) { field_update.map(update, normalize_milestone_id) })
+  decode_optional_id_update(data, "parent_card_id")
+  |> result.map(fn(update) {
+    field_update.map(update, normalize_parent_card_id)
+  })
 }
 
 fn decode_card_update(
@@ -193,7 +195,7 @@ fn decode_optional_id_update(
   }
 }
 
-fn normalize_milestone_id(value: Option(Int)) -> Option(Int) {
+fn normalize_parent_card_id(value: Option(Int)) -> Option(Int) {
   normalize_optional_id(value)
 }
 

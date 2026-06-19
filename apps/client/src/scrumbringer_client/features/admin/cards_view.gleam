@@ -12,8 +12,7 @@ import lustre/element/html.{button, div, input, label, option, select, text}
 import lustre/event
 
 import domain/card.{type Card}
-import domain/card/codec as card_codec
-import domain/milestone.{type MilestoneProgress}
+import domain/card/card_codec
 import domain/remote.{type Remote, Loaded}
 
 import scrumbringer_client/client_state/admin/cards as admin_cards
@@ -39,7 +38,6 @@ pub type Config(msg) {
     project_id: Int,
     project_name: String,
     model: admin_cards.Model,
-    milestones: Remote(List(MilestoneProgress)),
     detail_modal: Element(msg),
     on_create_opened: msg,
     on_search_changed: fn(String) -> msg,
@@ -80,10 +78,6 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
   case config.model.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
-      let milestone_name =
-        resolve_create_milestone_name(config)
-        |> milestone_name_or_empty
-
       let #(mode_str, card_json) = case mode {
         admin_cards.CardDialogCreate -> #("create", attribute.none())
         admin_cards.CardDialogEdit(card_id) ->
@@ -109,14 +103,6 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
         [
           attribute.attribute("locale", locale.serialize(config.locale)),
           attribute.attribute("project-id", int.to_string(config.project_id)),
-          attribute.attribute(
-            "milestone-id",
-            case config.model.cards_create_milestone_id {
-              opt.Some(id) -> int.to_string(id)
-              opt.None -> ""
-            },
-          ),
-          attribute.attribute("milestone-name", milestone_name),
           attribute.attribute("mode", mode_str),
           card_json,
           event.on("card-created", decode_card_created_event(config)),
@@ -146,7 +132,7 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
         ]),
       ]),
       div([attribute.class("filter-group")], [
-        label([], [text(t(config, i18n_text.CardState))]),
+        label([], [text(t(config, i18n_text.CardPhase))]),
         select(
           [
             attribute.class("filter-select"),
@@ -163,30 +149,30 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
             ),
             option(
               [
-                attribute.value(card.state_to_string(card.Pendiente)),
+                attribute.value(card.state_to_string(card.Draft)),
                 attribute.selected(
-                  config.model.cards_state_filter == opt.Some(card.Pendiente),
+                  config.model.cards_state_filter == opt.Some(card.Draft),
                 ),
               ],
-              t(config, i18n_text.CardStatePendiente),
+              t(config, i18n_text.CardPhaseDraft),
             ),
             option(
               [
-                attribute.value(card.state_to_string(card.EnCurso)),
+                attribute.value(card.state_to_string(card.Active)),
                 attribute.selected(
-                  config.model.cards_state_filter == opt.Some(card.EnCurso),
+                  config.model.cards_state_filter == opt.Some(card.Active),
                 ),
               ],
-              t(config, i18n_text.CardStateEnCurso),
+              t(config, i18n_text.CardPhaseActive),
             ),
             option(
               [
-                attribute.value(card.state_to_string(card.Cerrada)),
+                attribute.value(card.state_to_string(card.Closed)),
                 attribute.selected(
-                  config.model.cards_state_filter == opt.Some(card.Cerrada),
+                  config.model.cards_state_filter == opt.Some(card.Closed),
                 ),
               ],
-              t(config, i18n_text.CardStateCerrada),
+              t(config, i18n_text.CardPhaseClosed),
             ),
           ],
         ),
@@ -210,7 +196,7 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
             attribute.attribute("data-testid", "show-completed-cards"),
             event.on_check(fn(_) { config.on_show_completed_toggled }),
           ]),
-          text(t(config, i18n_text.ShowCompletedCards)),
+          text(t(config, i18n_text.ShowDoneCards)),
         ]),
       ]),
     ],
@@ -233,7 +219,7 @@ fn filter_cards(model: admin_cards.Model) -> Remote(List(Card)) {
           }
           let completed_match = case model.cards_show_completed {
             True -> True
-            False -> c.state != card.Cerrada
+            False -> c.state != card.Closed
           }
           let search_match = case string.is_empty(model.cards_search) {
             True -> True
@@ -297,7 +283,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
           "",
           "card-title-cell",
         ),
-        data_table.column(t(config, i18n_text.CardState), fn(c: Card) {
+        data_table.column(t(config, i18n_text.CardPhase), fn(c: Card) {
           card_state_badge.view(
             c.state,
             card_state.label(config.locale, c.state),
@@ -354,27 +340,6 @@ fn card_delete_availability(
   }
 }
 
-fn resolve_create_milestone_name(config: Config(msg)) -> opt.Option(String) {
-  case config.model.cards_create_milestone_id, config.milestones {
-    opt.Some(milestone_id), Loaded(items) ->
-      list.find_map(items, fn(progress) {
-        case progress.milestone.id == milestone_id {
-          True -> Ok(progress.milestone.name)
-          False -> Error(Nil)
-        }
-      })
-      |> opt.from_result
-    _, _ -> opt.None
-  }
-}
-
-fn milestone_name_or_empty(name: opt.Option(String)) -> String {
-  case name {
-    opt.None -> ""
-    opt.Some(value) -> value
-  }
-}
-
 fn find_card(cards: Remote(List(Card)), id: Int) -> opt.Option(Card) {
   case cards {
     Loaded(items) ->
@@ -408,14 +373,10 @@ fn card_to_property_json(c: Card, mode: String) -> json.Json {
     opt.Some(color) -> json.string(card.color_to_string(color))
     opt.None -> json.null()
   }
-  let milestone_field = case c.milestone_id {
-    opt.Some(id) -> json.int(id)
-    opt.None -> json.null()
-  }
   json.object([
     #("id", json.int(c.id)),
     #("project_id", json.int(c.project_id)),
-    #("milestone_id", milestone_field),
+    #("parent_card_id", json.null()),
     #("title", json.string(c.title)),
     #("description", json.string(c.description)),
     #("color", color_field),

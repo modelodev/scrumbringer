@@ -12,7 +12,7 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task persistence (see `services/workflows/handlers.gleam`)
+//// - Task repository (see `use_case/workflows/handlers.gleam`)
 //// - Conflict detection logic (see `http/tasks/conflict_handlers.gleam`)
 ////
 //// ## Relationships
@@ -29,9 +29,9 @@ import scrumbringer_server/http/tasks/conflict_handlers
 import scrumbringer_server/http/tasks/payload_responses
 import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/workflows/handlers as workflow
-import scrumbringer_server/services/workflows/types as workflow_types
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/workflows/handlers as workflow
+import scrumbringer_server/use_case/workflows/types as workflow_types
 import wisp
 
 type Transition {
@@ -201,8 +201,8 @@ fn claim_error_response(
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotAuthorized
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskCardTreeInheritedFromCard
+    | workflow_types.InvalidMovePoolToCardTree
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse -> unexpected_error()
   }
@@ -223,8 +223,8 @@ fn release_or_complete_error_response(
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskCardTreeInheritedFromCard
+    | workflow_types.InvalidMovePoolToCardTree
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed

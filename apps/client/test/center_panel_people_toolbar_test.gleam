@@ -37,7 +37,6 @@ fn base_config(
     cards_content: html.text("cards"),
     capabilities_content: html.text("capabilities"),
     people_content: html.text("people"),
-    milestones_content: html.text("milestones"),
     on_drag_move: fn(_x, _y) { "msg" },
     on_drag_end: "msg",
   )
@@ -62,16 +61,6 @@ pub fn work_toolbar_keeps_type_and_capability_filters_test() {
   assert_contains(html, "data-testid=\"filter-type\"")
   assert_contains(html, "data-testid=\"filter-capability\"")
   assert_contains(html, "data-testid=\"filter-capability-scope\"")
-}
-
-pub fn milestones_toolbar_hides_pool_filters_test() {
-  let html =
-    center_panel.view(base_config(view_mode.Milestones))
-    |> element.to_document_string
-
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
-  assert_not_contains(html, "data-testid=\"filter-search-people\"")
 }
 
 pub fn capabilities_toolbar_keeps_type_and_search_without_capability_test() {

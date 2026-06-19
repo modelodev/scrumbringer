@@ -34,17 +34,17 @@ import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/card.{
-  Cerrada, EnCurso, Pendiente, state_to_string as card_state_to_string,
+  Active, Closed, Draft, state_to_string as card_state_to_string,
 }
-import domain/task/codec as task_codec
+import domain/task/task_codec
 import domain/task_status.{
-  Available, Claimed, Completed, Taken, task_status_to_string,
+  Available, Claimed, Done, Taken, task_status_to_string,
 }
 import domain/task_type.{type TaskType}
 import domain/workflow.{
   type Rule, rule_resource_type, rule_task_type_id, rule_to_state_string,
 }
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows/rules as api_rules
 import scrumbringer_client/components/crud_dialog_base
@@ -1022,18 +1022,12 @@ pub fn state_options_for_resource_type(
         task_status_to_string(Claimed(Taken)),
         t(locale, i18n_text.TaskStateClaimed),
       ),
-      #(
-        task_status_to_string(Completed),
-        t(locale, i18n_text.TaskStateCompleted),
-      ),
+      #(task_status_to_string(Done), t(locale, i18n_text.TaskStateDone)),
     ]
     _ -> [
-      #(
-        card_state_to_string(Pendiente),
-        t(locale, i18n_text.CardStatePendiente),
-      ),
-      #(card_state_to_string(EnCurso), t(locale, i18n_text.CardStateEnCurso)),
-      #(card_state_to_string(Cerrada), t(locale, i18n_text.CardStateCerrada)),
+      #(card_state_to_string(Draft), t(locale, i18n_text.CardPhaseDraft)),
+      #(card_state_to_string(Active), t(locale, i18n_text.CardPhaseActive)),
+      #(card_state_to_string(Closed), t(locale, i18n_text.CardPhaseClosed)),
     ]
   }
 }

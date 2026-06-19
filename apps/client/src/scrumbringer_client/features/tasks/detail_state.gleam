@@ -35,7 +35,6 @@ pub fn open(
       member_task_detail_edit_priority: fields.priority,
       member_task_detail_edit_type_id: fields.type_id,
       member_task_detail_edit_card_id: fields.card_id,
-      member_task_detail_edit_milestone_id: fields.milestone_id,
       member_task_detail_edit_in_flight: False,
       member_task_detail_edit_error: opt.None,
     ),
@@ -62,7 +61,6 @@ type EditFields {
     priority: String,
     type_id: String,
     card_id: String,
-    milestone_id: String,
   )
 }
 
@@ -75,7 +73,6 @@ fn edit_fields(maybe_task: opt.Option(Task)) -> EditFields {
         priority: int.to_string(task.priority),
         type_id: int.to_string(detail_edit_form.task_type_id(task)),
         card_id: id_to_form_value(task.card_id),
-        milestone_id: id_to_form_value(task.milestone_id),
       )
     opt.None ->
       EditFields(
@@ -84,7 +81,6 @@ fn edit_fields(maybe_task: opt.Option(Task)) -> EditFields {
         priority: "3",
         type_id: "",
         card_id: "",
-        milestone_id: "",
       )
   }
 }
@@ -104,7 +100,6 @@ pub fn close(
       member_task_detail_edit_priority: "3",
       member_task_detail_edit_type_id: "",
       member_task_detail_edit_card_id: "",
-      member_task_detail_edit_milestone_id: "",
       member_task_detail_edit_in_flight: False,
       member_task_detail_edit_error: opt.None,
     ),
@@ -162,7 +157,6 @@ fn apply_edit_fields(
     member_task_detail_edit_priority: fields.priority,
     member_task_detail_edit_type_id: fields.type_id,
     member_task_detail_edit_card_id: fields.card_id,
-    member_task_detail_edit_milestone_id: fields.milestone_id,
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: opt.None,
   )
@@ -219,18 +213,6 @@ pub fn change_edit_card_id(
   member_pool.Model(
     ..pool,
     member_task_detail_edit_card_id: value,
-    member_task_detail_edit_milestone_id: "",
-    member_task_detail_edit_error: opt.None,
-  )
-}
-
-pub fn change_edit_milestone_id(
-  pool: member_pool.Model,
-  value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    member_task_detail_edit_milestone_id: value,
     member_task_detail_edit_error: opt.None,
   )
 }
@@ -254,9 +236,6 @@ pub fn edit_unchanged(
     member_task_detail_edit_priority: int.to_string(submission.priority),
     member_task_detail_edit_type_id: int.to_string(submission.type_id),
     member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
-    member_task_detail_edit_milestone_id: id_to_form_value(
-      submission.milestone_id,
-    ),
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: opt.None,
   )
@@ -273,9 +252,6 @@ pub fn edit_started_submit(
     member_task_detail_edit_priority: int.to_string(submission.priority),
     member_task_detail_edit_type_id: int.to_string(submission.type_id),
     member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
-    member_task_detail_edit_milestone_id: id_to_form_value(
-      submission.milestone_id,
-    ),
     member_task_detail_edit_in_flight: True,
     member_task_detail_edit_error: opt.None,
   )
@@ -312,9 +288,6 @@ pub fn task_updated(
       detail_edit_form.task_type_id(updated_task),
     ),
     member_task_detail_edit_card_id: id_to_form_value(updated_task.card_id),
-    member_task_detail_edit_milestone_id: id_to_form_value(
-      updated_task.milestone_id,
-    ),
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: opt.None,
   )

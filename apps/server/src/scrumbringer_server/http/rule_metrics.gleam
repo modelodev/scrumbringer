@@ -13,13 +13,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Computing metrics (see `services/rule_metrics_db.gleam`)
-//// - Defining rules or workflows (see `services/rules_db.gleam`)
+//// - Computing metrics (see `use_case/rule_metrics_db.gleam`)
+//// - Defining rules or workflows (see `use_case/rules_db.gleam`)
 ////
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for session identity
-//// - Delegates data access to `services/rule_metrics_db.gleam`
+//// - Delegates data access to `use_case/rule_metrics_db.gleam`
 //// - Maps domain rows into JSON responses in this module
 
 import domain/org_role.{Admin}
@@ -36,11 +36,11 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/query as query_params
 import scrumbringer_server/http/rule_metrics/presenters
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/rule_metrics_db
-import scrumbringer_server/services/rules_db
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/workflows_db
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/rule_metrics_db
+import scrumbringer_server/use_case/rules_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/workflows_db
 import wisp
 
 // =============================================================================

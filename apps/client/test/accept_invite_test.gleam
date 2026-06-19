@@ -129,7 +129,7 @@ pub fn registration_success_emits_authed_action_test() {
     )
 
   let #(next, action) =
-    accept_invite.update(model, token_flow.Completed(Ok(authed_user)))
+    accept_invite.update(model, token_flow.Finished(Ok(authed_user)))
 
   let token_flow.Model(state: state, ..) = next
 
@@ -154,7 +154,7 @@ pub fn registration_invite_error_sets_invalid_state_test() {
   let err = ApiError(status: 403, code: "INVITE_USED", message: "Used")
 
   let #(next, action) =
-    accept_invite.update(model, token_flow.Completed(Error(err)))
+    accept_invite.update(model, token_flow.Finished(Error(err)))
 
   let token_flow.Model(state: state, submit_error: submit_error, ..) = next
 

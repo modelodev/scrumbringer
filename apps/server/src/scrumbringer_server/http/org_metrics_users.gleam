@@ -14,7 +14,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/metrics_presenters
 import scrumbringer_server/http/metrics_query
 import scrumbringer_server/http/metrics_service
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 const max_window_days = 90

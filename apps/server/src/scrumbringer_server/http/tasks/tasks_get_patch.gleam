@@ -12,12 +12,12 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task persistence (see `services/workflows/handlers.gleam`)
+//// - Task repository (see `use_case/workflows/handlers.gleam`)
 //// - JSON presentation (see `http/tasks/presenters.gleam`)
 ////
 //// ## Relations
 ////
-//// - Uses `services/workflows/handlers` for task operations
+//// - Uses `use_case/workflows/handlers` for task operations
 //// - Uses `http/tasks/presenters` for response JSON
 
 import gleam/http
@@ -32,9 +32,9 @@ import scrumbringer_server/http/tasks/conflict_handlers
 import scrumbringer_server/http/tasks/payload_responses
 import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/services/metrics_db
-import scrumbringer_server/services/workflows/handlers as workflow
-import scrumbringer_server/services/workflows/types as workflow_types
+import scrumbringer_server/use_case/metrics_db
+import scrumbringer_server/use_case/workflows/handlers as workflow
+import scrumbringer_server/use_case/workflows/types as workflow_types
 import wisp
 
 /// Handle GET /api/tasks/:id.
@@ -204,8 +204,8 @@ fn check_task_access_error_response(
     workflow_types.NotAuthorized -> lower_forbidden_response()
     workflow_types.DbError(_) -> lower_database_error_response()
     workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskCardTreeInheritedFromCard
+    | workflow_types.InvalidMovePoolToCardTree
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -236,8 +236,8 @@ fn fetch_task_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotAuthorized
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskCardTreeInheritedFromCard
+    | workflow_types.InvalidMovePoolToCardTree
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -252,17 +252,17 @@ fn update_task_error_response(error: workflow_types.Error) -> wisp.Response {
   case error {
     workflow_types.NotFound -> not_found_response()
     workflow_types.NotAuthorized -> forbidden_response()
-    workflow_types.TaskMilestoneInheritedFromCard ->
+    workflow_types.TaskCardTreeInheritedFromCard ->
       api.error(
         422,
         "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task milestone is inherited from card",
+        "Task card_tree is inherited from card",
       )
-    workflow_types.InvalidMovePoolToMilestone ->
+    workflow_types.InvalidMovePoolToCardTree ->
       api.error(
         422,
         "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Invalid move from pool to milestone",
+        "Invalid move from pool to card_tree",
       )
     workflow_types.ValidationError(message) ->
       api.error(422, "VALIDATION_ERROR", message)

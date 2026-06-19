@@ -25,7 +25,7 @@ fn success_context() -> mutation_update.Context(Nil) {
   mutation_update.Context(
     task_claimed: "Claimed",
     task_released: "Released",
-    task_completed: "Completed",
+    task_completed: "Done",
     on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_work_sessions_refetch: fn() { effect.from(fn(_dispatch) { Nil }) },
   )
@@ -64,7 +64,7 @@ fn sample_task(id: Int, state: task_state.TaskState) -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -138,7 +138,7 @@ pub fn try_update_error_checks_auth_after_rollback_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskCompleted(Error(err)),
+      pool_messages.MemberTaskDone(Error(err)),
       dispatch_context(),
     )
   let assert mutation_update.CheckAuthAfter(auth_err) = policy
@@ -272,7 +272,7 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
     )
 
   let assert mutation_update.NoPolicy = policy
-  let expected = sample_task(42, task_state.Completed(completed_at: ""))
+  let expected = sample_task(42, task_state.Done(completed_at: ""))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
   let assert True = fx != effect.none()
@@ -313,7 +313,7 @@ pub fn mutation_success_release_refetches_work_sessions_test() {
 
 pub fn mutation_success_complete_refetches_work_sessions_test() {
   let assert True =
-    mutation_update.should_refetch_work_sessions(mutation_update.Completed)
+    mutation_update.should_refetch_work_sessions(mutation_update.Done)
 }
 
 pub fn mutation_error_404_uses_not_found_warning_test() {

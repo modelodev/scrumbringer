@@ -81,10 +81,10 @@ pub fn start_rejects_completed_task_test() {
       seed_db.TaskInsertOptions(
         project_id: project_id,
         type_id: type_id,
-        title: "Completed",
+        title: "Done",
         description: "Done",
         priority: 3,
-        status: task_status.Completed,
+        status: task_status.Done,
         created_by: user_id,
         claimed_by: opt.Some(user_id),
         card_id: opt.None,

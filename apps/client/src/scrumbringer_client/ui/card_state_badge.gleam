@@ -2,7 +2,7 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{span, text}
 
-import domain/card.{type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{type CardPhase, Active, Closed, Draft}
 
 pub type Variant {
   Table
@@ -10,7 +10,7 @@ pub type Variant {
   Detail
 }
 
-pub fn view(state: CardState, label: String, variant: Variant) -> Element(msg) {
+pub fn view(state: CardPhase, label: String, variant: Variant) -> Element(msg) {
   let class = case variant {
     Table -> "state-badge " <> table_class(state)
     Ficha -> "ficha-state-badge " <> ficha_class(state)
@@ -20,26 +20,26 @@ pub fn view(state: CardState, label: String, variant: Variant) -> Element(msg) {
   span([attribute.class(class)], [text(label)])
 }
 
-fn table_class(state: CardState) -> String {
+fn table_class(state: CardPhase) -> String {
   case state {
-    Pendiente -> "state-pending"
-    EnCurso -> "state-active"
-    Cerrada -> "state-completed"
+    Draft -> "state-pending"
+    Active -> "state-active"
+    Closed -> "state-completed"
   }
 }
 
-fn ficha_class(state: CardState) -> String {
+fn ficha_class(state: CardPhase) -> String {
   case state {
-    Pendiente -> "ficha-state-pendiente"
-    EnCurso -> "ficha-state-en_curso"
-    Cerrada -> "ficha-state-cerrada"
+    Draft -> "ficha-state-pendiente"
+    Active -> "ficha-state-en_curso"
+    Closed -> "ficha-state-cerrada"
   }
 }
 
-fn detail_class(state: CardState) -> String {
+fn detail_class(state: CardPhase) -> String {
   case state {
-    Pendiente -> "card-state-pendiente"
-    EnCurso -> "card-state-en_curso"
-    Cerrada -> "card-state-cerrada"
+    Draft -> "card-state-pendiente"
+    Active -> "card-state-en_curso"
+    Closed -> "card-state-cerrada"
   }
 }

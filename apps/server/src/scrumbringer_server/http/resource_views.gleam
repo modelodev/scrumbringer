@@ -6,7 +6,7 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
-import scrumbringer_server/services/authorization
+import scrumbringer_server/use_case/authorization
 import wisp
 
 pub fn handle_put(

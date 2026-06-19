@@ -1,7 +1,7 @@
 //// KanbanBoard - Cards displayed in kanban columns
 ////
 //// Mission: Display cards organized in three columns by state
-//// (Pendiente, En Curso, Cerrada) with progress indicators.
+//// (Draft, En Curso, Closed) with progress indicators.
 ////
 //// Responsibilities:
 //// - Organize cards by state into columns
@@ -23,10 +23,10 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
 
-import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card, type CardPhase, Active, Closed, Draft}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
-import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
+import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_ffi
@@ -122,34 +122,34 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
 
   // Group by state
   let pendiente =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Pendiente })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Draft })
   let en_curso =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == EnCurso })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Active })
   let cerrada =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Cerrada })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Closed })
 
   div([attribute.class("kanban-view")], [
     view_surface_header(config, board_summary(non_empty_cards)),
     div([attribute.class("kanban-board")], [
       view_column(
         config,
-        i18n.t(config.locale, i18n_text.CardStatePendiente),
+        i18n.t(config.locale, i18n_text.CardPhaseDraft),
         "pendiente",
-        Pendiente,
+        Draft,
         pendiente,
       ),
       view_column(
         config,
-        i18n.t(config.locale, i18n_text.CardStateEnCurso),
+        i18n.t(config.locale, i18n_text.CardPhaseActive),
         "en-curso",
-        EnCurso,
+        Active,
         en_curso,
       ),
       view_column(
         config,
-        i18n.t(config.locale, i18n_text.CardStateCerrada),
+        i18n.t(config.locale, i18n_text.CardPhaseClosed),
         "cerrada",
-        Cerrada,
+        Closed,
         cerrada,
       ),
     ]),
@@ -200,13 +200,13 @@ fn view_column(
   config: KanbanConfig(msg),
   title: String,
   column_class: String,
-  column_state: CardState,
+  column_state: CardPhase,
   cards: List(CardWithProgress),
 ) -> Element(msg) {
   let header_icon = case column_state {
-    Pendiente -> icons.Pause
-    EnCurso -> icons.Play
-    Cerrada -> icons.CheckCircle
+    Draft -> icons.Pause
+    Active -> icons.Play
+    Closed -> icons.CheckCircle
   }
 
   div([attribute.class("kanban-column " <> column_class)], [
@@ -238,20 +238,20 @@ fn view_column(
 /// Renders an empty state for kanban columns (AC12: different per column)
 fn view_empty_column(
   config: KanbanConfig(msg),
-  column_state: CardState,
+  column_state: CardPhase,
 ) -> Element(msg) {
   // AC12: Different empty state text per column
   let empty_text = case column_state {
-    Pendiente -> i18n.t(config.locale, i18n_text.KanbanEmptyPendiente)
-    EnCurso -> i18n.t(config.locale, i18n_text.KanbanEmptyEnCurso)
-    Cerrada -> i18n.t(config.locale, i18n_text.KanbanEmptyCerrada)
+    Draft -> i18n.t(config.locale, i18n_text.KanbanEmptyDraft)
+    Active -> i18n.t(config.locale, i18n_text.KanbanEmptyActive)
+    Closed -> i18n.t(config.locale, i18n_text.KanbanEmptyClosed)
   }
 
   // AC12: Different icon per column state
   let empty_icon = case column_state {
-    Pendiente -> icons.InboxEmpty
-    EnCurso -> icons.Pause
-    Cerrada -> icons.CheckCircle
+    Draft -> icons.InboxEmpty
+    Active -> icons.Pause
+    Closed -> icons.CheckCircle
   }
 
   div(
@@ -396,7 +396,7 @@ fn compute_progress(
   list.map(cards, fn(card) {
     let card_tasks =
       list.filter(tasks, fn(t) { t.card_id == option.Some(card.id) })
-    let completed = list.count(card_tasks, fn(t) { t.status == Completed })
+    let completed = list.count(card_tasks, fn(t) { t.status == Done })
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,
@@ -432,7 +432,7 @@ fn task_health(tasks: List(Task)) -> TaskHealth {
 fn next_relevant_tasks(tasks: List(Task)) -> List(Task) {
   let active =
     tasks
-    |> list.filter(fn(task) { task.status != Completed })
+    |> list.filter(fn(task) { task.status != Done })
     |> list.sort(by: compare_relevant_tasks)
 
   case active {
@@ -462,6 +462,6 @@ fn task_rank(task: Task) -> Int {
     False, Available -> 1
     False, Claimed(Ongoing) -> 2
     False, Claimed(Taken) -> 3
-    False, Completed -> 4
+    False, Done -> 4
   }
 }

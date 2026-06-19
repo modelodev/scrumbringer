@@ -15,12 +15,12 @@
 //// ```
 
 import domain/task_state
-import domain/task_status.{Available, Claimed, Completed}
+import domain/task_status.{Available, Claimed, Done}
 import gleam/option.{type Option, Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/repository/tasks/queries as tasks_queries
 import wisp
 
 // =============================================================================
@@ -49,7 +49,7 @@ pub fn handle_claim_conflict(
       case current.status, current.blocked_count {
         Claimed(_), _ ->
           api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-        Completed, _ -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
+        Done, _ -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
         Available, count if count > 0 ->
           api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
         Available, _ -> api.error(409, "CONFLICT_VERSION", "Version conflict")
@@ -83,7 +83,7 @@ pub fn handle_version_or_claim_conflict(
             task_state.claimed_by(current.state),
             user_id,
           )
-        Available | Completed ->
+        Available | Done ->
           api.error(422, "VALIDATION_ERROR", "Invalid transition")
       }
   }

@@ -10,8 +10,8 @@ import gleam/json
 import gleeunit
 import pog
 import scrumbringer_server
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/service_error
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/service_error
 import support/assertions as expect
 import wisp/simulate
 

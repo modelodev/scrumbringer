@@ -4,8 +4,8 @@ import pog
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/resource_views
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/user_task_views_db
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/user_task_views_db
 import wisp
 
 /// Routes PUT /api/v1/views/tasks/:id requests.

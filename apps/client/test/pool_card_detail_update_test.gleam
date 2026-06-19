@@ -3,7 +3,7 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{type ApiResult, ApiError}
-import domain/card.{type Card, Card, Pendiente}
+import domain/card.{type Card, Card, Draft}
 import domain/metrics.{
   type CardModalMetrics, CardModalMetrics, ModalExecutionHealth,
   WorkflowBreakdown,
@@ -32,11 +32,11 @@ fn sample_card(id: Int) -> Card {
   Card(
     id: id,
     project_id: 1,
-    milestone_id: None,
+    parent_card_id: None,
     title: "Card",
     description: "",
     color: None,
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 1,

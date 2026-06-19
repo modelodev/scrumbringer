@@ -1,7 +1,7 @@
 //// JSON presenters for capability endpoints.
 
 import gleam/json
-import scrumbringer_server/services/capabilities_db
+import scrumbringer_server/use_case/capabilities_db
 
 pub fn capabilities(capabilities: List(capabilities_db.Capability)) -> json.Json {
   json.array(capabilities, of: capability)

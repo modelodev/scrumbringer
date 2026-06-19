@@ -1,13 +1,11 @@
 //// Operational summary for a task detail view.
 
-import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
-import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, claimed_by}
 
@@ -22,7 +20,6 @@ pub type Config {
     locale: Locale,
     task: Task,
     dependencies: Remote(List(TaskDependency)),
-    milestones: Remote(List(MilestoneProgress)),
     parent_card_title: opt.Option(String),
   )
 }
@@ -55,11 +52,6 @@ pub fn view(config: Config) -> Element(msg) {
         t(config.locale, i18n_text.ParentCardLabel),
         card_label(config),
         card_is_empty(config),
-      ),
-      summary_item(
-        t(config.locale, i18n_text.MilestoneLabel),
-        milestone_label(config),
-        milestone_is_empty(config),
       ),
       summary_item(
         t(config.locale, i18n_text.TaskOwner),
@@ -99,26 +91,6 @@ fn card_label(config: Config) -> String {
 
 fn card_is_empty(config: Config) -> Bool {
   config.parent_card_title == opt.None
-}
-
-fn milestone_label(config: Config) -> String {
-  case config.task.milestone_id, config.milestones {
-    opt.Some(milestone_id), Loaded(milestones) ->
-      case
-        list.find(milestones, fn(progress) {
-          progress.milestone.id == milestone_id
-        })
-      {
-        Ok(progress) -> progress.milestone.name
-        Error(_) -> t(config.locale, i18n_text.NoMilestone)
-      }
-    opt.Some(_), _ -> t(config.locale, i18n_text.LoadingEllipsis)
-    opt.None, _ -> t(config.locale, i18n_text.NoMilestone)
-  }
-}
-
-fn milestone_is_empty(config: Config) -> Bool {
-  config.task.milestone_id == opt.None
 }
 
 fn owner_label(config: Config) -> String {

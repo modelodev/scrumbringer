@@ -3,11 +3,8 @@ import gleam/string
 import lustre/element
 
 import domain/api_error.{ApiError}
-import domain/card.{type Card, Blue, Card, Pendiente}
-import domain/milestone.{
-  type MilestoneProgress, Milestone, MilestoneProgress, Ready,
-}
-import domain/remote.{Failed, Loaded, NotAsked}
+import domain/card.{type Card, Blue, Card, Draft}
+import domain/remote.{Failed, Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
@@ -34,38 +31,17 @@ fn card() -> Card {
   Card(
     id: 8,
     project_id: 3,
-    milestone_id: opt.None,
+    parent_card_id: opt.None,
     title: "Release card",
     description: "",
     color: opt.Some(Blue),
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,
     has_new_notes: False,
-  )
-}
-
-fn milestone() -> MilestoneProgress {
-  MilestoneProgress(
-    milestone: Milestone(
-      id: 13,
-      project_id: 3,
-      name: "Sprint launch",
-      description: opt.None,
-      state: Ready,
-      position: 1,
-      created_by: 1,
-      created_at: "2026-01-01T00:00:00Z",
-      activated_at: opt.None,
-      completed_at: opt.None,
-    ),
-    cards_total: 0,
-    cards_completed: 0,
-    tasks_total: 0,
-    tasks_completed: 0,
   )
 }
 
@@ -78,10 +54,8 @@ fn config() -> create_dialog.Config(String) {
     priority: "2",
     type_id: "5",
     card_id: opt.Some(8),
-    milestone_id: opt.None,
     in_flight: False,
     task_types: Loaded([task_type()]),
-    milestones: NotAsked,
     cards: [card()],
     on_close: "close",
     on_submit: "submit",
@@ -123,35 +97,4 @@ pub fn create_dialog_retry_uses_shared_button_classes_test() {
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
   assert_not_contains(html, "<button type=\"button\">Retry</button>")
-}
-
-pub fn create_dialog_renders_milestone_target_without_card_selector_test() {
-  let html =
-    create_dialog.view(
-      create_dialog.Config(
-        ..config(),
-        card_id: opt.None,
-        milestone_id: opt.Some(13),
-        milestones: Loaded([milestone()]),
-      ),
-    )
-    |> element.to_document_string
-
-  assert_contains(html, "Milestones")
-  assert_contains(html, "Sprint launch")
-  assert_not_contains(html, "Release card")
-}
-
-pub fn create_dialog_falls_back_to_milestone_id_when_name_missing_test() {
-  let html =
-    create_dialog.view(
-      create_dialog.Config(
-        ..config(),
-        milestone_id: opt.Some(99),
-        milestones: Loaded([milestone()]),
-      ),
-    )
-    |> element.to_document_string
-
-  assert_contains(html, "#99")
 }

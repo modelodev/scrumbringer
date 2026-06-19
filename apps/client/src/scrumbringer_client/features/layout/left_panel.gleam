@@ -8,7 +8,7 @@
 //// - Work section (visible for ALL roles - AC1, AC7-9)
 ////   - New Task button: ALL members
 ////   - New Card button: PM/Admin only
-////   - Navigation links: Pool, Kanban, Personas, Hitos (ALL members)
+////   - Navigation links: Pool, Cards, Capabilities, People (ALL members)
 //// - Configuration section (PM/Admin only)
 //// - Organization section (Org Admin only)
 //// - Unified active state indication across all nav items
@@ -28,9 +28,7 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/user.{type User}
-import domain/view_mode.{
-  type ViewMode, Capabilities, Cards, Milestones, People, Pool,
-}
+import domain/view_mode.{type ViewMode, Capabilities, Cards, People, Pool}
 import scrumbringer_client/features/card_tree/scope_view.{type DepthName}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -72,7 +70,6 @@ pub type LeftPanelConfig(msg) {
     on_navigate_cards: msg,
     on_navigate_capabilities: msg,
     on_navigate_people: msg,
-    on_navigate_milestones: msg,
     // Config navigation
     on_navigate_config_team: msg,
     on_navigate_config_capabilities: msg,
@@ -381,14 +378,6 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
               i18n_text.People,
               config.on_navigate_people,
             ),
-            view_work_nav_link(
-              config,
-              Milestones,
-              "nav-milestones",
-              icons.List,
-              i18n_text.Tracking,
-              config.on_navigate_milestones,
-            ),
           ]),
         ),
       ),
@@ -411,7 +400,7 @@ fn view_depth_nav_links(config: LeftPanelConfig(msg)) -> List(Element(msg)) {
   })
 }
 
-/// Renders a work section navigation link (Pool/Kanban/Capabilities/People/Milestones)
+/// Renders a work section navigation link.
 fn view_work_nav_link(
   config: LeftPanelConfig(msg),
   mode: ViewMode,

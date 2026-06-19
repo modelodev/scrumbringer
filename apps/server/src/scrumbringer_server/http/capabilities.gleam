@@ -20,10 +20,10 @@ import scrumbringer_server/http/capabilities/payloads as capability_payloads
 import scrumbringer_server/http/capabilities/presenters as capability_presenters
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/json_payload
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/capabilities_db
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/capabilities_db
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 type SelectionValidationError {

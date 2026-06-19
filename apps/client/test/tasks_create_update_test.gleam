@@ -41,7 +41,7 @@ fn sample_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -132,7 +132,6 @@ pub fn local_create_dialog_opened_with_card_sets_card_context_test() {
   let assert create_update.NoPolicy = policy
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert Some(42) = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert None = next.member_create_error
   let assert True = fx == effect.none()
 }
@@ -144,7 +143,6 @@ pub fn local_create_dialog_closed_clears_create_context_test() {
       member_create_dialog_mode: dialog_mode.DialogCreate,
       member_create_error: Some("boom"),
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let assert Some(create_update.Update(next, fx, policy)) =
@@ -158,7 +156,6 @@ pub fn local_create_dialog_closed_clears_create_context_test() {
   let assert dialog_mode.DialogClosed = next.member_create_dialog_mode
   let assert None = next.member_create_error
   let assert None = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert True = fx == effect.none()
 }
 
@@ -195,7 +192,6 @@ pub fn local_task_created_ok_resets_create_dialog_test() {
       member_create_priority: "5",
       member_create_type_id: "8",
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let assert Some(create_update.Update(next, fx, policy)) =
@@ -213,7 +209,6 @@ pub fn local_task_created_ok_resets_create_dialog_test() {
   let assert "3" = next.member_create_priority
   let assert "" = next.member_create_type_id
   let assert None = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert True = fx == effect.none()
 }
 

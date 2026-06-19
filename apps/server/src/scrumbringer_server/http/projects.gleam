@@ -12,12 +12,12 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Database operations (see `services/projects_db.gleam`)
+//// - Database operations (see `use_case/projects_db.gleam`)
 //// - Authentication (see `http/auth.gleam`)
 ////
 //// ## Relations
 ////
-//// - Uses `services/projects_db` for persistence
+//// - Uses `use_case/projects_db` for repository
 //// - Uses `http/auth` and `http/csrf` for auth and CSRF validation
 
 import domain/api_token as api_token_domain
@@ -33,9 +33,9 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/projects/payloads as project_payloads
 import scrumbringer_server/http/projects/presenters as project_presenters
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 /// Handle /api/projects requests.

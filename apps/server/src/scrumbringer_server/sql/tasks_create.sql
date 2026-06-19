@@ -56,7 +56,7 @@ with type_ok as (
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    0 as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id

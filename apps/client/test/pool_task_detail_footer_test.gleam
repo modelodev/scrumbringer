@@ -142,7 +142,7 @@ fn available_task() -> Task {
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,

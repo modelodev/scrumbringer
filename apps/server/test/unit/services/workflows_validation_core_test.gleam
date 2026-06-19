@@ -1,8 +1,8 @@
 import fixtures
 import gleam/option.{Some}
 import scrumbringer_server
-import scrumbringer_server/services/capabilities_db
-import scrumbringer_server/services/workflows/validation_core
+import scrumbringer_server/use_case/capabilities_db
+import scrumbringer_server/use_case/workflows/validation_core
 import support/assertions as expect
 
 pub fn validate_task_title_value_rejects_empty_test() {

@@ -15,7 +15,7 @@ pub fn add_to_remote_starts_loaded_list_when_not_loaded_test() {
 
 pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
   let first = sample_dependency(10, task_status.Available)
-  let second = sample_dependency(11, task_status.Completed)
+  let second = sample_dependency(11, task_status.Done)
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([first, second]), 10)
@@ -23,7 +23,7 @@ pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
 }
 
 pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
-  let completed = sample_dependency(10, task_status.Completed)
+  let completed = sample_dependency(10, task_status.Done)
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([completed]), 10)
@@ -36,7 +36,7 @@ pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
 pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test() {
   let task = sample_task()
   let blocker = sample_dependency(10, task_status.Available)
-  let completed = sample_dependency(11, task_status.Completed)
+  let completed = sample_dependency(11, task_status.Done)
 
   let assert True =
     dependency_list.add_to_task(task, blocker)
@@ -56,7 +56,7 @@ pub fn remove_from_task_clamps_blocked_count_test() {
 
 fn sample_dependency(
   depends_on_task_id: Int,
-  status: task_status.TaskStatus,
+  status: task_status.TaskPhase,
 ) -> TaskDependency {
   TaskDependency(
     depends_on_task_id: depends_on_task_id,
@@ -83,7 +83,7 @@ fn sample_task() -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

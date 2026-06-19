@@ -6,7 +6,6 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
-import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency}
 
@@ -21,7 +20,6 @@ pub type Config(msg) {
     locale: Locale,
     task: opt.Option(Task),
     dependencies: Remote(List(TaskDependency)),
-    milestones: Remote(List(MilestoneProgress)),
     parent_card_title: opt.Option(String),
     editor: detail_editor.Config(msg),
   )
@@ -39,7 +37,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
                 locale: config.locale,
                 task: task,
                 dependencies: config.dependencies,
-                milestones: config.milestones,
                 parent_card_title: config.parent_card_title,
               ))
           },

@@ -101,7 +101,7 @@ pub type ProjectTask {
     title: String,
     description: String,
     priority: Int,
-    status: task_status.TaskStatus,
+    status: task_status.TaskPhase,
     work_state: WorkState,
     created_by: Int,
     claimed_by: Option(Int),
@@ -124,7 +124,7 @@ pub type WorkState =
 /// Error type for metrics operations.
 pub type MetricsError {
   DbError(pog.QueryError)
-  InvalidTaskStatus(String)
+  InvalidTaskPhase(String)
   NotFound
 }
 
@@ -415,7 +415,7 @@ fn project_task_from_row(
 
   use status <- result.try(
     task_status.parse_task_status(row.status)
-    |> result.map_error(fn(_) { InvalidTaskStatus(row.status) }),
+    |> result.map_error(fn(_) { InvalidTaskPhase(row.status) }),
   )
   let work_state = work_state_from_status(status, row.is_ongoing)
 
@@ -484,19 +484,19 @@ pub fn work_state_from(
 ) -> Result(WorkState, MetricsError) {
   use parsed <- result.try(
     task_status.parse_task_status(status)
-    |> result.map_error(fn(_) { InvalidTaskStatus(status) }),
+    |> result.map_error(fn(_) { InvalidTaskPhase(status) }),
   )
 
   Ok(work_state_from_status(parsed, is_ongoing))
 }
 
 fn work_state_from_status(
-  status: task_status.TaskStatus,
+  status: task_status.TaskPhase,
   is_ongoing: Bool,
 ) -> WorkState {
   case status {
     task_status.Available -> task_status.WorkAvailable
-    task_status.Completed -> task_status.WorkCompleted
+    task_status.Done -> task_status.WorkDone
     task_status.Claimed(task_status.Ongoing) -> task_status.WorkOngoing
     task_status.Claimed(task_status.Taken) ->
       // Justification: nested case disambiguates claimed vs ongoing states.

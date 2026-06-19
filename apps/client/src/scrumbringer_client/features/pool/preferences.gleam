@@ -24,7 +24,7 @@ pub fn try_update(
     }
     pool_messages.MemberPoolViewModeSet(mode) ->
       opt.Some(#(handle_view_mode_set(model, mode), SaveViewMode(mode)))
-    pool_messages.MemberListHideCompletedToggled ->
+    pool_messages.MemberListHideDoneToggled ->
       opt.Some(#(handle_hide_completed_toggled(model), NoPersistence))
     pool_messages.MemberListCardToggled(card_id) ->
       opt.Some(#(handle_list_card_toggled(model, card_id), NoPersistence))

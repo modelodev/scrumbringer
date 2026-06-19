@@ -28,7 +28,6 @@ import lustre/event
 
 import domain/card.{type Card}
 import domain/metrics.{type TaskModalMetrics}
-import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
 import domain/task_type.{type TaskType}
@@ -89,12 +88,10 @@ pub type TaskEditorConfig(msg) {
     edit_priority: String,
     edit_type_id: String,
     edit_card_id: String,
-    edit_milestone_id: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
     task_types: Remote(List(TaskType)),
     cards: List(Card),
-    milestones: Remote(List(MilestoneProgress)),
     parent_card_title: opt.Option(String),
     on_edit_started: msg,
     on_edit_cancelled: msg,
@@ -103,7 +100,6 @@ pub type TaskEditorConfig(msg) {
     on_edit_priority_changed: fn(String) -> msg,
     on_edit_type_id_changed: fn(String) -> msg,
     on_edit_card_id_changed: fn(String) -> msg,
-    on_edit_milestone_id_changed: fn(String) -> msg,
     on_edit_submitted: msg,
   )
 }
@@ -241,7 +237,6 @@ fn details_config(
     locale: config.locale,
     task: config.task,
     dependencies: config.dependencies.items,
-    milestones: config.editor.milestones,
     parent_card_title: config.editor.parent_card_title,
     editor: editor_config(config),
   )
@@ -257,12 +252,10 @@ fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
     edit_priority: config.editor.edit_priority,
     edit_type_id: config.editor.edit_type_id,
     edit_card_id: config.editor.edit_card_id,
-    edit_milestone_id: config.editor.edit_milestone_id,
     edit_error: config.editor.edit_error,
     edit_in_flight: config.editor.edit_in_flight,
     task_types: config.editor.task_types,
     cards: config.editor.cards,
-    milestones: config.editor.milestones,
     on_edit_started: config.editor.on_edit_started,
     on_edit_cancelled: config.editor.on_edit_cancelled,
     on_title_changed: config.editor.on_edit_title_changed,
@@ -270,7 +263,6 @@ fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
     on_priority_changed: config.editor.on_edit_priority_changed,
     on_type_id_changed: config.editor.on_edit_type_id_changed,
     on_card_id_changed: config.editor.on_edit_card_id_changed,
-    on_milestone_id_changed: config.editor.on_edit_milestone_id_changed,
     on_submitted: config.editor.on_edit_submitted,
   )
 }

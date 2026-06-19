@@ -12,7 +12,7 @@ import lustre/event
 
 import domain/capability.{type Capability}
 import domain/remote.{type Remote, Loaded}
-import domain/task/codec as task_codec
+import domain/task/task_codec
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/admin/task_types as admin_task_types

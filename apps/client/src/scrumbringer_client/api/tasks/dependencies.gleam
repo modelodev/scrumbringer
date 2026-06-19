@@ -11,7 +11,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/task.{type TaskDependency}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import scrumbringer_client/api/core
 
 pub fn list_task_dependencies(

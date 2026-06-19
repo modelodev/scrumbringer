@@ -120,7 +120,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         False -> []
       }
 
-    task_status.WorkCompleted -> []
+    task_status.WorkDone -> []
   }
 }
 

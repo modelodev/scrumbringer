@@ -2,13 +2,10 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/milestone.{
-  type MilestoneProgress, Active, Milestone, MilestoneProgress,
-}
-import domain/remote.{Loaded, NotAsked}
+import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{type TaskStatus, Available, Completed}
+import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_detail_summary
 import scrumbringer_client/i18n/locale
@@ -21,9 +18,8 @@ pub fn task_detail_summary_renders_operational_context_test() {
   let html =
     task_detail_summary.view(task_detail_summary.Config(
       locale: locale.En,
-      task: Task(..task(), milestone_id: Some(5)),
+      task: task(),
       dependencies: Loaded([]),
-      milestones: Loaded([milestone_progress()]),
       parent_card_title: Some("Release card"),
     ))
     |> element.to_document_string
@@ -33,7 +29,6 @@ pub fn task_detail_summary_renders_operational_context_test() {
   assert_contains(html, "P2")
   assert_contains(html, "Feature")
   assert_contains(html, "Release card")
-  assert_contains(html, "Sprint 42")
   assert_contains(html, "Unassigned")
   assert_contains(html, "No active blockers")
 }
@@ -45,9 +40,8 @@ pub fn task_detail_summary_uses_loaded_dependency_blockers_test() {
       task: Task(..task(), blocked_count: 0),
       dependencies: Loaded([
         dependency(11, Available),
-        dependency(12, Completed),
+        dependency(12, Done),
       ]),
-      milestones: NotAsked,
       parent_card_title: None,
     ))
     |> element.to_document_string
@@ -72,7 +66,7 @@ fn task() -> Task {
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -82,32 +76,11 @@ fn task() -> Task {
   )
 }
 
-fn dependency(id: Int, status: TaskStatus) -> TaskDependency {
+fn dependency(id: Int, status: TaskPhase) -> TaskDependency {
   TaskDependency(
     depends_on_task_id: id,
     title: "Dependency",
     status: status,
     claimed_by: None,
-  )
-}
-
-fn milestone_progress() -> MilestoneProgress {
-  MilestoneProgress(
-    milestone: Milestone(
-      id: 5,
-      project_id: 1,
-      name: "Sprint 42",
-      description: None,
-      state: Active,
-      position: 1,
-      created_by: 7,
-      created_at: "2026-06-01T10:00:00Z",
-      activated_at: None,
-      completed_at: None,
-    ),
-    cards_total: 1,
-    cards_completed: 0,
-    tasks_total: 2,
-    tasks_completed: 0,
   )
 }

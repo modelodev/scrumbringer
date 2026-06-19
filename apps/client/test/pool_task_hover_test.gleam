@@ -4,7 +4,7 @@ import lustre/element
 
 import domain/task.{Task, TaskDependency, TaskNote}
 import domain/task_state
-import domain/task_status.{Available, Claimed, Completed, Taken, WorkAvailable}
+import domain/task_status.{Available, Claimed, Done, Taken, WorkAvailable}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/i18n/locale
@@ -44,7 +44,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
   assert_contains(html, "Blocked by 2 tasks")
   assert_contains(html, "OAuth setup")
   assert_contains(html, "API review")
-  assert_not_contains(html, "Completed blocker")
+  assert_not_contains(html, "Done blocker")
   assert_contains(html, "3 blockers out of view due to filters")
   assert_contains(html, "Recent notes")
   assert_contains(html, "You")
@@ -100,7 +100,7 @@ fn sample_task() {
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,
@@ -121,8 +121,8 @@ fn sample_task() {
       ),
       TaskDependency(
         depends_on_task_id: 3,
-        title: "Completed blocker",
-        status: Completed,
+        title: "Done blocker",
+        status: Done,
         claimed_by: None,
       ),
     ],

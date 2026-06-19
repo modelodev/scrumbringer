@@ -48,7 +48,6 @@ fn config(
     locale: locale.En,
     task: task,
     dependencies: NotAsked,
-    milestones: NotAsked,
     parent_card_title: Some("Release card"),
     editor: editor_config(current_user_id),
   )
@@ -64,12 +63,10 @@ fn editor_config(current_user_id: Option(Int)) -> detail_editor.Config(String) {
     edit_priority: "2",
     edit_type_id: "1",
     edit_card_id: "",
-    edit_milestone_id: "",
     edit_error: None,
     edit_in_flight: False,
     task_types: NotAsked,
     cards: [],
-    milestones: NotAsked,
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
@@ -77,7 +74,6 @@ fn editor_config(current_user_id: Option(Int)) -> detail_editor.Config(String) {
     on_priority_changed: fn(value) { "priority:" <> value },
     on_type_id_changed: fn(value) { "type:" <> value },
     on_card_id_changed: fn(value) { "card:" <> value },
-    on_milestone_id_changed: fn(value) { "milestone:" <> value },
     on_submitted: "submitted",
   )
 }
@@ -106,7 +102,7 @@ fn claimed_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

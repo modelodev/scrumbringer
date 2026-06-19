@@ -1,7 +1,7 @@
-import domain/card.{type Card, Cerrada}
+import domain/card.{type Card, Closed}
 import domain/org.{type OrgUser}
 import domain/task.{type Task, claimed_by}
-import domain/task_status.{Available, Claimed, Completed}
+import domain/task_status.{Available, Claimed, Done}
 import gleam/list
 import gleam/option
 import gleam/order
@@ -141,7 +141,7 @@ fn view_due_date(config: Config(msg)) -> Element(msg) {
 fn due_date_class(card_state, due_date: String, project_today: String) -> String {
   let base = "card-due-date"
   case
-    card_state != Cerrada && string.compare(due_date, project_today) == order.Lt
+    card_state != Closed && string.compare(due_date, project_today) == order.Lt
   {
     True -> base <> " card-due-date-overdue"
     False -> base
@@ -259,7 +259,7 @@ fn status_display(config: Config(msg), task: Task) -> Element(msg) {
         ],
         [text(task_status_utils.label(config.locale, task.status))],
       )
-    Completed ->
+    Done ->
       span(
         [
           attribute.class("task-status"),

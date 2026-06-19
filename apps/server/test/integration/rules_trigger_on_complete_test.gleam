@@ -67,7 +67,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -214,7 +214,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       workflow_id,
       Some(feature_type_id),
       "Feature Done",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template1_id)
@@ -310,7 +310,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -412,7 +412,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       workflow_id,
       Some(type_id),
       "Task Done",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -509,7 +509,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -620,7 +620,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)

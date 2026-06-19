@@ -69,14 +69,13 @@ pub fn workflows_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Completed\",\"goal\":\"Auto review\",\"resource_type\":\"task\",\"task_type_id\":5,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:30:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"resource_type\":\"task\",\"task_type_id\":5,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:30:00Z\"}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
-  let assert workflow.TaskRule(task_status.Completed, option.Some(5)) =
-    rule.target
+  let assert workflow.TaskRule(task_status.Done, option.Some(5)) = rule.target
 }
 
 pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
@@ -101,7 +100,7 @@ pub fn rule_payload_decoder_decodes_card_resource_type_test() {
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
-  let assert workflow.CardRule(card.Cerrada) = rule.target
+  let assert workflow.CardRule(card.Closed) = rule.target
 }
 
 pub fn rule_payload_decoder_rejects_missing_resource_type_test() {
@@ -126,10 +125,9 @@ pub fn rules_payload_decoder_decodes_list_test() {
   let assert Ok(rules) = json.parse(from: body, using: decoder)
   let assert [rule_a, rule_b] = rules
   let assert "Rule A" = rule_a.name
-  let assert workflow.TaskRule(task_status.Completed, option.Some(1)) =
-    rule_a.target
+  let assert workflow.TaskRule(task_status.Done, option.Some(1)) = rule_a.target
   let assert "Rule B" = rule_b.name
-  let assert workflow.CardRule(card.Cerrada) = rule_b.target
+  let assert workflow.CardRule(card.Closed) = rule_b.target
 }
 
 pub fn rule_payload_decoder_rejects_invalid_task_state_test() {
@@ -281,7 +279,7 @@ pub fn templates_payload_decoder_decodes_empty_list_test() {
 
 pub fn workflow_metrics_decoder_decodes_with_rules_test() {
   let body =
-    "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
+    "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Done\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
 
   let assert Ok(metrics) =
     json.parse(from: body, using: api_rule_metrics.workflow_metrics_decoder())
@@ -318,7 +316,7 @@ pub fn org_workflow_metrics_summary_decoder_decodes_test() {
 
 pub fn rule_metrics_detailed_decoder_decodes_with_breakdown_test() {
   let body =
-    "{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
+    "{\"rule_id\":1,\"rule_name\":\"Task Done\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
 
   let assert Ok(metrics) =
     json.parse(

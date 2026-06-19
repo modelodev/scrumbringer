@@ -9,8 +9,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, form, input, option, select, text}
 import lustre/event
 
-import domain/card.{type Card, Cerrada, EnCurso, Pendiente}
-import domain/milestone.{type MilestoneProgress}
+import domain/card.{type Card, Active, Closed, Draft}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_type.{type TaskType}
 
@@ -32,10 +31,8 @@ pub type Config(msg) {
     priority: String,
     type_id: String,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
     in_flight: Bool,
     task_types: Remote(List(TaskType)),
-    milestones: Remote(List(MilestoneProgress)),
     cards: List(Card),
     on_close: msg,
     on_submit: msg,
@@ -74,11 +71,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           view_description_field(config),
           view_priority_field(config),
           view_type_field(config),
-          view_milestone_target(config),
-          case config.milestone_id {
-            opt.Some(_) -> element.none()
-            opt.None -> view_card_selector(config)
-          },
+          view_card_selector(config),
           view_creation_context_hint(config),
         ],
       ),
@@ -126,11 +119,11 @@ fn selected_card(cards: List(Card), card_id: Int) -> opt.Option(Card) {
 
 fn card_context_hint(card: Card) -> String {
   case card.state {
-    Pendiente ->
+    Draft ->
       "This task will not be auto-claimed. It will stay prepared until this card is activated."
-    EnCurso ->
+    Active ->
       "This task will enter the Pool when created and be available for someone with the matching capability. It will not be auto-claimed."
-    Cerrada -> "Closed cards cannot receive new tasks."
+    Closed -> "Closed cards cannot receive new tasks."
   }
 }
 
@@ -221,46 +214,6 @@ fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
     Failed(_) -> [
       option([attribute.value("")], t(config, i18n_text.ErrorLoadingTasks)),
     ]
-  }
-}
-
-fn view_milestone_target(config: Config(msg)) -> Element(msg) {
-  case config.milestone_id {
-    opt.Some(milestone_id) ->
-      form_field.view(
-        t(config, i18n_text.Milestones),
-        div([attribute.class("task-create-milestone-target")], [
-          text(
-            milestone_name(config.milestones, milestone_id)
-            |> milestone_name_or_id(milestone_id),
-          ),
-        ]),
-      )
-    opt.None -> element.none()
-  }
-}
-
-fn milestone_name(
-  milestones: Remote(List(MilestoneProgress)),
-  milestone_id: Int,
-) -> opt.Option(String) {
-  case milestones {
-    Loaded(items) ->
-      list.find_map(items, fn(progress) {
-        case progress.milestone.id == milestone_id {
-          True -> Ok(progress.milestone.name)
-          False -> Error(Nil)
-        }
-      })
-      |> opt.from_result
-    _ -> opt.None
-  }
-}
-
-fn milestone_name_or_id(name: opt.Option(String), milestone_id: Int) -> String {
-  case name {
-    opt.None -> "#" <> int.to_string(milestone_id)
-    opt.Some(value) -> value
   }
 }
 

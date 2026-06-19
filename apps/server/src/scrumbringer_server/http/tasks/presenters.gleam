@@ -18,14 +18,14 @@ import domain/card
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
 import domain/task_status.{
-  type OngoingBy, type TaskStatus, type WorkState, OngoingBy,
+  type OngoingBy, type TaskPhase, type WorkState, OngoingBy,
 }
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
-import scrumbringer_server/services/metrics_db
-import scrumbringer_server/services/task_types_db
+import scrumbringer_server/use_case/metrics_db
+import scrumbringer_server/use_case/task_types_db
 
 // =============================================================================
 // Task Type JSON
@@ -96,7 +96,7 @@ pub fn task_json(task: Task) -> json.Json {
     created_at: created_at,
     due_date: due_date,
     version: version,
-    milestone_id: milestone_id,
+    parent_card_id: parent_card_id,
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
@@ -136,7 +136,7 @@ pub fn task_json(task: Task) -> json.Json {
     #("created_at", json.string(created_at)),
     #("due_date", json_helpers.option_string_json(due_date)),
     #("version", json.int(version)),
-    #("milestone_id", json_helpers.option_int_json(milestone_id)),
+    #("parent_card_id", json_helpers.option_int_json(parent_card_id)),
     #("card_id", json_helpers.option_int_json(card_id)),
     #("card_title", json_helpers.option_string_json(card_title)),
     #("card_color", option_card_color_json(card_color)),
@@ -237,7 +237,7 @@ pub fn ongoing_by_json(value: Option(OngoingBy)) -> json.Json {
   }
 }
 
-/// Convert TaskStatus to database status string for JSON output.
+/// Convert TaskPhase to database status string for JSON output.
 ///
 /// ## Example
 ///
@@ -245,13 +245,13 @@ pub fn ongoing_by_json(value: Option(OngoingBy)) -> json.Json {
 /// status_to_string(Available)        // "available"
 /// status_to_string(Claimed(Taken))   // "claimed"
 /// status_to_string(Claimed(Ongoing)) // "claimed"
-/// status_to_string(Completed)        // "completed"
+/// status_to_string(Done)        // "completed"
 /// ```
-fn status_to_string(status: TaskStatus) -> String {
+fn status_to_string(status: TaskPhase) -> String {
   task_status.to_db_status(status)
 }
 
-/// Convert TaskStatus to work_state string for JSON output.
+/// Convert TaskPhase to work_state string for JSON output.
 ///
 /// The work_state provides more granular information than status,
 /// distinguishing between "claimed" (idle) and "ongoing" (active work).
@@ -262,7 +262,7 @@ fn status_to_string(status: TaskStatus) -> String {
 /// status_to_work_state(Available)        // "available"
 /// status_to_work_state(Claimed(Taken))   // "claimed"
 /// status_to_work_state(Claimed(Ongoing)) // "ongoing"
-/// status_to_work_state(Completed)        // "completed"
+/// status_to_work_state(Done)        // "completed"
 /// ```
 fn work_state_to_string(work_state: WorkState) -> String {
   task_status.work_state_to_string(work_state)

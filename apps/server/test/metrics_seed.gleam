@@ -28,7 +28,7 @@ import gleam/result
 import gleam/string
 import scrumbringer_server
 import scrumbringer_server/seed_builder
-import scrumbringer_server/services/rules_engine
+import scrumbringer_server/use_case/rules_engine
 
 // =============================================================================
 // Public API
@@ -192,7 +192,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Resolved",
-    task_status.Completed,
+    task_status.Done,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -208,7 +208,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Closed",
-    task_status.Completed,
+    task_status.Done,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -232,7 +232,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_feature_id,
     Some(alpha_feature_type),
     "On Feature Done",
-    task_status.Completed,
+    task_status.Done,
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -253,7 +253,7 @@ pub fn seed() -> Result(SeedResult, String) {
     session,
     wf_card_id,
     "On Card Archived",
-    domain_card.Cerrada,
+    domain_card.Closed,
   ))
   io.println("[OK] Created Card Automation workflow")
 
@@ -293,7 +293,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_beta,
     Some(beta_bug_type),
     "On Beta Bug Resolved",
-    task_status.Completed,
+    task_status.Done,
   ))
   io.println("[OK] Created workflow for Beta")
 
@@ -364,7 +364,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
-          task_status.Completed,
+          task_status.Done,
           alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -388,8 +388,8 @@ pub fn seed() -> Result(SeedResult, String) {
           alpha_id,
           org_id,
           admin_user_id,
-          Some(task_status.Completed),
-          task_status.Completed,
+          Some(task_status.Done),
+          task_status.Done,
           alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -414,7 +414,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           dev_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
-          task_status.Completed,
+          task_status.Done,
           alpha_feature_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -438,8 +438,8 @@ pub fn seed() -> Result(SeedResult, String) {
           alpha_id,
           org_id,
           admin_user_id,
-          Some(domain_card.EnCurso),
-          domain_card.Cerrada,
+          Some(domain_card.Active),
+          domain_card.Closed,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -463,7 +463,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
-          task_status.Completed,
+          task_status.Done,
           beta_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -484,7 +484,7 @@ pub fn seed() -> Result(SeedResult, String) {
       org_id,
       admin_user_id,
       Some(task_status.Claimed(task_status.Taken)),
-      task_status.Completed,
+      task_status.Done,
       alpha_bug_type,
     )
   use _ <- result.try(

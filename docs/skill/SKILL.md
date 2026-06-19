@@ -1,6 +1,6 @@
 ---
 name: scrumbringer-agent
-description: Operate Scrumbringer through its Bearer API while preserving the pull-flow philosophy. Use this skill whenever a Codex, OpenCode, or OpenClaw agent needs to inspect or modify Scrumbringer projects, tasks, cards, notes, or milestones; advise users on designing milestones/cards/tasks; or coordinate work with ScrumBringer without using workflows, rules, or templates.
+description: Operate Scrumbringer through its Bearer API while preserving the pull-flow philosophy. Use this skill whenever a Codex, OpenCode, or OpenClaw agent needs to inspect or modify Scrumbringer projects, tasks, cards, notes, or card trees; advise users on designing card trees/cards/tasks; or coordinate work with ScrumBringer without using workflows, rules, or templates.
 ---
 
 # Scrumbringer Agent
@@ -17,12 +17,12 @@ Scrumbringer is a pull-flow work cockpit. Preserve these rules:
 - Do not push-assign tasks to people.
 - Do not claim tasks in this initial agent policy.
 - Prefer notes and recommendations when a human decision is needed.
-- Keep milestones, cards, and tasks shaped for team autonomy.
+- Keep card trees, cards, and tasks shaped for team autonomy.
 - Use the smallest API action that creates useful operational signal.
 
 When advising the user:
 
-- **Milestones** should describe an outcome or delivery slice, not a vague
+- **Card Trees** should describe an outcome or delivery slice, not a vague
   backlog bucket.
 - **Cards** should group related work that can be understood and reviewed as a
   coherent slice.
@@ -41,7 +41,7 @@ Before any API call, verify:
   - project-scoped work: `SCRUMBRINGER_PROJECT_ID`
   - task work: `SCRUMBRINGER_TASK_ID`
   - card work: `SCRUMBRINGER_CARD_ID`
-  - milestone work: `SCRUMBRINGER_MILESTONE_ID`
+  - card tree work: `SCRUMBRINGER_MILESTONE_ID`
   - task mutations that require optimistic concurrency: current task `version`
 
 Use the helper script first:
@@ -80,19 +80,19 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
    - Confirm the token has the needed scopes by making the smallest read call.
 
 2. **Inspect before mutation**
-   - Read the project/task/card/milestone.
+   - Read the project/task/card/card tree.
    - Summarize current state in plain language.
    - Identify version numbers before task patch/transition calls.
 
 3. **Apply Scrumbringer philosophy**
-   - If work is unclear, propose a better milestone/card/task shape.
+   - If work is unclear, propose a better card tree/card/task shape.
    - If a human should choose, write a note or recommend next actions.
    - Do not claim tasks in this initial policy.
 
 4. **Confirm before risky writes**
    Always ask for explicit confirmation before:
-   - creating or editing tasks/cards/milestones;
-   - deleting cards, card notes, or milestones;
+   - creating or editing tasks/cards/card trees;
+   - deleting cards, card notes, or card trees;
    - patching task fields;
    - calling task `release` or `complete`;
    - any action that could change ownership, state, or visible team planning.
@@ -122,8 +122,8 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
 Allowed without confirmation:
 
 - Read projects.
-- Read tasks/cards/milestones/notes.
-- Draft a proposed task/card/milestone design.
+- Read tasks/cards/card trees/notes.
+- Draft a proposed task/card/card tree design.
 - Recommend a next action.
 
 Allowed only after explicit confirmation:
@@ -131,9 +131,9 @@ Allowed only after explicit confirmation:
 - Create tasks.
 - Create/update/delete cards.
 - Create/delete card notes.
-- Create/update/delete milestones.
+- Create/update/delete card trees.
 - Add task notes.
-- Patch task title/description/milestone.
+- Patch task title/description/card tree.
 - Release or complete a task when the user explicitly confirms that the
   integration user should perform that state transition.
 
@@ -183,9 +183,9 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
   '{"content":"External system reported retry success at 2026-06-12T12:40:00Z."}'
 ```
 
-Create a milestone after confirmation:
+Create a card tree after confirmation:
 
 ```bash
-node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/milestones \
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/card trees \
   '{"name":"Importer stabilization","description":"Reduce import failure rate and make retry behavior observable."}'
 ```

@@ -14,14 +14,14 @@ pub fn try_update_changes_view_mode_and_preserves_project_route_test() {
   let assert opt.Some(view_mode_update.Update(next, route_policy)) =
     view_mode_update.try_update(
       member_pool.default_model(),
-      pool_messages.ViewModeChanged(view_mode.Milestones),
+      pool_messages.ViewModeChanged(view_mode.People),
       context(opt.Some(7)),
     )
 
-  let assert view_mode.Milestones = next.view_mode
+  let assert view_mode.People = next.view_mode
   let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
   let assert opt.Some(7) = url_state.project(state)
-  let assert view_mode.Milestones = url_state.view(state)
+  let assert view_mode.People = url_state.view(state)
 }
 
 pub fn try_update_changes_view_mode_without_project_test() {

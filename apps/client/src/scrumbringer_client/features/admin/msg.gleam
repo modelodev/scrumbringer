@@ -117,13 +117,9 @@ pub type Msg {
   AssignmentsRemoveClicked(Int, Int)
   AssignmentsRemoveCancelled
   AssignmentsRemoveConfirmed
-  AssignmentsRemoveCompleted(Int, Int, ApiResult(Nil))
+  AssignmentsRemoveDone(Int, Int, ApiResult(Nil))
   AssignmentsRoleChanged(Int, Int, ProjectRole)
-  AssignmentsRoleChangeCompleted(
-    Int,
-    Int,
-    ApiResult(api_projects.RoleChangeResult),
-  )
+  AssignmentsRoleChangeDone(Int, Int, ApiResult(api_projects.RoleChangeResult))
   AssignmentsProjectToggled(Int)
   AssignmentsUserToggled(Int)
   IntegrationUsersFetched(ApiResult(List(api_token.IntegrationUser)))

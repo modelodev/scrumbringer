@@ -1,7 +1,7 @@
 //// HTTP response mapping for shared service errors.
 
 import scrumbringer_server/http/api
-import scrumbringer_server/services/service_error.{
+import scrumbringer_server/use_case/service_error.{
   type ServiceError, AlreadyExists, Conflict, DbError, InvalidReference,
   NotFound, Unexpected, ValidationError,
 }
@@ -21,7 +21,7 @@ pub fn to_response(error: ServiceError) -> wisp.Response {
   }
 }
 
-/// Maps shared service errors where unexpected persistence state is exposed as a
+/// Maps shared service errors where unexpected repository state is exposed as a
 /// database error for backwards-compatible endpoint responses.
 pub fn to_database_response(error: ServiceError) -> wisp.Response {
   case error {

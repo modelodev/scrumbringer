@@ -19,7 +19,7 @@ import domain/project.{type Project}
 import domain/remote.{type Remote, Loaded}
 import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/i18n/i18n

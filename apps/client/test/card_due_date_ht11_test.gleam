@@ -1,4 +1,4 @@
-import domain/card.{type Card, Card, Cerrada, EnCurso}
+import domain/card.{type Card, Active, Card, Closed}
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -18,7 +18,7 @@ fn assert_not_contains(text: String, fragment: String) {
 pub fn overdue_open_card_uses_danger_due_date_style_test() {
   let html =
     card_with_tasks_surface.view(config(
-      Card(..sample_card(), state: EnCurso, due_date: Some("2026-06-18")),
+      Card(..sample_card(), state: Active, due_date: Some("2026-06-18")),
     ))
     |> element.to_document_string
 
@@ -31,7 +31,7 @@ pub fn overdue_open_card_uses_danger_due_date_style_test() {
 pub fn closed_card_does_not_show_overdue_alarm_test() {
   let html =
     card_with_tasks_surface.view(config(
-      Card(..sample_card(), state: Cerrada, due_date: Some("2026-06-18")),
+      Card(..sample_card(), state: Closed, due_date: Some("2026-06-18")),
     ))
     |> element.to_document_string
 
@@ -68,11 +68,11 @@ fn sample_card() {
   Card(
     id: 10,
     project_id: 1,
-    milestone_id: None,
+    parent_card_id: None,
     title: "Release train",
     description: "Cut the next release",
     color: None,
-    state: EnCurso,
+    state: Active,
     task_count: 2,
     completed_count: 0,
     created_by: 7,

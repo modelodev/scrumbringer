@@ -32,7 +32,7 @@ pub type RollupError {
 }
 
 pub type ClosedCardOutcome {
-  Completed
+  Done
   ClosedWithoutCompletion
 }
 
@@ -101,7 +101,7 @@ pub fn closed_card_outcome(
         [] -> Some(ClosedWithoutCompletion)
         _ ->
           case list.all(leaves, task_counts_as_completed) {
-            True -> Some(Completed)
+            True -> Some(Done)
             False -> Some(ClosedWithoutCompletion)
           }
       }

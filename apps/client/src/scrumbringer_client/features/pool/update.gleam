@@ -32,14 +32,12 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
 import scrumbringer_client/features/pool/card_detail_update
 import scrumbringer_client/features/pool/drag_update
 import scrumbringer_client/features/pool/filters_route
 import scrumbringer_client/features/pool/metrics_route
-import scrumbringer_client/features/pool/milestones_route
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/people_route
 import scrumbringer_client/features/pool/positions_route
@@ -218,27 +216,6 @@ pub fn update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let Context(member_refresh: member_refresh) = ctx
 
-  case try_milestones_update(model, inner, member_refresh) {
-    opt.Some(result) -> result
-    opt.None -> update_without_milestones(model, inner, member_refresh)
-  }
-}
-
-fn try_milestones_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  milestones_route.try_update(model, inner, member_refresh)
-}
-
-fn update_without_milestones(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case try_pool_shortcut_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_shortcuts(model, inner, member_refresh)
@@ -623,7 +600,7 @@ fn update_without_view_mode(
     // Handled by pool_preferences.try_update before this dispatch.
     pool_messages.MemberPoolFiltersToggled
     | pool_messages.MemberPoolViewModeSet(_)
-    | pool_messages.MemberListHideCompletedToggled
+    | pool_messages.MemberListHideDoneToggled
     | pool_messages.MemberListCardToggled(_) -> #(model, effect.none())
 
     // Handled by people_workflow.try_update before this dispatch.
@@ -653,7 +630,7 @@ fn update_without_view_mode(
     | pool_messages.MemberCompleteClicked(_, _)
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)
-    | pool_messages.MemberTaskCompleted(_) -> #(model, effect.none())
+    | pool_messages.MemberTaskDone(_) -> #(model, effect.none())
 
     // Handled by now_working_workflow.try_update before this dispatch.
     pool_messages.MemberNowWorkingStartClicked(_)
@@ -716,7 +693,6 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskDetailEditPriorityChanged(_)
     | pool_messages.MemberTaskDetailEditTypeIdChanged(_)
     | pool_messages.MemberTaskDetailEditCardIdChanged(_)
-    | pool_messages.MemberTaskDetailEditMilestoneIdChanged(_)
     | pool_messages.MemberTaskDetailEditSubmitted
     | pool_messages.MemberTaskUpdated(_)
     | pool_messages.MemberTaskMetricsFetched(_) -> #(model, effect.none())
@@ -751,7 +727,7 @@ fn update_without_view_mode(
     | pool_messages.CardCrudUpdated(_)
     | pool_messages.CardCrudDeleted(_)
     | pool_messages.CardsShowEmptyToggled
-    | pool_messages.CardsShowCompletedToggled
+    | pool_messages.CardsShowDoneToggled
     | pool_messages.CardsStateFilterChanged(_)
     | pool_messages.CardsSearchChanged(_) -> #(model, effect.none())
 
@@ -776,39 +752,6 @@ fn update_without_view_mode(
     | pool_messages.MemberDragOffsetResolved(_, _, _)
     | pool_messages.MemberDragMoved(_, _)
     | pool_messages.MemberDragEnded -> #(model, effect.none())
-
-    pool_messages.MemberProjectMilestonesFetched(_, _)
-    | pool_messages.MemberMilestonesShowCompletedToggled
-    | pool_messages.MemberMilestonesShowEmptyToggled
-    | pool_messages.MemberMilestoneSearchChanged(_)
-    | pool_messages.MemberMilestoneSummaryToggled
-    | pool_messages.MemberMilestoneCardToggled(_)
-    | pool_messages.MemberMilestoneDetailsClicked(_)
-    | pool_messages.MemberMilestoneCreateTaskClicked(_)
-    | pool_messages.MemberMilestoneCreateCardClicked(_)
-    | pool_messages.MemberMilestoneCardDragStarted(_, _)
-    | pool_messages.MemberMilestoneTaskDragStarted(_, _)
-    | pool_messages.MemberMilestoneDroppedOn(_)
-    | pool_messages.MemberMilestoneDragEnded
-    | pool_messages.MemberMilestoneCardMoveClicked(_, _, _)
-    | pool_messages.MemberMilestoneTaskMoveClicked(_, _, _)
-    | pool_messages.MemberMilestoneCardMoved(_)
-    | pool_messages.MemberMilestoneTaskMoved(_)
-    | pool_messages.MemberMilestoneCreateClicked
-    | pool_messages.MemberMilestoneActivatePromptClicked(_)
-    | pool_messages.MemberMilestoneActivateClicked(_)
-    | pool_messages.MemberMilestoneActivated(_, _)
-    | pool_messages.MemberMilestoneEditClicked(_)
-    | pool_messages.MemberMilestoneDeleteClicked(_)
-    | pool_messages.MemberMilestoneDialogClosed
-    | pool_messages.MemberMilestoneNameChanged(_)
-    | pool_messages.MemberMilestoneDescriptionChanged(_)
-    | pool_messages.MemberMilestoneCreateSubmitted
-    | pool_messages.MemberMilestoneCreated(_)
-    | pool_messages.MemberMilestoneEditSubmitted(_)
-    | pool_messages.MemberMilestoneDeleteSubmitted(_)
-    | pool_messages.MemberMilestoneUpdated(_)
-    | pool_messages.MemberMilestoneDeleted(_, _) -> #(model, effect.none())
 
     // Handled by card_detail_update.try_update before this dispatch.
     pool_messages.OpenCardDetail(_)
@@ -857,13 +800,9 @@ fn update_without_view_mode(
 }
 
 fn close_card_dialog_focus_target(
-  model: client_state.Model,
+  _model: client_state.Model,
 ) -> opt.Option(String) {
-  case model.admin.cards.cards_create_milestone_id {
-    opt.Some(milestone_id) ->
-      opt.Some(milestone_ids.quick_create_card_button_id(milestone_id))
-    opt.None -> opt.None
-  }
+  opt.None
 }
 
 /// Test helper: exposes close-card-dialog focus target resolution.

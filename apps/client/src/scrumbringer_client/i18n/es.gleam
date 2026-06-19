@@ -64,7 +64,7 @@ pub fn translate(text: Text) -> String {
       "Tarea creada, pero no visible por filtros actuales"
     text.TaskClaimed -> "Tarea reclamada"
     text.TaskReleased -> "Tarea liberada"
-    text.TaskCompleted -> "Tarea completada"
+    text.TaskDone -> "Tarea completada"
     text.SkillsSaved -> "Skills guardadas"
     text.NoteAdded -> "Nota añadida"
 
@@ -182,7 +182,7 @@ pub fn translate(text: Text) -> String {
     text.Kanban -> "Kanban"
     text.CapabilitiesBoard -> "Capacidades"
     text.People -> "Personas"
-    text.Milestones -> "Hitos"
+    text.CardTrees -> "Jerarquías"
     text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "Vista"
     text.PoolPurpose -> "Elige la próxima tarea personal a reclamar."
@@ -219,7 +219,7 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
     text.NoTasksMatchYourFilters -> "Ninguna tarea coincide con tus filtros"
-    text.HideCompletedTasks -> "Ocultar tareas completadas"
+    text.HideDoneTasks -> "Ocultar tareas completadas"
     text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
     text.MetaType -> "tipo: "
     text.MetaPriority -> "prioridad: "
@@ -269,109 +269,109 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardPressureNoTraction -> "Sin tracción"
     text.CapabilityBoardPressureFlowing -> "Fluyendo"
     text.NoCapability -> "Sin capacidad"
-    text.MilestonesEmpty -> "Aun no hay hitos"
-    text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
-    text.MilestonesLoadError -> "No se pudieron cargar los hitos"
-    text.MilestonesPurpose ->
+    text.CardTreesEmpty -> "Aun no hay jerarquías"
+    text.CardTreesNoResults -> "No hay jerarquías que coincidan con los filtros"
+    text.CardTreesLoadError -> "No se pudieron cargar las jerarquías"
+    text.CardTreesPurpose ->
       "Estructura de entrega por objetivo, trabajo suelto y avance de cards."
-    text.CreateMilestone -> "Crear hito"
-    text.CreateFirstMilestone -> "Crear primer hito"
-    text.MilestoneCreated -> "Hito creado"
-    text.MilestoneCreateFailed -> "No se pudo crear el hito"
-    text.ShowCompletedMilestones -> "Ver completados"
-    text.ShowEmptyMilestones -> "Ver vacíos"
-    text.MilestonesReady -> "Listos"
-    text.MilestonesActive -> "Activos"
-    text.MilestonesCompleted -> "Completados"
-    text.MilestoneStateReady -> "Listo"
-    text.MilestoneStateActive -> "Activo"
-    text.MilestoneStateCompleted -> "Completado"
-    text.MilestoneEmptyHint -> "Sin trabajo asignado"
-    text.MilestoneDone -> "Hecho"
-    text.MilestoneActivationTitle -> "Activar hito"
-    text.MilestoneActivationBody(cards_count, tasks_count) ->
-      "Esta acción es irreversible. Activará todo el contenido del hito ("
+    text.CreateCardTree -> "Crear jerarquía"
+    text.CreateFirstCardTree -> "Crear primera jerarquía"
+    text.CardTreeCreated -> "Jerarquía creada"
+    text.CardTreeCreateFailed -> "No se pudo crear la jerarquía"
+    text.ShowDoneCardTrees -> "Ver completados"
+    text.ShowEmptyCardTrees -> "Ver vacíos"
+    text.CardTreesReady -> "Listos"
+    text.CardTreesActive -> "Activos"
+    text.CardTreesDone -> "Completados"
+    text.CardTreeStateReady -> "Listo"
+    text.CardTreeStateActive -> "Activo"
+    text.CardTreeStateDone -> "Completado"
+    text.CardTreeEmptyHint -> "Sin trabajo asignado"
+    text.CardTreeDone -> "Hecho"
+    text.CardTreeActivationTitle -> "Activar jerarquía"
+    text.CardTreeActivationBody(cards_count, tasks_count) ->
+      "Esta acción es irreversible. Activará todo el contenido de la jerarquía ("
       <> int.to_string(cards_count)
       <> " tarjetas, "
       <> int.to_string(tasks_count)
       <> " tareas)."
-    text.MilestoneActivationWarning -> "No podrás deshacer esta acción"
-    text.MilestoneDetails -> "Detalle"
-    text.MilestoneTabOverview -> "Resumen"
-    text.MilestoneTabContent -> "Contenido"
-    text.MilestoneTabPlanning -> "Planificación"
-    text.ActivateMilestone -> "Activar"
-    text.ActivatingMilestone -> "Activando..."
-    text.MilestoneActivated -> "Hito activado"
-    text.MilestoneActivateFailed -> "No se pudo activar el hito"
-    text.EditMilestone -> "Editar hito"
-    text.DeleteMilestone -> "Eliminar hito"
-    text.DeleteMilestoneTitle -> "Eliminar hito"
-    text.DeleteMilestoneConfirm(name) ->
-      "Eliminar permanentemente el hito \"" <> name <> "\"?"
-    text.MilestoneUpdated -> "Hito actualizado"
-    text.MilestoneUpdateFailed -> "No se pudo actualizar el hito"
-    text.MilestoneDeleted -> "Hito eliminado"
-    text.MilestoneDeleteFailed -> "No se pudo eliminar el hito"
-    text.MilestoneDeleteNotAllowed -> "El hito debe estar listo y vacío"
-    text.MilestoneAlreadyActive -> "Ya hay otro hito activo"
-    text.MilestoneActivationIrreversible ->
-      "El hito no se puede activar en su estado actual"
-    text.MilestoneOpenDetails -> "Ver detalle"
-    text.MilestoneMoreActions -> "Acciones"
-    text.MilestoneMoveTo -> "Mover"
-    text.MilestoneCardsLabel -> "Tarjetas"
-    text.MilestoneTasksLabel -> "Tareas"
-    text.MilestoneCardsProgress(completed, total) ->
+    text.CardTreeActivationWarning -> "No podrás deshacer esta acción"
+    text.CardTreeDetails -> "Detalle"
+    text.CardTreeTabOverview -> "Resumen"
+    text.CardTreeTabContent -> "Contenido"
+    text.CardTreeTabPlanning -> "Planificación"
+    text.ActivateCardTree -> "Activar"
+    text.ActivatingCardTree -> "Activando..."
+    text.CardTreeActivated -> "Jerarquía activada"
+    text.CardTreeActivateFailed -> "No se pudo activar la jerarquía"
+    text.EditCardTree -> "Editar jerarquía"
+    text.DeleteCardTree -> "Eliminar jerarquía"
+    text.DeleteCardTreeTitle -> "Eliminar jerarquía"
+    text.DeleteCardTreeConfirm(name) ->
+      "Eliminar permanentemente la jerarquía \"" <> name <> "\"?"
+    text.CardTreeUpdated -> "Jerarquía actualizada"
+    text.CardTreeUpdateFailed -> "No se pudo actualizar la jerarquía"
+    text.CardTreeDeleted -> "Jerarquía eliminada"
+    text.CardTreeDeleteFailed -> "No se pudo eliminar la jerarquía"
+    text.CardTreeDeleteNotAllowed -> "La jerarquía debe estar lista y vacía"
+    text.CardTreeAlreadyActive -> "Ya hay otra jerarquía activa"
+    text.CardTreeActivationIrreversible ->
+      "La jerarquía no se puede activar en su estado actual"
+    text.CardTreeOpenDetails -> "Ver detalle"
+    text.CardTreeMoreActions -> "Acciones"
+    text.CardTreeMoveTo -> "Mover"
+    text.CardTreeCardsLabel -> "Tarjetas"
+    text.CardTreeTasksLabel -> "Tareas"
+    text.CardTreeCardsProgress(completed, total) ->
       "Tarjetas " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.MilestoneTasksProgress(completed, total) ->
+    text.CardTreeTasksProgress(completed, total) ->
       "Tareas " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.MilestoneStructureSummary -> "Resumen estructural"
-    text.MilestoneActions -> "Acciones"
-    text.MilestoneSearchPlaceholder -> "Buscar hitos"
-    text.MilestoneLooseTasksNotice -> "Tareas sin card"
-    text.MilestoneLooseTasksHint ->
+    text.CardTreeStructureSummary -> "Resumen estructural"
+    text.CardTreeActions -> "Acciones"
+    text.CardTreeSearchPlaceholder -> "Buscar jerarquías"
+    text.CardTreeLooseTasksNotice -> "Tareas sin card"
+    text.CardTreeLooseTasksHint ->
       "Estas tareas todavía no están agrupadas dentro de una tarjeta"
-    text.MilestoneCardTasksEmpty -> "Esta card todavía no tiene tareas"
-    text.MilestoneCardTasksRegion(name) -> "Tareas de " <> name
-    text.MilestoneNoSelection -> "Selecciona un hito"
-    text.MilestoneNoSelectionHint ->
-      "Elige un hito de la lista para inspeccionar su contenido"
-    text.MilestoneCardsCount(cards_count) ->
+    text.CardTreeCardTasksEmpty -> "Esta card todavía no tiene tareas"
+    text.CardTreeCardTasksRegion(name) -> "Tareas de " <> name
+    text.CardTreeNoSelection -> "Selecciona una jerarquía"
+    text.CardTreeNoSelectionHint ->
+      "Elige una jerarquía de la lista para inspeccionar su contenido"
+    text.CardTreeCardsCount(cards_count) ->
       int.to_string(cards_count) <> " tarjetas"
-    text.MilestoneLooseTasksCount(tasks_count) ->
+    text.CardTreeLooseTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas sueltas"
-    text.MilestoneBlockedTasksCount(tasks_count) ->
+    text.CardTreeBlockedTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas bloqueadas"
-    text.MilestoneEmptyCardsCount(cards_count) ->
+    text.CardTreeEmptyCardsCount(cards_count) ->
       int.to_string(cards_count) <> " tarjetas vacías"
-    text.MilestoneCardsWithoutProgressCount(cards_count) ->
+    text.CardTreeCardsWithoutProgressCount(cards_count) ->
       int.to_string(cards_count) <> " tarjetas sin avance"
-    text.MilestoneStructureComplete -> "Estructura completa"
-    text.MilestoneLooseTasksDiagnostic(tasks_count) ->
+    text.CardTreeStructureComplete -> "Estructura completa"
+    text.CardTreeLooseTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count)
       <> " tareas todavía no están agrupadas en tarjetas"
-    text.MilestoneBlockedTasksDiagnostic(tasks_count) ->
+    text.CardTreeBlockedTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count) <> " tareas bloqueadas requieren atención"
-    text.MilestoneEmptyCardsDiagnostic(cards_count) ->
+    text.CardTreeEmptyCardsDiagnostic(cards_count) ->
       int.to_string(cards_count) <> " tarjetas vacías necesitan contenido"
-    text.MilestoneCardsWithoutProgressDiagnostic(cards_count) ->
+    text.CardTreeCardsWithoutProgressDiagnostic(cards_count) ->
       int.to_string(cards_count)
       <> " tarjetas todavía no han empezado a moverse"
-    text.MilestoneCardEmpty -> "Vacía"
-    text.MilestoneCardNoProgress -> "Sin avance"
-    text.MilestoneCardBlocked -> "Bloqueada"
-    text.MilestoneCardComplete -> "Completa"
+    text.CardTreeCardEmpty -> "Vacía"
+    text.CardTreeCardNoProgress -> "Sin avance"
+    text.CardTreeCardBlocked -> "Bloqueada"
+    text.CardTreeCardComplete -> "Completa"
     text.ViewInKanban -> "Ver en Kanban"
-    text.MilestoneTotalTasksCount(tasks_count) ->
+    text.CardTreeTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas totales"
-    text.MilestoneTaskStatusAvailable -> "disponible"
-    text.MilestoneTaskStatusClaimed -> "reclamada"
-    text.MilestoneTaskStatusCompleted -> "completada"
-    text.ExpandMilestoneCard(name) -> "Mostrar tareas de " <> name
-    text.CollapseMilestoneCard(name) -> "Ocultar tareas de " <> name
-    text.ExpandMilestone(name) -> "Expandir hito " <> name
-    text.CollapseMilestone(name) -> "Colapsar hito " <> name
+    text.CardTreeTaskPhaseAvailable -> "disponible"
+    text.CardTreeTaskPhaseClaimed -> "reclamada"
+    text.CardTreeTaskPhaseDone -> "completada"
+    text.ExpandCardTreeCard(name) -> "Mostrar tareas de " <> name
+    text.CollapseCardTreeCard(name) -> "Ocultar tareas de " <> name
+    text.ExpandCardTree(name) -> "Expandir jerarquía " <> name
+    text.CollapseCardTree(name) -> "Colapsar jerarquía " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name
     text.CollapsePerson(name) -> "Colapsar estado de " <> name
     text.PeopleActiveSection -> "Activas"
@@ -436,7 +436,7 @@ pub fn translate(text: Text) -> String {
     text.ResourceTasks -> "Tareas"
     text.ResourceCards -> "Tarjetas"
     text.ResourceNotes -> "Notas"
-    text.ResourceMilestones -> "Hitos"
+    text.ResourceCardTrees -> "Jerarquías"
     text.LastUsed -> "Último uso"
     text.ExpiresAtOptional -> "Expira en (opcional)"
     text.Revoke -> "Revocar"
@@ -499,7 +499,7 @@ pub fn translate(text: Text) -> String {
     text.WindowDays(days) -> "Ventana: " <> int.to_string(days) <> " días"
     text.Claimed -> "Reclamadas"
     text.Released -> "Liberadas"
-    text.Completed -> "Completadas"
+    text.Done -> "Completadas"
     text.MetricsOverview -> "Resumen de métricas"
     text.LoadingOverview -> "Cargando resumen…"
     text.ReleasePercent -> "Liberación %"
@@ -573,7 +573,7 @@ pub fn translate(text: Text) -> String {
     text.InvalidateInviteConfirm(email) ->
       "¿Invalidar el link para " <> email <> "? Este link dejará de funcionar."
     // Invite link states (Story 4.8)
-    text.InviteStateActive -> "Pendiente"
+    text.InviteStateActive -> "Draft"
     text.InviteStateUsed -> "Usada"
     text.InviteStateExpired -> "Expirada"
     text.CopyLink -> "Copiar link"
@@ -743,10 +743,10 @@ pub fn translate(text: Text) -> String {
     text.DeleteCard -> "Eliminar tarjeta"
     text.CardTitle -> "Título"
     text.CardDescription -> "Descripción"
-    text.CardState -> "Estado"
-    text.CardStatePendiente -> "Pendiente"
-    text.CardStateEnCurso -> "En curso"
-    text.CardStateCerrada -> "Cerrada"
+    text.CardPhase -> "Estado"
+    text.CardPhaseDraft -> "Draft"
+    text.CardPhaseActive -> "En curso"
+    text.CardPhaseClosed -> "Closed"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
@@ -759,9 +759,9 @@ pub fn translate(text: Text) -> String {
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "Sin tarjetas aquí"
-    text.KanbanEmptyPendiente -> "No hay tarjetas esperando trabajo"
-    text.KanbanEmptyEnCurso -> "No hay tarjetas activas que revisar"
-    text.KanbanEmptyCerrada -> "Las tarjetas cerradas aparecerán aquí"
+    text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
+    text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
+    text.KanbanEmptyClosed -> "Las tarjetas cerradas aparecerán aquí"
     text.KanbanSurfacePurpose ->
       "Flujo de cards por estado, con fricción y próximo trabajo visibles."
     text.KanbanSummaryCards -> "Cards"
@@ -849,11 +849,11 @@ pub fn translate(text: Text) -> String {
     text.TaskStateAvailable -> "Disponible"
     text.TaskStateClaimed -> "Reclamada"
     text.TaskStateOngoing -> "En curso"
-    text.TaskStateCompleted -> "Completada"
+    text.TaskStateDone -> "Completada"
     text.TaskStateAvailableHint -> "Lista para reclamar desde el Pool"
     text.TaskStateClaimedHint -> "En Mis tareas, lista para empezar"
     text.TaskStateOngoingHint -> "Sesión de trabajo activa"
-    text.TaskStateCompletedHint -> "Terminada y sin acciones pendientes"
+    text.TaskStateDoneHint -> "Terminada y sin acciones pendientes"
     text.TaskNextActionLabel -> "Siguiente acción"
     text.TaskNextActionClaim -> "Reclamar a Mis tareas"
     text.TaskNextActionStart -> "Empezar a trabajar"
@@ -955,7 +955,7 @@ pub fn translate(text: Text) -> String {
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"
     text.CardTasksEmpty -> "No hay tareas"
-    text.CardTasksCompleted -> "completadas"
+    text.CardTasksDone -> "completadas"
     text.TaskType -> "Tipo de tarea"
     text.TaskTitlePlaceholder -> "Título de la tarea..."
 
@@ -976,8 +976,8 @@ pub fn translate(text: Text) -> String {
     text.NoTasksYet -> "Sin tareas todavía"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " tareas más"
-    text.NewCardInThisMilestone -> "Nueva tarjeta en este hito"
-    text.MilestoneTarget -> "Hito destino"
+    text.NewCardInThisCardTree -> "Nueva tarjeta en esta jerarquía"
+    text.CardTreeTarget -> "Jerarquía destino"
     text.Configuration -> "Configuración"
     text.Team -> "Equipo"
     // Note: text.Capabilities already translated in Capabilities section
@@ -988,7 +988,7 @@ pub fn translate(text: Text) -> String {
     text.Rules -> "Reglas"
     // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Mostrar vacías"
-    text.ShowCompletedCards -> "Mostrar completadas"
+    text.ShowDoneCards -> "Mostrar completadas"
     text.Organization -> "Organización"
     text.OrgUsers -> "Usuarios"
     text.Invites -> "Invitaciones"
@@ -1037,17 +1037,17 @@ pub fn translate(text: Text) -> String {
     text.TaskEditKeyboardHint -> "Ctrl/Cmd+Enter guarda. Esc cancela."
     text.TaskEditRequiresClaim ->
       "Puedes editar tareas sin reclamar, o reclamarla para seguir editándola mientras está en curso."
-    text.TaskEditCompletedReadOnly ->
+    text.TaskEditDoneReadOnly ->
       "Las tareas completadas son de solo lectura. Reabre o duplica el trabajo antes de cambiar detalles."
-    text.MilestoneLabel -> "Hito"
-    text.NoMilestone -> "Sin hito"
-    text.TaskMilestoneInheritedFromCard -> "Hito heredado de la tarjeta"
+    text.CardTreeLabel -> "Jerarquía"
+    text.NoCardTree -> "Sin jerarquía"
+    text.TaskCardTreeInheritedFromCard -> "Jerarquía heredada de la tarjeta"
     text.TaskDescriptionEmpty -> "Sin descripción todavía"
     text.TaskOperationalSummary -> "Resumen operativo"
     text.TaskOwner -> "Responsable"
     text.TaskBlockingClear -> "Sin bloqueos activos"
     text.MetricsTasksTotal -> "Tareas totales"
-    text.MetricsTasksCompleted -> "Tareas completadas"
+    text.MetricsTasksDone -> "Tareas completadas"
     text.MetricsProgress -> "Progreso"
     text.MetricsRebotesAvg -> "Rebotes promedio"
     text.MetricsPoolLifetimeAvg -> "Vida en pool promedio"

@@ -9,8 +9,8 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/integration_users/payloads
 import scrumbringer_server/http/integration_users/presenters
 import scrumbringer_server/http/json_payload
-import scrumbringer_server/services/integration_users
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/integration_users
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 pub fn handle_integration_users(
