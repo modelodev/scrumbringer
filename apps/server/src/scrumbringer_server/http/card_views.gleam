@@ -42,6 +42,7 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
     cards_db.InvalidMilestoneState(_) -> database_error_response()
     cards_db.InvalidColor(_) -> database_error_response()
     cards_db.InvalidMovePoolToMilestone -> database_error_response()
+    cards_db.CardHasClaimedDescendant(_) -> database_error_response()
     cards_db.DbError(_) -> database_error_response()
   }
 }

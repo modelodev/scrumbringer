@@ -1,5 +1,5 @@
 -- name: create_card
-INSERT INTO cards (project_id, title, description, color, created_by, milestone_id)
+INSERT INTO cards (project_id, title, description, color, created_by, parent_card_id)
 VALUES (
   $1,
   $2,
@@ -14,6 +14,6 @@ RETURNING
     title,
     coalesce(description, '') as description,
     coalesce(color, '') as color,
-    coalesce(milestone_id, 0) as milestone_id,
+    coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at;

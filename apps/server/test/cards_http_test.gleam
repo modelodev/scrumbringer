@@ -135,6 +135,30 @@ pub fn get_card_not_found_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
+pub fn legacy_milestones_routes_return_not_found_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let project_route =
+    handler(
+      simulate.request(http.Get, "/api/v1/projects/1/milestones")
+      |> fixtures.with_auth(session),
+    )
+  let item_route =
+    handler(
+      simulate.request(http.Get, "/api/v1/milestones/1")
+      |> fixtures.with_auth(session),
+    )
+  let activate_route =
+    handler(
+      simulate.request(http.Post, "/api/v1/milestones/1/activate")
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(project_route, 404)
+  expect.expect_status(item_route, 404)
+  expect.expect_status(activate_route, 404)
+}
+
 pub fn update_card_not_found_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 

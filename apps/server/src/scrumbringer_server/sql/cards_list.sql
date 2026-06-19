@@ -5,12 +5,12 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
-    coalesce(c.milestone_id, 0) as milestone_id,
+    coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
       when v.last_viewed_at is null then true
