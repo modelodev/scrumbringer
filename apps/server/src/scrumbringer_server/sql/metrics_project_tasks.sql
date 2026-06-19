@@ -9,9 +9,12 @@ with task_scope as (
     t.title,
     coalesce(t.description, '') as description,
     t.priority,
-     t.status,
+     case
+       when t.execution_state = 'closed' then 'completed'
+       else t.execution_state
+     end as status,
      (
-       t.status = 'claimed'
+       t.execution_state = 'claimed'
        and exists(
          select 1
          from user_task_work_session ws
@@ -29,7 +32,7 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     t.version
   from tasks t

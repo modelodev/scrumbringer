@@ -481,10 +481,18 @@ pub fn insert_task(
   db: pog.Connection,
   opts: TaskInsertOptions,
 ) -> Result(Int, String) {
+  let execution_state = task_execution_state(opts.status)
+  let claimed_mode = task_claimed_mode(opts.status)
+  let claimed_by = task_claimed_by(opts.status, opts.claimed_by)
+  let claimed_at = task_claimed_at(opts.status, opts.claimed_at)
+  let closed_at = task_closed_at(opts.status, opts.completed_at)
+  let closed_by = task_closed_by(opts.status, opts.claimed_by, opts.created_by)
+  let closed_reason = task_closed_reason(opts.status)
+
   let base_cols =
-    "project_id, type_id, title, description, priority, status, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s"
-  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
-  let base_idx = 12
+    "project_id, type_id, title, description, priority, execution_state, claimed_mode, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s, closed_by, closed_reason"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14"
+  let base_idx = 15
 
   let #(cols, vals, idx, params) =
     append_optional_timestamp(
@@ -497,24 +505,10 @@ pub fn insert_task(
     )
 
   let #(cols, vals, idx, params) =
-    append_optional_timestamp(
-      cols,
-      vals,
-      idx,
-      "claimed_at",
-      opts.claimed_at,
-      params,
-    )
+    append_optional_timestamp(cols, vals, idx, "claimed_at", claimed_at, params)
 
   let #(cols, vals, idx, params) =
-    append_optional_timestamp(
-      cols,
-      vals,
-      idx,
-      "completed_at",
-      opts.completed_at,
-      params,
-    )
+    append_optional_timestamp(cols, vals, idx, "closed_at", closed_at, params)
 
   let #(cols, vals, _, params) =
     append_optional_timestamp(
@@ -536,12 +530,15 @@ pub fn insert_task(
     |> pog.parameter(pog.text(opts.title))
     |> pog.parameter(pog.text(opts.description))
     |> pog.parameter(pog.int(opts.priority))
-    |> pog.parameter(pog.text(task_status.task_status_to_string(opts.status)))
+    |> pog.parameter(pog.text(execution_state))
+    |> pog.parameter(pog.nullable(pog.text, claimed_mode))
     |> pog.parameter(pog.int(opts.created_by))
-    |> pog.parameter(pog.nullable(pog.int, opts.claimed_by))
+    |> pog.parameter(pog.nullable(pog.int, claimed_by))
     |> pog.parameter(pog.nullable(pog.int, opts.card_id))
     |> pog.parameter(pog.nullable(pog.int, opts.created_from_rule_id))
     |> pog.parameter(pog.int(opts.pool_lifetime_s))
+    |> pog.parameter(pog.nullable(pog.int, closed_by))
+    |> pog.parameter(pog.nullable(pog.text, closed_reason))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
@@ -593,29 +590,131 @@ pub fn update_task_status(
   status: task_status.TaskStatus,
   claimed_by: Option(Int),
 ) -> Result(Nil, String) {
-  let status = task_status.task_status_to_string(status)
-  case claimed_by {
-    Some(claimed_user_id) -> {
+  let execution_state = task_execution_state(status)
+  case status {
+    task_status.Claimed(mode) -> {
+      case claimed_by {
+        Some(claimed_user_id) ->
+          pog.query(
+            "UPDATE tasks SET execution_state = $1, claimed_mode = $2, claimed_by = $3, claimed_at = NOW(), closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $4",
+          )
+          |> pog.parameter(pog.text(execution_state))
+          |> pog.parameter(pog.text(claim_mode_to_string(mode)))
+          |> pog.parameter(pog.int(claimed_user_id))
+          |> pog.parameter(pog.int(task_id))
+          |> pog.execute(db)
+          |> result.map(fn(_) { Nil })
+          |> result.map_error(fn(e) {
+            "update_task_status: " <> string.inspect(e)
+          })
+        None -> Error("update_task_status: claimed_by is required")
+      }
+    }
+    task_status.Completed -> {
       pog.query(
-        "UPDATE tasks SET status = $1, claimed_by = $2, claimed_at = NOW() WHERE id = $3",
+        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, closed_at = NOW(), closed_by = $2, closed_reason = 'done' WHERE id = $3",
       )
-      |> pog.parameter(pog.text(status))
-      |> pog.parameter(pog.int(claimed_user_id))
+      |> pog.parameter(pog.text(execution_state))
+      |> pog.parameter(pog.nullable(pog.int, claimed_by))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
       |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
     }
-    None -> {
+    task_status.Available -> {
       pog.query(
-        "UPDATE tasks SET status = $1, completed_at = NOW() WHERE id = $2",
+        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, claimed_at = NULL, closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $2",
       )
-      |> pog.parameter(pog.text(status))
+      |> pog.parameter(pog.text(execution_state))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
       |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
     }
+  }
+}
+
+fn task_execution_state(status: task_status.TaskStatus) -> String {
+  case status {
+    task_status.Available -> "available"
+    task_status.Claimed(_) -> "claimed"
+    task_status.Completed -> "closed"
+  }
+}
+
+fn task_claimed_mode(status: task_status.TaskStatus) -> Option(String) {
+  case status {
+    task_status.Claimed(mode) -> Some(claim_mode_to_string(mode))
+    _ -> None
+  }
+}
+
+fn task_claimed_by(
+  status: task_status.TaskStatus,
+  claimed_by: Option(Int),
+) -> Option(Int) {
+  case status {
+    task_status.Claimed(_) -> claimed_by
+    _ -> None
+  }
+}
+
+fn task_claimed_at(
+  status: task_status.TaskStatus,
+  claimed_at: Option(String),
+) -> Option(String) {
+  case status {
+    task_status.Claimed(_) -> default_timestamp(claimed_at)
+    _ -> None
+  }
+}
+
+fn task_closed_at(
+  status: task_status.TaskStatus,
+  completed_at: Option(String),
+) -> Option(String) {
+  case status {
+    task_status.Completed -> default_timestamp(completed_at)
+    _ -> None
+  }
+}
+
+fn task_closed_by(
+  status: task_status.TaskStatus,
+  claimed_by: Option(Int),
+  created_by: Int,
+) -> Option(Int) {
+  case status {
+    task_status.Completed -> Some(option_to_int(claimed_by, created_by))
+    _ -> None
+  }
+}
+
+fn task_closed_reason(status: task_status.TaskStatus) -> Option(String) {
+  case status {
+    task_status.Completed -> Some("done")
+    _ -> None
+  }
+}
+
+fn claim_mode_to_string(mode: task_status.ClaimedState) -> String {
+  case mode {
+    task_status.Taken -> "taken"
+    task_status.Ongoing -> "ongoing"
+  }
+}
+
+fn default_timestamp(value: Option(String)) -> Option(String) {
+  case value {
+    Some(_) -> value
+    None -> Some("NOW()")
+  }
+}
+
+fn option_to_int(value: Option(Int), default: Int) -> Int {
+  case value {
+    Some(inner) -> inner
+    None -> default
   }
 }
 

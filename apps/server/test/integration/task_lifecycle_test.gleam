@@ -43,9 +43,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
 
   // Verify task is in available status
   let assert Ok(status1) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status1 |> expect.equal("available")
 
   // Step 2: Claim the task
@@ -62,9 +60,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
 
   // Verify task is now claimed
   let assert Ok(status2) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status2 |> expect.equal("claimed")
 
   // Step 3: Complete the task (version is now 2 after claim)
@@ -81,9 +77,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
 
   // Verify task is now completed
   let assert Ok(status3) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status3 |> expect.equal("completed")
 
   // Verify claimed_by is cleared on completion
@@ -95,14 +89,14 @@ pub fn full_lifecycle_create_claim_complete_test() {
     )
   claimed_by_cleared |> expect.equal(1)
 
-  // Verify completed_at is set
-  let assert Ok(completed_at_check) =
+  // Verify closed_at is set
+  let assert Ok(closed_at_check) =
     fixtures.query_int(
       db,
-      "SELECT CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END FROM tasks WHERE id = $1",
+      "SELECT CASE WHEN closed_at IS NOT NULL THEN 1 ELSE 0 END FROM tasks WHERE id = $1",
       [pog.int(task_id)],
     )
-  completed_at_check |> expect.equal(1)
+  closed_at_check |> expect.equal(1)
 }
 
 // =============================================================================
@@ -165,9 +159,7 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
 
   // Verify task is back to available
   let assert Ok(status_after_release) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status_after_release |> expect.equal("available")
 
   // Step 4: User 2 claims the task (version is now 3 after release)
@@ -191,8 +183,10 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
 
   // Verify task status is claimed
   let assert Ok(status_final) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status_final |> expect.equal("claimed")
+}
+
+fn task_status_query() -> String {
+  "SELECT case when execution_state = 'closed' then 'completed' else execution_state end FROM tasks WHERE id = $1"
 }

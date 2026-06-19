@@ -9,7 +9,7 @@ from project_members
 left join tasks
   on tasks.project_id = project_members.project_id
   and tasks.claimed_by = project_members.user_id
-  and tasks.status = 'claimed'
+  and tasks.execution_state = 'claimed'
 where project_members.project_id = $1
 group by
   project_members.project_id,

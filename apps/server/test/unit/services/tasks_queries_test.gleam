@@ -51,9 +51,7 @@ pub fn claim_task_succeeds_for_available_task_test() {
 
   // Verify task is now claimed
   let assert Ok(status) =
-    fixtures.query_string(db, "SELECT status FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status |> expect.equal("claimed")
 }
 
@@ -170,9 +168,7 @@ pub fn claim_task_query_rejects_incomplete_dependencies_test() {
     tasks_queries.claim_task(db, org_id, task_id, user_id, 1)
 
   let assert Ok(status) =
-    fixtures.query_string(db, "select status from tasks where id = $1", [
-      pog.int(task_id),
-    ])
+    fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status |> expect.equal("available")
 }
 
@@ -360,4 +356,8 @@ pub fn complete_task_fails_for_non_claimer_test() {
 
   // Then: Complete fails with 403 Forbidden
   expect.expect_status(complete_res, 403)
+}
+
+fn task_status_query() -> String {
+  "SELECT case when execution_state = 'closed' then 'completed' else execution_state end FROM tasks WHERE id = $1"
 }

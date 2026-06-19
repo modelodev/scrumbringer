@@ -4,11 +4,12 @@ with updated as (
   set
     claimed_by = null,
     claimed_at = null,
-    status = 'available',
+    claimed_mode = null,
+    execution_state = 'available',
     version = version + 1
   where project_id = $1
     and claimed_by = $2
-    and status = 'claimed'
+    and execution_state = 'claimed'
   returning id
 )
 select id
