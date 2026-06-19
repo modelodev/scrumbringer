@@ -7,7 +7,10 @@ with inserted as (
 select
   i.depends_on_task_id as task_id,
   t.title,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id

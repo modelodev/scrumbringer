@@ -260,7 +260,7 @@ pub fn include_metrics_task_returns_expected_counts_test() {
 
   let _ =
     pog.query(
-      "update tasks set status = 'claimed', claimed_by = $2, claimed_at = now(), pool_lifetime_s = 5400 where id = $1",
+      "update tasks set execution_state = 'claimed', claimed_mode = 'taken', claimed_by = $2, claimed_at = now(), pool_lifetime_s = 5400 where id = $1",
     )
     |> pog.parameter(pog.int(task_id))
     |> pog.parameter(pog.int(admin_id))
@@ -393,7 +393,9 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
     )
 
   let _ =
-    pog.query("update tasks set status = 'completed' where id = $1")
+    pog.query(
+      "update tasks set execution_state = 'closed', closed_at = now(), closed_by = 1, closed_reason = 'done' where id = $1",
+    )
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 

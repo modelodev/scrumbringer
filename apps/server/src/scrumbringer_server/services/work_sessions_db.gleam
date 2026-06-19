@@ -340,7 +340,12 @@ fn validate_task_for_session(
 ) -> Result(TaskValidation, WorkSessionError) {
   let query =
     "
-    SELECT status, claimed_by
+    SELECT
+      case
+        when execution_state = 'closed' then 'completed'
+        else execution_state
+      end as status,
+      claimed_by
     FROM tasks
     WHERE id = $1
   "

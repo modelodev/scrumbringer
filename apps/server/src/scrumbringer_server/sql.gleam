@@ -1176,10 +1176,10 @@ with event_counts as (
     and created_at >= now() - ($2 || ' days')::interval
 ), task_counts as (
   select
-    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
-    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case when t.execution_state = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.execution_state = 'claimed' then 1 else 0 end), 0) as wip_count,
     coalesce(sum(case
-      when t.status = 'claimed'
+      when t.execution_state = 'claimed'
         and exists(
           select 1 from user_task_work_session ws
           where ws.task_id = t.id and ws.ended_at is null
@@ -1191,7 +1191,7 @@ with event_counts as (
 ), time_stats as (
   select
     coalesce(
-      avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint,
+      avg(extract(epoch from (t.closed_at - t.claimed_at)) * 1000)::bigint,
       0
     ) as avg_claim_to_complete_ms,
     coalesce(
@@ -1199,7 +1199,7 @@ with event_counts as (
       0
     ) as avg_time_in_claimed_ms,
     coalesce(sum(case
-      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      when t.execution_state = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count
   from tasks t
   join projects p on p.id = t.project_id
@@ -1297,10 +1297,10 @@ with event_counts as (
 ), task_counts as (
   select
     t.project_id,
-    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
-    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case when t.execution_state = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.execution_state = 'claimed' then 1 else 0 end), 0) as wip_count,
     coalesce(sum(case
-      when t.status = 'claimed'
+      when t.execution_state = 'claimed'
         and exists(
           select 1 from user_task_work_session ws
           where ws.task_id = t.id and ws.ended_at is null
@@ -1313,12 +1313,12 @@ with event_counts as (
 ), time_stats as (
   select
     t.project_id,
-    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
+    avg(extract(epoch from (t.closed_at - t.claimed_at)) * 1000)::bigint
       as avg_claim_to_complete_ms,
     avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
       as avg_time_in_claimed_ms,
     coalesce(sum(case
-      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      when t.execution_state = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count
   from tasks t
   join projects p on p.id = t.project_id
@@ -1451,9 +1451,12 @@ with task_scope as (
     t.title,
     coalesce(t.description, '') as description,
     t.priority,
-     t.status,
+     case
+       when t.execution_state = 'closed' then 'completed'
+       else t.execution_state
+     end as status,
      (
-       t.status = 'claimed'
+       t.execution_state = 'claimed'
        and exists(
          select 1
          from user_task_work_session ws
@@ -1471,7 +1474,7 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     t.version
   from tasks t
@@ -3359,7 +3362,7 @@ from project_members
 left join tasks
   on tasks.project_id = project_members.project_id
   and tasks.claimed_by = project_members.user_id
-  and tasks.status = 'claimed'
+  and tasks.execution_state = 'claimed'
 where project_members.project_id = $1
 group by
   project_members.project_id,
@@ -5129,7 +5132,10 @@ with inserted as (
 select
   i.depends_on_task_id as task_id,
   t.title,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id
@@ -5225,7 +5231,10 @@ pub fn task_dependencies_list(
 select
   td.depends_on_task_id as task_id,
   t.title,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   coalesce(u.email, '') as claimed_by
 from task_dependencies td
 join tasks t on t.id = td.depends_on_task_id
@@ -6559,7 +6568,8 @@ with updated as (
   set
     claimed_by = $2,
     claimed_at = now(),
-    status = 'claimed',
+    claimed_mode = 'taken',
+    execution_state = 'claimed',
     pool_lifetime_s = pool_lifetime_s + case
       when last_entered_pool_at is null then 0
       else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)
@@ -6567,14 +6577,14 @@ with updated as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
-    and status = 'available'
+    and execution_state = 'available'
     and version = $3
     and not exists (
       select 1
       from task_dependencies d
       join tasks blocker on blocker.id = d.depends_on_task_id
       where d.task_id = tasks.id
-        and blocker.status != 'completed'
+        and blocker.execution_state != 'closed'
     )
   returning
     id,
@@ -6583,15 +6593,15 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as milestone_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6616,14 +6626,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -6748,8 +6761,11 @@ with updated as (
   update tasks
   set
     claimed_by = null,
-    status = 'completed',
-    completed_at = now(),
+    execution_state = 'closed',
+    claimed_mode = null,
+    closed_at = now(),
+    closed_by = $2,
+    closed_reason = 'done',
     pool_lifetime_s = pool_lifetime_s + case
       when last_entered_pool_at is null then 0
       else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)
@@ -6757,7 +6773,7 @@ with updated as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
-    and status = 'claimed'
+    and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
   returning
@@ -6767,15 +6783,15 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    'completed' as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as milestone_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6800,14 +6816,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -6944,31 +6963,11 @@ with type_ok as (
   where id = $1
     and project_id = $2
 ), card_ok as (
-  -- If card_id <= 0, allow creation.
-  -- If card_id is provided, require it to belong to the same project.
-  select
-    case
-      when $7 <= 0 then null
-      else c.id
-    end as id,
-    case
-      when $7 <= 0 then null
-      else c.milestone_id
-    end as milestone_id
+  select c.id
   from (select 1) seed
   left join cards c
     on c.id = $7 and c.project_id = $2
-), milestone_ok as (
-  select case
-    when $8 <= 0 then null
-    else (
-      select m.id
-      from milestones m
-      where m.id = $8
-        and m.project_id = $2
-        and m.state = 'ready'
-    )
-  end as id
+  where $7 <= 0 or c.id is not null
 ), inserted as (
   insert into tasks (
     project_id,
@@ -6978,8 +6977,9 @@ with type_ok as (
     priority,
     created_by,
     card_id,
-    milestone_id,
-    created_from_rule_id
+    created_from_rule_id,
+    execution_state,
+    last_entered_pool_at
   )
   select
     $2,
@@ -6988,17 +6988,14 @@ with type_ok as (
     nullif($4, ''),
     $5,
     $6,
-    card_ok.id,
-    case when card_ok.id is not null then null else milestone_ok.id end,
-    case when $9 <= 0 then null else $9 end
-  from type_ok, card_ok, milestone_ok
+    case when $7 <= 0 then null else card_ok.id end,
+    case when $9 <= 0 then null else $9 end,
+    'available',
+    now()
+  from type_ok, card_ok
   where type_ok.id is not null
-    -- Block if card_id is provided but card_ok.id is null (invalid card)
     and ($7 <= 0 or card_ok.id is not null)
-    -- Task milestone only valid when task has no card
-    and (card_ok.id is null or $8 <= 0)
-    -- If milestone_id is provided, it must exist and be ready
-    and ($8 <= 0 or milestone_ok.id is not null)
+    and ($8 <= 0 or $8 > 0)
   returning
     id,
     project_id,
@@ -7006,15 +7003,15 @@ with type_ok as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as milestone_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7023,7 +7020,7 @@ select
   inserted.*,
   tt.name as type_name,
   tt.icon as type_icon,
-  (false) as is_ongoing,
+  false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
@@ -7161,9 +7158,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7180,11 +7180,11 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  coalesce(t.milestone_id, 0) as milestone_id,
+  0 as milestone_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
@@ -7202,14 +7202,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -7343,14 +7346,6 @@ pub fn tasks_list(
   }
 
   "-- name: list_tasks_for_project
-with active_milestone as (
-  select id
-  from milestones
-  where project_id = $1
-    and state = 'active'
-  order by activated_at desc
-  limit 1
-)
 select
   t.id,
   t.project_id,
@@ -7360,9 +7355,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7379,11 +7377,11 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  coalesce(t.milestone_id, 0) as milestone_id,
+  0 as milestone_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
@@ -7408,33 +7406,50 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
+  and (t.card_id is null or c.execution_state = 'active')
   and (
-    -- Task belongs to active milestone (direct or inherited from card)
-    coalesce(t.milestone_id, c.milestone_id) = (
-      select id from active_milestone
-    )
-    -- Orphan task (no card and no milestone)
-    or (t.card_id is null and t.milestone_id is null)
-    -- Task under orphan card
-    or (t.card_id is not null and c.milestone_id is null)
+    $2 = ''
+    or case
+      when t.execution_state = 'closed' then 'completed'
+      else t.execution_state
+    end = $2
   )
-  and ($2 = '' or t.status = $2)
   and ($3 <= 0 or t.type_id = $3)
   and ($4 <= 0 or tt.capability_id = $4)
+  and (
+    exists(
+      select 1
+      from project_members pm
+      where pm.project_id = t.project_id
+        and pm.user_id = $6
+        and pm.role = 'manager'
+    )
+    or tt.capability_id is null
+    or exists(
+      select 1
+      from project_member_capabilities pmc
+      where pmc.project_id = t.project_id
+        and pmc.user_id = $6
+        and pmc.capability_id = tt.capability_id
+    )
+  )
   and (
     $5 = ''
     or t.title ilike ('%' || $5 || '%')
@@ -7548,9 +7563,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7567,7 +7585,7 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version,
   coalesce(t.card_id, 0) as card_id
@@ -7693,11 +7711,12 @@ with updated as (
   set
     claimed_by = null,
     claimed_at = null,
-    status = 'available',
+    claimed_mode = null,
+    execution_state = 'available',
     last_entered_pool_at = now(),
     version = version + 1
   where id = $1
-    and status = 'claimed'
+    and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
   returning
@@ -7707,15 +7726,15 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as milestone_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7740,14 +7759,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -7793,11 +7815,12 @@ with updated as (
   set
     claimed_by = null,
     claimed_at = null,
-    status = 'available',
+    claimed_mode = null,
+    execution_state = 'available',
     version = version + 1
   where project_id = $1
     and claimed_by = $2
-    and status = 'claimed'
+    and execution_state = 'claimed'
   returning id
 )
 select id
@@ -7929,17 +7952,16 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
-  milestone_id = case
-    when $8 > 0 then null
-    when $7 = -1 then milestone_id
-    else nullif($7, 0)
+  card_id = case
+    when $7 = -999999 then card_id
+    when $8 = -1 then card_id
+    else nullif($8, 0)
   end,
-  card_id = case when $8 = -1 then card_id else nullif($8, 0) end,
   version = version + 1
 where id = $1
   and (
-    status = 'available'
-    or (status = 'claimed' and claimed_by = $2)
+    execution_state = 'available'
+    or (execution_state = 'claimed' and claimed_by = $2)
   )
   and version = $9
   returning
@@ -7949,15 +7971,18 @@ where id = $1
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    case
+      when execution_state = 'closed' then 'completed'
+      else execution_state
+    end as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as milestone_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7982,14 +8007,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
