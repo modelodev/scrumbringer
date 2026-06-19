@@ -163,6 +163,7 @@ pub type Text {
   CapabilitiesBoard
   People
   Milestones
+  Tracking
   WorkSurfaceView
   PoolPurpose
   ShowFilters

@@ -1,0 +1,212 @@
+import domain/card.{type Card, Card, Cerrada, EnCurso, Pendiente}
+import domain/task.{type Task, Task}
+import domain/task_state
+import domain/task_status
+import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import gleam/option.{None, Some}
+import gleam/string
+import lustre/element
+
+import scrumbringer_client/features/card_tree/scope_view
+import scrumbringer_client/i18n/locale
+
+fn assert_contains(text: String, fragment: String) {
+  let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
+}
+
+fn base_card(id: Int, title: String, parent_id, state) -> Card {
+  Card(
+    id: id,
+    project_id: 1,
+    milestone_id: parent_id,
+    title: title,
+    description: "",
+    color: None,
+    state: state,
+    task_count: 0,
+    completed_count: 0,
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    has_new_notes: False,
+  )
+}
+
+fn task_type(id: Int, name: String, capability_id) -> TaskType {
+  TaskType(
+    id: id,
+    name: name,
+    icon: "bolt",
+    capability_id: capability_id,
+    tasks_count: 1,
+  )
+}
+
+fn task(id: Int, title: String, type_id: Int, card_id) -> Task {
+  Task(
+    id: id,
+    project_id: 1,
+    type_id: type_id,
+    task_type: TaskTypeInline(id: type_id, name: "Work", icon: "bolt"),
+    ongoing_by: None,
+    title: title,
+    description: Some(""),
+    priority: 3,
+    state: task_state.Available,
+    status: task_state.to_status(task_state.Available),
+    work_state: task_state.to_work_state(task_state.Available),
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    version: 1,
+    milestone_id: None,
+    card_id: card_id,
+    card_title: None,
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
+  )
+}
+
+fn claimed_task(id: Int, title: String, type_id: Int, card_id) -> Task {
+  let state =
+    task_state.Claimed(
+      claimed_by: 1,
+      claimed_at: "2026-01-01T00:00:00Z",
+      mode: task_status.Taken,
+    )
+  Task(
+    ..task(id, title, type_id, card_id),
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+  )
+}
+
+fn config(scope: scope_view.Scope) -> scope_view.Config(String) {
+  scope_view.Config(
+    locale: locale.En,
+    cards: [
+      base_card(1, "Platform Epic", None, Pendiente),
+      base_card(2, "Checkout Story", Some(1), EnCurso),
+      base_card(3, "Closed Story", Some(1), Cerrada),
+      base_card(4, "Nested Task Group", Some(2), Pendiente),
+    ],
+    tasks: [
+      task(10, "Wire direct task", 1, Some(2)),
+      claimed_task(11, "Backend claimed", 2, Some(2)),
+    ],
+    task_types: [
+      task_type(1, "Frontend", Some(7)),
+      task_type(2, "Backend", Some(8)),
+    ],
+    capabilities: [#(7, "Frontend"), #(8, "Backend")],
+    depth_names: [
+      scope_view.DepthName(1, "Epic", "Epics"),
+      scope_view.DepthName(2, "Story", "Stories"),
+    ],
+    scope: scope,
+    include_closed: False,
+    on_card_opened: fn(_) { "card" },
+    on_task_opened: fn(_) { "task" },
+    on_include_closed_toggled: "closed",
+  )
+}
+
+pub fn tracking_profile_hides_closed_cards_by_default_test() {
+  let html =
+    scope_view.view(config(scope_view.TrackingProfile))
+    |> element.to_document_string
+
+  assert_contains(html, "Tracking")
+  assert_contains(html, "Platform Epic")
+  assert_contains(html, "Checkout Story")
+  assert_not_contains(html, "Closed Story")
+}
+
+pub fn coordination_profile_groups_cards_by_execution_state_test() {
+  let html =
+    scope_view.view(config(scope_view.CoordinationProfile))
+    |> element.to_document_string
+
+  assert_contains(html, "Draft")
+  assert_contains(html, "Active")
+  assert_contains(html, "Platform Epic")
+  assert_contains(html, "Checkout Story")
+}
+
+pub fn execution_profile_groups_tasks_by_capability_test() {
+  let html =
+    scope_view.view(config(scope_view.ExecutionProfile))
+    |> element.to_document_string
+
+  assert_contains(html, "Execution")
+  assert_contains(html, "Frontend")
+  assert_contains(html, "Backend")
+  assert_contains(html, "Wire direct task")
+  assert_contains(html, "Backend claimed")
+}
+
+pub fn card_scope_shows_direct_subcards_or_tasks_test() {
+  let html =
+    scope_view.view(config(scope_view.CardScope(2)))
+    |> element.to_document_string
+
+  assert_contains(html, "Nested Task Group")
+  assert_contains(html, "Wire direct task")
+  assert_not_contains(html, "Platform Epic")
+}
+
+pub fn include_closed_filter_reveals_closed_cards_test() {
+  let html =
+    scope_view.view(
+      scope_view.Config(
+        ..config(scope_view.DepthScope(2)),
+        include_closed: True,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Closed Story")
+  assert_contains(html, "Incluir cerradas")
+}
+
+pub fn depth_scope_empty_state_is_actionable_test() {
+  let html =
+    scope_view.view(config(scope_view.DepthScope(4)))
+    |> element.to_document_string
+
+  assert_contains(html, "No cards at this level")
+  assert_contains(html, "Create a card at this level")
+}
+
+pub fn many_cards_in_depth_remain_scannable_test() {
+  let cards = [
+    base_card(1, "One", None, Pendiente),
+    base_card(2, "Two", None, Pendiente),
+    base_card(3, "Three", None, Pendiente),
+    base_card(4, "Four", None, Pendiente),
+    base_card(5, "Five", None, Pendiente),
+    base_card(6, "Six", None, Pendiente),
+  ]
+  let html =
+    scope_view.view(
+      scope_view.Config(..config(scope_view.DepthScope(1)), cards: cards),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "card-tree-grid card-tree-grid-dense")
+  assert_contains(html, "data-testid=\"card-tree-card\"")
+}
+
+pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
+  let html =
+    scope_view.view(config(scope_view.CardScope(2)))
+    |> element.to_document_string
+
+  assert_contains(html, "data-scope=\"card:2\"")
+  assert_contains(html, "card-tree-scope-shell")
+}

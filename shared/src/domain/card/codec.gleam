@@ -41,6 +41,11 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     option.None,
     decode.optional(decode.int),
   )
+  use parent_card_id <- decode.optional_field(
+    "parent_card_id",
+    option.None,
+    decode.optional(decode.int),
+  )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", optional_color_decoder())
@@ -54,10 +59,15 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     False,
     decode.bool,
   )
+  let tree_parent_id = case milestone_id {
+    option.Some(_) -> milestone_id
+    option.None -> parent_card_id
+  }
+
   decode.success(Card(
     id: id,
     project_id: project_id,
-    milestone_id: milestone_id,
+    milestone_id: tree_parent_id,
     title: title,
     description: description,
     color: color,

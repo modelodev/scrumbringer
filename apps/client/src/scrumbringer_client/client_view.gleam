@@ -35,10 +35,11 @@ import lustre/element.{type Element}
 
 import lustre/element/html.{a, div, h2, p, style, text}
 
+import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
-import domain/project.{type Project}
+import domain/project.{type Project, type ProjectDepthName}
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import domain/view_mode
@@ -70,12 +71,11 @@ import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
+import scrumbringer_client/features/card_tree/scope_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
-import scrumbringer_client/features/milestones/access as milestone_access
-import scrumbringer_client/features/milestones/view_config as milestones_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/features/pool/create_dialog_config
@@ -1026,7 +1026,7 @@ fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
     view_mode.Cards -> i18n_text.Kanban
     view_mode.Capabilities -> i18n_text.CapabilitiesBoard
     view_mode.People -> i18n_text.People
-    view_mode.Milestones -> i18n_text.Milestones
+    view_mode.Milestones -> i18n_text.Tracking
   }
 }
 
@@ -1161,6 +1161,10 @@ fn build_left_panel(
     pending_invites_count: pending_invites_count,
     projects_count: list.length(projects),
     users_count: users_count,
+    depth_names: configured_depth_names(
+      projects,
+      model.core.selected_project_id,
+    ),
     // Event handlers
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(pool_messages.MemberCreateDialogOpened),
@@ -1247,6 +1251,43 @@ fn build_left_panel(
   ))
 }
 
+fn configured_depth_names(
+  projects: List(Project),
+  selected_project_id: opt.Option(Int),
+) -> List(scope_view.DepthName) {
+  case selected_project_id {
+    opt.None -> default_depth_names()
+    opt.Some(project_id) ->
+      case list.find(projects, fn(project) { project.id == project_id }) {
+        Ok(project) -> project_depth_names(project.card_depth_names)
+        Error(_) -> default_depth_names()
+      }
+  }
+}
+
+fn project_depth_names(
+  depth_names: List(ProjectDepthName),
+) -> List(scope_view.DepthName) {
+  case depth_names {
+    [] -> default_depth_names()
+    _ ->
+      list.map(depth_names, fn(depth_name) {
+        scope_view.DepthName(
+          depth_name.depth,
+          depth_name.singular_name,
+          depth_name.plural_name,
+        )
+      })
+  }
+}
+
+fn default_depth_names() -> List(scope_view.DepthName) {
+  [
+    scope_view.DepthName(1, "Hito", "Hitos"),
+    scope_view.DepthName(2, "Card", "Cards"),
+  ]
+}
+
 fn left_panel_member_route_config(
   model: client_state.Model,
 ) -> left_panel_data.MemberRouteConfig {
@@ -1274,23 +1315,34 @@ fn build_center_panel(
       model.member.skills.member_my_capability_ids,
     )
   let cards = project_cards(model)
+  let projects = state_selectors.active_projects(model)
   let pool_context = pool_view_context.from_state(model, cards)
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(pool_context, user)
   let milestones_content =
-    milestones_view.view(
-      model.ui.locale,
-      model.ui.theme,
-      model.core.selected_project_id,
-      model.member.pool,
-      model.admin.members.org_users_cache,
-      milestone_access.can_manage(
-        model.core.user,
-        state_selectors.selected_project(model),
+    scope_view.view(scope_view.Config(
+      locale: model.ui.locale,
+      cards: cards,
+      tasks: data.tasks,
+      task_types: data.task_types,
+      capabilities: capability_pairs(data.capabilities),
+      depth_names: configured_depth_names(
+        projects,
+        model.core.selected_project_id,
       ),
-      milestone_callbacks(),
-    )
+      scope: scope_view.TrackingProfile,
+      include_closed: model.member.pool.member_milestones_show_completed,
+      on_card_opened: fn(card_id) {
+        client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      },
+      on_task_opened: fn(task_id) {
+        client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      },
+      on_include_closed_toggled: client_state.pool_msg(
+        pool_messages.MemberMilestonesShowCompletedToggled,
+      ),
+    ))
   let cards_content =
     kanban_board.view(kanban_config(
       model,
@@ -1345,121 +1397,8 @@ fn build_center_panel(
   ))
 }
 
-fn milestone_callbacks() -> milestones_view.Callbacks(client_state.Msg) {
-  milestones_view.Callbacks(
-    on_create_milestone: client_state.pool_msg(
-      pool_messages.MemberMilestoneCreateClicked,
-    ),
-    on_dialog_close: client_state.pool_msg(
-      pool_messages.MemberMilestoneDialogClosed,
-    ),
-    on_activate_clicked: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneActivateClicked(id))
-    },
-    on_create_submitted: client_state.pool_msg(
-      pool_messages.MemberMilestoneCreateSubmitted,
-    ),
-    on_edit_submitted: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneEditSubmitted(id))
-    },
-    on_delete_submitted: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDeleteSubmitted(id))
-    },
-    on_name_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneNameChanged(value))
-    },
-    on_description_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDescriptionChanged(
-        value,
-      ))
-    },
-    on_search_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneSearchChanged(value))
-    },
-    on_toggle_completed: client_state.pool_msg(
-      pool_messages.MemberMilestonesShowCompletedToggled,
-    ),
-    on_toggle_empty: client_state.pool_msg(
-      pool_messages.MemberMilestonesShowEmptyToggled,
-    ),
-    on_view_kanban: client_state.pool_msg(pool_messages.ViewModeChanged(
-      view_mode.Cards,
-    )),
-    on_select: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDetailsClicked(id))
-    },
-    on_summary_toggle: client_state.pool_msg(
-      pool_messages.MemberMilestoneSummaryToggled,
-    ),
-    on_card_toggle: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardToggled(id))
-    },
-    on_quick_create_card: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(id))
-    },
-    on_quick_create_task: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCreateTaskClicked(id))
-    },
-    on_activate_prompt: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneActivatePromptClicked(
-        id,
-      ))
-    },
-    on_edit: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneEditClicked(id))
-    },
-    on_delete: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDeleteClicked(id))
-    },
-    on_task_open: fn(id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(id))
-    },
-    on_task_claim: fn(id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(id, version))
-    },
-    on_card_drag_started: fn(card_id, milestone_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardDragStarted(
-        card_id,
-        milestone_id,
-      ))
-    },
-    on_task_drag_started: fn(task_id, milestone_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneTaskDragStarted(
-        task_id,
-        milestone_id,
-      ))
-    },
-    on_drag_ended: client_state.pool_msg(pool_messages.MemberMilestoneDragEnded),
-    on_card_move: fn(card_id, milestone_id, destination_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardMoveClicked(
-        card_id,
-        milestone_id,
-        destination_id,
-      ))
-    },
-    on_task_move: fn(task_id, milestone_id, destination_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneTaskMoveClicked(
-        task_id,
-        milestone_id,
-        destination_id,
-      ))
-    },
-    on_card_create_task: fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
-        card_id,
-      ))
-    },
-    on_card_edit: fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
-      )
-    },
-    on_card_delete: fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
-      )
-    },
-  )
+fn capability_pairs(capabilities: List(Capability)) -> List(#(Int, String)) {
+  list.map(capabilities, fn(capability) { #(capability.id, capability.name) })
 }
 
 fn kanban_config(

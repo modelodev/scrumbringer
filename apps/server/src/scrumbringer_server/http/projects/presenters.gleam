@@ -1,5 +1,6 @@
 //// JSON presenters for project endpoints.
 
+import domain/project.{type ProjectDepthName, ProjectDepthName}
 import domain/project_role
 import gleam/json
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
@@ -20,6 +21,7 @@ pub fn project(project: projects_db.ProjectRecord) -> json.Json {
     created_at: created_at,
     my_role: my_role,
     members_count: members_count,
+    card_depth_names: card_depth_names,
     ..,
   ) = project
 
@@ -29,6 +31,21 @@ pub fn project(project: projects_db.ProjectRecord) -> json.Json {
     #("created_at", json.string(created_at)),
     #("my_role", json.string(project_role.to_string(my_role))),
     #("members_count", json.int(members_count)),
+    #("card_depth_names", json.array(card_depth_names, of: card_depth_name)),
+  ])
+}
+
+fn card_depth_name(depth_name: ProjectDepthName) -> json.Json {
+  let ProjectDepthName(
+    depth: depth,
+    singular_name: singular_name,
+    plural_name: plural_name,
+  ) = depth_name
+
+  json.object([
+    #("depth", json.int(depth)),
+    #("singular_name", json.string(singular_name)),
+    #("plural_name", json.string(plural_name)),
   ])
 }
 

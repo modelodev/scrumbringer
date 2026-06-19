@@ -42,6 +42,14 @@ pub fn card_decoder_treats_null_color_as_absent_test() {
     json.parse(body, codec.card_decoder())
 }
 
+pub fn card_decoder_uses_parent_card_id_for_tree_parent_test() {
+  let body =
+    "{\"id\":1,\"project_id\":2,\"parent_card_id\":9,\"title\":\"Discovery\",\"description\":\"Scope\",\"color\":null,\"state\":\"pendiente\",\"task_count\":3,\"completed_count\":1,\"created_by\":42,\"created_at\":\"2026-01-28T12:00:00Z\"}"
+
+  let assert Ok(Card(milestone_id: option.Some(9), ..)) =
+    json.parse(body, codec.card_decoder())
+}
+
 pub fn card_decoder_rejects_invalid_color_test() {
   let body =
     "{\"id\":1,\"project_id\":2,\"milestone_id\":null,\"title\":\"Discovery\",\"description\":\"Scope\",\"color\":\"cyan\",\"state\":\"pendiente\",\"task_count\":3,\"completed_count\":1,\"created_by\":42,\"created_at\":\"2026-01-28T12:00:00Z\"}"

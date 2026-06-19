@@ -33,6 +33,7 @@ fn project() -> Project {
     my_role: Manager,
     created_at: "2026-03-20",
     members_count: 1,
+    card_depth_names: [],
   )
 }
 

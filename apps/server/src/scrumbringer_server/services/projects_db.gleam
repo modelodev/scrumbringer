@@ -20,6 +20,8 @@
 //// - Uses `sql.gleam` for query execution
 //// - Shares `ProjectRole` with domain types
 
+import domain/project.{type ProjectDepthName, ProjectDepthName}
+import domain/project/codec as project_codec
 import domain/project_role.{type ProjectRole}
 import gleam/dynamic/decode
 import gleam/list
@@ -38,6 +40,7 @@ pub type ProjectRecord {
     created_at: String,
     my_role: ProjectRole,
     members_count: Int,
+    card_depth_names: List(ProjectDepthName),
   )
 }
 
@@ -83,6 +86,7 @@ fn project_from_fields(
     created_at: created_at,
     my_role: my_role,
     members_count: members_count,
+    card_depth_names: project_codec.default_card_depth_names(),
   )
 }
 
@@ -173,14 +177,15 @@ pub fn list_projects_for_user(
 
   returned.rows
   |> list.try_map(fn(row) {
-    project_from_db_fields(
+    use project <- result.try(project_from_db_fields(
       row.id,
       row.org_id,
       row.name,
       row.created_at,
       row.my_role,
       row.members_count,
-    )
+    ))
+    with_card_depth_names(db, project)
   })
 }
 
@@ -210,8 +215,54 @@ pub fn list_projects_for_org(
   returned.rows
   |> list.try_map(fn(row) {
     let #(id, org_id, name, created_at, my_role, members_count) = row
-    project_from_db_fields(id, org_id, name, created_at, my_role, members_count)
+    use project <- result.try(project_from_db_fields(
+      id,
+      org_id,
+      name,
+      created_at,
+      my_role,
+      members_count,
+    ))
+    with_card_depth_names(db, project)
   })
+}
+
+fn with_card_depth_names(
+  db: pog.Connection,
+  project: ProjectRecord,
+) -> Result(ProjectRecord, pog.QueryError) {
+  use card_depth_names <- result.try(list_card_depth_names(db, project.id))
+  Ok(ProjectRecord(..project, card_depth_names: card_depth_names))
+}
+
+fn list_card_depth_names(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(List(ProjectDepthName), pog.QueryError) {
+  let decoder = {
+    use depth <- decode.field(0, decode.int)
+    use singular_name <- decode.field(1, decode.string)
+    use plural_name <- decode.field(2, decode.string)
+    decode.success(ProjectDepthName(
+      depth: depth,
+      singular_name: singular_name,
+      plural_name: plural_name,
+    ))
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "\nselect depth, singular_name, plural_name\nfrom project_card_depth_names\nwhere project_id = $1\norder by depth asc",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [] -> Ok(project_codec.default_card_depth_names())
+    rows -> Ok(rows)
+  }
 }
 
 /// Checks whether a user is a manager of a project.

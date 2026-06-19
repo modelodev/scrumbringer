@@ -2,8 +2,29 @@
 
 import gleam/dynamic/decode
 
-import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/project.{
+  type Project, type ProjectDepthName, type ProjectMember, Project,
+  ProjectDepthName, ProjectMember,
+}
 import domain/project_role/codec as project_role_codec
+
+pub fn default_card_depth_names() -> List(ProjectDepthName) {
+  [
+    ProjectDepthName(1, "Hito", "Hitos"),
+    ProjectDepthName(2, "Card", "Cards"),
+  ]
+}
+
+fn project_depth_name_decoder() -> decode.Decoder(ProjectDepthName) {
+  use depth <- decode.field("depth", decode.int)
+  use singular_name <- decode.field("singular_name", decode.string)
+  use plural_name <- decode.field("plural_name", decode.string)
+  decode.success(ProjectDepthName(
+    depth: depth,
+    singular_name: singular_name,
+    plural_name: plural_name,
+  ))
+}
 
 /// Decoder for Project with my_role field.
 pub fn project_decoder() -> decode.Decoder(Project) {
@@ -15,12 +36,18 @@ pub fn project_decoder() -> decode.Decoder(Project) {
   )
   use created_at <- decode.field("created_at", decode.string)
   use members_count <- decode.field("members_count", decode.int)
+  use card_depth_names <- decode.optional_field(
+    "card_depth_names",
+    default_card_depth_names(),
+    decode.list(project_depth_name_decoder()),
+  )
   decode.success(Project(
     id: id,
     name: name,
     my_role: my_role,
     created_at: created_at,
     members_count: members_count,
+    card_depth_names: card_depth_names,
   ))
 }
 
@@ -49,5 +76,6 @@ pub fn user_project_decoder() -> decode.Decoder(Project) {
     my_role: my_role,
     created_at: "",
     members_count: 0,
+    card_depth_names: default_card_depth_names(),
   ))
 }

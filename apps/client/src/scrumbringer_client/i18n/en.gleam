@@ -182,6 +182,7 @@ pub fn translate(text: Text) -> String {
     text.CapabilitiesBoard -> "Capabilities"
     text.People -> "People"
     text.Milestones -> "Milestones"
+    text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "View"
     text.PoolPurpose -> "Choose the next personal task to claim."
     text.ShowFilters -> "Show filters"

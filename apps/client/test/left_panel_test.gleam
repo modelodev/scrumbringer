@@ -4,6 +4,7 @@ import gleam/string
 import lustre/element
 
 import domain/view_mode as view_mode_module
+import scrumbringer_client/features/card_tree/scope_view
 import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/permissions
@@ -38,6 +39,10 @@ fn base_config(
     pending_invites_count: 0,
     projects_count: 0,
     users_count: 0,
+    depth_names: [
+      scope_view.DepthName(1, "Epic", "Epics"),
+      scope_view.DepthName(2, "Story", "Stories"),
+    ],
     on_project_change: fn(_value) { "msg" },
     on_new_task: "msg",
     on_new_card: "msg",
@@ -184,11 +189,24 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_e
   |> assert_true
 
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
+  assert_contains(html, "<span class=\"nav-label\">Cards</span>")
   assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
   assert_contains(html, "<span class=\"nav-label\">People</span>")
-  assert_contains(html, "<span class=\"nav-label\">Milestones</span>")
+  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
   assert_not_contains(html, ">List<")
+}
+
+pub fn left_sidebar_renders_depth_names_from_project_config_test() {
+  let html =
+    left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"nav-depth-1\"")
+  assert_contains(html, "<span class=\"nav-label\">Epics</span>")
+  assert_contains(html, "data-testid=\"nav-depth-2\"")
+  assert_contains(html, "<span class=\"nav-label\">Stories</span>")
+  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
+  assert_not_contains(html, "<span class=\"nav-label\">Milestones</span>")
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_test() {
@@ -222,9 +240,9 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_te
   |> assert_true
 
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
+  assert_contains(html, "<span class=\"nav-label\">Tarjetas</span>")
   assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
   assert_contains(html, "<span class=\"nav-label\">Personas</span>")
-  assert_contains(html, "<span class=\"nav-label\">Hitos</span>")
+  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
   assert_not_contains(html, ">Lista<")
 }
