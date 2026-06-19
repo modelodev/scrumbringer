@@ -1,0 +1,112 @@
+import gleam/option
+
+import domain/card/entity as card_entity
+import domain/card/id as card_id
+import domain/card/state as card_state
+import domain/card/structure as card_structure
+import domain/project/id as project_id
+import domain/task/id as task_id
+import domain/user/id as user_id
+
+pub fn empty_card_accepts_first_child_card_test() {
+  let parent = draft_card(card_id.new(1), project_id.new(1), option.None)
+  let child_id = card_id.new(2)
+
+  let assert Ok(updated) =
+    card_entity.add_card_child(parent, project_id.new(1), child_id)
+  let assert card_structure.CardGroup(children) = updated.structure
+  let assert True = children == [child_id]
+}
+
+pub fn empty_card_accepts_first_child_task_test() {
+  let parent = draft_card(card_id.new(1), project_id.new(1), option.None)
+  let child_id = task_id.new(2)
+
+  let assert Ok(updated) =
+    card_entity.add_task_child(parent, project_id.new(1), child_id)
+  let assert card_structure.TaskGroup(children) = updated.structure
+  let assert True = children == [child_id]
+}
+
+pub fn card_group_rejects_task_child_test() {
+  let parent =
+    draft_card(card_id.new(1), project_id.new(1), option.None)
+    |> card_entity.add_card_child(project_id.new(1), card_id.new(2))
+
+  let assert Ok(parent) = parent
+  let assert Error(card_entity.CannotAddTaskToCardGroup) =
+    card_entity.add_task_child(parent, project_id.new(1), task_id.new(3))
+}
+
+pub fn task_group_rejects_card_child_test() {
+  let parent =
+    draft_card(card_id.new(1), project_id.new(1), option.None)
+    |> card_entity.add_task_child(project_id.new(1), task_id.new(2))
+
+  let assert Ok(parent) = parent
+  let assert Error(card_entity.CannotAddCardToTaskGroup) =
+    card_entity.add_card_child(parent, project_id.new(1), card_id.new(3))
+}
+
+pub fn closed_card_rejects_new_children_test() {
+  let parent = closed_card(card_id.new(1), project_id.new(1), option.None)
+
+  let assert Error(card_entity.CannotAddChildToClosedCard) =
+    card_entity.add_task_child(parent, project_id.new(1), task_id.new(2))
+
+  let assert Error(card_entity.CannotAddChildToClosedCard) =
+    card_entity.add_card_child(parent, project_id.new(1), card_id.new(2))
+}
+
+pub fn child_from_other_project_is_rejected_test() {
+  let parent = draft_card(card_id.new(1), project_id.new(1), option.None)
+
+  let assert Error(card_entity.ChildFromOtherProject) =
+    card_entity.add_card_child(parent, project_id.new(2), card_id.new(2))
+
+  let assert Error(card_entity.ChildFromOtherProject) =
+    card_entity.add_task_child(parent, project_id.new(2), task_id.new(2))
+}
+
+pub fn moving_card_under_descendant_is_rejected_test() {
+  let root = draft_card(card_id.new(1), project_id.new(1), option.None)
+  let child =
+    draft_card(card_id.new(2), project_id.new(1), option.Some(card_id.new(1)))
+
+  let tree = card_entity.CardTree([root, child])
+
+  let assert Error(card_entity.MoveWouldCreateCycle) =
+    card_entity.move_card_to_parent(root, option.Some(card_id.new(2)), tree)
+}
+
+fn draft_card(
+  id: card_id.CardId,
+  project: project_id.ProjectId,
+  parent: option.Option(card_id.CardId),
+) -> card_entity.Card {
+  card_entity.Card(
+    id: id,
+    project_id: project,
+    parent: parent,
+    structure: card_structure.Empty,
+    execution_state: card_state.Draft,
+  )
+}
+
+fn closed_card(
+  id: card_id.CardId,
+  project: project_id.ProjectId,
+  parent: option.Option(card_id.CardId),
+) -> card_entity.Card {
+  card_entity.Card(
+    id: id,
+    project_id: project,
+    parent: parent,
+    structure: card_structure.Empty,
+    execution_state: card_state.Closed(
+      reason: card_state.ManuallyClosed,
+      closed_at: "2026-06-19T10:00:00Z",
+      closed_by: user_id.new(7),
+    ),
+  )
+}
