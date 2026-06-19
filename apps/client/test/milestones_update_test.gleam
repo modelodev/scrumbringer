@@ -143,6 +143,7 @@ fn sample_card(id: Int, milestone_id: Int) {
     completed_count: 1,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }
@@ -163,6 +164,7 @@ fn sample_task_in(id: Int, milestone_id: Int) {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: Some(milestone_id),
     card_id: None,
@@ -190,6 +192,7 @@ fn sample_task(id: Int) {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: Some(7),
     card_id: None,

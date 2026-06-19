@@ -68,6 +68,7 @@ fn card(id: Int, milestone_id: Int, task_count: Int) -> Card {
     completed_count: 0,
     created_by: 1,
     created_at: "2026-02-06T00:00:00Z",
+    due_date: opt.None,
     has_new_notes: False,
   )
 }
@@ -94,6 +95,7 @@ fn task(
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-02-06T00:00:00Z",
+    due_date: opt.None,
     version: 1,
     milestone_id: milestone_id,
     card_id: card_id,

@@ -133,6 +133,11 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   let work_state = task_state.to_work_state(state)
 
   use created_at <- decode.field("created_at", decode.string)
+  use due_date <- decode.optional_field(
+    "due_date",
+    option.None,
+    decode.optional(decode.string),
+  )
   use version <- decode.field("version", decode.int)
   use milestone_id <- decode.optional_field(
     "milestone_id",
@@ -186,6 +191,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     work_state: work_state,
     created_by: created_by,
     created_at: created_at,
+    due_date: due_date,
     version: version,
     milestone_id: milestone_id,
     card_id: card_id,

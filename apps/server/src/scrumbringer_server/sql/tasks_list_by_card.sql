@@ -32,6 +32,7 @@ select
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
   coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id
 from tasks t

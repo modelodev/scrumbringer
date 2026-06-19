@@ -244,6 +244,8 @@ pub fn css() -> List(String) {
     ".card-surface-header-actions { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }",
     ".card-surface-title, .kanban-card-title { flex: 1; display: flex; align-items: center; gap: 6px; text-align: left; border: none; background: transparent; padding: 0; font: inherit; color: inherit; cursor: pointer; min-width: 0; }",
     ".card-surface-title .card-title, .kanban-card-title .card-title { font-weight: var(--sb-weight-semibold); }",
+    ".card-due-date { align-self: flex-start; font-size: var(--sb-font-xs); line-height: var(--sb-line-tight); color: var(--sb-muted-strong); font-weight: var(--sb-weight-semibold); }",
+    ".card-due-date-overdue { color: var(--sb-error-text); font-weight: var(--sb-weight-bold); }",
     ".card-surface-body, .kanban-card-body { display: flex; flex-direction: column; gap: 8px; }",
     ".card-surface-task-list, .kanban-card-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }",
     ".card-surface-task-row { margin: 0; padding: 0; list-style: none; }",

@@ -20,6 +20,7 @@ pub fn card(card: domain_card.Card) -> json.Json {
     #("completed_count", json.int(card.completed_count)),
     #("created_by", json.int(card.created_by)),
     #("created_at", json.string(card.created_at)),
+    #("due_date", json_helpers.option_string_json(card.due_date)),
     #("has_new_notes", json.bool(card.has_new_notes)),
   ])
 }

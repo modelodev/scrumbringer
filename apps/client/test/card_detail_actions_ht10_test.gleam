@@ -29,6 +29,7 @@ fn card(id: Int, parent_id: opt.Option(Int), state: CardState) -> Card {
     completed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: opt.None,
     has_new_notes: False,
   )
 }
@@ -49,6 +50,7 @@ fn task(id: Int, card_id: opt.Option(Int), created_by: Int) -> Task {
     work_state: task_state.to_work_state(state),
     created_by: created_by,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: opt.None,
     version: 1,
     milestone_id: opt.None,
     card_id: card_id,

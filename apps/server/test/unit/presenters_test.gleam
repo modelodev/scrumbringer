@@ -213,6 +213,7 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
       work_state: task_status.WorkAvailable,
       created_by: 7,
       created_at: "2026-06-15T09:00:00Z",
+      due_date: None,
       version: 1,
       milestone_id: None,
       card_id: None,

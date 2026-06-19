@@ -274,6 +274,7 @@ fn sample_card(id: Int, milestone_id: Int) {
     completed_count: 1,
     created_by: 1,
     created_at: "2026-02-06T00:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }
@@ -294,6 +295,7 @@ fn sample_loose_task(id: Int, milestone_id: Int) -> Task {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-02-06T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: Some(milestone_id),
     card_id: None,
@@ -321,6 +323,7 @@ fn sample_card_task(id: Int, _milestone_id: Int, card_id: Int) -> Task {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-02-06T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: None,
     card_id: Some(card_id),

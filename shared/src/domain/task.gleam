@@ -42,6 +42,7 @@ import gleam/option.{type Option}
 ///   claimed_at: None,
 ///   completed_at: None,
 ///   created_at: "2024-01-17T12:00:00Z",
+///   due_date: None,
 ///   version: 1,
 ///   blocked_count: 0,
 ///   dependencies: [],
@@ -62,6 +63,7 @@ pub type Task {
     work_state: WorkState,
     created_by: Int,
     created_at: String,
+    due_date: Option(String),
     version: Int,
     milestone_id: Option(Int),
     // Card (ficha) association

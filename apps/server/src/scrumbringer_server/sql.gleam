@@ -595,6 +595,7 @@ pub type CardsCreateRow {
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
   )
 }
 
@@ -621,6 +622,7 @@ pub fn cards_create(
     use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
+    use due_date <- decode.field(8, decode.string)
     decode.success(CardsCreateRow(
       id:,
       project_id:,
@@ -630,6 +632,7 @@ pub fn cards_create(
       parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
     ))
   }
 
@@ -651,7 +654,8 @@ RETURNING
     coalesce(color, '') as color,
     coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
-    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -700,6 +704,7 @@ pub type CardsGetRow {
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
     task_count: Int,
     completed_count: Int,
     available_count: Int,
@@ -726,10 +731,11 @@ pub fn cards_get(
     use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
-    use task_count <- decode.field(8, decode.int)
-    use completed_count <- decode.field(9, decode.int)
-    use available_count <- decode.field(10, decode.int)
-    use has_new_notes <- decode.field(11, decode.bool)
+    use due_date <- decode.field(8, decode.string)
+    use task_count <- decode.field(9, decode.int)
+    use completed_count <- decode.field(10, decode.int)
+    use available_count <- decode.field(11, decode.int)
+    use has_new_notes <- decode.field(12, decode.bool)
     decode.success(CardsGetRow(
       id:,
       project_id:,
@@ -739,6 +745,7 @@ pub fn cards_get(
       parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
       task_count:,
       completed_count:,
       available_count:,
@@ -756,6 +763,7 @@ SELECT
     coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
@@ -795,6 +803,7 @@ pub type CardsListRow {
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
     task_count: Int,
     completed_count: Int,
     available_count: Int,
@@ -821,10 +830,11 @@ pub fn cards_list(
     use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
-    use task_count <- decode.field(8, decode.int)
-    use completed_count <- decode.field(9, decode.int)
-    use available_count <- decode.field(10, decode.int)
-    use has_new_notes <- decode.field(11, decode.bool)
+    use due_date <- decode.field(8, decode.string)
+    use task_count <- decode.field(9, decode.int)
+    use completed_count <- decode.field(10, decode.int)
+    use available_count <- decode.field(11, decode.int)
+    use has_new_notes <- decode.field(12, decode.bool)
     decode.success(CardsListRow(
       id:,
       project_id:,
@@ -834,6 +844,7 @@ pub fn cards_list(
       parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
       task_count:,
       completed_count:,
       available_count:,
@@ -851,6 +862,7 @@ SELECT
     coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
@@ -926,6 +938,7 @@ pub type CardsUpdateRow {
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
   )
 }
 
@@ -951,6 +964,7 @@ pub fn cards_update(
     use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
+    use due_date <- decode.field(8, decode.string)
     decode.success(CardsUpdateRow(
       id:,
       project_id:,
@@ -960,6 +974,7 @@ pub fn cards_update(
       parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
     ))
   }
 
@@ -983,7 +998,8 @@ RETURNING
     coalesce(color, '') as color,
     coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
-    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1375,6 +1391,7 @@ pub type MetricsProjectTasksRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     claim_count: Int,
     release_count: Int,
@@ -1410,11 +1427,12 @@ pub fn metrics_project_tasks(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use claim_count <- decode.field(17, decode.int)
-    use release_count <- decode.field(18, decode.int)
-    use complete_count <- decode.field(19, decode.int)
-    use first_claim_at <- decode.field(20, decode.string)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use claim_count <- decode.field(18, decode.int)
+    use release_count <- decode.field(19, decode.int)
+    use complete_count <- decode.field(20, decode.int)
+    use first_claim_at <- decode.field(21, decode.string)
     decode.success(MetricsProjectTasksRow(
       id:,
       project_id:,
@@ -1432,6 +1450,7 @@ pub fn metrics_project_tasks(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       claim_count:,
       release_count:,
@@ -1476,6 +1495,7 @@ with task_scope as (
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
   from tasks t
   join task_types tt on tt.id = t.type_id
@@ -1509,6 +1529,7 @@ select
   ts.claimed_at,
   ts.completed_at,
   ts.created_at,
+  ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,
@@ -6477,6 +6498,7 @@ pub type TasksClaimRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -6518,20 +6540,21 @@ pub fn tasks_claim(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use milestone_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -6545,6 +6568,7 @@ pub fn tasks_claim(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -6599,6 +6623,7 @@ with updated as (
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
     0 as milestone_id,
@@ -6671,6 +6696,7 @@ pub type TasksCompleteRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -6712,20 +6738,21 @@ pub fn tasks_complete(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use milestone_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -6739,6 +6766,7 @@ pub fn tasks_complete(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -6789,6 +6817,7 @@ with updated as (
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
     0 as milestone_id,
@@ -6861,6 +6890,7 @@ pub type TasksCreateRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -6910,20 +6940,21 @@ pub fn tasks_create(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use milestone_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -6937,6 +6968,7 @@ pub fn tasks_create(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -7009,6 +7041,7 @@ with type_ok as (
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
     0 as milestone_id,
@@ -7068,6 +7101,7 @@ pub type TasksGetForUserRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -7108,16 +7142,17 @@ pub fn tasks_get_for_user(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
-    use milestone_id <- decode.field(18, decode.int)
-    use card_title <- decode.field(19, decode.string)
-    use card_color <- decode.field(20, decode.string)
-    use pool_lifetime_s <- decode.field(21, decode.int)
-    use last_entered_pool_at <- decode.field(22, decode.string)
-    use created_from_rule_id <- decode.field(23, decode.int)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
+    use milestone_id <- decode.field(19, decode.int)
+    use card_title <- decode.field(20, decode.string)
+    use card_color <- decode.field(21, decode.string)
+    use pool_lifetime_s <- decode.field(22, decode.int)
+    use last_entered_pool_at <- decode.field(23, decode.string)
+    use created_from_rule_id <- decode.field(24, decode.int)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
@@ -7135,6 +7170,7 @@ pub fn tasks_get_for_user(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -7182,6 +7218,7 @@ select
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
   coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
   0 as milestone_id,
@@ -7257,6 +7294,7 @@ pub type TasksListRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -7303,17 +7341,18 @@ pub fn tasks_list(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
-    use milestone_id <- decode.field(18, decode.int)
-    use card_title <- decode.field(19, decode.string)
-    use card_color <- decode.field(20, decode.string)
-    use pool_lifetime_s <- decode.field(21, decode.int)
-    use last_entered_pool_at <- decode.field(22, decode.string)
-    use created_from_rule_id <- decode.field(23, decode.int)
-    use has_new_notes <- decode.field(24, decode.bool)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
+    use milestone_id <- decode.field(19, decode.int)
+    use card_title <- decode.field(20, decode.string)
+    use card_color <- decode.field(21, decode.string)
+    use pool_lifetime_s <- decode.field(22, decode.int)
+    use last_entered_pool_at <- decode.field(23, decode.string)
+    use created_from_rule_id <- decode.field(24, decode.int)
+    use has_new_notes <- decode.field(25, decode.bool)
+    use dependencies <- decode.field(26, decode.string)
+    use blocked_count <- decode.field(27, decode.int)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -7331,6 +7370,7 @@ pub fn tasks_list(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -7379,6 +7419,7 @@ select
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
   coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
   0 as milestone_id,
@@ -7498,6 +7539,7 @@ pub type TasksListByCardRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
   )
@@ -7529,8 +7571,9 @@ pub fn tasks_list_by_card(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
     decode.success(TasksListByCardRow(
       id:,
       project_id:,
@@ -7548,6 +7591,7 @@ pub fn tasks_list_by_card(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
     ))
@@ -7587,6 +7631,7 @@ select
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
   coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id
 from tasks t
@@ -7620,6 +7665,7 @@ pub type TasksReleaseRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -7661,20 +7707,21 @@ pub fn tasks_release(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use milestone_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -7688,6 +7735,7 @@ pub fn tasks_release(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -7732,6 +7780,7 @@ with updated as (
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
     0 as milestone_id,
@@ -7853,6 +7902,7 @@ pub type TasksUpdateRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
     milestone_id: Int,
@@ -7900,20 +7950,21 @@ pub fn tasks_update(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use milestone_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -7927,6 +7978,7 @@ pub fn tasks_update(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
       milestone_id:,
@@ -7980,6 +8032,7 @@ where id = $1
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
     0 as milestone_id,

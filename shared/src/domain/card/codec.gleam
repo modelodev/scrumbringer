@@ -54,6 +54,11 @@ pub fn card_decoder() -> decode.Decoder(Card) {
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use due_date <- decode.optional_field(
+    "due_date",
+    option.None,
+    decode.optional(decode.string),
+  )
   use has_new_notes <- decode.optional_field(
     "has_new_notes",
     False,
@@ -76,6 +81,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     completed_count: completed_count,
     created_by: created_by,
     created_at: created_at,
+    due_date: due_date,
     has_new_notes: has_new_notes,
   ))
 }

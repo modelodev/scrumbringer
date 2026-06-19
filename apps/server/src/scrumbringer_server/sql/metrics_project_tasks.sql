@@ -34,6 +34,7 @@ with task_scope as (
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
     coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+    coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
   from tasks t
   join task_types tt on tt.id = t.type_id
@@ -67,6 +68,7 @@ select
   ts.claimed_at,
   ts.completed_at,
   ts.created_at,
+  ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,

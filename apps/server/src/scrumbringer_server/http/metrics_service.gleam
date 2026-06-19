@@ -108,6 +108,7 @@ pub type ProjectTask {
     claimed_at: Option(String),
     completed_at: Option(String),
     created_at: String,
+    due_date: Option(String),
     version: Int,
     claim_count: Int,
     release_count: Int,
@@ -409,6 +410,7 @@ fn project_task_from_row(
 
   let claimed_at = empty_string_to_option(row.claimed_at)
   let completed_at = empty_string_to_option(row.completed_at)
+  let due_date = empty_string_to_option(row.due_date)
   let first_claim_at = empty_string_to_option(row.first_claim_at)
 
   use status <- result.try(
@@ -434,6 +436,7 @@ fn project_task_from_row(
     claimed_at: claimed_at,
     completed_at: completed_at,
     created_at: row.created_at,
+    due_date: due_date,
     version: row.version,
     claim_count: row.claim_count,
     release_count: row.release_count,

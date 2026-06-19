@@ -158,6 +158,7 @@ fn sample_task(id: Int, title: String, status: TaskStatus) -> Task {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-06-08T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: None,
     card_id: None,

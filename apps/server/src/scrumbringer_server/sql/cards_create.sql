@@ -16,4 +16,5 @@ RETURNING
     coalesce(color, '') as color,
     coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
-    to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at;
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date;

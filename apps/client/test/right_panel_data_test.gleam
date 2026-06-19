@@ -117,6 +117,7 @@ fn card(id: Int, title: String, color) {
     completed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }
@@ -140,6 +141,7 @@ fn task(id: Int, state: task_state.TaskState) {
     },
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: None,
     card_id: None,

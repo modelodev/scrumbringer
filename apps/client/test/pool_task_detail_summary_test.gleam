@@ -70,6 +70,7 @@ fn task() -> Task {
     work_state: task_state.to_work_state(task_state.Available),
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 3,
     milestone_id: None,
     card_id: None,

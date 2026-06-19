@@ -68,6 +68,7 @@ pub type CardColorParseError {
 ///   completed_count: 1,
 ///   created_by: 42,
 ///   created_at: "2026-01-18T10:00:00Z",
+///   due_date: None,
 ///   has_new_notes: True,
 /// )
 /// ```
@@ -84,6 +85,7 @@ pub type Card {
     completed_count: Int,
     created_by: Int,
     created_at: String,
+    due_date: Option(String),
     has_new_notes: Bool,
   )
 }

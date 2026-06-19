@@ -37,6 +37,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
       completed_count: 0,
       created_by: 1,
       created_at: "2026-01-01T00:00:00Z",
+      due_date: None,
       has_new_notes: False,
     )
 
@@ -99,6 +100,7 @@ fn claimed_task() -> Task {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
     milestone_id: None,
     card_id: Some(1),
@@ -127,6 +129,7 @@ fn available_task() -> Task {
     work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 2,
     milestone_id: None,
     card_id: Some(1),
