@@ -102,7 +102,7 @@ pub fn decode_update_task(
     decode.run(data, decoder)
     |> result.map_error(fn(_) { InvalidJson }),
   )
-  use card_tree_update <- result.try(decode_card_tree_update(data))
+  use parent_card_update <- result.try(decode_parent_card_update(data))
   use card_update <- result.try(decode_card_update(data))
 
   let #(version, title, description, priority, type_id) = payload
@@ -113,7 +113,7 @@ pub fn decode_update_task(
       description: field_update.from_option(description),
       priority: field_update.from_option(priority),
       type_id: field_update.from_option(type_id),
-      parent_card_id: card_tree_update,
+      parent_card_id: parent_card_update,
       card_id: card_update,
     ),
   ))
@@ -163,7 +163,7 @@ pub fn decode_task_type(data: Dynamic) -> Result(TaskTypePayload, DecodeError) {
   )
 }
 
-fn decode_card_tree_update(
+fn decode_parent_card_update(
   data: Dynamic,
 ) -> Result(field_update.FieldUpdate(Option(Int)), DecodeError) {
   decode_optional_id_update(data, "parent_card_id")

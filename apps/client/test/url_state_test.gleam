@@ -45,7 +45,7 @@ pub fn parse_project_only_test() {
 }
 
 pub fn parse_view_mode_legacy_tracking_redirects_to_pool_test() {
-  let assert Ok(uri) = uri.parse("/app?view=card_trees")
+  let assert Ok(uri) = uri.parse("/app?view=hierarchies")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
   state |> url_state.view |> assert_equal(view_mode.Pool)

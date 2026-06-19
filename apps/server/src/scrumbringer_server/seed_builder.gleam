@@ -14,7 +14,7 @@
 //// - Build complete scenarios with proper relationships
 //// - Manage data pools for realistic names/titles
 //// - HT-12 coverage: root pool, parent_card_id, due_date, closed, healthy,
-////   saturated, card tree, manager, member, capability
+////   saturated, hierarchy, manager, member, capability
 ////
 //// ## Non-responsibilities
 ////
@@ -263,7 +263,7 @@ pub fn build_seed(
   use state <- result.try(build_workflows(db, state, config))
   use state <- result.try(build_rules(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
-  use state <- result.try(build_card_trees(db, state, config))
+  use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
@@ -974,7 +974,7 @@ fn build_audit_events(
   }
 }
 
-fn build_card_trees(
+fn build_root_cards(
   db: pog.Connection,
   state: BuildState,
   _config: SeedConfig,
@@ -985,41 +985,41 @@ fn build_card_trees(
     list.index_map(active_projects, fn(project_id, idx) {
       case idx {
         0 -> {
-          use discovery_id <- result.try(insert_seed_card_tree(
+          use discovery_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Discovery - Research stream",
             Some(
-              "Early planning card_tree with exploratory cards, loose research tasks and an explicit empty slot for future work.",
+              "Early planning root card with exploratory cards, loose research tasks and an explicit empty slot for future work.",
             ),
             card.Draft,
             21,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             discovery_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            discovery_id,
-            4,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              discovery_id,
+              4,
+            ),
+          )
 
-          use empty_slot_id <- result.try(insert_seed_card_tree(
+          use empty_slot_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            1,
             "Release shell - Empty placeholder",
             Some(
-              "Intentional empty card_tree to exercise empty-state UX and show upcoming planning space.",
+              "Intentional empty root card to exercise empty-state UX and show upcoming planning space.",
             ),
             card.Draft,
             15,
@@ -1028,185 +1028,190 @@ fn build_card_trees(
           ))
           let _ = empty_slot_id
 
-          use hardening_id <- result.try(insert_seed_card_tree(
+          use hardening_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            2,
             "Hardening - Pre-release QA",
             Some(
-              "CardTree packed with QA, polish and rollout preparation so the new card_trees UI shows a realistic planning queue.",
+              "Root card packed with QA, polish and rollout preparation so the new root cards UI shows a realistic planning queue.",
             ),
             card.Draft,
             9,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             hardening_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            hardening_id,
-            3,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              hardening_id,
+              3,
+            ),
+          )
 
-          use compliance_id <- result.try(insert_seed_card_tree(
+          use compliance_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            3,
             "Compliance - Documentation sweep",
             Some(
-              "Ready card_tree dominated by loose documentation and compliance tasks, useful to validate the exception treatment in the new view.",
+              "Ready root card dominated by loose documentation and compliance tasks, useful to validate the exception treatment in the new view.",
             ),
             card.Draft,
             5,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             compliance_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            compliance_id,
-            2,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              compliance_id,
+              2,
+            ),
+          )
           Ok(Nil)
         }
 
         1 -> {
-          use completed_id <- result.try(insert_seed_card_tree(
+          use completed_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Release 1.4 - Closed",
             Some(
-              "Recently completed card_tree used to exercise historical metrics and completed content sections.",
+              "Recently completed root card used to exercise historical metrics and completed content sections.",
             ),
             card.Closed,
             28,
             Some(days_ago_timestamp(18)),
             Some(days_ago_timestamp(6)),
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             completed_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_completed_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            completed_id,
-            4,
-          ))
+          use _ <- result.try(
+            seed_db.assign_completed_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              completed_id,
+              4,
+            ),
+          )
 
-          use active_id <- result.try(insert_seed_card_tree(
+          use active_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            1,
             "Release 1.5 - Launch train",
             Some(
-              "The currently active card_tree with in-flight delivery work, claimed tasks and visible loose scope.",
+              "The currently active root card with in-flight delivery work, claimed tasks and visible loose scope.",
             ),
             card.Active,
             12,
             Some(days_ago_timestamp(3)),
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             active_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_card_tree(
+          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
             db,
             project_id,
             active_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            active_id,
-            3,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              active_id,
+              3,
+            ),
+          )
 
-          use backlog_id <- result.try(insert_seed_card_tree(
+          use backlog_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            2,
             "Release 1.6 - Next wave",
             Some(
-              "A ready card_tree with enough queued cards and loose tasks to preview the upcoming tranche of work.",
+              "A ready root card with enough queued cards and loose tasks to preview the upcoming tranche of work.",
             ),
             card.Draft,
             6,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             backlog_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            backlog_id,
-            3,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              backlog_id,
+              3,
+            ),
+          )
 
-          use design_spike_id <- result.try(insert_seed_card_tree(
+          use design_spike_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            3,
             "Design spike - Future experiments",
             Some(
-              "Small ready card_tree mixing discovery cards and one loose task to keep the list visually varied.",
+              "Small ready root card mixing discovery cards and one loose task to keep the list visually varied.",
             ),
             card.Draft,
             2,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             design_spike_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            design_spike_id,
-            2,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              design_spike_id,
+              2,
+            ),
+          )
 
-          use placeholder_id <- result.try(insert_seed_card_tree(
+          use placeholder_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            4,
             "Partner rollout - Placeholder",
             Some(
-              "Explicitly empty ready card_tree reserved for partner rollout planning and empty-state validation.",
+              "Explicitly empty ready root card reserved for partner rollout planning and empty-state validation.",
             ),
             card.Draft,
             2,
@@ -1218,116 +1223,117 @@ fn build_card_trees(
         }
 
         _ -> {
-          use prep_id <- result.try(insert_seed_card_tree(
+          use prep_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Client refresh - Preparation",
             Some(
-              "Primary ready card_tree with several cards and loose tasks for visual inspection of the new split view.",
+              "Primary ready root card with several cards and loose tasks for visual inspection of the new split view.",
             ),
             card.Draft,
             11,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             prep_id,
             3,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            prep_id,
-            4,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              prep_id,
+              4,
+            ),
+          )
 
-          use active_bugfix_id <- result.try(insert_seed_card_tree(
+          use active_bugfix_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            1,
             "Hotfix train - Active",
             Some(
-              "Active bugfix card_tree so the seed includes another project with live card_tree context.",
+              "Active bugfix root card so the seed includes another project with live root card context.",
             ),
             card.Active,
             5,
             Some(days_ago_timestamp(1)),
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             active_bugfix_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_card_tree(
+          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
             db,
             project_id,
             active_bugfix_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            active_bugfix_id,
-            1,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              active_bugfix_id,
+              1,
+            ),
+          )
 
-          use follow_up_id <- result.try(insert_seed_card_tree(
+          use follow_up_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            2,
             "Follow-up polish",
             Some(
-              "Secondary ready card_tree with a small amount of work to make the card_tree list feel more realistic.",
+              "Secondary ready root card with a small amount of work to make the root card list feel more realistic.",
             ),
             card.Draft,
             3,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_card_tree(
-            db,
-            project_id,
-            follow_up_id,
-            2,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              follow_up_id,
+              2,
+            ),
+          )
 
-          use card_heavy_id <- result.try(insert_seed_card_tree(
+          use card_heavy_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            3,
             "Ops cleanup - Ready",
             Some(
-              "Card-heavy ready card_tree with little loose work, useful to contrast against the more ad-hoc planning card_trees.",
+              "Card-heavy ready root card with little loose work, useful to contrast against the more ad-hoc planning root cards.",
             ),
             card.Draft,
             2,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_card_tree(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             card_heavy_id,
             1,
           ))
 
-          use empty_ready_id <- result.try(insert_seed_card_tree(
+          use empty_ready_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            4,
             "Archive prep - Empty",
             Some(
-              "Another ready-but-empty card_tree so the left pane shows multiple realistic placeholders instead of a single artificial case.",
+              "Another ready-but-empty root card so the left pane shows multiple realistic placeholders instead of a single artificial case.",
             ),
             card.Draft,
             1,
@@ -1345,26 +1351,24 @@ fn build_card_trees(
   Ok(state)
 }
 
-fn insert_seed_card_tree(
+fn insert_seed_root_card(
   db: pog.Connection,
   state: BuildState,
   project_id: Int,
-  position: Int,
   name: String,
   description: Option(String),
-  card_tree_state: card.CardPhase,
+  root_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
   completed_at: Option(String),
 ) -> Result(Int, String) {
-  seed_db.insert_card_tree(
+  seed_db.insert_root_card(
     db,
-    seed_db.CardTreeInsertOptions(
+    seed_db.RootCardInsertOptions(
       project_id: project_id,
       name: name,
       description: description,
-      state: card_tree_state,
-      position: position,
+      state: root_card_state,
       created_by: state.admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,

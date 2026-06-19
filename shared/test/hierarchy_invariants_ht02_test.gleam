@@ -74,7 +74,7 @@ pub fn moving_card_under_descendant_is_rejected_test() {
   let child =
     draft_card(card_id.new(2), project_id.new(1), option.Some(card_id.new(1)))
 
-  let tree = card_entity.CardTree([root, child])
+  let hierarchy = card_entity.CardHierarchy([root, child])
 
   let auth =
     permissions.authorize_manage_structure_unchecked(
@@ -86,7 +86,7 @@ pub fn moving_card_under_descendant_is_rejected_test() {
       root,
       auth,
       option.Some(card_id.new(2)),
-      tree,
+      hierarchy,
     )
 }
 

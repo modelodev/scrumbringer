@@ -162,7 +162,7 @@ pub type Text {
   Kanban
   CapabilitiesBoard
   People
-  CardTrees
+  Hierarchies
   Tracking
   WorkSurfaceView
   PoolPurpose
@@ -237,85 +237,84 @@ pub type Text {
   CapabilityBoardPressureNoTraction
   CapabilityBoardPressureFlowing
   NoCapability
-  CardTreesEmpty
-  CardTreesNoResults
-  CardTreesLoadError
-  CardTreesPurpose
-  CreateCardTree
-  CreateFirstCardTree
-  CardTreeCreated
-  CardTreeCreateFailed
-  ShowDoneCardTrees
-  ShowEmptyCardTrees
-  CardTreesReady
-  CardTreesActive
-  CardTreesDone
-  CardTreeStateReady
-  CardTreeStateActive
-  CardTreeStateDone
-  CardTreeEmptyHint
-  CardTreeDone
-  CardTreeActivationTitle
-  CardTreeActivationBody(cards_count: Int, tasks_count: Int)
-  CardTreeActivationWarning
-  CardTreeDetails
-  CardTreeTabOverview
-  CardTreeTabContent
-  CardTreeTabPlanning
-  ActivateCardTree
-  ActivatingCardTree
-  CardTreeActivated
-  CardTreeActivateFailed
-  EditCardTree
-  DeleteCardTree
-  DeleteCardTreeTitle
-  DeleteCardTreeConfirm(name: String)
-  CardTreeUpdated
-  CardTreeUpdateFailed
-  CardTreeDeleted
-  CardTreeDeleteFailed
-  CardTreeDeleteNotAllowed
-  CardTreeAlreadyActive
-  CardTreeActivationIrreversible
-  CardTreeOpenDetails
-  CardTreeMoreActions
-  CardTreeMoveTo
-  CardTreeCardsLabel
-  CardTreeTasksLabel
-  CardTreeCardsProgress(completed: Int, total: Int)
-  CardTreeTasksProgress(completed: Int, total: Int)
-  CardTreeStructureSummary
-  CardTreeActions
-  CardTreeSearchPlaceholder
-  CardTreeLooseTasksNotice
-  CardTreeLooseTasksHint
-  CardTreeCardTasksEmpty
-  CardTreeCardTasksRegion(name: String)
-  CardTreeNoSelection
-  CardTreeNoSelectionHint
-  CardTreeCardsCount(cards_count: Int)
-  CardTreeLooseTasksCount(tasks_count: Int)
-  CardTreeBlockedTasksCount(tasks_count: Int)
-  CardTreeEmptyCardsCount(cards_count: Int)
-  CardTreeCardsWithoutProgressCount(cards_count: Int)
-  CardTreeStructureComplete
-  CardTreeLooseTasksDiagnostic(tasks_count: Int)
-  CardTreeBlockedTasksDiagnostic(tasks_count: Int)
-  CardTreeEmptyCardsDiagnostic(cards_count: Int)
-  CardTreeCardsWithoutProgressDiagnostic(cards_count: Int)
-  CardTreeCardEmpty
-  CardTreeCardNoProgress
-  CardTreeCardBlocked
-  CardTreeCardComplete
+  HierarchiesEmpty
+  HierarchiesNoResults
+  HierarchiesLoadError
+  HierarchiesPurpose
+  CreateHierarchy
+  CreateFirstHierarchy
+  HierarchyCreated
+  HierarchyCreateFailed
+  ShowDoneHierarchies
+  ShowEmptyHierarchies
+  HierarchiesActive
+  HierarchiesDone
+  HierarchyStateReady
+  HierarchyStateActive
+  HierarchyStateDone
+  HierarchyEmptyHint
+  HierarchyDone
+  HierarchyActivationTitle
+  HierarchyActivationBody(cards_count: Int, tasks_count: Int)
+  HierarchyActivationWarning
+  HierarchyDetails
+  HierarchyTabOverview
+  HierarchyTabContent
+  HierarchyTabPlanning
+  ActivateHierarchy
+  ActivatingHierarchy
+  HierarchyActivated
+  HierarchyActivateFailed
+  EditHierarchy
+  DeleteHierarchy
+  DeleteHierarchyTitle
+  DeleteHierarchyConfirm(name: String)
+  HierarchyUpdated
+  HierarchyUpdateFailed
+  HierarchyDeleted
+  HierarchyDeleteFailed
+  HierarchyDeleteNotAllowed
+  HierarchyAlreadyActive
+  HierarchyActivationIrreversible
+  HierarchyOpenDetails
+  HierarchyMoreActions
+  HierarchyMoveTo
+  HierarchyCardsLabel
+  HierarchyTasksLabel
+  HierarchyCardsProgress(completed: Int, total: Int)
+  HierarchyTasksProgress(completed: Int, total: Int)
+  HierarchyStructureSummary
+  HierarchyActions
+  HierarchySearchPlaceholder
+  HierarchyLooseTasksNotice
+  HierarchyLooseTasksHint
+  HierarchyCardTasksEmpty
+  HierarchyCardTasksRegion(name: String)
+  HierarchyNoSelection
+  HierarchyNoSelectionHint
+  HierarchyCardsCount(cards_count: Int)
+  HierarchyLooseTasksCount(tasks_count: Int)
+  HierarchyBlockedTasksCount(tasks_count: Int)
+  HierarchyEmptyCardsCount(cards_count: Int)
+  HierarchyCardsWithoutProgressCount(cards_count: Int)
+  HierarchyStructureComplete
+  HierarchyLooseTasksDiagnostic(tasks_count: Int)
+  HierarchyBlockedTasksDiagnostic(tasks_count: Int)
+  HierarchyEmptyCardsDiagnostic(cards_count: Int)
+  HierarchyCardsWithoutProgressDiagnostic(cards_count: Int)
+  HierarchyCardEmpty
+  HierarchyCardNoProgress
+  HierarchyCardBlocked
+  HierarchyCardComplete
   ViewInKanban
-  CardTreeTotalTasksCount(tasks_count: Int)
-  CardTreeTaskPhaseAvailable
-  CardTreeTaskPhaseClaimed
-  CardTreeTaskPhaseDone
-  ExpandCardTreeCard(name: String)
-  CollapseCardTreeCard(name: String)
-  ExpandCardTree(name: String)
-  CollapseCardTree(name: String)
+  HierarchyTotalTasksCount(tasks_count: Int)
+  HierarchyTaskPhaseAvailable
+  HierarchyTaskPhaseClaimed
+  HierarchyTaskPhaseDone
+  ExpandHierarchyCard(name: String)
+  CollapseHierarchyCard(name: String)
+  ExpandHierarchy(name: String)
+  CollapseHierarchy(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
   PeopleActiveSection
@@ -374,7 +373,6 @@ pub type Text {
   ResourceTasks
   ResourceCards
   ResourceNotes
-  ResourceCardTrees
   LastUsed
   ExpiresAtOptional
   Revoke
@@ -827,8 +825,8 @@ pub type Text {
   QuickTask
   NoTasksYet
   CardTasksMore(hidden_count: Int)
-  NewCardInThisCardTree
-  CardTreeTarget
+  NewCardInThisHierarchy
+  HierarchyTarget
   Configuration
   Team
   // Note: Capabilities is already defined in the Capabilities section above
@@ -882,9 +880,9 @@ pub type Text {
   TaskEditKeyboardHint
   TaskEditRequiresClaim
   TaskEditDoneReadOnly
-  CardTreeLabel
-  NoCardTree
-  TaskCardTreeInheritedFromCard
+  HierarchyLabel
+  NoHierarchy
+  TaskHierarchyInheritedFromCard
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner

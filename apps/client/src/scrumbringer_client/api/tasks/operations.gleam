@@ -314,8 +314,8 @@ fn optional_int(value: option.Option(Int)) -> json.Json {
   }
 }
 
-/// Update card_tree assignment for a task.
-pub fn update_task_card_tree(
+/// Update hierarchy assignment for a task.
+pub fn update_task_hierarchy(
   task_id: Int,
   parent_card_id: option.Option(Int),
   to_msg: fn(ApiResult(Task)) -> msg,

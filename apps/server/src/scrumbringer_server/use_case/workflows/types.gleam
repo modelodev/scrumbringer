@@ -145,11 +145,11 @@ pub type Error {
   /// Validation error with message.
   ValidationError(String)
 
-  /// CardTree cannot be explicitly set when task belongs to a card.
-  TaskCardTreeInheritedFromCard
+  /// Parent card cannot be explicitly set when task belongs to a card.
+  TaskParentCardInheritedFromCard
 
-  /// Invalid movement between pool and card_tree lanes.
-  InvalidMovePoolToCardTree
+  /// Invalid movement between pool and parent card lanes.
+  InvalidMovePoolToParentCard
 
   /// Task type name already exists.
   TaskTypeAlreadyExists

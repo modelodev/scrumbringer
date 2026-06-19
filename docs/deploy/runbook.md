@@ -148,7 +148,7 @@ sudo systemctl enable nginx
 2. Validate key flows:
    - Create card
    - Create task
-   - Card Tree move flow
+   - Hierarchy move flow
 3. Check logs:
 
 ```bash

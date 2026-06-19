@@ -4,7 +4,7 @@ import gleam/string
 import lustre/element
 
 import domain/view_mode as view_mode_module
-import scrumbringer_client/features/card_tree/scope_view
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/permissions
@@ -116,12 +116,12 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   })
 }
 
-pub fn left_panel_does_not_render_legacy_card_tree_nav_test() {
+pub fn left_panel_does_not_render_legacy_hierarchy_nav_test() {
   let rendered =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
   let html = element.to_document_string(rendered)
 
-  assert_not_contains(html, "nav-card_trees")
+  assert_not_contains(html, "nav-hierarchies")
 }
 
 pub fn left_panel_create_actions_are_global_shortcuts_test() {
@@ -203,7 +203,7 @@ pub fn left_sidebar_renders_depth_names_from_project_config_test() {
   assert_contains(html, "<span class=\"nav-label\">Epics</span>")
   assert_contains(html, "data-testid=\"nav-depth-2\"")
   assert_contains(html, "<span class=\"nav-label\">Stories</span>")
-  assert_not_contains(html, "<span class=\"nav-label\">CardTrees</span>")
+  assert_not_contains(html, "<span class=\"nav-label\">Hierarchies</span>")
 }
 
 pub fn left_panel_work_nav_order_is_pool_cards_capacidades_personas_es_test() {

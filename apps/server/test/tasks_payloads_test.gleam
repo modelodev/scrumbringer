@@ -54,7 +54,7 @@ pub fn decode_create_task_payload_rejects_missing_priority_test() {
   let assert Error(payloads.InvalidJson) = payloads.decode_create_task(dynamic)
 }
 
-pub fn decode_update_task_payload_sets_card_tree_test() {
+pub fn decode_update_task_payload_sets_parent_card_test() {
   let assert Ok(dynamic) =
     json.parse(
       "{\"version\":3,\"title\":\"New\",\"parent_card_id\":7}",
@@ -66,7 +66,7 @@ pub fn decode_update_task_payload_sets_card_tree_test() {
   let assert field_update.Set(Some(7)) = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_normalizes_non_positive_card_tree_test() {
+pub fn decode_update_task_payload_normalizes_non_positive_parent_card_test() {
   let assert Ok(dynamic) =
     json.parse("{\"version\":3,\"parent_card_id\":0}", decode.dynamic)
 
@@ -75,7 +75,7 @@ pub fn decode_update_task_payload_normalizes_non_positive_card_tree_test() {
   let assert field_update.Set(None) = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_leaves_absent_card_tree_unchanged_test() {
+pub fn decode_update_task_payload_leaves_absent_parent_card_unchanged_test() {
   let assert Ok(dynamic) = json.parse("{\"version\":3}", decode.dynamic)
 
   let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
@@ -83,7 +83,7 @@ pub fn decode_update_task_payload_leaves_absent_card_tree_unchanged_test() {
   let assert field_update.Unchanged = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_rejects_invalid_card_tree_test() {
+pub fn decode_update_task_payload_rejects_invalid_parent_card_test() {
   let assert Ok(dynamic) =
     json.parse("{\"version\":3,\"parent_card_id\":\"later\"}", decode.dynamic)
 

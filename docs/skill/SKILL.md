@@ -1,6 +1,6 @@
 ---
 name: scrumbringer-agent
-description: Operate Scrumbringer through its Bearer API while preserving the pull-flow philosophy. Use this skill whenever a Codex, OpenCode, or OpenClaw agent needs to inspect or modify Scrumbringer projects, tasks, cards, notes, or card trees; advise users on designing card trees/cards/tasks; or coordinate work with ScrumBringer without using workflows, rules, or templates.
+description: Operate Scrumbringer through its Bearer API while preserving the pull-flow philosophy. Use this skill whenever a Codex, OpenCode, or OpenClaw agent needs to inspect or modify Scrumbringer projects, tasks, cards, notes, or hierarchies; advise users on designing hierarchies/cards/tasks; or coordinate work with ScrumBringer without using workflows, rules, or templates.
 ---
 
 # Scrumbringer Agent
@@ -17,12 +17,12 @@ Scrumbringer is a pull-flow work cockpit. Preserve these rules:
 - Do not push-assign tasks to people.
 - Do not claim tasks in this initial agent policy.
 - Prefer notes and recommendations when a human decision is needed.
-- Keep card trees, cards, and tasks shaped for team autonomy.
+- Keep hierarchies, cards, and tasks shaped for team autonomy.
 - Use the smallest API action that creates useful operational signal.
 
 When advising the user:
 
-- **Card Trees** should describe an outcome or delivery slice, not a vague
+- **Hierarchies** should describe an outcome or delivery slice, not a vague
   backlog bucket.
 - **Cards** should group related work that can be understood and reviewed as a
   coherent slice.
@@ -41,7 +41,7 @@ Before any API call, verify:
   - project-scoped work: `SCRUMBRINGER_PROJECT_ID`
   - task work: `SCRUMBRINGER_TASK_ID`
   - card work: `SCRUMBRINGER_CARD_ID`
-  - card tree work: `SCRUMBRINGER_MILESTONE_ID`
+  - hierarchy work: `SCRUMBRINGER_MILESTONE_ID`
   - task mutations that require optimistic concurrency: current task `version`
 
 Use the helper script first:
@@ -80,19 +80,19 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
    - Confirm the token has the needed scopes by making the smallest read call.
 
 2. **Inspect before mutation**
-   - Read the project/task/card/card tree.
+   - Read the project/task/card/hierarchy.
    - Summarize current state in plain language.
    - Identify version numbers before task patch/transition calls.
 
 3. **Apply Scrumbringer philosophy**
-   - If work is unclear, propose a better card tree/card/task shape.
+   - If work is unclear, propose a better hierarchy/card/task shape.
    - If a human should choose, write a note or recommend next actions.
    - Do not claim tasks in this initial policy.
 
 4. **Confirm before risky writes**
    Always ask for explicit confirmation before:
-   - creating or editing tasks/cards/card trees;
-   - deleting cards, card notes, or card trees;
+   - creating or editing tasks/cards/hierarchies;
+   - deleting cards, card notes, or hierarchies;
    - patching task fields;
    - calling task `release` or `complete`;
    - any action that could change ownership, state, or visible team planning.
@@ -122,8 +122,8 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
 Allowed without confirmation:
 
 - Read projects.
-- Read tasks/cards/card trees/notes.
-- Draft a proposed task/card/card tree design.
+- Read tasks/cards/hierarchies/notes.
+- Draft a proposed task/card/hierarchy design.
 - Recommend a next action.
 
 Allowed only after explicit confirmation:
@@ -131,9 +131,9 @@ Allowed only after explicit confirmation:
 - Create tasks.
 - Create/update/delete cards.
 - Create/delete card notes.
-- Create/update/delete card trees.
+- Create/update/delete hierarchies.
 - Add task notes.
-- Patch task title/description/card tree.
+- Patch task title/description/hierarchy.
 - Release or complete a task when the user explicitly confirms that the
   integration user should perform that state transition.
 
@@ -183,9 +183,9 @@ node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/tasks/$SCRUMBRINGER_TA
   '{"content":"External system reported retry success at 2026-06-12T12:40:00Z."}'
 ```
 
-Create a card tree after confirmation:
+Create a hierarchy after confirmation:
 
 ```bash
-node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/card trees \
+node docs/skill/scripts/scrumbringer-api.mjs post /api/v1/projects/$SCRUMBRINGER_PROJECT_ID/hierarchies \
   '{"name":"Importer stabilization","description":"Reduce import failure rate and make retry behavior observable."}'
 ```

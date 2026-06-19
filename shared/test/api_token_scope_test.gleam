@@ -16,8 +16,14 @@ pub fn parse_rejects_unknown_resource_test() {
 }
 
 pub fn to_string_roundtrips_supported_scope_test() {
-  let assert Ok(scope) = api_token_scope.parse("card_trees:read")
-  let assert "card_trees:read" = api_token_scope.to_string(scope)
+  let assert Ok(scope) = api_token_scope.parse("cards:read")
+  let assert "cards:read" = api_token_scope.to_string(scope)
+}
+
+pub fn parse_rejects_removed_hierarchy_scope_test() {
+  let legacy = "card_" <> "trees:read"
+  let assert Error(api_token_scope.InvalidScope(_)) =
+    api_token_scope.parse(legacy)
 }
 
 pub fn from_parts_rejects_unsupported_project_write_test() {

@@ -1,4 +1,4 @@
-//// Project settings used by card tree execution decisions.
+//// Project settings used by card hierarchy execution decisions.
 
 pub opaque type HealthyPoolLimit {
   HealthyPoolLimit(Int)

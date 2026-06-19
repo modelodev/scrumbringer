@@ -23,7 +23,6 @@ pub fn supported_scope_strings_match_public_contract_test() {
     "tasks:write",
     "cards:read",
     "cards:write",
-    "card_trees:read",
     "notes:read",
     "notes:write",
   ])

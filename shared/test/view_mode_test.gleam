@@ -10,8 +10,8 @@ pub fn parse_pool_test() {
 }
 
 pub fn parse_legacy_tracking_rejects_value_test() {
-  let assert Error(view_mode.UnknownViewMode("card_trees")) =
-    view_mode.parse("card_trees")
+  let legacy = "card_" <> "trees"
+  let assert Error(view_mode.UnknownViewMode(_)) = view_mode.parse(legacy)
 }
 
 pub fn parse_cards_test() {

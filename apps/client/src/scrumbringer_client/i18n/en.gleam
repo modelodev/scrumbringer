@@ -181,7 +181,7 @@ pub fn translate(text: Text) -> String {
     text.Kanban -> "Kanban"
     text.CapabilitiesBoard -> "Capabilities"
     text.People -> "People"
-    text.CardTrees -> "Card Trees"
+    text.Hierarchies -> "Hierarchies"
     text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "View"
     text.PoolPurpose -> "Choose the next personal task to claim."
@@ -265,107 +265,107 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardPressureNoTraction -> "No traction"
     text.CapabilityBoardPressureFlowing -> "Flowing"
     text.NoCapability -> "No capability"
-    text.CardTreesEmpty -> "No card trees yet"
-    text.CardTreesNoResults -> "No card trees match current filters"
-    text.CardTreesLoadError -> "Could not load card trees"
-    text.CardTreesPurpose ->
+    text.HierarchiesEmpty -> "No hierarchies yet"
+    text.HierarchiesNoResults -> "No hierarchies match current filters"
+    text.HierarchiesLoadError -> "Could not load hierarchies"
+    text.HierarchiesPurpose ->
       "Delivery structure by objective, loose work, and card progress."
-    text.CreateCardTree -> "Create card tree"
-    text.CreateFirstCardTree -> "Create first card tree"
-    text.CardTreeCreated -> "Card tree created"
-    text.CardTreeCreateFailed -> "Could not create card tree"
-    text.ShowDoneCardTrees -> "Show completed"
-    text.ShowEmptyCardTrees -> "Show empty"
-    text.CardTreesReady -> "Ready"
-    text.CardTreesActive -> "Active"
-    text.CardTreesDone -> "Done"
-    text.CardTreeStateReady -> "Ready"
-    text.CardTreeStateActive -> "Active"
-    text.CardTreeStateDone -> "Done"
-    text.CardTreeEmptyHint -> "No work assigned yet"
-    text.CardTreeDone -> "Done"
-    text.CardTreeActivationTitle -> "Activate card tree"
-    text.CardTreeActivationBody(cards_count, tasks_count) ->
-      "This action is irreversible. It will activate all content in this card tree ("
+    text.CreateHierarchy -> "Create hierarchy"
+    text.CreateFirstHierarchy -> "Create first hierarchy"
+    text.HierarchyCreated -> "Hierarchy created"
+    text.HierarchyCreateFailed -> "Could not create hierarchy"
+    text.ShowDoneHierarchies -> "Show completed"
+    text.ShowEmptyHierarchies -> "Show empty"
+    text.HierarchiesActive -> "Active"
+    text.HierarchiesDone -> "Done"
+    text.HierarchyStateReady -> "Ready"
+    text.HierarchyStateActive -> "Active"
+    text.HierarchyStateDone -> "Done"
+    text.HierarchyEmptyHint -> "No work assigned yet"
+    text.HierarchyDone -> "Done"
+    text.HierarchyActivationTitle -> "Activate hierarchy"
+    text.HierarchyActivationBody(cards_count, tasks_count) ->
+      "This action is irreversible. It will activate all content in this hierarchy ("
       <> int.to_string(cards_count)
       <> " cards, "
       <> int.to_string(tasks_count)
       <> " tasks)."
-    text.CardTreeActivationWarning -> "You will not be able to undo this action"
-    text.CardTreeDetails -> "Details"
-    text.CardTreeTabOverview -> "Overview"
-    text.CardTreeTabContent -> "Content"
-    text.CardTreeTabPlanning -> "Planning"
-    text.ActivateCardTree -> "Activate"
-    text.ActivatingCardTree -> "Activating..."
-    text.CardTreeActivated -> "Card tree activated"
-    text.CardTreeActivateFailed -> "Could not activate card tree"
-    text.EditCardTree -> "Edit card tree"
-    text.DeleteCardTree -> "Delete card tree"
-    text.DeleteCardTreeTitle -> "Delete card tree"
-    text.DeleteCardTreeConfirm(name) ->
-      "Permanently delete card tree \"" <> name <> "\"?"
-    text.CardTreeUpdated -> "Card tree updated"
-    text.CardTreeUpdateFailed -> "Could not update card tree"
-    text.CardTreeDeleted -> "Card tree deleted"
-    text.CardTreeDeleteFailed -> "Could not delete card tree"
-    text.CardTreeDeleteNotAllowed -> "Card tree must be ready and empty"
-    text.CardTreeAlreadyActive -> "Another card tree is already active"
-    text.CardTreeActivationIrreversible ->
-      "Card tree cannot be activated in its current state"
-    text.CardTreeOpenDetails -> "Open details"
-    text.CardTreeMoreActions -> "More actions"
-    text.CardTreeMoveTo -> "Move"
-    text.CardTreeCardsLabel -> "Cards"
-    text.CardTreeTasksLabel -> "Tasks"
-    text.CardTreeCardsProgress(completed, total) ->
+    text.HierarchyActivationWarning ->
+      "You will not be able to undo this action"
+    text.HierarchyDetails -> "Details"
+    text.HierarchyTabOverview -> "Overview"
+    text.HierarchyTabContent -> "Content"
+    text.HierarchyTabPlanning -> "Planning"
+    text.ActivateHierarchy -> "Activate"
+    text.ActivatingHierarchy -> "Activating..."
+    text.HierarchyActivated -> "Hierarchy activated"
+    text.HierarchyActivateFailed -> "Could not activate hierarchy"
+    text.EditHierarchy -> "Edit hierarchy"
+    text.DeleteHierarchy -> "Delete hierarchy"
+    text.DeleteHierarchyTitle -> "Delete hierarchy"
+    text.DeleteHierarchyConfirm(name) ->
+      "Permanently delete hierarchy \"" <> name <> "\"?"
+    text.HierarchyUpdated -> "Hierarchy updated"
+    text.HierarchyUpdateFailed -> "Could not update hierarchy"
+    text.HierarchyDeleted -> "Hierarchy deleted"
+    text.HierarchyDeleteFailed -> "Could not delete hierarchy"
+    text.HierarchyDeleteNotAllowed -> "Hierarchy must be ready and empty"
+    text.HierarchyAlreadyActive -> "Another hierarchy is already active"
+    text.HierarchyActivationIrreversible ->
+      "Hierarchy cannot be activated in its current state"
+    text.HierarchyOpenDetails -> "Open details"
+    text.HierarchyMoreActions -> "More actions"
+    text.HierarchyMoveTo -> "Move"
+    text.HierarchyCardsLabel -> "Cards"
+    text.HierarchyTasksLabel -> "Tasks"
+    text.HierarchyCardsProgress(completed, total) ->
       "Cards " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.CardTreeTasksProgress(completed, total) ->
+    text.HierarchyTasksProgress(completed, total) ->
       "Tasks " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.CardTreeStructureSummary -> "Structure summary"
-    text.CardTreeActions -> "Actions"
-    text.CardTreeSearchPlaceholder -> "Search card trees"
-    text.CardTreeLooseTasksNotice -> "Tasks without card"
-    text.CardTreeLooseTasksHint ->
+    text.HierarchyStructureSummary -> "Structure summary"
+    text.HierarchyActions -> "Actions"
+    text.HierarchySearchPlaceholder -> "Search hierarchies"
+    text.HierarchyLooseTasksNotice -> "Tasks without card"
+    text.HierarchyLooseTasksHint ->
       "These tasks are not grouped inside a card yet"
-    text.CardTreeCardTasksEmpty -> "This card has no tasks yet"
-    text.CardTreeCardTasksRegion(name) -> "Tasks for " <> name
-    text.CardTreeNoSelection -> "Select a card tree"
-    text.CardTreeNoSelectionHint ->
-      "Choose a card tree from the list to inspect its content"
-    text.CardTreeCardsCount(cards_count) ->
+    text.HierarchyCardTasksEmpty -> "This card has no tasks yet"
+    text.HierarchyCardTasksRegion(name) -> "Tasks for " <> name
+    text.HierarchyNoSelection -> "Select a hierarchy"
+    text.HierarchyNoSelectionHint ->
+      "Choose a hierarchy from the list to inspect its content"
+    text.HierarchyCardsCount(cards_count) ->
       int.to_string(cards_count) <> " cards"
-    text.CardTreeLooseTasksCount(tasks_count) ->
+    text.HierarchyLooseTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " loose tasks"
-    text.CardTreeBlockedTasksCount(tasks_count) ->
+    text.HierarchyBlockedTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " blocked tasks"
-    text.CardTreeEmptyCardsCount(cards_count) ->
+    text.HierarchyEmptyCardsCount(cards_count) ->
       int.to_string(cards_count) <> " empty cards"
-    text.CardTreeCardsWithoutProgressCount(cards_count) ->
+    text.HierarchyCardsWithoutProgressCount(cards_count) ->
       int.to_string(cards_count) <> " cards without progress"
-    text.CardTreeStructureComplete -> "Structure complete"
-    text.CardTreeLooseTasksDiagnostic(tasks_count) ->
+    text.HierarchyStructureComplete -> "Structure complete"
+    text.HierarchyLooseTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count) <> " tasks are not grouped inside cards yet"
-    text.CardTreeBlockedTasksDiagnostic(tasks_count) ->
+    text.HierarchyBlockedTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count) <> " blocked tasks need attention"
-    text.CardTreeEmptyCardsDiagnostic(cards_count) ->
+    text.HierarchyEmptyCardsDiagnostic(cards_count) ->
       int.to_string(cards_count) <> " empty cards need content"
-    text.CardTreeCardsWithoutProgressDiagnostic(cards_count) ->
+    text.HierarchyCardsWithoutProgressDiagnostic(cards_count) ->
       int.to_string(cards_count) <> " cards have not started moving"
-    text.CardTreeCardEmpty -> "Empty"
-    text.CardTreeCardNoProgress -> "No progress"
-    text.CardTreeCardBlocked -> "Blocked"
-    text.CardTreeCardComplete -> "Complete"
+    text.HierarchyCardEmpty -> "Empty"
+    text.HierarchyCardNoProgress -> "No progress"
+    text.HierarchyCardBlocked -> "Blocked"
+    text.HierarchyCardComplete -> "Complete"
     text.ViewInKanban -> "View in Kanban"
-    text.CardTreeTotalTasksCount(tasks_count) ->
+    text.HierarchyTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " total tasks"
-    text.CardTreeTaskPhaseAvailable -> "available"
-    text.CardTreeTaskPhaseClaimed -> "claimed"
-    text.CardTreeTaskPhaseDone -> "completed"
-    text.ExpandCardTreeCard(name) -> "Show tasks for " <> name
-    text.CollapseCardTreeCard(name) -> "Hide tasks for " <> name
-    text.ExpandCardTree(name) -> "Expand card tree " <> name
-    text.CollapseCardTree(name) -> "Collapse card tree " <> name
+    text.HierarchyTaskPhaseAvailable -> "available"
+    text.HierarchyTaskPhaseClaimed -> "claimed"
+    text.HierarchyTaskPhaseDone -> "completed"
+    text.ExpandHierarchyCard(name) -> "Show tasks for " <> name
+    text.CollapseHierarchyCard(name) -> "Hide tasks for " <> name
+    text.ExpandHierarchy(name) -> "Expand hierarchy " <> name
+    text.CollapseHierarchy(name) -> "Collapse hierarchy " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name
     text.CollapsePerson(name) -> "Collapse status for " <> name
     text.PeopleActiveSection -> "Active"
@@ -430,7 +430,6 @@ pub fn translate(text: Text) -> String {
     text.ResourceTasks -> "Tasks"
     text.ResourceCards -> "Cards"
     text.ResourceNotes -> "Notes"
-    text.ResourceCardTrees -> "Card Trees"
     text.LastUsed -> "Last used"
     text.ExpiresAtOptional -> "Expires at (optional)"
     text.Revoke -> "Revoke"
@@ -952,8 +951,8 @@ pub fn translate(text: Text) -> String {
     text.NoTasksYet -> "No tasks yet"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " more tasks"
-    text.NewCardInThisCardTree -> "New card in this card tree"
-    text.CardTreeTarget -> "Destination card tree"
+    text.NewCardInThisHierarchy -> "New card in this hierarchy"
+    text.HierarchyTarget -> "Destination hierarchy"
     text.Configuration -> "Configuration"
     text.Team -> "Team"
     // Note: text.Capabilities already translated in Capabilities section
@@ -1015,9 +1014,9 @@ pub fn translate(text: Text) -> String {
       "You can edit unclaimed tasks, or claim the task to keep editing it while in progress."
     text.TaskEditDoneReadOnly ->
       "Done tasks are read-only. Reopen or duplicate the work before changing details."
-    text.CardTreeLabel -> "Card tree"
-    text.NoCardTree -> "No card tree"
-    text.TaskCardTreeInheritedFromCard -> "Card tree inherited from the card"
+    text.HierarchyLabel -> "Hierarchy"
+    text.NoHierarchy -> "No hierarchy"
+    text.TaskHierarchyInheritedFromCard -> "Hierarchy inherited from the card"
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"

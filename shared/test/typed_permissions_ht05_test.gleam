@@ -86,7 +86,7 @@ pub fn move_card_requires_manage_structure_test() {
   let root = draft_card()
   let child =
     card_entity.Card(..draft_card(), id: card_id.new(2), parent: option.None)
-  let tree = card_entity.CardTree([root, child])
+  let hierarchy = card_entity.CardHierarchy([root, child])
   let assert Ok(auth) =
     permissions.require_manage_structure(manager_actor(), project_id.new(1))
 
@@ -95,7 +95,7 @@ pub fn move_card_requires_manage_structure_test() {
       child,
       auth,
       option.Some(card_id.new(1)),
-      tree,
+      hierarchy,
     )
   let assert True = moved.parent == option.Some(card_id.new(1))
 }

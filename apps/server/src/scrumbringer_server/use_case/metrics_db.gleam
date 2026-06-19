@@ -22,21 +22,6 @@ pub type ExecutionHealth {
   )
 }
 
-pub type CardTreeMetrics {
-  CardTreeMetrics(
-    cards_total: Int,
-    cards_completed: Int,
-    tasks_total: Int,
-    tasks_completed: Int,
-    tasks_available: Int,
-    tasks_claimed: Int,
-    tasks_ongoing: Int,
-    health: ExecutionHealth,
-    workflows: List(WorkflowCount),
-    most_activated: Option(String),
-  )
-}
-
 pub type CardMetrics {
   CardMetrics(
     tasks_total: Int,
@@ -61,32 +46,6 @@ pub type TaskMetrics {
     session_count: Int,
     total_work_time_s: Int,
   )
-}
-
-pub fn get_card_tree_metrics(
-  db: pog.Connection,
-  parent_card_id: Int,
-) -> Result(CardTreeMetrics, MetricsError) {
-  use _ <- result.try(require_metrics_columns(db))
-  use summary <- result.try(fetch_card_tree_summary(db, parent_card_id))
-  use workflows <- result.try(fetch_card_tree_workflows(db, parent_card_id))
-
-  Ok(CardTreeMetrics(
-    cards_total: summary.cards_total,
-    cards_completed: summary.cards_completed,
-    tasks_total: summary.tasks_total,
-    tasks_completed: summary.tasks_completed,
-    tasks_available: summary.tasks_available,
-    tasks_claimed: summary.tasks_claimed,
-    tasks_ongoing: summary.tasks_ongoing,
-    health: ExecutionHealth(
-      avg_rebotes: summary.avg_rebotes,
-      avg_pool_lifetime_s: summary.avg_pool_lifetime_s,
-      avg_executors: summary.avg_executors,
-    ),
-    workflows: workflows,
-    most_activated: most_activated_workflow(workflows),
-  ))
 }
 
 pub fn get_card_metrics(
@@ -174,21 +133,6 @@ pub fn get_task_metrics(
   }
 }
 
-type CardTreeSummary {
-  CardTreeSummary(
-    cards_total: Int,
-    cards_completed: Int,
-    tasks_total: Int,
-    tasks_completed: Int,
-    tasks_available: Int,
-    tasks_claimed: Int,
-    tasks_ongoing: Int,
-    avg_rebotes: Int,
-    avg_pool_lifetime_s: Int,
-    avg_executors: Int,
-  )
-}
-
 type CardSummary {
   CardSummary(
     tasks_total: Int,
@@ -200,77 +144,6 @@ type CardSummary {
     avg_pool_lifetime_s: Int,
     avg_executors: Int,
   )
-}
-
-fn fetch_card_tree_summary(
-  db: pog.Connection,
-  parent_card_id: Int,
-) -> Result(CardTreeSummary, MetricsError) {
-  let query =
-    "
-    with cards_scope as (
-      select c.id
-      from cards c
-      where c.parent_card_id = $1
-    ), card_completion as (
-      select
-        c.id,
-        count(t.id)::int as task_count,
-        count(*) filter (where t.status = 'completed')::int as completed_count
-      from cards_scope c
-      left join tasks t on t.card_id = c.id
-      group by c.id
-    ), tasks_scope as (
-      select
-        t.id,
-        t.status,
-        t.pool_lifetime_s,
-        exists(
-          select 1
-          from user_task_work_session ws
-          where ws.task_id = t.id and ws.ended_at is null
-        ) as is_ongoing
-      from tasks t
-      where t.parent_card_id = $1
-        or t.card_id in (select id from cards_scope)
-    ), event_stats as (
-      select
-        t.id as task_id,
-        coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0)::int as release_count,
-        coalesce(count(distinct case when e.event_type = 'task_claimed' then e.actor_user_id else null end), 0)::int as unique_executors
-      from tasks_scope t
-      left join audit_events e on e.task_id = t.id
-      group by t.id
-    )
-    select
-      (select count(*)::int from cards_scope) as cards_total,
-      (select count(*)::int from card_completion where task_count > 0 and task_count = completed_count) as cards_completed,
-      (select count(*)::int from tasks_scope) as tasks_total,
-      (select count(*)::int from tasks_scope where status = 'completed') as tasks_completed,
-      (select count(*)::int from tasks_scope where status = 'available') as tasks_available,
-      (select count(*)::int from tasks_scope where status = 'claimed' and not is_ongoing) as tasks_claimed,
-      (select count(*)::int from tasks_scope where status = 'claimed' and is_ongoing) as tasks_ongoing,
-      coalesce((select round(avg(release_count))::int from event_stats), 0) as avg_rebotes,
-      coalesce((select round(avg(pool_lifetime_s))::int from tasks_scope), 0) as avg_pool_lifetime_s,
-      coalesce((select round(avg(unique_executors))::int from event_stats), 0) as avg_executors
-  "
-
-  case
-    pog.query(query)
-    |> pog.parameter(pog.int(parent_card_id))
-    |> pog.returning(card_tree_summary_decoder())
-    |> pog.execute(db)
-  {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      case card_tree_exists(db, parent_card_id) {
-        Ok(True) -> Ok(row)
-        Ok(False) -> Error(NotFound)
-        Error(e) -> Error(DbError(e))
-      }
-    }
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Error(e) -> Error(DbError(e))
-  }
 }
 
 fn fetch_card_summary(
@@ -327,31 +200,6 @@ fn fetch_card_summary(
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(e) -> Error(DbError(e))
   }
-}
-
-fn fetch_card_tree_workflows(
-  db: pog.Connection,
-  parent_card_id: Int,
-) -> Result(List(WorkflowCount), MetricsError) {
-  let query =
-    "
-    select
-      coalesce(w.name, '') as workflow_name,
-      count(*)::int as task_count
-    from tasks t
-    left join rules r on r.id = t.created_from_rule_id
-    left join workflows w on w.id = r.workflow_id
-    where t.parent_card_id = $1
-      or t.card_id in (
-        select c.id
-        from cards c
-        where c.parent_card_id = $1
-      )
-    group by coalesce(w.name, '')
-    order by task_count desc, workflow_name asc
-  "
-
-  query_workflows(db, query, parent_card_id)
 }
 
 fn fetch_card_workflows(
@@ -411,17 +259,6 @@ fn require_metrics_columns(db: pog.Connection) -> Result(Nil, MetricsError) {
   }
 }
 
-fn card_tree_exists(
-  db: pog.Connection,
-  parent_card_id: Int,
-) -> Result(Bool, pog.QueryError) {
-  exists_query(
-    db,
-    "select exists(select 1 from card_trees where id = $1)",
-    parent_card_id,
-  )
-}
-
 fn card_exists(db: pog.Connection, card_id: Int) -> Result(Bool, pog.QueryError) {
   exists_query(db, "select exists(select 1 from cards where id = $1)", card_id)
 }
@@ -459,31 +296,6 @@ fn task_metrics_decoder() -> decode.Decoder(TaskMetrics) {
     pool_lifetime_s:,
     session_count:,
     total_work_time_s:,
-  ))
-}
-
-fn card_tree_summary_decoder() -> decode.Decoder(CardTreeSummary) {
-  use cards_total <- decode.field(0, decode.int)
-  use cards_completed <- decode.field(1, decode.int)
-  use tasks_total <- decode.field(2, decode.int)
-  use tasks_completed <- decode.field(3, decode.int)
-  use tasks_available <- decode.field(4, decode.int)
-  use tasks_claimed <- decode.field(5, decode.int)
-  use tasks_ongoing <- decode.field(6, decode.int)
-  use avg_rebotes <- decode.field(7, decode.int)
-  use avg_pool_lifetime_s <- decode.field(8, decode.int)
-  use avg_executors <- decode.field(9, decode.int)
-  decode.success(CardTreeSummary(
-    cards_total:,
-    cards_completed:,
-    tasks_total:,
-    tasks_completed:,
-    tasks_available:,
-    tasks_claimed:,
-    tasks_ongoing:,
-    avg_rebotes:,
-    avg_pool_lifetime_s:,
-    avg_executors:,
   ))
 }
 

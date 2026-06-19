@@ -61,8 +61,8 @@ Supported Bearer scopes:
 - `cards:write`
 - `notes:read`
 - `notes:write`
-- `card trees:read`
-- `card trees:write`
+- `hierarchies:read`
+- `hierarchies:write`
 
 ## Supported Routes
 
@@ -193,17 +193,17 @@ confirmation; cards with tasks may be rejected.
 
 Delete card notes only after explicit confirmation.
 
-### Card Trees
+### Hierarchies
 
 | Action | Method | Path | Scope |
 | --- | --- | --- | --- |
-| List project card trees | `GET` | `/api/v1/projects/:project_id/card trees` | `card trees:read` |
-| Get card tree | `GET` | `/api/v1/card trees/:parent_card_id` | `card trees:read` |
-| Create card tree | `POST` | `/api/v1/projects/:project_id/card trees` | `card trees:write` |
-| Patch card tree | `PATCH` | `/api/v1/card trees/:parent_card_id` | `card trees:write` |
-| Delete card tree | `DELETE` | `/api/v1/card trees/:parent_card_id` | `card trees:write` |
+| List project hierarchies | `GET` | `/api/v1/projects/:project_id/hierarchies` | `hierarchies:read` |
+| Get hierarchy | `GET` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:read` |
+| Create hierarchy | `POST` | `/api/v1/projects/:project_id/hierarchies` | `hierarchies:write` |
+| Patch hierarchy | `PATCH` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:write` |
+| Delete hierarchy | `DELETE` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:write` |
 
-Create/patch card tree body:
+Create/patch hierarchy body:
 
 ```json
 {
@@ -212,7 +212,7 @@ Create/patch card tree body:
 }
 ```
 
-Delete card trees only after explicit confirmation.
+Delete hierarchies only after explicit confirmation.
 
 ## Not Bearer-Supported
 
@@ -237,8 +237,8 @@ note, or propose a human-admin action.
 
 Use this when the user asks the agent to shape work:
 
-- Start with a card tree if the work has a delivery outcome.
-- Use cards for coherent slices under that card tree.
+- Start with a hierarchy if the work has a delivery outcome.
+- Use cards for coherent slices under that hierarchy.
 - Use tasks for pullable units with clear completion criteria.
 - Avoid putting a person's name in a task title as an assignment signal.
 - Prefer "Available work" language over "assigned to".

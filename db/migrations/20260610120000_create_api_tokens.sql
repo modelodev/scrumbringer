@@ -38,9 +38,7 @@ CREATE TABLE api_token_scopes (
       'cards:read',
       'cards:write',
       'notes:read',
-      'notes:write',
-      'milestones:read',
-      'milestones:write'
+      'notes:write'
     )
   )
 );

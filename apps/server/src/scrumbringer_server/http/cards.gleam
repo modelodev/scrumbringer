@@ -58,16 +58,16 @@ fn forbidden_project_member_response(include_metrics: Bool) -> wisp.Response {
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
-    cards_db.InvalidCardTree ->
+    cards_db.InvalidParentCard ->
       api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
-    cards_db.InvalidMovePoolToCardTree ->
+    cards_db.InvalidMovePoolToParentCard ->
       api.error(
         422,
-        "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Cannot move pool content into a card_tree",
+        "INVALID_MOVE_POOL_TO_PARENT_CARD",
+        "Cannot move pool content into a parent card",
       )
-    cards_db.InvalidCardTreeState(_) ->
-      api.error(500, "INTERNAL", "Invalid card_tree state in database")
+    cards_db.InvalidParentExecutionPhase(_) ->
+      api.error(500, "INTERNAL", "Invalid parent card state in database")
     cards_db.InvalidColor(_) -> api.error(500, "INTERNAL", "Invalid card color")
     cards_db.CardHasClaimedDescendant(_) ->
       api.error(

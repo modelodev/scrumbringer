@@ -258,7 +258,7 @@ pub fn roundtrip_member_cards_with_project_test() {
 
 pub fn parse_legacy_tracking_view_redirects_to_pool_test() {
   assert_equal(
-    router.parse_uri(build_uri("/app/pool", "?project=2&view=card_trees")),
+    router.parse_uri(build_uri("/app/pool", "?project=2&view=hierarchies")),
     router.Redirect(member_route(Some(2), None)),
   )
 }

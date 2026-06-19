@@ -630,11 +630,6 @@ fn scope_rows(config: Config(msg)) -> List(ScopeRow) {
       write: opt.Some(api_token_scope.CardsWrite),
     ),
     ScopeRow(
-      label: t(config, i18n_text.ResourceCardTrees),
-      read: opt.Some(api_token_scope.CardTreesRead),
-      write: opt.None,
-    ),
-    ScopeRow(
       label: t(config, i18n_text.ResourceNotes),
       read: opt.Some(api_token_scope.NotesRead),
       write: opt.Some(api_token_scope.NotesWrite),
@@ -663,7 +658,6 @@ fn resource_label(
     api_token_scope.Projects -> t(config, i18n_text.ResourceProjects)
     api_token_scope.Tasks -> t(config, i18n_text.ResourceTasks)
     api_token_scope.Cards -> t(config, i18n_text.ResourceCards)
-    api_token_scope.CardTrees -> t(config, i18n_text.ResourceCardTrees)
     api_token_scope.Notes -> t(config, i18n_text.ResourceNotes)
   }
 }

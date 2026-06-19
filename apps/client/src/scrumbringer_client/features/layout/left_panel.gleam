@@ -29,7 +29,7 @@ import lustre/event
 import domain/project.{type Project}
 import domain/user.{type User}
 import domain/view_mode.{type ViewMode, Capabilities, Cards, People, Pool}
-import scrumbringer_client/features/card_tree/scope_view.{type DepthName}
+import scrumbringer_client/features/hierarchy/scope_view.{type DepthName}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text

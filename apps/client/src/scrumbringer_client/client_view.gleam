@@ -70,9 +70,9 @@ import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
-import scrumbringer_client/features/card_tree/scope_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
@@ -1560,7 +1560,7 @@ fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
 // Card Detail Modal for Member Views
 // =============================================================================
 
-/// Renders the card detail modal for Pool/Kanban/CardTrees views.
+/// Renders the card detail modal for Pool/Kanban/Hierarchies views.
 fn view_member_card_detail_modal(
   model: client_state.Model,
   _user: User,

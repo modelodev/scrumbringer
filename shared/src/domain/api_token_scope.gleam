@@ -11,7 +11,6 @@ pub type Resource {
   Projects
   Tasks
   Cards
-  CardTrees
   Notes
 }
 
@@ -26,7 +25,6 @@ pub type Scope {
   TasksWrite
   CardsRead
   CardsWrite
-  CardTreesRead
   NotesRead
   NotesWrite
 }
@@ -42,7 +40,6 @@ pub fn parse(value: String) -> Result(Scope, ParseError) {
     "tasks:write" -> Ok(TasksWrite)
     "cards:read" -> Ok(CardsRead)
     "cards:write" -> Ok(CardsWrite)
-    "card_trees:read" -> Ok(CardTreesRead)
     "notes:read" -> Ok(NotesRead)
     "notes:write" -> Ok(NotesWrite)
     _ -> Error(InvalidScope(value))
@@ -64,7 +61,6 @@ pub fn supported() -> List(Scope) {
     TasksWrite,
     CardsRead,
     CardsWrite,
-    CardTreesRead,
     NotesRead,
     NotesWrite,
   ]
@@ -89,7 +85,6 @@ pub fn from_parts(
     Tasks, Write -> Ok(TasksWrite)
     Cards, Read -> Ok(CardsRead)
     Cards, Write -> Ok(CardsWrite)
-    CardTrees, Read -> Ok(CardTreesRead)
     Notes, Read -> Ok(NotesRead)
     Notes, Write -> Ok(NotesWrite)
     _, _ ->
@@ -104,14 +99,13 @@ pub fn resource(scope: Scope) -> Resource {
     ProjectsRead -> Projects
     TasksRead | TasksWrite -> Tasks
     CardsRead | CardsWrite -> Cards
-    CardTreesRead -> CardTrees
     NotesRead | NotesWrite -> Notes
   }
 }
 
 pub fn access(scope: Scope) -> Access {
   case scope {
-    ProjectsRead | TasksRead | CardsRead | CardTreesRead | NotesRead -> Read
+    ProjectsRead | TasksRead | CardsRead | NotesRead -> Read
     TasksWrite | CardsWrite | NotesWrite -> Write
   }
 }
@@ -121,7 +115,6 @@ pub fn resource_to_string(resource: Resource) -> String {
     Projects -> "projects"
     Tasks -> "tasks"
     Cards -> "cards"
-    CardTrees -> "card_trees"
     Notes -> "notes"
   }
 }

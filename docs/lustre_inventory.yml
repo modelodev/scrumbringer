@@ -132,10 +132,10 @@ module_index:
   - { module: "features/invites/view", path: "apps/client/src/scrumbringer_client/features/invites/view.gleam" }
   - { module: "features/metrics/update", path: "apps/client/src/scrumbringer_client/features/metrics/update.gleam" }
   - { module: "features/metrics/view", path: "apps/client/src/scrumbringer_client/features/metrics/view.gleam" }
-  - { module: "features/card trees/create_update", path: "apps/client/src/scrumbringer_client/features/card trees/create_update.gleam" }
-  - { module: "features/card trees/dialog_update", path: "apps/client/src/scrumbringer_client/features/card trees/dialog_update.gleam" }
-  - { module: "features/card trees/expansion", path: "apps/client/src/scrumbringer_client/features/card trees/expansion.gleam" }
-  - { module: "features/card trees/movement_update", path: "apps/client/src/scrumbringer_client/features/card trees/movement_update.gleam" }
+  - { module: "features/hierarchies/create_update", path: "apps/client/src/scrumbringer_client/features/hierarchies/create_update.gleam" }
+  - { module: "features/hierarchies/dialog_update", path: "apps/client/src/scrumbringer_client/features/hierarchies/dialog_update.gleam" }
+  - { module: "features/hierarchies/expansion", path: "apps/client/src/scrumbringer_client/features/hierarchies/expansion.gleam" }
+  - { module: "features/hierarchies/movement_update", path: "apps/client/src/scrumbringer_client/features/hierarchies/movement_update.gleam" }
   - { module: "features/my_bar/view", path: "apps/client/src/scrumbringer_client/features/my_bar/view.gleam" }
   - { module: "features/now_working/update", path: "apps/client/src/scrumbringer_client/features/now_working/update.gleam" }
   - { module: "features/now_working/mobile", path: "apps/client/src/scrumbringer_client/features/now_working/mobile.gleam" }

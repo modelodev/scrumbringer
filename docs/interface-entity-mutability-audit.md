@@ -21,7 +21,7 @@ integracion sin tokens activos.
 Estado global: **riesgo medio**.
 
 La interfaz cubre bien la mayoria de entidades principales de administracion
-operativa: proyectos, cards, card trees, task types, workflows, reglas,
+operativa: proyectos, cards, hierarchies, task types, workflows, reglas,
 templates, usuarios, membresias de proyecto y dependencias. El problema no esta
 en un CRUD general incompleto, sino en varios objetos secundarios o campos
 creados en formularios que quedan bloqueados despues de crear la entidad.
@@ -41,7 +41,7 @@ pool limpio sin pedir cambios fuera del producto.
 **Evidencia:**
 
 - El dialogo de creacion captura titulo, descripcion, prioridad, tipo,
-  card tree y card: `apps/client/src/scrumbringer_client/features/pool/create_dialog.gleam:71`.
+  hierarchy y card: `apps/client/src/scrumbringer_client/features/pool/create_dialog.gleam:71`.
 - El formulario de edicion del detalle solo renderiza titulo y descripcion:
   `apps/client/src/scrumbringer_client/features/tasks/detail_editor.gleam:67`.
 - `is_dirty` solo compara titulo y descripcion:
@@ -53,7 +53,7 @@ pool limpio sin pedir cambios fuera del producto.
 
 **Impacto:**
 
-Un usuario puede crear una tarea con tipo, prioridad, card o card tree
+Un usuario puede crear una tarea con tipo, prioridad, card o hierarchy
 incorrectos y quedarse sin un camino claro para corregirla desde el detalle de
 tarea. La filosofia del producto favorece la autoorganizacion del pool, por lo
 que estos metadatos deberian ser corregibles por quien tenga permiso para editar
@@ -237,7 +237,7 @@ politica explicita de borrado de tenant.
 | --- | --- | --- |
 | Projects | Crear, editar, eliminar | CRUD principal cubierto. |
 | Cards | Crear, editar, eliminar | El borrado puede bloquearse si hay tareas, pero se comunica como restriccion. |
-| Card Trees | Crear, editar, eliminar | El borrado esta restringido por estado/contenido. |
+| Hierarchies | Crear, editar, eliminar | El borrado esta restringido por estado/contenido. |
 | Task types | Crear, editar, eliminar | Cobertura correcta para administracion. |
 | Workflows | Crear, editar, eliminar | Cobertura correcta. |
 | Workflow rules | Crear, editar, eliminar | Tambien hay attach/detach de templates. |

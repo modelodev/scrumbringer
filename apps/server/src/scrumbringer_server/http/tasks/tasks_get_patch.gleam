@@ -204,8 +204,8 @@ fn check_task_access_error_response(
     workflow_types.NotAuthorized -> lower_forbidden_response()
     workflow_types.DbError(_) -> lower_database_error_response()
     workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -236,8 +236,8 @@ fn fetch_task_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotAuthorized
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -252,17 +252,17 @@ fn update_task_error_response(error: workflow_types.Error) -> wisp.Response {
   case error {
     workflow_types.NotFound -> not_found_response()
     workflow_types.NotAuthorized -> forbidden_response()
-    workflow_types.TaskCardTreeInheritedFromCard ->
+    workflow_types.TaskParentCardInheritedFromCard ->
       api.error(
         422,
         "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task card_tree is inherited from card",
+        "Task parent card is inherited from card",
       )
-    workflow_types.InvalidMovePoolToCardTree ->
+    workflow_types.InvalidMovePoolToParentCard ->
       api.error(
         422,
         "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Invalid move from pool to card_tree",
+        "Invalid move from pool to parent card",
       )
     workflow_types.ValidationError(message) ->
       api.error(422, "VALIDATION_ERROR", message)

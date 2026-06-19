@@ -38,10 +38,10 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> not_found_response()
     cards_db.CardHasTasks(_) -> database_error_response()
-    cards_db.InvalidCardTree -> database_error_response()
-    cards_db.InvalidCardTreeState(_) -> database_error_response()
+    cards_db.InvalidParentCard -> database_error_response()
+    cards_db.InvalidParentExecutionPhase(_) -> database_error_response()
     cards_db.InvalidColor(_) -> database_error_response()
-    cards_db.InvalidMovePoolToCardTree -> database_error_response()
+    cards_db.InvalidMovePoolToParentCard -> database_error_response()
     cards_db.CardHasClaimedDescendant(_) -> database_error_response()
     cards_db.DbError(_) -> database_error_response()
   }

@@ -1,4 +1,4 @@
-//// Task leaf entity for card tree execution rules.
+//// Task leaf entity for card hierarchy execution rules.
 
 import domain/project/id as project_id
 import domain/task/id as task_id

@@ -313,7 +313,7 @@ Events represent state changes. Used for UI updates and audit.
 | `TaskCreated` | task | CreateTask |
 | `TaskClaimed` | task_id, user_id, claimed_at | ClaimTask |
 | `TaskReleased` | task_id, user_id | ReleaseTask |
-| `TaskCompleted` | task_id, user_id, completed_at | CompleteTask |
+| `TaskDone` | task_id, user_id, completed_at | CompleteTask |
 | `TaskUpdated` | task_id, changed_fields | UpdateTask |
 | `TaskNoteAdded` | note | AddTaskNote |
 | `TaskPositionChanged` | task_id, user_id, x, y | MoveTask |

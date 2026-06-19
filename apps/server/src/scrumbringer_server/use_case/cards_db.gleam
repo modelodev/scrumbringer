@@ -38,10 +38,10 @@ const no_parent_update_value = -1
 pub type CardError {
   CardNotFound
   CardHasTasks(task_count: Int)
-  InvalidCardTree
-  InvalidCardTreeState(String)
+  InvalidParentCard
+  InvalidParentExecutionPhase(String)
   InvalidColor(String)
-  InvalidMovePoolToCardTree
+  InvalidMovePoolToParentCard
   CardHasClaimedDescendant(Int)
   DbError(pog.QueryError)
 }

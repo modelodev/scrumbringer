@@ -1,4 +1,4 @@
-//// Task claimability rules for the card tree execution model.
+//// Task claimability rules for the card hierarchy execution model.
 
 import domain/card/activation.{type WorkTree}
 import domain/card/entity as card_entity

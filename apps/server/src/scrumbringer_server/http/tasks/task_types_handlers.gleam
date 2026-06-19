@@ -284,8 +284,8 @@ fn list_task_types_error_response(error: workflow_types.Error) -> wisp.Response 
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -305,8 +305,8 @@ fn create_task_type_error_response(error: workflow_types.Error) -> wisp.Response
       api.error(422, "VALIDATION_ERROR", message)
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
@@ -325,8 +325,8 @@ fn update_task_type_error_response(error: workflow_types.Error) -> wisp.Response
       api.error(422, "VALIDATION_ERROR", "Task type name already exists")
     workflow_types.NotFound -> not_found_response()
     workflow_types.DbError(_) -> database_error_response()
-    workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
@@ -344,8 +344,8 @@ fn delete_task_type_error_response(error: workflow_types.Error) -> wisp.Response
     workflow_types.NotFound -> not_found_response()
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)

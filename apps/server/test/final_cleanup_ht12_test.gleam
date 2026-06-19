@@ -43,16 +43,16 @@ pub fn lustre_update_does_not_reimplement_server_transaction_rules_test() {
   expect_gate("lustre_update_does_not_reimplement_server_transaction_rules")
 }
 
-pub fn legacy_milestone_routes_are_absent_test() {
-  expect_gate("legacy_milestone_routes_are_absent")
+pub fn legacy_routes_are_absent_test() {
+  expect_gate("legacy_routes_are_absent")
 }
 
-pub fn schema_final_has_no_milestone_tables_or_columns_test() {
-  expect_gate("schema_final_has_no_milestone_tables_or_columns")
+pub fn schema_final_has_no_legacy_tables_or_columns_test() {
+  expect_gate("schema_final_has_no_legacy_tables_or_columns")
 }
 
-pub fn seed_data_uses_card_tree_and_root_pool_tasks_test() {
-  expect_gate("seed_data_uses_card_tree_and_root_pool_tasks")
+pub fn seed_data_uses_hierarchy_and_root_pool_tasks_test() {
+  expect_gate("seed_data_uses_hierarchy_and_root_pool_tasks")
 }
 
 pub fn seed_data_covers_card_profiles_due_dates_and_closed_outcomes_test() {
@@ -91,10 +91,8 @@ pub fn metrics_are_derived_from_audit_events_not_task_events_test() {
   expect_gate("metrics_are_derived_from_audit_events_not_task_events")
 }
 
-pub fn milestone_metrics_are_removed_or_replaced_by_card_rollup_metrics_test() {
-  expect_gate(
-    "milestone_metrics_are_removed_or_replaced_by_card_rollup_metrics",
-  )
+pub fn legacy_metrics_are_removed_or_replaced_by_card_rollup_metrics_test() {
+  expect_gate("legacy_metrics_are_removed_or_replaced_by_card_rollup_metrics")
 }
 
 pub fn final_full_refactor_review_has_no_required_changes_left_test() {

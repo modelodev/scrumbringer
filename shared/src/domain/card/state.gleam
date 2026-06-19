@@ -1,4 +1,4 @@
-//// Card execution state for the card tree model.
+//// Card execution state for the card hierarchy model.
 
 import domain/card/id as card_id
 import domain/user/id as user_id

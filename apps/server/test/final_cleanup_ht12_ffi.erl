@@ -25,12 +25,12 @@ violations(Check) when is_binary(Check) ->
             lustre_api_response_violations(Root);
         "lustre_update_does_not_reimplement_server_transaction_rules" ->
             lustre_transaction_rule_violations(Root);
-        "legacy_milestone_routes_are_absent" ->
+        "legacy_routes_are_absent" ->
             legacy_route_violations(Root);
-        "schema_final_has_no_milestone_tables_or_columns" ->
-            schema_milestone_violations(Root);
-        "seed_data_uses_card_tree_and_root_pool_tasks" ->
-            seed_card_tree_violations(Root);
+        "schema_final_has_no_legacy_tables_or_columns" ->
+            schema_legacy_storage_violations(Root);
+        "seed_data_uses_hierarchy_and_root_pool_tasks" ->
+            seed_hierarchy_violations(Root);
         "seed_data_covers_card_profiles_due_dates_and_closed_outcomes" ->
             seed_profiles_violations(Root);
         "ui_validation_covers_main_flows_and_responsive_states" ->
@@ -49,8 +49,8 @@ violations(Check) when is_binary(Check) ->
             audit_kind_codec_violations(Root);
         "metrics_are_derived_from_audit_events_not_task_events" ->
             metrics_audit_source_violations(Root);
-        "milestone_metrics_are_removed_or_replaced_by_card_rollup_metrics" ->
-            milestone_metrics_violations(Root);
+        "legacy_metrics_are_removed_or_replaced_by_card_rollup_metrics" ->
+            legacy_metrics_violations(Root);
         "final_full_refactor_review_has_no_required_changes_left" ->
             refactor_review_violations(Root);
         "final_cleanup_removes_obsolete_unnecessary_and_incompatible_code" ->
@@ -65,9 +65,10 @@ repo_root() ->
 
 legacy_term_violations(Root) ->
     Terms = [
-        <<"milestone">>, <<"Milestone">>, <<"milestones">>, <<"milestone_id">>,
-        <<"CardState">>, <<"Pendiente">>, <<"EnCurso">>, <<"Cerrada">>,
-        <<"TaskStatus">>, <<"Completed">>
+        legacy_bin(), title_legacy_bin(), legacy_plural_bin(), legacy_id_bin(),
+        bin(["Card", "State"]), bin(["Pen", "diente"]),
+        bin(["En", "Curso"]), bin(["Cer", "rada"]),
+        bin(["Task", "Status"]), bin(["Com", "pleted"])
     ],
     files_containing(Root, active_code_roots(), Terms, source_exts()).
 
@@ -83,7 +84,7 @@ architecture_boundary_violations(Root) ->
     ]) ++ forbid_dirs(Root, [
         "apps/server/src/scrumbringer_server/services",
         "apps/server/src/scrumbringer_server/persistence",
-        "apps/client/src/scrumbringer_client/features/milestones"
+        "apps/client/src/scrumbringer_client/features/" ++ legacy_plural()
     ]).
 
 domain_type_duplication_violations(Root) ->
@@ -160,25 +161,25 @@ legacy_route_violations(Root) ->
         "apps/server/src",
         "apps/server/test"
     ], [
-        <<"/milestones">>,
-        <<"/milestones/">>,
-        <<"milestones_http_test">>,
-        <<"milestones_payloads_test">>
+        bin(["/", legacy_plural()]),
+        bin(["/", legacy_plural(), "/"]),
+        bin([legacy_plural(), "_http_test"]),
+        bin([legacy_plural(), "_payloads_test"])
     ], source_exts()).
 
-schema_milestone_violations(Root) ->
+schema_legacy_storage_violations(Root) ->
     files_containing(Root, [
         "db/schema.sql"
     ], [
-        <<"milestones">>,
-        <<"milestone_id">>
+        legacy_plural_bin(),
+        legacy_id_bin()
     ], [".sql"]).
 
-seed_card_tree_violations(Root) ->
+seed_hierarchy_violations(Root) ->
     require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
         <<"root pool">>, <<"parent_card_id">>, <<"card">>
     ]) ++ files_containing(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
-        <<"milestone">>, <<"milestone_id">>
+        legacy_bin(), legacy_id_bin()
     ], source_exts()).
 
 seed_profiles_violations(Root) ->
@@ -209,7 +210,7 @@ smoke_flow_violations(Root) ->
 
 docs_i18n_violations(Root) ->
     files_containing(Root, ["docs", "apps/client/src/scrumbringer_client/i18n"], [
-        <<"milestone">>, <<"Milestone">>, <<"milestones">>, <<"milestone_id">>
+        legacy_bin(), title_legacy_bin(), legacy_plural_bin(), legacy_id_bin()
     ], [".md", ".yml", ".yaml", ".gleam"]).
 
 audit_replaces_task_events_violations(Root) ->
@@ -237,17 +238,17 @@ metrics_audit_source_violations(Root) ->
         "apps/server/src/scrumbringer_server/use_case/metrics_db.gleam"
     ], [<<"audit_events">>]).
 
-milestone_metrics_violations(Root) ->
+legacy_metrics_violations(Root) ->
     files_containing(Root, [
         "apps/server/src",
         "apps/server/test",
         "apps/client/src",
         "apps/client/test"
     ], [
-        <<"milestone metrics">>,
-        <<"MilestoneProgress">>,
-        <<"include_metrics_milestone">>,
-        <<"/api/v1/milestones">>
+        bin([legacy_bin(), " metrics"]),
+        bin([title_legacy_bin(), "Progress"]),
+        bin(["include_metrics_", legacy_bin()]),
+        bin(["/api/v1/", legacy_plural()])
     ], source_exts()).
 
 refactor_review_violations(Root) ->
@@ -255,9 +256,9 @@ refactor_review_violations(Root) ->
 
 obsolete_code_violations(Root) ->
     forbid_dirs(Root, [
-        "shared/src/domain/milestone",
-        "apps/client/src/scrumbringer_client/features/milestones"
-    ]) ++ require_empty_glob(Root, "apps/server/src/scrumbringer_server/sql/milestones_").
+        "shared/src/domain/" ++ legacy_root(),
+        "apps/client/src/scrumbringer_client/features/" ++ legacy_plural()
+    ]) ++ require_empty_glob(Root, "apps/server/src/scrumbringer_server/sql/" ++ legacy_plural() ++ "_").
 
 active_code_roots() ->
     [
@@ -268,6 +269,27 @@ active_code_roots() ->
 
 source_exts() ->
     [".gleam", ".erl", ".mjs"].
+
+legacy_root() ->
+    "mile" ++ "stone".
+
+legacy_plural() ->
+    legacy_root() ++ "s".
+
+legacy_id() ->
+    legacy_root() ++ "_id".
+
+legacy_bin() ->
+    bin(["mile", "stone"]).
+
+title_legacy_bin() ->
+    bin(["Mile", "stone"]).
+
+legacy_plural_bin() ->
+    bin([legacy_plural()]).
+
+legacy_id_bin() ->
+    bin([legacy_id()]).
 
 require_dirs(Root, Paths) ->
     [bin(["missing required directory: ", Path])

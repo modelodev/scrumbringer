@@ -7,7 +7,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import scrumbringer_client/features/card_tree/scope_view
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(text: String, fragment: String) {

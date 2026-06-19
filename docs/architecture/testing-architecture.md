@@ -281,7 +281,7 @@ pub type PoolTarget {
   StartWorkButton(TaskRef)
   MyTasksDropzone
   MyTasksSection
-  FilterStatus(TaskStatus)
+  FilterStatus(TaskPhase)
   FilterType(TaskTypeRef)
   FilterCapability(CapabilityRef)
   ViewModeToggle(ViewMode)
@@ -510,13 +510,13 @@ pub type Fixture {
     ref: TaskRef,
     project: ProjectRef,
     title: String,
-    status: TaskStatus,
+    status: TaskPhase,
   )
   CreateTaskWithType(
     ref: TaskRef,
     project: ProjectRef,
     title: String,
-    status: TaskStatus,
+    status: TaskPhase,
     task_type: TaskTypeRef,
   )
 

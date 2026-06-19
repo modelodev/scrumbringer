@@ -80,14 +80,13 @@ pub type CardInsertOptions {
   )
 }
 
-/// Options for inserting a card_tree.
-pub type CardTreeInsertOptions {
-  CardTreeInsertOptions(
+/// Options for inserting a root hierarchy card.
+pub type RootCardInsertOptions {
+  RootCardInsertOptions(
     project_id: Int,
     name: String,
     description: Option(String),
     state: card.CardPhase,
-    position: Int,
     created_by: Int,
     created_at: Option(String),
     activated_at: Option(String),
@@ -788,17 +787,18 @@ pub fn insert_card_simple(
 }
 
 // =============================================================================
-// CardTree Operations
+// Root hierarchy card operations
 // =============================================================================
 
-/// Insert a card_tree with full control over fields.
-pub fn insert_card_tree(
+/// Insert a root hierarchy card with full control over execution fields.
+pub fn insert_root_card(
   db: pog.Connection,
-  opts: CardTreeInsertOptions,
+  opts: RootCardInsertOptions,
 ) -> Result(Int, String) {
-  let base_cols = "project_id, name, description, state, position, created_by"
-  let base_vals = "$1, $2, $3, $4, $5, $6"
-  let base_idx = 7
+  let base_cols =
+    "project_id, parent_card_id, title, description, color, created_by, execution_state"
+  let base_vals = "$1, NULL, $2, $3, NULL, $4, $5"
+  let base_idx = 6
 
   let #(cols, vals, idx, params) =
     append_optional_timestamp(
@@ -825,31 +825,42 @@ pub fn insert_card_tree(
       cols,
       vals,
       idx,
-      "completed_at",
+      "closed_at",
       opts.completed_at,
       params,
     )
 
+  let state = card.state_to_string(opts.state)
+  let closed_fields = case opts.state {
+    card.Closed -> ", closed_by_kind, closed_reason"
+    _ -> ""
+  }
+  let closed_values = case opts.state {
+    card.Closed -> ", 'system', 'rollup'"
+    _ -> ""
+  }
+
   let sql =
-    "INSERT INTO card_trees ("
+    "INSERT INTO cards ("
     <> cols
+    <> closed_fields
     <> ") VALUES ("
     <> vals
+    <> closed_values
     <> ") RETURNING id"
 
   let base_query =
     pog.query(sql)
     |> pog.parameter(pog.int(opts.project_id))
     |> pog.parameter(pog.text(opts.name))
-    |> pog.parameter(pog.nullable(pog.text, opts.description))
-    |> pog.parameter(pog.text(card.state_to_string(opts.state)))
-    |> pog.parameter(pog.int(opts.position))
+    |> pog.parameter(pog.text(option.unwrap(opts.description, "")))
     |> pog.parameter(pog.int(opts.created_by))
+    |> pog.parameter(pog.text(state))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
   |> pog.execute(db)
-  |> result.map_error(fn(e) { "insert_card_tree: " <> string.inspect(e) })
+  |> result.map_error(fn(e) { "insert_root_card: " <> string.inspect(e) })
   |> result.try(fn(r) {
     case r.rows {
       [id] -> Ok(id)
@@ -858,8 +869,8 @@ pub fn insert_card_tree(
   })
 }
 
-/// Assign the first available cards of a project to a card_tree.
-pub fn assign_cards_to_card_tree(
+/// Assign the first available root cards of a project to a parent card.
+pub fn assign_cards_to_parent_card(
   db: pog.Connection,
   project_id: Int,
   parent_card_id: Int,
@@ -883,18 +894,18 @@ pub fn assign_cards_to_card_tree(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) {
-    "assign_cards_to_card_tree: " <> string.inspect(e)
+    "assign_cards_to_parent_card: " <> string.inspect(e)
   })
 }
 
-/// Assign available pool tasks (card_id is null) to a card_tree.
-pub fn assign_available_pool_tasks_to_card_tree(
+/// Assign available root-pool tasks (card_id is null) to a parent card.
+pub fn assign_available_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
   parent_card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_card_tree_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
     parent_card_id,
@@ -903,14 +914,14 @@ pub fn assign_available_pool_tasks_to_card_tree(
   )
 }
 
-/// Assign claimed pool tasks (card_id is null) to a card_tree.
-pub fn assign_claimed_pool_tasks_to_card_tree(
+/// Assign claimed root-pool tasks (card_id is null) to a parent card.
+pub fn assign_claimed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
   parent_card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_card_tree_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
     parent_card_id,
@@ -919,14 +930,14 @@ pub fn assign_claimed_pool_tasks_to_card_tree(
   )
 }
 
-/// Assign completed pool tasks (card_id is null) to a card_tree.
-pub fn assign_completed_pool_tasks_to_card_tree(
+/// Assign completed root-pool tasks (card_id is null) to a parent card.
+pub fn assign_completed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
   parent_card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_card_tree_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
     parent_card_id,
@@ -935,7 +946,7 @@ pub fn assign_completed_pool_tasks_to_card_tree(
   )
 }
 
-fn assign_pool_tasks_to_card_tree_by_status(
+fn assign_pool_tasks_to_parent_card_by_status(
   db: pog.Connection,
   project_id: Int,
   parent_card_id: Int,
@@ -964,7 +975,7 @@ fn assign_pool_tasks_to_card_tree_by_status(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) {
-    "assign_pool_tasks_to_card_tree_by_status: " <> string.inspect(e)
+    "assign_pool_tasks_to_parent_card_by_status: " <> string.inspect(e)
   })
 }
 

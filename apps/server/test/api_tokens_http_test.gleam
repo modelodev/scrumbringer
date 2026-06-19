@@ -209,7 +209,7 @@ pub fn integration_user_cannot_login_with_password_test() {
   expect.expect_status(res, 403)
 }
 
-pub fn bearer_can_operate_cards_notes_and_card_trees_test() {
+pub fn bearer_can_operate_cards_and_notes_test() {
   let assert Ok(#(_app, handler, admin_session)) = fixtures.bootstrap()
   let assert Ok(project_id) =
     fixtures.create_project(handler, admin_session, "Core")
@@ -246,8 +246,6 @@ pub fn bearer_can_operate_cards_notes_and_card_trees_test() {
         "cards:write",
         "notes:read",
         "notes:write",
-        "card_trees:read",
-        "card_trees:write",
       ],
     )
 
@@ -358,48 +356,6 @@ pub fn bearer_can_operate_cards_notes_and_card_trees_test() {
         #("content", json.string("Task note from integration")),
       ]),
     ),
-  )
-  |> expect.expect_status(200)
-
-  let card_tree_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/card_trees",
-      )
-      |> fixtures.with_bearer(token)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Imported card_tree")),
-          #("description", json.string("Created by integration")),
-        ]),
-      ),
-    )
-  expect.expect_status(card_tree_res, 200)
-  let assert Ok(parent_card_id) =
-    decode_nested_id(simulate.read_body(card_tree_res), "card_tree")
-
-  handler(
-    simulate.request(
-      http.Patch,
-      "/api/v1/card_trees/" <> int.to_string(parent_card_id),
-    )
-    |> fixtures.with_bearer(token)
-    |> simulate.json_body(
-      json.object([
-        #("name", json.string("Updated card_tree")),
-        #("description", json.string("Updated by integration")),
-      ]),
-    ),
-  )
-  |> expect.expect_status(200)
-
-  handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/card_trees",
-    )
-    |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
 }

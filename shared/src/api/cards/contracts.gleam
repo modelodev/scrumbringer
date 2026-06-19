@@ -1,4 +1,4 @@
-//// Shared API contracts for card tree endpoints.
+//// Shared API contracts for card hierarchy endpoints.
 
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode

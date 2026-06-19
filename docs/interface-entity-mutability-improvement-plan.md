@@ -46,7 +46,7 @@ recrear sin ambiguedad.
 ### Producto
 
 La task es la unidad central del pull flow. Si el equipo detecta que una task
-tiene prioridad, tipo, card o card tree equivocados, corregirla debe ser parte
+tiene prioridad, tipo, card o hierarchy equivocados, corregirla debe ser parte
 del trabajo normal, no una excepcion administrativa.
 
 Decision:
@@ -56,7 +56,7 @@ Decision:
 - No permitir editar tasks completadas desde el flujo normal.
 - Tratar `title`, `description`, `priority`, `type_id`, `card_id` y
   `parent_card_id` como campos operativos editables.
-- Si una task tiene `card_id`, su card tree efectivo se hereda de la card. En
+- Si una task tiene `card_id`, su hierarchy efectivo se hereda de la card. En
   ese caso `parent_card_id` queda deshabilitado y explicado.
 
 ### UI/UX
@@ -66,7 +66,7 @@ el detalle de task:
 
 - **Identity:** title y description.
 - **Planning:** priority y type.
-- **Placement:** card y card tree.
+- **Placement:** card y hierarchy.
 
 Comportamiento:
 
@@ -75,11 +75,11 @@ Comportamiento:
 - `Cancel` restaura todos los campos.
 - La seccion Placement muestra:
   - selector de card con opcion `No card`;
-  - selector de card tree solo si `No card`;
-  - texto no intrusivo `Card Tree inherited from card` si hay card.
+  - selector de hierarchy solo si `No card`;
+  - texto no intrusivo `Hierarchy inherited from card` si hay card.
 - Si el backend rechaza una combinacion, el error se muestra junto a Placement,
   no como toast generico.
-- En readonly, mostrar card, card tree efectivo, type y priority con el mismo
+- En readonly, mostrar card, hierarchy efectivo, type y priority con el mismo
   vocabulario visual que la lista de tareas.
 
 No usar un modal adicional: el detalle de task ya es el contexto de edicion.
@@ -98,7 +98,7 @@ Frontend:
 - Cargar opciones necesarias desde caches ya existentes:
   - `task_types` del proyecto;
   - `cards` del proyecto;
-  - card trees ready del proyecto.
+  - hierarchies ready del proyecto.
 - Si alguna cache no esta cargada al entrar en edicion, mostrar skeleton/disabled
   en ese grupo y lanzar fetch puntual; no bloquear la edicion de titulo y
   descripcion.
@@ -122,10 +122,10 @@ Backend:
 - Validar que no se mandan simultaneamente `card_id = Some(_)` y
   `parent_card_id = Set(Some(_))`.
 - Cuando se asigna una card, limpiar `parent_card_id` de la task para que el
-  card tree efectivo sea solo el de la card.
+  hierarchy efectivo sea solo el de la card.
 - Revisar scopes Bearer existentes: si `tasks:write` permite actualizar tasks,
   el contrato nuevo debe respetar las mismas validaciones y no abrir un bypass
-  para mover tasks entre cards/card trees fuera de proyecto.
+  para mover tasks entre cards/hierarchies fuera de proyecto.
 
 Tests:
 
@@ -137,7 +137,7 @@ Tests:
   - claimed task editable por owner;
   - claimed task por otro usuario rechazada;
   - card invalida rechazada;
-  - card + card tree explicito rechazado.
+  - card + hierarchy explicito rechazado.
 - E2E minimo: crear task con metadata erronea, abrir detalle, corregir type,
   priority y card, guardar y comprobar lista/detalle.
 

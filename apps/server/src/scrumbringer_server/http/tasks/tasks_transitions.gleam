@@ -201,8 +201,8 @@ fn claim_error_response(
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotAuthorized
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse -> unexpected_error()
   }
@@ -223,8 +223,8 @@ fn release_or_complete_error_response(
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed

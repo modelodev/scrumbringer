@@ -106,7 +106,10 @@ fn create_task_payload(
     parent_card_id: parent_card_id,
   ) = payload
 
-  use Nil <- result.try(require_card_tree_not_inherited(card_id, parent_card_id))
+  use Nil <- result.try(require_parent_card_not_inherited(
+    card_id,
+    parent_card_id,
+  ))
 
   case
     workflow.handle(
@@ -164,7 +167,7 @@ fn with_create_payload(
   }
 }
 
-fn require_card_tree_not_inherited(
+fn require_parent_card_not_inherited(
   card_id: Option(Int),
   parent_card_id: Option(Int),
 ) -> Result(Nil, wisp.Response) {
@@ -173,7 +176,7 @@ fn require_card_tree_not_inherited(
       Error(api.error(
         422,
         "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task card_tree is inherited from card",
+        "Task parent card is inherited from card",
       ))
     _, _ -> Ok(Nil)
   }
@@ -220,8 +223,8 @@ fn list_tasks_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskCardTreeInheritedFromCard
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -237,11 +240,11 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.NotAuthorized -> forbidden_response()
     workflow_types.ValidationError(message) ->
       api.error(422, "VALIDATION_ERROR", message)
-    workflow_types.TaskCardTreeInheritedFromCard ->
-      inherited_card_tree_response()
+    workflow_types.TaskParentCardInheritedFromCard ->
+      inherited_parent_card_response()
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
-    | workflow_types.InvalidMovePoolToCardTree
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
@@ -252,11 +255,11 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
   }
 }
 
-fn inherited_card_tree_response() -> wisp.Response {
+fn inherited_parent_card_response() -> wisp.Response {
   api.error(
     422,
     "TASK_MILESTONE_INHERITED_FROM_CARD",
-    "Task card_tree is inherited from card",
+    "Task parent card is inherited from card",
   )
 }
 

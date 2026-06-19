@@ -1,4 +1,4 @@
-//// Card entity and structural invariants for the card tree model.
+//// Card entity and structural invariants for the card hierarchy model.
 
 import domain/card/id as card_id
 import domain/card/state
@@ -19,8 +19,8 @@ pub type Card {
   )
 }
 
-pub type CardTree {
-  CardTree(List(Card))
+pub type CardHierarchy {
+  CardHierarchy(List(Card))
 }
 
 pub type ChildInsertError {
@@ -89,7 +89,7 @@ pub fn move_card_to_parent(
   card: Card,
   actor: permissions.Authorized(permissions.ManageStructure),
   destination_parent: Option(card_id.CardId),
-  tree: CardTree,
+  hierarchy: CardHierarchy,
 ) -> Result(Card, CardMoveError) {
   case
     card.project_id == permissions.project_id(actor),
@@ -100,13 +100,13 @@ pub fn move_card_to_parent(
     True, True, _ -> Error(CannotMoveClosedCard)
     True, False, None -> Ok(Card(..card, parent: None))
     True, False, Some(destination_id) -> {
-      case find_card(tree, destination_id) {
+      case find_card(hierarchy, destination_id) {
         Error(_) -> Error(DestinationNotFound)
         Ok(destination) ->
           case
             is_closed(destination),
             accepts_card_children(destination),
-            is_descendant(destination.id, card.id, tree)
+            is_descendant(destination.id, card.id, hierarchy)
           {
             True, _, _ -> Error(CannotMoveIntoClosedCard)
             False, False, _ -> Error(DestinationDoesNotAcceptCards)
@@ -135,21 +135,24 @@ fn accepts_card_children(card: Card) -> Bool {
 fn is_descendant(
   candidate_id: card_id.CardId,
   ancestor_id: card_id.CardId,
-  tree: CardTree,
+  hierarchy: CardHierarchy,
 ) -> Bool {
-  case find_card(tree, candidate_id) {
+  case find_card(hierarchy, candidate_id) {
     Error(_) -> False
     Ok(candidate) ->
       case candidate.parent {
         None -> False
         Some(parent_id) if parent_id == ancestor_id -> True
-        Some(parent_id) -> is_descendant(parent_id, ancestor_id, tree)
+        Some(parent_id) -> is_descendant(parent_id, ancestor_id, hierarchy)
       }
   }
 }
 
-fn find_card(tree: CardTree, target_id: card_id.CardId) -> Result(Card, Nil) {
-  let CardTree(cards) = tree
+fn find_card(
+  hierarchy: CardHierarchy,
+  target_id: card_id.CardId,
+) -> Result(Card, Nil) {
+  let CardHierarchy(cards) = hierarchy
   find_card_in(cards, target_id)
 }
 
