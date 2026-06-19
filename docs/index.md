@@ -7,6 +7,7 @@ have been removed from `docs`.
 ## Architecture
 
 - [Architecture overview](./architecture.md)
+- [Card tree and task leaves model](./card-tree-task-leaves-model.md)
 - [API contract](./architecture/api-contract.md)
 - [Data model](./architecture/data-model.md)
 - [Source tree](./architecture/source-tree.md)
@@ -21,6 +22,7 @@ have been removed from `docs`.
 
 - [UI architecture](./ui-architecture.md)
 - [Lustre inventory](./lustre_inventory.yml)
+- [Due date tasks and cards plan](./due-date-tasks-cards-plan.md)
 - [Pull flow model hardening plan](./pull-flow-model-hardening-plan.md)
 
 ## API And Integrations
