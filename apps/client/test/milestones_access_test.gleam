@@ -23,6 +23,7 @@ fn project(role: project_role.ProjectRole) -> Project {
     my_role: role,
     created_at: "2026-02-06T00:00:00Z",
     members_count: 1,
+    card_depth_names: [],
   )
 }
 

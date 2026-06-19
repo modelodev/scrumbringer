@@ -134,6 +134,7 @@ fn sample_project(id: Int, name: String) -> Project {
     my_role: Manager,
     created_at: "2026-01-01",
     members_count: 0,
+    card_depth_names: [],
   )
 }
 

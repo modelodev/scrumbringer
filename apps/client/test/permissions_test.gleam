@@ -5,7 +5,14 @@ import gleam/option
 import scrumbringer_client/permissions
 
 fn project_with_role(role) {
-  Project(id: 1, name: "P1", my_role: role, created_at: "", members_count: 0)
+  Project(
+    id: 1,
+    name: "P1",
+    my_role: role,
+    created_at: "",
+    members_count: 0,
+    card_depth_names: [],
+  )
 }
 
 pub fn visible_sections_org_admin_test() {
@@ -76,13 +83,16 @@ pub fn can_access_members_requires_selected_project_or_any_admin_test() {
       permissions.Members,
       org_role.Member,
       projects,
-      option.Some(Project(
-        id: 2,
-        name: "P2",
-        my_role: Member,
-        created_at: "",
-        members_count: 0,
-      )),
+      option.Some(
+        Project(
+          id: 2,
+          name: "P2",
+          my_role: Member,
+          created_at: "",
+          members_count: 0,
+          card_depth_names: [],
+        ),
+      ),
     )
 }
 

@@ -36,6 +36,7 @@ fn selected_project() -> Project {
     my_role: project_role.Manager,
     created_at: "2026-01-01T00:00:00Z",
     members_count: 3,
+    card_depth_names: [],
   )
 }
 

@@ -2,6 +2,7 @@
 ////
 //// Tests shared optional JSON helpers and presenter-specific fallback logic.
 
+import domain/project.{ProjectDepthName}
 import domain/project_role
 import domain/task.{Task}
 import domain/task_state
@@ -109,6 +110,7 @@ pub fn project_json_does_not_expose_internal_org_id_test() {
       created_at: "2026-06-15T09:00:00Z",
       my_role: project_role.Manager,
       members_count: 3,
+      card_depth_names: [],
     )
 
   let body =
@@ -121,6 +123,52 @@ pub fn project_json_does_not_expose_internal_org_id_test() {
     decode.run(dynamic, decode.field("name", decode.string, decode.success))
   let assert Error(_) =
     decode.run(dynamic, decode.field("org_id", decode.int, decode.success))
+}
+
+pub fn project_json_includes_card_depth_names_test() {
+  let project =
+    projects_db.ProjectRecord(
+      id: 7,
+      org_id: 99,
+      name: "Core",
+      created_at: "2026-06-15T09:00:00Z",
+      my_role: project_role.Manager,
+      members_count: 3,
+      card_depth_names: [
+        ProjectDepthName(depth: 1, singular_name: "Epic", plural_name: "Epics"),
+        ProjectDepthName(
+          depth: 2,
+          singular_name: "Story",
+          plural_name: "Stories",
+        ),
+      ],
+    )
+
+  let body =
+    project
+    |> project_presenters.project
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let depth_name_decoder = {
+    use depth <- decode.field("depth", decode.int)
+    use singular_name <- decode.field("singular_name", decode.string)
+    use plural_name <- decode.field("plural_name", decode.string)
+    decode.success(#(depth, singular_name, plural_name))
+  }
+  let assert Ok(depth_names) =
+    decode.run(
+      dynamic,
+      decode.field(
+        "card_depth_names",
+        decode.list(depth_name_decoder),
+        decode.success,
+      ),
+    )
+
+  depth_names
+  |> expect.equal([#(1, "Epic", "Epics"), #(2, "Story", "Stories")])
 }
 
 pub fn project_member_json_does_not_expose_internal_project_id_test() {

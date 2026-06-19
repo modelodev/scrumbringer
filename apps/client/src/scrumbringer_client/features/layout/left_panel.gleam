@@ -31,6 +31,7 @@ import domain/user.{type User}
 import domain/view_mode.{
   type ViewMode, Capabilities, Cards, Milestones, People, Pool,
 }
+import scrumbringer_client/features/card_tree/scope_view.{type DepthName}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -61,6 +62,7 @@ pub type LeftPanelConfig(msg) {
     pending_invites_count: Int,
     projects_count: Int,
     users_count: Int,
+    depth_names: List(DepthName),
     // Event handlers
     on_project_change: fn(String) -> msg,
     on_new_task: msg,
@@ -161,6 +163,45 @@ fn view_nav_item(
     [
       icons.nav_icon(icon, icons.Small),
       span([attribute.class("nav-label")], [text(i18n.t(locale, label_key))]),
+      badge_el,
+      active_indicator,
+    ],
+  )
+}
+
+fn view_nav_item_with_label(
+  is_active: Bool,
+  testid: String,
+  icon: icons.NavIcon,
+  label: String,
+  disabled: Bool,
+  on_click_msg: msg,
+  badge: Option(Int),
+) -> Element(msg) {
+  let active_class = case is_active {
+    True -> " active"
+    False -> ""
+  }
+  let active_indicator = case is_active {
+    True -> span([attribute.class("active-indicator")], [text("●")])
+    False -> element.none()
+  }
+  let badge_el = case badge {
+    Some(count) if count > 0 ->
+      span([attribute.class("badge")], [text(int.to_string(count))])
+    _ -> element.none()
+  }
+
+  button(
+    [
+      attribute.class("nav-link" <> active_class),
+      attribute.attribute("data-testid", testid),
+      attribute.disabled(disabled),
+      event.on_click(on_click_msg),
+    ],
+    [
+      icons.nav_icon(icon, icons.Small),
+      span([attribute.class("nav-label")], [text(label)]),
       badge_el,
       active_indicator,
     ],
@@ -302,50 +343,72 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         False -> element.none()
       },
       // Navigation links - ALL roles (AC2)
-      div([attribute.class("nav-links")], [
-        view_work_nav_link(
-          config,
-          Pool,
-          "nav-pool",
-          icons.Pool,
-          i18n_text.Pool,
-          config.on_navigate_pool,
+      div(
+        [attribute.class("nav-links")],
+        list.append(
+          [
+            view_work_nav_link(
+              config,
+              Pool,
+              "nav-pool",
+              icons.Pool,
+              i18n_text.Pool,
+              config.on_navigate_pool,
+            ),
+            view_work_nav_link(
+              config,
+              Cards,
+              "nav-cards",
+              icons.Cards,
+              i18n_text.MemberCards,
+              config.on_navigate_cards,
+            ),
+          ],
+          list.append(view_depth_nav_links(config), [
+            view_work_nav_link(
+              config,
+              Capabilities,
+              "nav-capabilities-board",
+              icons.Crosshairs,
+              i18n_text.CapabilitiesBoard,
+              config.on_navigate_capabilities,
+            ),
+            view_work_nav_link(
+              config,
+              People,
+              "nav-people",
+              icons.Team,
+              i18n_text.People,
+              config.on_navigate_people,
+            ),
+            view_work_nav_link(
+              config,
+              Milestones,
+              "nav-milestones",
+              icons.List,
+              i18n_text.Tracking,
+              config.on_navigate_milestones,
+            ),
+          ]),
         ),
-        view_work_nav_link(
-          config,
-          Cards,
-          "nav-cards",
-          icons.Cards,
-          i18n_text.Kanban,
-          config.on_navigate_cards,
-        ),
-        view_work_nav_link(
-          config,
-          Capabilities,
-          "nav-capabilities-board",
-          icons.Crosshairs,
-          i18n_text.CapabilitiesBoard,
-          config.on_navigate_capabilities,
-        ),
-        view_work_nav_link(
-          config,
-          People,
-          "nav-people",
-          icons.Team,
-          i18n_text.People,
-          config.on_navigate_people,
-        ),
-        view_work_nav_link(
-          config,
-          Milestones,
-          "nav-milestones",
-          icons.List,
-          i18n_text.Milestones,
-          config.on_navigate_milestones,
-        ),
-      ]),
+      ),
     ],
   )
+}
+
+fn view_depth_nav_links(config: LeftPanelConfig(msg)) -> List(Element(msg)) {
+  list.map(config.depth_names, fn(depth_name) {
+    let scope_view.DepthName(depth: depth, plural_name: plural, ..) = depth_name
+    view_nav_item_with_label(
+      is_route_active(config.current_route, Some(Cards), None, None),
+      "nav-depth-" <> int.to_string(depth),
+      icons.Cards,
+      plural,
+      config.selected_project_id == None,
+      config.on_navigate_cards,
+      None,
+    )
+  })
 }
 
 /// Renders a work section navigation link (Pool/Kanban/Capabilities/People/Milestones)

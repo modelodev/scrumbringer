@@ -21,6 +21,7 @@ pub fn selected_project_returns_selected_project_test() {
       my_role: Manager,
       created_at: "2026-01-01",
       members_count: 1,
+      card_depth_names: [],
     )
   let model =
     client_state.default_model()
@@ -43,6 +44,7 @@ pub fn ensure_selected_project_picks_first_when_missing_test() {
       my_role: Manager,
       created_at: "2026-01-01",
       members_count: 1,
+      card_depth_names: [],
     )
   let assert opt.Some(10) =
     state_selectors.ensure_selected_project(opt.Some(99), [project])

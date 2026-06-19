@@ -34,6 +34,7 @@ fn sample_project() {
     my_role: Manager,
     created_at: "2026-01-01",
     members_count: 2,
+    card_depth_names: [],
   )
 }
 
