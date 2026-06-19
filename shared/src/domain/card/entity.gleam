@@ -4,6 +4,7 @@ import domain/card/id as card_id
 import domain/card/state
 import domain/card/structure
 import domain/project/id as project_id
+import domain/project/permissions
 import domain/task/id as task_id
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -37,6 +38,7 @@ pub type CardMoveError {
   DestinationAtWrongDepth
   MoveWouldChangeDepth
   MoveWouldCreateCycle
+  PermissionProjectMismatch
   CardNotFound
   DestinationNotFound
 }
@@ -85,13 +87,19 @@ pub fn add_card_child(
 
 pub fn move_card_to_parent(
   card: Card,
+  actor: permissions.Authorized(permissions.ManageStructure),
   destination_parent: Option(card_id.CardId),
   tree: CardTree,
 ) -> Result(Card, CardMoveError) {
-  case is_closed(card), destination_parent {
-    True, _ -> Error(CannotMoveClosedCard)
-    False, None -> Ok(Card(..card, parent: None))
-    False, Some(destination_id) -> {
+  case
+    card.project_id == permissions.project_id(actor),
+    is_closed(card),
+    destination_parent
+  {
+    False, _, _ -> Error(PermissionProjectMismatch)
+    True, True, _ -> Error(CannotMoveClosedCard)
+    True, False, None -> Ok(Card(..card, parent: None))
+    True, False, Some(destination_id) -> {
       case find_card(tree, destination_id) {
         Error(_) -> Error(DestinationNotFound)
         Ok(destination) ->
