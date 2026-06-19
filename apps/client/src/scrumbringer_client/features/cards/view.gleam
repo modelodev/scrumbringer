@@ -45,8 +45,12 @@ pub type Config(msg) {
     detail_tasks: List(Task),
     current_user_id: Option(Int),
     can_manage_notes: Bool,
+    can_manage_structure: Bool,
+    can_execute_work: Bool,
     on_card_opened: fn(Int) -> msg,
     on_create_task_in_card: fn(Int) -> msg,
+    on_create_card_in_card: fn(Int) -> msg,
+    on_delete_card: fn(Int) -> msg,
     on_detail_closed: msg,
   )
 }
@@ -89,11 +93,16 @@ fn view_cards_content(config: Config(msg)) -> Element(msg) {
 pub fn view_card_detail_modal(config: Config(msg)) -> Element(msg) {
   detail_modal_entry.view(detail_modal_entry.Config(
     card: config.detail_card,
+    cards: config.cards,
     tasks: config.detail_tasks,
     locale: config.locale,
     current_user_id: config.current_user_id,
     can_manage_notes: config.can_manage_notes,
+    can_manage_structure: config.can_manage_structure,
+    can_execute_work: config.can_execute_work,
     on_create_task: decode_create_task_event(config),
+    on_create_card: decode_create_card_event(config),
+    on_delete_card: decode_delete_card_event(config),
     on_close: decode_close_detail_event(config),
   ))
 }
@@ -104,6 +113,24 @@ fn decode_create_task_event(config: Config(msg)) -> decode.Decoder(msg) {
   event_decoders.custom_detail(
     decode.field("card_id", decode.int, decode.success),
     fn(card_id) { decode.success(config.on_create_task_in_card(card_id)) },
+  )
+}
+
+/// Decoder for create-card-requested event.
+/// Opens the main card creation dialog with the current card as parent.
+fn decode_create_card_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) { decode.success(config.on_create_card_in_card(card_id)) },
+  )
+}
+
+/// Decoder for delete-card-requested event.
+/// Opens the existing card deletion confirmation.
+fn decode_delete_card_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) { decode.success(config.on_delete_card(card_id)) },
   )
 }
 

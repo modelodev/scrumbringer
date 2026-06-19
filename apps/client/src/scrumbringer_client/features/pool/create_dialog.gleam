@@ -9,7 +9,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, form, input, option, select, text}
 import lustre/event
 
-import domain/card.{type Card}
+import domain/card.{type Card, Cerrada, EnCurso, Pendiente}
 import domain/milestone.{type MilestoneProgress}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_type.{type TaskType}
@@ -79,6 +79,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             opt.Some(_) -> element.none()
             opt.None -> view_card_selector(config)
           },
+          view_creation_context_hint(config),
         ],
       ),
     ],
@@ -94,6 +95,43 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       ),
     ],
   )
+}
+
+fn view_creation_context_hint(config: Config(msg)) -> Element(msg) {
+  div(
+    [
+      attribute.class("task-create-context-hint"),
+      attribute.attribute("data-testid", "task-create-context-hint"),
+    ],
+    [text(creation_context_hint(config))],
+  )
+}
+
+fn creation_context_hint(config: Config(msg)) -> String {
+  case config.card_id {
+    opt.None ->
+      "Root Pool task. Requires manage flow; it will be available in the Pool and will not be auto-claimed."
+    opt.Some(card_id) ->
+      case selected_card(config.cards, card_id) {
+        opt.Some(card) -> card_context_hint(card)
+        opt.None -> "This task will not be auto-claimed."
+      }
+  }
+}
+
+fn selected_card(cards: List(Card), card_id: Int) -> opt.Option(Card) {
+  list.find(cards, fn(card) { card.id == card_id })
+  |> opt.from_result
+}
+
+fn card_context_hint(card: Card) -> String {
+  case card.state {
+    Pendiente ->
+      "This task will not be auto-claimed. It will stay prepared until this card is activated."
+    EnCurso ->
+      "This task will enter the Pool when created and be available for someone with the matching capability. It will not be auto-claimed."
+    Cerrada -> "Closed cards cannot receive new tasks."
+  }
 }
 
 fn view_title_field(config: Config(msg)) -> Element(msg) {

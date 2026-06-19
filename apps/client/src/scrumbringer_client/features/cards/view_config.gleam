@@ -23,6 +23,8 @@ pub fn from_state(
   selected_project: option.Option(Project),
   on_card_opened: fn(Int) -> msg,
   on_create_task_in_card: fn(Int) -> msg,
+  on_create_card_in_card: fn(Int) -> msg,
+  on_delete_card: fn(Int) -> msg,
   on_detail_closed: msg,
 ) -> view.Config(msg) {
   view.Config(
@@ -33,8 +35,12 @@ pub fn from_state(
     detail_tasks: selected_detail_card_tasks(pool),
     current_user_id: current_user |> option.map(fn(user) { user.id }),
     can_manage_notes: can_manage_notes(current_user, selected_project),
+    can_manage_structure: can_manage_notes(current_user, selected_project),
+    can_execute_work: can_execute_work(current_user, selected_project),
     on_card_opened: on_card_opened,
     on_create_task_in_card: on_create_task_in_card,
+    on_create_card_in_card: on_create_card_in_card,
+    on_delete_card: on_delete_card,
     on_detail_closed: on_detail_closed,
   )
 }
@@ -57,6 +63,16 @@ fn is_project_manager(selected_project: option.Option(Project)) -> Bool {
   case selected_project {
     option.Some(project) -> permissions.is_project_manager(project)
     option.None -> False
+  }
+}
+
+fn can_execute_work(
+  current_user: option.Option(User),
+  selected_project: option.Option(Project),
+) -> Bool {
+  case current_user, selected_project {
+    option.Some(_), option.Some(_) -> True
+    _, _ -> False
   }
 }
 

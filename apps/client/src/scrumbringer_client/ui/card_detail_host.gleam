@@ -17,11 +17,16 @@ import scrumbringer_client/ui/attribute_value
 pub type Config(msg) {
   Config(
     card: Card,
+    cards: List(Card),
     tasks: List(task_domain.Task),
     locale: locale.Locale,
     current_user_id: opt.Option(Int),
     can_manage_notes: Bool,
+    can_manage_structure: Bool,
+    can_execute_work: Bool,
     on_create_task: decode.Decoder(msg),
+    on_create_card: decode.Decoder(msg),
+    on_delete_card: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
   )
 }
@@ -29,11 +34,16 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> element.Element(msg) {
   let Config(
     card: card,
+    cards: cards,
     tasks: tasks,
     locale: loc,
     current_user_id: current_user_id,
     can_manage_notes: can_manage_notes,
+    can_manage_structure: can_manage_structure,
+    can_execute_work: can_execute_work,
     on_create_task: on_create_task,
+    on_create_card: on_create_card,
+    on_delete_card: on_delete_card,
     on_close: on_close,
   ) = config
 
@@ -45,9 +55,20 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
       "can-manage-notes",
       attribute_value.boolean(can_manage_notes),
     ),
+    attribute.attribute(
+      "can-manage-structure",
+      attribute_value.boolean(can_manage_structure),
+    ),
+    attribute.attribute(
+      "can-execute-work",
+      attribute_value.boolean(can_execute_work),
+    ),
     attribute.property("card", card_to_json(card)),
+    attribute.property("cards", cards_to_json(cards)),
     attribute.property("tasks", tasks_to_json(tasks)),
     event.on("create-task-requested", on_create_task),
+    event.on("create-card-requested", on_create_card),
+    event.on("delete-card-requested", on_delete_card),
     event.on("close-requested", on_close),
   ]
   let attributes = case current_user_id {
@@ -65,6 +86,14 @@ fn card_to_json(card: Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
+    #("milestone_id", case card.milestone_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("parent_card_id", case card.milestone_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
     #("color", case card.color {
@@ -78,6 +107,10 @@ fn card_to_json(card: Card) -> json.Json {
     #("created_at", json.string(card.created_at)),
     #("has_new_notes", json.bool(card.has_new_notes)),
   ])
+}
+
+fn cards_to_json(cards: List(Card)) -> json.Json {
+  json.array(cards, card_to_json)
 }
 
 fn tasks_to_json(tasks: List(task_domain.Task)) -> json.Json {

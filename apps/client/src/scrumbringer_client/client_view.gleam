@@ -1624,6 +1624,16 @@ fn member_cards_config(
         card_id,
       ))
     },
+    fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(
+        card_id,
+      ))
+    },
+    fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+      )
+    },
     client_state.pool_msg(pool_messages.CloseCardDetail),
   )
 }
