@@ -5,6 +5,7 @@ import domain/card/id as card_id
 import domain/card/state as card_state
 import domain/card/structure as card_structure
 import domain/project/id as project_id
+import domain/project/permissions
 import domain/task/id as task_id
 import domain/user/id as user_id
 
@@ -75,8 +76,18 @@ pub fn moving_card_under_descendant_is_rejected_test() {
 
   let tree = card_entity.CardTree([root, child])
 
+  let auth =
+    permissions.authorize_manage_structure_unchecked(
+      user_id.new(7),
+      project_id.new(1),
+    )
   let assert Error(card_entity.MoveWouldCreateCycle) =
-    card_entity.move_card_to_parent(root, option.Some(card_id.new(2)), tree)
+    card_entity.move_card_to_parent(
+      root,
+      auth,
+      option.Some(card_id.new(2)),
+      tree,
+    )
 }
 
 fn draft_card(
