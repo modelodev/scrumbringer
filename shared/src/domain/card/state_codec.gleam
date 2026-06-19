@@ -6,8 +6,8 @@ import gleam/json.{type Json}
 import domain/card/id as card_id
 import domain/card/state.{
   type ActivationSource, type CardClosedReason, type CardExecutionState,
-  ActivatedByAncestor, Active, Closed, DirectActivation, Draft, ManuallyClosed,
-  Rollup,
+  type ClosedBy, ActivatedByAncestor, Active, Closed, ClosedBySystem,
+  ClosedByUser, DirectActivation, Draft, ManuallyClosed, Rollup,
 }
 import domain/user/id as user_id
 
@@ -28,11 +28,11 @@ pub fn decoder() -> decode.Decoder(CardExecutionState) {
     "closed" -> {
       use reason <- decode.field("reason", closed_reason_decoder())
       use closed_at <- decode.field("closed_at", decode.string)
-      use closed_by <- decode.field("closed_by", decode.int)
+      use closed_by <- decode.field("closed_by", closed_by_decoder())
       decode.success(Closed(
         reason: reason,
         closed_at: closed_at,
-        closed_by: user_id.new(closed_by),
+        closed_by: closed_by,
       ))
     }
     _ -> decode.failure(Draft, "CardExecutionState")
@@ -57,7 +57,7 @@ pub fn to_json(state: CardExecutionState) -> Json {
         #("type", json.string("closed")),
         #("reason", closed_reason_to_json(reason)),
         #("closed_at", json.string(closed_at)),
-        #("closed_by", json.int(user_id.to_int(closed_by))),
+        #("closed_by", closed_by_to_json(closed_by)),
       ])
   }
 }
@@ -101,5 +101,31 @@ fn closed_reason_to_json(reason: CardClosedReason) -> Json {
   case reason {
     Rollup -> json.string("rollup")
     ManuallyClosed -> json.string("manually_closed")
+  }
+}
+
+fn closed_by_decoder() -> decode.Decoder(ClosedBy) {
+  use kind <- decode.field("type", decode.string)
+  case kind {
+    "user" -> {
+      use id <- decode.field("user_id", decode.int)
+      decode.success(ClosedByUser(user_id.new(id)))
+    }
+    "system" -> decode.success(ClosedBySystem)
+    _ -> decode.failure(ClosedBySystem, "ClosedBy")
+  }
+}
+
+fn closed_by_to_json(closed_by: ClosedBy) -> Json {
+  case closed_by {
+    ClosedByUser(id) ->
+      json.object([
+        #("type", json.string("user")),
+        #("user_id", json.int(user_id.to_int(id))),
+      ])
+    ClosedBySystem ->
+      json.object([
+        #("type", json.string("system")),
+      ])
   }
 }

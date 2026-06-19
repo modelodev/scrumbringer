@@ -106,7 +106,7 @@ fn closed_card(
     execution_state: card_state.Closed(
       reason: card_state.ManuallyClosed,
       closed_at: "2026-06-19T10:00:00Z",
-      closed_by: user_id.new(7),
+      closed_by: card_state.ClosedByUser(user_id.new(7)),
     ),
   )
 }
