@@ -1,3 +1,8 @@
+.agents/
+.codex/
+.github/
+.opencode/
+
 .awo/runs
 
 AGENTS.md
