@@ -1,16 +1,44 @@
 # HT-12 UI Validation
 
-- Desktop browser pass: opened `http://127.0.0.1:19191/` at `1440x900`.
-  The authenticated manager shell rendered the Pool, task cards, project
-  selector, admin navigation, and work navigation without a blank page or
-  runtime error.
-- Legacy navigation label check: the running dev database initially contained
-  old depth-2 delivery labels. Those local validation rows were updated to
-  `Initiative/Initiatives`, and the desktop snapshot then rendered `Cards`,
-  `Initiatives`, and `Task groups` with no removed label.
-- Mobile browser pass: opened the same app at `390x844`. The compact shell
-  rendered the Pool content, top navigation buttons, bottom activity control,
-  and mobile navigation drawer. The drawer also showed `Initiatives` instead
-  of the removed legacy label.
-- API-backed task cards remained visible after the cleanup, including claim
-  actions and task detail open controls.
+Validated on `new_hierarchy` after commit `6ca616c` using
+`scripts/dev-hot.sh` with:
+
+- App: `http://127.0.0.1:19191`
+- API: `http://127.0.0.1:18191/api/v1`
+- Client dev server: `http://127.0.0.1:1234`
+
+Browser checks used `agent-browser` against the running dev stack.
+
+## Desktop
+
+- Viewport: `1440x1000`
+- Flow: opened the app, expanded navigation, switched into the work-card
+  hierarchy view, and captured `/tmp/scrumbringer-ht12-desktop.png`.
+- Result: authenticated shell rendered without blank states or runtime errors.
+  Navigation showed Pool, Tarjetas, Cards, Initiatives, Task groups,
+  Capacidades, Personas, and admin sections. Kanban content rendered with card
+  columns, due-date markers, card actions, task rows, and claim actions.
+
+## Tablet
+
+- Viewport: `900x1100`
+- Flow: kept the hierarchy/Kanban view active and captured
+  `/tmp/scrumbringer-ht12-tablet.png`.
+- Result: navigation, filters, Kanban heading, Draft/En curso/Closed columns,
+  card actions, task rows, and claim actions remained visible and usable.
+
+## Mobile
+
+- Viewport: `390x844`
+- Flow: captured `/tmp/scrumbringer-ht12-mobile.png`, opened an overdue task
+  detail, and captured `/tmp/scrumbringer-ht12-mobile-task.png`.
+- Result: filters, cards, due date, and task row were readable. The task detail
+  modal opened with Detalles/Notas/Métricas tabs, readable summary content, and
+  fixed bottom actions for Cerrar and Reclamar tarea.
+
+## Legacy Copy Check
+
+The final browser snapshots and accessibility snapshots did not expose removed
+hierarchy terminology. Repository scans also returned no matches for removed
+hierarchy, legacy delivery/state, or old task-event terms outside the historical
+goal spec.
