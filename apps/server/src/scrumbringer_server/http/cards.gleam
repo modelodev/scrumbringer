@@ -36,9 +36,9 @@ import scrumbringer_server/http/cards/payloads as card_payloads
 import scrumbringer_server/http/cards/presenters as card_presenters
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/query
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/metrics_db
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/metrics_db
 import wisp
 
 fn card_not_found_response(include_metrics: Bool) -> wisp.Response {
@@ -58,16 +58,16 @@ fn forbidden_project_member_response(include_metrics: Bool) -> wisp.Response {
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
-    cards_db.InvalidMilestone ->
+    cards_db.InvalidCardTree ->
       api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
-    cards_db.InvalidMovePoolToMilestone ->
+    cards_db.InvalidMovePoolToCardTree ->
       api.error(
         422,
         "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Cannot move pool content into a milestone",
+        "Cannot move pool content into a card_tree",
       )
-    cards_db.InvalidMilestoneState(_) ->
-      api.error(500, "INTERNAL", "Invalid milestone state in database")
+    cards_db.InvalidCardTreeState(_) ->
+      api.error(500, "INTERNAL", "Invalid card_tree state in database")
     cards_db.InvalidColor(_) -> api.error(500, "INTERNAL", "Invalid card color")
     cards_db.CardHasClaimedDescendant(_) ->
       api.error(

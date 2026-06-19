@@ -20,7 +20,7 @@
 
 import domain/org_role
 import gleam/int
-import scrumbringer_server/services/store_state.{
+import scrumbringer_server/use_case/store_state.{
   type StoredUser, HumanIdentity, StoredUser,
 }
 

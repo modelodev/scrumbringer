@@ -44,11 +44,11 @@ pub fn parse_project_only_test() {
   state |> url_state.view |> assert_equal(view_mode.Pool)
 }
 
-pub fn parse_view_mode_milestones_test() {
-  let assert Ok(uri) = uri.parse("/app?view=milestones")
-  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+pub fn parse_view_mode_legacy_tracking_redirects_to_pool_test() {
+  let assert Ok(uri) = uri.parse("/app?view=card_trees")
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
-  state |> url_state.view |> assert_equal(view_mode.Milestones)
+  state |> url_state.view |> assert_equal(view_mode.Pool)
 }
 
 pub fn parse_view_mode_cards_test() {
@@ -75,12 +75,12 @@ pub fn parse_view_mode_people_test() {
 pub fn parse_full_url_test() {
   let assert Ok(uri) =
     uri.parse(
-      "/app?project=8&view=milestones&scope=mine&type=2&cap=3&search=bug&card=15",
+      "/app?project=8&view=cards&scope=mine&type=2&cap=3&search=bug&card=15",
     )
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> assert_equal(Some(8))
-  state |> url_state.view |> assert_equal(view_mode.Milestones)
+  state |> url_state.view |> assert_equal(view_mode.Cards)
   state
   |> url_state.capability_scope
   |> assert_equal(capability_scope.MyCapabilities)
@@ -116,7 +116,7 @@ pub fn to_query_string_never_emits_view_list_test() {
   let query =
     url_state.empty()
     |> url_state.with_project(8)
-    |> url_state.with_view(view_mode.Milestones)
+    |> url_state.with_view(view_mode.Cards)
     |> url_state.to_query_string
 
   query |> assert_not_equal("project=8&view=list")
@@ -325,7 +325,7 @@ pub fn to_query_string_full_test() {
   let query =
     url_state.empty()
     |> url_state.with_project(8)
-    |> url_state.with_view(view_mode.Milestones)
+    |> url_state.with_view(view_mode.Cards)
     |> url_state.with_type_filter(Some(2))
     |> url_state.with_capability_filter(Some(3))
     |> url_state.with_search(Some("bug"))
@@ -333,7 +333,7 @@ pub fn to_query_string_full_test() {
     |> url_state.to_query_string
 
   query
-  |> assert_equal("project=8&view=milestones&type=2&cap=3&search=bug&card=15")
+  |> assert_equal("project=8&view=cards&type=2&cap=3&search=bug&card=15")
 }
 
 pub fn to_query_string_people_test() {

@@ -4,7 +4,7 @@
 //// de la aplicación. Usado para URL routing y UI state.
 ////
 //// Responsibilities:
-//// - Definir el ADT ViewMode (Pool | Cards | Capabilities | People | Milestones)
+//// - Definir el ADT ViewMode (Pool | Cards | Capabilities | People)
 //// - Conversión desde/hacia strings para URLs
 //// - Determinar capacidades por modo (ej: drag & drop)
 ////
@@ -16,14 +16,12 @@
 pub type ViewMode {
   /// Canvas de tareas disponibles (drag & drop)
   Pool
-  /// Kanban de fichas (Pendiente -> En Curso -> Cerrada)
+  /// Kanban de fichas (Draft -> En Curso -> Closed)
   Cards
   /// Tareas activas agrupadas por capacidad
   Capabilities
   /// Disponibilidad por personas del proyecto
   People
-  /// Planificacion por hitos
-  Milestones
 }
 
 pub type ViewModeParseError {
@@ -37,7 +35,6 @@ pub fn parse(s: String) -> Result(ViewMode, ViewModeParseError) {
     "cards" -> Ok(Cards)
     "capabilities" -> Ok(Capabilities)
     "people" -> Ok(People)
-    "milestones" -> Ok(Milestones)
     other -> Error(UnknownViewMode(other))
   }
 }
@@ -49,7 +46,6 @@ pub fn to_string(mode: ViewMode) -> String {
     Cards -> "cards"
     Capabilities -> "capabilities"
     People -> "people"
-    Milestones -> "milestones"
   }
 }
 
@@ -60,7 +56,6 @@ pub fn supports_drag_drop(mode: ViewMode) -> Bool {
     Cards -> True
     Capabilities -> False
     People -> False
-    Milestones -> False
   }
 }
 
@@ -71,6 +66,5 @@ pub fn label_key(mode: ViewMode) -> String {
     Cards -> "ViewModeCards"
     Capabilities -> "ViewModeCapabilities"
     People -> "ViewModePeople"
-    Milestones -> "ViewModeMilestones"
   }
 }

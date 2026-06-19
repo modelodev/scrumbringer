@@ -6,7 +6,7 @@ with event_counts as (
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
     coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
-  from task_events e
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.actor_user_id

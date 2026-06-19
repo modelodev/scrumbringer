@@ -7,7 +7,7 @@ import domain/task_state
 
 pub fn can_edit(current_user_id: opt.Option(Int), current_task: Task) -> Bool {
   case current_task.state {
-    task_state.Completed(_) -> False
+    task_state.Done(_) -> False
     _ -> can_edit_open_task(current_user_id, current_task)
   }
 }

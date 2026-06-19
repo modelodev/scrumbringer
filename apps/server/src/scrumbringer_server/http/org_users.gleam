@@ -11,13 +11,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Persisting user data (delegated to services/org_users_db)
+//// - Persisting user data (delegated to use_case/org_users_db)
 //// - Rendering UI (handled by client)
 ////
 //// ## Relations
 ////
-//// - Uses `services/org_users_db` for persistence
-//// - Uses `services/projects_db` for access checks
+//// - Uses `use_case/org_users_db` for repository
+//// - Uses `use_case/projects_db` for access checks
 //// - Uses `http/auth` and `http/csrf` for authentication and CSRF validation
 
 import domain/org_role
@@ -34,10 +34,10 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/org_users/payloads as org_user_payloads
 import scrumbringer_server/http/org_users/presenters as org_user_presenters
 import scrumbringer_server/http/query as query_params
-import scrumbringer_server/services/org_users_db
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/sql
+import scrumbringer_server/use_case/org_users_db
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 /// Handle /api/org/users requests.

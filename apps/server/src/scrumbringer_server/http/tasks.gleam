@@ -17,9 +17,9 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Business logic (see `services/workflows/handlers.gleam`)
-//// - Input validation (see `services/workflows/validation.gleam`)
-//// - Database operations (see `persistence/tasks/queries.gleam`)
+//// - Business logic (see `use_case/workflows/handlers.gleam`)
+//// - Input validation (see `use_case/workflows/validation.gleam`)
+//// - Database operations (see `repository/tasks/queries.gleam`)
 ////
 //// ## Submodules
 ////

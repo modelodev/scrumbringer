@@ -116,7 +116,7 @@ fn print_summary(stats: seed_builder.SeedResult) {
   io.println("Tasks: " <> int.to_string(stats.tasks))
   io.println("Cards: " <> int.to_string(stats.cards))
   io.println("Rule executions: " <> int.to_string(stats.rule_executions))
-  io.println("Task events: " <> int.to_string(stats.task_events))
+  io.println("Task events: " <> int.to_string(stats.audit_events))
   io.println("")
   io.println("=== Test Users (password: passwordpassword) ===")
   io.println("  admin@example.com    - Org Admin")

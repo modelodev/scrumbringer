@@ -5,7 +5,7 @@
 
 import gleam/option
 
-import domain/card.{type Card, Card, EnCurso, Pendiente}
+import domain/card.{type Card, Active, Card, Draft}
 import domain/remote.{Loaded, NotAsked}
 import scrumbringer_client/components/card_detail_modal.{
   type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
@@ -45,11 +45,11 @@ fn make_card(id: Int) -> Card {
   Card(
     id: id,
     project_id: 1,
-    milestone_id: option.None,
+    parent_card_id: option.None,
     title: "Test Card",
     description: "A test card",
     color: option.Some(card.Blue),
-    state: Pendiente,
+    state: Draft,
     task_count: 3,
     completed_count: 1,
     created_by: 1,
@@ -95,7 +95,7 @@ pub fn model_with_card_retains_data_test() {
   let assert option.Some(c) = model.card
   let assert 42 = c.id
   let assert "Test Card" = c.title
-  let assert Pendiente = c.state
+  let assert Draft = c.state
 }
 
 pub fn model_with_loaded_tasks_has_correct_remote_state_test() {
@@ -149,13 +149,13 @@ pub fn remote_loaded_carries_data_test() {
 // =============================================================================
 
 pub fn card_state_pendiente_test() {
-  let card = Card(..make_card(1), state: Pendiente)
-  let assert Pendiente = card.state
+  let card = Card(..make_card(1), state: Draft)
+  let assert Draft = card.state
 }
 
 pub fn card_state_en_curso_test() {
-  let card = Card(..make_card(1), state: EnCurso)
-  let assert EnCurso = card.state
+  let card = Card(..make_card(1), state: Active)
+  let assert Active = card.state
 }
 
 pub fn card_color_option_some_test() {

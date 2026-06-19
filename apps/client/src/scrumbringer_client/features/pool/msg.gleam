@@ -8,7 +8,6 @@ import domain/metrics.{
   type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
   type TaskModalMetrics,
 }
-import domain/milestone.{type Milestone, type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
@@ -49,7 +48,7 @@ pub type Msg {
   MemberTaskFocused(Int)
   MemberTaskBlurred
   MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
-  MemberListHideCompletedToggled
+  MemberListHideDoneToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)
@@ -80,7 +79,7 @@ pub type Msg {
   MemberCompleteClicked(Int, Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))
-  MemberTaskCompleted(ApiResult(Task))
+  MemberTaskDone(ApiResult(Task))
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
   MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
@@ -95,38 +94,6 @@ pub type Msg {
   MemberSaveCapabilitiesClicked
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
   MemberProjectCardsFetched(Int, ApiResult(List(Card)))
-  MemberProjectMilestonesFetched(Int, ApiResult(List(MilestoneProgress)))
-  MemberMilestonesShowCompletedToggled
-  MemberMilestonesShowEmptyToggled
-  MemberMilestoneSearchChanged(String)
-  MemberMilestoneSummaryToggled
-  MemberMilestoneCardToggled(Int)
-  MemberMilestoneDetailsClicked(Int)
-  MemberMilestoneCreateTaskClicked(Int)
-  MemberMilestoneCreateCardClicked(Int)
-  MemberMilestoneCardDragStarted(Int, Int)
-  MemberMilestoneTaskDragStarted(Int, Int)
-  MemberMilestoneDroppedOn(Int)
-  MemberMilestoneDragEnded
-  MemberMilestoneCardMoveClicked(Int, Int, Int)
-  MemberMilestoneTaskMoveClicked(Int, Int, Int)
-  MemberMilestoneCardMoved(ApiResult(Card))
-  MemberMilestoneTaskMoved(ApiResult(Task))
-  MemberMilestoneCreateClicked
-  MemberMilestoneActivatePromptClicked(Int)
-  MemberMilestoneActivateClicked(Int)
-  MemberMilestoneActivated(Int, ApiResult(Nil))
-  MemberMilestoneEditClicked(Int)
-  MemberMilestoneDeleteClicked(Int)
-  MemberMilestoneDialogClosed
-  MemberMilestoneNameChanged(String)
-  MemberMilestoneDescriptionChanged(String)
-  MemberMilestoneCreateSubmitted
-  MemberMilestoneCreated(ApiResult(Milestone))
-  MemberMilestoneEditSubmitted(Int)
-  MemberMilestoneDeleteSubmitted(Int)
-  MemberMilestoneUpdated(ApiResult(Milestone))
-  MemberMilestoneDeleted(Int, ApiResult(Nil))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed
@@ -144,7 +111,6 @@ pub type Msg {
   MemberTaskDetailEditPriorityChanged(String)
   MemberTaskDetailEditTypeIdChanged(String)
   MemberTaskDetailEditCardIdChanged(String)
-  MemberTaskDetailEditMilestoneIdChanged(String)
   MemberTaskDetailEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
   MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
@@ -198,7 +164,7 @@ pub type Msg {
   CardCrudUpdated(Card)
   CardCrudDeleted(Int)
   CardsShowEmptyToggled
-  CardsShowCompletedToggled
+  CardsShowDoneToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
   OpenCardDetail(Int)

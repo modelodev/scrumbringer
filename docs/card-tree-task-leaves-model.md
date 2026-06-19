@@ -74,9 +74,9 @@ No entidades antiguas representando conceptos nuevos.
 La migracion puede preservar datos, pero no debe preservar modelos obsoletos.
 Ejemplos:
 
-- `milestones` desaparece como entidad. Un hito es una `Card` raiz cuyo nombre
+- `card trees` desaparece como entidad. Un hito es una `Card` raiz cuyo nombre
   visible viene de la configuracion del proyecto para profundidad 1.
-- `milestone_id` desaparece como relacion de dominio. La jerarquia se expresa
+- `parent_card_id` desaparece como relacion de dominio. La jerarquia se expresa
   con `parent_card_id` en cards y `parent_card_id`/`card_id` equivalente para
   ubicar tasks bajo cards.
 - Las antiguas cards planas pasan a ser nodos del arbol de cards; no queda una
@@ -1074,7 +1074,7 @@ usar `require_*` y recibir `Authorized(permission)`.
 ### D17: Migracion Sin Legacy
 
 La migracion a `Card tree + Task leaves` debe hacerse como corte de modelo. No
-habra modo mixto donde `milestones`, `CardState` antiguo o `TaskStatus.Completed`
+habra modo mixto donde `card trees`, `CardState` antiguo o `TaskStatus.Completed`
 convivan como conceptos vivos con el modelo nuevo.
 
 Principios de ejecucion:
@@ -1091,37 +1091,37 @@ Inventario actual que debe desaparecer o transformarse:
 
 ```text
 DB
-  milestones
-  cards.milestone_id
-  tasks.milestone_id
-  task_milestone_exclusive
-  idx_*_milestone*
-  unico milestone active por proyecto
+  card trees
+  cards.parent_card_id
+  tasks.parent_card_id
+  task_card tree_exclusive
+  idx_*_card tree*
+  unico card tree active por proyecto
 
 Shared domain
-  domain/milestone*
+  domain/card tree*
   CardState(Pendiente, EnCurso, Cerrada)
   TaskStatus.Completed como estado independiente
-  codecs/payloads que serialicen milestones o estados antiguos
+  codecs/payloads que serialicen card trees o estados antiguos
 
 Server
-  http/milestones*
-  services/milestones_db
-  sql/milestones_*
-  rutas /api/v1/projects/:id/milestones
-  rutas /api/v1/milestones/:id
-  rutas /api/v1/milestones/:id/activate
+  http/card trees*
+  services/card trees_db
+  sql/card trees_*
+  rutas /api/v1/projects/:id/card trees
+  rutas /api/v1/card trees/:id
+  rutas /api/v1/card trees/:id/activate
 
 Client
-  api/milestones
-  features/milestones/*
-  rutas/paneles/copy que llamen milestone a un concepto vivo
-  movimiento basado en milestone destino
+  api/card trees
+  features/card trees/*
+  rutas/paneles/copy que llamen card tree a un concepto vivo
+  movimiento basado en card tree destino
 
 Tests/docs
   tests que validen endpoints antiguos
-  docs que describan milestones como entidad
-  fixtures/seeds que creen milestones en vez de cards raiz
+  docs que describan card trees como entidad
+  fixtures/seeds que creen card trees en vez de cards raiz
 ```
 
 Modelo de datos destino:
@@ -1204,9 +1204,9 @@ Estrategia de migracion de datos:
    - Por tanto, los hitos actuales pasan a ser cards de nivel 1 y las cards
      actuales pasan a ser cards de nivel 2. No se crea un nivel 1 vacio ni un
      contenedor invisible.
-2. Convertir cada milestone existente en una card raiz.
-   - `milestones.name` -> `cards.title`.
-   - `milestones.description` -> `cards.description`.
+2. Convertir cada card tree existente en una card raiz.
+   - `card trees.name` -> `cards.title`.
+   - `card trees.description` -> `cards.description`.
    - `ready` -> `Draft`.
    - `active` -> `Active(activated_at, activated_by desconocido/sistema si no
      existe dato historico)`.
@@ -1214,14 +1214,14 @@ Estrategia de migracion de datos:
      si no, registrar inconsistencia antes de cortar.
 3. Convertir cada card existente en card hija del hito/card raiz que le
    correspondia.
-   - `cards.milestone_id` deja de existir.
+   - `cards.parent_card_id` deja de existir.
    - La relacion pasa a `cards.parent_card_id`.
 4. Reubicar tasks existentes.
    - Tasks con `card_id` quedan bajo esa card.
-   - Tasks con `milestone_id` y sin `card_id` quedan bajo la card raiz si no hay
+   - Tasks con `parent_card_id` y sin `card_id` quedan bajo la card raiz si no hay
      subcards; si hay subcards, se crea una card hija explicita para mantener la
      regla "card contiene solo cards o solo tasks".
-   - Tasks sin `card_id` ni `milestone_id` se migran como `RootPool`.
+   - Tasks sin `card_id` ni `parent_card_id` se migran como `RootPool`.
 5. Mapear estado de task.
    - `available` -> `Available`.
    - `claimed` -> `Claimed(by, claimed_at, mode)`.
@@ -1257,7 +1257,7 @@ Orden tecnico recomendado:
    legacy.
 8. Reescribir queries de cards/tasks sobre `parent_card_id`, `card_id` y
    `execution_state`.
-9. Sustituir endpoints de milestones por endpoints de cards:
+9. Sustituir endpoints de card trees por endpoints de cards:
    - activar card,
    - cerrar card,
    - mover card,
@@ -1265,7 +1265,7 @@ Orden tecnico recomendado:
    - obtener detalle con rollups.
 10. Escribir tests de cliente/componentes para Pool, scopes, perfiles, acciones y
    estados cerrados.
-11. Reescribir cliente quitando `features/milestones/*` y creando vistas por
+11. Reescribir cliente quitando `features/card trees/*` y creando vistas por
    perfiles/scope.
 12. Actualizar seeds y fixtures al modelo nuevo.
 13. Sustituir tests legacy por tests del modelo nuevo.
@@ -1286,11 +1286,11 @@ Estrategia red/green/refactor:
 - Los tests de mappers cubren `Row` SQL -> dominio y dominio -> `View` o
   `Response` API cuando corresponda.
 - Los tests de migracion usan fixtures representativas:
-  - milestone con cards y tasks,
-  - task directa en milestone sin card,
-  - task sin milestone ni card,
-  - milestone activa,
-  - milestone completada,
+  - card tree con cards y tasks,
+  - task directa en card tree sin card,
+  - task sin card tree ni card,
+  - card tree activa,
+  - card tree completada,
   - task available,
   - task claimed,
   - task completed.
@@ -1303,7 +1303,7 @@ Estrategia red/green/refactor:
 Checks de limpieza:
 
 ```text
-rg "milestone|Milestone|milestones|milestone_id" shared/src apps/server/src apps/client/src
+rg "card tree|Card Tree|card trees|parent_card_id" shared/src apps/server/src apps/client/src
 rg "CardState|Pendiente|EnCurso|Cerrada" shared/src apps/server/src apps/client/src
 rg "TaskStatus|Completed" shared/src apps/server/src apps/client/src
 ```
@@ -1998,7 +1998,7 @@ Reglas:
 ## Implicaciones Para Metricas Y Reporting
 
 Al sustituir `task_events` por `audit_events`, las metricas deben dejar de
-depender de eventos legacy y de conceptos `milestone`. El reporting se
+depender de eventos legacy y de conceptos `card tree`. El reporting se
 reconstruye sobre:
 
 - estado actual de `tasks` y `cards`;
@@ -2036,9 +2036,9 @@ Metricas nuevas o renombradas:
 
 Metricas que desaparecen o se reemplazan:
 
-- `MilestoneModalMetrics` desaparece. Un hito es una card raiz; usa
+- `Card TreeModalMetrics` desaparece. Un hito es una card raiz; usa
   `CardMetrics`/`CardRollupMetrics`.
-- `most_activated` basado en milestone se reemplaza por activaciones de cards o
+- `most_activated` basado en card tree se reemplaza por activaciones de cards o
   ramas.
 - Cualquier metrica basada en `task_events` se reescribe sobre `audit_events`.
 - `TaskStatus.Completed` no se usa en metricas; completitud significa
@@ -2240,11 +2240,11 @@ HT-05
   - errores de autorizacion no filtran datos innecesarios.
 
 HT-06
-  - milestone ready/active/completed;
-  - card actual bajo milestone;
+  - card tree ready/active/completed;
+  - card actual bajo card tree;
   - task bajo card;
-  - task directa bajo milestone;
-  - task sin card ni milestone -> RootPool;
+  - task directa bajo card tree;
+  - task sin card ni card tree -> RootPool;
   - mezcla cards+tasks crea agrupadora;
   - migracion idempotente o protegida contra doble ejecucion;
   - rollback o informe claro si hay inconsistencia no migrable.
@@ -2464,15 +2464,15 @@ como modelo vivo.
 
 Tests primero:
 
-- `migration_maps_milestone_to_root_card_test`
+- `migration_maps_card tree_to_root_card_test`
 - `migration_maps_existing_card_to_level_2_card_test`
-- `migration_maps_task_without_card_or_milestone_to_root_pool_test`
-- `migration_maps_task_under_milestone_without_card_test`
+- `migration_maps_task_without_card_or_card tree_to_root_pool_test`
+- `migration_maps_task_under_card tree_without_card_test`
 - `migration_creates_grouping_card_when_node_would_mix_children_test`
 - `migration_maps_completed_task_to_closed_done_test`
-- `migration_removes_milestone_columns_from_final_schema_test`
-- `migration_maps_ready_active_and_completed_milestone_states_test`
-- `migration_reports_inconsistent_completed_milestone_test`
+- `migration_removes_card tree_columns_from_final_schema_test`
+- `migration_maps_ready_active_and_completed_card tree_states_test`
+- `migration_reports_inconsistent_completed_card tree_test`
 - `migration_is_protected_against_double_execution_test`
 
 Criterios de aceptacion:
@@ -2482,16 +2482,16 @@ Criterios de aceptacion:
 - Tasks sin card ni hito migran a `RootPool`.
 - Si una card migrada mezclaria cards y tasks, se crea una card agrupadora
   normal, por ejemplo `Trabajo directo`.
-- `milestones`, `cards.milestone_id`, `tasks.milestone_id` y restricciones
+- `card trees`, `cards.parent_card_id`, `tasks.parent_card_id` y restricciones
   asociadas no existen en schema final.
 - La migracion produce informe de agrupadoras creadas y posibles
   inconsistencias.
 
 Dependencias: HT-01, HT-02, HT-04.
 
-### HT-07: Endpoints De Cards Y Eliminacion De Milestones
+### HT-07: Endpoints De Cards Y Eliminacion De Card Trees
 
-Objetivo: sustituir APIs de milestones por APIs de cards, scopes y acciones
+Objetivo: sustituir APIs de card trees por APIs de cards, scopes y acciones
 estructurales.
 
 Tests primero:
@@ -2504,7 +2504,7 @@ Tests primero:
 - `activate_card_endpoint_returns_pool_impact_test`
 - `close_card_endpoint_blocks_claimed_descendant_test`
 - `move_card_endpoint_rejects_cross_level_move_test`
-- `legacy_milestones_routes_return_not_found_test`
+- `legacy_card trees_routes_return_not_found_test`
 - `card_endpoints_reject_invalid_ids_test`
 - `card_endpoints_reject_cross_project_access_test`
 - `card_endpoints_reject_invalid_requests_test`
@@ -2518,8 +2518,8 @@ Criterios de aceptacion:
 - Activar card devuelve impacto antes/como parte de confirmacion.
 - Cerrar card valida tasks claimed descendientes.
 - Mover card solo permite cambio de padre al mismo nivel.
-- Rutas `/milestones` desaparecen.
-- No queda `http/milestones*`, `services/milestones_db` ni `sql/milestones_*`
+- Rutas `/card trees` desaparecen.
+- No queda `http/card trees*`, `services/card trees_db` ni `sql/card trees_*`
   en codigo activo.
 
 Dependencias: HT-03, HT-04, HT-05, HT-06.
@@ -2564,7 +2564,7 @@ Dependencias: HT-01, HT-03, HT-04, HT-05.
 
 ### HT-09: Vistas Por Nivel, Scope Y Sidebar Izquierdo
 
-Objetivo: reemplazar la experiencia de milestones por navegacion basada en
+Objetivo: reemplazar la experiencia de card trees por navegacion basada en
 nombres por profundidad, scopes y profiles derivados del anidamiento.
 
 Tests primero:
@@ -2587,7 +2587,7 @@ Criterios de aceptacion:
 - `DepthScope` muestra todas las cards de esa profundidad.
 - `CardScope` muestra descendencia directa de la card seleccionada.
 - Las cards cerradas se ocultan por defecto y aparecen con `Incluir cerradas`.
-- No queda UI que trate milestone como entidad viva.
+- No queda UI que trate card tree como entidad viva.
 - Validacion `agent-browser`: capturas desktop y mobile de `TrackingProfile`,
   `CoordinationProfile`, `ExecutionProfile`, sidebar izquierdo, `DepthScope`,
   `CardScope` y filtro `Incluir cerradas`, sin overflow ni solapes.
@@ -2680,8 +2680,8 @@ Tests primero:
 - `mutating_use_cases_do_not_emit_audit_event_on_conflict_test`
 - `lustre_mutations_update_model_from_api_response_test`
 - `lustre_update_does_not_reimplement_server_transaction_rules_test`
-- `legacy_milestone_routes_are_absent_test`
-- `schema_final_has_no_milestone_tables_or_columns_test`
+- `legacy_card tree_routes_are_absent_test`
+- `schema_final_has_no_card tree_tables_or_columns_test`
 - `seed_data_uses_card_tree_and_root_pool_tasks_test`
 - `seed_data_covers_card_profiles_due_dates_and_closed_outcomes_test`
 - `ui_validation_covers_main_flows_and_responsive_states_test`
@@ -2692,14 +2692,14 @@ Tests primero:
 - `audit_events_replace_task_events_as_live_model_test`
 - `audit_event_kind_codec_roundtrip_test`
 - `metrics_are_derived_from_audit_events_not_task_events_test`
-- `milestone_metrics_are_removed_or_replaced_by_card_rollup_metrics_test`
+- `card tree_metrics_are_removed_or_replaced_by_card_rollup_metrics_test`
 - `final_full_refactor_review_has_no_required_changes_left_test`
 - `final_cleanup_removes_obsolete_unnecessary_and_incompatible_code_test`
 
 Criterios de aceptacion:
 
 - Barridos anti-legacy pasan en codigo activo:
-  - `milestone|Milestone|milestones|milestone_id`
+  - `card tree|Card Tree|card trees|parent_card_id`
   - `CardState|Pendiente|EnCurso|Cerrada`
   - `TaskStatus|Completed`
 - Barridos y revision de imports confirman que el codigo activo cumple la
@@ -2727,7 +2727,7 @@ Criterios de aceptacion:
   transforma a `audit_events` o desaparece tras el rebase/squash.
 - Las metricas de claims, releases, completions y time-to-first-claim leen
   `audit_events` o vistas derivadas de `audit_events`, no `task_events`.
-- Las metricas de milestone desaparecen o se reemplazan por rollups de cards
+- Las metricas de card tree desaparecen o se reemplazan por rollups de cards
   raiz/profundidad.
 - Seeds y fixtures quedan redisenadas para el modelo nuevo. Deben crear:
   - un `Org Admin`,
@@ -2767,7 +2767,7 @@ Criterios de aceptacion:
   - animaciones respetan `prefers-reduced-motion`,
   - acciones destructivas/cierre no quedan demasiado a mano,
   - tooltips o ayudas explican acciones deshabilitadas relevantes.
-- Docs funcionales no describen milestones como entidad.
+- Docs funcionales no describen card trees como entidad.
 - `gleam test` y `gleam check` pasan.
 - Si hay snapshots, quedan en estado revisado por humano antes de considerarse
   verificados.
@@ -2971,7 +2971,7 @@ como restricciones explicitas del trabajo:
   - se adopta schema final limpio con migracion/importador explicito desde la
     BBDD actual;
   - si el repositorio lo permite, se rebasea/squashea la historia SQL para que
-    las migraciones activas y `db/schema.sql` no arrastren `milestones`;
+    las migraciones activas y `db/schema.sql` no arrastren `card trees`;
   - no se acepta compatibilidad runtime ni rutas legacy como sustituto de una
     migracion de datos;
   - ejecutar dry-run o fixture equivalente antes de tocar schema final;

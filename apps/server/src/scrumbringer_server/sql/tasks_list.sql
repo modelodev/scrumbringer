@@ -35,7 +35,7 @@ select
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  0 as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,

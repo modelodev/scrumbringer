@@ -29,7 +29,7 @@ import gleam/dynamic/decode
 import domain/project.{type Project}
 import domain/remote.{type Remote}
 import domain/workflow.{type Workflow}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/i18n/i18n

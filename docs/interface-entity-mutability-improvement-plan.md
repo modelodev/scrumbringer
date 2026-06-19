@@ -46,7 +46,7 @@ recrear sin ambiguedad.
 ### Producto
 
 La task es la unidad central del pull flow. Si el equipo detecta que una task
-tiene prioridad, tipo, card o milestone equivocados, corregirla debe ser parte
+tiene prioridad, tipo, card o card tree equivocados, corregirla debe ser parte
 del trabajo normal, no una excepcion administrativa.
 
 Decision:
@@ -55,9 +55,9 @@ Decision:
   miembro del proyecto; una task reclamada solo la edita quien la reclamo.
 - No permitir editar tasks completadas desde el flujo normal.
 - Tratar `title`, `description`, `priority`, `type_id`, `card_id` y
-  `milestone_id` como campos operativos editables.
-- Si una task tiene `card_id`, su milestone efectivo se hereda de la card. En
-  ese caso `milestone_id` queda deshabilitado y explicado.
+  `parent_card_id` como campos operativos editables.
+- Si una task tiene `card_id`, su card tree efectivo se hereda de la card. En
+  ese caso `parent_card_id` queda deshabilitado y explicado.
 
 ### UI/UX
 
@@ -66,7 +66,7 @@ el detalle de task:
 
 - **Identity:** title y description.
 - **Planning:** priority y type.
-- **Placement:** card y milestone.
+- **Placement:** card y card tree.
 
 Comportamiento:
 
@@ -75,11 +75,11 @@ Comportamiento:
 - `Cancel` restaura todos los campos.
 - La seccion Placement muestra:
   - selector de card con opcion `No card`;
-  - selector de milestone solo si `No card`;
-  - texto no intrusivo `Milestone inherited from card` si hay card.
+  - selector de card tree solo si `No card`;
+  - texto no intrusivo `Card Tree inherited from card` si hay card.
 - Si el backend rechaza una combinacion, el error se muestra junto a Placement,
   no como toast generico.
-- En readonly, mostrar card, milestone efectivo, type y priority con el mismo
+- En readonly, mostrar card, card tree efectivo, type y priority con el mismo
   vocabulario visual que la lista de tareas.
 
 No usar un modal adicional: el detalle de task ya es el contexto de edicion.
@@ -90,7 +90,7 @@ Frontend:
 
 - Extender el estado de detalle en
   `apps/client/src/scrumbringer_client/client_state/member/pool.gleam` con
-  campos de edicion para `priority`, `type_id`, `card_id` y `milestone_id`.
+  campos de edicion para `priority`, `type_id`, `card_id` y `parent_card_id`.
 - Renombrar `detail_edit_form.Input` para que represente un formulario completo
   de task, no solo titulo/descripcion.
 - Extender `features/tasks/detail_editor.gleam` para renderizar selects e inputs
@@ -98,7 +98,7 @@ Frontend:
 - Cargar opciones necesarias desde caches ya existentes:
   - `task_types` del proyecto;
   - `cards` del proyecto;
-  - milestones ready del proyecto.
+  - card trees ready del proyecto.
 - Si alguna cache no esta cargada al entrar en edicion, mostrar skeleton/disabled
   en ese grupo y lanzar fetch puntual; no bloquear la edicion de titulo y
   descripcion.
@@ -110,22 +110,22 @@ Backend:
 - Extender `workflow_types.TaskUpdates` con
   `card_id: FieldUpdate(Option(Int))`.
 - Extender `decode_update_task` para aceptar `card_id` como campo opcional.
-- Decodificar `card_id` con el mismo enfoque que `milestone_id`: mirar si el
+- Decodificar `card_id` con el mismo enfoque que `parent_card_id`: mirar si el
   campo existe en el JSON y despues interpretar `null` como `Set(None)`. No usar
   `optional_field(..., None, optional(int))` si se necesita distinguir ausencia
   de clear explicito.
-- Sustituir sentinelas ad hoc por helpers equivalentes a `milestone_id` para
+- Sustituir sentinelas ad hoc por helpers equivalentes a `parent_card_id` para
   poder distinguir `unchanged`, `set None` y `set Some(id)`.
 - Extender `tasks_update.sql` y `tasks_queries.update_editable_task` para
   actualizar `card_id`.
 - Validar que la card pertenece al mismo proyecto.
 - Validar que no se mandan simultaneamente `card_id = Some(_)` y
-  `milestone_id = Set(Some(_))`.
-- Cuando se asigna una card, limpiar `milestone_id` de la task para que el
-  milestone efectivo sea solo el de la card.
+  `parent_card_id = Set(Some(_))`.
+- Cuando se asigna una card, limpiar `parent_card_id` de la task para que el
+  card tree efectivo sea solo el de la card.
 - Revisar scopes Bearer existentes: si `tasks:write` permite actualizar tasks,
   el contrato nuevo debe respetar las mismas validaciones y no abrir un bypass
-  para mover tasks entre cards/milestones fuera de proyecto.
+  para mover tasks entre cards/card trees fuera de proyecto.
 
 Tests:
 
@@ -137,7 +137,7 @@ Tests:
   - claimed task editable por owner;
   - claimed task por otro usuario rechazada;
   - card invalida rechazada;
-  - card + milestone explicito rechazado.
+  - card + card tree explicito rechazado.
 - E2E minimo: crear task con metadata erronea, abrir detalle, corregir type,
   priority y card, guardar y comprobar lista/detalle.
 
@@ -383,7 +383,7 @@ Tests:
 Estas limpiezas reducen duplicacion sin crear una abstraccion prematura:
 
 - **Payloads de update con clear explicito.** Crear helpers locales para campos
-  `FieldUpdate(Option(Int))` en tasks, usados por `milestone_id` y `card_id`.
+  `FieldUpdate(Option(Int))` en tasks, usados por `parent_card_id` y `card_id`.
   Evita nuevos sentinelas y mantiene claro el contrato absent/null/value.
 - **Notas task/card.** Extraer solo lo comun de autorizacion y estado visual si
   ambos modelos siguen convergiendo. No forzar un unico tipo de nota mientras

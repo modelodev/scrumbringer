@@ -98,7 +98,7 @@ pub fn try_update(
       handle_show_empty_toggled(model)
       |> without_policies
 
-    pool_messages.CardsShowCompletedToggled ->
+    pool_messages.CardsShowDoneToggled ->
       handle_show_completed_toggled(model)
       |> without_policies
 
@@ -158,39 +158,8 @@ fn handle_open_card_dialog(
   model: admin_cards.Model,
   mode: admin_cards.CardDialogMode,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
-  let create_milestone_id =
-    resolve_create_milestone_for_mode(mode, model.cards_create_milestone_id)
-
   #(
-    admin_cards.Model(
-      ..model,
-      cards_dialog_mode: opt.Some(mode),
-      cards_create_milestone_id: create_milestone_id,
-    ),
-    effect.none(),
-  )
-}
-
-fn resolve_create_milestone_for_mode(
-  mode: admin_cards.CardDialogMode,
-  current: opt.Option(Int),
-) -> opt.Option(Int) {
-  case mode {
-    admin_cards.CardDialogCreate -> opt.None
-    _ -> current
-  }
-}
-
-pub fn handle_open_card_dialog_for_milestone(
-  model: admin_cards.Model,
-  milestone_id: Int,
-) -> #(admin_cards.Model, Effect(parent_msg)) {
-  #(
-    admin_cards.Model(
-      ..model,
-      cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
-      cards_create_milestone_id: opt.Some(milestone_id),
-    ),
+    admin_cards.Model(..model, cards_dialog_mode: opt.Some(mode)),
     effect.none(),
   )
 }
@@ -199,14 +168,7 @@ pub fn handle_open_card_dialog_for_milestone(
 fn handle_close_card_dialog(
   model: admin_cards.Model,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
-  #(
-    admin_cards.Model(
-      ..model,
-      cards_dialog_mode: opt.None,
-      cards_create_milestone_id: opt.None,
-    ),
-    effect.none(),
-  )
+  #(admin_cards.Model(..model, cards_dialog_mode: opt.None), effect.none())
 }
 
 // =============================================================================
@@ -225,12 +187,7 @@ fn handle_card_crud_created(
     _ -> Loaded([card])
   }
   #(
-    admin_cards.Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      cards_create_milestone_id: opt.None,
-    ),
+    admin_cards.Model(..model, cards: cards, cards_dialog_mode: opt.None),
     context.on_success_toast(context.card_created),
   )
 }
@@ -255,12 +212,7 @@ fn handle_card_crud_updated(
     other -> other
   }
   #(
-    admin_cards.Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      cards_create_milestone_id: opt.None,
-    ),
+    admin_cards.Model(..model, cards: cards, cards_dialog_mode: opt.None),
     context.on_success_toast(context.card_updated),
   )
 }
@@ -277,12 +229,7 @@ fn handle_card_crud_deleted(
     other -> other
   }
   #(
-    admin_cards.Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      cards_create_milestone_id: opt.None,
-    ),
+    admin_cards.Model(..model, cards: cards, cards_dialog_mode: opt.None),
     context.on_success_toast(context.card_deleted),
   )
 }

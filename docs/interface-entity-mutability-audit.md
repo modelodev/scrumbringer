@@ -21,13 +21,13 @@ integracion sin tokens activos.
 Estado global: **riesgo medio**.
 
 La interfaz cubre bien la mayoria de entidades principales de administracion
-operativa: proyectos, cards, milestones, task types, workflows, reglas,
+operativa: proyectos, cards, card trees, task types, workflows, reglas,
 templates, usuarios, membresias de proyecto y dependencias. El problema no esta
 en un CRUD general incompleto, sino en varios objetos secundarios o campos
 creados en formularios que quedan bloqueados despues de crear la entidad.
 
 El caso de mayor impacto esta en tareas: se pueden definir `priority`,
-`type_id`, `card_id` y `milestone_id` al crear, pero la edicion principal de la
+`type_id`, `card_id` y `parent_card_id` al crear, pero la edicion principal de la
 tarea solo permite cambiar titulo y descripcion. Esto contradice la expectativa
 de una plataforma de trabajo pull-based donde el equipo debe poder mantener el
 pool limpio sin pedir cambios fuera del producto.
@@ -41,19 +41,19 @@ pool limpio sin pedir cambios fuera del producto.
 **Evidencia:**
 
 - El dialogo de creacion captura titulo, descripcion, prioridad, tipo,
-  milestone y card: `apps/client/src/scrumbringer_client/features/pool/create_dialog.gleam:71`.
+  card tree y card: `apps/client/src/scrumbringer_client/features/pool/create_dialog.gleam:71`.
 - El formulario de edicion del detalle solo renderiza titulo y descripcion:
   `apps/client/src/scrumbringer_client/features/tasks/detail_editor.gleam:67`.
 - `is_dirty` solo compara titulo y descripcion:
   `apps/client/src/scrumbringer_client/features/tasks/detail_editor.gleam:61`.
 - El cliente `update_task` solo envia `version`, `title` y `description`:
   `apps/client/src/scrumbringer_client/api/tasks/operations.gleam:281`.
-- El backend acepta `priority`, `type_id` y `milestone_id` en `PATCH /tasks`,
+- El backend acepta `priority`, `type_id` y `parent_card_id` en `PATCH /tasks`,
   pero no `card_id`: `apps/server/src/scrumbringer_server/http/tasks/payloads.gleam:73`.
 
 **Impacto:**
 
-Un usuario puede crear una tarea con tipo, prioridad, card o milestone
+Un usuario puede crear una tarea con tipo, prioridad, card o card tree
 incorrectos y quedarse sin un camino claro para corregirla desde el detalle de
 tarea. La filosofia del producto favorece la autoorganizacion del pool, por lo
 que estos metadatos deberian ser corregibles por quien tenga permiso para editar
@@ -66,7 +66,7 @@ siendo parte del modelo operativo:
 
 - `priority`
 - `type_id`
-- `milestone_id`
+- `parent_card_id`
 - `card_id`, si el producto considera que la relacion card-task no es
   historica/inmutable
 
@@ -237,7 +237,7 @@ politica explicita de borrado de tenant.
 | --- | --- | --- |
 | Projects | Crear, editar, eliminar | CRUD principal cubierto. |
 | Cards | Crear, editar, eliminar | El borrado puede bloquearse si hay tareas, pero se comunica como restriccion. |
-| Milestones | Crear, editar, eliminar | El borrado esta restringido por estado/contenido. |
+| Card Trees | Crear, editar, eliminar | El borrado esta restringido por estado/contenido. |
 | Task types | Crear, editar, eliminar | Cobertura correcta para administracion. |
 | Workflows | Crear, editar, eliminar | Cobertura correcta. |
 | Workflow rules | Crear, editar, eliminar | Tambien hay attach/detach de templates. |

@@ -5,7 +5,7 @@ import gleam/dynamic/decode
 import gleam/result
 
 import domain/project_role.{type ProjectRole}
-import domain/project_role/codec as project_role_codec
+import domain/project_role/project_role_codec
 
 pub type ProjectNamePayload {
   ProjectNamePayload(name: String)

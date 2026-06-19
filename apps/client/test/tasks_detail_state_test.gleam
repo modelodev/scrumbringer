@@ -30,7 +30,7 @@ fn sample_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: Some(12),
+    parent_card_id: Some(12),
     card_id: Some(9),
     card_title: None,
     card_color: None,
@@ -47,7 +47,6 @@ fn submission(title: String, description: String) -> detail_edit_form.Submission
     priority: 2,
     type_id: 1,
     card_id: None,
-    milestone_id: None,
   )
 }
 
@@ -68,7 +67,6 @@ pub fn detail_state_open_sets_loading_detail_state_test() {
   let assert "4" = pool.member_task_detail_edit_priority
   let assert "7" = pool.member_task_detail_edit_type_id
   let assert "9" = pool.member_task_detail_edit_card_id
-  let assert "12" = pool.member_task_detail_edit_milestone_id
   let assert Some(42) = notes.member_notes_task_id
   let assert True = notes.member_notes == remote.Loading
   let assert True = dependencies.member_dependencies == remote.Loading
@@ -100,7 +98,6 @@ pub fn detail_state_close_resets_detail_state_test() {
       member_task_detail_edit_priority: "5",
       member_task_detail_edit_type_id: "3",
       member_task_detail_edit_card_id: "9",
-      member_task_detail_edit_milestone_id: "4",
       member_task_detail_edit_in_flight: True,
       member_task_detail_edit_error: Some("old"),
     )

@@ -30,7 +30,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/user.{type User}
-import domain/user/codec as user_codec
+import domain/user/user_codec
 import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
 

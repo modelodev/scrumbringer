@@ -9,8 +9,8 @@ import scrumbringer_server/http/api_tokens/presenters
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/json_payload
-import scrumbringer_server/services/api_tokens
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/api_tokens
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 pub fn handle_api_tokens(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {

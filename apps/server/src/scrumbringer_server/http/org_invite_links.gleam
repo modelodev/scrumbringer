@@ -11,8 +11,8 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/org_invite_links/payloads as invite_link_payloads
 import scrumbringer_server/http/org_invite_links/presenters as invite_link_presenters
-import scrumbringer_server/services/org_invite_links_db
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/org_invite_links_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 fn require_admin_context(

@@ -13,13 +13,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Card persistence (see `services/cards_db.gleam`)
-//// - Note persistence (see `services/card_notes_db.gleam`)
+//// - Card repository (see `use_case/cards_db.gleam`)
+//// - Note repository (see `use_case/card_notes_db.gleam`)
 ////
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for user identity
-//// - Uses `services/card_notes_db.gleam` for persistence
+//// - Uses `use_case/card_notes_db.gleam` for repository
 
 import domain/card.{type Card, type CardNote, CardNote}
 import gleam/http
@@ -31,10 +31,10 @@ import scrumbringer_server/http/card_notes/presenters as note_presenters
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/notes/mutations as note_mutations
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/card_notes_db
-import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/card_notes_db
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 /// Routes /api/v1/cards/:id/notes requests (GET list, POST create).

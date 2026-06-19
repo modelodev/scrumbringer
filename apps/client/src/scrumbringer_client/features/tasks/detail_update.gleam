@@ -133,10 +133,6 @@ pub fn try_update(
       handle_task_detail_edit_card_id_changed(model.pool, value)
       |> pool_result(model)
 
-    pool_messages.MemberTaskDetailEditMilestoneIdChanged(value) ->
-      handle_task_detail_edit_milestone_id_changed(model.pool, value)
-      |> pool_result(model)
-
     pool_messages.MemberTaskDetailEditSubmitted ->
       handle_task_detail_edit_submitted(model.pool, context.edit_context)
       |> pool_result(model)
@@ -283,13 +279,6 @@ fn handle_task_detail_edit_card_id_changed(
   #(detail_state.change_edit_card_id(model, value), effect.none())
 }
 
-fn handle_task_detail_edit_milestone_id_changed(
-  model: member_pool.Model,
-  value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(detail_state.change_edit_milestone_id(model, value), effect.none())
-}
-
 fn handle_task_detail_edit_submitted(
   model: member_pool.Model,
   context: EditContext(parent_msg),
@@ -315,7 +304,6 @@ fn submit_task_detail_edit(
             priority: model.member_task_detail_edit_priority,
             type_id: model.member_task_detail_edit_type_id,
             card_id: model.member_task_detail_edit_card_id,
-            milestone_id: model.member_task_detail_edit_milestone_id,
           ),
           detail_edit_form.Labels(
             title_required: context.title_required,
@@ -344,7 +332,6 @@ fn submit_task_detail_edit(
               priority: submission.priority,
               type_id: submission.type_id,
               card_id: submission.card_id,
-              milestone_id: submission.milestone_id,
             ),
             context.on_task_updated,
           ),

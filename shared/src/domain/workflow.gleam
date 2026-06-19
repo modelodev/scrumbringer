@@ -83,8 +83,8 @@ pub type RuleTargetValidationError {
 /// Rule payloads and DB rows cross boundaries as strings, but application code
 /// should use this type once those values have been validated.
 pub type RuleTarget {
-  TaskRule(to_state: task_status.TaskStatus, task_type_id: Option(Int))
-  CardRule(to_state: card.CardState)
+  TaskRule(to_state: task_status.TaskPhase, task_type_id: Option(Int))
+  CardRule(to_state: card.CardPhase)
 }
 
 /// Parse a string-backed rule target into its typed domain representation.
@@ -181,7 +181,7 @@ pub fn rule_target_validation_error_label(
 
 fn parse_task_rule_state(
   value: String,
-) -> Result(task_status.TaskStatus, RuleTargetValidationError) {
+) -> Result(task_status.TaskPhase, RuleTargetValidationError) {
   case task_status.parse_task_status(value) {
     Ok(state) -> Ok(state)
     Error(_) -> Error(InvalidTaskRuleState(value))
@@ -190,7 +190,7 @@ fn parse_task_rule_state(
 
 fn parse_card_rule_state(
   value: String,
-) -> Result(card.CardState, RuleTargetValidationError) {
+) -> Result(card.CardPhase, RuleTargetValidationError) {
   case card.parse_state(value) {
     Ok(state) -> Ok(state)
     Error(_) -> Error(InvalidCardRuleState(value))

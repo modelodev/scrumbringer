@@ -12,7 +12,7 @@
 ////
 //// ## Relations
 ////
-//// - **domain/task/codec.gleam**: Provides task decoder
+//// - **domain/task/task_codec.gleam**: Provides task decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -27,7 +27,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiResult}
 import domain/metrics.{type TaskModalMetrics, TaskModalMetrics}
 import domain/task.{type Task, type TaskFilters, TaskFilters}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import domain/task_status
 import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
@@ -147,7 +147,6 @@ pub fn create_task(
     priority,
     type_id,
     option.None,
-    option.None,
     to_msg,
   )
 }
@@ -160,7 +159,6 @@ pub fn create_task_with_card(
   priority: Int,
   type_id: Int,
   card_id: option.Option(Int),
-  milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let entries = [
@@ -177,11 +175,6 @@ pub fn create_task_with_card(
 
   let entries = case card_id {
     option.Some(cid) -> list.append(entries, [#("card_id", json.int(cid))])
-    option.None -> entries
-  }
-
-  let entries = case milestone_id {
-    option.Some(mid) -> list.append(entries, [#("milestone_id", json.int(mid))])
     option.None -> entries
   }
 
@@ -287,7 +280,6 @@ pub type TaskUpdatePayload {
     priority: Int,
     type_id: Int,
     card_id: option.Option(Int),
-    milestone_id: option.Option(Int),
   )
 }
 
@@ -304,7 +296,6 @@ pub fn update_task(
       #("priority", json.int(payload.priority)),
       #("type_id", json.int(payload.type_id)),
       #("card_id", optional_int(payload.card_id)),
-      #("milestone_id", optional_int(payload.milestone_id)),
     ])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
@@ -323,15 +314,15 @@ fn optional_int(value: option.Option(Int)) -> json.Json {
   }
 }
 
-/// Update milestone assignment for a task.
-pub fn update_task_milestone(
+/// Update card_tree assignment for a task.
+pub fn update_task_card_tree(
   task_id: Int,
-  milestone_id: option.Option(Int),
+  parent_card_id: option.Option(Int),
   to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
-  let fields = case milestone_id {
-    option.Some(id) -> [#("milestone_id", json.int(id))]
-    option.None -> [#("milestone_id", json.null())]
+  let fields = case parent_card_id {
+    option.Some(id) -> [#("parent_card_id", json.int(id))]
+    option.None -> [#("parent_card_id", json.null())]
   }
   let body = json.object(fields)
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)

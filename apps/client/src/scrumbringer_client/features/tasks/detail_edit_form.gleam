@@ -14,7 +14,6 @@ pub type Input {
     priority: String,
     type_id: String,
     card_id: String,
-    milestone_id: String,
   )
 }
 
@@ -34,7 +33,6 @@ pub type Submission {
     priority: Int,
     type_id: Int,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
   )
 }
 
@@ -62,10 +60,6 @@ pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
             Error(message) -> Invalid(message)
             Ok(priority) -> {
               let card_id = optional_id_from_input(input.card_id)
-              let milestone_id = case card_id {
-                opt.Some(_) -> opt.None
-                opt.None -> optional_id_from_input(input.milestone_id)
-              }
               let submission =
                 Submission(
                   title: title,
@@ -73,7 +67,6 @@ pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
                   priority: priority,
                   type_id: type_id,
                   card_id: card_id,
-                  milestone_id: milestone_id,
                 )
 
               case is_dirty(current_task, submission) {
@@ -129,7 +122,6 @@ fn is_dirty(current_task: Task, submission: Submission) -> Bool {
   || submission.priority != current_task.priority
   || submission.type_id != task_type_id(current_task)
   || submission.card_id != current_task.card_id
-  || submission.milestone_id != current_task.milestone_id
 }
 
 pub fn task_type_id(task: Task) -> Int {

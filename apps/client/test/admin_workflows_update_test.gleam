@@ -38,7 +38,7 @@ fn rule(id: Int, name: String, templates: List(RuleTemplate)) -> Rule {
     workflow_id: 3,
     name: name,
     goal: opt.None,
-    target: TaskRule(task_status.Completed, opt.None),
+    target: TaskRule(task_status.Done, opt.None),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     templates: templates,

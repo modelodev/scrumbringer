@@ -1,18 +1,18 @@
 import gleam/list
 import gleam/option
 
-import domain/card.{type Card, Card, Pendiente}
+import domain/card.{type Card, Card, Draft}
 import scrumbringer_client/state/normalized_store
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
     id: id,
     project_id: project_id,
-    milestone_id: option.None,
+    parent_card_id: option.None,
     title: title,
     description: "",
     color: option.None,
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 1,

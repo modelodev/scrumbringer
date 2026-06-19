@@ -1,6 +1,6 @@
 //// Card tree scope/profile views for member navigation.
 
-import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card, type CardPhase, Active, Closed, Draft}
 import domain/task.{type Task}
 import domain/task_type.{type TaskType}
 import gleam/int
@@ -94,7 +94,7 @@ fn view_depth_scope(config: Config(msg), depth: Int) -> Element(msg) {
 fn view_card_scope(config: Config(msg), card_id: Int) -> Element(msg) {
   let direct_cards =
     visible_cards(config)
-    |> list.filter(fn(card) { card.milestone_id == Some(card_id) })
+    |> list.filter(fn(card) { card.parent_card_id == Some(card_id) })
   let direct_tasks =
     config.tasks
     |> list.filter(fn(task) { task.card_id == Some(card_id) })
@@ -126,9 +126,9 @@ fn view_tracking_profile(config: Config(msg)) -> Element(msg) {
 
 fn view_coordination_profile(config: Config(msg)) -> Element(msg) {
   div([attribute.class("card-tree-profile card-tree-coordination")], [
-    view_state_group(config, "Draft", Pendiente),
-    view_state_group(config, "Active", EnCurso),
-    view_state_group(config, "Closed", Cerrada),
+    view_state_group(config, "Draft", Draft),
+    view_state_group(config, "Active", Active),
+    view_state_group(config, "Closed", Closed),
   ])
 }
 
@@ -190,7 +190,7 @@ fn view_card_scope_section(config: Config(msg), card: Card) -> Element(msg) {
 }
 
 fn has_direct_cards(config: Config(msg), card_id: Int) -> Bool {
-  list.any(config.cards, fn(card) { card.milestone_id == Some(card_id) })
+  list.any(config.cards, fn(card) { card.parent_card_id == Some(card_id) })
 }
 
 fn has_direct_contents(config: Config(msg), card_id: Int) -> Bool {
@@ -203,7 +203,7 @@ fn has_direct_contents(config: Config(msg), card_id: Int) -> Bool {
 fn view_state_group(
   config: Config(msg),
   label: String,
-  state: CardState,
+  state: CardPhase,
 ) -> Element(msg) {
   let cards =
     visible_cards(config) |> list.filter(fn(card) { card.state == state })
@@ -274,7 +274,7 @@ fn view_empty_depth(config: Config(msg), depth: Int) -> Element(msg) {
 fn visible_cards(config: Config(msg)) -> List(Card) {
   case config.include_closed {
     True -> config.cards
-    False -> list.filter(config.cards, fn(card) { card.state != Cerrada })
+    False -> list.filter(config.cards, fn(card) { card.state != Closed })
   }
 }
 
@@ -293,7 +293,7 @@ fn tasks_for_capability(config: Config(msg), capability_id: Int) -> List(Task) {
 }
 
 fn card_depth(card: Card, cards: List(Card)) -> Int {
-  case card.milestone_id {
+  case card.parent_card_id {
     None -> 1
     Some(parent_id) ->
       case list.find(cards, fn(candidate) { candidate.id == parent_id }) {

@@ -11,7 +11,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiResult}
 import domain/api_token
 import domain/api_token_scope
-import domain/org_role/codec as org_role_codec
+import domain/org_role/org_role_codec
 import scrumbringer_client/api/core
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 

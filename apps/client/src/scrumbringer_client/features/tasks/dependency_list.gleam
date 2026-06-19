@@ -5,7 +5,7 @@ import gleam/option as opt
 
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, Task}
-import domain/task_status.{Completed}
+import domain/task_status.{Done}
 
 pub fn add_to_remote(
   deps: Remote(List(TaskDependency)),
@@ -32,7 +32,7 @@ pub fn remove_from_remote(
           }
         })
       let delta = case removed_status {
-        opt.Some(Completed) | opt.None -> 0
+        opt.Some(Done) | opt.None -> 0
         opt.Some(_) -> 1
       }
       #(Loaded(list.reverse(remaining)), delta)
@@ -61,7 +61,7 @@ pub fn remove_from_task(task: Task, depends_on_task_id: Int, delta: Int) -> Task
 
 pub fn blocked_delta(dep: TaskDependency) -> Int {
   case dep.status {
-    Completed -> 0
+    Done -> 0
     _ -> 1
   }
 }

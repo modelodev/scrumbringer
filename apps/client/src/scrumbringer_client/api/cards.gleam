@@ -27,13 +27,13 @@ import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
 
 import domain/card.{type Card, type CardColor, type CardNote}
-import domain/card/codec as card_codec
+import domain/card/card_codec
 import domain/metrics.{
   type CardModalMetrics, type ModalExecutionHealth, type WorkflowBreakdown,
   CardModalMetrics, ModalExecutionHealth, WorkflowBreakdown,
 }
 import domain/task.{type Task}
-import domain/task/codec as task_codec
+import domain/task/task_codec
 
 // =============================================================================
 // API Functions
@@ -65,7 +65,7 @@ pub fn create_card(
   title: String,
   description: String,
   color: option.Option(CardColor),
-  milestone_id: option.Option(Int),
+  parent_card_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
   let base_fields = [
@@ -79,8 +79,8 @@ pub fn create_card(
       ])
     option.None -> base_fields
   }
-  let fields = case milestone_id {
-    option.Some(id) -> list.append(fields, [#("milestone_id", json.int(id))])
+  let fields = case parent_card_id {
+    option.Some(id) -> list.append(fields, [#("parent_card_id", json.int(id))])
     option.None -> fields
   }
   let body = json.object(fields)
@@ -138,7 +138,7 @@ pub fn update_card(
   title: String,
   description: String,
   color: option.Option(CardColor),
-  milestone_id: option.Option(Int),
+  parent_card_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
   let base_fields = [
@@ -152,8 +152,8 @@ pub fn update_card(
       ])
     option.None -> base_fields
   }
-  let fields = case milestone_id {
-    option.Some(id) -> list.append(fields, [#("milestone_id", json.int(id))])
+  let fields = case parent_card_id {
+    option.Some(id) -> list.append(fields, [#("parent_card_id", json.int(id))])
     option.None -> fields
   }
   let body = json.object(fields)

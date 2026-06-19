@@ -6,7 +6,7 @@
 //// ## Usage
 ////
 //// ```gleam
-//// import shared/domain/card.{type Card, type CardState}
+//// import shared/domain/card.{type Card, type CardPhase}
 ////
 //// let card = Card(id: 1, project_id: 10, title: "OAuth", ...)
 //// ```
@@ -21,18 +21,18 @@ import gleam/option.{type Option, None, Some}
 
 /// Card state derived from task status counts.
 ///
-/// - Pendiente: No tasks, or all tasks are available
-/// - EnCurso: Some tasks are claimed or completed (progress)
-/// - Cerrada: All tasks are completed
-pub type CardState {
-  Pendiente
-  EnCurso
-  Cerrada
+/// - Draft: No tasks, or all tasks are available
+/// - Active: Some tasks are claimed or completed (progress)
+/// - Closed: All tasks are completed
+pub type CardPhase {
+  Draft
+  Active
+  Closed
 }
 
 /// Error returned when an external card state cannot be parsed.
-pub type CardStateParseError {
-  UnknownCardState(String)
+pub type CardPhaseParseError {
+  UnknownCardPhase(String)
 }
 
 /// Available card colors.
@@ -63,7 +63,7 @@ pub type CardColorParseError {
 ///   title: "OAuth Implementation",
 ///   description: "Login with Google and GitHub",
 ///   color: Some(Blue),
-///   state: EnCurso,
+///   state: Active,
 ///   task_count: 3,
 ///   completed_count: 1,
 ///   created_by: 42,
@@ -76,11 +76,11 @@ pub type Card {
   Card(
     id: Int,
     project_id: Int,
-    milestone_id: Option(Int),
+    parent_card_id: Option(Int),
     title: String,
     description: String,
     color: Option(CardColor),
-    state: CardState,
+    state: CardPhase,
     task_count: Int,
     completed_count: Int,
     created_by: Int,
@@ -127,60 +127,60 @@ pub type CardNote {
 ///
 /// ## Rules
 ///
-/// 1. task_count = 0 → Pendiente
-/// 2. task_count > 0 AND task_count = completed_count → Cerrada
-/// 3. available_count < task_count → EnCurso (some progress)
-/// 4. else → Pendiente (all available)
+/// 1. task_count = 0 → Draft
+/// 2. task_count > 0 AND task_count = completed_count → Closed
+/// 3. available_count < task_count → Active (some progress)
+/// 4. else → Draft (all available)
 ///
 /// ## Example
 ///
 /// ```gleam
-/// derive_state(3, 1, 2) // EnCurso (1 completed, some progress)
-/// derive_state(3, 3, 0) // Cerrada (all completed)
-/// derive_state(0, 0, 0) // Pendiente (no tasks)
+/// derive_state(3, 1, 2) // Active (1 completed, some progress)
+/// derive_state(3, 3, 0) // Closed (all completed)
+/// derive_state(0, 0, 0) // Draft (no tasks)
 /// ```
 pub fn derive_state(
   task_count: Int,
   completed_count: Int,
   available_count: Int,
-) -> CardState {
+) -> CardPhase {
   // If any task is NOT available (claimed or completed), there's progress.
   case
     task_count == 0,
     task_count == completed_count,
     available_count < task_count
   {
-    True, _, _ -> Pendiente
-    False, True, _ -> Cerrada
-    False, False, True -> EnCurso
-    False, False, False -> Pendiente
+    True, _, _ -> Draft
+    False, True, _ -> Closed
+    False, False, True -> Active
+    False, False, False -> Draft
   }
 }
 
-/// Convert CardState to string for API.
-pub fn state_to_string(state: CardState) -> String {
+/// Convert CardPhase to string for API.
+pub fn state_to_string(state: CardPhase) -> String {
   case state {
-    Pendiente -> "pendiente"
-    EnCurso -> "en_curso"
-    Cerrada -> "cerrada"
+    Draft -> "pendiente"
+    Active -> "en_curso"
+    Closed -> "cerrada"
   }
 }
 
-/// Parse CardState from API string.
-pub fn parse_state(s: String) -> Result(CardState, CardStateParseError) {
+/// Parse CardPhase from API string.
+pub fn parse_state(s: String) -> Result(CardPhase, CardPhaseParseError) {
   case s {
-    "pendiente" -> Ok(Pendiente)
-    "en_curso" -> Ok(EnCurso)
-    "cerrada" -> Ok(Cerrada)
-    other -> Error(UnknownCardState(other))
+    "pendiente" -> Ok(Draft)
+    "en_curso" -> Ok(Active)
+    "cerrada" -> Ok(Closed)
+    other -> Error(UnknownCardPhase(other))
   }
 }
 
-/// Parse CardState from an external string.
+/// Parse CardPhase from an external string.
 ///
 /// This function is intentionally strict. Unknown external values must be
 /// handled at the boundary instead of being silently normalised.
-pub fn state_from_string(s: String) -> Result(CardState, CardStateParseError) {
+pub fn state_from_string(s: String) -> Result(CardPhase, CardPhaseParseError) {
   parse_state(s)
 }
 

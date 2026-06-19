@@ -76,7 +76,7 @@ pub fn try_update_handles_hide_completed_without_persistence_test() {
   let assert Some(#(pool, preferences.NoPersistence)) =
     preferences.try_update(
       visible_completed,
-      pool_messages.MemberListHideCompletedToggled,
+      pool_messages.MemberListHideDoneToggled,
     )
 
   let assert True = pool.member_list_hide_completed

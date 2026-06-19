@@ -2,7 +2,7 @@ import gleam/option as opt
 import gleam/string
 import lustre/element
 
-import domain/card.{Card, Pendiente}
+import domain/card.{Card, Draft}
 import scrumbringer_client/features/cards/list_view
 import scrumbringer_client/i18n/locale
 
@@ -18,11 +18,11 @@ fn sample_card() {
   Card(
     id: 3,
     project_id: 7,
-    milestone_id: opt.None,
+    parent_card_id: opt.None,
     title: "Customer Portal",
     description: "Visible to members",
     color: opt.None,
-    state: Pendiente,
+    state: Draft,
     task_count: 4,
     completed_count: 1,
     created_by: 1,

@@ -12,12 +12,12 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Template persistence (see `services/task_templates_db.gleam`)
-//// - Project authorization rules (see `services/projects_db.gleam`)
+//// - Template repository (see `use_case/task_templates_db.gleam`)
+//// - Project authorization rules (see `use_case/projects_db.gleam`)
 ////
 //// ## Relationships
 ////
-//// - Delegates DB work to `services/task_templates_db.gleam`
+//// - Delegates DB work to `use_case/task_templates_db.gleam`
 //// - Uses `http/auth.gleam` for session identity
 //// - Uses `http/csrf.gleam` for mutation protection
 
@@ -31,10 +31,10 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/task_templates/payloads as template_payloads
 import scrumbringer_server/http/task_templates/presenters as template_presenters
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/service_error
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/task_templates_db
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/task_templates_db
 import wisp
 
 // =============================================================================

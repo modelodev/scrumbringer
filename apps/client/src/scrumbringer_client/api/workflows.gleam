@@ -9,7 +9,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/workflow.{type Workflow}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 import scrumbringer_client/api/core
 import scrumbringer_client/api/payload_fields
 

@@ -6,7 +6,7 @@ ScrumBringer is a pull-flow project management product. The core product
 contract is that work is visible in a shared pool, selected by the person doing
 it, and then owned by that person until it is released or completed. Team
 communication should stay outside the product; ScrumBringer keeps operational
-context through notes, dependencies, cards, milestones, and flow signals.
+context through notes, dependencies, cards, card trees, and flow signals.
 
 This plan documents the intended model fit for three product decisions:
 

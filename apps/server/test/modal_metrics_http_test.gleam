@@ -15,27 +15,27 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test() {
+pub fn include_metrics_returns_metrics_payload_for_card_tree_card_and_task_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
 
-  create_milestone(handler, session, project_id) |> expect.equal(200)
-  let assert Ok(milestone_id) =
+  create_card_tree(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(parent_card_id) =
     fixtures.query_int(
       db,
-      "select id from milestones where project_id = $1 and name = 'Release 1'",
+      "select id from card_trees where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
 
-  create_card_in_milestone(handler, session, project_id, milestone_id)
+  create_card_in_card_tree(handler, session, project_id, parent_card_id)
   |> expect.equal(200)
   let assert Ok(card_id) =
     fixtures.query_int(
       db,
-      "select id from cards where project_id = $1 and title = 'Card in milestone'",
+      "select id from cards where project_id = $1 and title = 'Card in card_tree'",
       [pog.int(project_id)],
     )
 
@@ -49,18 +49,18 @@ pub fn include_metrics_returns_metrics_payload_for_milestone_card_and_task_test(
       "Task for metrics",
     )
 
-  let milestone_res =
+  let card_tree_res =
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/milestones/"
-          <> int.to_string(milestone_id)
+        "/api/v1/card_trees/"
+          <> int.to_string(parent_card_id)
           <> "?include=metrics",
       )
       |> fixtures.with_auth(session),
     )
-  expect.expect_status(milestone_res, 200)
-  string.contains(simulate.read_body(milestone_res), "\"metrics\"")
+  expect.expect_status(card_tree_res, 200)
+  string.contains(simulate.read_body(card_tree_res), "\"metrics\"")
   |> expect.is_true
 
   let card_res =
@@ -114,16 +114,16 @@ pub fn include_metrics_forbidden_uses_typed_error_code_test() {
   |> expect.is_true
 }
 
-pub fn include_metrics_milestone_forbidden_uses_typed_error_code_test() {
+pub fn include_metrics_card_tree_forbidden_uses_typed_error_code_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
-  create_milestone(handler, session, project_id) |> expect.equal(200)
-  let assert Ok(milestone_id) =
+  create_card_tree(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(parent_card_id) =
     fixtures.query_int(
       db,
-      "select id from milestones where project_id = $1 and name = 'Release 1'",
+      "select id from card_trees where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
 
@@ -141,8 +141,8 @@ pub fn include_metrics_milestone_forbidden_uses_typed_error_code_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/milestones/"
-          <> int.to_string(milestone_id)
+        "/api/v1/card_trees/"
+          <> int.to_string(parent_card_id)
           <> "?include=metrics",
       )
       |> fixtures.with_auth(member_session),
@@ -310,19 +310,19 @@ pub fn include_metrics_task_returns_expected_counts_test() {
   let assert Ok(claim_count) =
     fixtures.query_int(
       db,
-      "select count(*)::int from task_events where task_id = $1 and event_type = 'task_claimed'",
+      "select count(*)::int from audit_events where task_id = $1 and event_type = 'task_claimed'",
       [pog.int(task_id)],
     )
   let assert Ok(release_count) =
     fixtures.query_int(
       db,
-      "select count(*)::int from task_events where task_id = $1 and event_type = 'task_released'",
+      "select count(*)::int from audit_events where task_id = $1 and event_type = 'task_released'",
       [pog.int(task_id)],
     )
   let assert Ok(unique_executors) =
     fixtures.query_int(
       db,
-      "select count(distinct actor_user_id)::int from task_events where task_id = $1 and event_type = 'task_claimed'",
+      "select count(distinct actor_user_id)::int from audit_events where task_id = $1 and event_type = 'task_claimed'",
       [pog.int(task_id)],
     )
   let assert Ok(session_count) =
@@ -358,27 +358,27 @@ pub fn include_metrics_task_returns_expected_counts_test() {
   string.contains(body, "\"first_claim_at\":") |> expect.is_true
 }
 
-pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
+pub fn include_metrics_card_and_card_tree_return_expected_counts_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
 
-  create_milestone(handler, session, project_id) |> expect.equal(200)
-  let assert Ok(milestone_id) =
+  create_card_tree(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(parent_card_id) =
     fixtures.query_int(
       db,
-      "select id from milestones where project_id = $1 and name = 'Release 1'",
+      "select id from card_trees where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
 
-  create_card_in_milestone(handler, session, project_id, milestone_id)
+  create_card_in_card_tree(handler, session, project_id, parent_card_id)
   |> expect.equal(200)
   let assert Ok(card_id) =
     fixtures.query_int(
       db,
-      "select id from cards where project_id = $1 and title = 'Card in milestone'",
+      "select id from cards where project_id = $1 and title = 'Card in card_tree'",
       [pog.int(project_id)],
     )
 
@@ -389,7 +389,7 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
       project_id,
       type_id,
       card_id,
-      "Task for card/milestone metrics",
+      "Task for card/card_tree metrics",
     )
 
   let _ =
@@ -413,22 +413,22 @@ pub fn include_metrics_card_and_milestone_return_expected_counts_test() {
   string.contains(card_body, "\"tasks_completed\":1") |> expect.is_true
   string.contains(card_body, "\"tasks_percent\":100") |> expect.is_true
 
-  let milestone_res =
+  let card_tree_res =
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/milestones/"
-          <> int.to_string(milestone_id)
+        "/api/v1/card_trees/"
+          <> int.to_string(parent_card_id)
           <> "?include=metrics",
       )
       |> fixtures.with_auth(session),
     )
-  expect.expect_status(milestone_res, 200)
-  let milestone_body = simulate.read_body(milestone_res)
-  string.contains(milestone_body, "\"cards_total\":1") |> expect.is_true
-  string.contains(milestone_body, "\"tasks_total\":1") |> expect.is_true
-  string.contains(milestone_body, "\"tasks_completed\":1") |> expect.is_true
-  string.contains(milestone_body, "\"tasks_percent\":100") |> expect.is_true
+  expect.expect_status(card_tree_res, 200)
+  let card_tree_body = simulate.read_body(card_tree_res)
+  string.contains(card_tree_body, "\"cards_total\":1") |> expect.is_true
+  string.contains(card_tree_body, "\"tasks_total\":1") |> expect.is_true
+  string.contains(card_tree_body, "\"tasks_completed\":1") |> expect.is_true
+  string.contains(card_tree_body, "\"tasks_percent\":100") |> expect.is_true
 }
 
 pub fn include_metrics_not_found_uses_typed_error_code_test() {
@@ -459,12 +459,12 @@ pub fn include_metrics_card_not_found_uses_typed_error_code_test() {
   |> expect.is_true
 }
 
-pub fn include_metrics_milestone_not_found_uses_typed_error_code_test() {
+pub fn include_metrics_card_tree_not_found_uses_typed_error_code_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
   let res =
     handler(
-      simulate.request(http.Get, "/api/v1/milestones/999999?include=metrics")
+      simulate.request(http.Get, "/api/v1/card_trees/999999?include=metrics")
       |> fixtures.with_auth(session),
     )
 
@@ -527,16 +527,16 @@ pub fn include_metrics_card_unavailable_returns_typed_409_test() {
   |> expect.is_true
 }
 
-pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
+pub fn include_metrics_card_tree_unavailable_returns_typed_409_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
-  create_milestone(handler, session, project_id) |> expect.equal(200)
-  let assert Ok(milestone_id) =
+  create_card_tree(handler, session, project_id) |> expect.equal(200)
+  let assert Ok(parent_card_id) =
     fixtures.query_int(
       db,
-      "select id from milestones where project_id = $1 and name = 'Release 1'",
+      "select id from card_trees where project_id = $1 and name = 'Release 1'",
       [pog.int(project_id)],
     )
 
@@ -545,8 +545,8 @@ pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/milestones/"
-          <> int.to_string(milestone_id)
+        "/api/v1/card_trees/"
+          <> int.to_string(parent_card_id)
           <> "?include=metrics",
       )
       |> fixtures.with_auth(session),
@@ -558,7 +558,7 @@ pub fn include_metrics_milestone_unavailable_returns_typed_409_test() {
   |> expect.is_true
 }
 
-fn create_milestone(
+fn create_card_tree(
   handler: fixtures.Handler,
   session: fixtures.Session,
   project_id: Int,
@@ -567,7 +567,7 @@ fn create_milestone(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/card_trees",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(
@@ -581,11 +581,11 @@ fn create_milestone(
   res.status
 }
 
-fn create_card_in_milestone(
+fn create_card_in_card_tree(
   handler: fixtures.Handler,
   session: fixtures.Session,
   project_id: Int,
-  milestone_id: Int,
+  parent_card_id: Int,
 ) -> Int {
   let res =
     handler(
@@ -596,9 +596,9 @@ fn create_card_in_milestone(
       |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
-          #("title", json.string("Card in milestone")),
+          #("title", json.string("Card in card_tree")),
           #("description", json.string("desc")),
-          #("milestone_id", json.int(milestone_id)),
+          #("parent_card_id", json.int(parent_card_id)),
         ]),
       ),
     )

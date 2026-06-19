@@ -1,4 +1,4 @@
-import domain/card.{type Card, Card, EnCurso}
+import domain/card.{type Card, Active, Card}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
@@ -48,11 +48,11 @@ fn sample_card() -> Card {
   Card(
     id: 1,
     project_id: 1,
-    milestone_id: None,
+    parent_card_id: None,
     title: "Sprint",
     description: "",
     color: Some(card.Blue),
-    state: EnCurso,
+    state: Active,
     task_count: 1,
     completed_count: 0,
     created_by: 1,
@@ -86,7 +86,7 @@ fn claimed_task() -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -115,7 +115,7 @@ fn available_task() -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 2,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),

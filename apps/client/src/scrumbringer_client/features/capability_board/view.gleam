@@ -4,7 +4,7 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded}
 import domain/task.{type Task, claimed_by}
-import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
+import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import gleam/int
 import gleam/list
@@ -217,7 +217,7 @@ fn capability_board_error(locale: Locale, err: ApiError) -> String {
 }
 
 fn is_active_task(task: Task) -> Bool {
-  task.status != Completed
+  task.status != Done
 }
 
 fn matches_active_filters(task: Task, config: Config(msg)) -> Bool {
@@ -645,7 +645,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
         ],
         [text(task_status_utils.label(config.locale, task.status))],
       )
-    Completed -> task_item.empty_secondary()
+    Done -> task_item.empty_secondary()
   }
 
   let #(card_title_opt, resolved_color) =

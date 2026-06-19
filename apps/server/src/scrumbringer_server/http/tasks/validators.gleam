@@ -20,8 +20,8 @@ import domain/field_update.{type FieldUpdate, Set, Unchanged}
 import gleam/option.{type Option}
 import pog
 import scrumbringer_server/http/api
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/workflows/validation_core
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/workflows/validation_core
 import wisp
 
 // =============================================================================

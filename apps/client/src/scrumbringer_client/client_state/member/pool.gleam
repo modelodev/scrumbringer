@@ -5,7 +5,6 @@ import gleam/option.{type Option}
 
 import domain/card.{type Card}
 import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
-import domain/milestone.{type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
@@ -29,19 +28,6 @@ pub type HighlightState {
     blocker_ids: List(Int),
     hidden_count: Int,
   )
-}
-
-pub type MilestoneDialog {
-  MilestoneDialogClosed
-  MilestoneDialogCreate(name: String, description: String)
-  MilestoneDialogActivate(id: Int)
-  MilestoneDialogEdit(id: Int, name: String, description: String)
-  MilestoneDialogDelete(id: Int, name: String)
-}
-
-pub type MilestoneDragItem {
-  MilestoneDragCard(card_id: Int, from_milestone_id: Int)
-  MilestoneDragTask(task_id: Int, from_milestone_id: Int)
 }
 
 /// State during drag-and-drop of a task card.
@@ -81,26 +67,10 @@ pub type Model {
     member_task_types_by_project: Dict(Int, List(TaskType)),
     member_cards_store: normalized_store.NormalizedStore(Int, Card),
     member_cards: Remote(List(Card)),
-    member_milestones_store: normalized_store.NormalizedStore(
-      Int,
-      MilestoneProgress,
-    ),
-    member_milestones: Remote(List(MilestoneProgress)),
-    member_milestones_show_completed: Bool,
-    member_milestones_show_empty: Bool,
-    member_milestones_search_query: String,
-    member_milestone_summary_expanded: Bool,
-    member_milestone_expanded_cards: Dict(Int, Bool),
-    member_selected_milestone_id: Option(Int),
-    member_milestone_activate_in_flight_id: Option(Int),
-    member_milestone_dialog: MilestoneDialog,
-    member_milestone_dialog_in_flight: Bool,
-    member_milestone_dialog_error: Option(String),
-    member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
-    member_filters_status: Option(task_status.TaskStatus),
+    member_filters_status: Option(task_status.TaskPhase),
     member_filters_type_id: Option(Int),
     member_filters_capability_id: Option(Int),
     member_filters_q: String,
@@ -116,7 +86,6 @@ pub type Model {
     member_create_priority: String,
     member_create_type_id: String,
     member_create_card_id: Option(Int),
-    member_create_milestone_id: Option(Int),
     member_create_in_flight: Bool,
     member_create_error: Option(String),
     member_drag: DragState,
@@ -136,7 +105,6 @@ pub type Model {
     member_task_detail_edit_priority: String,
     member_task_detail_edit_type_id: String,
     member_task_detail_edit_card_id: String,
-    member_task_detail_edit_milestone_id: String,
     member_task_detail_edit_in_flight: Bool,
     member_task_detail_edit_error: Option(String),
     member_highlight_state: HighlightState,
@@ -157,19 +125,6 @@ pub fn default_model() -> Model {
     member_task_types_by_project: dict.new(),
     member_cards_store: normalized_store.new(),
     member_cards: NotAsked,
-    member_milestones_store: normalized_store.new(),
-    member_milestones: NotAsked,
-    member_milestones_show_completed: False,
-    member_milestones_show_empty: False,
-    member_milestones_search_query: "",
-    member_milestone_summary_expanded: False,
-    member_milestone_expanded_cards: dict.new(),
-    member_selected_milestone_id: option.None,
-    member_milestone_activate_in_flight_id: option.None,
-    member_milestone_dialog: MilestoneDialogClosed,
-    member_milestone_dialog_in_flight: False,
-    member_milestone_dialog_error: option.None,
-    member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
     member_tasks_snapshot: option.None,
@@ -189,7 +144,6 @@ pub fn default_model() -> Model {
     member_create_priority: "3",
     member_create_type_id: "",
     member_create_card_id: option.None,
-    member_create_milestone_id: option.None,
     member_create_in_flight: False,
     member_create_error: option.None,
     member_drag: DragIdle,
@@ -209,7 +163,6 @@ pub fn default_model() -> Model {
     member_task_detail_edit_priority: "3",
     member_task_detail_edit_type_id: "",
     member_task_detail_edit_card_id: "",
-    member_task_detail_edit_milestone_id: "",
     member_task_detail_edit_in_flight: False,
     member_task_detail_edit_error: option.None,
     member_highlight_state: NoHighlight,

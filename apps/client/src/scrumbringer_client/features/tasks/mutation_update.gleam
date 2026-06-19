@@ -45,7 +45,7 @@ pub type Update(parent_msg) {
 pub type Success {
   Claimed
   Released
-  Completed
+  Done
 }
 
 pub type ErrorLabels {
@@ -100,17 +100,12 @@ pub fn try_update(
     pool_messages.MemberTaskReleased(Ok(_)) ->
       success(model, handle_task_released_ok, Released, context.success_context)
 
-    pool_messages.MemberTaskCompleted(Ok(_)) ->
-      success(
-        model,
-        handle_task_completed_ok,
-        Completed,
-        context.success_context,
-      )
+    pool_messages.MemberTaskDone(Ok(_)) ->
+      success(model, handle_task_completed_ok, Done, context.success_context)
 
     pool_messages.MemberTaskClaimed(Error(err))
     | pool_messages.MemberTaskReleased(Error(err))
-    | pool_messages.MemberTaskCompleted(Error(err)) ->
+    | pool_messages.MemberTaskDone(Error(err)) ->
       mutation_error(model, err, context.error_context)
 
     _ -> opt.None
@@ -306,7 +301,7 @@ fn success_effect(
 pub fn should_refetch_work_sessions(success: Success) -> Bool {
   case success {
     Claimed -> False
-    Released | Completed -> True
+    Released | Done -> True
   }
 }
 
@@ -314,7 +309,7 @@ fn success_message(success: Success, context: Context(parent_msg)) -> String {
   case success {
     Claimed -> context.task_claimed
     Released -> context.task_released
-    Completed -> context.task_completed
+    Done -> context.task_completed
   }
 }
 

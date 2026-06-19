@@ -22,9 +22,7 @@ import lustre/event
 
 import domain/capability.{type Capability}
 import domain/task_type.{type TaskType}
-import domain/view_mode.{
-  type ViewMode, Capabilities, Cards, Milestones, People, Pool,
-}
+import domain/view_mode.{type ViewMode, Capabilities, Cards, People, Pool}
 import scrumbringer_client/capability_scope.{
   type CapabilityScope, AllCapabilities, MyCapabilities,
 }
@@ -56,7 +54,6 @@ pub type CenterPanelConfig(msg) {
     on_search_change: fn(String) -> msg,
     // Content
     pool_content: Element(msg),
-    milestones_content: Element(msg),
     cards_content: Element(msg),
     capabilities_content: Element(msg),
     people_content: Element(msg),
@@ -90,7 +87,6 @@ fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
     People -> view_people_filters(config)
-    Milestones -> element.none()
     Capabilities ->
       view_work_filters_variant(
         config,
@@ -285,7 +281,6 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
     Cards -> config.cards_content
     Capabilities -> config.capabilities_content
     People -> config.people_content
-    Milestones -> config.milestones_content
   }
 
   let testid = case config.view_mode {
@@ -293,7 +288,6 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
     Cards -> "kanban-board"
     Capabilities -> "capabilities-view"
     People -> "people-view"
-    Milestones -> "milestones-view"
   }
 
   // Add drag handlers for Pool view (Story 4.7 fix)

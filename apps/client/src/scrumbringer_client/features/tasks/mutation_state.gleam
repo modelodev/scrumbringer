@@ -44,7 +44,7 @@ pub fn start_complete(
   model: member_pool.Model,
   task_id: Int,
 ) -> member_pool.Model {
-  start_with_state(model, task_id, task_state.Completed(completed_at: ""))
+  start_with_state(model, task_id, task_state.Done(completed_at: ""))
 }
 
 pub fn start_dropped_claim(model: member_pool.Model) -> member_pool.Model {

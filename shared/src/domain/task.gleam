@@ -6,14 +6,14 @@
 ////
 //// ```gleam
 //// import shared/domain/task.{type Task, type TaskFilters}
-//// import shared/domain/task_status.{type TaskStatus}
+//// import shared/domain/task_status.{type TaskPhase}
 ////
 //// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
 //// ```
 
 import domain/card
 import domain/task_state
-import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
+import domain/task_status.{type OngoingBy, type TaskPhase, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
 
@@ -59,13 +59,13 @@ pub type Task {
     description: Option(String),
     priority: Int,
     state: task_state.TaskState,
-    status: TaskStatus,
+    status: TaskPhase,
     work_state: WorkState,
     created_by: Int,
     created_at: String,
     due_date: Option(String),
     version: Int,
-    milestone_id: Option(Int),
+    parent_card_id: Option(Int),
     // Card (ficha) association
     card_id: Option(Int),
     card_title: Option(String),
@@ -95,7 +95,7 @@ pub type TaskDependency {
   TaskDependency(
     depends_on_task_id: Int,
     title: String,
-    status: TaskStatus,
+    status: TaskPhase,
     claimed_by: Option(String),
   )
 }
@@ -165,7 +165,7 @@ pub type WorkSessionsPayload {
 /// ```
 pub type TaskFilters {
   TaskFilters(
-    status: Option(TaskStatus),
+    status: Option(TaskPhase),
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),

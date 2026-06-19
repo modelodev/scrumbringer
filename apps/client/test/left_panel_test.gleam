@@ -50,7 +50,6 @@ fn base_config(
     on_navigate_cards: "msg",
     on_navigate_capabilities: "msg",
     on_navigate_people: "msg",
-    on_navigate_milestones: "msg",
     on_navigate_config_team: "msg",
     on_navigate_config_capabilities: "msg",
     on_navigate_config_cards: "msg",
@@ -109,13 +108,20 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
     view_mode_module.Cards,
     view_mode_module.Capabilities,
     view_mode_module.People,
-    view_mode_module.Milestones,
   ]
   |> list.each(fn(mode) {
     let rendered = left_panel.view(base_config(opt.Some(member_route(mode))))
     let html = element.to_document_string(rendered)
     assert_contains(html, "nav-link active")
   })
+}
+
+pub fn left_panel_does_not_render_legacy_card_tree_nav_test() {
+  let rendered =
+    left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
+  let html = element.to_document_string(rendered)
+
+  assert_not_contains(html, "nav-card_trees")
 }
 
 pub fn left_panel_create_actions_are_global_shortcuts_test() {
@@ -162,7 +168,7 @@ pub fn left_panel_org_section_active_test() {
   assert_contains(html, "nav-link active")
 }
 
-pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_en_test() {
+pub fn left_panel_work_nav_order_is_pool_cards_capabilities_people_en_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
     |> element.to_document_string
@@ -181,18 +187,10 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_e
     "data-testid=\"nav-people\"",
   )
   |> assert_true
-  appears_before(
-    html,
-    "data-testid=\"nav-people\"",
-    "data-testid=\"nav-milestones\"",
-  )
-  |> assert_true
-
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
   assert_contains(html, "<span class=\"nav-label\">Cards</span>")
   assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
   assert_contains(html, "<span class=\"nav-label\">People</span>")
-  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
   assert_not_contains(html, ">List<")
 }
 
@@ -205,11 +203,10 @@ pub fn left_sidebar_renders_depth_names_from_project_config_test() {
   assert_contains(html, "<span class=\"nav-label\">Epics</span>")
   assert_contains(html, "data-testid=\"nav-depth-2\"")
   assert_contains(html, "<span class=\"nav-label\">Stories</span>")
-  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
-  assert_not_contains(html, "<span class=\"nav-label\">Milestones</span>")
+  assert_not_contains(html, "<span class=\"nav-label\">CardTrees</span>")
 }
 
-pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_test() {
+pub fn left_panel_work_nav_order_is_pool_cards_capacidades_personas_es_test() {
   let config =
     left_panel.LeftPanelConfig(
       ..base_config(opt.Some(member_route(view_mode_module.Pool))),
@@ -232,17 +229,9 @@ pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_te
     "data-testid=\"nav-people\"",
   )
   |> assert_true
-  appears_before(
-    html,
-    "data-testid=\"nav-people\"",
-    "data-testid=\"nav-milestones\"",
-  )
-  |> assert_true
-
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
   assert_contains(html, "<span class=\"nav-label\">Tarjetas</span>")
   assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
   assert_contains(html, "<span class=\"nav-label\">Personas</span>")
-  assert_contains(html, "<span class=\"nav-label\">Tracking</span>")
   assert_not_contains(html, ">Lista<")
 }

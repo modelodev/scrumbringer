@@ -1,8 +1,8 @@
 import gleam/dynamic
 import gleam/dynamic/decode
 import pog
-import scrumbringer_server/services/persisted_field
-import scrumbringer_server/services/service_error
+import scrumbringer_server/use_case/persisted_field
+import scrumbringer_server/use_case/service_error
 
 pub fn required_returns_parsed_value_test() {
   let parse = fn(value) {

@@ -2,7 +2,7 @@ import gleam/option
 import lustre/effect
 
 import domain/api_error.{ApiError}
-import domain/card.{type Card, Card, EnCurso, Pendiente}
+import domain/card.{type Card, Active, Card, Draft}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/features/admin/cards
@@ -12,11 +12,11 @@ fn sample_card(id: Int) -> Card {
   Card(
     id: id,
     project_id: 1,
-    milestone_id: option.None,
+    parent_card_id: option.None,
     title: "Card",
     description: "",
     color: option.None,
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 1,
@@ -77,62 +77,43 @@ pub fn cards_fetched_error_sets_failed_cards_test() {
   let assert cards.NoFocusAfterUpdate = focus_policy
 }
 
-pub fn open_create_dialog_clears_milestone_context_test() {
-  let model =
-    admin_cards.Model(
-      ..admin_cards.default_model(),
-      cards_create_milestone_id: option.Some(89),
+pub fn open_create_dialog_sets_dialog_mode_test() {
+  let #(next, fx, auth_policy, focus_policy) =
+    update(
+      admin_cards.default_model(),
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate),
     )
 
-  let #(next, fx, auth_policy, focus_policy) =
-    update(model, pool_messages.OpenCardDialog(admin_cards.CardDialogCreate))
-
   let assert option.Some(admin_cards.CardDialogCreate) = next.cards_dialog_mode
-  let assert option.None = next.cards_create_milestone_id
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy
 }
 
-pub fn open_edit_dialog_keeps_existing_milestone_context_test() {
-  let model =
-    admin_cards.Model(
-      ..admin_cards.default_model(),
-      cards_create_milestone_id: option.Some(89),
-    )
-
+pub fn open_edit_dialog_sets_dialog_mode_test() {
   let #(next, fx, auth_policy, focus_policy) =
-    update(model, pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(1)))
+    update(
+      admin_cards.default_model(),
+      pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(1)),
+    )
 
   let assert option.Some(admin_cards.CardDialogEdit(1)) = next.cards_dialog_mode
-  let assert option.Some(89) = next.cards_create_milestone_id
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy
 }
 
-pub fn open_create_dialog_for_milestone_sets_context_test() {
-  let #(next, fx) =
-    cards.handle_open_card_dialog_for_milestone(admin_cards.default_model(), 89)
-
-  let assert option.Some(admin_cards.CardDialogCreate) = next.cards_dialog_mode
-  let assert option.Some(89) = next.cards_create_milestone_id
-  let assert True = fx == effect.none()
-}
-
-pub fn close_dialog_clears_dialog_and_milestone_context_test() {
+pub fn close_dialog_clears_dialog_test() {
   let model =
     admin_cards.Model(
       ..admin_cards.default_model(),
       cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
-      cards_create_milestone_id: option.Some(89),
     )
 
   let #(next, fx, auth_policy, focus_policy) =
     update(model, pool_messages.CloseCardDialog)
 
   let assert option.None = next.cards_dialog_mode
-  let assert option.None = next.cards_create_milestone_id
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.FocusAfterClose = focus_policy
@@ -144,7 +125,6 @@ pub fn crud_created_prepends_card_and_closes_dialog_test() {
       ..admin_cards.default_model(),
       cards: Loaded([sample_card(1)]),
       cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
-      cards_create_milestone_id: option.Some(89),
     )
 
   let #(next, fx, auth_policy, focus_policy) =
@@ -154,7 +134,6 @@ pub fn crud_created_prepends_card_and_closes_dialog_test() {
   let assert 2 = created.id
   let assert 1 = existing.id
   let assert option.None = next.cards_dialog_mode
-  let assert option.None = next.cards_create_milestone_id
   let assert True = fx != effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy
@@ -242,7 +221,7 @@ pub fn show_completed_toggled_flips_visibility_test() {
     admin_cards.Model(..admin_cards.default_model(), cards_show_completed: True)
 
   let #(next, fx, auth_policy, focus_policy) =
-    update(model, pool_messages.CardsShowCompletedToggled)
+    update(model, pool_messages.CardsShowDoneToggled)
 
   let assert False = next.cards_show_completed
   let assert True = fx == effect.none()
@@ -256,7 +235,7 @@ pub fn state_filter_changed_parses_valid_state_and_clears_invalid_test() {
       admin_cards.default_model(),
       pool_messages.CardsStateFilterChanged("en_curso"),
     )
-  let assert option.Some(EnCurso) = filtered.cards_state_filter
+  let assert option.Some(Active) = filtered.cards_state_filter
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy
@@ -301,7 +280,6 @@ pub fn try_update_close_dialog_requests_focus_policy_test() {
     admin_cards.Model(
       ..admin_cards.default_model(),
       cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
-      cards_create_milestone_id: option.Some(89),
     )
 
   let assert option.Some(cards.Update(next, fx, auth_policy, focus_policy)) =
@@ -312,7 +290,6 @@ pub fn try_update_close_dialog_requests_focus_policy_test() {
     )
 
   let assert option.None = next.cards_dialog_mode
-  let assert option.None = next.cards_create_milestone_id
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.FocusAfterClose = focus_policy

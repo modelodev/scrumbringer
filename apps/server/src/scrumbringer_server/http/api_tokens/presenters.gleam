@@ -1,7 +1,7 @@
 import domain/api_token as api_token_domain
 import gleam/json
 import helpers/json as json_helpers
-import scrumbringer_server/services/api_tokens as token_service
+import scrumbringer_server/use_case/api_tokens as token_service
 
 pub fn tokens_response(tokens: List(token_service.ApiTokenRecord)) -> json.Json {
   json.object([#("api_tokens", json.array(tokens, of: token))])

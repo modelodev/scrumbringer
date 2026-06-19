@@ -2,8 +2,7 @@ import gleam/option as opt
 import gleam/string
 import lustre/element
 
-import domain/card.{Card, Pendiente}
-import domain/milestone.{Milestone, MilestoneProgress, Ready}
+import domain/card.{Card, Draft}
 import domain/project.{Project}
 import domain/project_role.{Manager}
 import domain/remote.{Loaded}
@@ -43,38 +42,17 @@ fn sample_card() {
   Card(
     id: 1,
     project_id: 1,
-    milestone_id: opt.None,
+    parent_card_id: opt.None,
     title: "Playwright Card",
     description: "",
     color: opt.None,
-    state: Pendiente,
+    state: Draft,
     task_count: 1,
     completed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,
     has_new_notes: False,
-  )
-}
-
-fn sample_milestone_progress() {
-  MilestoneProgress(
-    milestone: Milestone(
-      id: 89,
-      project_id: 1,
-      name: "Milestone 89",
-      description: opt.None,
-      state: Ready,
-      position: 1,
-      created_by: 1,
-      created_at: "2026-01-01",
-      activated_at: opt.None,
-      completed_at: opt.None,
-    ),
-    cards_total: 0,
-    cards_completed: 0,
-    tasks_total: 0,
-    tasks_completed: 0,
   )
 }
 
@@ -190,60 +168,4 @@ pub fn cards_view_does_not_render_local_crud_dialog_test() {
     |> element.to_document_string
 
   assert_not_contains(html, "card-crud-dialog")
-}
-
-pub fn cards_view_passes_milestone_context_to_dialog_test() {
-  let model =
-    base_model()
-    |> update_admin(fn(admin) {
-      let cards = admin.cards
-      admin_state.AdminModel(
-        ..admin,
-        cards: admin_cards.Model(
-          ..cards,
-          cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
-          cards_create_milestone_id: opt.Some(89),
-        ),
-      )
-    })
-    |> update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones: Loaded([sample_milestone_progress()]),
-        ),
-      )
-    })
-
-  let html =
-    admin_view.view_card_crud_dialog(model, 1)
-    |> element.to_document_string
-
-  assert_contains(html, "milestone-id=\"89\"")
-  assert_contains(html, "milestone-name=\"Milestone 89\"")
-}
-
-pub fn cards_view_without_context_keeps_milestone_attributes_empty_test() {
-  let model =
-    base_model()
-    |> update_admin(fn(admin) {
-      let cards = admin.cards
-      admin_state.AdminModel(
-        ..admin,
-        cards: admin_cards.Model(
-          ..cards,
-          cards_dialog_mode: opt.Some(admin_cards.CardDialogCreate),
-          cards_create_milestone_id: opt.None,
-        ),
-      )
-    })
-
-  let html =
-    admin_view.view_card_crud_dialog(model, 1)
-    |> element.to_document_string
-
-  assert_not_contains(html, "milestone-id=\"89\"")
-  assert_not_contains(html, "milestone-name=\"Milestone 89\"")
 }

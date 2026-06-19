@@ -62,7 +62,7 @@ pub fn translate(text: Text) -> String {
       "Task created, but not visible with current filters"
     text.TaskClaimed -> "Task claimed"
     text.TaskReleased -> "Task released"
-    text.TaskCompleted -> "Task completed"
+    text.TaskDone -> "Task completed"
     text.SkillsSaved -> "Skills saved"
     text.NoteAdded -> "Note added"
 
@@ -181,7 +181,7 @@ pub fn translate(text: Text) -> String {
     text.Kanban -> "Kanban"
     text.CapabilitiesBoard -> "Capabilities"
     text.People -> "People"
-    text.Milestones -> "Milestones"
+    text.CardTrees -> "Card Trees"
     text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "View"
     text.PoolPurpose -> "Choose the next personal task to claim."
@@ -217,7 +217,7 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Create your first task to start using the Pool."
     text.NoTasksMatchYourFilters -> "No tasks match your filters"
-    text.HideCompletedTasks -> "Hide completed tasks"
+    text.HideDoneTasks -> "Hide completed tasks"
     text.TypeNumber(type_id) -> "Type #" <> int.to_string(type_id)
     text.MetaType -> "type: "
     text.MetaPriority -> "priority: "
@@ -265,108 +265,107 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardPressureNoTraction -> "No traction"
     text.CapabilityBoardPressureFlowing -> "Flowing"
     text.NoCapability -> "No capability"
-    text.MilestonesEmpty -> "No milestones yet"
-    text.MilestonesNoResults -> "No milestones match current filters"
-    text.MilestonesLoadError -> "Could not load milestones"
-    text.MilestonesPurpose ->
+    text.CardTreesEmpty -> "No card trees yet"
+    text.CardTreesNoResults -> "No card trees match current filters"
+    text.CardTreesLoadError -> "Could not load card trees"
+    text.CardTreesPurpose ->
       "Delivery structure by objective, loose work, and card progress."
-    text.CreateMilestone -> "Create milestone"
-    text.CreateFirstMilestone -> "Create first milestone"
-    text.MilestoneCreated -> "Milestone created"
-    text.MilestoneCreateFailed -> "Could not create milestone"
-    text.ShowCompletedMilestones -> "Show completed"
-    text.ShowEmptyMilestones -> "Show empty"
-    text.MilestonesReady -> "Ready"
-    text.MilestonesActive -> "Active"
-    text.MilestonesCompleted -> "Completed"
-    text.MilestoneStateReady -> "Ready"
-    text.MilestoneStateActive -> "Active"
-    text.MilestoneStateCompleted -> "Completed"
-    text.MilestoneEmptyHint -> "No work assigned yet"
-    text.MilestoneDone -> "Done"
-    text.MilestoneActivationTitle -> "Activate milestone"
-    text.MilestoneActivationBody(cards_count, tasks_count) ->
-      "This action is irreversible. It will activate all content in this milestone ("
+    text.CreateCardTree -> "Create card tree"
+    text.CreateFirstCardTree -> "Create first card tree"
+    text.CardTreeCreated -> "Card tree created"
+    text.CardTreeCreateFailed -> "Could not create card tree"
+    text.ShowDoneCardTrees -> "Show completed"
+    text.ShowEmptyCardTrees -> "Show empty"
+    text.CardTreesReady -> "Ready"
+    text.CardTreesActive -> "Active"
+    text.CardTreesDone -> "Done"
+    text.CardTreeStateReady -> "Ready"
+    text.CardTreeStateActive -> "Active"
+    text.CardTreeStateDone -> "Done"
+    text.CardTreeEmptyHint -> "No work assigned yet"
+    text.CardTreeDone -> "Done"
+    text.CardTreeActivationTitle -> "Activate card tree"
+    text.CardTreeActivationBody(cards_count, tasks_count) ->
+      "This action is irreversible. It will activate all content in this card tree ("
       <> int.to_string(cards_count)
       <> " cards, "
       <> int.to_string(tasks_count)
       <> " tasks)."
-    text.MilestoneActivationWarning ->
-      "You will not be able to undo this action"
-    text.MilestoneDetails -> "Details"
-    text.MilestoneTabOverview -> "Overview"
-    text.MilestoneTabContent -> "Content"
-    text.MilestoneTabPlanning -> "Planning"
-    text.ActivateMilestone -> "Activate"
-    text.ActivatingMilestone -> "Activating..."
-    text.MilestoneActivated -> "Milestone activated"
-    text.MilestoneActivateFailed -> "Could not activate milestone"
-    text.EditMilestone -> "Edit milestone"
-    text.DeleteMilestone -> "Delete milestone"
-    text.DeleteMilestoneTitle -> "Delete milestone"
-    text.DeleteMilestoneConfirm(name) ->
-      "Permanently delete milestone \"" <> name <> "\"?"
-    text.MilestoneUpdated -> "Milestone updated"
-    text.MilestoneUpdateFailed -> "Could not update milestone"
-    text.MilestoneDeleted -> "Milestone deleted"
-    text.MilestoneDeleteFailed -> "Could not delete milestone"
-    text.MilestoneDeleteNotAllowed -> "Milestone must be ready and empty"
-    text.MilestoneAlreadyActive -> "Another milestone is already active"
-    text.MilestoneActivationIrreversible ->
-      "Milestone cannot be activated in its current state"
-    text.MilestoneOpenDetails -> "Open details"
-    text.MilestoneMoreActions -> "More actions"
-    text.MilestoneMoveTo -> "Move"
-    text.MilestoneCardsLabel -> "Cards"
-    text.MilestoneTasksLabel -> "Tasks"
-    text.MilestoneCardsProgress(completed, total) ->
+    text.CardTreeActivationWarning -> "You will not be able to undo this action"
+    text.CardTreeDetails -> "Details"
+    text.CardTreeTabOverview -> "Overview"
+    text.CardTreeTabContent -> "Content"
+    text.CardTreeTabPlanning -> "Planning"
+    text.ActivateCardTree -> "Activate"
+    text.ActivatingCardTree -> "Activating..."
+    text.CardTreeActivated -> "Card tree activated"
+    text.CardTreeActivateFailed -> "Could not activate card tree"
+    text.EditCardTree -> "Edit card tree"
+    text.DeleteCardTree -> "Delete card tree"
+    text.DeleteCardTreeTitle -> "Delete card tree"
+    text.DeleteCardTreeConfirm(name) ->
+      "Permanently delete card tree \"" <> name <> "\"?"
+    text.CardTreeUpdated -> "Card tree updated"
+    text.CardTreeUpdateFailed -> "Could not update card tree"
+    text.CardTreeDeleted -> "Card tree deleted"
+    text.CardTreeDeleteFailed -> "Could not delete card tree"
+    text.CardTreeDeleteNotAllowed -> "Card tree must be ready and empty"
+    text.CardTreeAlreadyActive -> "Another card tree is already active"
+    text.CardTreeActivationIrreversible ->
+      "Card tree cannot be activated in its current state"
+    text.CardTreeOpenDetails -> "Open details"
+    text.CardTreeMoreActions -> "More actions"
+    text.CardTreeMoveTo -> "Move"
+    text.CardTreeCardsLabel -> "Cards"
+    text.CardTreeTasksLabel -> "Tasks"
+    text.CardTreeCardsProgress(completed, total) ->
       "Cards " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.MilestoneTasksProgress(completed, total) ->
+    text.CardTreeTasksProgress(completed, total) ->
       "Tasks " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.MilestoneStructureSummary -> "Structure summary"
-    text.MilestoneActions -> "Actions"
-    text.MilestoneSearchPlaceholder -> "Search milestones"
-    text.MilestoneLooseTasksNotice -> "Tasks without card"
-    text.MilestoneLooseTasksHint ->
+    text.CardTreeStructureSummary -> "Structure summary"
+    text.CardTreeActions -> "Actions"
+    text.CardTreeSearchPlaceholder -> "Search card trees"
+    text.CardTreeLooseTasksNotice -> "Tasks without card"
+    text.CardTreeLooseTasksHint ->
       "These tasks are not grouped inside a card yet"
-    text.MilestoneCardTasksEmpty -> "This card has no tasks yet"
-    text.MilestoneCardTasksRegion(name) -> "Tasks for " <> name
-    text.MilestoneNoSelection -> "Select a milestone"
-    text.MilestoneNoSelectionHint ->
-      "Choose a milestone from the list to inspect its content"
-    text.MilestoneCardsCount(cards_count) ->
+    text.CardTreeCardTasksEmpty -> "This card has no tasks yet"
+    text.CardTreeCardTasksRegion(name) -> "Tasks for " <> name
+    text.CardTreeNoSelection -> "Select a card tree"
+    text.CardTreeNoSelectionHint ->
+      "Choose a card tree from the list to inspect its content"
+    text.CardTreeCardsCount(cards_count) ->
       int.to_string(cards_count) <> " cards"
-    text.MilestoneLooseTasksCount(tasks_count) ->
+    text.CardTreeLooseTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " loose tasks"
-    text.MilestoneBlockedTasksCount(tasks_count) ->
+    text.CardTreeBlockedTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " blocked tasks"
-    text.MilestoneEmptyCardsCount(cards_count) ->
+    text.CardTreeEmptyCardsCount(cards_count) ->
       int.to_string(cards_count) <> " empty cards"
-    text.MilestoneCardsWithoutProgressCount(cards_count) ->
+    text.CardTreeCardsWithoutProgressCount(cards_count) ->
       int.to_string(cards_count) <> " cards without progress"
-    text.MilestoneStructureComplete -> "Structure complete"
-    text.MilestoneLooseTasksDiagnostic(tasks_count) ->
+    text.CardTreeStructureComplete -> "Structure complete"
+    text.CardTreeLooseTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count) <> " tasks are not grouped inside cards yet"
-    text.MilestoneBlockedTasksDiagnostic(tasks_count) ->
+    text.CardTreeBlockedTasksDiagnostic(tasks_count) ->
       int.to_string(tasks_count) <> " blocked tasks need attention"
-    text.MilestoneEmptyCardsDiagnostic(cards_count) ->
+    text.CardTreeEmptyCardsDiagnostic(cards_count) ->
       int.to_string(cards_count) <> " empty cards need content"
-    text.MilestoneCardsWithoutProgressDiagnostic(cards_count) ->
+    text.CardTreeCardsWithoutProgressDiagnostic(cards_count) ->
       int.to_string(cards_count) <> " cards have not started moving"
-    text.MilestoneCardEmpty -> "Empty"
-    text.MilestoneCardNoProgress -> "No progress"
-    text.MilestoneCardBlocked -> "Blocked"
-    text.MilestoneCardComplete -> "Complete"
+    text.CardTreeCardEmpty -> "Empty"
+    text.CardTreeCardNoProgress -> "No progress"
+    text.CardTreeCardBlocked -> "Blocked"
+    text.CardTreeCardComplete -> "Complete"
     text.ViewInKanban -> "View in Kanban"
-    text.MilestoneTotalTasksCount(tasks_count) ->
+    text.CardTreeTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " total tasks"
-    text.MilestoneTaskStatusAvailable -> "available"
-    text.MilestoneTaskStatusClaimed -> "claimed"
-    text.MilestoneTaskStatusCompleted -> "completed"
-    text.ExpandMilestoneCard(name) -> "Show tasks for " <> name
-    text.CollapseMilestoneCard(name) -> "Hide tasks for " <> name
-    text.ExpandMilestone(name) -> "Expand milestone " <> name
-    text.CollapseMilestone(name) -> "Collapse milestone " <> name
+    text.CardTreeTaskPhaseAvailable -> "available"
+    text.CardTreeTaskPhaseClaimed -> "claimed"
+    text.CardTreeTaskPhaseDone -> "completed"
+    text.ExpandCardTreeCard(name) -> "Show tasks for " <> name
+    text.CollapseCardTreeCard(name) -> "Hide tasks for " <> name
+    text.ExpandCardTree(name) -> "Expand card tree " <> name
+    text.CollapseCardTree(name) -> "Collapse card tree " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name
     text.CollapsePerson(name) -> "Collapse status for " <> name
     text.PeopleActiveSection -> "Active"
@@ -431,7 +430,7 @@ pub fn translate(text: Text) -> String {
     text.ResourceTasks -> "Tasks"
     text.ResourceCards -> "Cards"
     text.ResourceNotes -> "Notes"
-    text.ResourceMilestones -> "Milestones"
+    text.ResourceCardTrees -> "Card Trees"
     text.LastUsed -> "Last used"
     text.ExpiresAtOptional -> "Expires at (optional)"
     text.Revoke -> "Revoke"
@@ -489,7 +488,7 @@ pub fn translate(text: Text) -> String {
     text.WindowDays(days) -> "Window: " <> int.to_string(days) <> " days"
     text.Claimed -> "Claimed"
     text.Released -> "Released"
-    text.Completed -> "Completed"
+    text.Done -> "Done"
     text.MetricsOverview -> "Metrics Overview"
     text.LoadingOverview -> "Loading overview…"
     text.ReleasePercent -> "Release %"
@@ -725,10 +724,10 @@ pub fn translate(text: Text) -> String {
     text.DeleteCard -> "Delete Card"
     text.CardTitle -> "Title"
     text.CardDescription -> "Description"
-    text.CardState -> "State"
-    text.CardStatePendiente -> "Pending"
-    text.CardStateEnCurso -> "In Progress"
-    text.CardStateCerrada -> "Closed"
+    text.CardPhase -> "State"
+    text.CardPhaseDraft -> "Pending"
+    text.CardPhaseActive -> "In Progress"
+    text.CardPhaseClosed -> "Closed"
     text.CardTasks -> "Tasks"
     text.CardProgress -> "Progress"
     text.CardCreated -> "Card created"
@@ -741,9 +740,9 @@ pub fn translate(text: Text) -> String {
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "No cards here"
-    text.KanbanEmptyPendiente -> "No cards are waiting for work"
-    text.KanbanEmptyEnCurso -> "No active cards need attention"
-    text.KanbanEmptyCerrada -> "Closed cards will appear here"
+    text.KanbanEmptyDraft -> "No cards are waiting for work"
+    text.KanbanEmptyActive -> "No active cards need attention"
+    text.KanbanEmptyClosed -> "Closed cards will appear here"
     text.KanbanSurfacePurpose ->
       "Card flow by state, with friction and next work visible at a glance."
     text.KanbanSummaryCards -> "Cards"
@@ -826,11 +825,11 @@ pub fn translate(text: Text) -> String {
     text.TaskStateAvailable -> "Available"
     text.TaskStateClaimed -> "Claimed"
     text.TaskStateOngoing -> "Working now"
-    text.TaskStateCompleted -> "Completed"
+    text.TaskStateDone -> "Done"
     text.TaskStateAvailableHint -> "Ready to claim from the Pool"
     text.TaskStateClaimedHint -> "In My Tasks, ready to start"
     text.TaskStateOngoingHint -> "Active work session is running"
-    text.TaskStateCompletedHint -> "Done and no longer actionable"
+    text.TaskStateDoneHint -> "Done and no longer actionable"
     text.TaskNextActionLabel -> "Next action"
     text.TaskNextActionClaim -> "Claim to My Tasks"
     text.TaskNextActionStart -> "Start working"
@@ -932,7 +931,7 @@ pub fn translate(text: Text) -> String {
     // Card detail (member)
     text.CardAddTask -> "Add task"
     text.CardTasksEmpty -> "No tasks"
-    text.CardTasksCompleted -> "completed"
+    text.CardTasksDone -> "completed"
     text.TaskType -> "Task type"
     text.TaskTitlePlaceholder -> "Task title..."
 
@@ -953,8 +952,8 @@ pub fn translate(text: Text) -> String {
     text.NoTasksYet -> "No tasks yet"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " more tasks"
-    text.NewCardInThisMilestone -> "New card in this milestone"
-    text.MilestoneTarget -> "Destination milestone"
+    text.NewCardInThisCardTree -> "New card in this card tree"
+    text.CardTreeTarget -> "Destination card tree"
     text.Configuration -> "Configuration"
     text.Team -> "Team"
     // Note: text.Capabilities already translated in Capabilities section
@@ -965,7 +964,7 @@ pub fn translate(text: Text) -> String {
     text.Rules -> "Rules"
     // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Show empty"
-    text.ShowCompletedCards -> "Show completed"
+    text.ShowDoneCards -> "Show completed"
     text.Organization -> "Organization"
     text.OrgUsers -> "Users"
     text.Invites -> "Invitations"
@@ -1014,17 +1013,17 @@ pub fn translate(text: Text) -> String {
     text.TaskEditKeyboardHint -> "Ctrl/Cmd+Enter saves. Esc cancels."
     text.TaskEditRequiresClaim ->
       "You can edit unclaimed tasks, or claim the task to keep editing it while in progress."
-    text.TaskEditCompletedReadOnly ->
-      "Completed tasks are read-only. Reopen or duplicate the work before changing details."
-    text.MilestoneLabel -> "Milestone"
-    text.NoMilestone -> "No milestone"
-    text.TaskMilestoneInheritedFromCard -> "Milestone inherited from the card"
+    text.TaskEditDoneReadOnly ->
+      "Done tasks are read-only. Reopen or duplicate the work before changing details."
+    text.CardTreeLabel -> "Card tree"
+    text.NoCardTree -> "No card tree"
+    text.TaskCardTreeInheritedFromCard -> "Card tree inherited from the card"
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"
     text.TaskBlockingClear -> "No active blockers"
     text.MetricsTasksTotal -> "Tasks total"
-    text.MetricsTasksCompleted -> "Tasks completed"
+    text.MetricsTasksDone -> "Tasks completed"
     text.MetricsProgress -> "Progress"
     text.MetricsRebotesAvg -> "Average bounces"
     text.MetricsPoolLifetimeAvg -> "Average pool lifetime"

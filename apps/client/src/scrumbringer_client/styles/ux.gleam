@@ -404,7 +404,7 @@ pub fn css() -> List(String) {
     ".card-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
     ".modal-content.card-detail { border-color: color-mix(in oklab, var(--sb-card-accent, var(--sb-border)) 34%, var(--sb-border)); z-index: 2; position: relative; height: min(84vh, 760px); min-height: 60vh; max-height: 84vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }",
     ".modal-header-block { border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
-    // Shared detail header primitives (milestone/card/task)
+    // Shared detail header primitives (card_tree/card/task)
     ".detail-header-block { padding: 20px 20px 14px; }",
     ".detail-header { display: flex; flex-direction: column; gap: 12px; }",
     ".detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
@@ -472,11 +472,11 @@ pub fn css() -> List(String) {
     ".note-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }",
     // Task notes section (Story 5.4 UX unification)
     ".task-notes-section { position: relative; }",
-    // Shared detail modal shell (used by milestone detail)
+    // Shared detail modal shell (used by card_tree detail)
     ".detail-modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }",
     ".detail-modal-overlay .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
     ".detail-modal-overlay .modal-content.detail-modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 760px; width: 92%; height: min(84vh, 760px); max-height: 84vh; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
-    ".milestone-detail-body { padding: 14px 20px 18px; }",
+    ".card_tree-detail-body { padding: 14px 20px 18px; }",
     // Task Detail Modal (Story 5.4.1)
     "html:has(.task-detail-modal), body:has(.task-detail-modal) { overflow: hidden; }",
     ".task-detail-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; overflow: hidden; overscroll-behavior: contain; }",
@@ -538,10 +538,10 @@ pub fn css() -> List(String) {
     ".detail-label { font-weight: var(--sb-weight-medium); color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
-    ".task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: var(--sb-space-lg) 14px; border: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 92%, transparent); }",
-    "@media (max-width: 640px) { .task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { grid-template-columns: 1fr; } .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
-    ".task-metrics-empty, .card-metrics-loading, .milestone-metrics-loading, .card-metrics-empty, .milestone-metrics-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
-    ".card-metrics-error, .milestone-metrics-error { color: var(--sb-error-text); padding: 8px 0; }",
+    ".task-metrics-grid, .card-metrics-grid, .card_tree-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: var(--sb-space-lg) 14px; border: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 92%, transparent); }",
+    "@media (max-width: 640px) { .task-metrics-grid, .card-metrics-grid, .card_tree-metrics-grid { grid-template-columns: 1fr; } .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
+    ".task-metrics-empty, .card-metrics-loading, .card_tree-metrics-loading, .card-metrics-empty, .card_tree-metrics-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
+    ".card-metrics-error, .card_tree-metrics-error { color: var(--sb-error-text); padding: 8px 0; }",
     ".metrics-workflow-list { margin-top: 8px; }",
     ".metrics-workflow-items { display: flex; flex-direction: column; gap: 8px; }",
     ".metrics-workflow-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-surface-3); }",
@@ -640,7 +640,7 @@ pub fn css() -> List(String) {
     // Mobile adaptations
     "@media (max-width: 640px) { .my-bar-card-groups { gap: 12px; } .my-bar-card-header { padding: 8px 10px; gap: 8px; } .my-bar-card-title { font-size: var(--sb-font-base); } .my-bar-card-progress { font-size: var(--sb-font-sm); } }",
     "@media (max-width: 640px) { .fichas-list { gap: 8px; } .ficha-card { padding: 10px 12px; } .ficha-header { gap: 8px; } .ficha-title { font-size: var(--sb-font-md); } .ficha-state-badge { font-size: var(--sb-font-xs); padding: 2px 6px; } }",
-    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 12px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-detail-actions { align-items: stretch; } .card-detail-actions .btn { flex: 1 1 148px; min-height: 44px; } .card-move-dialog-shell { align-items: flex-end; padding: 8px; } .card-move-dialog { width: 100%; max-height: 82vh; border-radius: 12px; } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-detail-modal { padding: 8px; align-items: stretch; justify-content: stretch; } .task-detail-modal .modal-content { width: 100%; max-width: none; height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); min-height: 0; border-radius: 12px; } .task-detail-modal .modal-header-block { position: sticky; top: 0; z-index: 2; padding-bottom: 18px; } .task-detail-modal .modal-tabs { position: static; } .task-detail-modal .modal-tabs.detail-tabs { margin-top: 10px; min-height: 62px; padding-bottom: 10px; } .task-detail-modal .modal-footer { position: sticky; bottom: 0; z-index: 2; padding: 10px 12px; } .task-detail-footer .btn { min-height: 44px; } .task-detail-body { padding: 12px 12px 18px; } .task-detail-summary-grid { grid-template-columns: 1fr; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-grid { grid-template-columns: 1fr; } }",
+    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 12px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: var(--sb-font-xl); } .card-detail-actions { align-items: stretch; } .card-detail-actions .btn { flex: 1 1 148px; min-height: 44px; } .card-move-dialog-shell { align-items: flex-end; padding: 8px; } .card-move-dialog { width: 100%; max-height: 82vh; border-radius: 12px; } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .card_tree-detail-body { padding: 12px 16px 16px; } .task-detail-modal { padding: 8px; align-items: stretch; justify-content: stretch; } .task-detail-modal .modal-content { width: 100%; max-width: none; height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); min-height: 0; border-radius: 12px; } .task-detail-modal .modal-header-block { position: sticky; top: 0; z-index: 2; padding-bottom: 18px; } .task-detail-modal .modal-tabs { position: static; } .task-detail-modal .modal-tabs.detail-tabs { margin-top: 10px; min-height: 62px; padding-bottom: 10px; } .task-detail-modal .modal-footer { position: sticky; bottom: 0; z-index: 2; padding: 10px 12px; } .task-detail-footer .btn { min-height: 44px; } .task-detail-body { padding: 12px 12px 18px; } .task-detail-summary-grid { grid-template-columns: 1fr; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-grid { grid-template-columns: 1fr; } }",
     // =====================================================
   ]
 }

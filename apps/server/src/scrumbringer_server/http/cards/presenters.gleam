@@ -5,13 +5,13 @@ import gleam/int
 import gleam/json
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
-import scrumbringer_server/services/metrics_db
+import scrumbringer_server/use_case/metrics_db
 
 pub fn card(card: domain_card.Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
-    #("parent_card_id", json_helpers.option_int_json(card.milestone_id)),
+    #("parent_card_id", json_helpers.option_int_json(card.parent_card_id)),
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
     #("color", json.string(domain_card.optional_color_to_string(card.color))),

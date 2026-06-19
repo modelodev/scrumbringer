@@ -1,4 +1,4 @@
-import domain/card.{Card, EnCurso, Pendiente}
+import domain/card.{Active, Card, Draft}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
@@ -28,11 +28,11 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     Card(
       id: 1,
       project_id: 1,
-      milestone_id: None,
+      parent_card_id: None,
       title: "Sprint",
       description: "",
       color: Some(card.Blue),
-      state: Pendiente,
+      state: Draft,
       task_count: list.length(tasks),
       completed_count: 0,
       created_by: 1,
@@ -102,7 +102,7 @@ fn claimed_task() -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -131,7 +131,7 @@ fn available_task() -> Task {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 2,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -171,7 +171,7 @@ fn blocked_task() -> Task {
 }
 
 fn completed_task() -> Task {
-  let state = task_state.Completed(completed_at: "2026-01-03T00:00:00Z")
+  let state = task_state.Done(completed_at: "2026-01-03T00:00:00Z")
 
   Task(
     ..available_task(),
@@ -222,7 +222,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
 pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
   let config = base_config([available_task()])
   let card = case config.cards {
-    [first, ..] -> card.Card(..first, state: EnCurso)
+    [first, ..] -> card.Card(..first, state: Active)
     [] -> panic
   }
 

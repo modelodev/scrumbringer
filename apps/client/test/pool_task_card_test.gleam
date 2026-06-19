@@ -5,7 +5,7 @@ import lustre/element
 import domain/task.{type Task, Task, TaskDependency}
 import domain/task_state
 import domain/task_status.{
-  Available, Claimed, Completed, Taken, WorkAvailable, WorkClaimed,
+  Available, Claimed, Done, Taken, WorkAvailable, WorkClaimed,
 }
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_card
@@ -33,7 +33,7 @@ pub fn task_card_renders_blocked_canvas_card_test() {
         TaskDependency(
           depends_on_task_id: 10,
           title: "Done dependency",
-          status: Completed,
+          status: Done,
           claimed_by: None,
         ),
       ]),
@@ -175,7 +175,7 @@ fn sample_task() {
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,

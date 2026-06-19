@@ -379,7 +379,6 @@ fn cards_config(
     project_id: project_id,
     project_name: project_name,
     model: model.admin.cards,
-    milestones: model.member.pool.member_milestones,
     detail_modal: detail_modal,
     on_create_opened: pool_msg(pool_messages.OpenCardDialog(
       admin_cards.CardDialogCreate,
@@ -391,7 +390,7 @@ fn cards_config(
       pool_msg(pool_messages.CardsStateFilterChanged(value))
     },
     on_show_empty_toggled: pool_msg(pool_messages.CardsShowEmptyToggled),
-    on_show_completed_toggled: pool_msg(pool_messages.CardsShowCompletedToggled),
+    on_show_completed_toggled: pool_msg(pool_messages.CardsShowDoneToggled),
     on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardDetail(id)) },
     on_task_create_opened: fn(id) {
       pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id))
@@ -479,9 +478,9 @@ fn decode_create_task_event() -> decode.Decoder(Msg) {
 fn decode_create_card_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
+    fn(_card_id) {
       decode.success(
-        pool_msg(pool_messages.MemberMilestoneCreateCardClicked(card_id)),
+        pool_msg(pool_messages.OpenCardDialog(admin_cards.CardDialogCreate)),
       )
     },
   )

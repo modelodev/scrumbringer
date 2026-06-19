@@ -2,7 +2,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/remote.{Loaded, NotAsked}
+import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
@@ -42,7 +42,7 @@ fn claimed_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -62,12 +62,18 @@ fn config(current_user_id) -> detail_editor.Config(String) {
     edit_priority: "2",
     edit_type_id: "1",
     edit_card_id: "",
-    edit_milestone_id: "",
     edit_error: None,
     edit_in_flight: False,
-    task_types: NotAsked,
+    task_types: Loaded([
+      TaskType(
+        id: 1,
+        name: "Bug",
+        icon: "bug-ant",
+        capability_id: None,
+        tasks_count: 0,
+      ),
+    ]),
     cards: [],
-    milestones: NotAsked,
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
@@ -75,7 +81,6 @@ fn config(current_user_id) -> detail_editor.Config(String) {
     on_priority_changed: fn(value) { "priority:" <> value },
     on_type_id_changed: fn(value) { "type:" <> value },
     on_card_id_changed: fn(value) { "card:" <> value },
-    on_milestone_id_changed: fn(value) { "milestone:" <> value },
     on_submitted: "submitted",
   )
 }
@@ -100,7 +105,7 @@ pub fn detail_editor_hides_edit_for_other_claimed_task_test() {
 }
 
 pub fn detail_editor_hides_edit_for_completed_task_test() {
-  let completed_state = task_state.Completed("2026-06-14T12:00:00Z")
+  let completed_state = task_state.Done("2026-06-14T12:00:00Z")
   let task =
     Task(
       ..claimed_task(),
@@ -113,7 +118,7 @@ pub fn detail_editor_hides_edit_for_completed_task_test() {
     |> element.to_document_string
 
   assert_not_contains(html, "Edit task")
-  assert_contains(html, "Completed tasks are read-only")
+  assert_contains(html, "Done tasks are read-only")
   assert_not_contains(html, "claim the task to keep editing")
 }
 

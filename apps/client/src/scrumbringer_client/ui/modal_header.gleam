@@ -41,7 +41,7 @@
 //// modal_header.view(modal_header.Config(
 ////   title: card.title,
 ////   icon: None,
-////   badges: [badge.view("Pendiente", badge.Warning)],
+////   badges: [badge.view("Draft", badge.Warning)],
 ////   meta: Some(text("2/10 completadas")),
 ////   progress: Some(progress_bar.view(0.2)),
 ////   on_close: CloseClicked,

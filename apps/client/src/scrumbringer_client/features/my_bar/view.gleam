@@ -47,7 +47,7 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task, Task, claimed_by}
 import domain/task_state
 import domain/task_status.{
-  type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
+  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 }
 
 import scrumbringer_client/i18n/i18n
@@ -254,7 +254,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
 
   let total = list.length(tasks)
   let completed =
-    list.count(tasks, fn(t) { task_state.to_status(t.state) == Completed })
+    list.count(tasks, fn(t) { task_state.to_status(t.state) == Done })
 
   let header_title = case card_title {
     opt.Some(title) -> title
@@ -349,7 +349,7 @@ pub fn view_member_metrics_panel(
             data_table.column(t(i18n_text.Released), fn(_) {
               text(int.to_string(released_count))
             }),
-            data_table.column(t(i18n_text.Completed), fn(_) {
+            data_table.column(t(i18n_text.Done), fn(_) {
               text(int.to_string(completed_count))
             }),
           ])
@@ -491,12 +491,12 @@ pub fn view_member_bar_task_row(
 // Inline icon helper removed in favor of ui/task_type_icon.view
 
 /// Status rank for sorting (lower = higher priority).
-pub fn member_bar_status_rank(status: TaskStatus) -> Int {
+pub fn member_bar_status_rank(status: TaskPhase) -> Int {
   case status {
     Claimed(Ongoing) -> 0
     Claimed(Taken) -> 1
     Available -> 2
-    Completed -> 3
+    Done -> 3
   }
 }
 

@@ -1,4 +1,4 @@
-import scrumbringer_server/services/rate_limit
+import scrumbringer_server/use_case/rate_limit
 import support/assertions as expect
 
 pub fn allow_denies_when_limit_reached_test() {

@@ -117,23 +117,3 @@ pub fn shortcut_update_escape_closes_position_edit_test() {
   let assert None = next.positions.member_position_edit_task
   let assert None = next.positions.member_position_edit_error
 }
-
-pub fn shortcut_update_escape_closes_closable_milestone_dialog_test() {
-  let model =
-    shortcut_update.Model(
-      ..local_model(),
-      pool: member_pool.Model(
-        ..member_pool.default_model(),
-        member_milestone_dialog: member_pool.MilestoneDialogActivate(42),
-        member_milestone_dialog_in_flight: True,
-        member_milestone_dialog_error: Some("boom"),
-      ),
-    )
-
-  let next = shortcut(model, "Escape")
-
-  let assert member_pool.MilestoneDialogClosed =
-    next.pool.member_milestone_dialog
-  let assert False = next.pool.member_milestone_dialog_in_flight
-  let assert None = next.pool.member_milestone_dialog_error
-}

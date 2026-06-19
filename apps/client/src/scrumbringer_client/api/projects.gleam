@@ -23,9 +23,9 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/project.{type Project, type ProjectMember}
-import domain/project/codec as project_codec
+import domain/project/project_codec
 import domain/project_role.{type ProjectRole}
-import domain/project_role/codec as project_role_codec
+import domain/project_role/project_role_codec
 import scrumbringer_client/api/core
 
 // =============================================================================

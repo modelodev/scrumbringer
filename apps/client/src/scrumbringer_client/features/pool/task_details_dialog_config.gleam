@@ -30,7 +30,6 @@ pub type Callbacks(msg) {
     on_edit_priority_changed: fn(String) -> msg,
     on_edit_type_id_changed: fn(String) -> msg,
     on_edit_card_id_changed: fn(String) -> msg,
-    on_edit_milestone_id_changed: fn(String) -> msg,
     on_edit_submitted: msg,
     on_note_dialog_opened: msg,
     on_note_dialog_closed: msg,
@@ -131,12 +130,10 @@ fn editor_config(
     edit_priority: pool.member_task_detail_edit_priority,
     edit_type_id: pool.member_task_detail_edit_type_id,
     edit_card_id: pool.member_task_detail_edit_card_id,
-    edit_milestone_id: pool.member_task_detail_edit_milestone_id,
     edit_error: pool.member_task_detail_edit_error,
     edit_in_flight: pool.member_task_detail_edit_in_flight,
     task_types: pool.member_task_types,
     cards: cards,
-    milestones: pool.member_milestones,
     parent_card_title: parent_card_title(cards, task),
     on_edit_started: callbacks.on_edit_started,
     on_edit_cancelled: callbacks.on_edit_cancelled,
@@ -145,7 +142,6 @@ fn editor_config(
     on_edit_priority_changed: callbacks.on_edit_priority_changed,
     on_edit_type_id_changed: callbacks.on_edit_type_id_changed,
     on_edit_card_id_changed: callbacks.on_edit_card_id_changed,
-    on_edit_milestone_id_changed: callbacks.on_edit_milestone_id_changed,
     on_edit_submitted: callbacks.on_edit_submitted,
   )
 }

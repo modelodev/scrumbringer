@@ -12,8 +12,8 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Token generation (see `services/password_resets_db.gleam`)
-//// - Password hashing (see `services/password.gleam`)
+//// - Token generation (see `use_case/password_resets_db.gleam`)
+//// - Password hashing (see `use_case/password.gleam`)
 ////
 
 import gleam/http
@@ -25,10 +25,10 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/client_ip
 import scrumbringer_server/http/password_resets/payloads as reset_payloads
 import scrumbringer_server/http/password_resets/presenters as reset_presenters
-import scrumbringer_server/services/password
-import scrumbringer_server/services/password_resets_db
-import scrumbringer_server/services/rate_limit
-import scrumbringer_server/services/time
+import scrumbringer_server/use_case/password
+import scrumbringer_server/use_case/password_resets_db
+import scrumbringer_server/use_case/rate_limit
+import scrumbringer_server/use_case/time
 import wisp
 
 /// Context for password reset handlers.

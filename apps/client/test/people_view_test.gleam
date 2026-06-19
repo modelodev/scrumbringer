@@ -66,7 +66,7 @@ fn make_task(
     created_at: "2026-02-01T09:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

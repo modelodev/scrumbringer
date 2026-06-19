@@ -12,7 +12,6 @@ pub type Input {
     type_id: String,
     priority: String,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
   )
 }
 
@@ -34,7 +33,6 @@ pub type Submission {
     priority: Int,
     type_id: Int,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
   )
 }
 
@@ -105,7 +103,6 @@ fn validate_priority(
         priority: priority,
         type_id: type_id,
         card_id: input.card_id,
-        milestone_id: input.milestone_id,
       ))
 
     _ -> Error(labels.priority_must_be_1_to_5)

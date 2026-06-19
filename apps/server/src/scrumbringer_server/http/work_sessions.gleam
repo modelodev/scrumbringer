@@ -27,10 +27,10 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/work_sessions/payloads as session_payloads
 import scrumbringer_server/http/work_sessions/presenters as session_presenters
-import scrumbringer_server/services/rate_limit
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/time
-import scrumbringer_server/services/work_sessions_db
+import scrumbringer_server/use_case/rate_limit
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/time
+import scrumbringer_server/use_case/work_sessions_db
 import wisp
 
 const heartbeat_rate_limit_window_seconds = 30
@@ -55,7 +55,7 @@ fn work_session_internal_error_response(
   case error {
     work_sessions_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
     work_sessions_db.NotClaimed
-    | work_sessions_db.TaskCompleted
+    | work_sessions_db.TaskDone
     | work_sessions_db.SessionNotFound ->
       api.error(500, "INTERNAL", "Unexpected error")
   }
@@ -154,7 +154,7 @@ fn start_session(
     Error(work_sessions_db.NotClaimed) ->
       api.error(409, "CONFLICT_CLAIMED", "Task is not claimed by you")
 
-    Error(work_sessions_db.TaskCompleted) ->
+    Error(work_sessions_db.TaskDone) ->
       api.error(409, "CONFLICT_INVALID_STATE", "Task is completed")
 
     Error(error) -> work_session_internal_error_response(error)

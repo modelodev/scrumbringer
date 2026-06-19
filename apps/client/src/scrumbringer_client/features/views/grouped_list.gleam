@@ -25,7 +25,7 @@ import lustre/event
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/task.{type Task, claimed_by}
-import domain/task_status.{Available, Claimed, Completed}
+import domain/task_status.{Available, Claimed, Done}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -79,7 +79,7 @@ type CardGroup {
 pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
   // Filter out completed tasks if hide_completed is true
   let filtered_tasks = case config.hide_completed {
-    True -> list.filter(config.tasks, fn(t) { t.status != Completed })
+    True -> list.filter(config.tasks, fn(t) { t.status != Done })
     False -> config.tasks
   }
 
@@ -105,7 +105,7 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
               attribute.checked(config.hide_completed),
               event.on_click(config.on_toggle_hide_completed),
             ]),
-            text(i18n.t(config.locale, i18n_text.HideCompletedTasks)),
+            text(i18n.t(config.locale, i18n_text.HideDoneTasks)),
           ]),
         ]),
       ])
@@ -243,8 +243,8 @@ fn view_task_item(
         ],
         [text(task_status_utils.label(config.locale, task.status))],
       )
-    Completed ->
-      // Completed - show status label
+    Done ->
+      // Done - show status label
       span(
         [
           attribute.class("task-status"),
@@ -342,7 +342,7 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
   |> list.map(fn(pair) {
     let #(card_id, card_tasks) = pair
     let card = dict.get(card_map, card_id) |> option.from_result
-    let completed = list.count(card_tasks, fn(t) { t.status == Completed })
+    let completed = list.count(card_tasks, fn(t) { t.status == Done })
     let total = list.length(card_tasks)
     CardGroup(
       card: card,

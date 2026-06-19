@@ -4,7 +4,7 @@ with per_user as (
     actor_user_id,
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claims,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as releases
-  from task_events
+  from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
   group by actor_user_id

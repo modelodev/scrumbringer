@@ -86,11 +86,11 @@ fn card_to_json(card: Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
-    #("milestone_id", case card.milestone_id {
+    #("parent_card_id", case card.parent_card_id {
       opt.Some(id) -> json.int(id)
       opt.None -> json.null()
     }),
-    #("parent_card_id", case card.milestone_id {
+    #("parent_card_id", case card.parent_card_id {
       opt.Some(id) -> json.int(id)
       opt.None -> json.null()
     }),

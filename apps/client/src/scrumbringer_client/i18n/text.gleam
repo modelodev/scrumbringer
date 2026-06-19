@@ -52,7 +52,7 @@ pub type Text {
   TaskCreatedNotVisibleByFilters
   TaskClaimed
   TaskReleased
-  TaskCompleted
+  TaskDone
   SkillsSaved
   NoteAdded
 
@@ -162,7 +162,7 @@ pub type Text {
   Kanban
   CapabilitiesBoard
   People
-  Milestones
+  CardTrees
   Tracking
   WorkSurfaceView
   PoolPurpose
@@ -191,7 +191,7 @@ pub type Text {
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
-  HideCompletedTasks
+  HideDoneTasks
   TypeNumber(type_id: Int)
   MetaType
   MetaPriority
@@ -237,85 +237,85 @@ pub type Text {
   CapabilityBoardPressureNoTraction
   CapabilityBoardPressureFlowing
   NoCapability
-  MilestonesEmpty
-  MilestonesNoResults
-  MilestonesLoadError
-  MilestonesPurpose
-  CreateMilestone
-  CreateFirstMilestone
-  MilestoneCreated
-  MilestoneCreateFailed
-  ShowCompletedMilestones
-  ShowEmptyMilestones
-  MilestonesReady
-  MilestonesActive
-  MilestonesCompleted
-  MilestoneStateReady
-  MilestoneStateActive
-  MilestoneStateCompleted
-  MilestoneEmptyHint
-  MilestoneDone
-  MilestoneActivationTitle
-  MilestoneActivationBody(cards_count: Int, tasks_count: Int)
-  MilestoneActivationWarning
-  MilestoneDetails
-  MilestoneTabOverview
-  MilestoneTabContent
-  MilestoneTabPlanning
-  ActivateMilestone
-  ActivatingMilestone
-  MilestoneActivated
-  MilestoneActivateFailed
-  EditMilestone
-  DeleteMilestone
-  DeleteMilestoneTitle
-  DeleteMilestoneConfirm(name: String)
-  MilestoneUpdated
-  MilestoneUpdateFailed
-  MilestoneDeleted
-  MilestoneDeleteFailed
-  MilestoneDeleteNotAllowed
-  MilestoneAlreadyActive
-  MilestoneActivationIrreversible
-  MilestoneOpenDetails
-  MilestoneMoreActions
-  MilestoneMoveTo
-  MilestoneCardsLabel
-  MilestoneTasksLabel
-  MilestoneCardsProgress(completed: Int, total: Int)
-  MilestoneTasksProgress(completed: Int, total: Int)
-  MilestoneStructureSummary
-  MilestoneActions
-  MilestoneSearchPlaceholder
-  MilestoneLooseTasksNotice
-  MilestoneLooseTasksHint
-  MilestoneCardTasksEmpty
-  MilestoneCardTasksRegion(name: String)
-  MilestoneNoSelection
-  MilestoneNoSelectionHint
-  MilestoneCardsCount(cards_count: Int)
-  MilestoneLooseTasksCount(tasks_count: Int)
-  MilestoneBlockedTasksCount(tasks_count: Int)
-  MilestoneEmptyCardsCount(cards_count: Int)
-  MilestoneCardsWithoutProgressCount(cards_count: Int)
-  MilestoneStructureComplete
-  MilestoneLooseTasksDiagnostic(tasks_count: Int)
-  MilestoneBlockedTasksDiagnostic(tasks_count: Int)
-  MilestoneEmptyCardsDiagnostic(cards_count: Int)
-  MilestoneCardsWithoutProgressDiagnostic(cards_count: Int)
-  MilestoneCardEmpty
-  MilestoneCardNoProgress
-  MilestoneCardBlocked
-  MilestoneCardComplete
+  CardTreesEmpty
+  CardTreesNoResults
+  CardTreesLoadError
+  CardTreesPurpose
+  CreateCardTree
+  CreateFirstCardTree
+  CardTreeCreated
+  CardTreeCreateFailed
+  ShowDoneCardTrees
+  ShowEmptyCardTrees
+  CardTreesReady
+  CardTreesActive
+  CardTreesDone
+  CardTreeStateReady
+  CardTreeStateActive
+  CardTreeStateDone
+  CardTreeEmptyHint
+  CardTreeDone
+  CardTreeActivationTitle
+  CardTreeActivationBody(cards_count: Int, tasks_count: Int)
+  CardTreeActivationWarning
+  CardTreeDetails
+  CardTreeTabOverview
+  CardTreeTabContent
+  CardTreeTabPlanning
+  ActivateCardTree
+  ActivatingCardTree
+  CardTreeActivated
+  CardTreeActivateFailed
+  EditCardTree
+  DeleteCardTree
+  DeleteCardTreeTitle
+  DeleteCardTreeConfirm(name: String)
+  CardTreeUpdated
+  CardTreeUpdateFailed
+  CardTreeDeleted
+  CardTreeDeleteFailed
+  CardTreeDeleteNotAllowed
+  CardTreeAlreadyActive
+  CardTreeActivationIrreversible
+  CardTreeOpenDetails
+  CardTreeMoreActions
+  CardTreeMoveTo
+  CardTreeCardsLabel
+  CardTreeTasksLabel
+  CardTreeCardsProgress(completed: Int, total: Int)
+  CardTreeTasksProgress(completed: Int, total: Int)
+  CardTreeStructureSummary
+  CardTreeActions
+  CardTreeSearchPlaceholder
+  CardTreeLooseTasksNotice
+  CardTreeLooseTasksHint
+  CardTreeCardTasksEmpty
+  CardTreeCardTasksRegion(name: String)
+  CardTreeNoSelection
+  CardTreeNoSelectionHint
+  CardTreeCardsCount(cards_count: Int)
+  CardTreeLooseTasksCount(tasks_count: Int)
+  CardTreeBlockedTasksCount(tasks_count: Int)
+  CardTreeEmptyCardsCount(cards_count: Int)
+  CardTreeCardsWithoutProgressCount(cards_count: Int)
+  CardTreeStructureComplete
+  CardTreeLooseTasksDiagnostic(tasks_count: Int)
+  CardTreeBlockedTasksDiagnostic(tasks_count: Int)
+  CardTreeEmptyCardsDiagnostic(cards_count: Int)
+  CardTreeCardsWithoutProgressDiagnostic(cards_count: Int)
+  CardTreeCardEmpty
+  CardTreeCardNoProgress
+  CardTreeCardBlocked
+  CardTreeCardComplete
   ViewInKanban
-  MilestoneTotalTasksCount(tasks_count: Int)
-  MilestoneTaskStatusAvailable
-  MilestoneTaskStatusClaimed
-  MilestoneTaskStatusCompleted
-  ExpandMilestoneCard(name: String)
-  CollapseMilestoneCard(name: String)
-  ExpandMilestone(name: String)
-  CollapseMilestone(name: String)
+  CardTreeTotalTasksCount(tasks_count: Int)
+  CardTreeTaskPhaseAvailable
+  CardTreeTaskPhaseClaimed
+  CardTreeTaskPhaseDone
+  ExpandCardTreeCard(name: String)
+  CollapseCardTreeCard(name: String)
+  ExpandCardTree(name: String)
+  CollapseCardTree(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
   PeopleActiveSection
@@ -374,7 +374,7 @@ pub type Text {
   ResourceTasks
   ResourceCards
   ResourceNotes
-  ResourceMilestones
+  ResourceCardTrees
   LastUsed
   ExpiresAtOptional
   Revoke
@@ -419,7 +419,7 @@ pub type Text {
   WindowDays(days: Int)
   Claimed
   Released
-  Completed
+  Done
   MetricsOverview
   LoadingOverview
   ReleasePercent
@@ -616,10 +616,10 @@ pub type Text {
   DeleteCard
   CardTitle
   CardDescription
-  CardState
-  CardStatePendiente
-  CardStateEnCurso
-  CardStateCerrada
+  CardPhase
+  CardPhaseDraft
+  CardPhaseActive
+  CardPhaseClosed
   CardTasks
   CardProgress
   CardCreated
@@ -630,9 +630,9 @@ pub type Text {
   NoCardsYet
   CardTaskCount(completed: Int, total: Int)
   KanbanEmptyColumn
-  KanbanEmptyPendiente
-  KanbanEmptyEnCurso
-  KanbanEmptyCerrada
+  KanbanEmptyDraft
+  KanbanEmptyActive
+  KanbanEmptyClosed
   KanbanSurfacePurpose
   KanbanSummaryCards
   KanbanSummaryOngoing
@@ -707,11 +707,11 @@ pub type Text {
   TaskStateAvailable
   TaskStateClaimed
   TaskStateOngoing
-  TaskStateCompleted
+  TaskStateDone
   TaskStateAvailableHint
   TaskStateClaimedHint
   TaskStateOngoingHint
-  TaskStateCompletedHint
+  TaskStateDoneHint
   TaskNextActionLabel
   TaskNextActionClaim
   TaskNextActionStart
@@ -807,7 +807,7 @@ pub type Text {
   // Card detail (member)
   CardAddTask
   CardTasksEmpty
-  CardTasksCompleted
+  CardTasksDone
   TaskType
   TaskTitlePlaceholder
 
@@ -827,8 +827,8 @@ pub type Text {
   QuickTask
   NoTasksYet
   CardTasksMore(hidden_count: Int)
-  NewCardInThisMilestone
-  MilestoneTarget
+  NewCardInThisCardTree
+  CardTreeTarget
   Configuration
   Team
   // Note: Capabilities is already defined in the Capabilities section above
@@ -839,7 +839,7 @@ pub type Text {
   Rules
   // Story 4.9: Cards config filters (UX improvements)
   ShowEmptyCards
-  ShowCompletedCards
+  ShowDoneCards
   Organization
   OrgUsers
   Invites
@@ -881,16 +881,16 @@ pub type Text {
   TaskEditLocation
   TaskEditKeyboardHint
   TaskEditRequiresClaim
-  TaskEditCompletedReadOnly
-  MilestoneLabel
-  NoMilestone
-  TaskMilestoneInheritedFromCard
+  TaskEditDoneReadOnly
+  CardTreeLabel
+  NoCardTree
+  TaskCardTreeInheritedFromCard
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
   TaskBlockingClear
   MetricsTasksTotal
-  MetricsTasksCompleted
+  MetricsTasksDone
   MetricsProgress
   MetricsRebotesAvg
   MetricsPoolLifetimeAvg

@@ -35,7 +35,6 @@ import lustre/element.{type Element}
 
 import lustre/element/html.{a, div, h2, p, style, text}
 
-import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
@@ -287,11 +286,6 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       client_state.pool_msg(pool_messages.MemberTaskDetailEditCardIdChanged(
         value,
       ))
-    },
-    on_edit_milestone_id_changed: fn(value) {
-      client_state.pool_msg(
-        pool_messages.MemberTaskDetailEditMilestoneIdChanged(value),
-      )
     },
     on_edit_submitted: client_state.pool_msg(
       pool_messages.MemberTaskDetailEditSubmitted,
@@ -1026,7 +1020,6 @@ fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
     view_mode.Cards -> i18n_text.Kanban
     view_mode.Capabilities -> i18n_text.CapabilitiesBoard
     view_mode.People -> i18n_text.People
-    view_mode.Milestones -> i18n_text.Tracking
   }
 }
 
@@ -1187,10 +1180,6 @@ fn build_left_panel(
       member_route_for(view_mode.People),
       client_state.Push,
     ),
-    on_navigate_milestones: client_state.NavigateTo(
-      member_route_for(view_mode.Milestones),
-      client_state.Push,
-    ),
     // Config navigation
     on_navigate_config_team: client_state.NavigateTo(
       router.Config(permissions.Members, model.core.selected_project_id),
@@ -1283,7 +1272,7 @@ fn project_depth_names(
 
 fn default_depth_names() -> List(scope_view.DepthName) {
   [
-    scope_view.DepthName(1, "Hito", "Hitos"),
+    scope_view.DepthName(1, "Initiative", "Initiatives"),
     scope_view.DepthName(2, "Card", "Cards"),
   ]
 }
@@ -1315,34 +1304,10 @@ fn build_center_panel(
       model.member.skills.member_my_capability_ids,
     )
   let cards = project_cards(model)
-  let projects = state_selectors.active_projects(model)
   let pool_context = pool_view_context.from_state(model, cards)
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(pool_context, user)
-  let milestones_content =
-    scope_view.view(scope_view.Config(
-      locale: model.ui.locale,
-      cards: cards,
-      tasks: data.tasks,
-      task_types: data.task_types,
-      capabilities: capability_pairs(data.capabilities),
-      depth_names: configured_depth_names(
-        projects,
-        model.core.selected_project_id,
-      ),
-      scope: scope_view.TrackingProfile,
-      include_closed: model.member.pool.member_milestones_show_completed,
-      on_card_opened: fn(card_id) {
-        client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
-      },
-      on_task_opened: fn(task_id) {
-        client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
-      },
-      on_include_closed_toggled: client_state.pool_msg(
-        pool_messages.MemberMilestonesShowCompletedToggled,
-      ),
-    ))
   let cards_content =
     kanban_board.view(kanban_config(
       model,
@@ -1389,16 +1354,11 @@ fn build_center_panel(
     cards_content: cards_content,
     capabilities_content: capabilities_content,
     people_content: people_content,
-    milestones_content: milestones_content,
     on_drag_move: fn(x, y) {
       client_state.pool_msg(pool_messages.MemberDragMoved(x, y))
     },
     on_drag_end: client_state.pool_msg(pool_messages.MemberDragEnded),
   ))
-}
-
-fn capability_pairs(capabilities: List(Capability)) -> List(#(Int, String)) {
-  list.map(capabilities, fn(capability) { #(capability.id, capability.name) })
 }
 
 fn kanban_config(
@@ -1600,7 +1560,7 @@ fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
 // Card Detail Modal for Member Views
 // =============================================================================
 
-/// Renders the card detail modal for Pool/Kanban/Milestones views.
+/// Renders the card detail modal for Pool/Kanban/CardTrees views.
 fn view_member_card_detail_modal(
   model: client_state.Model,
   _user: User,
@@ -1624,9 +1584,9 @@ fn member_cards_config(
         card_id,
       ))
     },
-    fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(
-        card_id,
+    fn(_card_id) {
+      client_state.pool_msg(pool_messages.OpenCardDialog(
+        admin_cards.CardDialogCreate,
       ))
     },
     fn(card_id) {

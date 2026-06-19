@@ -21,7 +21,6 @@ fn input(title: String, description: String) -> detail_edit_form.Input {
     priority: "2",
     type_id: "1",
     card_id: "",
-    milestone_id: "",
   )
 }
 
@@ -43,7 +42,7 @@ fn sample_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -82,7 +81,6 @@ pub fn detail_edit_form_returns_unchanged_canonical_values_test() {
   let assert 2 = submission.priority
   let assert 1 = submission.type_id
   let assert None = submission.card_id
-  let assert None = submission.milestone_id
 }
 
 pub fn detail_edit_form_returns_changed_normalized_values_test() {
@@ -131,19 +129,13 @@ pub fn detail_edit_form_reports_invalid_priority_test() {
     detail_edit_form.evaluate(sample_task(), invalid_input, labels())
 }
 
-pub fn detail_edit_form_clears_milestone_when_card_is_selected_test() {
-  let changed_input =
-    detail_edit_form.Input(
-      ..input("Title", ""),
-      card_id: "9",
-      milestone_id: "4",
-    )
+pub fn detail_edit_form_keeps_selected_card_test() {
+  let changed_input = detail_edit_form.Input(..input("Title", ""), card_id: "9")
 
   let assert detail_edit_form.Changed(submission) =
     detail_edit_form.evaluate(sample_task(), changed_input, labels())
 
   let assert Some(9) = submission.card_id
-  let assert None = submission.milestone_id
 }
 
 pub fn detail_edit_form_description_text_uses_empty_for_absent_description_test() {

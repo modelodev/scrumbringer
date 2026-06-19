@@ -5,7 +5,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
-import scrumbringer_server/services/rule_metrics_db
+import scrumbringer_server/use_case/rule_metrics_db
 
 type Totals {
   Totals(evaluated_count: Int, applied_count: Int, suppressed_count: Int)

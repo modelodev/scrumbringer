@@ -3,8 +3,8 @@
 import domain/org_role
 import domain/project_role
 import gleam/json
-import scrumbringer_server/services/org_users_db
-import scrumbringer_server/services/projects_db
+import scrumbringer_server/use_case/org_users_db
+import scrumbringer_server/use_case/projects_db
 
 pub fn users(users: List(org_users_db.OrgUser)) -> json.Json {
   json.array(users, of: user)

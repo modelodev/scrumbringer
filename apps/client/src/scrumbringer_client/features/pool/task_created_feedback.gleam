@@ -3,7 +3,7 @@
 import gleam/option as opt
 
 import domain/task.{type Task}
-import domain/task_status.{type TaskStatus}
+import domain/task_status.{type TaskPhase}
 
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/i18n/i18n
@@ -14,7 +14,7 @@ import scrumbringer_client/ui/toast
 pub type Config {
   Config(
     locale: Locale,
-    status_filter: opt.Option(TaskStatus),
+    status_filter: opt.Option(TaskPhase),
     work_filters: available_tasks.Config,
   )
 }
@@ -49,7 +49,7 @@ fn is_visible(config: Config, task: Task) -> Bool {
   && available_tasks.matches_work_filters(config.work_filters, task)
 }
 
-fn status_matches(status_filter: opt.Option(TaskStatus), task: Task) -> Bool {
+fn status_matches(status_filter: opt.Option(TaskPhase), task: Task) -> Bool {
   case status_filter {
     opt.Some(status) -> task.status == status
     opt.None -> True

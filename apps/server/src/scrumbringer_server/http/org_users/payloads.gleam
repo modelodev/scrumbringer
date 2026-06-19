@@ -5,9 +5,9 @@ import gleam/dynamic/decode
 import gleam/result
 
 import domain/org_role.{type OrgRole}
-import domain/org_role/codec as org_role_codec
+import domain/org_role/org_role_codec
 import domain/project_role.{type ProjectRole, Member}
-import domain/project_role/codec as project_role_codec
+import domain/project_role/project_role_codec
 
 pub type OrgRolePayload {
   OrgRolePayload(org_role: OrgRole)

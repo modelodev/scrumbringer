@@ -103,7 +103,7 @@ fn claimed_task() -> Task {
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(9),
     card_title: Some("Release card"),
     card_color: Some(card.Blue),

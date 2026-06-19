@@ -37,7 +37,7 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
       workflow_id,
       Some(type_id),
       "Test Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res = get_workflow_metrics(handler, session, workflow_id)
@@ -70,7 +70,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
       workflow_id,
       Some(type_id),
       "Counts Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let ts = execution_time()
@@ -138,7 +138,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       workflow_id,
       Some(type_id),
       "Breakdown Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let ts = execution_time()
@@ -267,7 +267,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 1",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(rule2_id) =
     fixtures.create_rule(
@@ -276,7 +276,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 2",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let ts = execution_time()
@@ -366,7 +366,7 @@ pub fn executions_list_returns_paginated_results_test() {
       workflow_id,
       Some(type_id),
       "Executions Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let ts = execution_time()
@@ -436,7 +436,7 @@ pub fn executions_list_empty_returns_empty_array_test() {
       workflow_id,
       Some(type_id),
       "Empty Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res = get_rule_executions(handler, session, rule_id, None, None)
@@ -515,7 +515,7 @@ pub fn invalid_execution_limit_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Invalid Limit Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res =
@@ -549,7 +549,7 @@ pub fn duplicate_execution_offset_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Duplicate Offset Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res =

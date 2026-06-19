@@ -8,7 +8,7 @@ import fixtures
 import gleam/option.{None, Some}
 import gleeunit
 import scrumbringer_server
-import scrumbringer_server/services/rules_engine.{
+import scrumbringer_server/use_case/rules_engine.{
   Applied, RuleResult, Suppressed,
 }
 import support/assertions as expect
@@ -39,7 +39,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       workflow_id,
       Some(type_id),
       "Bug Complete",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Bug")
@@ -55,7 +55,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       org_id,
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
-      task_status.Completed,
+      task_status.Done,
       type_id,
     )
 
@@ -87,7 +87,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   // Deactivate the rule
@@ -107,7 +107,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       org_id,
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
-      task_status.Completed,
+      task_status.Done,
       type_id,
     )
 
@@ -139,7 +139,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Feature")
@@ -154,7 +154,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       org_id,
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
-      task_status.Completed,
+      task_status.Done,
       type_id,
     )
 
@@ -193,7 +193,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Completed,
+      task_status.Done,
     )
 
   // Deactivate workflow
@@ -213,7 +213,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       org_id,
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
-      task_status.Completed,
+      task_status.Done,
       type_id,
     )
 

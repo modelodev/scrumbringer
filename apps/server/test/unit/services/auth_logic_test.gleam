@@ -1,8 +1,8 @@
 import domain/org_role
 import gleam/dict
 import gleam/option.{None, Some}
-import scrumbringer_server/services/auth_logic
-import scrumbringer_server/services/store_state as ss
+import scrumbringer_server/use_case/auth_logic
+import scrumbringer_server/use_case/store_state as ss
 import support/assertions as expect
 
 const now_iso = "2026-01-20T00:00:00Z"

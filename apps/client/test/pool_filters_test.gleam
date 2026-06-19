@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
 
-import domain/task_status.{Available, Completed}
+import domain/task_status.{Available, Done}
 import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/filters
@@ -20,7 +20,7 @@ pub fn status_changed_parses_status_and_requests_refresh_test() {
 
 pub fn status_changed_clears_blank_or_invalid_and_requests_refresh_test() {
   let pool =
-    member_pool.Model(..default_pool(), member_filters_status: Some(Completed))
+    member_pool.Model(..default_pool(), member_filters_status: Some(Done))
 
   let #(blank_pool, blank_refresh) = filters.handle_status_changed(pool, "  ")
   let #(invalid_pool, invalid_refresh) =
@@ -68,7 +68,7 @@ pub fn clear_resets_all_filters_and_scope_test() {
   let pool =
     member_pool.Model(
       ..default_pool(),
-      member_filters_status: Some(Completed),
+      member_filters_status: Some(Done),
       member_filters_type_id: Some(11),
       member_filters_capability_id: Some(12),
       member_filters_q: "backend",

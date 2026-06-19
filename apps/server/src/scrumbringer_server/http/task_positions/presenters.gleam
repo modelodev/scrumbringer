@@ -1,7 +1,7 @@
 //// JSON presenters for task position endpoints.
 
 import gleam/json
-import scrumbringer_server/services/task_positions_db
+import scrumbringer_server/use_case/task_positions_db
 
 pub fn positions(positions: List(task_positions_db.TaskPosition)) -> json.Json {
   json.array(positions, of: position)

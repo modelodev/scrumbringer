@@ -3,7 +3,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/card.{Card, Pendiente}
+import domain/card.{Card, Draft}
 import domain/remote.{Loaded, Loading}
 import domain/task.{Task}
 import domain/task_state
@@ -23,11 +23,11 @@ fn sample_card() {
   Card(
     id: 4,
     project_id: 7,
-    milestone_id: None,
+    parent_card_id: None,
     title: "Customer Card",
     description: "Customer-facing card",
     color: None,
-    state: Pendiente,
+    state: Draft,
     task_count: 1,
     completed_count: 0,
     created_by: 1,
@@ -56,7 +56,7 @@ fn sample_task(id: Int, card_id) {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: card_id,
     card_title: None,
     card_color: None,

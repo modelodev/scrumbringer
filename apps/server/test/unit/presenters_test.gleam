@@ -16,7 +16,7 @@ import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
 import scrumbringer_server/http/projects/presenters as project_presenters
 import scrumbringer_server/http/tasks/presenters as task_presenters
-import scrumbringer_server/services/projects_db
+import scrumbringer_server/use_case/projects_db
 import support/assertions as expect
 
 pub fn main() {
@@ -215,7 +215,7 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
       created_at: "2026-06-15T09:00:00Z",
       due_date: None,
       version: 1,
-      milestone_id: None,
+      parent_card_id: None,
       card_id: None,
       card_title: None,
       card_color: None,

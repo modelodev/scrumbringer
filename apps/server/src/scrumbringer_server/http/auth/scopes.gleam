@@ -44,16 +44,6 @@ pub fn required_scope(
     http.Delete, ["api", "v1", "cards", _, "notes", _] ->
       write(api_token_scope.Notes)
 
-    http.Get, ["api", "v1", "projects", _, "milestones"] ->
-      read(api_token_scope.Milestones)
-    http.Get, ["api", "v1", "milestones", _] -> read(api_token_scope.Milestones)
-    http.Post, ["api", "v1", "projects", _, "milestones"] ->
-      write(api_token_scope.Milestones)
-    http.Patch, ["api", "v1", "milestones", _] ->
-      write(api_token_scope.Milestones)
-    http.Delete, ["api", "v1", "milestones", _] ->
-      write(api_token_scope.Milestones)
-
     _, _ -> Error(RouteNotAllowed)
   }
 }

@@ -12,13 +12,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task persistence (see `persistence/tasks/queries.gleam`)
-//// - Note persistence (see `services/task_notes_db.gleam`)
+//// - Task repository (see `repository/tasks/queries.gleam`)
+//// - Note repository (see `use_case/task_notes_db.gleam`)
 ////
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for user identity
-//// - Uses `services/task_notes_db.gleam` for persistence
+//// - Uses `use_case/task_notes_db.gleam` for repository
 
 import domain/task.{type Task, type TaskNote, TaskNote}
 import gleam/http
@@ -30,10 +30,10 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/notes/mutations as note_mutations
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/task_notes/presenters as note_presenters
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/task_notes_db
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/task_notes_db
 import wisp
 
 /// Routes /api/tasks/:id/notes requests (GET list, POST create).

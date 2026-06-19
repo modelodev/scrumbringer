@@ -8,11 +8,11 @@ import scrumbringer_client/ui/task_state
 
 import domain/task_status
 
-pub fn label(locale: Locale, status: task_status.TaskStatus) -> String {
+pub fn label(locale: Locale, status: task_status.TaskPhase) -> String {
   task_state.label(locale, status)
 }
 
-pub fn claimed_icon(status: task_status.TaskStatus) -> icons.NavIcon {
+pub fn claimed_icon(status: task_status.TaskPhase) -> icons.NavIcon {
   case status {
     task_status.Claimed(task_status.Ongoing) -> icons.Play
     task_status.Claimed(task_status.Taken) -> icons.Pause
