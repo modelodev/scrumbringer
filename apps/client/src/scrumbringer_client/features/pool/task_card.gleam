@@ -13,6 +13,7 @@ import lustre/event
 
 import scrumbringer_client/features/pool/labels as pool_labels
 import scrumbringer_client/features/pool/task_hover
+import scrumbringer_client/features/pool/urgency
 import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
@@ -36,6 +37,7 @@ pub type Config(msg) {
     x: Int,
     y: Int,
     age_days: Int,
+    project_today: String,
     highlight_class: String,
     touch_preview: Bool,
     disable_actions: Bool,
@@ -66,6 +68,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       config.card_color,
       config.x,
       config.age_days,
+      config.task.due_date,
+      config.project_today,
       config.task.blocked_count,
       config.highlight_class,
       config.touch_preview,
@@ -299,6 +303,8 @@ fn card_classes(
   card_color: Option(CardColor),
   x: Int,
   age_days: Int,
+  due_date: Option(String),
+  project_today: String,
   blocked_count: Int,
   highlight_class: String,
   touch_preview: Bool,
@@ -311,7 +317,7 @@ fn card_classes(
     "" -> base_classes
     border_class -> base_classes <> " " <> border_class
   }
-  let with_decay = case decay_to_shake_class(age_days) {
+  let with_decay = case urgency.shake_class(age_days, due_date, project_today) {
     "" -> with_border
     shake_class -> with_border <> " " <> shake_class
   }
@@ -340,13 +346,4 @@ fn card_style(x: Int, y: Int) -> String {
   <> "px; height:"
   <> size_str
   <> "px;"
-}
-
-fn decay_to_shake_class(age_days: Int) -> String {
-  case age_days {
-    d if d < 9 -> ""
-    d if d < 18 -> "decay-shake-low"
-    d if d < 27 -> "decay-shake-medium"
-    _ -> "decay-shake-high"
-  }
 }

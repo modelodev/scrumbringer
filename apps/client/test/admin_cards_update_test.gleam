@@ -21,6 +21,7 @@ fn sample_card(id: Int) -> Card {
     completed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: option.None,
     has_new_notes: False,
   )
 }

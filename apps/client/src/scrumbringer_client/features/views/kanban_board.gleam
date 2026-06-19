@@ -29,6 +29,7 @@ import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/client_ffi
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
@@ -279,6 +280,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
     preview_limit: 3,
     progress_completed: cwp.completed,
     progress_total: cwp.total,
+    project_today: client_ffi.date_today(),
     description: option.Some(cwp.card.description),
     status_items: view_health_items(config, health),
     on_card_click: option.Some(config.on_card_click(cwp.card.id)),

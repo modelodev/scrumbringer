@@ -241,6 +241,11 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
   )
 
   use created_at <- decode.field("created_at", decode.string)
+  use due_date <- decode.optional_field(
+    "due_date",
+    option.None,
+    decode.optional(decode.string),
+  )
   use version <- decode.field("version", decode.int)
 
   use claim_count <- decode.field("claim_count", decode.int)
@@ -287,6 +292,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       work_state: work_state,
       created_by: created_by,
       created_at: created_at,
+      due_date: due_date,
       version: version,
       milestone_id: option.None,
       // Card fields not available in metrics endpoint

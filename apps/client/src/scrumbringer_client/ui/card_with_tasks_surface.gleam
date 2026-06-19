@@ -1,9 +1,10 @@
-import domain/card.{type Card}
+import domain/card.{type Card, Cerrada}
 import domain/org.{type OrgUser}
 import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Completed}
 import gleam/list
 import gleam/option
+import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element, none}
@@ -37,6 +38,7 @@ pub type Config(msg) {
     preview_limit: Int,
     progress_completed: Int,
     progress_total: Int,
+    project_today: String,
     description: option.Option(String),
     status_items: List(Element(msg)),
     on_card_click: option.Option(msg),
@@ -54,6 +56,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 
   div(attrs, [
     view_header(config),
+    view_due_date(config),
     view_description(config),
     view_progress(config),
     view_status_items(config),
@@ -114,6 +117,34 @@ fn view_description(config: Config(msg)) -> Element(msg) {
         False -> none()
       }
     option.None -> none()
+  }
+}
+
+fn view_due_date(config: Config(msg)) -> Element(msg) {
+  case config.card.due_date {
+    option.Some(due_date) ->
+      div(
+        [
+          attribute.class(due_date_class(
+            config.card.state,
+            due_date,
+            config.project_today,
+          )),
+          attribute.attribute("title", due_date),
+        ],
+        [text(due_date)],
+      )
+    option.None -> none()
+  }
+}
+
+fn due_date_class(card_state, due_date: String, project_today: String) -> String {
+  let base = "card-due-date"
+  case
+    card_state != Cerrada && string.compare(due_date, project_today) == order.Lt
+  {
+    True -> base <> " card-due-date-overdue"
+    False -> base
   }
 }
 

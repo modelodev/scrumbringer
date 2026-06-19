@@ -8,6 +8,7 @@ SELECT
     coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+    coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,

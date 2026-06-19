@@ -197,6 +197,7 @@ fn pool_task_card_config(
     x: x,
     y: y,
     age_days: age_in_days(created_at),
+    project_today: client_ffi.date_today(),
     highlight_class: task_highlight_classes(context, id),
     touch_preview: context.pool.member_pool_preview_task_id == opt.Some(id),
     disable_actions: context.pool.member_task_mutation_in_flight,

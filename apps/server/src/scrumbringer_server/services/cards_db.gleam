@@ -71,6 +71,7 @@ pub fn list_cards(
       row.color,
       row.created_by,
       row.created_at,
+      row.due_date,
       row.task_count,
       row.completed_count,
       row.available_count,
@@ -98,6 +99,7 @@ pub fn get_card(
         row.color,
         row.created_by,
         row.created_at,
+        row.due_date,
         row.task_count,
         row.completed_count,
         row.available_count,
@@ -115,6 +117,7 @@ fn card_from_counts(
   color: String,
   created_by: Int,
   created_at: String,
+  due_date: String,
   task_count: Int,
   completed_count: Int,
   available_count: Int,
@@ -133,6 +136,7 @@ fn card_from_counts(
     completed_count,
     created_by,
     created_at,
+    due_date,
     has_new_notes,
   )
 }
@@ -149,6 +153,7 @@ fn card_from_fields(
   completed_count: Int,
   created_by: Int,
   created_at: String,
+  due_date: String,
   has_new_notes: Bool,
 ) -> Result(Card, CardError) {
   use parsed_color <- result.try(parse_optional_color(color))
@@ -164,6 +169,7 @@ fn card_from_fields(
     completed_count: completed_count,
     created_by: created_by,
     created_at: created_at,
+    due_date: option_helpers.string_to_option(due_date),
     has_new_notes: has_new_notes,
   ))
 }
@@ -234,6 +240,7 @@ fn create_card_row(
         0,
         row.created_by,
         row.created_at,
+        row.due_date,
         False,
       )
     }
@@ -297,6 +304,7 @@ pub fn update_card(
             full_row.completed_count,
             row.created_by,
             row.created_at,
+            row.due_date,
             full_row.has_new_notes,
           )
         }

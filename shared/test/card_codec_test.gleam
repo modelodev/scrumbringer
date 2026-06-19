@@ -22,6 +22,28 @@ pub fn card_decoder_decodes_valid_color_test() {
     completed_count: 1,
     created_by: 42,
     created_at: "2026-01-28T12:00:00Z",
+    due_date: option.None,
+    has_new_notes: True,
+  )) = json.parse(body, codec.card_decoder())
+}
+
+pub fn card_due_date_roundtrip_test() {
+  let body =
+    "{\"id\":1,\"project_id\":2,\"parent_card_id\":null,\"title\":\"Discovery\",\"description\":\"Scope\",\"color\":\"blue\",\"state\":\"en_curso\",\"task_count\":3,\"completed_count\":1,\"created_by\":42,\"created_at\":\"2026-01-28T12:00:00Z\",\"due_date\":\"2026-06-20\",\"has_new_notes\":true}"
+
+  let assert Ok(Card(
+    id: 1,
+    project_id: 2,
+    milestone_id: option.None,
+    title: "Discovery",
+    description: "Scope",
+    color: option.Some(card.Blue),
+    state: card.EnCurso,
+    task_count: 3,
+    completed_count: 1,
+    created_by: 42,
+    created_at: "2026-01-28T12:00:00Z",
+    due_date: option.Some("2026-06-20"),
     has_new_notes: True,
   )) = json.parse(body, codec.card_decoder())
 }

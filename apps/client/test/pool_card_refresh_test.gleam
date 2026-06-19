@@ -172,6 +172,7 @@ fn sample_card(id: Int, project_id: Int) -> Card {
     completed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }
