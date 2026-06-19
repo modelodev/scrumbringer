@@ -17,7 +17,7 @@ import domain/card.{
   optional_color_to_string as shared_optional_color_to_string,
   parse_optional_color as shared_parse_optional_color,
 }
-import domain/milestone
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -30,9 +30,9 @@ import scrumbringer_server/sql
 // Types
 // =============================================================================
 
-const no_milestone_create_value = 0
+const no_parent_create_value = 0
 
-const no_milestone_update_value = -1
+const no_parent_update_value = -1
 
 /// Errors for card operations.
 pub type CardError {
@@ -42,6 +42,7 @@ pub type CardError {
   InvalidMilestoneState(String)
   InvalidColor(String)
   InvalidMovePoolToMilestone
+  CardHasClaimedDescendant(Int)
   DbError(pog.QueryError)
 }
 
@@ -64,7 +65,7 @@ pub fn list_cards(
     card_from_counts(
       row.id,
       row.project_id,
-      row.milestone_id,
+      row.parent_card_id,
       row.title,
       row.description,
       row.color,
@@ -91,7 +92,7 @@ pub fn get_card(
       card_from_counts(
         row.id,
         row.project_id,
-        row.milestone_id,
+        row.parent_card_id,
         row.title,
         row.description,
         row.color,
@@ -108,7 +109,7 @@ pub fn get_card(
 fn card_from_counts(
   id: Int,
   project_id: Int,
-  milestone_id: Int,
+  parent_card_id: Int,
   title: String,
   description: String,
   color: String,
@@ -123,7 +124,7 @@ fn card_from_counts(
   card_from_fields(
     id,
     project_id,
-    milestone_id,
+    parent_card_id,
     title,
     description,
     color,
@@ -139,7 +140,7 @@ fn card_from_counts(
 fn card_from_fields(
   id: Int,
   project_id: Int,
-  milestone_id: Int,
+  parent_card_id: Int,
   title: String,
   description: String,
   color: String,
@@ -154,7 +155,7 @@ fn card_from_fields(
   Ok(Card(
     id: id,
     project_id: project_id,
-    milestone_id: option_helpers.int_to_option(milestone_id),
+    milestone_id: option_helpers.int_to_option(parent_card_id),
     title: title,
     description: description,
     color: parsed_color,
@@ -171,19 +172,19 @@ fn card_from_fields(
 pub fn create_card(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Option(Int),
+  parent_card_id: Option(Int),
   title: String,
   description: Option(String),
   color: Option(CardColor),
   created_by: Int,
 ) -> Result(Card, CardError) {
-  case validate_milestone_for_create(db, project_id, milestone_id) {
+  case validate_parent_for_create(db, project_id, parent_card_id) {
     Error(e) -> Error(e)
     Ok(Nil) ->
       create_card_row(
         db,
         project_id,
-        milestone_id,
+        parent_card_id,
         title,
         description,
         color,
@@ -195,7 +196,7 @@ pub fn create_card(
 fn create_card_row(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Option(Int),
+  parent_card_id: Option(Int),
   title: String,
   description: Option(String),
   color: Option(CardColor),
@@ -212,7 +213,7 @@ fn create_card_row(
       desc,
       col,
       created_by,
-      milestone_id_create_value(milestone_id),
+      parent_card_id_create_value(parent_card_id),
     )
   {
     Error(e) -> Error(DbError(e))
@@ -224,7 +225,7 @@ fn create_card_row(
       card_from_fields(
         row.id,
         row.project_id,
-        row.milestone_id,
+        row.parent_card_id,
         row.title,
         row.description,
         row.color,
@@ -243,18 +244,18 @@ fn create_card_row(
 pub fn update_card(
   db: pog.Connection,
   card_id: Int,
-  milestone_id: Option(Int),
+  parent_card_id: Option(Int),
   title: String,
   description: Option(String),
   color: Option(CardColor),
   user_id: Int,
 ) -> Result(Card, CardError) {
   use current <- result.try(get_card(db, card_id, user_id))
-  use _ <- result.try(validate_milestone_for_update(
+  use _ <- result.try(validate_parent_for_update(
     db,
     current.project_id,
     current.milestone_id,
-    milestone_id,
+    parent_card_id,
   ))
 
   let desc = description_text(description)
@@ -267,7 +268,7 @@ pub fn update_card(
       title,
       desc,
       col,
-      milestone_id_update_value(milestone_id),
+      parent_card_id_update_value(parent_card_id),
     )
   {
     Error(e) -> Error(DbError(e))
@@ -287,7 +288,7 @@ pub fn update_card(
           card_from_fields(
             row.id,
             row.project_id,
-            row.milestone_id,
+            row.parent_card_id,
             row.title,
             row.description,
             row.color,
@@ -322,6 +323,96 @@ pub fn delete_card(db: pog.Connection, card_id: Int) -> Result(Nil, CardError) {
   }
 }
 
+pub fn activate_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(Int, CardError) {
+  pog.query(
+    "UPDATE cards
+     SET execution_state = 'active',
+         activated_at = NOW(),
+         activated_by = $2,
+         activation_source = 'direct_activation'
+     WHERE id = $1",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.int(user_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { 0 })
+  |> result.map_error(DbError)
+}
+
+pub fn close_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(Int, CardError) {
+  use claimed_count <- result.try(count_claimed_tasks(db, card_id))
+  case claimed_count > 0 {
+    True -> Error(CardHasClaimedDescendant(claimed_count))
+    False ->
+      pog.query(
+        "UPDATE cards
+         SET execution_state = 'closed',
+             closed_at = NOW(),
+             closed_by = $2,
+             closed_by_kind = 'user',
+             closed_reason = 'manually_closed'
+         WHERE id = $1",
+      )
+      |> pog.parameter(pog.int(card_id))
+      |> pog.parameter(pog.int(user_id))
+      |> pog.execute(db)
+      |> result.map(fn(_) { 0 })
+      |> result.map_error(DbError)
+  }
+}
+
+pub fn move_card(
+  db: pog.Connection,
+  card_id: Int,
+  parent_card_id: Option(Int),
+) -> Result(Int, CardError) {
+  pog.query(
+    "UPDATE cards
+     SET parent_card_id = $2
+     WHERE id = $1",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.nullable(pog.int, parent_card_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { 0 })
+  |> result.map_error(DbError)
+}
+
+fn count_claimed_tasks(
+  db: pog.Connection,
+  card_id: Int,
+) -> Result(Int, CardError) {
+  pog.query(
+    "SELECT COUNT(*)::int
+     FROM tasks
+     WHERE card_id = $1
+       AND execution_state = 'claimed'",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(DbError)
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [count] -> Ok(count)
+      _ -> Ok(0)
+    }
+  })
+}
+
+fn int_decoder() {
+  use value <- decode.field(0, decode.int)
+  decode.success(value)
+}
+
 // =============================================================================
 // State Derivation (delegated to shared module)
 // =============================================================================
@@ -337,83 +428,37 @@ fn description_text(description: Option(String)) -> String {
   option_helpers.option_to_value(description, "")
 }
 
-fn milestone_id_create_value(milestone_id: Option(Int)) -> Int {
-  option_helpers.option_to_value(milestone_id, no_milestone_create_value)
+fn parent_card_id_create_value(parent_card_id: Option(Int)) -> Int {
+  option_helpers.option_to_value(parent_card_id, no_parent_create_value)
 }
 
-fn milestone_id_update_value(milestone_id: Option(Int)) -> Int {
-  option_helpers.option_to_value(milestone_id, no_milestone_update_value)
+fn parent_card_id_update_value(parent_card_id: Option(Int)) -> Int {
+  option_helpers.option_to_value(parent_card_id, no_parent_update_value)
 }
 
-fn validate_milestone_for_create(
+fn validate_parent_for_create(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Option(Int),
+  parent_card_id: Option(Int),
 ) -> Result(Nil, CardError) {
-  case milestone_id {
+  let _ = db
+  let _ = project_id
+  case parent_card_id {
     None -> Ok(Nil)
     Some(id) if id <= 0 -> Ok(Nil)
-    Some(id) ->
-      case get_milestone_state(db, id, project_id) {
-        Ok(milestone.Ready) -> Ok(Nil)
-        Ok(_) -> Error(InvalidMilestone)
-        Error(e) -> Error(e)
-      }
+    Some(_) -> Ok(Nil)
   }
 }
 
-fn validate_milestone_for_update(
+fn validate_parent_for_update(
   db: pog.Connection,
   project_id: Int,
-  current_milestone_id: Option(Int),
-  target_milestone_id: Option(Int),
+  current_parent_card_id: Option(Int),
+  target_parent_card_id: Option(Int),
 ) -> Result(Nil, CardError) {
-  case target_milestone_id {
-    None ->
-      case current_milestone_id {
-        Some(id) ->
-          case get_milestone_state(db, id, project_id) {
-            Ok(milestone.Ready) -> Ok(Nil)
-            Ok(_) -> Error(InvalidMovePoolToMilestone)
-            Error(e) -> Error(e)
-          }
-        None -> Ok(Nil)
-      }
-    Some(target_id) if target_id <= 0 -> Ok(Nil)
-    Some(target_id) ->
-      case current_milestone_id {
-        Some(current_id) ->
-          case
-            get_milestone_state(db, current_id, project_id),
-            get_milestone_state(db, target_id, project_id)
-          {
-            Ok(milestone.Ready), Ok(milestone.Ready) -> Ok(Nil)
-            Ok(_), Ok(_) -> Error(InvalidMovePoolToMilestone)
-            Error(e), _ -> Error(e)
-            _, Error(e) -> Error(e)
-          }
-        None -> Error(InvalidMovePoolToMilestone)
-      }
-  }
-}
-
-fn get_milestone_state(
-  db: pog.Connection,
-  milestone_id: Int,
-  project_id: Int,
-) -> Result(milestone.MilestoneState, CardError) {
-  case sql.milestones_get(db, milestone_id) {
-    Error(e) -> Error(DbError(e))
-    Ok(pog.Returned(rows: [], ..)) -> Error(InvalidMilestone)
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      case row.project_id == project_id {
-        True ->
-          case milestone.state_from_string(row.state) {
-            Ok(state) -> Ok(state)
-            Error(milestone.UnknownMilestoneState(state)) ->
-              Error(InvalidMilestoneState(state))
-          }
-        False -> Error(InvalidMilestone)
-      }
-  }
+  let _ = db
+  let _ = project_id
+  let _ = current_parent_card_id
+  let _ = target_parent_card_id
+  Ok(Nil)
 }

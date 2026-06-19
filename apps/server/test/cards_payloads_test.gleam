@@ -8,7 +8,7 @@ import scrumbringer_server/http/cards/payloads
 pub fn decode_card_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"title\":\"Roadmap\",\"description\":\"Plan\",\"color\":\"blue\",\"milestone_id\":42}",
+      "{\"title\":\"Roadmap\",\"description\":\"Plan\",\"color\":\"blue\",\"parent_card_id\":42}",
       decode.dynamic,
     )
 
@@ -16,7 +16,7 @@ pub fn decode_card_payload_test() {
     title: "Roadmap",
     description: Some("Plan"),
     color: Some(card.Blue),
-    milestone_id: Some(42),
+    parent_card_id: Some(42),
   )) = payloads.decode_card(dynamic)
 }
 
@@ -27,7 +27,7 @@ pub fn decode_card_payload_defaults_optional_fields_test() {
     title: "Roadmap",
     description: None,
     color: None,
-    milestone_id: None,
+    parent_card_id: None,
   )) = payloads.decode_card(dynamic)
 }
 

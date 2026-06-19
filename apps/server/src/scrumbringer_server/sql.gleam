@@ -592,7 +592,7 @@ pub type CardsCreateRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
   )
@@ -618,7 +618,7 @@ pub fn cards_create(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
     decode.success(CardsCreateRow(
@@ -627,14 +627,14 @@ pub fn cards_create(
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
     ))
   }
 
   "-- name: create_card
-INSERT INTO cards (project_id, title, description, color, created_by, milestone_id)
+INSERT INTO cards (project_id, title, description, color, created_by, parent_card_id)
 VALUES (
   $1,
   $2,
@@ -649,7 +649,7 @@ RETURNING
     title,
     coalesce(description, '') as description,
     coalesce(color, '') as color,
-    coalesce(milestone_id, 0) as milestone_id,
+    coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "
@@ -697,7 +697,7 @@ pub type CardsGetRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
     task_count: Int,
@@ -723,7 +723,7 @@ pub fn cards_get(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
     use task_count <- decode.field(8, decode.int)
@@ -736,7 +736,7 @@ pub fn cards_get(
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
       task_count:,
@@ -753,12 +753,12 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
-    coalesce(c.milestone_id, 0) as milestone_id,
+    coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
       when v.last_viewed_at is null then true
@@ -792,7 +792,7 @@ pub type CardsListRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
     task_count: Int,
@@ -818,7 +818,7 @@ pub fn cards_list(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
     use task_count <- decode.field(8, decode.int)
@@ -831,7 +831,7 @@ pub fn cards_list(
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
       task_count:,
@@ -848,12 +848,12 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
-    coalesce(c.milestone_id, 0) as milestone_id,
+    coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
       when v.last_viewed_at is null then true
@@ -923,7 +923,7 @@ pub type CardsUpdateRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
   )
@@ -948,7 +948,7 @@ pub fn cards_update(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
     decode.success(CardsUpdateRow(
@@ -957,7 +957,7 @@ pub fn cards_update(
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
     ))
@@ -969,8 +969,8 @@ SET
   title = $2,
   description = $3,
   color = NULLIF($4, ''),
-  milestone_id = case
-    when $5 < 0 then milestone_id
+  parent_card_id = case
+    when $5 < 0 then parent_card_id
     when $5 = 0 then null
     else $5
   end
@@ -981,7 +981,7 @@ RETURNING
     title,
     coalesce(description, '') as description,
     coalesce(color, '') as color,
-    coalesce(milestone_id, 0) as milestone_id,
+    coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "

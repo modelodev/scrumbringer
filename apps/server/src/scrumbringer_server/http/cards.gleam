@@ -19,11 +19,16 @@
 //// - GET  /api/v1/cards/:card_id
 //// - PATCH /api/v1/cards/:card_id
 //// - DELETE /api/v1/cards/:card_id
+//// - POST /api/v1/cards/:card_id/activate
+//// - POST /api/v1/cards/:card_id/close
+//// - POST /api/v1/cards/:card_id/move
 //// - GET  /api/v1/cards/:card_id/tasks
 
+import api/cards/contracts as card_contracts
 import domain/card.{type Card}
 import gleam/http
 import gleam/int
+import gleam/json
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -54,7 +59,7 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
     cards_db.InvalidMilestone ->
-      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
+      api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
     cards_db.InvalidMovePoolToMilestone ->
       api.error(
         422,
@@ -64,6 +69,12 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
     cards_db.InvalidMilestoneState(_) ->
       api.error(500, "INTERNAL", "Invalid milestone state in database")
     cards_db.InvalidColor(_) -> api.error(500, "INTERNAL", "Invalid card color")
+    cards_db.CardHasClaimedDescendant(_) ->
+      api.error(
+        409,
+        "CARD_HAS_CLAIMED_DESCENDANT",
+        "Cannot close card with claimed descendant tasks",
+      )
     cards_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
     cards_db.CardHasTasks(_) -> api.error(500, "INTERNAL", "Unexpected error")
   }
@@ -216,7 +227,7 @@ fn create_card_in_project(
     cards_db.create_card(
       db,
       project_id,
-      payload.milestone_id,
+      payload.parent_card_id,
       payload.title,
       payload.description,
       payload.color,
@@ -240,6 +251,134 @@ pub fn handle_card(
     http.Delete -> handle_delete(req, ctx, card_id)
     _ -> wisp.method_not_allowed([http.Get, http.Patch, http.Delete])
   }
+}
+
+pub fn handle_activate(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_card_action(req, ctx, card_id, activate_card_in_db)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+pub fn handle_close(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_close_request(req, ctx, card_id)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+pub fn handle_move(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_move_request(req, ctx, card_id)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+fn handle_card_action(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+) -> wisp.Response {
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) ->
+      case csrf.require_csrf(req) {
+        Error(resp) -> resp
+        Ok(Nil) -> action_card_with_auth(ctx, card_id, user.id, action)
+      }
+  }
+}
+
+fn action_card_with_auth(
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.get_card(db, card_id, user_id) {
+    Error(error) -> card_error_response(error)
+    Ok(card) ->
+      case require_project_admin(db, user_id, card.project_id) {
+        Error(resp) -> resp
+        Ok(Nil) -> action(ctx, card_id, user_id)
+      }
+  }
+}
+
+fn activate_card_in_db(
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.activate_card(db, card_id, user_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn handle_close_request(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+  case card_contracts.decode_card_close(data) {
+    Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid close request")
+    Ok(_) -> handle_card_action(req, ctx, card_id, close_card_in_db)
+  }
+}
+
+fn close_card_in_db(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.close_card(db, card_id, user_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn handle_move_request(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+  case card_contracts.decode_card_move(data) {
+    Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid move request")
+    Ok(card_contracts.CardMoveRequest(parent_card_id: parent_card_id)) ->
+      handle_card_action(req, ctx, card_id, fn(ctx, card_id, _user_id) {
+        move_card_in_db(ctx, card_id, parent_card_id)
+      })
+  }
+}
+
+fn move_card_in_db(ctx: auth.Ctx, card_id: Int, parent_card_id) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.move_card(db, card_id, parent_card_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn card_action_response(card_id: Int, pool_impact: Int) -> wisp.Response {
+  card_contracts.CardActionResponse(card_id: card_id, pool_impact: pool_impact)
+  |> card_contracts.action_response_to_json
+  |> json.to_string
+  |> wisp.json_response(200)
 }
 
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
@@ -373,7 +512,7 @@ fn update_card_in_db(
     cards_db.update_card(
       db,
       card_id,
-      payload.milestone_id,
+      payload.parent_card_id,
       payload.title,
       payload.description,
       payload.color,

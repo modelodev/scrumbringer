@@ -11,7 +11,7 @@ pub fn card(card: domain_card.Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
-    #("milestone_id", json_helpers.option_int_json(card.milestone_id)),
+    #("parent_card_id", json_helpers.option_int_json(card.milestone_id)),
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
     #("color", json.string(domain_card.optional_color_to_string(card.color))),
