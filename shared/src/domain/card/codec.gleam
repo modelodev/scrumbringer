@@ -59,9 +59,9 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     False,
     decode.bool,
   )
-  let tree_parent_id = case milestone_id {
-    option.Some(_) -> milestone_id
-    option.None -> parent_card_id
+  let tree_parent_id = case parent_card_id {
+    option.Some(_) -> parent_card_id
+    option.None -> milestone_id
   }
 
   decode.success(Card(

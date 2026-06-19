@@ -21,10 +21,13 @@ fn make_model() -> Model {
   Model(
     card_id: option.None,
     card: option.None,
+    cards: [],
     locale: En,
     current_user_id: option.None,
     project_id: option.None,
     can_manage_notes: False,
+    can_manage_structure: False,
+    can_execute_work: False,
     // AC21: Default tab
     active_tab: card_tabs.TasksTab,
     notes: NotAsked,
@@ -34,6 +37,7 @@ fn make_model() -> Model {
     note_error: option.None,
     tasks: NotAsked,
     metrics: NotAsked,
+    move_dialog_open: False,
   )
 }
 
@@ -70,12 +74,15 @@ pub fn initial_model_has_correct_defaults_test() {
   let assert En = model.locale
   let assert option.None = model.current_user_id
   let assert False = model.can_manage_notes
+  let assert False = model.can_manage_structure
+  let assert False = model.can_execute_work
   let assert NotAsked = model.notes
   let assert "" = model.note_content
   let assert False = model.note_in_flight
   let assert option.None = model.note_error
   let assert NotAsked = model.tasks
   let assert NotAsked = model.metrics
+  let assert False = model.move_dialog_open
   // AC21: Default tab is Tasks
   let assert card_tabs.TasksTab = model.active_tab
 }

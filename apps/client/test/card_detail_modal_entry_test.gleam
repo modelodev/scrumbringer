@@ -67,11 +67,16 @@ fn sample_task(id: Int, card_id) {
 fn config(card) -> detail_modal_entry.Config(String) {
   detail_modal_entry.Config(
     card: card,
+    cards: [],
     tasks: [],
     locale: locale.En,
     current_user_id: Some(8),
     can_manage_notes: True,
+    can_manage_structure: True,
+    can_execute_work: True,
     on_create_task: decode.success("create"),
+    on_create_card: decode.success("create-card"),
+    on_delete_card: decode.success("delete-card"),
     on_close: decode.success("close"),
   )
 }

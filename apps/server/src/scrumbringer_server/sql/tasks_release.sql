@@ -40,7 +40,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id

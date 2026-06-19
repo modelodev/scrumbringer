@@ -15,11 +15,16 @@ import scrumbringer_client/ui/card_detail_host
 pub type Config(msg) {
   Config(
     card: Option(Card),
+    cards: List(Card),
     tasks: List(domain_task.Task),
     locale: Locale,
     current_user_id: Option(Int),
     can_manage_notes: Bool,
+    can_manage_structure: Bool,
+    can_execute_work: Bool,
     on_create_task: decode.Decoder(msg),
+    on_create_card: decode.Decoder(msg),
+    on_delete_card: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
   )
 }
@@ -31,11 +36,16 @@ pub fn view(config: Config(msg)) -> el.Element(msg) {
     Some(card) ->
       card_detail_host.view(card_detail_host.Config(
         card: card,
+        cards: config.cards,
         tasks: config.tasks,
         locale: config.locale,
         current_user_id: config.current_user_id,
         can_manage_notes: config.can_manage_notes,
+        can_manage_structure: config.can_manage_structure,
+        can_execute_work: config.can_execute_work,
         on_create_task: config.on_create_task,
+        on_create_card: config.on_create_card,
+        on_delete_card: config.on_delete_card,
         on_close: config.on_close,
       ))
   }

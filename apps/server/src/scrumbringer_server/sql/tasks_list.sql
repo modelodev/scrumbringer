@@ -47,7 +47,7 @@ select
     when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
     else false
   end as has_new_notes,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id

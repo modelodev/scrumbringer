@@ -34,7 +34,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, type CardNote, CardNote}
+import domain/card.{type Card, type CardNote, CardNote, Cerrada}
 import domain/card/codec as card_codec
 import domain/metrics.{type CardModalMetrics}
 import domain/task.{type Task, claimed_by}
@@ -45,17 +45,20 @@ import domain/task_status.{Available, Completed}
 import domain/api_error.{type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/card_tabs
 import scrumbringer_client/ui/detail_metrics
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
@@ -72,10 +75,13 @@ pub type Model {
   Model(
     card_id: Option(Int),
     card: Option(Card),
+    cards: List(Card),
     locale: Locale,
     current_user_id: Option(Int),
     project_id: Option(Int),
     can_manage_notes: Bool,
+    can_manage_structure: Bool,
+    can_execute_work: Bool,
     // AC21: Tab system
     active_tab: card_tabs.Tab,
     notes: Remote(List(CardNote)),
@@ -86,6 +92,7 @@ pub type Model {
     note_error: Option(String),
     tasks: Remote(List(Task)),
     metrics: Remote(CardModalMetrics),
+    move_dialog_open: Bool,
   )
 }
 
@@ -94,10 +101,13 @@ pub type Msg {
   // From attributes/properties
   CardIdReceived(Int)
   CardReceived(Card)
+  CardsReceived(List(Card))
   LocaleReceived(Locale)
   CurrentUserIdReceived(Int)
   ProjectIdReceived(Int)
   CanManageNotesReceived(Bool)
+  CanManageStructureReceived(Bool)
+  CanExecuteWorkReceived(Bool)
   NotesReceived(ApiResult(List(CardNote)))
   CardMetricsReceived(ApiResult(CardModalMetrics))
   TasksReceived(List(Task))
@@ -111,6 +121,11 @@ pub type Msg {
   NoteCreated(ApiResult(CardNote))
   NoteDeleteClicked(Int)
   NoteDeleted(Int, ApiResult(Nil))
+  // Card operations
+  CreateCardClicked
+  MoveDialogOpened
+  MoveDialogClosed
+  DeleteCardClicked
   // Actions that emit events to parent
   CreateTaskClicked
   CloseClicked
@@ -135,7 +150,13 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
     component.on_attribute_change("current-user-id", decode_current_user_id),
     component.on_attribute_change("project-id", decode_project_id),
     component.on_attribute_change("can-manage-notes", decode_can_manage_notes),
+    component.on_attribute_change(
+      "can-manage-structure",
+      decode_can_manage_structure,
+    ),
+    component.on_attribute_change("can-execute-work", decode_can_execute_work),
     component.on_property_change("card", card_property_decoder()),
+    component.on_property_change("cards", cards_property_decoder()),
     component.on_property_change("tasks", tasks_property_decoder()),
     component.adopt_styles(True),
   ]
@@ -170,9 +191,24 @@ fn decode_can_manage_notes(value: String) -> Result(Msg, Nil) {
   Ok(CanManageNotesReceived(enabled))
 }
 
+fn decode_can_manage_structure(value: String) -> Result(Msg, Nil) {
+  let enabled = value == "true"
+  Ok(CanManageStructureReceived(enabled))
+}
+
+fn decode_can_execute_work(value: String) -> Result(Msg, Nil) {
+  let enabled = value == "true"
+  Ok(CanExecuteWorkReceived(enabled))
+}
+
 fn card_property_decoder() -> Decoder(Msg) {
   card_codec.card_decoder()
   |> decode.map(CardReceived)
+}
+
+fn cards_property_decoder() -> Decoder(Msg) {
+  decode.list(card_codec.card_decoder())
+  |> decode.map(CardsReceived)
 }
 
 fn tasks_property_decoder() -> Decoder(Msg) {
@@ -292,10 +328,13 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
     Model(
       card_id: option.None,
       card: option.None,
+      cards: [],
       locale: En,
       current_user_id: option.None,
       project_id: option.None,
       can_manage_notes: False,
+      can_manage_structure: False,
+      can_execute_work: False,
       // AC21: Default to Tasks tab
       active_tab: card_tabs.TasksTab,
       notes: NotAsked,
@@ -305,6 +344,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       note_error: option.None,
       tasks: NotAsked,
       metrics: NotAsked,
+      move_dialog_open: False,
     ),
     effect.none(),
   )
@@ -326,6 +366,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    CardsReceived(cards) -> #(Model(..model, cards: cards), effect.none())
+
     LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
     CurrentUserIdReceived(id) -> #(
@@ -340,6 +382,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     CanManageNotesReceived(can_manage) -> #(
       Model(..model, can_manage_notes: can_manage),
+      effect.none(),
+    )
+
+    CanManageStructureReceived(can_manage) -> #(
+      Model(..model, can_manage_structure: can_manage),
+      effect.none(),
+    )
+
+    CanExecuteWorkReceived(can_execute) -> #(
+      Model(..model, can_execute_work: can_execute),
       effect.none(),
     )
 
@@ -431,6 +483,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    CreateCardClicked -> #(model, emit_create_card_requested(model.card_id))
+
+    MoveDialogOpened -> #(Model(..model, move_dialog_open: True), effect.none())
+
+    MoveDialogClosed -> #(
+      Model(..model, move_dialog_open: False),
+      effect.none(),
+    )
+
+    DeleteCardClicked -> #(model, emit_delete_card_requested(model.card_id))
+
     // Actions that emit events to parent
     CreateTaskClicked -> #(model, emit_create_task_requested(model.card_id))
 
@@ -521,6 +584,27 @@ fn emit_create_task_requested(card_id: option.Option(Int)) -> Effect(Msg) {
   })
 }
 
+/// Emit create-card-requested custom event to parent.
+/// The parent will open the card creation dialog with this card as parent.
+fn emit_create_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
+  emit_card_id_event("create-card-requested", card_id)
+}
+
+/// Emit delete-card-requested custom event to parent.
+/// The parent will open the existing card deletion confirmation.
+fn emit_delete_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
+  emit_card_id_event("delete-card-requested", card_id)
+}
+
+fn emit_card_id_event(name: String, card_id: option.Option(Int)) -> Effect(Msg) {
+  let detail = case card_id {
+    option.Some(id) -> json.object([#("card_id", json.int(id))])
+    option.None -> json.null()
+  }
+
+  effect.from(fn(_dispatch) { emit_custom_event(name, detail) })
+}
+
 /// Emit close-requested custom event to parent.
 fn emit_close_requested() -> Effect(Msg) {
   effect.from(fn(_dispatch) {
@@ -605,7 +689,7 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
             ],
             [
               case model.active_tab {
-                card_tabs.TasksTab -> view_card_tasks_section(model)
+                card_tabs.TasksTab -> view_card_tasks_section(model, card)
                 card_tabs.NotesTab -> view_card_notes_section(model)
                 card_tabs.MetricsTab -> view_card_metrics_section(model)
               },
@@ -617,6 +701,10 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     // Note creation dialog (modal within modal)
     case model.note_dialog_open {
       True -> view_note_dialog(model)
+      False -> element.none()
+    },
+    case model.move_dialog_open {
+      True -> view_move_dialog(model, card)
       False -> element.none()
     },
   ])
@@ -657,7 +745,136 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       "" -> element.none()
       desc -> div([attribute.class("card-detail-description")], [text(desc)])
     },
+    view_card_action_bar(model, card),
   ])
+}
+
+fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
+  let policy = action_policy(model, card)
+
+  div([attribute.class("card-detail-actions")], [
+    view_create_card_action(model, policy),
+    view_create_task_action(model, policy),
+    view_move_action(card),
+    view_delete_action(model, policy),
+  ])
+}
+
+fn view_create_card_action(
+  model: Model,
+  policy: detail_policy.Policy,
+) -> Element(Msg) {
+  case policy.can_create_card, policy.create_disabled_reason {
+    True, _ ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.NewCard),
+        CreateCardClicked,
+        icons.Plus,
+        ui_button.Secondary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-create-card-action")
+      |> ui_button.view
+    False, option.Some(reason) ->
+      blocked_action(
+        t(model.locale, i18n_text.NewCard),
+        CreateCardClicked,
+        icons.Plus,
+        "card-create-card-action",
+        reason,
+      )
+    False, option.None -> element.none()
+  }
+}
+
+fn view_create_task_action(
+  model: Model,
+  policy: detail_policy.Policy,
+) -> Element(Msg) {
+  case policy.can_create_task, policy.create_disabled_reason {
+    True, _ ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.CardAddTask),
+        CreateTaskClicked,
+        icons.Plus,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-create-task-action")
+      |> ui_button.view
+    False, option.Some(reason) ->
+      blocked_action(
+        t(model.locale, i18n_text.CardAddTask),
+        CreateTaskClicked,
+        icons.Plus,
+        "card-create-task-action",
+        reason,
+      )
+    False, option.None -> element.none()
+  }
+}
+
+fn view_move_action(card: Card) -> Element(Msg) {
+  case card.state == Cerrada {
+    True -> element.none()
+    False ->
+      ui_button.icon_text(
+        "Mover a...",
+        MoveDialogOpened,
+        icons.Return,
+        ui_button.Secondary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-move-action")
+      |> ui_button.view
+  }
+}
+
+fn view_delete_action(
+  model: Model,
+  policy: detail_policy.Policy,
+) -> Element(Msg) {
+  case policy.can_delete, policy.delete_disabled_reason {
+    True, _ ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.DeleteCard),
+        DeleteCardClicked,
+        icons.Trash,
+        ui_button.Danger,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-delete-action")
+      |> ui_button.view
+    False, option.Some(reason) ->
+      blocked_action(
+        t(model.locale, i18n_text.DeleteCard),
+        DeleteCardClicked,
+        icons.Trash,
+        "card-delete-action",
+        reason,
+      )
+    False, option.None -> element.none()
+  }
+}
+
+fn blocked_action(
+  label: String,
+  msg: Msg,
+  icon: icons.NavIcon,
+  testid: String,
+  reason: String,
+) -> Element(Msg) {
+  ui_button.icon_text(
+    label,
+    msg,
+    icon,
+    ui_button.Secondary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_blocked_reason(reason)
+  |> ui_button.with_testid(testid)
+  |> ui_button.with_class("card-detail-action-blocked")
+  |> ui_button.view
 }
 
 fn view_card_notes_section(model: Model) -> Element(Msg) {
@@ -761,20 +978,15 @@ fn note_belongs_to_current_user(
   }
 }
 
-fn view_card_tasks_section(model: Model) -> Element(Msg) {
+fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {
   let tasks = case model.tasks {
     Loaded(task_list) -> task_list
     _ -> []
   }
+  let policy = action_policy(model, card)
 
   div([attribute.class("card-detail-tasks-section detail-section")], [
-    // Shared section header component (same as Notes tab)
-    card_section_header.view(card_section_header.Config(
-      title: t(model.locale, i18n_text.CardTasks),
-      button_label: "+ " <> t(model.locale, i18n_text.CardAddTask),
-      button_disabled: False,
-      on_button_click: CreateTaskClicked,
-    )),
+    view_tasks_header(model, policy),
     // Task list content
     case model.tasks {
       Loading ->
@@ -792,6 +1004,31 @@ fn view_card_tasks_section(model: Model) -> Element(Msg) {
         }
     },
   ])
+}
+
+fn view_tasks_header(model: Model, policy: detail_policy.Policy) -> Element(Msg) {
+  case policy.can_create_task, policy.create_disabled_reason {
+    True, _ ->
+      card_section_header.view(card_section_header.Config(
+        title: t(model.locale, i18n_text.CardTasks),
+        button_label: "+ " <> t(model.locale, i18n_text.CardAddTask),
+        button_disabled: False,
+        on_button_click: CreateTaskClicked,
+      ))
+    False, option.Some(_reason) ->
+      card_section_header.view(card_section_header.Config(
+        title: t(model.locale, i18n_text.CardTasks),
+        button_label: "+ " <> t(model.locale, i18n_text.CardAddTask),
+        button_disabled: True,
+        on_button_click: CreateTaskClicked,
+      ))
+    False, option.None ->
+      div([attribute.class("card-section-header")], [
+        span([attribute.class("card-section-title")], [
+          text(t(model.locale, i18n_text.CardTasks)),
+        ]),
+      ])
+  }
 }
 
 fn view_empty_tasks(model: Model) -> Element(Msg) {
@@ -846,6 +1083,136 @@ fn view_task_claim_status(task: Task) -> Element(Msg) {
   }
 
   span([attribute.class("card-task-info")], [text(claimed_text)])
+}
+
+fn view_move_dialog(model: Model, card: Card) -> Element(Msg) {
+  let destinations = detail_policy.move_destinations(card, model.cards)
+
+  div([attribute.class("card-move-dialog-shell")], [
+    div(
+      [attribute.class("modal-backdrop"), event.on_click(MoveDialogClosed)],
+      [],
+    ),
+    div(
+      [
+        attribute.class("card-move-dialog"),
+        attribute.attribute("role", "dialog"),
+        attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-labelledby", "card-move-dialog-title"),
+        attribute.attribute("data-testid", "card-move-dialog"),
+      ],
+      [
+        div([attribute.class("card-move-dialog-header")], [
+          span(
+            [
+              attribute.class("card-move-dialog-title"),
+              attribute.id("card-move-dialog-title"),
+            ],
+            [text("Mover a...")],
+          ),
+          ui_button.icon(
+            t(model.locale, i18n_text.Close),
+            MoveDialogClosed,
+            icons.Close,
+            ui_button.Ghost,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_testid("card-move-close")
+            |> ui_button.view,
+        ]),
+        div([attribute.class("card-move-dialog-help")], [
+          text(
+            "Only same-level destinations that accept child cards are listed.",
+          ),
+        ]),
+        case list.is_empty(destinations) {
+          True ->
+            div([attribute.class("card-move-empty")], [
+              text("No valid same-level destinations are available."),
+            ])
+          False ->
+            div(
+              [attribute.class("card-move-options")],
+              list.map(destinations, view_move_destination),
+            )
+        },
+        view_invalid_move_examples(card, model.cards, destinations),
+      ],
+    ),
+  ])
+}
+
+fn view_move_destination(destination: Card) -> Element(Msg) {
+  div(
+    [
+      attribute.class("card-move-option"),
+      attribute.attribute("data-testid", "card-move-option"),
+    ],
+    [
+      span([attribute.class("card-move-option-title")], [
+        text(destination.title),
+      ]),
+    ],
+  )
+}
+
+fn view_invalid_move_examples(
+  card: Card,
+  cards: List(Card),
+  destinations: List(Card),
+) -> Element(Msg) {
+  let destination_ids =
+    list.map(destinations, fn(destination) { destination.id })
+  let invalid =
+    cards
+    |> list.filter(fn(candidate) {
+      candidate.project_id == card.project_id
+      && candidate.id != card.id
+      && !list.contains(destination_ids, candidate.id)
+    })
+
+  case list.is_empty(invalid) {
+    True -> element.none()
+    False ->
+      div(
+        [attribute.class("card-move-invalid-list")],
+        list.map(invalid, fn(candidate) {
+          div(
+            [
+              attribute.class("card-move-invalid"),
+              attribute.attribute("data-testid", "card-move-invalid"),
+            ],
+            [
+              span([attribute.class("card-move-invalid-title")], [
+                text(candidate.title),
+              ]),
+              span([attribute.class("card-move-invalid-reason")], [
+                text(detail_policy.invalid_move_explanation(
+                  card,
+                  candidate,
+                  cards,
+                )),
+              ]),
+            ],
+          )
+        }),
+      )
+  }
+}
+
+fn action_policy(model: Model, card: Card) -> detail_policy.Policy {
+  let tasks = case model.tasks {
+    Loaded(task_list) -> task_list
+    _ -> []
+  }
+
+  detail_policy.policy_for(
+    card,
+    detail_policy.direct_child_cards(card, model.cards),
+    tasks,
+    model.can_manage_structure,
+    model.can_execute_work,
+  )
 }
 
 fn view_card_metrics_section(model: Model) -> Element(Msg) {

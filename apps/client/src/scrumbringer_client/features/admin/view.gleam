@@ -32,6 +32,7 @@ import gleam/dynamic/decode
 
 import domain/card as domain_card
 import domain/project.{type Project}
+import domain/remote.{Loaded}
 import domain/task as domain_task
 
 import scrumbringer_client/client_state.{
@@ -420,13 +421,26 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
 
   detail_modal_entry.view(detail_modal_entry.Config(
     card: selected_detail_card(model),
+    cards: admin_cards_list(model),
     tasks: selected_detail_card_tasks(model),
     locale: model.ui.locale,
     current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
     can_manage_notes: is_org_admin || permissions.is_project_manager(project),
+    can_manage_structure: is_org_admin
+      || permissions.is_project_manager(project),
+    can_execute_work: True,
     on_create_task: decode_create_task_event(),
+    on_create_card: decode_create_card_event(),
+    on_delete_card: decode_delete_card_event(),
     on_close: decode_card_detail_close_event(),
   ))
+}
+
+fn admin_cards_list(model: Model) -> List(domain_card.Card) {
+  case model.admin.cards.cards {
+    Loaded(cards) -> cards
+    _ -> []
+  }
 }
 
 fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
@@ -456,6 +470,32 @@ fn decode_create_task_event() -> decode.Decoder(Msg) {
     fn(card_id) {
       decode.success(
         pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+      )
+    },
+  )
+}
+
+/// Decoder for create-card-requested event.
+fn decode_create_card_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(
+        pool_msg(pool_messages.MemberMilestoneCreateCardClicked(card_id)),
+      )
+    },
+  )
+}
+
+/// Decoder for delete-card-requested event.
+fn decode_delete_card_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(
+        pool_msg(
+          pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+        ),
       )
     },
   )

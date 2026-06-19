@@ -25,6 +25,8 @@ fn cards_config(model: client_state.Model) {
     opt.None,
     fn(_) { "open" },
     fn(_) { "create" },
+    fn(_) { "create-card" },
+    fn(_) { "delete-card" },
     "close",
   )
 }

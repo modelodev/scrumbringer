@@ -68,7 +68,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  '[]'::json as dependencies,
+  '[]'::text as dependencies,
   0 as blocked_count
 from inserted
 join task_types tt on tt.id = inserted.type_id

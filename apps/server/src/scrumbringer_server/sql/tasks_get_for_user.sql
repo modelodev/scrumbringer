@@ -40,7 +40,7 @@ select
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
