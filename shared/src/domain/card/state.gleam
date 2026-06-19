@@ -10,7 +10,7 @@ pub type CardExecutionState {
     activated_by: user_id.UserId,
     source: ActivationSource,
   )
-  Closed(reason: CardClosedReason, closed_at: String, closed_by: user_id.UserId)
+  Closed(reason: CardClosedReason, closed_at: String, closed_by: ClosedBy)
 }
 
 pub type ActivationSource {
@@ -21,4 +21,9 @@ pub type ActivationSource {
 pub type CardClosedReason {
   Rollup
   ManuallyClosed
+}
+
+pub type ClosedBy {
+  ClosedByUser(user_id.UserId)
+  ClosedBySystem
 }
