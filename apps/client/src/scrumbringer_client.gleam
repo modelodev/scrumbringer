@@ -265,6 +265,11 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     _ -> view_mode.Pool
   }
 
+  let initial_card_depth = case route {
+    router.Member(state) -> url_state.card_depth(state)
+    _ -> opt.None
+  }
+
   let #(accept_model, accept_action) = accept_invite.init(accept_token)
   let #(reset_model, reset_action) = reset_password.init(reset_token)
 
@@ -307,6 +312,7 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
         pool: member_pool.Model(
           ..pool,
           view_mode: initial_view_mode,
+          member_card_depth_filter: initial_card_depth,
           member_pool_filters_visible: pool_filters_visible,
           member_pool_view_mode: pool_view_mode,
         ),

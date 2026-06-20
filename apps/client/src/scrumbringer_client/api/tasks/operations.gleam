@@ -245,6 +245,19 @@ pub fn complete_task(
   )
 }
 
+/// Delete a task that has no operational history.
+pub fn delete_task(
+  task_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    core.Delete,
+    "/api/v1/tasks/" <> int.to_string(task_id),
+    option.None,
+    to_msg,
+  )
+}
+
 /// Get a single task by ID.
 pub fn get_task(task_id: Int, to_msg: fn(ApiResult(Task)) -> msg) -> Effect(msg) {
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)

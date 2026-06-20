@@ -34,6 +34,7 @@ pub fn parse_empty_url_test() {
   state |> url_state.capability_filter |> assert_none
   state |> url_state.search |> assert_none
   state |> url_state.expanded_card |> assert_none
+  state |> url_state.card_depth |> assert_none
 }
 
 pub fn parse_project_only_test() {
@@ -56,6 +57,14 @@ pub fn parse_view_mode_cards_test() {
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.view |> assert_equal(view_mode.Cards)
+}
+
+pub fn parse_cards_depth_test() {
+  let assert Ok(uri) = uri.parse("/app?view=cards&depth=2")
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.card_depth |> assert_equal(Some(2))
 }
 
 pub fn parse_view_mode_capabilities_test() {
@@ -88,6 +97,15 @@ pub fn parse_full_url_test() {
   state |> url_state.capability_filter |> assert_equal(Some(3))
   state |> url_state.search |> assert_equal(Some("bug"))
   state |> url_state.expanded_card |> assert_equal(Some(15))
+  state |> url_state.card_depth |> assert_none
+}
+
+pub fn parse_depth_without_cards_redirects_and_clears_depth_test() {
+  let assert Ok(uri) = uri.parse("/app?view=people&depth=2")
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
+
+  state |> url_state.view |> assert_equal(view_mode.People)
+  state |> url_state.card_depth |> assert_none
 }
 
 pub fn parse_query_string_directly_test() {
@@ -330,10 +348,23 @@ pub fn to_query_string_full_test() {
     |> url_state.with_capability_filter(Some(3))
     |> url_state.with_search(Some("bug"))
     |> url_state.with_expanded_card(Some(15))
+    |> url_state.with_card_depth(Some(2))
     |> url_state.to_query_string
 
   query
-  |> assert_equal("project=8&view=cards&type=2&cap=3&search=bug&card=15")
+  |> assert_equal(
+    "project=8&view=cards&type=2&cap=3&search=bug&card=15&depth=2",
+  )
+}
+
+pub fn to_query_string_omits_depth_outside_cards_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_view(view_mode.People)
+    |> url_state.with_card_depth(Some(2))
+    |> url_state.to_query_string
+
+  query |> assert_equal("view=people")
 }
 
 pub fn to_query_string_people_test() {
@@ -388,6 +419,7 @@ pub fn roundtrip_test() {
     |> url_state.with_project(8)
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_type_filter(Some(2))
+    |> url_state.with_card_depth(Some(2))
 
   let query = url_state.to_query_string(original)
   let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
@@ -395,6 +427,7 @@ pub fn roundtrip_test() {
   reparsed |> url_state.project |> assert_equal(Some(8))
   reparsed |> url_state.view |> assert_equal(view_mode.Cards)
   reparsed |> url_state.type_filter |> assert_equal(Some(2))
+  reparsed |> url_state.card_depth |> assert_equal(Some(2))
 }
 
 pub fn roundtrip_with_encoded_search_test() {

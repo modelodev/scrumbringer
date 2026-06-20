@@ -69,13 +69,13 @@ ON CONFLICT (project_id) DO NOTHING;
 
 INSERT INTO project_card_depth_names
   (project_id, depth, singular_name, plural_name)
-SELECT id, 1, 'Hito', 'Hitos'
+SELECT id, 1, 'Initiative', 'Initiatives'
 FROM projects
 ON CONFLICT (project_id, depth) DO NOTHING;
 
 INSERT INTO project_card_depth_names
   (project_id, depth, singular_name, plural_name)
-SELECT id, 2, 'Card', 'Cards'
+SELECT id, 2, 'Feature', 'Features'
 FROM projects
 ON CONFLICT (project_id, depth) DO NOTHING;
 

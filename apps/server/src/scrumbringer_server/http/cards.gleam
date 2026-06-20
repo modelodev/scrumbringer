@@ -60,6 +60,18 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
     cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
     cards_db.InvalidParentCard ->
       api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
+    cards_db.ParentCardClosed ->
+      api.error(
+        409,
+        "PARENT_CARD_CLOSED",
+        "Cannot create card under a closed card",
+      )
+    cards_db.ParentDoesNotAcceptCards ->
+      api.error(
+        422,
+        "PARENT_DOES_NOT_ACCEPT_CARDS",
+        "Parent card already contains tasks",
+      )
     cards_db.InvalidMovePoolToParentCard ->
       api.error(
         422,
@@ -75,7 +87,39 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
         "CARD_HAS_CLAIMED_DESCENDANT",
         "Cannot close card with claimed descendant tasks",
       )
+    cards_db.CannotActivateClosedCard ->
+      api.error(409, "CARD_CLOSED", "Cannot activate a closed card")
+    cards_db.CardAlreadyClosed ->
+      api.error(409, "CARD_CLOSED", "Card is already closed")
+    cards_db.CannotMoveClosedCard ->
+      api.error(409, "CARD_CLOSED", "Cannot move a closed card")
+    cards_db.CannotMoveIntoClosedCard ->
+      api.error(409, "DESTINATION_CLOSED", "Cannot move into a closed card")
+    cards_db.DestinationDoesNotAcceptCards ->
+      api.error(
+        422,
+        "DESTINATION_DOES_NOT_ACCEPT_CARDS",
+        "Destination card already contains tasks",
+      )
+    cards_db.DestinationNotFound ->
+      api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
+    cards_db.MoveWouldChangeDepth ->
+      api.error(
+        422,
+        "MOVE_WOULD_CHANGE_DEPTH",
+        "Cannot move card to a different hierarchy level",
+      )
+    cards_db.MoveWouldCreateCycle ->
+      api.error(
+        422,
+        "MOVE_WOULD_CREATE_CYCLE",
+        "Cannot move card into its own subtree",
+      )
     cards_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
+    cards_db.CardHasChildCards(_) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    cards_db.CardHasOperationalHistory ->
+      api.error(500, "INTERNAL", "Unexpected error")
     cards_db.CardHasTasks(_) -> api.error(500, "INTERNAL", "Unexpected error")
   }
 }
@@ -374,8 +418,22 @@ fn move_card_in_db(ctx: auth.Ctx, card_id: Int, parent_card_id) -> wisp.Response
   }
 }
 
-fn card_action_response(card_id: Int, pool_impact: Int) -> wisp.Response {
-  card_contracts.CardActionResponse(card_id: card_id, pool_impact: pool_impact)
+fn card_action_response(
+  card_id: Int,
+  impact: cards_db.CardActionImpact,
+) -> wisp.Response {
+  let pool_health = case impact.pool_open_after > impact.healthy_pool_limit {
+    True -> card_contracts.PoolExceedsHealthyLimit
+    False -> card_contracts.PoolWithinHealthyLimit
+  }
+
+  card_contracts.CardActionResponse(
+    card_id: card_id,
+    pool_impact: impact.changed_tasks,
+    pool_open_after: impact.pool_open_after,
+    healthy_pool_limit: impact.healthy_pool_limit,
+    pool_health: pool_health,
+  )
   |> card_contracts.action_response_to_json
   |> json.to_string
   |> wisp.json_response(200)
@@ -581,6 +639,18 @@ fn delete_card_in_db(db: pog.Connection, card_id: Int) -> wisp.Response {
         409,
         "CONFLICT_HAS_TASKS",
         "Cannot delete card with " <> int.to_string(count) <> " tasks",
+      )
+    Error(cards_db.CardHasChildCards(count)) ->
+      api.error(
+        409,
+        "CONFLICT_HAS_CHILD_CARDS",
+        "Cannot delete card with " <> int.to_string(count) <> " child cards",
+      )
+    Error(cards_db.CardHasOperationalHistory) ->
+      api.error(
+        409,
+        "CARD_HAS_OPERATIONAL_HISTORY",
+        "Card has operational history and must be closed instead of deleted",
       )
     Error(error) -> card_error_response(error)
   }

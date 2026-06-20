@@ -23,16 +23,6 @@ fn input() -> create_form.Input {
   )
 }
 
-pub fn create_form_card_id_from_input_accepts_positive_ids_test() {
-  let assert Some(42) = create_form.card_id_from_input("42")
-}
-
-pub fn create_form_card_id_from_input_rejects_empty_zero_and_invalid_test() {
-  let assert None = create_form.card_id_from_input("")
-  let assert None = create_form.card_id_from_input("0")
-  let assert None = create_form.card_id_from_input("abc")
-}
-
 pub fn create_form_validate_returns_normalized_submission_test() {
   let assert Ok(submission) = create_form.validate(input(), labels())
 

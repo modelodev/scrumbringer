@@ -63,6 +63,7 @@ pub fn translate(text: Text) -> String {
     text.TaskClaimed -> "Task claimed"
     text.TaskReleased -> "Task released"
     text.TaskDone -> "Task completed"
+    text.TaskDeleted -> "Task deleted"
     text.SkillsSaved -> "Skills saved"
     text.NoteAdded -> "Note added"
 
@@ -73,6 +74,8 @@ pub fn translate(text: Text) -> String {
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
     text.TaskBlockedByDependencies -> "Task has incomplete dependencies"
+    text.TaskHasOperationalHistory ->
+      "This task has operational history. Close it instead of deleting it."
     text.TaskNotFound -> "Task not found"
     text.TaskMutationRolledBack -> "Action rolled back"
 
@@ -85,6 +88,25 @@ pub fn translate(text: Text) -> String {
     text.SelectUserFirst -> "Select a user first"
     text.InvalidXY -> "Invalid x/y"
     text.ContentRequired -> "Content required"
+    text.TaskCreateCardHasChildCards ->
+      "This card already contains child cards. Add the task to a task group or choose an empty card."
+    text.TaskCreateParentCardConflict ->
+      "Choose one task location only. A task can belong to a card or the Root Pool, not both."
+    text.TaskCreateRootPoolHint ->
+      "Root Pool task. Requires manage flow; it will be available in the Pool and will not be auto-claimed."
+    text.TaskCreateMissingCard ->
+      "Selected card is not available. Close this dialog and try again."
+    text.TaskCreateDraftCardHint ->
+      "This task will not be auto-claimed. It will stay prepared until this card is activated."
+    text.TaskCreateActiveCardHint ->
+      "This task will enter the Pool when created and be available for someone with the matching capability. It will not be auto-claimed."
+    text.TaskCreateClosedCard -> "Closed cards cannot receive new tasks."
+    text.CardClosedCannotReceiveChildren ->
+      "Closed cards cannot receive new child cards or tasks."
+    text.CardHasOperationalHistory ->
+      "This card has operational history. Close it instead of deleting it."
+    text.ActivateHierarchyManagerOnly ->
+      "Only project managers can activate a card hierarchy."
 
     text.Copied -> "Copied"
     text.Copying -> "Copying…"
@@ -299,6 +321,13 @@ pub fn translate(text: Text) -> String {
     text.ActivateHierarchy -> "Activate"
     text.ActivatingHierarchy -> "Activating..."
     text.HierarchyActivated -> "Hierarchy activated"
+    text.HierarchyActivationPoolImpact(pool_impact) ->
+      int.to_string(pool_impact) <> " tasks opened in Pool"
+    text.HierarchyActivationPoolSaturated(pool_open_after, healthy_pool_limit) ->
+      "Pool at "
+      <> int.to_string(pool_open_after)
+      <> "/"
+      <> int.to_string(healthy_pool_limit)
     text.HierarchyActivateFailed -> "Could not activate hierarchy"
     text.EditHierarchy -> "Edit hierarchy"
     text.DeleteHierarchy -> "Delete hierarchy"

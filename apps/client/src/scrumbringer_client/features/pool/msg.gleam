@@ -1,5 +1,6 @@
 //// Pool feature messages.
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
@@ -68,7 +69,6 @@ pub type Msg {
   MemberCreateDescriptionChanged(String)
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
-  MemberCreateCardIdChanged(String)
   MemberCreateTypeOptionsRetryClicked
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
@@ -77,9 +77,11 @@ pub type Msg {
   MemberClaimClicked(Int, Int)
   MemberReleaseClicked(Int, Int)
   MemberCompleteClicked(Int, Int)
+  MemberDeleteTaskClicked(Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))
   MemberTaskDone(ApiResult(Task))
+  MemberTaskDeleted(Int, ApiResult(Nil))
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
   MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
@@ -170,6 +172,8 @@ pub type Msg {
   OpenCardDetail(Int)
   CloseCardDetail
   CardMetricsFetched(ApiResult(CardModalMetrics))
+  CardActivateRequested(Int)
+  CardActivated(ApiResult(card_contracts.CardActionResponse))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
   OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
   CloseWorkflowDialog

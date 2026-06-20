@@ -69,6 +69,138 @@ pub fn non_org_admin_cannot_create_project_test() {
   string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
+pub fn project_create_returns_and_persists_default_card_depth_names_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(http.Post, "/api/v1/projects")
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("name", json.string("Depths"))]))
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
+
+  let assert Ok(dynamic) = json.parse(simulate.read_body(res), decode.dynamic)
+
+  let depth_name_decoder = {
+    use depth <- decode.field("depth", decode.int)
+    use singular_name <- decode.field("singular_name", decode.string)
+    use plural_name <- decode.field("plural_name", decode.string)
+    decode.success(#(depth, singular_name, plural_name))
+  }
+
+  let project_decoder = {
+    use depth_names <- decode.field(
+      "card_depth_names",
+      decode.list(depth_name_decoder),
+    )
+    decode.success(depth_names)
+  }
+  let data_decoder = {
+    use depth_names <- decode.field("project", project_decoder)
+    decode.success(depth_names)
+  }
+  let response_decoder = {
+    use depth_names <- decode.field("data", data_decoder)
+    decode.success(depth_names)
+  }
+
+  let assert Ok(depth_names) = decode.run(dynamic, response_decoder)
+  depth_names
+  |> expect.equal([
+    #(1, "Initiative", "Initiatives"),
+    #(2, "Feature", "Features"),
+    #(3, "Task group", "Task groups"),
+  ])
+
+  let project_id =
+    single_int(db, "select id from projects where name = 'Depths'", [])
+  let stored_depth_count =
+    single_int(
+      db,
+      "select count(*) from project_card_depth_names where project_id = $1",
+      [pog.int(project_id)],
+    )
+  stored_depth_count |> expect.equal(3)
+
+  let task_group_depth =
+    single_int(
+      db,
+      "select depth from project_card_depth_names where project_id = $1 and plural_name = 'Task groups'",
+      [pog.int(project_id)],
+    )
+  task_group_depth |> expect.equal(3)
+}
+
+pub fn project_create_persists_default_task_types_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(http.Post, "/api/v1/projects")
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("name", json.string("Defaults"))]))
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
+
+  let project_id =
+    single_int(db, "select id from projects where name = 'Defaults'", [])
+
+  let default_type_count =
+    single_int(
+      db,
+      "select count(*) from task_types where project_id = $1 and name = 'General'",
+      [pog.int(project_id)],
+    )
+  default_type_count |> expect.equal(1)
+
+  let task_type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'General'",
+      [pog.int(project_id)],
+    )
+
+  let create_task_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+      )
+      |> request.set_cookie("sb_session", admin_session)
+      |> request.set_cookie("sb_csrf", admin_csrf)
+      |> request.set_header("X-CSRF", admin_csrf)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string("First task")),
+          #("description", json.string("")),
+          #("priority", json.int(3)),
+          #("type_id", json.int(task_type_id)),
+        ]),
+      ),
+    )
+
+  expect.expect_status(create_task_res, 200)
+}
+
 pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

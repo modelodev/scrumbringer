@@ -34,6 +34,7 @@ fn context() -> drag_update.Context(Nil) {
       on_task_claimed: fn(_result: ApiResult(Task)) { Nil },
       on_task_released: fn(_result: ApiResult(Task)) { Nil },
       on_task_completed: fn(_result: ApiResult(Task)) { Nil },
+      on_task_deleted: fn(_task_id: Int, _result: ApiResult(Nil)) { Nil },
     ),
     on_canvas_rect_fetched: fn(_left, _top) { Nil },
     on_drag_offset_resolved: fn(_task_id, _offset_x, _offset_y) { Nil },

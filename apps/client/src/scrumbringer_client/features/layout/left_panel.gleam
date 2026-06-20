@@ -68,6 +68,7 @@ pub type LeftPanelConfig(msg) {
     // Navigation to work views (AC2)
     on_navigate_pool: msg,
     on_navigate_cards: msg,
+    on_navigate_depth: fn(Int) -> msg,
     on_navigate_capabilities: msg,
     on_navigate_people: msg,
     // Config navigation
@@ -102,11 +103,7 @@ fn is_route_active(
     Some(route) ->
       case route {
         // Work views: match by ViewMode
-        router.Member(state) ->
-          case check_view_mode, url_state.view_param(state) {
-            Some(expected), Some(actual) -> expected == actual
-            _, _ -> False
-          }
+        router.Member(state) -> member_view_active(state, check_view_mode)
         // Config sections: match by AdminSection
         router.Config(section, _) ->
           case check_config_section {
@@ -122,6 +119,29 @@ fn is_route_active(
         // Other routes don't match nav items
         _ -> False
       }
+  }
+}
+
+fn member_view_active(
+  state: url_state.UrlState,
+  check_view_mode: Option(ViewMode),
+) -> Bool {
+  case check_view_mode, url_state.view_param(state) {
+    Some(Cards), Some(Cards) -> url_state.card_depth(state) == None
+    Some(expected), Some(actual) -> expected == actual
+    _, _ -> False
+  }
+}
+
+fn is_depth_route_active(
+  current_route: Option(router.Route),
+  depth: Int,
+) -> Bool {
+  case current_route {
+    Some(router.Member(state)) ->
+      url_state.view_param(state) == Some(Cards)
+      && url_state.card_depth(state) == Some(depth)
+    _ -> False
   }
 }
 
@@ -149,14 +169,18 @@ fn view_nav_item(
       span([attribute.class("badge")], [text(int.to_string(count))])
     _ -> element.none()
   }
+  let state_attrs = nav_state_attrs(is_active)
 
   button(
-    [
-      attribute.class("nav-link" <> active_class),
-      attribute.attribute("data-testid", testid),
-      attribute.disabled(disabled),
-      event.on_click(on_click_msg),
-    ],
+    list.append(
+      [
+        attribute.class("nav-link" <> active_class),
+        attribute.attribute("data-testid", testid),
+        attribute.disabled(disabled),
+        event.on_click(on_click_msg),
+      ],
+      state_attrs,
+    ),
     [
       icons.nav_icon(icon, icons.Small),
       span([attribute.class("nav-label")], [text(i18n.t(locale, label_key))]),
@@ -188,14 +212,18 @@ fn view_nav_item_with_label(
       span([attribute.class("badge")], [text(int.to_string(count))])
     _ -> element.none()
   }
+  let state_attrs = nav_state_attrs(is_active)
 
   button(
-    [
-      attribute.class("nav-link" <> active_class),
-      attribute.attribute("data-testid", testid),
-      attribute.disabled(disabled),
-      event.on_click(on_click_msg),
-    ],
+    list.append(
+      [
+        attribute.class("nav-link" <> active_class),
+        attribute.attribute("data-testid", testid),
+        attribute.disabled(disabled),
+        event.on_click(on_click_msg),
+      ],
+      state_attrs,
+    ),
     [
       icons.nav_icon(icon, icons.Small),
       span([attribute.class("nav-label")], [text(label)]),
@@ -203,6 +231,16 @@ fn view_nav_item_with_label(
       active_indicator,
     ],
   )
+}
+
+fn nav_state_attrs(is_active: Bool) {
+  case is_active {
+    True -> [
+      attribute.attribute("aria-current", "page"),
+      attribute.attribute("aria-pressed", "true"),
+    ]
+    False -> [attribute.attribute("aria-pressed", "false")]
+  }
 }
 
 // =============================================================================
@@ -389,12 +427,12 @@ fn view_depth_nav_links(config: LeftPanelConfig(msg)) -> List(Element(msg)) {
   list.map(config.depth_names, fn(depth_name) {
     let scope_view.DepthName(depth: depth, plural_name: plural, ..) = depth_name
     view_nav_item_with_label(
-      is_route_active(config.current_route, Some(Cards), None, None),
+      is_depth_route_active(config.current_route, depth),
       "nav-depth-" <> int.to_string(depth),
       icons.Cards,
       plural,
       config.selected_project_id == None,
-      config.on_navigate_cards,
+      config.on_navigate_depth(depth),
       None,
     )
   })
@@ -477,78 +515,76 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      {
-        let items_class = case config.config_collapsed {
-          True -> "section-items section-items-collapsed"
-          False -> "section-items"
-        }
-        div([attribute.class(items_class)], [
-          view_config_nav_link(
-            config,
-            permissions.Members,
-            "nav-team",
-            icons.Team,
-            i18n_text.Team,
-            config.on_navigate_config_team,
-          ),
-          view_config_nav_link(
-            config,
-            permissions.Capabilities,
-            "nav-capabilities",
-            icons.Crosshairs,
-            i18n_text.Capabilities,
-            config.on_navigate_config_capabilities,
-          ),
-          // Story 4.9 AC3: Separator - ORGANIZACIÓN DEL TRABAJO group
-          view_nav_separator(),
-          view_config_nav_link(
-            config,
-            permissions.Cards,
-            "nav-cards-config",
-            icons.Cards,
-            i18n_text.CardsConfig,
-            config.on_navigate_config_cards,
-          ),
-          view_config_nav_link(
-            config,
-            permissions.TaskTypes,
-            "nav-task-types",
-            icons.TaskTypes,
-            i18n_text.TaskTypes,
-            config.on_navigate_config_task_types,
-          ),
-          // Story 4.9 AC3: Separator - AUTOMATIZACIÓN group
-          view_nav_separator(),
-          view_config_nav_link(
-            config,
-            permissions.Workflows,
-            "nav-rules",
-            icons.Automation,
-            i18n_text.AdminWorkflows,
-            config.on_navigate_config_rules,
-          ),
-          view_config_nav_link(
-            config,
-            permissions.TaskTemplates,
-            "nav-templates",
-            icons.TaskTemplates,
-            i18n_text.Templates,
-            config.on_navigate_config_templates,
-          ),
-          // Story 4.9 AC3: Separator - RESULTADOS group
-          view_nav_separator(),
-          view_config_nav_link(
-            config,
-            permissions.RuleMetrics,
-            "nav-metrics",
-            icons.Metrics,
-            i18n_text.AdminMetrics,
-            config.on_navigate_config_metrics,
-          ),
-        ])
+      case config.config_collapsed {
+        True -> element.none()
+        False -> view_config_items(config)
       },
     ],
   )
+}
+
+fn view_config_items(config: LeftPanelConfig(msg)) -> Element(msg) {
+  div([attribute.class("section-items")], [
+    view_config_nav_link(
+      config,
+      permissions.Members,
+      "nav-team",
+      icons.Team,
+      i18n_text.Team,
+      config.on_navigate_config_team,
+    ),
+    view_config_nav_link(
+      config,
+      permissions.Capabilities,
+      "nav-capabilities",
+      icons.Crosshairs,
+      i18n_text.Capabilities,
+      config.on_navigate_config_capabilities,
+    ),
+    view_nav_separator(),
+    view_config_nav_link(
+      config,
+      permissions.Cards,
+      "nav-cards-config",
+      icons.Cards,
+      i18n_text.CardsConfig,
+      config.on_navigate_config_cards,
+    ),
+    view_config_nav_link(
+      config,
+      permissions.TaskTypes,
+      "nav-task-types",
+      icons.TaskTypes,
+      i18n_text.TaskTypes,
+      config.on_navigate_config_task_types,
+    ),
+    view_nav_separator(),
+    view_config_nav_link(
+      config,
+      permissions.Workflows,
+      "nav-rules",
+      icons.Automation,
+      i18n_text.AdminWorkflows,
+      config.on_navigate_config_rules,
+    ),
+    view_config_nav_link(
+      config,
+      permissions.TaskTemplates,
+      "nav-templates",
+      icons.TaskTemplates,
+      i18n_text.Templates,
+      config.on_navigate_config_templates,
+    ),
+    view_nav_separator(),
+    view_config_nav_link(
+      config,
+      permissions.RuleMetrics,
+      "nav-metrics",
+      icons.Metrics,
+      i18n_text.AdminMetrics,
+      config.on_navigate_config_metrics,
+    ),
+  ])
 }
 
 // =============================================================================
@@ -608,70 +644,71 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      {
-        let items_class = case config.org_collapsed {
-          True -> "section-items section-items-collapsed"
-          False -> "section-items"
-        }
-        div([attribute.class(items_class)], [
-          view_org_nav_link(
-            config,
-            permissions.Invites,
-            "nav-invites",
-            icons.Invites,
-            i18n_text.Invites,
-            config.on_navigate_org_invites,
-            Some(config.pending_invites_count),
-          ),
-          view_org_nav_link(
-            config,
-            permissions.OrgSettings,
-            "nav-users",
-            icons.OrgUsers,
-            i18n_text.OrgUsers,
-            config.on_navigate_org_users,
-            Some(config.users_count),
-          ),
-          view_org_nav_link(
-            config,
-            permissions.Projects,
-            "nav-projects",
-            icons.Projects,
-            i18n_text.Projects,
-            config.on_navigate_org_projects,
-            Some(config.projects_count),
-          ),
-          view_org_nav_link(
-            config,
-            permissions.Team,
-            "nav-assignments",
-            icons.Team,
-            i18n_text.Team,
-            config.on_navigate_org_assignments,
-            None,
-          ),
-          view_org_nav_link(
-            config,
-            permissions.ApiTokens,
-            "nav-api-tokens",
-            icons.Cog,
-            i18n_text.AdminApiTokens,
-            config.on_navigate_org_api_tokens,
-            None,
-          ),
-          view_org_nav_link(
-            config,
-            permissions.Metrics,
-            "nav-org-metrics",
-            icons.OrgMetrics,
-            i18n_text.OrgMetrics,
-            config.on_navigate_org_metrics,
-            None,
-          ),
-        ])
+      case config.org_collapsed {
+        True -> element.none()
+        False -> view_org_items(config)
       },
     ],
   )
+}
+
+fn view_org_items(config: LeftPanelConfig(msg)) -> Element(msg) {
+  div([attribute.class("section-items")], [
+    view_org_nav_link(
+      config,
+      permissions.Invites,
+      "nav-invites",
+      icons.Invites,
+      i18n_text.Invites,
+      config.on_navigate_org_invites,
+      Some(config.pending_invites_count),
+    ),
+    view_org_nav_link(
+      config,
+      permissions.OrgSettings,
+      "nav-users",
+      icons.OrgUsers,
+      i18n_text.OrgUsers,
+      config.on_navigate_org_users,
+      Some(config.users_count),
+    ),
+    view_org_nav_link(
+      config,
+      permissions.Projects,
+      "nav-projects",
+      icons.Projects,
+      i18n_text.Projects,
+      config.on_navigate_org_projects,
+      Some(config.projects_count),
+    ),
+    view_org_nav_link(
+      config,
+      permissions.Team,
+      "nav-assignments",
+      icons.Team,
+      i18n_text.Team,
+      config.on_navigate_org_assignments,
+      None,
+    ),
+    view_org_nav_link(
+      config,
+      permissions.ApiTokens,
+      "nav-api-tokens",
+      icons.Cog,
+      i18n_text.AdminApiTokens,
+      config.on_navigate_org_api_tokens,
+      None,
+    ),
+    view_org_nav_link(
+      config,
+      permissions.Metrics,
+      "nav-org-metrics",
+      icons.OrgMetrics,
+      i18n_text.OrgMetrics,
+      config.on_navigate_org_metrics,
+      None,
+    ),
+  ])
 }
 // =============================================================================
 // Helpers

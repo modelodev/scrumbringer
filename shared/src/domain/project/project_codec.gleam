@@ -11,7 +11,8 @@ import domain/project_role/project_role_codec
 pub fn default_card_depth_names() -> List(ProjectDepthName) {
   [
     ProjectDepthName(1, "Initiative", "Initiatives"),
-    ProjectDepthName(2, "Card", "Cards"),
+    ProjectDepthName(2, "Feature", "Features"),
+    ProjectDepthName(3, "Task group", "Task groups"),
   ]
 }
 

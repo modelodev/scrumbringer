@@ -29,12 +29,14 @@ pub fn create_state_open_with_card_keeps_card_context_test() {
 
 pub fn create_state_field_changes_update_only_form_fields_test() {
   let model =
-    member_pool.default_model()
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_card_id: Some(7),
+    )
     |> create_state.title_changed("Ship task")
     |> create_state.description_changed("Useful detail")
     |> create_state.priority_changed("5")
     |> create_state.type_id_changed("8")
-    |> create_state.card_id_changed("7")
 
   let assert "Ship task" = model.member_create_title
   let assert "Useful detail" = model.member_create_description

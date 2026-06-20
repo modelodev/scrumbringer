@@ -7,10 +7,16 @@ with type_ok as (
   where id = $1
     and project_id = $2
 ), card_ok as (
-  select c.id
+  select c.id, c.execution_state
   from (select 1) seed
   left join cards c
     on c.id = $7 and c.project_id = $2
+    and c.execution_state <> 'closed'
+    and not exists (
+      select 1
+      from cards child
+      where child.parent_card_id = c.id
+    )
   where $7 <= 0 or c.id is not null
 ), inserted as (
   insert into tasks (
@@ -35,7 +41,11 @@ with type_ok as (
     case when $7 <= 0 then null else card_ok.id end,
     case when $9 <= 0 then null else $9 end,
     'available',
-    now()
+    case
+      when $7 <= 0 then now()
+      when card_ok.execution_state = 'active' then now()
+      else null
+    end
   from type_ok, card_ok
   where type_ok.id is not null
     and ($7 <= 0 or card_ok.id is not null)

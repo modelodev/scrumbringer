@@ -26,9 +26,9 @@ pub fn css() -> List(String) {
     ".body { display: flex; gap: 12px; align-items: flex-start; }",
     ".nav { width: 220px; background: var(--sb-surface-2); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--sb-shadow-soft); }",
     ".content { flex: 1; background: var(--sb-surface-1); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; min-width: 0; box-shadow: var(--sb-shadow-soft); }",
-    ".content.pool-main { overflow: hidden; min-height: 520px; }",
+    ".content.pool-main { overflow-x: auto; overflow-y: hidden; min-height: 520px; }",
     ".pool-layout { display: flex; gap: var(--sb-space-lg); align-items: flex-start; width: 100%; }",
-    ".pool-main { flex: 1 1 auto; min-width: 0; position: relative; overflow: hidden; }",
+    ".pool-main { flex: 1 1 auto; min-width: 0; position: relative; overflow-x: auto; overflow-y: hidden; }",
     ".pool-right { width: clamp(280px, 24vw, 320px); flex-shrink: 0; position: relative; z-index: 2; background: var(--sb-surface-2); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-xl); padding: var(--sb-space-lg); display: flex; flex-direction: column; gap: var(--sb-space-lg); align-self: stretch; box-shadow: var(--sb-shadow-soft); }
 .pool-my-tasks-dropzone { border: 1px dashed transparent; border-radius: 12px; padding: 8px; transition: border-color 120ms ease, background 120ms ease; min-height: 120px; }
 .pool-my-tasks-dropzone.drag-active { border-color: var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); }

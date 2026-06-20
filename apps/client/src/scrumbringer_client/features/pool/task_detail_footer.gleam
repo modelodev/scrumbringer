@@ -32,6 +32,7 @@ pub type Config(msg) {
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
+    on_delete: fn(Int) -> msg,
   )
 }
 
@@ -96,12 +97,14 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
   let is_mine = claimed_by(task) == config.current_user_id
   case task_state.to_work_state(task.state) {
     task_status.WorkAvailable -> [
+      delete_button(config, task, task.blocked_count > 0),
       claim_button(config, task),
     ]
 
     task_status.WorkClaimed | task_status.WorkOngoing ->
       case is_mine {
         True -> [
+          delete_button(config, task, True),
           text_button(
             t(config, i18n_text.Release),
             config.on_release(task.id, task.version),
@@ -117,11 +120,36 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
           )
             |> button.view,
         ]
-        False -> []
+        False -> [delete_button(config, task, True)]
       }
 
-    task_status.WorkDone -> []
+    task_status.WorkDone -> [delete_button(config, task, True)]
   }
+}
+
+fn delete_button(
+  config: Config(msg),
+  task: Task,
+  blocked_by_history: Bool,
+) -> Element(msg) {
+  let base_button =
+    button.text(
+      t(config, i18n_text.Delete),
+      config.on_delete(task.id),
+      button.Danger,
+      button.EntityAction,
+    )
+
+  case config.disable_actions, blocked_by_history {
+    True, _ -> button.with_disabled(base_button, True)
+    False, True ->
+      button.with_blocked_reason(
+        base_button,
+        t(config, i18n_text.TaskHasOperationalHistory),
+      )
+    False, False -> base_button
+  }
+  |> button.view
 }
 
 fn claim_button(config: Config(msg), task: Task) -> Element(msg) {

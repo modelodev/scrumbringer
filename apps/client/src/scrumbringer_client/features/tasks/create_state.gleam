@@ -64,14 +64,6 @@ pub fn type_id_changed(
   member_pool.Model(..model, member_create_type_id: value)
 }
 
-pub fn card_id_changed(
-  model: member_pool.Model,
-  value: String,
-) -> member_pool.Model {
-  let card_id = create_form.card_id_from_input(value)
-  member_pool.Model(..model, member_create_card_id: card_id)
-}
-
 pub fn input(
   model: member_pool.Model,
   selected_project_id: opt.Option(Int),

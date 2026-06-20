@@ -8,6 +8,56 @@ import gleam/dynamic/decode
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
+/// A row you get from running the `audit_events_insert` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AuditEventsInsertRow {
+  AuditEventsInsertRow(id: Int)
+}
+
+/// name: audit_events_insert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn audit_events_insert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(AuditEventsInsertRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AuditEventsInsertRow(id:))
+  }
+
+  "-- name: audit_events_insert
+insert into audit_events (
+  org_id,
+  project_id,
+  task_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `capabilities_create` query
 /// defined in `./src/scrumbringer_server/sql/capabilities_create.sql`.
 ///
@@ -701,6 +751,7 @@ pub type CardsGetRow {
     title: String,
     description: String,
     color: String,
+    execution_state: String,
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
@@ -728,20 +779,22 @@ pub fn cards_get(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use parent_card_id <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use due_date <- decode.field(8, decode.string)
-    use task_count <- decode.field(9, decode.int)
-    use completed_count <- decode.field(10, decode.int)
-    use available_count <- decode.field(11, decode.int)
-    use has_new_notes <- decode.field(12, decode.bool)
+    use execution_state <- decode.field(5, decode.string)
+    use parent_card_id <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use due_date <- decode.field(9, decode.string)
+    use task_count <- decode.field(10, decode.int)
+    use completed_count <- decode.field(11, decode.int)
+    use available_count <- decode.field(12, decode.int)
+    use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsGetRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
+      execution_state:,
       parent_card_id:,
       created_by:,
       created_at:,
@@ -760,6 +813,7 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
+    c.execution_state,
     coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
@@ -800,6 +854,7 @@ pub type CardsListRow {
     title: String,
     description: String,
     color: String,
+    execution_state: String,
     parent_card_id: Int,
     created_by: Int,
     created_at: String,
@@ -827,20 +882,22 @@ pub fn cards_list(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use parent_card_id <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use due_date <- decode.field(8, decode.string)
-    use task_count <- decode.field(9, decode.int)
-    use completed_count <- decode.field(10, decode.int)
-    use available_count <- decode.field(11, decode.int)
-    use has_new_notes <- decode.field(12, decode.bool)
+    use execution_state <- decode.field(5, decode.string)
+    use parent_card_id <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use due_date <- decode.field(9, decode.string)
+    use task_count <- decode.field(10, decode.int)
+    use completed_count <- decode.field(11, decode.int)
+    use available_count <- decode.field(12, decode.int)
+    use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsListRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
+      execution_state:,
       parent_card_id:,
       created_by:,
       created_at:,
@@ -859,6 +916,7 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
+    c.execution_state,
     coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
@@ -2954,6 +3012,34 @@ with new_project as (
   insert into project_members (project_id, user_id, role)
   select new_project.id, $3, 'manager'
   from new_project
+), depth_names as (
+  insert into project_card_depth_names
+    (project_id, depth, singular_name, plural_name)
+  select
+    new_project.id,
+    names.depth,
+    names.singular_name,
+    names.plural_name
+  from new_project
+  cross join (
+    values
+      (1, 'Initiative', 'Initiatives'),
+      (2, 'Feature', 'Features'),
+      (3, 'Task group', 'Task groups')
+  ) as names(depth, singular_name, plural_name)
+  on conflict (project_id, depth) do nothing
+), default_task_types as (
+  insert into task_types (project_id, name, icon)
+  select
+    new_project.id,
+    task_type.name,
+    task_type.icon
+  from new_project
+  cross join (
+    values
+      ('General', 'check-square')
+  ) as task_type(name, icon)
+  on conflict (name, project_id) do nothing
 )
 select
   new_project.id,
@@ -4556,56 +4642,6 @@ order by t.created_at desc;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `audit_events_insert` query
-/// defined in `./src/scrumbringer_server/sql/audit_events_insert.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type TaskEventsInsertRow {
-  TaskEventsInsertRow(id: Int)
-}
-
-/// name: audit_events_insert
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn audit_events_insert(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-  arg_3: Int,
-  arg_4: Int,
-  arg_5: String,
-) -> Result(pog.Returned(TaskEventsInsertRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(TaskEventsInsertRow(id:))
-  }
-
-  "-- name: audit_events_insert
-insert into audit_events (
-  org_id,
-  project_id,
-  task_id,
-  actor_user_id,
-  event_type,
-  created_at
-)
-values ($1, $2, $3, $4, $5, now())
-returning id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.int(arg_4))
-  |> pog.parameter(pog.text(arg_5))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
 /// A row you get from running the `task_notes_create` query
 /// defined in `./src/scrumbringer_server/sql/task_notes_create.sql`.
 ///
@@ -5874,7 +5910,19 @@ pub fn tasks_claim(
   }
 
   "-- name: claim_task
-with updated as (
+with recursive claim_target as (
+  select id, card_id
+  from tasks
+  where id = $1
+), ancestors as (
+  select c.id, c.parent_card_id, c.execution_state
+  from cards c
+  join claim_target target on target.card_id = c.id
+  union all
+  select parent.id, parent.parent_card_id, parent.execution_state
+  from cards parent
+  join ancestors child on child.parent_card_id = parent.id
+), updated as (
   update tasks
   set
     claimed_by = $2,
@@ -5890,6 +5938,22 @@ with updated as (
   where id = $1
     and execution_state = 'available'
     and version = $3
+    and (
+      tasks.card_id is null
+      or (
+        exists (
+          select 1
+          from ancestors target
+          where target.id = tasks.card_id
+            and target.execution_state = 'active'
+        )
+        and not exists (
+          select 1
+          from ancestors
+          where execution_state = 'closed'
+        )
+      )
+    )
     and not exists (
       select 1
       from task_dependencies d
@@ -6282,10 +6346,16 @@ with type_ok as (
   where id = $1
     and project_id = $2
 ), card_ok as (
-  select c.id
+  select c.id, c.execution_state
   from (select 1) seed
   left join cards c
     on c.id = $7 and c.project_id = $2
+    and c.execution_state <> 'closed'
+    and not exists (
+      select 1
+      from cards child
+      where child.parent_card_id = c.id
+    )
   where $7 <= 0 or c.id is not null
 ), inserted as (
   insert into tasks (
@@ -6310,7 +6380,11 @@ with type_ok as (
     case when $7 <= 0 then null else card_ok.id end,
     case when $9 <= 0 then null else $9 end,
     'available',
-    now()
+    case
+      when $7 <= 0 then now()
+      when card_ok.execution_state = 'active' then now()
+      else null
+    end
   from type_ok, card_ok
   where type_ok.id is not null
     and ($7 <= 0 or card_ok.id is not null)
@@ -6360,6 +6434,86 @@ left join cards c on c.id = inserted.card_id;
   |> pog.parameter(pog.int(arg_7))
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_delete` query
+/// defined in `./src/scrumbringer_server/sql/tasks_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksDeleteRow {
+  TasksDeleteRow(id: Int)
+}
+
+/// name: delete_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_delete(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TasksDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TasksDeleteRow(id:))
+  }
+
+  "-- name: delete_task
+with eligible as (
+  select t.id
+  from tasks t
+  where t.id = $1
+    and t.execution_state = 'available'
+    and t.claimed_by is null
+    and t.claimed_at is null
+    and t.closed_at is null
+    and t.closed_by is null
+    and t.closed_reason is null
+    and not exists (
+      select 1
+      from audit_events e
+      where e.task_id = t.id
+        and e.event_type <> 'task_created'
+    )
+    and not exists (
+      select 1
+      from task_notes n
+      where n.task_id = t.id
+    )
+    and not exists (
+      select 1
+      from task_dependencies d
+      where d.task_id = t.id
+        or d.depends_on_task_id = t.id
+    )
+    and not exists (
+      select 1
+      from user_task_work_session s
+      where s.task_id = t.id
+    )
+    and not exists (
+      select 1
+      from user_task_work_total total
+      where total.task_id = t.id
+    )
+), deleted_positions as (
+  delete from task_positions
+  where task_id in (select id from eligible)
+), deleted_creation_events as (
+  delete from audit_events
+  where task_id in (select id from eligible)
+    and event_type = 'task_created'
+)
+delete from tasks
+where id in (select id from eligible)
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

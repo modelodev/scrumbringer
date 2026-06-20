@@ -335,11 +335,9 @@ fn card_classes(
 fn card_style(x: Int, y: Int) -> String {
   let size = 128
   let size_str = int.to_string(size)
-  "position:absolute; left:clamp(0px,"
+  "position:absolute; left:max(0px,"
   <> int.to_string(x)
-  <> "px,calc(100% - "
-  <> size_str
-  <> "px)); top:max(0px,"
+  <> "px); top:max(0px,"
   <> int.to_string(y)
   <> "px); width:"
   <> size_str

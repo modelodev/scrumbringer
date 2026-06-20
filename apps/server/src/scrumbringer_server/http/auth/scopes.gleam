@@ -20,6 +20,7 @@ pub fn required_scope(
     http.Post, ["api", "v1", "projects", _, "tasks"] ->
       write(api_token_scope.Tasks)
     http.Patch, ["api", "v1", "tasks", _] -> write(api_token_scope.Tasks)
+    http.Delete, ["api", "v1", "tasks", _] -> write(api_token_scope.Tasks)
     http.Post, ["api", "v1", "tasks", _, "claim"] ->
       write(api_token_scope.Tasks)
     http.Post, ["api", "v1", "tasks", _, "release"] ->

@@ -17,7 +17,6 @@ pub fn view(
   on_priority_changed: fn(String) -> msg,
   on_type_id_changed: fn(String) -> msg,
   on_type_options_retry_clicked: msg,
-  on_card_id_changed: fn(String) -> msg,
 ) -> Element(msg) {
   create_dialog.view(from_state(
     locale,
@@ -30,7 +29,6 @@ pub fn view(
     on_priority_changed,
     on_type_id_changed,
     on_type_options_retry_clicked,
-    on_card_id_changed,
   ))
 }
 
@@ -45,7 +43,6 @@ pub fn from_state(
   on_priority_changed: fn(String) -> msg,
   on_type_id_changed: fn(String) -> msg,
   on_type_options_retry_clicked: msg,
-  on_card_id_changed: fn(String) -> msg,
 ) -> create_dialog.Config(msg) {
   create_dialog.Config(
     locale: locale,
@@ -65,6 +62,5 @@ pub fn from_state(
     on_priority_changed: on_priority_changed,
     on_type_id_changed: on_type_id_changed,
     on_type_options_retry_clicked: on_type_options_retry_clicked,
-    on_card_id_changed: on_card_id_changed,
   )
 }

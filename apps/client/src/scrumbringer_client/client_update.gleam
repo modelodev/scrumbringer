@@ -320,6 +320,11 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           helpers_options.empty_to_opt(model.member.pool.member_filters_q),
         )
+      let state =
+        url_state.with_card_depth(
+          state,
+          model.member.pool.member_card_depth_filter,
+        )
       router.Member(state)
     }
   }
@@ -563,6 +568,7 @@ fn apply_route_fields(
               pool: member_pool.Model(
                 ..pool,
                 view_mode: new_view,
+                member_card_depth_filter: url_state.card_depth(state),
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),

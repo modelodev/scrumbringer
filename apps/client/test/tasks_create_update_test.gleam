@@ -20,6 +20,8 @@ fn local_context(selected_project_id) -> create_update.Context(Nil) {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1 to 5",
+    card_has_child_cards: "Choose a task group or empty card",
+    parent_card_conflict: "Choose one task location only",
   )
 }
 
@@ -232,5 +234,58 @@ pub fn local_task_created_error_sets_error_message_test() {
   let assert create_update.CheckAuthBefore(_) = policy
   let assert False = next.member_create_in_flight
   let assert Some("boom") = next.member_create_error
+  let assert True = fx == effect.none()
+}
+
+pub fn local_task_created_card_has_child_cards_uses_contextual_message_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_in_flight: True,
+      member_create_error: None,
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(
+        Error(ApiError(
+          status: 422,
+          code: "CARD_HAS_CHILD_CARDS",
+          message: "Card already contains child cards",
+        )),
+      ),
+      local_context(None),
+    )
+
+  let assert create_update.CheckAuthBefore(_) = policy
+  let assert Some("Choose a task group or empty card") =
+    next.member_create_error
+  let assert True = fx == effect.none()
+}
+
+pub fn local_task_created_parent_card_conflict_uses_contextual_message_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_in_flight: True,
+      member_create_error: None,
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(
+        Error(ApiError(
+          status: 422,
+          code: "TASK_PARENT_CARD_CONFLICT",
+          message: "Task cannot specify both card_id and parent_card_id",
+        )),
+      ),
+      local_context(None),
+    )
+
+  let assert create_update.CheckAuthBefore(_) = policy
+  let assert Some("Choose one task location only") = next.member_create_error
   let assert True = fx == effect.none()
 }

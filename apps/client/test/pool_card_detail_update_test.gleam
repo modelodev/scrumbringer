@@ -1,7 +1,9 @@
+import gleam/int
 import gleam/option.{None, Some}
 
 import lustre/effect
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiResult, ApiError}
 import domain/card.{type Card, Card, Draft}
 import domain/metrics.{
@@ -25,6 +27,30 @@ fn context() -> card_detail_update.Context(Nil) {
   card_detail_update.Context(
     on_card_marked: fn(_result: ApiResult(Nil)) { Nil },
     on_card_metrics_fetched: fn(_result: ApiResult(CardModalMetrics)) { Nil },
+    on_card_activated: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
+      Nil
+    },
+    on_success_toast: fn(_message) { effect.none() },
+    on_error_toast: fn(_message) { effect.none() },
+    hierarchy_activated: "Hierarchy activated",
+    hierarchy_pool_impact: fn(pool_impact) {
+      "Pool impact " <> int.to_string(pool_impact)
+    },
+    hierarchy_pool_saturated: fn(pool_open_after, healthy_pool_limit) {
+      "Pool at "
+      <> int.to_string(pool_open_after)
+      <> "/"
+      <> int.to_string(healthy_pool_limit)
+    },
+    hierarchy_activate_failed: "Could not activate hierarchy",
+  )
+}
+
+fn context_with_toasts() -> card_detail_update.Context(Nil) {
+  card_detail_update.Context(
+    ..context(),
+    on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+    on_error_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
@@ -123,6 +149,38 @@ pub fn card_detail_update_metrics_ok_sets_loaded_test() {
   let assert Loaded(loaded) = next.pool.card_detail_metrics
   let assert 4 = loaded.tasks_total
   let assert True = fx == effect.none()
+}
+
+pub fn card_detail_update_activate_requested_submits_effect_test() {
+  let assert Some(#(next, fx)) =
+    card_detail_update.try_update(
+      local_model(),
+      pool_messages.CardActivateRequested(7),
+      context(),
+    )
+
+  let assert True = next.pool == member_pool.default_model()
+  let assert False = fx == effect.none()
+}
+
+pub fn card_detail_update_activated_ok_shows_feedback_test() {
+  let response =
+    card_contracts.CardActionResponse(
+      card_id: 7,
+      pool_impact: 3,
+      pool_open_after: 8,
+      healthy_pool_limit: 10,
+      pool_health: card_contracts.PoolWithinHealthyLimit,
+    )
+
+  let assert Some(#(_next, fx)) =
+    card_detail_update.try_update(
+      local_model(),
+      pool_messages.CardActivated(Ok(response)),
+      context_with_toasts(),
+    )
+
+  let assert False = fx == effect.none()
 }
 
 pub fn card_detail_update_metrics_error_sets_failed_test() {

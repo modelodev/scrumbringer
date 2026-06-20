@@ -17,6 +17,7 @@
 //// - API: api/cards.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
@@ -60,6 +61,7 @@ pub type Model {
     locale: Locale,
     project_id: Option(Int),
     mode: DialogMode,
+    create_parent_card_id: Option(Int),
     // Create dialog fields
     create_title: String,
     create_description: String,
@@ -85,6 +87,7 @@ pub type Msg {
   // Attribute/property changes
   LocaleReceived(Locale)
   ProjectIdReceived(Int)
+  ParentCardIdReceived(Option(Int))
   ModeReceived(DialogMode)
   // Create form
   CreateTitleChanged(String)
@@ -125,6 +128,7 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
   [
     component.on_attribute_change("locale", decode_locale),
     component.on_attribute_change("project-id", decode_project_id),
+    component.on_attribute_change("parent-card-id", decode_parent_card_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_attribute_change("card-id", decode_card_id),
     component.on_property_change("card", card_property_decoder()),
@@ -138,6 +142,14 @@ fn decode_locale(value: String) -> Result(Msg, Nil) {
 
 fn decode_project_id(value: String) -> Result(Msg, Nil) {
   crud_dialog_base.decode_int_attribute(value, ProjectIdReceived)
+}
+
+fn decode_parent_card_id(value: String) -> Result(Msg, Nil) {
+  case int.parse(value) {
+    Ok(id) if id > 0 -> Ok(ParentCardIdReceived(option.Some(id)))
+    Ok(_) -> Ok(ParentCardIdReceived(option.None))
+    Error(_) -> Error(Nil)
+  }
 }
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
@@ -180,6 +192,7 @@ fn default_model() -> Model {
     locale: En,
     project_id: option.None,
     mode: crud_dialog_base.Closed,
+    create_parent_card_id: option.None,
     create_title: "",
     create_description: "",
     create_color: option.None,
@@ -207,6 +220,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ProjectIdReceived(id) -> #(
       Model(..model, project_id: option.Some(id)),
+      effect.none(),
+    )
+
+    ParentCardIdReceived(parent_card_id) -> #(
+      Model(..model, create_parent_card_id: parent_card_id),
       effect.none(),
     )
 
@@ -380,7 +398,7 @@ fn submit_create_with_title(
         title,
         model.create_description,
         form_color_to_domain(model.create_color),
-        option.None,
+        model.create_parent_card_id,
         CreateResult,
       ),
     )
@@ -403,6 +421,7 @@ fn handle_create_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
       create_description: "",
       create_color: option.None,
       create_color_open: False,
+      create_parent_card_id: option.None,
       create_in_flight: False,
       create_error: option.None,
     ),

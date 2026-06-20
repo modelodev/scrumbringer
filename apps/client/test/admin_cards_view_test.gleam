@@ -123,6 +123,30 @@ pub fn cards_view_keeps_delete_available_for_empty_cards_test() {
   assert_contains(html, "aria-label=\"Delete Card\"")
 }
 
+pub fn card_crud_dialog_passes_parent_card_for_child_creation_test() {
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(
+          ..cards,
+          cards_dialog_mode: opt.Some(
+            admin_cards.CardDialogCreate(opt.Some(42)),
+          ),
+        ),
+      )
+    })
+
+  let html =
+    admin_view.view_card_crud_dialog(model, 1)
+    |> element.to_document_string
+
+  assert_contains(html, "mode=\"create\"")
+  assert_contains(html, "parent-card-id=\"42\"")
+}
+
 pub fn cards_view_renders_detail_modal_when_open_test() {
   let model =
     base_model()

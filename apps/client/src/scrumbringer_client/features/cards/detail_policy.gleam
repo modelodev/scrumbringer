@@ -12,14 +12,19 @@ pub type DetailStructure {
   TaskGroup
 }
 
+pub type DisabledReason {
+  ClosedCardCannotReceiveChildren
+  CardHasOperationalHistory
+}
+
 pub type Policy {
   Policy(
     structure: DetailStructure,
     can_create_card: Bool,
     can_create_task: Bool,
     can_delete: Bool,
-    create_disabled_reason: Option(String),
-    delete_disabled_reason: Option(String),
+    create_disabled_reason: Option(DisabledReason),
+    delete_disabled_reason: Option(DisabledReason),
   )
 }
 
@@ -33,7 +38,7 @@ pub fn policy_for(
   let structure = structure_for(card, direct_child_cards, direct_tasks)
   let is_closed = card.state == Closed
   let create_disabled_reason = case is_closed {
-    True -> Some("Closed cards cannot receive new children")
+    True -> Some(ClosedCardCannotReceiveChildren)
     False -> None
   }
   let can_create_card =
@@ -54,7 +59,7 @@ pub fn policy_for(
     !has_operational_history(card, direct_child_cards, direct_tasks)
   let delete_disabled_reason = case can_delete {
     True -> None
-    False -> Some("Cannot delete: has operational history")
+    False -> Some(CardHasOperationalHistory)
   }
 
   Policy(

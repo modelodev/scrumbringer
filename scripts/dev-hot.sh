@@ -11,7 +11,7 @@ GENERATED_CADDYFILE="$TMP_DIR/dev-hot.Caddyfile"
 # - Client: Lustre dev server in apps/client
 # - Caddy: HTTP entrypoint proxying /api/v1/* -> server, everything else -> client
 
-DATABASE_URL="${DATABASE_URL:-postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable}"
+DATABASE_URL="${DATABASE_URL:-postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_dev?sslmode=disable}"
 SB_HOST="${SB_HOST:-0.0.0.0}"
 SB_PORT="${SB_PORT:-8000}"
 SB_UPSTREAM_HOST="${SB_UPSTREAM_HOST:-127.0.0.1}"
@@ -51,6 +51,46 @@ require_free_port() {
     printf 'Port already in use for %s: %s:%s\n' "$label" "$host" "$port" >&2
     exit 1
   fi
+}
+
+require_migrated_database() {
+  log "Checking database schema"
+  if ! bash "$REPO_ROOT/scripts/ht12-db-schema-check.sh"; then
+    cat >&2 <<EOF
+
+Database schema check failed for:
+  ${DATABASE_URL}
+
+The dev stack would start, but task claim and Pool flows can fail later as
+generic database errors when HT-12 migrations are missing. Apply migrations:
+
+  dbmate --url "${DATABASE_URL}" migrate
+
+Then run scripts/dev-hot.sh again.
+EOF
+    exit 1
+  fi
+}
+
+local_app_url() {
+  printf 'http://127.0.0.1:%s' "$CADDY_HTTP_PORT"
+}
+
+lan_app_urls() {
+  local ip
+  local ips
+
+  if ! command -v hostname >/dev/null 2>&1; then
+    return 0
+  fi
+
+  ips="$(hostname -I 2>/dev/null || true)"
+  for ip in $ips; do
+    case "$ip" in
+      127.* | *:*) ;;
+      *.*.*.*) printf 'http://%s:%s\n' "$ip" "$CADDY_HTTP_PORT" ;;
+    esac
+  done
 }
 
 cleanup() {
@@ -107,6 +147,8 @@ main() {
   require_cmd caddy
   require_cmd ss
 
+  require_migrated_database
+
   require_free_port "$SB_HOST" "$SB_PORT" "server"
   require_free_port "$DEV_HOST" "$DEV_PORT" "client dev server"
   require_free_port "$CADDY_HTTP_HOST" "$CADDY_HTTP_PORT" "caddy http"
@@ -131,7 +173,10 @@ main() {
 
   printf '\n'
   log "Dev stack running"
-  log "App: http://${CADDY_HTTP_HOST}:${CADDY_HTTP_PORT}"
+  log "App local: $(local_app_url)"
+  lan_app_urls | while read -r url; do
+    log "App LAN: ${url}"
+  done
   log "API origin: http://${SB_HOST}:${SB_PORT}/api/v1"
   log "Client dev origin: http://${DEV_HOST}:${DEV_PORT}"
   log "Database URL: ${DATABASE_URL}"

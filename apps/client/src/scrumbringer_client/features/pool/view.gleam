@@ -200,19 +200,31 @@ fn view_tasks_collection(
 }
 
 fn view_tasks_canvas(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {
+  let card_configs = list.map(tasks, config.task_card_config)
+
   keyed.div(
     [
       attribute.attribute("id", "member-canvas"),
-      attribute.attribute(
-        "style",
-        "position: relative; min-height: 600px; touch-action: none;",
-      ),
+      attribute.attribute("style", canvas_style(card_configs)),
     ],
-    list.map(tasks, fn(task) {
+    list.map(card_configs, fn(card_config) {
+      let task = card_config.task
       let Task(id: id, ..) = task
-      #(int.to_string(id), view_task_card(config.task_card_config(task)))
+      #(int.to_string(id), view_task_card(card_config))
     }),
   )
+}
+
+fn canvas_style(card_configs: List(task_card.Config(msg))) -> String {
+  "position: relative; min-height: 600px; min-width:"
+  <> int.to_string(canvas_min_width(card_configs))
+  <> "px; touch-action: none;"
+}
+
+fn canvas_min_width(card_configs: List(task_card.Config(msg))) -> Int {
+  list.fold(card_configs, 0, fn(width, card_config) {
+    int.max(width, card_config.x + 188)
+  })
 }
 
 fn view_tasks_list(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {

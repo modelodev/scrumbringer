@@ -720,6 +720,104 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   count_audit_events(db, task_id, "task_completed") |> expect.equal(1)
 }
 
+pub fn delete_task_without_operational_history_removes_task_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Clean", "", 3, type_id)
+
+  delete_task(handler, session, csrf, task_id) |> expect.equal(204)
+  count_task_rows(db, task_id) |> expect.equal(0)
+  count_audit_events(db, task_id, "task_created") |> expect.equal(0)
+}
+
+pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Claimed", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  let res = delete_task_response(handler, session, csrf, task_id)
+
+  expect.expect_status(res, 409)
+  string.contains(simulate.read_body(res), "TASK_HAS_OPERATIONAL_HISTORY")
+  |> expect.is_true
+  count_task_rows(db, task_id) |> expect.equal(1)
+}
+
+pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let noted_task =
+    create_task(handler, session, csrf, project_id, "Noted", "", 3, type_id)
+  let blocked_task =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker_task =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  create_task_note(handler, session, csrf, noted_task, "Operational context")
+  |> expect.equal(200)
+  create_dependency(handler, session, csrf, blocked_task, blocker_task)
+  |> expect.equal(200)
+
+  delete_task(handler, session, csrf, noted_task) |> expect.equal(409)
+  delete_task(handler, session, csrf, blocker_task) |> expect.equal(409)
+  count_task_rows(db, noted_task) |> expect.equal(1)
+  count_task_rows(db, blocker_task) |> expect.equal(1)
+}
+
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -2877,6 +2975,58 @@ fn count_audit_events_for_actor(
     "select count(*) from audit_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
     [pog.int(task_id), pog.int(actor_user_id), pog.text(event_type)],
   )
+}
+
+fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
+  single_int(db, "select count(*) from tasks where id = $1", [
+    pog.int(task_id),
+  ])
+}
+
+fn delete_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+) -> Int {
+  let res = delete_task_response(handler, session, csrf, task_id)
+  res.status
+}
+
+fn delete_task_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Delete, "/api/v1/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf),
+  )
+}
+
+fn create_task_note(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  content: String,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(json.object([#("content", json.string(content))])),
+    )
+
+  res.status
 }
 
 fn claim_task(

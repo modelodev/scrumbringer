@@ -155,7 +155,10 @@ fn fetch_card_summary(
     with tasks_scope as (
       select
         t.id,
-        t.status,
+        case
+          when t.execution_state = 'closed' then 'completed'
+          else t.execution_state
+        end as status,
         t.pool_lifetime_s,
         exists(
           select 1

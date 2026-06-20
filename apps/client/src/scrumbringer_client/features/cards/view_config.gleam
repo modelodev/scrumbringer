@@ -24,6 +24,7 @@ pub fn from_state(
   on_card_opened: fn(Int) -> msg,
   on_create_task_in_card: fn(Int) -> msg,
   on_create_card_in_card: fn(Int) -> msg,
+  on_activate_card: fn(Int) -> msg,
   on_delete_card: fn(Int) -> msg,
   on_detail_closed: msg,
 ) -> view.Config(msg) {
@@ -40,6 +41,7 @@ pub fn from_state(
     on_card_opened: on_card_opened,
     on_create_task_in_card: on_create_task_in_card,
     on_create_card_in_card: on_create_card_in_card,
+    on_activate_card: on_activate_card,
     on_delete_card: on_delete_card,
     on_detail_closed: on_detail_closed,
   )

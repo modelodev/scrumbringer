@@ -23,6 +23,7 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
+import api/cards/contracts
 import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
 
@@ -180,6 +181,21 @@ pub fn delete_card(
   )
 }
 
+/// Activate a card subtree and return the number of tasks released to the Pool.
+pub fn activate_card(
+  card_id: Int,
+  to_msg: fn(ApiResult(contracts.CardActionResponse)) -> msg,
+) -> Effect(msg) {
+  let decoder = card_action_response_decoder()
+  core.request(
+    core.Post,
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
+    option.Some(json.object([])),
+    decoder,
+    to_msg,
+  )
+}
+
 /// List all tasks belonging to a card.
 pub fn list_card_tasks(
   card_id: Int,
@@ -276,6 +292,39 @@ fn card_metrics_decoder() -> decode.Decoder(CardModalMetrics) {
     health: health,
     workflows: items,
     most_activated: most_activated,
+  ))
+}
+
+fn card_action_response_decoder() -> decode.Decoder(
+  contracts.CardActionResponse,
+) {
+  use card_id <- decode.field("card_id", decode.int)
+  use pool_impact <- decode.field("pool_impact", decode.int)
+  use pool_open_after <- decode.optional_field(
+    "pool_open_after",
+    pool_impact,
+    decode.int,
+  )
+  use healthy_pool_limit <- decode.optional_field(
+    "healthy_pool_limit",
+    20,
+    decode.int,
+  )
+  use pool_health_raw <- decode.optional_field(
+    "pool_health",
+    "within_healthy_limit",
+    decode.string,
+  )
+  let pool_health = case contracts.pool_health_from_string(pool_health_raw) {
+    Ok(health) -> health
+    Error(_) -> contracts.PoolWithinHealthyLimit
+  }
+  decode.success(contracts.CardActionResponse(
+    card_id: card_id,
+    pool_impact: pool_impact,
+    pool_open_after: pool_open_after,
+    healthy_pool_limit: healthy_pool_limit,
+    pool_health: pool_health,
   ))
 }
 

@@ -45,5 +45,12 @@ fn view_mode_changed(
   }
   let state = url_state.with_view(state, mode)
 
-  Update(member_pool.Model(..model, view_mode: mode), ReplaceMemberRoute(state))
+  Update(
+    member_pool.Model(
+      ..model,
+      view_mode: mode,
+      member_card_depth_filter: opt.None,
+    ),
+    ReplaceMemberRoute(state),
+  )
 }

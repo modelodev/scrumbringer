@@ -86,7 +86,7 @@ pub fn handle_project_tasks(
   }
 }
 
-/// Handle single task routes (GET, PATCH).
+/// Handle single task routes (GET, PATCH, DELETE).
 pub fn handle_task(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -95,7 +95,8 @@ pub fn handle_task(
   case req.method {
     http.Get -> tasks_get_patch.handle_task_get(req, ctx, task_id)
     http.Patch -> tasks_get_patch.handle_task_patch(req, ctx, task_id)
-    _ -> wisp.method_not_allowed([http.Get, http.Patch])
+    http.Delete -> tasks_get_patch.handle_task_delete(req, ctx, task_id)
+    _ -> wisp.method_not_allowed([http.Get, http.Patch, http.Delete])
   }
 }
 

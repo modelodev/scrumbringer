@@ -115,21 +115,19 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
 
   let cards_with_progress = compute_progress(config.cards, filtered_tasks)
 
-  // AC42: Filter out empty cards (cards with 0 tasks)
-  // Empty cards are only visible in /config/cards management view
-  let non_empty_cards =
-    list.filter(cards_with_progress, fn(cwp) { cwp.total > 0 })
+  // Draft cards can be empty while the team is decomposing work. They must stay
+  // visible so users can open them and add child cards or prepared tasks.
+  let visible_cards = cards_with_progress
 
   // Group by state
   let pendiente =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Draft })
+    list.filter(visible_cards, fn(cwp) { cwp.card.state == Draft })
   let en_curso =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Active })
-  let cerrada =
-    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Closed })
+    list.filter(visible_cards, fn(cwp) { cwp.card.state == Active })
+  let cerrada = list.filter(visible_cards, fn(cwp) { cwp.card.state == Closed })
 
   div([attribute.class("kanban-view")], [
-    view_surface_header(config, board_summary(non_empty_cards)),
+    view_surface_header(config, board_summary(visible_cards)),
     div([attribute.class("kanban-board")], [
       view_column(
         config,

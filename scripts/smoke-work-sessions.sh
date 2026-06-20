@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${BASE_URL:-"https://localhost:8443"}
+BASE_URL=${BASE_URL:-"http://127.0.0.1:8443"}
 BASE_URL=${BASE_URL%/}
 EMAIL=${EMAIL:-"admin@example.com"}
 PASSWORD=${PASSWORD:-"passwordpassword"}

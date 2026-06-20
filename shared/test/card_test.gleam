@@ -2,34 +2,6 @@ import domain/card
 import gleam/option.{None, Some}
 
 // =============================================================================
-// State Derivation Tests
-// =============================================================================
-
-pub fn derive_state_pendiente_when_no_tasks_test() {
-  let assert card.Draft = card.derive_state(0, 0, 0)
-}
-
-pub fn derive_state_pendiente_when_all_tasks_available_test() {
-  let assert card.Draft = card.derive_state(3, 0, 3)
-}
-
-pub fn derive_state_en_curso_when_task_in_progress_test() {
-  let assert card.Active = card.derive_state(3, 1, 1)
-}
-
-pub fn derive_state_en_curso_when_some_completed_and_some_available_test() {
-  let assert card.Active = card.derive_state(4, 2, 2)
-}
-
-pub fn derive_state_cerrada_when_all_completed_test() {
-  let assert card.Closed = card.derive_state(3, 3, 0)
-}
-
-pub fn derive_state_cerrada_when_single_task_completed_test() {
-  let assert card.Closed = card.derive_state(1, 1, 0)
-}
-
-// =============================================================================
 // State String Conversion Tests
 // =============================================================================
 

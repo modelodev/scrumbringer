@@ -302,3 +302,13 @@ pub fn kanban_completed_only_card_still_shows_task_context_test() {
   assert_contains(html, "Done task")
   assert_not_contains(html, "No tasks yet")
 }
+
+pub fn kanban_shows_empty_draft_cards_for_decomposition_test() {
+  let html =
+    base_config([])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Sprint")
+  assert_contains(html, "No tasks yet")
+}

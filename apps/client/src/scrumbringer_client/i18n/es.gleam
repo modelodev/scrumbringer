@@ -65,6 +65,7 @@ pub fn translate(text: Text) -> String {
     text.TaskClaimed -> "Tarea reclamada"
     text.TaskReleased -> "Tarea liberada"
     text.TaskDone -> "Tarea completada"
+    text.TaskDeleted -> "Tarea eliminada"
     text.SkillsSaved -> "Skills guardadas"
     text.NoteAdded -> "Nota añadida"
 
@@ -75,6 +76,8 @@ pub fn translate(text: Text) -> String {
     text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
     text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
     text.TaskBlockedByDependencies -> "La tarea tiene dependencias incompletas"
+    text.TaskHasOperationalHistory ->
+      "Esta tarea tiene historial operativo. Ciérrala en lugar de eliminarla."
     text.TaskNotFound -> "Tarea no encontrada"
     text.TaskMutationRolledBack -> "Acción revertida"
 
@@ -87,6 +90,26 @@ pub fn translate(text: Text) -> String {
     text.SelectUserFirst -> "Selecciona un usuario primero"
     text.InvalidXY -> "x/y inválidos"
     text.ContentRequired -> "Contenido obligatorio"
+    text.TaskCreateCardHasChildCards ->
+      "Esta tarjeta ya contiene tarjetas hijas. Añade la tarea a un grupo de tareas o elige una tarjeta vacía."
+    text.TaskCreateParentCardConflict ->
+      "Elige una sola ubicación para la tarea. Puede pertenecer a una tarjeta o al Pool raíz, no a ambas."
+    text.TaskCreateRootPoolHint ->
+      "Tarea del Pool raíz. Requiere flujo gestionado; estará disponible en el Pool y no se reclamará automáticamente."
+    text.TaskCreateMissingCard ->
+      "La tarjeta seleccionada no está disponible. Cierra este diálogo e inténtalo de nuevo."
+    text.TaskCreateDraftCardHint ->
+      "Esta tarea no se reclamará automáticamente. Quedará preparada hasta que se active esta tarjeta."
+    text.TaskCreateActiveCardHint ->
+      "Esta tarea entrará en el Pool al crearse y quedará disponible para alguien con la capacidad correspondiente. No se reclamará automáticamente."
+    text.TaskCreateClosedCard ->
+      "Las tarjetas cerradas no pueden recibir tareas nuevas."
+    text.CardClosedCannotReceiveChildren ->
+      "Las tarjetas cerradas no pueden recibir tarjetas hijas ni tareas nuevas."
+    text.CardHasOperationalHistory ->
+      "Esta tarjeta tiene historial operativo. Ciérrala en lugar de eliminarla."
+    text.ActivateHierarchyManagerOnly ->
+      "Solo los managers del proyecto pueden activar una jerarquía de tarjetas."
 
     text.Copied -> "Copiado"
     text.Copying -> "Copiando…"
@@ -303,6 +326,13 @@ pub fn translate(text: Text) -> String {
     text.ActivateHierarchy -> "Activar"
     text.ActivatingHierarchy -> "Activando..."
     text.HierarchyActivated -> "Jerarquía activada"
+    text.HierarchyActivationPoolImpact(pool_impact) ->
+      int.to_string(pool_impact) <> " tareas abiertas en Pool"
+    text.HierarchyActivationPoolSaturated(pool_open_after, healthy_pool_limit) ->
+      "Pool en "
+      <> int.to_string(pool_open_after)
+      <> "/"
+      <> int.to_string(healthy_pool_limit)
     text.HierarchyActivateFailed -> "No se pudo activar la jerarquía"
     text.EditHierarchy -> "Editar jerarquía"
     text.DeleteHierarchy -> "Eliminar jerarquía"
@@ -743,9 +773,9 @@ pub fn translate(text: Text) -> String {
     text.CardTitle -> "Título"
     text.CardDescription -> "Descripción"
     text.CardPhase -> "Estado"
-    text.CardPhaseDraft -> "Draft"
+    text.CardPhaseDraft -> "Pendiente"
     text.CardPhaseActive -> "En curso"
-    text.CardPhaseClosed -> "Closed"
+    text.CardPhaseClosed -> "Cerrada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
@@ -763,7 +793,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanEmptyClosed -> "Las tarjetas cerradas aparecerán aquí"
     text.KanbanSurfacePurpose ->
       "Flujo de cards por estado, con fricción y próximo trabajo visibles."
-    text.KanbanSummaryCards -> "Cards"
+    text.KanbanSummaryCards -> "Tarjetas"
     text.KanbanSummaryOngoing -> "En curso"
 
     // Workflows

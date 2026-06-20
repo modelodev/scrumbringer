@@ -78,23 +78,40 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
   case config.model.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
-      let #(mode_str, card_json) = case mode {
-        admin_cards.CardDialogCreate -> #("create", attribute.none())
+      let #(mode_str, card_json, parent_card_attr) = case mode {
+        admin_cards.CardDialogCreate(parent_card_id) -> #(
+          "create",
+          attribute.none(),
+          attribute.attribute(
+            "parent-card-id",
+            parent_card_id_attribute(parent_card_id),
+          ),
+        )
         admin_cards.CardDialogEdit(card_id) ->
           case find_card(config.model.cards, card_id) {
             opt.Some(card) -> #(
               "edit",
               attribute.property("card", card_to_property_json(card, "edit")),
+              attribute.attribute("parent-card-id", "0"),
             )
-            opt.None -> #("edit", attribute.none())
+            opt.None -> #(
+              "edit",
+              attribute.none(),
+              attribute.attribute("parent-card-id", "0"),
+            )
           }
         admin_cards.CardDialogDelete(card_id) ->
           case find_card(config.model.cards, card_id) {
             opt.Some(card) -> #(
               "delete",
               attribute.property("card", card_to_property_json(card, "delete")),
+              attribute.attribute("parent-card-id", "0"),
             )
-            opt.None -> #("delete", attribute.none())
+            opt.None -> #(
+              "delete",
+              attribute.none(),
+              attribute.attribute("parent-card-id", "0"),
+            )
           }
       }
 
@@ -104,6 +121,7 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
           attribute.attribute("locale", locale.serialize(config.locale)),
           attribute.attribute("project-id", int.to_string(config.project_id)),
           attribute.attribute("mode", mode_str),
+          parent_card_attr,
           card_json,
           event.on("card-created", decode_card_created_event(config)),
           event.on("card-updated", decode_card_updated_event(config)),
@@ -113,6 +131,13 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
         [],
       )
     }
+  }
+}
+
+fn parent_card_id_attribute(parent_card_id: opt.Option(Int)) -> String {
+  case parent_card_id {
+    opt.Some(id) -> int.to_string(id)
+    opt.None -> "0"
   }
 }
 

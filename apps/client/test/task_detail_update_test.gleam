@@ -54,6 +54,7 @@ fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
     on_complete: fn(_, _) { "complete" },
+    on_delete: fn(_) { "delete" },
   )
 }
 

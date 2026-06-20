@@ -17,7 +17,6 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/button as ui_button
-import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
@@ -41,7 +40,6 @@ pub type Config(msg) {
     on_priority_changed: fn(String) -> msg,
     on_type_id_changed: fn(String) -> msg,
     on_type_options_retry_clicked: msg,
-    on_card_id_changed: fn(String) -> msg,
   )
 }
 
@@ -71,7 +69,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           view_description_field(config),
           view_priority_field(config),
           view_type_field(config),
-          view_card_selector(config),
           view_creation_context_hint(config),
         ],
       ),
@@ -82,7 +79,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         config.locale,
         "task-create-form",
         config.in_flight,
-        False,
+        create_context_blocks_submit(config),
         i18n_text.Create,
         i18n_text.Creating,
       ),
@@ -102,12 +99,11 @@ fn view_creation_context_hint(config: Config(msg)) -> Element(msg) {
 
 fn creation_context_hint(config: Config(msg)) -> String {
   case config.card_id {
-    opt.None ->
-      "Root Pool task. Requires manage flow; it will be available in the Pool and will not be auto-claimed."
+    opt.None -> t(config, i18n_text.TaskCreateRootPoolHint)
     opt.Some(card_id) ->
       case selected_card(config.cards, card_id) {
-        opt.Some(card) -> card_context_hint(card)
-        opt.None -> "This task will not be auto-claimed."
+        opt.Some(card) -> card_context_hint(config, card)
+        opt.None -> t(config, i18n_text.TaskCreateMissingCard)
       }
   }
 }
@@ -117,13 +113,21 @@ fn selected_card(cards: List(Card), card_id: Int) -> opt.Option(Card) {
   |> opt.from_result
 }
 
-fn card_context_hint(card: Card) -> String {
+fn card_context_hint(config: Config(msg), card: Card) -> String {
   case card.state {
-    Draft ->
-      "This task will not be auto-claimed. It will stay prepared until this card is activated."
-    Active ->
-      "This task will enter the Pool when created and be available for someone with the matching capability. It will not be auto-claimed."
-    Closed -> "Closed cards cannot receive new tasks."
+    Draft -> {
+      case card_has_child_cards(config.cards, card) {
+        True -> t(config, i18n_text.TaskCreateCardHasChildCards)
+        False -> t(config, i18n_text.TaskCreateDraftCardHint)
+      }
+    }
+    Active -> {
+      case card_has_child_cards(config.cards, card) {
+        True -> t(config, i18n_text.TaskCreateCardHasChildCards)
+        False -> t(config, i18n_text.TaskCreateActiveCardHint)
+      }
+    }
+    Closed -> t(config, i18n_text.TaskCreateClosedCard)
   }
 }
 
@@ -131,6 +135,8 @@ fn view_title_field(config: Config(msg)) -> Element(msg) {
   form_field.view(
     t(config, i18n_text.Title),
     input([
+      attribute.id("task-create-title"),
+      attribute.attribute("aria-label", t(config, i18n_text.Title)),
       attribute.type_("text"),
       attribute.attribute("maxlength", "56"),
       attribute.value(config.title),
@@ -143,6 +149,8 @@ fn view_description_field(config: Config(msg)) -> Element(msg) {
   form_field.view(
     t(config, i18n_text.Description),
     input([
+      attribute.id("task-create-description"),
+      attribute.attribute("aria-label", t(config, i18n_text.Description)),
       attribute.type_("text"),
       attribute.value(config.description),
       event.on_input(config.on_description_changed),
@@ -154,6 +162,8 @@ fn view_priority_field(config: Config(msg)) -> Element(msg) {
   form_field.with_hint(
     t(config, i18n_text.Priority),
     input([
+      attribute.id("task-create-priority"),
+      attribute.attribute("aria-label", t(config, i18n_text.Priority)),
       attribute.type_("number"),
       attribute.attribute("min", "1"),
       attribute.attribute("max", "5"),
@@ -173,8 +183,11 @@ fn view_type_field(config: Config(msg)) -> Element(msg) {
     div([], [
       select(
         [
+          attribute.id("task-create-type"),
+          attribute.attribute("aria-label", t(config, i18n_text.TypeLabel)),
           attribute.value(config.type_id),
           event.on_input(config.on_type_id_changed),
+          event.on_change(config.on_type_id_changed),
           attribute.disabled(case config.task_types {
             Loaded(_) -> False
             _ -> True
@@ -217,45 +230,21 @@ fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
   }
 }
 
-fn view_card_selector(config: Config(msg)) -> Element(msg) {
-  form_field.view(
-    t(config, i18n_text.ParentCardLabel),
-    select(
-      [
-        attribute.value(card_id_to_string(config.card_id)),
-        event.on_input(config.on_card_id_changed),
-      ],
-      [
-        option(
-          [
-            attribute.value(""),
-            attribute.selected(opt.is_none(config.card_id)),
-          ],
-          t(config, i18n_text.NoCard),
-        ),
-        ..list.map(config.cards, fn(card) { view_card_option(config, card) })
-      ],
-    ),
-  )
+fn card_has_child_cards(cards: List(Card), card: Card) -> Bool {
+  list.any(cards, fn(candidate) {
+    candidate.parent_card_id == opt.Some(card.id)
+  })
 }
 
-fn view_card_option(config: Config(msg), card: Card) -> Element(msg) {
-  let color_indicator = case card.color {
-    opt.Some(color) -> color_picker.color_emoji(color) <> " "
-    opt.None -> ""
-  }
-
-  let is_selected = config.card_id == opt.Some(card.id)
-
-  option(
-    [attribute.value(int.to_string(card.id)), attribute.selected(is_selected)],
-    color_indicator <> card.title,
-  )
-}
-
-fn card_id_to_string(card_id: opt.Option(Int)) -> String {
-  case card_id {
-    opt.Some(id) -> int.to_string(id)
-    opt.None -> ""
+fn create_context_blocks_submit(config: Config(msg)) -> Bool {
+  case config.card_id {
+    opt.None -> False
+    opt.Some(card_id) -> {
+      case selected_card(config.cards, card_id) {
+        opt.None -> True
+        opt.Some(card) ->
+          card.state == Closed || card_has_child_cards(config.cards, card)
+      }
+    }
   }
 }

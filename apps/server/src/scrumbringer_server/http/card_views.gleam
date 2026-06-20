@@ -37,12 +37,24 @@ fn fetch_card_project_id(
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> not_found_response()
-    cards_db.CardHasTasks(_) -> database_error_response()
-    cards_db.InvalidParentCard -> database_error_response()
-    cards_db.InvalidParentExecutionPhase(_) -> database_error_response()
-    cards_db.InvalidColor(_) -> database_error_response()
-    cards_db.InvalidMovePoolToParentCard -> database_error_response()
-    cards_db.CardHasClaimedDescendant(_) -> database_error_response()
+    cards_db.CardHasTasks(_)
+    | cards_db.CardHasChildCards(_)
+    | cards_db.CardHasOperationalHistory
+    | cards_db.InvalidParentCard
+    | cards_db.InvalidParentExecutionPhase(_)
+    | cards_db.ParentCardClosed
+    | cards_db.ParentDoesNotAcceptCards
+    | cards_db.InvalidColor(_)
+    | cards_db.InvalidMovePoolToParentCard
+    | cards_db.CardHasClaimedDescendant(_)
+    | cards_db.CannotActivateClosedCard
+    | cards_db.CardAlreadyClosed
+    | cards_db.CannotMoveClosedCard
+    | cards_db.CannotMoveIntoClosedCard
+    | cards_db.DestinationDoesNotAcceptCards
+    | cards_db.DestinationNotFound
+    | cards_db.MoveWouldChangeDepth
+    | cards_db.MoveWouldCreateCycle -> unexpected_error_response()
     cards_db.DbError(_) -> database_error_response()
   }
 }
@@ -53,4 +65,8 @@ fn not_found_response() -> wisp.Response {
 
 fn database_error_response() -> wisp.Response {
   api.error(500, "INTERNAL", "Database error")
+}
+
+fn unexpected_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected error")
 }

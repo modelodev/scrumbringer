@@ -38,6 +38,7 @@ pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
     |> element.to_document_string
 
   assert_contains(html, "Claim task")
+  assert_contains(html, "Delete")
   assert_contains(html, "data-tooltip=\"Task has incomplete dependencies\"")
   assert_contains(html, "aria-disabled=\"true\"")
   assert_not_contains(html, " disabled")
@@ -54,6 +55,11 @@ pub fn task_detail_footer_renders_owner_claimed_actions_test() {
     |> element.to_document_string
 
   assert_contains(html, "Close")
+  assert_contains(html, "Delete")
+  assert_contains(
+    html,
+    "data-tooltip=\"This task has operational history. Close it instead of deleting it.\"",
+  )
   assert_contains(html, "Release")
   assert_contains(html, "Complete")
   assert_not_contains(html, "Claim task")
@@ -68,6 +74,7 @@ pub fn task_detail_footer_hides_claimed_actions_for_other_owner_test() {
     |> element.to_document_string
 
   assert_contains(html, "Close")
+  assert_contains(html, "Delete")
   assert_not_contains(html, "Release")
   assert_not_contains(html, "Complete")
 }
@@ -105,13 +112,13 @@ pub fn task_detail_footer_disables_save_without_edit_changes_test() {
 }
 
 fn config(
-  task: Option(Task),
-  current_user_id current_user_id: Option(Int),
+  task_value: Option(Task),
+  current_user_id current_user_id_value: Option(Int),
 ) -> task_detail_footer.Config(String) {
   task_detail_footer.Config(
     locale: locale.En,
-    task: task,
-    current_user_id: current_user_id,
+    task: task_value,
+    current_user_id: current_user_id_value,
     disable_actions: False,
     editing: False,
     edit_in_flight: False,
@@ -122,6 +129,7 @@ fn config(
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
     on_complete: fn(_, _) { "complete" },
+    on_delete: fn(_) { "delete" },
   )
 }
 

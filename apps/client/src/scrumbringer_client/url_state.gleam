@@ -46,6 +46,7 @@ pub opaque type UrlState {
     capability_filter: option.Option(Int),
     search: option.Option(String),
     expanded_card: option.Option(Int),
+    card_depth: option.Option(Int),
   )
 }
 
@@ -64,6 +65,7 @@ type UrlQueryParams {
     capability_filter: option.Option(Int),
     search: option.Option(String),
     expanded_card: option.Option(Int),
+    card_depth: option.Option(Int),
   )
 }
 
@@ -75,6 +77,7 @@ type QueryError {
   InvalidType(String)
   InvalidCapability(String)
   InvalidCard(String)
+  InvalidDepth(String)
   UnexpectedParam(String)
 }
 
@@ -96,6 +99,7 @@ pub fn empty() -> UrlState {
     capability_filter: option.None,
     search: option.None,
     expanded_card: option.None,
+    card_depth: option.None,
   )
 }
 
@@ -142,7 +146,15 @@ pub fn without_project(state: UrlState) -> UrlState {
 
 /// Builder: actualiza el modo de vista de miembro.
 pub fn with_view(state: UrlState, mode: view_mode.ViewMode) -> UrlState {
-  UrlState(..state, view: option.Some(MemberView(mode)))
+  case mode {
+    view_mode.Cards -> UrlState(..state, view: option.Some(MemberView(mode)))
+    _ ->
+      UrlState(
+        ..state,
+        view: option.Some(MemberView(mode)),
+        card_depth: option.None,
+      )
+  }
 }
 
 /// Builder: actualiza el modo de vista de assignments.
@@ -194,6 +206,11 @@ pub fn with_expanded_card(
   UrlState(..state, expanded_card: card_id)
 }
 
+/// Builder: actualiza la profundidad de tarjetas seleccionada.
+pub fn with_card_depth(state: UrlState, depth: option.Option(Int)) -> UrlState {
+  UrlState(..state, card_depth: depth)
+}
+
 /// Builder: limpia todos los filtros.
 pub fn clear_filters(state: UrlState) -> UrlState {
   UrlState(
@@ -203,6 +220,7 @@ pub fn clear_filters(state: UrlState) -> UrlState {
     capability_filter: option.None,
     search: option.None,
     expanded_card: option.None,
+    card_depth: option.None,
   )
 }
 
@@ -307,6 +325,14 @@ pub fn expanded_card(state: UrlState) -> option.Option(Int) {
   state.expanded_card
 }
 
+/// Provides selected card hierarchy depth.
+pub fn card_depth(state: UrlState) -> option.Option(Int) {
+  case view_param(state) {
+    option.Some(view_mode.Cards) -> state.card_depth
+    _ -> option.None
+  }
+}
+
 // =============================================================================
 // Serialización
 // =============================================================================
@@ -335,6 +361,7 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
         |> option.map(fn(c) { "cap=" <> int.to_string(c) }),
       state.search |> option.map(fn(s) { "search=" <> uri.percent_encode(s) }),
       state.expanded_card |> option.map(fn(c) { "card=" <> int.to_string(c) }),
+      card_depth(state) |> option.map(fn(d) { "depth=" <> int.to_string(d) }),
     ]
 
     Config -> [
@@ -376,6 +403,7 @@ fn to_state(params: UrlQueryParams) -> UrlState {
     capability_filter: params.capability_filter,
     search: params.search,
     expanded_card: params.expanded_card,
+    card_depth: params.card_depth,
   )
 }
 
@@ -393,13 +421,25 @@ fn context_errors(
     option.Some(AssignmentsView(_)) -> True
     _ -> False
   }
+  let view_is_cards = case params.view {
+    option.Some(MemberView(view_mode.Cards)) -> True
+    _ -> False
+  }
 
   case context {
     Member ->
-      case has("view") && !view_is_member {
-        True -> [UnexpectedParam("view")]
-        False -> []
-      }
+      list.filter_map(
+        [
+          #(has("view") && !view_is_member, "view"),
+          #(has("depth") && !view_is_cards, "depth"),
+        ],
+        fn(entry) {
+          case entry.0 {
+            True -> Ok(UnexpectedParam(entry.1))
+            False -> Error(Nil)
+          }
+        },
+      )
 
     Config ->
       list.filter_map(
@@ -410,6 +450,7 @@ fn context_errors(
           #(has("cap"), "cap"),
           #(has("search"), "search"),
           #(has("card"), "card"),
+          #(has("depth"), "depth"),
         ],
         fn(entry) {
           case entry.0 {
@@ -428,6 +469,7 @@ fn context_errors(
           #(has("cap"), "cap"),
           #(has("search"), "search"),
           #(has("card"), "card"),
+          #(has("depth"), "depth"),
           #(has("view") && !view_is_assignments, "view"),
         ],
         fn(entry) {
@@ -448,6 +490,7 @@ fn context_errors(
           #(has("cap"), "cap"),
           #(has("search"), "search"),
           #(has("card"), "card"),
+          #(has("depth"), "depth"),
         ],
         fn(entry) {
           case entry.0 {
@@ -475,6 +518,8 @@ fn parse_query_params(query: String) -> ParsedParams {
   let search = get_string(params, "search")
   let #(expanded_card, card_error) =
     parse_optional_int_param(params, "card", InvalidCard)
+  let #(card_depth, depth_error) =
+    parse_optional_int_param(params, "depth", InvalidDepth)
 
   let known_keys = [
     "project",
@@ -484,6 +529,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     "cap",
     "search",
     "card",
+    "depth",
   ]
   let unknown_keys =
     present_keys
@@ -499,10 +545,19 @@ fn parse_query_params(query: String) -> ParsedParams {
       capability_filter: capability_filter,
       search: search,
       expanded_card: expanded_card,
+      card_depth: card_depth,
     )
 
   let errors =
-    [project_error, view_error, scope_error, type_error, cap_error, card_error]
+    [
+      project_error,
+      view_error,
+      scope_error,
+      type_error,
+      cap_error,
+      card_error,
+      depth_error,
+    ]
     |> list.filter_map(fn(err) { option.to_result(err, Nil) })
 
   ParsedParams(

@@ -81,10 +81,11 @@ pub fn open_create_dialog_sets_dialog_mode_test() {
   let #(next, fx, auth_policy, focus_policy) =
     update(
       admin_cards.default_model(),
-      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate),
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(option.None)),
     )
 
-  let assert option.Some(admin_cards.CardDialogCreate) = next.cards_dialog_mode
+  let assert option.Some(admin_cards.CardDialogCreate(option.None)) =
+    next.cards_dialog_mode
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy
@@ -107,7 +108,7 @@ pub fn close_dialog_clears_dialog_test() {
   let model =
     admin_cards.Model(
       ..admin_cards.default_model(),
-      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
+      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate(option.None)),
     )
 
   let #(next, fx, auth_policy, focus_policy) =
@@ -124,7 +125,7 @@ pub fn crud_created_prepends_card_and_closes_dialog_test() {
     admin_cards.Model(
       ..admin_cards.default_model(),
       cards: Loaded([sample_card(1)]),
-      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
+      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate(option.None)),
     )
 
   let #(next, fx, auth_policy, focus_policy) =
@@ -279,7 +280,7 @@ pub fn try_update_close_dialog_requests_focus_policy_test() {
   let model =
     admin_cards.Model(
       ..admin_cards.default_model(),
-      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
+      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate(option.None)),
     )
 
   let assert option.Some(cards.Update(next, fx, auth_policy, focus_policy)) =
@@ -300,7 +301,7 @@ pub fn try_update_crud_created_returns_local_update_test() {
     admin_cards.Model(
       ..admin_cards.default_model(),
       cards: Loaded([sample_card(1)]),
-      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate),
+      cards_dialog_mode: option.Some(admin_cards.CardDialogCreate(option.None)),
     )
 
   let assert option.Some(cards.Update(next, fx, auth_policy, focus_policy)) =

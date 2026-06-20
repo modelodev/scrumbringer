@@ -211,6 +211,19 @@ pub fn get_task_for_user(
   }
 }
 
+/// Delete a task only when it has no operational history.
+pub fn delete_task(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(Int, service_error.ServiceError) {
+  case sql.tasks_delete(db, task_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row.id)
+    Ok(pog.Returned(rows: [], ..)) ->
+      Error(service_error.Conflict("task_has_operational_history"))
+    Error(e) -> Error(service_error.DbError(e))
+  }
+}
+
 /// Update an available task or a task claimed by the caller.
 pub fn update_editable_task(
   db: pog.Connection,

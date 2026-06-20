@@ -127,6 +127,7 @@ pub type TaskActionsConfig(msg) {
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
+    on_delete: fn(Int) -> msg,
   )
 }
 
@@ -301,6 +302,7 @@ fn view_task_footer(config: TaskDetailsConfig(msg)) -> Element(msg) {
     on_claim: config.actions.on_claim,
     on_release: config.actions.on_release,
     on_complete: config.actions.on_complete,
+    on_delete: config.actions.on_delete,
   ))
 }
 

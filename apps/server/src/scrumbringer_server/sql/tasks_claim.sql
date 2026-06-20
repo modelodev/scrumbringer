@@ -1,5 +1,17 @@
 -- name: claim_task
-with updated as (
+with recursive claim_target as (
+  select id, card_id
+  from tasks
+  where id = $1
+), ancestors as (
+  select c.id, c.parent_card_id, c.execution_state
+  from cards c
+  join claim_target target on target.card_id = c.id
+  union all
+  select parent.id, parent.parent_card_id, parent.execution_state
+  from cards parent
+  join ancestors child on child.parent_card_id = parent.id
+), updated as (
   update tasks
   set
     claimed_by = $2,
@@ -15,6 +27,22 @@ with updated as (
   where id = $1
     and execution_state = 'available'
     and version = $3
+    and (
+      tasks.card_id is null
+      or (
+        exists (
+          select 1
+          from ancestors target
+          where target.id = tasks.card_id
+            and target.execution_state = 'active'
+        )
+        and not exists (
+          select 1
+          from ancestors
+          where execution_state = 'closed'
+        )
+      )
+    )
     and not exists (
       select 1
       from task_dependencies d

@@ -20,14 +20,26 @@ pub fn move_card_api_contract_roundtrip_test() {
 
 pub fn activate_card_api_contract_roundtrip_test() {
   let body =
-    contracts.CardActionResponse(card_id: 7, pool_impact: 3)
+    contracts.CardActionResponse(
+      card_id: 7,
+      pool_impact: 3,
+      pool_open_after: 12,
+      healthy_pool_limit: 10,
+      pool_health: contracts.PoolExceedsHealthyLimit,
+    )
     |> contracts.action_response_to_json
     |> json.to_string
 
   let assert Ok(card_id) = json.parse(body, int_field("card_id"))
   let assert Ok(pool_impact) = json.parse(body, int_field("pool_impact"))
+  let assert Ok(pool_open_after) =
+    json.parse(body, int_field("pool_open_after"))
+  let assert Ok(healthy_pool_limit) =
+    json.parse(body, int_field("healthy_pool_limit"))
   let assert 7 = card_id
   let assert 3 = pool_impact
+  let assert 12 = pool_open_after
+  let assert 10 = healthy_pool_limit
 }
 
 pub fn close_card_api_contract_roundtrip_test() {

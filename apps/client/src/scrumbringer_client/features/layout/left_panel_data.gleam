@@ -18,6 +18,7 @@ pub type MemberRouteConfig {
     type_filter: Option(Int),
     capability_filter: Option(Int),
     search: Option(String),
+    card_depth: Option(Int),
   )
 }
 
@@ -37,8 +38,18 @@ pub fn member_route(config: MemberRouteConfig, mode: ViewMode) -> router.Route {
   router.Member(member_state(config, mode))
 }
 
+pub fn member_depth_route(config: MemberRouteConfig, depth: Int) -> router.Route {
+  router.Member(
+    member_state(config, view_mode.Cards)
+    |> url_state.with_card_depth(Some(depth)),
+  )
+}
+
 pub fn current_member_route(config: MemberRouteConfig) -> router.Route {
-  member_route(config, config.view_mode)
+  router.Member(
+    member_state(config, config.view_mode)
+    |> url_state.with_card_depth(config.card_depth),
+  )
 }
 
 pub fn admin_route(

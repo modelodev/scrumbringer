@@ -7,7 +7,7 @@ import domain/remote.{type Remote, NotAsked}
 
 /// Dialog mode for Card CRUD operations.
 pub type CardDialogMode {
-  CardDialogCreate
+  CardDialogCreate(parent_card_id: Option(Int))
   CardDialogEdit(Int)
   CardDialogDelete(Int)
 }

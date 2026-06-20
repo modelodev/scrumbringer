@@ -39,6 +39,7 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
 import domain/project.{type Project, type ProjectDepthName}
+import domain/project/project_codec
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import domain/view_mode
@@ -70,6 +71,7 @@ import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
+import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/features/hierarchy/scope_view
@@ -180,9 +182,6 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           client_state.pool_msg(
             pool_messages.MemberCreateTypeOptionsRetryClicked,
           ),
-          fn(value) {
-            client_state.pool_msg(pool_messages.MemberCreateCardIdChanged(value))
-          },
         )
       _ -> element.none()
     },
@@ -319,6 +318,11 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       client_state.pool_msg(pool_messages.MemberCompleteClicked(
         complete_task_id,
         version,
+      ))
+    },
+    on_delete: fn(delete_task_id) {
+      client_state.pool_msg(pool_messages.MemberDeleteTaskClicked(
+        delete_task_id,
       ))
     },
   )
@@ -1124,6 +1128,9 @@ fn build_left_panel(
   let member_route_for = fn(mode: view_mode.ViewMode) {
     left_panel_data.member_route(member_route_config, mode)
   }
+  let member_depth_route_for = fn(depth: Int) {
+    left_panel_data.member_depth_route(member_route_config, depth)
+  }
 
   let current_route = case model.core.page {
     client_state.Member ->
@@ -1161,9 +1168,9 @@ fn build_left_panel(
     // Event handlers
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(pool_messages.MemberCreateDialogOpened),
-    on_new_card: client_state.pool_msg(pool_messages.OpenCardDialog(
-      admin_cards.CardDialogCreate,
-    )),
+    on_new_card: client_state.pool_msg(
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(opt.None)),
+    ),
     on_navigate_pool: client_state.NavigateTo(
       member_route_for(view_mode.Pool),
       client_state.Push,
@@ -1172,6 +1179,9 @@ fn build_left_panel(
       member_route_for(view_mode.Cards),
       client_state.Push,
     ),
+    on_navigate_depth: fn(depth) {
+      client_state.NavigateTo(member_depth_route_for(depth), client_state.Push)
+    },
     on_navigate_capabilities: client_state.NavigateTo(
       member_route_for(view_mode.Capabilities),
       client_state.Push,
@@ -1271,10 +1281,7 @@ fn project_depth_names(
 }
 
 fn default_depth_names() -> List(scope_view.DepthName) {
-  [
-    scope_view.DepthName(1, "Initiative", "Initiatives"),
-    scope_view.DepthName(2, "Card", "Cards"),
-  ]
+  project_depth_names(project_codec.default_card_depth_names())
 }
 
 fn left_panel_member_route_config(
@@ -1287,6 +1294,7 @@ fn left_panel_member_route_config(
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
     search: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+    card_depth: model.member.pool.member_card_depth_filter,
   )
 }
 
@@ -1373,7 +1381,7 @@ fn kanban_config(
   kanban_board.KanbanConfig(
     locale: model.ui.locale,
     theme: model.ui.theme,
-    cards: cards,
+    cards: cards_at_depth(cards, model.member.pool.member_card_depth_filter),
     tasks: tasks,
     task_types: task_types,
     type_filter: model.member.pool.member_filters_type_id,
@@ -1411,6 +1419,19 @@ fn kanban_config(
       ))
     },
   )
+}
+
+fn cards_at_depth(
+  cards: List(Card),
+  depth_filter: opt.Option(Int),
+) -> List(Card) {
+  case depth_filter {
+    opt.None -> cards
+    opt.Some(depth) ->
+      list.filter(cards, fn(card) {
+        detail_policy.card_depth(card, cards) == depth
+      })
+  }
 }
 
 fn people_config(
@@ -1584,10 +1605,15 @@ fn member_cards_config(
         card_id,
       ))
     },
-    fn(_card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDialog(
-        admin_cards.CardDialogCreate,
-      ))
+    fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(
+          admin_cards.CardDialogCreate(opt.Some(card_id)),
+        ),
+      )
+    },
+    fn(card_id) {
+      client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
     },
     fn(card_id) {
       client_state.pool_msg(

@@ -79,6 +79,9 @@ pub type Message {
   /// claimed tasks are editable only by the claiming user.
   UpdateTask(task_id: Int, user_id: Int, version: Int, updates: TaskUpdates)
 
+  /// Delete a task only when it has no operational history.
+  DeleteTask(task_id: Int, user_id: Int)
+
   /// Claim an available task.
   ClaimTask(task_id: Int, user_id: Int, org_id: Int, version: Int)
 
@@ -128,6 +131,7 @@ pub type Response {
   TaskTypeDeleted(Int)
   TasksList(List(domain_task.Task))
   TaskResult(domain_task.Task)
+  TaskDeleted(Int)
 }
 
 // =============================================================================
@@ -148,6 +152,9 @@ pub type Error {
   /// Parent card cannot be explicitly set when task belongs to a card.
   TaskParentCardInheritedFromCard
 
+  /// Task cannot be created in a card that already contains child cards.
+  CardHasChildCards
+
   /// Invalid movement between pool and parent card lanes.
   InvalidMovePoolToParentCard
 
@@ -163,6 +170,12 @@ pub type Error {
 
   /// Task cannot be claimed while dependencies are incomplete.
   TaskBlockedByDependencies(blocked_count: Int)
+
+  /// Task is not currently released to the Pool.
+  TaskNotClaimable
+
+  /// Task has operational history and must be closed instead of deleted.
+  TaskHasOperationalHistory
 
   /// Invalid state transition (e.g., release unclaimed task).
   InvalidTransition

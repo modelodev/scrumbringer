@@ -101,33 +101,6 @@ pub fn initials_class_none_test() {
 }
 
 // =============================================================================
-// Card State Derivation Tests
-// =============================================================================
-
-pub fn derive_state_no_tasks_pendiente_test() {
-  let assert Draft = card.derive_state(0, 0, 0)
-}
-
-pub fn derive_state_all_completed_cerrada_test() {
-  let assert Closed = card.derive_state(3, 3, 0)
-}
-
-pub fn derive_state_some_claimed_en_curso_test() {
-  // 3 tasks, 1 completed, 1 available (means 1 claimed/ongoing)
-  let assert Active = card.derive_state(3, 1, 1)
-}
-
-pub fn derive_state_all_available_pendiente_test() {
-  // 3 tasks, 0 completed, 3 available
-  let assert Draft = card.derive_state(3, 0, 3)
-}
-
-pub fn derive_state_one_completed_en_curso_test() {
-  // 5 tasks, 1 completed, 2 available (means 2 claimed/ongoing)
-  let assert Active = card.derive_state(5, 1, 2)
-}
-
-// =============================================================================
 // Card State String Conversion Tests
 // =============================================================================
 

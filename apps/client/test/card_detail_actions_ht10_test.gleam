@@ -91,7 +91,6 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
     on_priority_changed: fn(value) { "priority-" <> value },
     on_type_id_changed: fn(value) { "type-" <> value },
     on_type_options_retry_clicked: "retry",
-    on_card_id_changed: fn(value) { "card-" <> value },
   )
 }
 
@@ -192,7 +191,7 @@ pub fn delete_disabled_when_card_has_operational_history_test() {
     )
 
   let assert False = policy.can_delete
-  let assert opt.Some("Cannot delete: has operational history") =
+  let assert opt.Some(detail_policy.CardHasOperationalHistory) =
     policy.delete_disabled_reason
 }
 
@@ -202,7 +201,7 @@ pub fn closed_card_detail_disables_create_actions_with_reason_test() {
 
   let assert False = policy.can_create_card
   let assert False = policy.can_create_task
-  let assert opt.Some("Closed cards cannot receive new children") =
+  let assert opt.Some(detail_policy.ClosedCardCannotReceiveChildren) =
     policy.create_disabled_reason
 }
 

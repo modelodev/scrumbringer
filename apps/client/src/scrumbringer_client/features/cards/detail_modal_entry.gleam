@@ -24,6 +24,7 @@ pub type Config(msg) {
     can_execute_work: Bool,
     on_create_task: decode.Decoder(msg),
     on_create_card: decode.Decoder(msg),
+    on_activate_card: decode.Decoder(msg),
     on_delete_card: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
   )
@@ -45,6 +46,7 @@ pub fn view(config: Config(msg)) -> el.Element(msg) {
         can_execute_work: config.can_execute_work,
         on_create_task: config.on_create_task,
         on_create_card: config.on_create_card,
+        on_activate_card: config.on_activate_card,
         on_delete_card: config.on_delete_card,
         on_close: config.on_close,
       ))

@@ -1,7 +1,7 @@
 //// Card domain types for ScrumBringer.
 ////
 //// Defines card (ficha) structures used for grouping related tasks.
-//// Card state is derived from its tasks, not stored.
+//// Card lifecycle is persisted by the server and presented as `CardPhase`.
 ////
 //// ## Usage
 ////
@@ -19,11 +19,7 @@ import gleam/option.{type Option, None, Some}
 // Types
 // =============================================================================
 
-/// Card state derived from task status counts.
-///
-/// - Draft: No tasks, or all tasks are available
-/// - Active: Some tasks are claimed or completed (progress)
-/// - Closed: All tasks are completed
+/// Card lifecycle phase exposed through the API.
 pub type CardPhase {
   Draft
   Active
@@ -117,44 +113,6 @@ pub type CardNote {
     author_project_role: Option(ProjectRole),
     author_org_role: OrgRole,
   )
-}
-
-// =============================================================================
-// State Derivation
-// =============================================================================
-
-/// Derive card state from task counts.
-///
-/// ## Rules
-///
-/// 1. task_count = 0 → Draft
-/// 2. task_count > 0 AND task_count = completed_count → Closed
-/// 3. available_count < task_count → Active (some progress)
-/// 4. else → Draft (all available)
-///
-/// ## Example
-///
-/// ```gleam
-/// derive_state(3, 1, 2) // Active (1 completed, some progress)
-/// derive_state(3, 3, 0) // Closed (all completed)
-/// derive_state(0, 0, 0) // Draft (no tasks)
-/// ```
-pub fn derive_state(
-  task_count: Int,
-  completed_count: Int,
-  available_count: Int,
-) -> CardPhase {
-  // If any task is NOT available (claimed or completed), there's progress.
-  case
-    task_count == 0,
-    task_count == completed_count,
-    available_count < task_count
-  {
-    True, _, _ -> Draft
-    False, True, _ -> Closed
-    False, False, True -> Active
-    False, False, False -> Draft
-  }
 }
 
 /// Convert CardPhase to string for API.

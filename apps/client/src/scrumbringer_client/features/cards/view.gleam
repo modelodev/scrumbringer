@@ -50,6 +50,7 @@ pub type Config(msg) {
     on_card_opened: fn(Int) -> msg,
     on_create_task_in_card: fn(Int) -> msg,
     on_create_card_in_card: fn(Int) -> msg,
+    on_activate_card: fn(Int) -> msg,
     on_delete_card: fn(Int) -> msg,
     on_detail_closed: msg,
   )
@@ -102,6 +103,7 @@ pub fn view_card_detail_modal(config: Config(msg)) -> Element(msg) {
     can_execute_work: config.can_execute_work,
     on_create_task: decode_create_task_event(config),
     on_create_card: decode_create_card_event(config),
+    on_activate_card: decode_activate_card_event(config),
     on_delete_card: decode_delete_card_event(config),
     on_close: decode_close_detail_event(config),
   ))
@@ -122,6 +124,14 @@ fn decode_create_card_event(config: Config(msg)) -> decode.Decoder(msg) {
   event_decoders.custom_detail(
     decode.field("card_id", decode.int, decode.success),
     fn(card_id) { decode.success(config.on_create_card_in_card(card_id)) },
+  )
+}
+
+/// Decoder for activate-requested event.
+fn decode_activate_card_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) { decode.success(config.on_activate_card(card_id)) },
   )
 }
 

@@ -4,6 +4,7 @@ import lustre/effect.{type Effect}
 
 import gleam/option
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/metrics.{type CardModalMetrics}
 import scrumbringer_client/api/cards as api_cards
@@ -21,6 +22,14 @@ pub type Context(parent_msg) {
   Context(
     on_card_marked: fn(ApiResult(Nil)) -> parent_msg,
     on_card_metrics_fetched: fn(ApiResult(CardModalMetrics)) -> parent_msg,
+    on_card_activated: fn(ApiResult(card_contracts.CardActionResponse)) ->
+      parent_msg,
+    on_success_toast: fn(String) -> Effect(parent_msg),
+    on_error_toast: fn(String) -> Effect(parent_msg),
+    hierarchy_activated: String,
+    hierarchy_pool_impact: fn(Int) -> String,
+    hierarchy_pool_saturated: fn(Int, Int) -> String,
+    hierarchy_activate_failed: String,
   )
 }
 
@@ -37,6 +46,12 @@ pub fn try_update(
       option.Some(metrics_fetched_ok(model, metrics))
     pool_messages.CardMetricsFetched(Error(err)) ->
       option.Some(metrics_fetched_error(model, err))
+    pool_messages.CardActivateRequested(card_id) ->
+      option.Some(activate_requested(model, card_id, context))
+    pool_messages.CardActivated(Ok(response)) ->
+      option.Some(activated_ok(model, response, context))
+    pool_messages.CardActivated(Error(err)) ->
+      option.Some(activated_error(model, err, context))
     _ -> option.None
   }
 }
@@ -85,5 +100,50 @@ fn metrics_fetched_error(
       pool: card_detail.handle_metrics_fetched_error(model.pool, err),
     ),
     effect.none(),
+  )
+}
+
+fn activate_requested(
+  model: Model,
+  card_id: Int,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  #(model, api_cards.activate_card(card_id, context.on_card_activated))
+}
+
+fn activated_ok(
+  model: Model,
+  response: card_contracts.CardActionResponse,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  let base_message =
+    context.hierarchy_activated
+    <> " · "
+    <> context.hierarchy_pool_impact(response.pool_impact)
+
+  let message = case response.pool_health {
+    card_contracts.PoolWithinHealthyLimit -> base_message
+    card_contracts.PoolExceedsHealthyLimit ->
+      base_message
+      <> " · "
+      <> context.hierarchy_pool_saturated(
+        response.pool_open_after,
+        response.healthy_pool_limit,
+      )
+  }
+
+  #(model, context.on_success_toast(message))
+}
+
+fn activated_error(
+  model: Model,
+  err: ApiError,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  #(
+    model,
+    context.on_error_toast(
+      context.hierarchy_activate_failed <> ": " <> err.message,
+    ),
   )
 }

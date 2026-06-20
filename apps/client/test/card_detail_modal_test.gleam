@@ -38,6 +38,7 @@ fn make_model() -> Model {
     tasks: NotAsked,
     metrics: NotAsked,
     move_dialog_open: False,
+    activation_confirm_open: False,
   )
 }
 

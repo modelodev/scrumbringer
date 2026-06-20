@@ -36,13 +36,6 @@ pub type Submission {
   )
 }
 
-pub fn card_id_from_input(value: String) -> opt.Option(Int) {
-  case int.parse(value) {
-    Ok(id) if id > 0 -> opt.Some(id)
-    _ -> opt.None
-  }
-}
-
 pub fn validate(input: Input, labels: Labels) -> Result(Submission, String) {
   case input.selected_project_id {
     opt.None -> Error(labels.select_project_first)

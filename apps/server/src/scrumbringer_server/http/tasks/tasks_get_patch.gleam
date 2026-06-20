@@ -69,6 +69,22 @@ pub fn handle_task_patch(
   }
 }
 
+/// Handle DELETE /api/tasks/:id.
+/// Deletes only tasks without operational history.
+pub fn handle_task_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Delete)
+
+  case require_delete_task_access(req, ctx, task_id) {
+    Error(resp) -> resp
+    Ok(#(db, task_id, user_id)) ->
+      response_from_result(delete_task(db, task_id, user_id))
+  }
+}
+
 fn response_from_result(
   result: Result(wisp.Response, wisp.Response),
 ) -> wisp.Response {
@@ -132,6 +148,18 @@ fn require_update_task_access(
   Ok(#(db, task_id, user.id))
 }
 
+fn require_delete_task_access(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id_str: String,
+) -> Result(#(pog.Connection, Int, Int), wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use _ <- result.try(csrf.require_csrf(req))
+  use task_id <- result.try(api.parse_id(task_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  Ok(#(db, task_id, user.id))
+}
+
 fn update_task(
   db: pog.Connection,
   task_id: Int,
@@ -156,6 +184,17 @@ fn fetch_task(
   case workflow.handle(db, workflow_types.GetTask(task_id, user_id)) {
     Ok(response) -> task_response(response)
     Error(error) -> Error(fetch_task_error_response(error))
+  }
+}
+
+fn delete_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(wisp.Response, wisp.Response) {
+  case workflow.handle(db, workflow_types.DeleteTask(task_id, user_id)) {
+    Ok(response) -> delete_task_response(response)
+    Error(error) -> Error(delete_task_error_response(error))
   }
 }
 
@@ -192,6 +231,7 @@ fn check_task_access_response(
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_) -> Error(lower_unexpected_response())
   }
 }
@@ -205,11 +245,14 @@ fn check_task_access_error_response(
     workflow_types.DbError(_) -> lower_database_error_response()
     workflow_types.ValidationError(_)
     | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
     | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> lower_unexpected_error()
@@ -226,6 +269,21 @@ fn task_response(
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
+    | workflow_types.TasksList(_) -> Error(unexpected_response())
+  }
+}
+
+fn delete_task_response(
+  response: workflow_types.Response,
+) -> Result(wisp.Response, wisp.Response) {
+  case response {
+    workflow_types.TaskDeleted(_) -> Ok(api.no_content())
+    workflow_types.TaskResult(_)
+    | workflow_types.TaskTypesList(_)
+    | workflow_types.TaskTypeCreated(_)
+    | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskTypeDeleted(_)
     | workflow_types.TasksList(_) -> Error(unexpected_response())
   }
 }
@@ -237,11 +295,40 @@ fn fetch_task_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.NotAuthorized
     | workflow_types.ValidationError(_)
     | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
     | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
+    | workflow_types.InvalidTransition
+    | workflow_types.VersionConflict
+    | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
+  }
+}
+
+fn delete_task_error_response(error: workflow_types.Error) -> wisp.Response {
+  case error {
+    workflow_types.NotFound -> not_found_response()
+    workflow_types.NotAuthorized -> forbidden_response()
+    workflow_types.TaskHasOperationalHistory ->
+      api.error(
+        409,
+        "TASK_HAS_OPERATIONAL_HISTORY",
+        "Task has operational history and must be closed instead of deleted",
+      )
+    workflow_types.DbError(_) -> database_error_response()
+    workflow_types.ValidationError(_)
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
+    | workflow_types.InvalidMovePoolToParentCard
+    | workflow_types.TaskTypeAlreadyExists
+    | workflow_types.TaskTypeInUse
+    | workflow_types.AlreadyClaimed
+    | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -255,13 +342,13 @@ fn update_task_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.TaskParentCardInheritedFromCard ->
       api.error(
         422,
-        "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task parent card is inherited from card",
+        "TASK_PARENT_CARD_CONFLICT",
+        "Task cannot specify both card_id and parent_card_id",
       )
     workflow_types.InvalidMovePoolToParentCard ->
       api.error(
         422,
-        "INVALID_MOVE_POOL_TO_MILESTONE",
+        "INVALID_MOVE_POOL_TO_PARENT_CARD",
         "Invalid move from pool to parent card",
       )
     workflow_types.ValidationError(message) ->
@@ -271,6 +358,9 @@ fn update_task_error_response(error: workflow_types.Error) -> wisp.Response {
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.CardHasChildCards
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
     workflow_types.VersionConflict -> unexpected_error()

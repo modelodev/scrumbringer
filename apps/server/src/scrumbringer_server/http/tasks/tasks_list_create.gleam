@@ -175,8 +175,8 @@ fn require_parent_card_not_inherited(
     Some(_), Some(_) ->
       Error(api.error(
         422,
-        "TASK_MILESTONE_INHERITED_FROM_CARD",
-        "Task parent card is inherited from card",
+        "TASK_PARENT_CARD_CONFLICT",
+        "Task cannot specify both card_id and parent_card_id",
       ))
     _, _ -> Ok(Nil)
   }
@@ -199,6 +199,7 @@ fn list_tasks_response(
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
 }
@@ -213,6 +214,7 @@ fn create_task_response(
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_) -> Error(unexpected_response())
   }
 }
@@ -224,11 +226,14 @@ fn list_tasks_error_response(error: workflow_types.Error) -> wisp.Response {
     workflow_types.NotFound
     | workflow_types.ValidationError(_)
     | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
     | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -242,6 +247,7 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
       api.error(422, "VALIDATION_ERROR", message)
     workflow_types.TaskParentCardInheritedFromCard ->
       inherited_parent_card_response()
+    workflow_types.CardHasChildCards -> card_has_child_cards_response()
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
     | workflow_types.InvalidMovePoolToParentCard
@@ -249,6 +255,8 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -258,9 +266,13 @@ fn create_task_error_response(error: workflow_types.Error) -> wisp.Response {
 fn inherited_parent_card_response() -> wisp.Response {
   api.error(
     422,
-    "TASK_MILESTONE_INHERITED_FROM_CARD",
-    "Task parent card is inherited from card",
+    "TASK_PARENT_CARD_CONFLICT",
+    "Task cannot specify both card_id and parent_card_id",
   )
+}
+
+fn card_has_child_cards_response() -> wisp.Response {
+  api.error(422, "CARD_HAS_CHILD_CARDS", "Card already contains child cards")
 }
 
 fn forbidden_response() -> wisp.Response {

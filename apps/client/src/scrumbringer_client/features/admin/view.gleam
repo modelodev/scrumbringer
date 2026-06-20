@@ -380,9 +380,9 @@ fn cards_config(
     project_name: project_name,
     model: model.admin.cards,
     detail_modal: detail_modal,
-    on_create_opened: pool_msg(pool_messages.OpenCardDialog(
-      admin_cards.CardDialogCreate,
-    )),
+    on_create_opened: pool_msg(
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(opt.None)),
+    ),
     on_search_changed: fn(value) {
       pool_msg(pool_messages.CardsSearchChanged(value))
     },
@@ -430,6 +430,7 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
     can_execute_work: True,
     on_create_task: decode_create_task_event(),
     on_create_card: decode_create_card_event(),
+    on_activate_card: decode_activate_card_event(),
     on_delete_card: decode_delete_card_event(),
     on_close: decode_card_detail_close_event(),
   ))
@@ -478,10 +479,24 @@ fn decode_create_task_event() -> decode.Decoder(Msg) {
 fn decode_create_card_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("card_id", decode.int, decode.success),
-    fn(_card_id) {
+    fn(card_id) {
       decode.success(
-        pool_msg(pool_messages.OpenCardDialog(admin_cards.CardDialogCreate)),
+        pool_msg(
+          pool_messages.OpenCardDialog(
+            admin_cards.CardDialogCreate(opt.Some(card_id)),
+          ),
+        ),
       )
+    },
+  )
+}
+
+/// Decoder for activate-requested event.
+fn decode_activate_card_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(pool_msg(pool_messages.CardActivateRequested(card_id)))
     },
   )
 }

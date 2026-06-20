@@ -25,6 +25,8 @@ pub type Context(parent_msg) {
     title_too_long_max_56: String,
     type_required: String,
     priority_must_be_1_to_5: String,
+    card_has_child_cards: String,
+    parent_card_conflict: String,
   )
 }
 
@@ -72,10 +74,6 @@ pub fn try_update(
       handle_type_id_changed(model, value)
       |> without_policy
 
-    pool_messages.MemberCreateCardIdChanged(value) ->
-      handle_card_id_changed(model, value)
-      |> without_policy
-
     pool_messages.MemberCreateTypeOptionsRetryClicked ->
       handle_type_options_retry_clicked(model, context)
       |> without_policy
@@ -89,7 +87,7 @@ pub fn try_update(
       |> with_policy(RefreshMemberAfterCreated(task))
 
     pool_messages.MemberTaskCreated(Error(err)) ->
-      handle_created_error(model, err.message)
+      handle_created_error(model, err, context)
       |> with_policy(CheckAuthBefore(err))
 
     _ -> opt.None
@@ -190,13 +188,6 @@ fn handle_type_id_changed(
   #(create_state.type_id_changed(model, value), effect.none())
 }
 
-fn handle_card_id_changed(
-  model: member_pool.Model,
-  value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(create_state.card_id_changed(model, value), effect.none())
-}
-
 fn handle_submitted(
   model: member_pool.Model,
   context: Context(parent_msg),
@@ -268,7 +259,17 @@ fn handle_created_ok(
 
 fn handle_created_error(
   model: member_pool.Model,
-  message: String,
+  err: ApiError,
+  context: Context(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
+  let message = create_error_message(err, context)
   #(create_state.create_failed(model, message), effect.none())
+}
+
+fn create_error_message(err: ApiError, context: Context(parent_msg)) -> String {
+  case err.code {
+    "CARD_HAS_CHILD_CARDS" -> context.card_has_child_cards
+    "TASK_PARENT_CARD_CONFLICT" -> context.parent_card_conflict
+    _ -> err.message
+  }
 }

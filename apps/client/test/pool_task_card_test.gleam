@@ -104,6 +104,22 @@ pub fn task_card_renders_available_claim_action_test() {
   assert_not_contains(html, "task-card-primary-label")
 }
 
+pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {
+  let html =
+    task_card.view(config(
+      sample_task(),
+      x: 900,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "left:max(0px,900px)")
+  assert_not_contains(html, "left:clamp")
+  assert_not_contains(html, "calc(100% - 128px)")
+}
+
 pub fn task_card_renders_mobile_context_for_touch_layout_test() {
   let html =
     task_card.view(config(

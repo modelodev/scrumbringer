@@ -34,7 +34,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, type CardNote, CardNote, Closed}
+import domain/card.{type Card, type CardNote, CardNote, Closed, Draft}
 import domain/card/card_codec
 import domain/metrics.{type CardModalMetrics}
 import domain/task.{type Task, claimed_by}
@@ -93,6 +93,7 @@ pub type Model {
     tasks: Remote(List(Task)),
     metrics: Remote(CardModalMetrics),
     move_dialog_open: Bool,
+    activation_confirm_open: Bool,
   )
 }
 
@@ -123,6 +124,9 @@ pub type Msg {
   NoteDeleted(Int, ApiResult(Nil))
   // Card operations
   CreateCardClicked
+  ActivateCardClicked
+  ActivateCardCancelled
+  ActivateCardConfirmed
   MoveDialogOpened
   MoveDialogClosed
   DeleteCardClicked
@@ -351,6 +355,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       tasks: NotAsked,
       metrics: NotAsked,
       move_dialog_open: False,
+      activation_confirm_open: False,
     ),
     effect.none(),
   )
@@ -491,6 +496,21 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     CreateCardClicked -> #(model, emit_create_card_requested(model.card_id))
 
+    ActivateCardClicked -> #(
+      Model(..model, activation_confirm_open: True),
+      effect.none(),
+    )
+
+    ActivateCardCancelled -> #(
+      Model(..model, activation_confirm_open: False),
+      effect.none(),
+    )
+
+    ActivateCardConfirmed -> #(
+      Model(..model, activation_confirm_open: False),
+      emit_activate_requested(model.card_id),
+    )
+
     MoveDialogOpened -> #(Model(..model, move_dialog_open: True), effect.none())
 
     MoveDialogClosed -> #(
@@ -594,6 +614,12 @@ fn emit_create_task_requested(card_id: option.Option(Int)) -> Effect(Msg) {
 /// The parent will open the card creation dialog with this card as parent.
 fn emit_create_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
   emit_card_id_event("create-card-requested", card_id)
+}
+
+/// Emit activate-requested custom event to parent.
+/// The parent activates this card subtree and refreshes Pool data.
+fn emit_activate_requested(card_id: option.Option(Int)) -> Effect(Msg) {
+  emit_card_id_event("activate-requested", card_id)
 }
 
 /// Emit delete-card-requested custom event to parent.
@@ -709,11 +735,115 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
       True -> view_note_dialog(model)
       False -> element.none()
     },
+    case model.activation_confirm_open {
+      True -> view_activation_confirm_dialog(model, card)
+      False -> element.none()
+    },
     case model.move_dialog_open {
       True -> view_move_dialog(model, card)
       False -> element.none()
     },
   ])
+}
+
+fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
+  div([attribute.class("card-activation-dialog-shell")], [
+    div(
+      [
+        attribute.class("modal-backdrop"),
+        event.on_click(ActivateCardCancelled),
+      ],
+      [],
+    ),
+    div(
+      [
+        attribute.class("card-move-dialog"),
+        attribute.attribute("role", "dialog"),
+        attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-labelledby", "card-activation-dialog-title"),
+        attribute.attribute("data-testid", "card-activation-dialog"),
+      ],
+      [
+        div([attribute.class("card-move-dialog-header")], [
+          span(
+            [
+              attribute.class("card-move-dialog-title"),
+              attribute.id("card-activation-dialog-title"),
+            ],
+            [text(t(model.locale, i18n_text.HierarchyActivationTitle))],
+          ),
+          ui_button.icon(
+            t(model.locale, i18n_text.Close),
+            ActivateCardCancelled,
+            icons.Close,
+            ui_button.Ghost,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_testid("card-activation-close")
+            |> ui_button.view,
+        ]),
+        div([attribute.class("card-move-dialog-help")], [
+          text(t(
+            model.locale,
+            i18n_text.HierarchyActivationBody(
+              affected_card_count(card, model.cards),
+              card.task_count,
+            ),
+          )),
+        ]),
+        div([attribute.class("card-move-dialog-help")], [
+          text(t(model.locale, i18n_text.HierarchyActivationWarning)),
+        ]),
+        div([attribute.class("dialog-actions")], [
+          ui_button.text(
+            t(model.locale, i18n_text.Cancel),
+            ActivateCardCancelled,
+            ui_button.Secondary,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_testid("card-activation-cancel")
+            |> ui_button.view,
+          ui_button.icon_text(
+            t(model.locale, i18n_text.ActivateHierarchy),
+            ActivateCardConfirmed,
+            icons.Play,
+            ui_button.Primary,
+            ui_button.EntityAction,
+          )
+            |> ui_button.with_testid("card-activation-confirm")
+            |> ui_button.view,
+        ]),
+      ],
+    ),
+  ])
+}
+
+fn affected_card_count(card: Card, cards: List(Card)) -> Int {
+  1
+  + list.length(
+    list.filter(cards, fn(candidate) {
+      is_descendant_of(candidate, card, cards)
+    }),
+  )
+}
+
+fn is_descendant_of(candidate: Card, ancestor: Card, cards: List(Card)) -> Bool {
+  case candidate.parent_card_id {
+    option.Some(parent_id) if parent_id == ancestor.id -> True
+    option.Some(parent_id) ->
+      case find_card_by_id(cards, parent_id) {
+        option.Some(parent) -> is_descendant_of(parent, ancestor, cards)
+        option.None -> False
+      }
+    option.None -> False
+  }
+}
+
+fn find_card_by_id(cards: List(Card), card_id: Int) -> option.Option(Card) {
+  case list.find(cards, fn(card) { card.id == card_id }) {
+    Ok(card) -> option.Some(card)
+    Error(_) -> option.None
+  }
 }
 
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
@@ -761,7 +891,8 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
   div([attribute.class("card-detail-actions")], [
     view_create_card_action(model, policy),
     view_create_task_action(model, policy),
-    view_move_action(card),
+    view_activate_action(model, card),
+    view_move_action(model, card),
     view_delete_action(model, policy),
   ])
 }
@@ -787,7 +918,7 @@ fn view_create_card_action(
         CreateCardClicked,
         icons.Plus,
         "card-create-card-action",
-        reason,
+        disabled_reason_label(model, reason),
       )
     False, option.None -> element.none()
   }
@@ -814,18 +945,43 @@ fn view_create_task_action(
         CreateTaskClicked,
         icons.Plus,
         "card-create-task-action",
-        reason,
+        disabled_reason_label(model, reason),
       )
     False, option.None -> element.none()
   }
 }
 
-fn view_move_action(card: Card) -> Element(Msg) {
+fn view_activate_action(model: Model, card: Card) -> Element(Msg) {
+  case card.state, model.can_manage_structure {
+    Draft, True ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        ActivateCardClicked,
+        icons.Play,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-activate-action")
+      |> ui_button.with_class("hierarchy-activate-btn")
+      |> ui_button.view
+    Draft, False ->
+      blocked_action(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        ActivateCardClicked,
+        icons.Play,
+        "card-activate-action",
+        t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
+      )
+    _, _ -> element.none()
+  }
+}
+
+fn view_move_action(model: Model, card: Card) -> Element(Msg) {
   case card.state == Closed {
     True -> element.none()
     False ->
       ui_button.icon_text(
-        "Mover a...",
+        t(model.locale, i18n_text.HierarchyMoveTo),
         MoveDialogOpened,
         icons.Return,
         ui_button.Secondary,
@@ -857,9 +1013,21 @@ fn view_delete_action(
         DeleteCardClicked,
         icons.Trash,
         "card-delete-action",
-        reason,
+        disabled_reason_label(model, reason),
       )
     False, option.None -> element.none()
+  }
+}
+
+fn disabled_reason_label(
+  model: Model,
+  reason: detail_policy.DisabledReason,
+) -> String {
+  case reason {
+    detail_policy.ClosedCardCannotReceiveChildren ->
+      t(model.locale, i18n_text.CardClosedCannotReceiveChildren)
+    detail_policy.CardHasOperationalHistory ->
+      t(model.locale, i18n_text.CardHasOperationalHistory)
   }
 }
 
@@ -1114,7 +1282,7 @@ fn view_move_dialog(model: Model, card: Card) -> Element(Msg) {
               attribute.class("card-move-dialog-title"),
               attribute.id("card-move-dialog-title"),
             ],
-            [text("Mover a...")],
+            [text(t(model.locale, i18n_text.HierarchyMoveTo))],
           ),
           ui_button.icon(
             t(model.locale, i18n_text.Close),

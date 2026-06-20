@@ -53,6 +53,7 @@ pub type Text {
   TaskClaimed
   TaskReleased
   TaskDone
+  TaskDeleted
   SkillsSaved
   NoteAdded
 
@@ -63,6 +64,7 @@ pub type Text {
   TaskVersionConflict
   TaskAlreadyClaimed
   TaskBlockedByDependencies
+  TaskHasOperationalHistory
   TaskNotFound
   TaskMutationRolledBack
 
@@ -75,6 +77,16 @@ pub type Text {
   SelectUserFirst
   InvalidXY
   ContentRequired
+  TaskCreateCardHasChildCards
+  TaskCreateParentCardConflict
+  TaskCreateRootPoolHint
+  TaskCreateMissingCard
+  TaskCreateDraftCardHint
+  TaskCreateActiveCardHint
+  TaskCreateClosedCard
+  CardClosedCannotReceiveChildren
+  CardHasOperationalHistory
+  ActivateHierarchyManagerOnly
 
   // Accessibility
   SkipToContent
@@ -264,6 +276,11 @@ pub type Text {
   ActivateHierarchy
   ActivatingHierarchy
   HierarchyActivated
+  HierarchyActivationPoolImpact(pool_impact: Int)
+  HierarchyActivationPoolSaturated(
+    pool_open_after: Int,
+    healthy_pool_limit: Int,
+  )
   HierarchyActivateFailed
   EditHierarchy
   DeleteHierarchy

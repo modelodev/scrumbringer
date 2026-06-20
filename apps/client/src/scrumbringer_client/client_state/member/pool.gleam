@@ -59,6 +59,7 @@ pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
 pub type Model {
   Model(
     view_mode: view_mode.ViewMode,
+    member_card_depth_filter: Option(Int),
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
     member_tasks_by_project: Dict(Int, List(Task)),
@@ -117,6 +118,7 @@ pub type Model {
 pub fn default_model() -> Model {
   Model(
     view_mode: view_mode.Pool,
+    member_card_depth_filter: option.None,
     member_tasks: NotAsked,
     member_tasks_pending: 0,
     member_tasks_by_project: dict.new(),

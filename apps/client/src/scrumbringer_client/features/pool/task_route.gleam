@@ -20,6 +20,7 @@ import scrumbringer_client/features/pool/task_created_update
 import scrumbringer_client/features/tasks/create_update as task_create_update
 import scrumbringer_client/features/tasks/dependency_update as dependency_workflow
 import scrumbringer_client/features/tasks/detail_permissions
+import scrumbringer_client/features/tasks/detail_state
 import scrumbringer_client/features/tasks/detail_update as task_detail_update
 import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 import scrumbringer_client/features/tasks/notes_update as task_notes_update
@@ -222,13 +223,14 @@ fn try_task_mutation_update(
     )
   {
     opt.Some(update) ->
-      opt.Some(apply_task_mutation_update(model, update, member_refresh))
+      opt.Some(apply_task_mutation_update(model, inner, update, member_refresh))
     opt.None -> opt.None
   }
 }
 
 fn apply_task_mutation_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: task_mutation_update.Update(client_state.Msg),
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
@@ -236,8 +238,33 @@ fn apply_task_mutation_update(
   let task_mutation_update.Update(pool, fx, policy) = update
 
   apply_task_mutation_policy(policy, member_refresh, fn() {
-    #(root.set_member_pool(model, pool), fx)
+    let next = root.set_member_pool(model, pool)
+    #(close_deleted_task_detail_if_open(next, inner), fx)
   })
+}
+
+fn close_deleted_task_detail_if_open(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner, model.member.notes.member_notes_task_id {
+    pool_messages.MemberTaskDeleted(deleted_task_id, Ok(_)),
+      opt.Some(open_task_id)
+      if deleted_task_id == open_task_id
+    -> {
+      let #(pool, notes, dependencies) =
+        detail_state.close(model.member.pool, model.member.notes)
+      set_task_detail_model(
+        model,
+        task_detail_update.Model(
+          pool: pool,
+          notes: notes,
+          dependencies: dependencies,
+        ),
+      )
+    }
+    _, _ -> model
+  }
 }
 
 fn apply_task_mutation_policy(
@@ -384,6 +411,14 @@ fn task_create_context(
       model.ui.locale,
       i18n_text.PriorityMustBe1To5,
     ),
+    card_has_child_cards: i18n.t(
+      model.ui.locale,
+      i18n_text.TaskCreateCardHasChildCards,
+    ),
+    parent_card_conflict: i18n.t(
+      model.ui.locale,
+      i18n_text.TaskCreateParentCardConflict,
+    ),
   )
 }
 
@@ -529,6 +564,9 @@ pub fn mutation_context(
     on_task_completed: fn(result) {
       client_state.pool_msg(pool_messages.MemberTaskDone(result))
     },
+    on_task_deleted: fn(task_id, result) {
+      client_state.pool_msg(pool_messages.MemberTaskDeleted(task_id, result))
+    },
   )
 }
 
@@ -539,6 +577,7 @@ fn task_mutation_success_context(
     task_claimed: i18n.t(model.ui.locale, i18n_text.TaskClaimed),
     task_released: i18n.t(model.ui.locale, i18n_text.TaskReleased),
     task_completed: i18n.t(model.ui.locale, i18n_text.TaskDone),
+    task_deleted: i18n.t(model.ui.locale, i18n_text.TaskDeleted),
     on_success_toast: app_effects.toast_success,
     on_work_sessions_refetch: refetch_work_sessions_effect,
   )
@@ -557,6 +596,10 @@ fn task_mutation_error_context(
       task_blocked_by_dependencies: i18n.t(
         model.ui.locale,
         i18n_text.TaskBlockedByDependencies,
+      ),
+      task_has_operational_history: i18n.t(
+        model.ui.locale,
+        i18n_text.TaskHasOperationalHistory,
       ),
       task_version_conflict: i18n.t(
         model.ui.locale,

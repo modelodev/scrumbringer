@@ -35,7 +35,18 @@ pub type CardCloseRequest {
 }
 
 pub type CardActionResponse {
-  CardActionResponse(card_id: Int, pool_impact: Int)
+  CardActionResponse(
+    card_id: Int,
+    pool_impact: Int,
+    pool_open_after: Int,
+    healthy_pool_limit: Int,
+    pool_health: PoolHealth,
+  )
+}
+
+pub type PoolHealth {
+  PoolWithinHealthyLimit
+  PoolExceedsHealthyLimit
 }
 
 pub type DecodeError {
@@ -147,7 +158,25 @@ pub fn action_response_to_json(response: CardActionResponse) -> Json {
   json.object([
     #("card_id", json.int(response.card_id)),
     #("pool_impact", json.int(response.pool_impact)),
+    #("pool_open_after", json.int(response.pool_open_after)),
+    #("healthy_pool_limit", json.int(response.healthy_pool_limit)),
+    #("pool_health", json.string(pool_health_to_string(response.pool_health))),
   ])
+}
+
+pub fn pool_health_to_string(health: PoolHealth) -> String {
+  case health {
+    PoolWithinHealthyLimit -> "within_healthy_limit"
+    PoolExceedsHealthyLimit -> "exceeds_healthy_limit"
+  }
+}
+
+pub fn pool_health_from_string(value: String) -> Result(PoolHealth, DecodeError) {
+  case value {
+    "within_healthy_limit" -> Ok(PoolWithinHealthyLimit)
+    "exceeds_healthy_limit" -> Ok(PoolExceedsHealthyLimit)
+    _ -> Error(InvalidJson)
+  }
 }
 
 fn result_from_decode(result: Result(a, b)) -> Result(a, DecodeError) {

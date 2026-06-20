@@ -26,6 +26,7 @@ pub type Config(msg) {
     can_execute_work: Bool,
     on_create_task: decode.Decoder(msg),
     on_create_card: decode.Decoder(msg),
+    on_activate_card: decode.Decoder(msg),
     on_delete_card: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
   )
@@ -43,6 +44,7 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
     can_execute_work: can_execute_work,
     on_create_task: on_create_task,
     on_create_card: on_create_card,
+    on_activate_card: on_activate_card,
     on_delete_card: on_delete_card,
     on_close: on_close,
   ) = config
@@ -68,6 +70,7 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
     attribute.property("tasks", tasks_to_json(tasks)),
     event.on("create-task-requested", on_create_task),
     event.on("create-card-requested", on_create_card),
+    event.on("activate-requested", on_activate_card),
     event.on("delete-card-requested", on_delete_card),
     event.on("close-requested", on_close),
   ]
@@ -86,10 +89,6 @@ fn card_to_json(card: Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
-    #("parent_card_id", case card.parent_card_id {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
     #("parent_card_id", case card.parent_card_id {
       opt.Some(id) -> json.int(id)
       opt.None -> json.null()
