@@ -99,7 +99,7 @@ pub fn try_update_claim_clicked_sets_local_policy_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn try_update_success_requests_member_refresh_test() {
+pub fn try_update_release_success_requests_silent_member_refresh_test() {
   let model =
     member_pool.Model(
       ..pool_with_tasks([sample_task(42, task_state.Available)]),
@@ -117,10 +117,12 @@ pub fn try_update_success_requests_member_refresh_test() {
       dispatch_context(),
     )
 
-  let assert mutation_update.RefreshMemberAfterSuccess = policy
+  let assert mutation_update.RefreshMemberSilentlyAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
+  let assert True =
+    next.member_tasks == remote.Loaded([sample_task(42, task_state.Available)])
   let assert True = fx != effect.none()
 }
 
@@ -278,10 +280,12 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn local_task_claimed_ok_clears_optimistic_state_test() {
+pub fn local_task_claimed_ok_reconciles_payload_and_clears_optimistic_state_test() {
+  let task = sample_task(42, task_state.Available)
+  let claimed = claimed_task(task, 7)
   let model =
     member_pool.Model(
-      ..pool_with_tasks([sample_task(42, task_state.Available)]),
+      ..pool_with_tasks([task]),
       member_task_mutation_in_flight: True,
       member_task_mutation_task_id: Some(42),
       member_tasks_snapshot: Some([]),
@@ -290,14 +294,15 @@ pub fn local_task_claimed_ok_clears_optimistic_state_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskClaimed(Ok(sample_task(42, task_state.Available))),
+      pool_messages.MemberTaskClaimed(Ok(claimed)),
       dispatch_context(),
     )
 
-  let assert mutation_update.RefreshMemberAfterSuccess = policy
+  let assert mutation_update.RefreshMemberSilentlyAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
+  let assert True = next.member_tasks == remote.Loaded([claimed])
   let assert True = fx != effect.none()
 }
 

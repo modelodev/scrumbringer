@@ -10,6 +10,7 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
@@ -252,9 +253,33 @@ fn apply_task_mutation_policy(
       let #(next, refresh_fx) = member_refresh(next)
       #(next, effect.batch([fx, refresh_fx]))
     }
+    task_mutation_update.RefreshMemberSilentlyAfterSuccess -> {
+      let #(next, fx) = apply_update()
+      let #(next, refresh_fx) =
+        member_refresh_preserving_tasks(next, member_refresh)
+      #(next, effect.batch([fx, refresh_fx]))
+    }
     task_mutation_update.CheckAuthAfter(err) ->
       route_support.apply_auth_check_after(opt.Some(err), apply_update)
   }
+}
+
+fn member_refresh_preserving_tasks(
+  model: client_state.Model,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  let current_tasks = model.member.pool.member_tasks
+  let #(next, fx) = member_refresh(model)
+  let pool = next.member.pool
+
+  #(
+    root.set_member_pool(
+      next,
+      member_pool.Model(..pool, member_tasks: current_tasks),
+    ),
+    fx,
+  )
 }
 
 fn try_detail_update(

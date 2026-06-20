@@ -35,6 +35,7 @@ pub type DispatchContext(parent_msg) {
 pub type Policy {
   NoPolicy
   RefreshMemberAfterSuccess
+  RefreshMemberSilentlyAfterSuccess
   CheckAuthAfter(ApiError)
 }
 
@@ -94,11 +95,21 @@ pub fn try_update(
       handle_complete_clicked(model, task_id, version, context.mutation_context)
       |> without_policy
 
-    pool_messages.MemberTaskClaimed(Ok(_)) ->
-      success(model, handle_task_claimed_ok, Claimed, context.success_context)
+    pool_messages.MemberTaskClaimed(Ok(task)) ->
+      success(
+        model,
+        fn(model) { handle_task_claimed_ok(model, task) },
+        Claimed,
+        context.success_context,
+      )
 
-    pool_messages.MemberTaskReleased(Ok(_)) ->
-      success(model, handle_task_released_ok, Released, context.success_context)
+    pool_messages.MemberTaskReleased(Ok(task)) ->
+      success(
+        model,
+        fn(model) { handle_task_released_ok(model, task) },
+        Released,
+        context.success_context,
+      )
 
     pool_messages.MemberTaskDone(Ok(_)) ->
       success(model, handle_task_completed_ok, Done, context.success_context)
@@ -129,8 +140,15 @@ fn success(
   opt.Some(Update(
     model,
     effect.batch([local_fx, success_effect(success, context)]),
-    RefreshMemberAfterSuccess,
+    success_policy(success),
   ))
+}
+
+fn success_policy(success: Success) -> Policy {
+  case success {
+    Claimed | Released -> RefreshMemberSilentlyAfterSuccess
+    Done -> RefreshMemberAfterSuccess
+  }
 }
 
 fn mutation_error(
@@ -258,16 +276,18 @@ fn clear_optimistic_state(model: member_pool.Model) -> member_pool.Model {
 /// Clears snapshot and refreshes from server for authoritative state.
 fn handle_task_claimed_ok(
   model: member_pool.Model,
+  task: Task,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(clear_optimistic_state(model), effect.none())
+  #(mutation_state.confirm_task(model, task), effect.none())
 }
 
 /// Handle successful task release.
 /// Clears snapshot and refreshes from server for authoritative state.
 fn handle_task_released_ok(
   model: member_pool.Model,
+  task: Task,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(clear_optimistic_state(model), effect.none())
+  #(mutation_state.confirm_task(model, task), effect.none())
 }
 
 /// Handle successful task completion.

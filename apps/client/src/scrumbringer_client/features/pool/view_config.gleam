@@ -311,20 +311,44 @@ fn hidden_blocked_count(context: Context(msg), task_id: Int) -> opt.Option(Int) 
 fn task_position(context: Context(msg), task_id: Int) -> #(Int, Int) {
   case dict.get(context.positions.member_positions_by_task, task_id) {
     Ok(xy) -> xy
-    Error(_) -> initial_task_position(task_id)
+    Error(_) -> initial_task_position(unpositioned_task_index(context, task_id))
   }
 }
 
-fn initial_task_position(task_id: Int) -> #(Int, Int) {
+fn unpositioned_task_index(context: Context(msg), task_id: Int) -> Int {
+  let tasks =
+    context.pool.member_tasks
+    |> unwrap([])
+    |> list.filter(fn(task) {
+      let Task(id: id, ..) = task
+      case dict.get(context.positions.member_positions_by_task, id) {
+        Ok(_) -> False
+        Error(_) -> True
+      }
+    })
+
+  case
+    list.index_map(tasks, fn(task, index) {
+      let Task(id: id, ..) = task
+      #(id, index)
+    })
+    |> list.find(fn(pair) {
+      let #(id, _) = pair
+      id == task_id
+    })
+  {
+    Ok(#(_, index)) -> index
+    Error(_) -> 0
+  }
+}
+
+fn initial_task_position(index: Int) -> #(Int, Int) {
   let card_size = 128
   let gap = 32
   let columns = 5
-  let visible_rows = 4
   let padding = 60
-  let index = task_id - 1
   let initial_x = padding + { { index % columns } * { card_size + gap } }
-  let initial_y =
-    padding + { { { index / columns } % visible_rows } * { card_size + gap } }
+  let initial_y = padding + { { index / columns } * { card_size + gap } }
   #(initial_x, initial_y)
 }
 

@@ -3,6 +3,7 @@
 import gleam/option as opt
 
 import domain/remote.{Loaded}
+import domain/task.{type Task}
 import domain/task_state
 import domain/task_status.{Taken}
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -57,6 +58,13 @@ pub fn clear(model: member_pool.Model) -> member_pool.Model {
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: opt.None,
     member_tasks_snapshot: opt.None,
+  )
+}
+
+pub fn confirm_task(model: member_pool.Model, task: Task) -> member_pool.Model {
+  member_pool.Model(
+    ..clear(model),
+    member_tasks: task_list.replace(model.member_tasks, task),
   )
 }
 
