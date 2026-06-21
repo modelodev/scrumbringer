@@ -98,8 +98,8 @@ pub fn pool_supports_drag_drop_test() {
   let assert True = view_mode.supports_drag_drop(Pool)
 }
 
-pub fn cards_supports_drag_drop_test() {
-  let assert True = view_mode.supports_drag_drop(Cards)
+pub fn cards_does_not_support_drag_drop_test() {
+  let assert False = view_mode.supports_drag_drop(Cards)
 }
 
 pub fn people_does_not_support_drag_drop_test() {

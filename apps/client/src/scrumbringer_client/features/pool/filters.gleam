@@ -28,6 +28,19 @@ pub fn try_update(
       opt.Some(handle_search_changed(model, value))
     pool_messages.MemberPoolSearchDebounced(value) ->
       opt.Some(handle_search_debounced(model, value))
+    pool_messages.MemberPlanScopeKindChanged(value) ->
+      opt.Some(handle_plan_scope_kind_changed(model, value))
+    pool_messages.MemberPlanCapabilityModeChanged(value) ->
+      opt.Some(handle_plan_capability_mode_changed(model, value))
+    pool_messages.MemberPlanScopeDepthChanged(value) ->
+      opt.Some(handle_plan_scope_depth_changed(model, value))
+    pool_messages.MemberPlanScopeCardChanged(value) ->
+      opt.Some(handle_plan_scope_card_changed(model, value))
+    pool_messages.MemberPlanClosedToggled(value) ->
+      opt.Some(#(
+        member_pool.Model(..model, member_plan_show_closed: opt.Some(value)),
+        False,
+      ))
     _ -> opt.None
   }
 }
@@ -114,4 +127,65 @@ pub fn handle_capability_scope_changed(
 
     Error(_) -> #(model, False)
   }
+}
+
+fn handle_plan_scope_kind_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  let kind = case string.trim(value) {
+    "card" -> member_pool.PlanScopeCard
+    _ -> member_pool.PlanScopeLevel
+  }
+
+  #(
+    member_pool.Model(
+      ..model,
+      member_plan_scope_kind: kind,
+      member_plan_show_closed: opt.None,
+    ),
+    False,
+  )
+}
+
+fn handle_plan_capability_mode_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  let mode = case string.trim(value) {
+    "matrix" -> member_pool.PlanCapabilityMatrix
+    _ -> member_pool.PlanCapabilityList
+  }
+
+  #(member_pool.Model(..model, member_plan_capability_mode: mode), False)
+}
+
+fn handle_plan_scope_depth_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_card_depth_filter: helpers_options.empty_to_int_opt(value),
+      member_plan_scope_kind: member_pool.PlanScopeLevel,
+      member_plan_show_closed: opt.None,
+    ),
+    False,
+  )
+}
+
+fn handle_plan_scope_card_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_plan_scope_card_id: helpers_options.empty_to_int_opt(value),
+      member_plan_scope_kind: member_pool.PlanScopeCard,
+      member_plan_show_closed: opt.None,
+    ),
+    False,
+  )
 }

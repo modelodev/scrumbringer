@@ -53,7 +53,7 @@ pub fn to_string(mode: ViewMode) -> String {
 pub fn supports_drag_drop(mode: ViewMode) -> Bool {
   case mode {
     Pool -> True
-    Cards -> True
+    Cards -> False
     Capabilities -> False
     People -> False
   }

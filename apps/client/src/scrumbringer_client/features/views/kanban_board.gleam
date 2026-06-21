@@ -19,17 +19,24 @@ import gleam/option
 import gleam/order
 import gleam/string
 import lustre/attribute
-import lustre/element.{type Element}
-import lustre/element/html.{div, h4, span, text}
+import lustre/element
+import lustre/element/html.{
+  button, div, h4, input, label, option as html_option, select, span, text,
+}
 import lustre/element/keyed
+import lustre/event
 
-import domain/card.{type Card, type CardPhase, Active, Closed, Draft}
+import domain/card.{type Card, Active, Closed}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
+import domain/view_mode
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_ffi
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
@@ -70,6 +77,16 @@ pub type KanbanConfig(msg) {
     on_task_claim: fn(Int, Int) -> msg,
     // Story 4.12 AC8-AC9: Create task in card
     on_create_task_in_card: fn(Int) -> msg,
+    depth_names: List(scope_view.DepthName),
+    scope_kind: member_pool.PlanScopeKind,
+    selected_depth: option.Option(Int),
+    selected_card_id: option.Option(Int),
+    show_closed: option.Option(Bool),
+    on_scope_kind_change: fn(String) -> msg,
+    on_scope_depth_change: fn(String) -> msg,
+    on_scope_card_change: fn(String) -> msg,
+    on_closed_toggled: fn(Bool) -> msg,
+    on_lens_selected: fn(view_mode.ViewMode) -> msg,
   )
 }
 
@@ -92,12 +109,18 @@ type BoardSummary {
   )
 }
 
+type KanbanColumn {
+  PendingColumn
+  InProgressColumn
+  ClosedColumn
+}
+
 // =============================================================================
 // View
 // =============================================================================
 
 /// Renders the kanban board with 3 columns
-pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
+pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
   let filtered_tasks =
     list.filter(config.tasks, fn(task) {
       work_filters.matches(
@@ -113,43 +136,58 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
       )
     })
 
-  let cards_with_progress = compute_progress(config.cards, filtered_tasks)
+  let scoped_cards = cards_in_scope(config)
+  let include_closed = show_closed(config, scoped_cards, filtered_tasks)
+  let cards_with_progress =
+    compute_progress(scoped_cards, filtered_tasks, config.cards)
 
-  // Draft cards can be empty while the team is decomposing work. They must stay
-  // visible so users can open them and add child cards or prepared tasks.
-  let visible_cards = cards_with_progress
+  let visible_cards =
+    cards_with_progress
+    |> list.filter(fn(cwp) {
+      case cwp.card.state {
+        Closed -> include_closed
+        _ -> True
+      }
+    })
 
-  // Group by state
   let pendiente =
-    list.filter(visible_cards, fn(cwp) { cwp.card.state == Draft })
+    list.filter(visible_cards, fn(cwp) {
+      cwp.card.state != Closed && !has_work_in_progress(cwp.tasks)
+    })
   let en_curso =
-    list.filter(visible_cards, fn(cwp) { cwp.card.state == Active })
+    list.filter(visible_cards, fn(cwp) {
+      cwp.card.state != Closed && has_work_in_progress(cwp.tasks)
+    })
   let cerrada = list.filter(visible_cards, fn(cwp) { cwp.card.state == Closed })
 
   div([attribute.class("kanban-view")], [
-    view_surface_header(config, board_summary(visible_cards)),
+    view_surface_header(config, board_summary(visible_cards), include_closed),
     div([attribute.class("kanban-board")], [
       view_column(
         config,
         i18n.t(config.locale, i18n_text.CardPhaseDraft),
         "pendiente",
-        Draft,
+        PendingColumn,
         pendiente,
       ),
       view_column(
         config,
         i18n.t(config.locale, i18n_text.CardPhaseActive),
         "en-curso",
-        Active,
+        InProgressColumn,
         en_curso,
       ),
-      view_column(
-        config,
-        i18n.t(config.locale, i18n_text.CardPhaseClosed),
-        "cerrada",
-        Closed,
-        cerrada,
-      ),
+      case include_closed {
+        True ->
+          view_column(
+            config,
+            i18n.t(config.locale, i18n_text.CardPhaseClosed),
+            "cerrada",
+            ClosedColumn,
+            cerrada,
+          )
+        False -> element.none()
+      },
     ]),
   ])
 }
@@ -157,7 +195,8 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
 fn view_surface_header(
   config: KanbanConfig(msg),
   summary: BoardSummary,
-) -> Element(msg) {
+  include_closed: Bool,
+) -> element.Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
     title: i18n.t(config.locale, i18n_text.Kanban),
     purpose: i18n.t(config.locale, i18n_text.KanbanSurfacePurpose),
@@ -192,19 +231,226 @@ fn view_surface_header(
     extra_class: option.Some("kanban-surface-header"),
     testid: option.Some("kanban-surface-header"),
   ))
+  |> with_scope_lens_controls(config, include_closed)
+}
+
+fn with_scope_lens_controls(
+  header: element.Element(msg),
+  config: KanbanConfig(msg),
+  include_closed: Bool,
+) -> element.Element(msg) {
+  div([attribute.class("plan-lens-shell")], [
+    header,
+    div(
+      [
+        attribute.class("plan-scope-lens"),
+        attribute.attribute("data-testid", "plan-scope-lens"),
+      ],
+      [
+        view_scope_controls(config),
+        view_lens_controls(config),
+        label([attribute.class("plan-closed-toggle")], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(include_closed),
+            attribute.attribute("data-testid", "plan-closed-toggle"),
+            event.on_check(config.on_closed_toggled),
+          ]),
+          span([], [text(i18n.t(config.locale, i18n_text.PlanClosed))]),
+        ]),
+      ],
+    ),
+  ])
+}
+
+fn view_scope_controls(config: KanbanConfig(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-scope-controls")], [
+    label([], [text(i18n.t(config.locale, i18n_text.PlanScope))]),
+    select(
+      [
+        attribute.attribute("data-testid", "plan-scope-kind"),
+        attribute.value(scope_kind_value(config.scope_kind)),
+        event.on_input(config.on_scope_kind_change),
+      ],
+      [
+        html_option(
+          [attribute.value("level")],
+          i18n.t(config.locale, i18n_text.PlanScopeLevel),
+        ),
+        html_option(
+          [attribute.value("card")],
+          i18n.t(config.locale, i18n_text.PlanScopeCard),
+        ),
+      ],
+    ),
+    case config.scope_kind {
+      member_pool.PlanScopeLevel -> view_depth_selector(config)
+      member_pool.PlanScopeCard -> view_card_selector(config)
+    },
+  ])
+}
+
+fn view_depth_selector(config: KanbanConfig(msg)) -> element.Element(msg) {
+  select(
+    [
+      attribute.attribute("data-testid", "plan-scope-depth"),
+      attribute.value(option_int_to_string(config.selected_depth)),
+      event.on_input(config.on_scope_depth_change),
+    ],
+    [
+      html_option(
+        [attribute.value("")],
+        i18n.t(config.locale, i18n_text.PlanScopeAllLevels),
+      ),
+      ..list.map(config.depth_names, fn(depth_name) {
+        let scope_view.DepthName(depth: depth, plural_name: label, ..) =
+          depth_name
+        html_option(
+          [
+            attribute.value(int.to_string(depth)),
+            attribute.selected(config.selected_depth == option.Some(depth)),
+          ],
+          label,
+        )
+      })
+    ],
+  )
+}
+
+fn view_card_selector(config: KanbanConfig(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-card-scope-control")], [
+    input([
+      attribute.type_("search"),
+      attribute.attribute("list", "plan-active-card-options"),
+      attribute.attribute("data-testid", "plan-scope-card-search"),
+      attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
+      attribute.value(selected_card_label(config)),
+      event.on_input(fn(value) {
+        config.on_scope_card_change(card_id_for_search_value(config, value))
+      }),
+    ]),
+    element.element(
+      "datalist",
+      [attribute.id("plan-active-card-options")],
+      active_card_datalist_options(config),
+    ),
+    select(
+      [
+        attribute.attribute("data-testid", "plan-scope-card"),
+        attribute.value(option_int_to_string(config.selected_card_id)),
+        event.on_input(config.on_scope_card_change),
+      ],
+      [
+        html_option(
+          [attribute.value("")],
+          i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+        ),
+        ..active_card_options(config)
+      ],
+    ),
+  ])
+}
+
+fn active_card_options(config: KanbanConfig(msg)) -> List(element.Element(msg)) {
+  config.cards
+  |> list.filter(fn(card) { card.state == Active })
+  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
+  |> list.map(fn(card) {
+    html_option(
+      [
+        attribute.value(int.to_string(card.id)),
+        attribute.selected(config.selected_card_id == option.Some(card.id)),
+      ],
+      card.title,
+    )
+  })
+}
+
+fn active_card_datalist_options(
+  config: KanbanConfig(msg),
+) -> List(element.Element(msg)) {
+  config.cards
+  |> list.filter(fn(card) { card.state == Active })
+  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
+  |> list.map(fn(card) {
+    html_option([attribute.value(card_search_label(card))], "")
+  })
+}
+
+fn selected_card_label(config: KanbanConfig(msg)) -> String {
+  case config.selected_card_id {
+    option.Some(card_id) ->
+      case list.find(config.cards, fn(card) { card.id == card_id }) {
+        Ok(card) -> card_search_label(card)
+        Error(_) -> ""
+      }
+    option.None -> ""
+  }
+}
+
+fn card_id_for_search_value(config: KanbanConfig(msg), value: String) -> String {
+  case list.find(config.cards, fn(card) { card_search_label(card) == value }) {
+    Ok(card) -> int.to_string(card.id)
+    Error(_) -> ""
+  }
+}
+
+fn card_search_label(card: Card) -> String {
+  card.title <> " #" <> int.to_string(card.id)
+}
+
+fn view_lens_controls(config: KanbanConfig(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-lens-controls")], [
+    span([attribute.class("plan-lens-label")], [
+      text(i18n.t(config.locale, i18n_text.PlanLens)),
+    ]),
+    view_lens_button(config, i18n_text.PlanLensKanban, True, view_mode.Cards),
+    view_lens_button(
+      config,
+      i18n_text.PlanLensCapabilities,
+      False,
+      view_mode.Capabilities,
+    ),
+    view_lens_button(config, i18n_text.PlanLensPeople, False, view_mode.People),
+  ])
+}
+
+fn view_lens_button(
+  config: KanbanConfig(msg),
+  label_key: i18n_text.Text,
+  active: Bool,
+  mode: view_mode.ViewMode,
+) -> element.Element(msg) {
+  let class = case active {
+    True -> "plan-lens-btn is-active"
+    False -> "plan-lens-btn"
+  }
+
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(class),
+      attribute.attribute("aria-pressed", case active {
+        True -> "true"
+        False -> "false"
+      }),
+      event.on_click(config.on_lens_selected(mode)),
+    ],
+    [text(i18n.t(config.locale, label_key))],
+  )
 }
 
 fn view_column(
   config: KanbanConfig(msg),
   title: String,
   column_class: String,
-  column_state: CardPhase,
+  column_state: KanbanColumn,
   cards: List(CardWithProgress),
-) -> Element(msg) {
+) -> element.Element(msg) {
   let header_icon = case column_state {
-    Draft -> icons.Pause
-    Active -> icons.Play
-    Closed -> icons.CheckCircle
+    PendingColumn -> icons.Pause
+    InProgressColumn -> icons.Play
+    ClosedColumn -> icons.CheckCircle
   }
 
   div([attribute.class("kanban-column " <> column_class)], [
@@ -236,20 +482,20 @@ fn view_column(
 /// Renders an empty state for kanban columns (AC12: different per column)
 fn view_empty_column(
   config: KanbanConfig(msg),
-  column_state: CardPhase,
-) -> Element(msg) {
+  column_state: KanbanColumn,
+) -> element.Element(msg) {
   // AC12: Different empty state text per column
   let empty_text = case column_state {
-    Draft -> i18n.t(config.locale, i18n_text.KanbanEmptyDraft)
-    Active -> i18n.t(config.locale, i18n_text.KanbanEmptyActive)
-    Closed -> i18n.t(config.locale, i18n_text.KanbanEmptyClosed)
+    PendingColumn -> i18n.t(config.locale, i18n_text.KanbanEmptyDraft)
+    InProgressColumn -> i18n.t(config.locale, i18n_text.KanbanEmptyActive)
+    ClosedColumn -> i18n.t(config.locale, i18n_text.KanbanEmptyClosed)
   }
 
   // AC12: Different icon per column state
   let empty_icon = case column_state {
-    Draft -> icons.InboxEmpty
-    Active -> icons.Pause
-    Closed -> icons.CheckCircle
+    PendingColumn -> icons.InboxEmpty
+    InProgressColumn -> icons.Pause
+    ClosedColumn -> icons.CheckCircle
   }
 
   div(
@@ -266,7 +512,10 @@ fn view_empty_column(
   )
 }
 
-fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
+fn view_card(
+  config: KanbanConfig(msg),
+  cwp: CardWithProgress,
+) -> element.Element(msg) {
   let health = task_health(cwp.tasks)
 
   card_with_tasks_surface.view(card_with_tasks_surface.Config(
@@ -297,7 +546,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
 fn view_health_items(
   config: KanbanConfig(msg),
   health: TaskHealth,
-) -> List(Element(msg)) {
+) -> List(element.Element(msg)) {
   let core_items = [
     view_health_chip(
       i18n.t(config.locale, i18n_text.MetricsAvailable),
@@ -333,7 +582,7 @@ fn view_health_chip(
   label: String,
   value: Int,
   tone_value: tone.Tone,
-) -> Element(msg) {
+) -> element.Element(msg) {
   signal_chip.metric_int(label, value, tone_value)
   |> signal_chip.with_class("kanban-health-chip")
   |> signal_chip.with_parts("kanban-health-value", "kanban-health-label")
@@ -342,7 +591,10 @@ fn view_health_chip(
   |> signal_chip.view
 }
 
-fn header_actions(config: KanbanConfig(msg), card: Card) -> List(Element(msg)) {
+fn header_actions(
+  config: KanbanConfig(msg),
+  card: Card,
+) -> List(element.Element(msg)) {
   let create_task_action =
     action_buttons.create_task_in_card_button(
       i18n.t(config.locale, i18n_text.NewTaskInCard(card.title)),
@@ -363,7 +615,10 @@ fn header_actions(config: KanbanConfig(msg), card: Card) -> List(Element(msg)) {
   }
 }
 
-fn delete_card_action(config: KanbanConfig(msg), card: Card) -> Element(msg) {
+fn delete_card_action(
+  config: KanbanConfig(msg),
+  card: Card,
+) -> element.Element(msg) {
   action_buttons.delete_button_with_availability_and_testid(
     i18n.t(config.locale, i18n_text.DeleteCardTooltip),
     config.on_card_delete(card.id),
@@ -390,10 +645,13 @@ fn card_delete_availability(
 fn compute_progress(
   cards: List(Card),
   tasks: List(Task),
+  all_cards: List(Card),
 ) -> List(CardWithProgress) {
   list.map(cards, fn(card) {
     let card_tasks =
-      list.filter(tasks, fn(t) { t.card_id == option.Some(card.id) })
+      list.filter(tasks, fn(task) {
+        task_in_card_subtree(task, card, all_cards)
+      })
     let completed = list.count(card_tasks, fn(t) { t.status == Done })
     let total = list.length(card_tasks)
     CardWithProgress(
@@ -403,6 +661,94 @@ fn compute_progress(
       tasks: card_tasks,
     )
   })
+}
+
+fn cards_in_scope(config: KanbanConfig(msg)) -> List(Card) {
+  case config.scope_kind {
+    member_pool.PlanScopeLevel ->
+      case config.selected_depth {
+        option.None -> config.cards
+        option.Some(depth) ->
+          list.filter(config.cards, fn(card) {
+            detail_policy.card_depth(card, config.cards) == depth
+          })
+      }
+    member_pool.PlanScopeCard ->
+      case config.selected_card_id {
+        option.None -> config.cards
+        option.Some(card_id) ->
+          list.filter(config.cards, fn(card) {
+            card_in_subtree(card.id, card_id, config.cards)
+          })
+      }
+  }
+}
+
+fn show_closed(
+  config: KanbanConfig(msg),
+  scoped_cards: List(Card),
+  tasks: List(Task),
+) -> Bool {
+  case config.show_closed {
+    option.Some(value) -> value
+    option.None ->
+      case config.scope_kind, config.selected_card_id {
+        member_pool.PlanScopeCard, option.Some(card_id) ->
+          card_scope_defaults_to_closed(card_id, scoped_cards, tasks)
+        _, _ -> False
+      }
+  }
+}
+
+fn card_scope_defaults_to_closed(
+  card_id: Int,
+  scoped_cards: List(Card),
+  tasks: List(Task),
+) -> Bool {
+  let has_child_cards =
+    list.any(scoped_cards, fn(card) {
+      card.parent_card_id == option.Some(card_id)
+    })
+  let has_direct_tasks =
+    list.any(tasks, fn(task) { task.card_id == option.Some(card_id) })
+
+  has_direct_tasks && !has_child_cards
+}
+
+fn has_work_in_progress(tasks: List(Task)) -> Bool {
+  list.any(tasks, fn(task) {
+    case task.status {
+      Claimed(Taken) | Claimed(Ongoing) -> True
+      _ -> False
+    }
+  })
+}
+
+fn task_in_card_subtree(task: Task, card: Card, all_cards: List(Card)) -> Bool {
+  case task.card_id {
+    option.Some(card_id) -> card_in_subtree(card_id, card.id, all_cards)
+    option.None -> False
+  }
+}
+
+fn card_in_subtree(
+  candidate_id: Int,
+  ancestor_id: Int,
+  all_cards: List(Card),
+) -> Bool {
+  case candidate_id == ancestor_id {
+    True -> True
+    False ->
+      case list.find(all_cards, fn(card) { card.id == candidate_id }) {
+        Ok(card) ->
+          case card.parent_card_id {
+            option.Some(parent_id) ->
+              card_in_subtree(parent_id, ancestor_id, all_cards)
+            option.None -> False
+          }
+        Error(_) -> False
+      }
+  }
 }
 
 fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
@@ -461,5 +807,19 @@ fn task_rank(task: Task) -> Int {
     False, Claimed(Ongoing) -> 2
     False, Claimed(Taken) -> 3
     False, Done -> 4
+  }
+}
+
+fn scope_kind_value(scope_kind: member_pool.PlanScopeKind) -> String {
+  case scope_kind {
+    member_pool.PlanScopeLevel -> "level"
+    member_pool.PlanScopeCard -> "card"
+  }
+}
+
+fn option_int_to_string(value: option.Option(Int)) -> String {
+  case value {
+    option.Some(id) -> int.to_string(id)
+    option.None -> ""
   }
 }

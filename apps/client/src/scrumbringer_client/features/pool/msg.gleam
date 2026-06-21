@@ -38,6 +38,11 @@ pub type Msg {
   MemberPoolCapabilityScopeChanged(String)
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
+  MemberPlanScopeKindChanged(String)
+  MemberPlanCapabilityModeChanged(String)
+  MemberPlanScopeDepthChanged(String)
+  MemberPlanScopeCardChanged(String)
+  MemberPlanClosedToggled(Bool)
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)

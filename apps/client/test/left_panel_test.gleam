@@ -215,7 +215,7 @@ pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
   assert_not_contains(html, "data-testid=\"nav-projects\"")
 }
 
-pub fn left_panel_work_nav_order_is_pool_cards_capabilities_people_en_test() {
+pub fn left_panel_work_nav_order_is_pool_plan_capabilities_people_en_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
     |> element.to_document_string
@@ -235,21 +235,21 @@ pub fn left_panel_work_nav_order_is_pool_cards_capabilities_people_en_test() {
   )
   |> assert_true
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Cards</span>")
+  assert_contains(html, "<span class=\"nav-label\">Plan</span>")
   assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
   assert_contains(html, "<span class=\"nav-label\">People</span>")
   assert_not_contains(html, ">List<")
 }
 
-pub fn left_sidebar_renders_depth_names_from_project_config_test() {
+pub fn left_sidebar_does_not_render_depth_names_from_project_config_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"nav-depth-1\"")
-  assert_contains(html, "<span class=\"nav-label\">Epics</span>")
-  assert_contains(html, "data-testid=\"nav-depth-2\"")
-  assert_contains(html, "<span class=\"nav-label\">Stories</span>")
+  assert_not_contains(html, "data-testid=\"nav-depth-1\"")
+  assert_not_contains(html, "<span class=\"nav-label\">Epics</span>")
+  assert_not_contains(html, "data-testid=\"nav-depth-2\"")
+  assert_not_contains(html, "<span class=\"nav-label\">Stories</span>")
   assert_not_contains(html, "<span class=\"nav-label\">Hierarchies</span>")
 }
 
@@ -271,27 +271,18 @@ pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
   )
 }
 
-pub fn left_sidebar_depth_route_only_activates_matching_depth_test() {
+pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_depth_route(2))))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"nav-depth-2\"")
-  assert_contains(html, "nav-link active")
-  assert_not_contains(
-    html,
-    "class=\"nav-link active\" data-testid=\"nav-cards\"",
-  )
-  assert_not_contains(
-    html,
-    "class=\"nav-link active\" data-testid=\"nav-depth-1\"",
-  )
-  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-depth-2\"")
+  assert_not_contains(html, "data-testid=\"nav-depth-2\"")
+  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-cards\"")
   count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
   count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
 }
 
-pub fn left_panel_work_nav_order_is_pool_cards_capacidades_personas_es_test() {
+pub fn left_panel_work_nav_order_is_pool_plan_capacidades_personas_es_test() {
   let config =
     left_panel.LeftPanelConfig(
       ..base_config(opt.Some(member_route(view_mode_module.Pool))),
@@ -315,7 +306,7 @@ pub fn left_panel_work_nav_order_is_pool_cards_capacidades_personas_es_test() {
   )
   |> assert_true
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Tarjetas</span>")
+  assert_contains(html, "<span class=\"nav-label\">Plan</span>")
   assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
   assert_contains(html, "<span class=\"nav-label\">Personas</span>")
   assert_not_contains(html, ">Lista<")

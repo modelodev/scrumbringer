@@ -644,7 +644,12 @@ fn update_without_view_mode(
     | pool_messages.MemberPoolCapabilityScopeChanged(_)
     | pool_messages.MemberClearFilters
     | pool_messages.MemberPoolSearchChanged(_)
-    | pool_messages.MemberPoolSearchDebounced(_) -> #(model, effect.none())
+    | pool_messages.MemberPoolSearchDebounced(_)
+    | pool_messages.MemberPlanScopeKindChanged(_)
+    | pool_messages.MemberPlanCapabilityModeChanged(_)
+    | pool_messages.MemberPlanScopeDepthChanged(_)
+    | pool_messages.MemberPlanScopeCardChanged(_)
+    | pool_messages.MemberPlanClosedToggled(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.
     pool_messages.MemberPoolFiltersToggled

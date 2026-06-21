@@ -71,7 +71,6 @@ import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
-import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/features/hierarchy/scope_view
@@ -1381,7 +1380,7 @@ fn kanban_config(
   kanban_board.KanbanConfig(
     locale: model.ui.locale,
     theme: model.ui.theme,
-    cards: cards_at_depth(cards, model.member.pool.member_card_depth_filter),
+    cards: cards,
     tasks: tasks,
     task_types: task_types,
     type_filter: model.member.pool.member_filters_type_id,
@@ -1418,20 +1417,30 @@ fn kanban_config(
         card_id,
       ))
     },
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    show_closed: model.member.pool.member_plan_show_closed,
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_lens_selected: fn(mode) {
+      client_state.pool_msg(pool_messages.ViewModeChanged(mode))
+    },
   )
-}
-
-fn cards_at_depth(
-  cards: List(Card),
-  depth_filter: opt.Option(Int),
-) -> List(Card) {
-  case depth_filter {
-    opt.None -> cards
-    opt.Some(depth) ->
-      list.filter(cards, fn(card) {
-        detail_policy.card_depth(card, cards) == depth
-      })
-  }
 }
 
 fn people_config(
@@ -1471,12 +1480,40 @@ fn capability_board_config(
     capability_scope: model.member.pool.member_capability_scope,
     my_capability_ids: my_capability_ids,
     type_filter: model.member.pool.member_filters_type_id,
+    capability_filter: model.member.pool.member_filters_capability_id,
     search_query: model.member.pool.member_filters_q,
     on_task_click: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
+    },
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    capability_mode: model.member.pool.member_plan_capability_mode,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    show_closed: model.member.pool.member_plan_show_closed,
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_capability_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanCapabilityModeChanged(value))
+    },
+    on_lens_selected: fn(mode) {
+      client_state.pool_msg(pool_messages.ViewModeChanged(mode))
     },
   )
 }

@@ -127,21 +127,8 @@ fn member_view_active(
   check_view_mode: Option(ViewMode),
 ) -> Bool {
   case check_view_mode, url_state.view_param(state) {
-    Some(Cards), Some(Cards) -> url_state.card_depth(state) == None
     Some(expected), Some(actual) -> expected == actual
     _, _ -> False
-  }
-}
-
-fn is_depth_route_active(
-  current_route: Option(router.Route),
-  depth: Int,
-) -> Bool {
-  case current_route {
-    Some(router.Member(state)) ->
-      url_state.view_param(state) == Some(Cards)
-      && url_state.card_depth(state) == Some(depth)
-    _ -> False
   }
 }
 
@@ -184,49 +171,6 @@ fn view_nav_item(
     [
       icons.nav_icon(icon, icons.Small),
       span([attribute.class("nav-label")], [text(i18n.t(locale, label_key))]),
-      badge_el,
-      active_indicator,
-    ],
-  )
-}
-
-fn view_nav_item_with_label(
-  is_active: Bool,
-  testid: String,
-  icon: icons.NavIcon,
-  label: String,
-  disabled: Bool,
-  on_click_msg: msg,
-  badge: Option(Int),
-) -> Element(msg) {
-  let active_class = case is_active {
-    True -> " active"
-    False -> ""
-  }
-  let active_indicator = case is_active {
-    True -> span([attribute.class("active-indicator")], [text("●")])
-    False -> element.none()
-  }
-  let badge_el = case badge {
-    Some(count) if count > 0 ->
-      span([attribute.class("badge")], [text(int.to_string(count))])
-    _ -> element.none()
-  }
-  let state_attrs = nav_state_attrs(is_active)
-
-  button(
-    list.append(
-      [
-        attribute.class("nav-link" <> active_class),
-        attribute.attribute("data-testid", testid),
-        attribute.disabled(disabled),
-        event.on_click(on_click_msg),
-      ],
-      state_attrs,
-    ),
-    [
-      icons.nav_icon(icon, icons.Small),
-      span([attribute.class("nav-label")], [text(label)]),
       badge_el,
       active_indicator,
     ],
@@ -399,7 +343,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
               config.on_navigate_cards,
             ),
           ],
-          list.append(view_depth_nav_links(config), [
+          [
             view_work_nav_link(
               config,
               Capabilities,
@@ -416,26 +360,11 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
               i18n_text.People,
               config.on_navigate_people,
             ),
-          ]),
+          ],
         ),
       ),
     ],
   )
-}
-
-fn view_depth_nav_links(config: LeftPanelConfig(msg)) -> List(Element(msg)) {
-  list.map(config.depth_names, fn(depth_name) {
-    let scope_view.DepthName(depth: depth, plural_name: plural, ..) = depth_name
-    view_nav_item_with_label(
-      is_depth_route_active(config.current_route, depth),
-      "nav-depth-" <> int.to_string(depth),
-      icons.Cards,
-      plural,
-      config.selected_project_id == None,
-      config.on_navigate_depth(depth),
-      None,
-    )
-  })
 }
 
 /// Renders a work section navigation link.

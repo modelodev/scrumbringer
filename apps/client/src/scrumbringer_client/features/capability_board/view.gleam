@@ -1,23 +1,29 @@
 import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
-import domain/card.{type Card}
+import domain/card.{type Card, Active}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded}
 import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
+import domain/view_mode
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/string
 import lustre/attribute
-import lustre/element.{type Element}
-import lustre/element/html.{div, h4, section, span, text}
+import lustre/element
+import lustre/element/html.{
+  button, div, h4, input, label, option as html_option, select, span, text,
+}
 import lustre/element/keyed
+import lustre/event
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
-import scrumbringer_client/client_ffi
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
@@ -25,7 +31,6 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_actions
@@ -50,23 +55,68 @@ pub type Config(msg) {
     capability_scope: CapabilityScope,
     my_capability_ids: List(Int),
     type_filter: Option(Int),
+    capability_filter: Option(Int),
     search_query: String,
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
+    depth_names: List(scope_view.DepthName),
+    scope_kind: member_pool.PlanScopeKind,
+    capability_mode: member_pool.PlanCapabilityMode,
+    selected_depth: Option(Int),
+    selected_card_id: Option(Int),
+    show_closed: Option(Bool),
+    on_scope_kind_change: fn(String) -> msg,
+    on_scope_depth_change: fn(String) -> msg,
+    on_scope_card_change: fn(String) -> msg,
+    on_closed_toggled: fn(Bool) -> msg,
+    on_capability_mode_change: fn(String) -> msg,
+    on_lens_selected: fn(view_mode.ViewMode) -> msg,
+  )
+}
+
+type CapabilityColumn {
+  CapabilityColumn(
+    key: String,
+    name: String,
+    capability_id: Option(Int),
+    is_unassigned: Bool,
+  )
+}
+
+type CapabilityHealth {
+  CapabilityHealth(
+    available: Int,
+    claimed: Int,
+    ongoing: Int,
+    done: Int,
+    blocked: Int,
+  )
+}
+
+type CapabilityCell {
+  CapabilityCell(
+    column: CapabilityColumn,
+    tasks: List(Task),
+    health: CapabilityHealth,
   )
 }
 
 type CapabilityRow {
   CapabilityRow(
     id: String,
-    name: String,
-    pending: List(Task),
-    claimed: List(Task),
-    ongoing: List(Task),
-    blocked_count: Int,
-    oldest_age_days: Int,
-    pressure_score: Int,
-    is_unassigned: Bool,
+    title: String,
+    card: Card,
+    cells: List(CapabilityCell),
+    tasks: List(Task),
+    health: CapabilityHealth,
+  )
+}
+
+type CapabilityData {
+  CapabilityData(
+    rows: List(CapabilityRow),
+    columns: List(CapabilityColumn),
+    health: CapabilityHealth,
   )
 }
 
@@ -75,62 +125,77 @@ type ViewState {
   ErrorState(message: String)
   EmptyState
   NoResultsState
-  ReadyState(rows: List(CapabilityRow))
+  ReadyState(data: CapabilityData)
 }
 
-type LaneState {
-  PendingLane
-  ClaimedLane
-  OngoingLane
-}
-
-pub fn view(config: Config(msg)) -> Element(msg) {
+pub fn view(config: Config(msg)) -> element.Element(msg) {
   let state = derive_state(config)
+  let include_closed = include_closed(config)
+
   let content = case state {
     LoadingState ->
-      empty_state.notice_with_class(
+      empty_notice(
         "clock",
         i18n.t(config.locale, i18n_text.CapabilityBoardLoading),
-        empty_state.Loading,
         "capability-board-state capability-board-loading",
       )
     ErrorState(message) ->
-      empty_state.notice_with_class(
+      empty_notice(
         "exclamation-triangle",
         message,
-        empty_state.Error,
         "capability-board-state capability-board-error",
       )
     EmptyState ->
-      empty_state.notice_with_class(
+      empty_notice(
         "clipboard-document-list",
         i18n.t(config.locale, i18n_text.CapabilityBoardEmpty),
-        empty_state.HealthyEmpty,
         "capability-board-state capability-board-empty",
       )
     NoResultsState ->
-      empty_state.notice_with_class(
+      empty_notice(
         "magnifying-glass",
         i18n.t(config.locale, i18n_text.CapabilityBoardNoResults),
-        empty_state.NoResults,
         "capability-board-state capability-board-no-results",
       )
-    ReadyState(rows) -> view_rows(config, rows)
+    ReadyState(data) ->
+      case config.capability_mode {
+        member_pool.PlanCapabilityList -> view_list(config, data)
+        member_pool.PlanCapabilityMatrix -> view_matrix(config, data)
+      }
   }
 
-  section(
+  div(
     [
       attribute.class("capability-board"),
       attribute.attribute("data-testid", "capability-board"),
     ],
     [
-      view_surface_header(config, state),
+      view_surface_header(config, state, include_closed),
       content,
     ],
   )
 }
 
-fn view_surface_header(config: Config(msg), state: ViewState) -> Element(msg) {
+fn empty_notice(_icon: String, message: String, class_name: String) {
+  div([attribute.class(class_name)], [
+    span(
+      [
+        attribute.class("empty-icon"),
+        attribute.attribute("aria-hidden", "true"),
+      ],
+      [
+        icons.nav_icon(icons.InboxEmpty, icons.Medium),
+      ],
+    ),
+    span([attribute.class("empty-text")], [text(message)]),
+  ])
+}
+
+fn view_surface_header(
+  config: Config(msg),
+  state: ViewState,
+  include_closed: Bool,
+) -> element.Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
     title: i18n.t(config.locale, i18n_text.CapabilitiesBoard),
     purpose: i18n.t(config.locale, i18n_text.CapabilityBoardPurpose),
@@ -139,6 +204,7 @@ fn view_surface_header(config: Config(msg), state: ViewState) -> Element(msg) {
     extra_class: Some("capability-board-header"),
     testid: Some("capability-board-header"),
   ))
+  |> with_scope_lens_controls(config, include_closed)
 }
 
 fn capability_summary(
@@ -146,25 +212,35 @@ fn capability_summary(
   state: ViewState,
 ) -> List(work_surface.SummaryChip) {
   case state {
-    ReadyState(rows) -> [
+    ReadyState(CapabilityData(health: health, rows: rows, columns: columns)) -> [
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.KanbanSummaryCards),
+        int.to_string(list.length(rows)),
+        tone.Neutral,
+      ),
+      work_surface.summary_chip(
+        i18n.t(config.locale, i18n_text.Capabilities),
+        int.to_string(list.length(columns)),
+        tone.Neutral,
+      ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsAvailable),
-        int.to_string(sum_rows(rows, fn(row) { list.length(row.pending) })),
+        int.to_string(health.available),
         tone.Available,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsClaimed),
-        int.to_string(sum_rows(rows, fn(row) { list.length(row.claimed) })),
+        int.to_string(health.claimed),
         tone.Claimed,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.MetricsOngoing),
-        int.to_string(sum_rows(rows, fn(row) { list.length(row.ongoing) })),
+        int.to_string(health.ongoing),
         tone.Ongoing,
       ),
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.Blocked),
-        int.to_string(sum_rows(rows, fn(row) { row.blocked_count })),
+        int.to_string(health.blocked),
         tone.Blocked,
       ),
     ]
@@ -172,8 +248,244 @@ fn capability_summary(
   }
 }
 
-fn sum_rows(rows: List(CapabilityRow), value: fn(CapabilityRow) -> Int) -> Int {
-  list.fold(rows, 0, fn(total, row) { total + value(row) })
+fn with_scope_lens_controls(
+  header: element.Element(msg),
+  config: Config(msg),
+  include_closed: Bool,
+) -> element.Element(msg) {
+  div([attribute.class("plan-lens-shell")], [
+    header,
+    div(
+      [
+        attribute.class("plan-scope-lens"),
+        attribute.attribute("data-testid", "plan-scope-lens"),
+      ],
+      [
+        view_scope_controls(config),
+        view_lens_controls(config),
+        view_mode_controls(config),
+        label([attribute.class("plan-closed-toggle")], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(include_closed),
+            attribute.attribute("data-testid", "plan-closed-toggle"),
+            event.on_check(config.on_closed_toggled),
+          ]),
+          span([], [text(i18n.t(config.locale, i18n_text.PlanClosed))]),
+        ]),
+      ],
+    ),
+  ])
+}
+
+fn view_scope_controls(config: Config(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-scope-controls")], [
+    label([], [text(i18n.t(config.locale, i18n_text.PlanScope))]),
+    select(
+      [
+        attribute.attribute("data-testid", "plan-scope-kind"),
+        attribute.value(scope_kind_value(config.scope_kind)),
+        event.on_input(config.on_scope_kind_change),
+      ],
+      [
+        html_option(
+          [attribute.value("level")],
+          i18n.t(config.locale, i18n_text.PlanScopeLevel),
+        ),
+        html_option(
+          [attribute.value("card")],
+          i18n.t(config.locale, i18n_text.PlanScopeCard),
+        ),
+      ],
+    ),
+    case config.scope_kind {
+      member_pool.PlanScopeLevel -> view_depth_selector(config)
+      member_pool.PlanScopeCard -> view_card_selector(config)
+    },
+  ])
+}
+
+fn view_depth_selector(config: Config(msg)) -> element.Element(msg) {
+  select(
+    [
+      attribute.attribute("data-testid", "plan-scope-depth"),
+      attribute.value(option_int_to_string(config.selected_depth)),
+      event.on_input(config.on_scope_depth_change),
+    ],
+    [
+      html_option(
+        [attribute.value("")],
+        i18n.t(config.locale, i18n_text.PlanScopeAllLevels),
+      ),
+      ..list.map(config.depth_names, fn(depth_name) {
+        let scope_view.DepthName(depth: depth, plural_name: label, ..) =
+          depth_name
+        html_option(
+          [
+            attribute.value(int.to_string(depth)),
+            attribute.selected(config.selected_depth == Some(depth)),
+          ],
+          label,
+        )
+      })
+    ],
+  )
+}
+
+fn view_card_selector(config: Config(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-card-scope-control")], [
+    input([
+      attribute.type_("search"),
+      attribute.attribute("list", "capability-active-card-options"),
+      attribute.attribute("data-testid", "plan-scope-card-search"),
+      attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
+      attribute.value(selected_card_label(config)),
+      event.on_input(fn(value) {
+        config.on_scope_card_change(card_id_for_search_value(config, value))
+      }),
+    ]),
+    element.element(
+      "datalist",
+      [attribute.id("capability-active-card-options")],
+      active_card_datalist_options(config),
+    ),
+    select(
+      [
+        attribute.attribute("data-testid", "plan-scope-card"),
+        attribute.value(option_int_to_string(config.selected_card_id)),
+        event.on_input(config.on_scope_card_change),
+      ],
+      [
+        html_option(
+          [attribute.value("")],
+          i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+        ),
+        ..active_card_options(config)
+      ],
+    ),
+  ])
+}
+
+fn active_card_options(config: Config(msg)) -> List(element.Element(msg)) {
+  config.cards
+  |> list.filter(fn(card) { card.state == Active })
+  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
+  |> list.map(fn(card) {
+    html_option(
+      [
+        attribute.value(int.to_string(card.id)),
+        attribute.selected(config.selected_card_id == Some(card.id)),
+      ],
+      card.title,
+    )
+  })
+}
+
+fn active_card_datalist_options(
+  config: Config(msg),
+) -> List(element.Element(msg)) {
+  config.cards
+  |> list.filter(fn(card) { card.state == Active })
+  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
+  |> list.map(fn(card) {
+    html_option([attribute.value(card_search_label(card))], "")
+  })
+}
+
+fn selected_card_label(config: Config(msg)) -> String {
+  case config.selected_card_id {
+    Some(card_id) ->
+      case list.find(config.cards, fn(card) { card.id == card_id }) {
+        Ok(card) -> card_search_label(card)
+        Error(_) -> ""
+      }
+    None -> ""
+  }
+}
+
+fn card_id_for_search_value(config: Config(msg), value: String) -> String {
+  case list.find(config.cards, fn(card) { card_search_label(card) == value }) {
+    Ok(card) -> int.to_string(card.id)
+    Error(_) -> ""
+  }
+}
+
+fn card_search_label(card: Card) -> String {
+  card.title <> " #" <> int.to_string(card.id)
+}
+
+fn view_lens_controls(config: Config(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-lens-controls")], [
+    span([attribute.class("plan-lens-label")], [
+      text(i18n.t(config.locale, i18n_text.PlanLens)),
+    ]),
+    view_lens_button(config, i18n_text.PlanLensKanban, False, view_mode.Cards),
+    view_lens_button(
+      config,
+      i18n_text.PlanLensCapabilities,
+      True,
+      view_mode.Capabilities,
+    ),
+    view_lens_button(config, i18n_text.PlanLensPeople, False, view_mode.People),
+  ])
+}
+
+fn view_lens_button(
+  config: Config(msg),
+  label_key: i18n_text.Text,
+  active: Bool,
+  mode: view_mode.ViewMode,
+) -> element.Element(msg) {
+  let class = case active {
+    True -> "plan-lens-btn is-active"
+    False -> "plan-lens-btn"
+  }
+
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(class),
+      attribute.attribute("aria-pressed", case active {
+        True -> "true"
+        False -> "false"
+      }),
+      event.on_click(config.on_lens_selected(mode)),
+    ],
+    [text(i18n.t(config.locale, label_key))],
+  )
+}
+
+fn view_mode_controls(config: Config(msg)) -> element.Element(msg) {
+  div([attribute.class("plan-capability-mode")], [
+    span([attribute.class("plan-lens-label")], [
+      text(i18n.t(config.locale, i18n_text.PlanCapabilityMode)),
+    ]),
+    view_mode_button(config, i18n_text.PlanCapabilityList, "list"),
+    view_mode_button(config, i18n_text.PlanCapabilityMatrix, "matrix"),
+  ])
+}
+
+fn view_mode_button(
+  config: Config(msg),
+  label_key: i18n_text.Text,
+  value: String,
+) -> element.Element(msg) {
+  let active = capability_mode_value(config.capability_mode) == value
+  let class = case active {
+    True -> "plan-lens-btn is-active"
+    False -> "plan-lens-btn"
+  }
+
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(class),
+      attribute.attribute("data-testid", "capability-mode-" <> value),
+      attribute.attribute("aria-pressed", bool_string(active)),
+      event.on_click(config.on_capability_mode_change(value)),
+    ],
+    [text(i18n.t(config.locale, label_key))],
+  )
 }
 
 fn derive_state(config: Config(msg)) -> ViewState {
@@ -182,14 +494,19 @@ fn derive_state(config: Config(msg)) -> ViewState {
     _, Failed(err), _ -> ErrorState(capability_board_error(config.locale, err))
     _, _, Failed(err) -> ErrorState(capability_board_error(config.locale, err))
     Loaded(tasks), Loaded(task_types), Loaded(capabilities) -> {
-      let active_tasks = list.filter(tasks, is_active_task)
+      let status_tasks =
+        tasks
+        |> list.filter(fn(task) { include_task_status(config, task) })
 
-      case active_tasks {
+      let filtered_tasks =
+        status_tasks
+        |> list.filter(fn(task) {
+          matches_active_filters(task, config, task_types)
+        })
+
+      case status_tasks {
         [] -> EmptyState
         _ -> {
-          let filtered_tasks =
-            active_tasks |> list.filter(matches_active_filters(_, config))
-
           case filtered_tasks {
             [] -> NoResultsState
             _ -> {
@@ -197,7 +514,14 @@ fn derive_state(config: Config(msg)) -> ViewState {
                 build_rows(filtered_tasks, task_types, capabilities, config)
               case rows {
                 [] -> NoResultsState
-                _ -> ReadyState(rows)
+                _ ->
+                  ReadyState(CapabilityData(
+                    rows: rows,
+                    columns: columns_from_rows(rows),
+                    health: health_for_tasks(
+                      list.flat_map(rows, fn(row) { row.tasks }),
+                    ),
+                  ))
               }
             }
           }
@@ -216,22 +540,26 @@ fn capability_board_error(locale: Locale, err: ApiError) -> String {
   }
 }
 
-fn is_active_task(task: Task) -> Bool {
-  task.status != Done
+fn include_task_status(config: Config(msg), task: Task) -> Bool {
+  case task.status {
+    Done -> include_closed(config)
+    _ -> True
+  }
 }
 
-fn matches_active_filters(task: Task, config: Config(msg)) -> Bool {
+fn matches_active_filters(
+  task: Task,
+  config: Config(msg),
+  task_types: List(TaskType),
+) -> Bool {
   work_filters.matches(
     work_filters.Filters(
       type_filter: config.type_filter,
-      capability_filter: None,
+      capability_filter: config.capability_filter,
       search_query: config.search_query,
       capability_scope: config.capability_scope,
       my_capability_ids: config.my_capability_ids,
-      task_types: case config.task_types {
-        Loaded(task_types) -> task_types
-        _ -> []
-      },
+      task_types: task_types,
     ),
     task,
   )
@@ -243,131 +571,155 @@ fn build_rows(
   capabilities: List(Capability),
   config: Config(msg),
 ) -> List(CapabilityRow) {
-  let assigned_rows =
-    capabilities
-    |> list.filter_map(fn(capability) {
-      let row_tasks =
-        tasks
-        |> list.filter(fn(task) {
-          work_filters.task_capability_id(task, task_types)
-          == Some(capability.id)
-        })
+  let columns =
+    columns_for_tasks(tasks, task_types, capabilities, config.locale)
 
-      row_from_tasks(
-        id: "capability-" <> int.to_string(capability.id),
+  row_cards(config)
+  |> list.filter_map(fn(card) {
+    let row_tasks =
+      tasks
+      |> list.filter(fn(task) { task_in_card_subtree(task, card, config.cards) })
+
+    case row_tasks {
+      [] -> Error(Nil)
+      _ -> {
+        let cells =
+          columns
+          |> list.map(fn(column) {
+            let cell_tasks =
+              row_tasks
+              |> list.filter(fn(task) {
+                task_matches_column(task, column, task_types, capabilities)
+              })
+              |> sort_tasks
+            CapabilityCell(
+              column: column,
+              tasks: cell_tasks,
+              health: health_for_tasks(cell_tasks),
+            )
+          })
+
+        Ok(CapabilityRow(
+          id: "card-" <> int.to_string(card.id),
+          title: card.title,
+          card: card,
+          cells: cells,
+          tasks: sort_tasks(row_tasks),
+          health: health_for_tasks(row_tasks),
+        ))
+      }
+    }
+  })
+  |> list.sort(compare_rows)
+}
+
+fn row_cards(config: Config(msg)) -> List(Card) {
+  case config.scope_kind {
+    member_pool.PlanScopeLevel ->
+      case config.selected_depth {
+        None -> top_level_cards(config.cards)
+        Some(depth) ->
+          list.filter(config.cards, fn(card) {
+            detail_policy.card_depth(card, config.cards) == depth
+          })
+      }
+    member_pool.PlanScopeCard ->
+      case config.selected_card_id {
+        None -> top_level_cards(config.cards)
+        Some(card_id) ->
+          case direct_child_cards(card_id, config.cards) {
+            [] ->
+              config.cards
+              |> list.filter(fn(card) { card.id == card_id })
+            children -> children
+          }
+      }
+  }
+}
+
+fn top_level_cards(cards: List(Card)) -> List(Card) {
+  case list.filter(cards, fn(card) { card.parent_card_id == None }) {
+    [] -> cards
+    roots -> roots
+  }
+}
+
+fn direct_child_cards(card_id: Int, cards: List(Card)) -> List(Card) {
+  cards
+  |> list.filter(fn(card) { card.parent_card_id == Some(card_id) })
+}
+
+fn columns_for_tasks(
+  tasks: List(Task),
+  task_types: List(TaskType),
+  capabilities: List(Capability),
+  locale: Locale,
+) -> List(CapabilityColumn) {
+  let assigned =
+    capabilities
+    |> list.filter(fn(capability) {
+      list.any(tasks, fn(task) {
+        work_filters.task_capability_id(task, task_types) == Some(capability.id)
+      })
+    })
+    |> list.map(fn(capability) {
+      CapabilityColumn(
+        key: "capability-" <> int.to_string(capability.id),
         name: capability.name,
-        tasks: row_tasks,
+        capability_id: Some(capability.id),
         is_unassigned: False,
       )
     })
-    |> list.sort(compare_rows)
+    |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-  let unassigned_tasks =
-    tasks
-    |> list.filter(fn(task) {
+  let has_unassigned =
+    list.any(tasks, fn(task) {
       case work_filters.task_capability_id(task, task_types) {
         Some(capability_id) -> !has_capability(capabilities, capability_id)
         None -> True
       }
     })
 
-  case
-    row_from_tasks(
-      id: "capability-unassigned",
-      name: i18n.t(config.locale, i18n_text.NoCapability),
-      tasks: unassigned_tasks,
-      is_unassigned: True,
-    )
-  {
-    Error(Nil) -> assigned_rows
-    Ok(unassigned_row) ->
-      list.append(assigned_rows, [unassigned_row])
-      |> list.sort(compare_rows)
-  }
-}
-
-fn row_from_tasks(
-  id id: String,
-  name name: String,
-  tasks tasks: List(Task),
-  is_unassigned is_unassigned: Bool,
-) -> Result(CapabilityRow, Nil) {
-  let pending = filter_lane(tasks, PendingLane)
-  let claimed = filter_lane(tasks, ClaimedLane)
-  let ongoing = filter_lane(tasks, OngoingLane)
-  let blocked_count = list.count(tasks, fn(task) { task.blocked_count > 0 })
-  let oldest_age_days = oldest_task_age_days(tasks)
-
-  case pending, claimed, ongoing {
-    [], [], [] -> Error(Nil)
-    _, _, _ ->
-      Ok(CapabilityRow(
-        id: id,
-        name: name,
-        pending: pending,
-        claimed: claimed,
-        ongoing: ongoing,
-        blocked_count: blocked_count,
-        oldest_age_days: oldest_age_days,
-        pressure_score: pressure_score(
-          pending: list.length(pending),
-          claimed: list.length(claimed),
-          ongoing: list.length(ongoing),
-          blocked: blocked_count,
-          oldest_age_days: oldest_age_days,
+  case has_unassigned {
+    True ->
+      list.append(assigned, [
+        CapabilityColumn(
+          key: "capability-unassigned",
+          name: i18n.t(locale, i18n_text.NoCapability),
+          capability_id: None,
+          is_unassigned: True,
         ),
-        is_unassigned: is_unassigned,
-      ))
+      ])
+    False -> assigned
   }
 }
 
-fn oldest_task_age_days(tasks: List(Task)) -> Int {
-  tasks
-  |> list.map(fn(task) { client_ffi.days_since_iso(task.created_at) })
-  |> list.fold(0, int.max)
+fn columns_from_rows(rows: List(CapabilityRow)) -> List(CapabilityColumn) {
+  rows
+  |> list.flat_map(fn(row) { row.cells })
+  |> list.filter(fn(cell) { cell.tasks != [] })
+  |> list.fold([], fn(columns: List(CapabilityColumn), cell) {
+    case has_column(columns, cell.column.key) {
+      True -> columns
+      False -> list.append(columns, [cell.column])
+    }
+  })
 }
 
-fn pressure_score(
-  pending pending: Int,
-  claimed claimed: Int,
-  ongoing ongoing: Int,
-  blocked blocked: Int,
-  oldest_age_days oldest_age_days: Int,
-) -> Int {
-  let unstarted_pressure = case pending > 0 && ongoing == 0 {
-    True -> 80
-    False -> 0
-  }
-
-  let claimed_pressure = int.max(claimed - ongoing, 0) * 8
-  let age_pressure = int.min(oldest_age_days, 30)
-
-  unstarted_pressure + { blocked * 40 } + claimed_pressure + age_pressure
+fn has_column(columns: List(CapabilityColumn), key: String) -> Bool {
+  list.any(columns, fn(column) { column.key == key })
 }
 
-fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {
-  case int.compare(b.pressure_score, a.pressure_score) {
-    order.Eq ->
-      case a.is_unassigned, b.is_unassigned {
-        True, False -> order.Gt
-        False, True -> order.Lt
-        _, _ -> string.compare(a.name, b.name)
-      }
-    other -> other
-  }
-}
-
-fn filter_lane(tasks: List(Task), lane: LaneState) -> List(Task) {
-  tasks
-  |> list.filter(fn(task) { lane_matches(task, lane) })
-  |> sort_tasks
-}
-
-fn lane_matches(task: Task, lane: LaneState) -> Bool {
-  case lane, task.status {
-    PendingLane, Available -> True
-    ClaimedLane, Claimed(Taken) -> True
-    OngoingLane, Claimed(Ongoing) -> True
+fn task_matches_column(
+  task: Task,
+  column: CapabilityColumn,
+  task_types: List(TaskType),
+  capabilities: List(Capability),
+) -> Bool {
+  case column.capability_id, work_filters.task_capability_id(task, task_types) {
+    Some(column_id), Some(task_column_id) -> column_id == task_column_id
+    None, Some(task_column_id) -> !has_capability(capabilities, task_column_id)
+    None, None -> True
     _, _ -> False
   }
 }
@@ -376,99 +728,357 @@ fn has_capability(capabilities: List(Capability), capability_id: Int) -> Bool {
   list.any(capabilities, fn(capability) { capability.id == capability_id })
 }
 
-fn sort_tasks(tasks: List(Task)) -> List(Task) {
-  list.sort(tasks, compare_tasks)
-}
-
-fn compare_tasks(a: Task, b: Task) -> order.Order {
-  case string.compare(a.title, b.title) {
-    order.Eq -> int.compare(a.id, b.id)
-    other -> other
-  }
-}
-
-fn view_rows(config: Config(msg), rows: List(CapabilityRow)) -> Element(msg) {
+fn view_list(config: Config(msg), data: CapabilityData) -> element.Element(msg) {
   keyed.div(
-    [attribute.class("capability-board-rows")],
-    list.map(rows, fn(row) { #(row.id, view_row(config, row)) }),
+    [
+      attribute.class("capability-list"),
+      attribute.attribute("data-testid", "capability-list"),
+    ],
+    data.columns
+      |> list.map(fn(column) {
+        #(column.key, view_list_section(config, column, data.rows))
+      }),
   )
 }
 
-fn view_row(config: Config(msg), row: CapabilityRow) -> Element(msg) {
-  let heading_id = row.id <> "-heading"
-  let row_class = case row.is_unassigned {
-    True -> "capability-board-row capability-board-row-unassigned"
-    False -> "capability-board-row"
-  }
+fn view_list_section(
+  config: Config(msg),
+  column: CapabilityColumn,
+  rows: List(CapabilityRow),
+) -> element.Element(msg) {
+  let cells =
+    rows
+    |> list.filter_map(fn(row) {
+      case list.find(row.cells, fn(cell) { cell.column.key == column.key }) {
+        Ok(cell) ->
+          case cell.tasks {
+            [] -> Error(Nil)
+            _ -> Ok(#(row, cell))
+          }
+        Error(_) -> Error(Nil)
+      }
+    })
 
-  section(
+  let health =
+    health_for_tasks(list.flat_map(cells, fn(pair) { { pair.1 }.tasks }))
+
+  div(
     [
-      attribute.class(row_class),
-      attribute.attribute("aria-labelledby", heading_id),
-      attribute.attribute("data-testid", "capability-row"),
-      attribute.attribute(
-        "data-pressure-score",
-        int.to_string(row.pressure_score),
-      ),
+      attribute.class("capability-list-section"),
+      attribute.attribute("data-testid", "capability-list-section"),
     ],
     [
-      div([attribute.class("capability-board-row-header")], [
-        div([attribute.class("capability-board-row-heading")], [
-          h4(
-            [
-              attribute.class("capability-board-row-title"),
-              attribute.attribute("id", heading_id),
-            ],
-            [text(row.name)],
+      div([attribute.class("capability-list-section-header")], [
+        h4([], [text(column.name)]),
+        div([attribute.class("capability-board-row-summary")], [
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.CapabilityBoardTotal),
+            health_total(health),
+            tone.Neutral,
+            "total",
           ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.CapabilityBoardComplete),
+            health.done,
+            tone.Neutral,
+            "done",
+          ),
+          view_summary_chip(
+            i18n.t(config.locale, i18n_text.Blocked),
+            health.blocked,
+            tone.Blocked,
+            "blocked",
+          ),
+        ]),
+      ]),
+      keyed.div([attribute.class("capability-list-rows")], case cells {
+        [] -> [#("empty", view_no_tasks(config))]
+        _ ->
+          list.map(cells, fn(pair) {
+            let #(row, cell) = pair
+            #(row.id <> "-" <> column.key, view_list_row(config, row, cell))
+          })
+      }),
+    ],
+  )
+}
+
+fn view_list_row(
+  config: Config(msg),
+  row: CapabilityRow,
+  cell: CapabilityCell,
+) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-list-row"),
+      attribute.attribute("data-testid", "capability-list-row"),
+      attribute.attribute("data-card-id", int.to_string(row.card.id)),
+    ],
+    [
+      div([attribute.class("capability-list-row-header")], [
+        div([attribute.class("capability-list-row-title")], [
           span(
             [
               attribute.class(
-                "capability-board-pressure " <> pressure_tone(row),
+                "capability-row-swatch "
+                <> task_color.card_border_class(row.card.color),
               ),
+              attribute.attribute("aria-hidden", "true"),
             ],
-            [text(pressure_label(config.locale, row))],
+            [],
           ),
+          h4([], [text(row.title)]),
         ]),
         div([attribute.class("capability-board-row-summary")], [
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsAvailable),
-            list.length(row.pending),
+            cell.health.available,
             tone.Available,
             "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsClaimed),
-            list.length(row.claimed),
+            cell.health.claimed,
             tone.Claimed,
             "",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.MetricsOngoing),
-            list.length(row.ongoing),
+            cell.health.ongoing,
             tone.Ongoing,
             "",
           ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.Blocked),
-            row.blocked_count,
-            tone.Blocked,
-            "",
-          ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.CapabilityBoardOldest),
-            row.oldest_age_days,
-            tone.Neutral,
-            "age",
-          ),
         ]),
       ]),
-      div([attribute.class("capability-board-row-grid")], [
-        view_lane_group(config, PendingLane, row.pending),
-        view_lane_group(config, ClaimedLane, row.claimed),
-        view_lane_group(config, OngoingLane, row.ongoing),
+      keyed.div(
+        [attribute.class("capability-list-task-preview")],
+        cell.tasks
+          |> sort_tasks
+          |> list.take(3)
+          |> list.map(fn(task) {
+            #(int.to_string(task.id), view_task_item(config, task))
+          }),
+      ),
+    ],
+  )
+}
+
+fn view_matrix(
+  config: Config(msg),
+  data: CapabilityData,
+) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-matrix"),
+      attribute.attribute("data-testid", "capability-matrix"),
+      attribute.attribute("role", "table"),
+    ],
+    [
+      div(
+        [
+          attribute.class("capability-matrix-row capability-matrix-header-row"),
+          attribute.attribute("role", "row"),
+        ],
+        [
+          view_matrix_header_cell(row_label(config)),
+          ..list.append(
+            list.map(data.columns, fn(column) {
+              view_matrix_header_cell(column.name)
+            }),
+            [
+              view_matrix_header_cell(i18n.t(
+                config.locale,
+                i18n_text.CapabilityBoardTotal,
+              )),
+            ],
+          )
+        ],
+      ),
+      keyed.div(
+        [
+          attribute.class("capability-matrix-body"),
+          attribute.attribute("role", "rowgroup"),
+        ],
+        list.map(data.rows, fn(row) {
+          #(row.id, view_matrix_row(config, row, data.columns))
+        }),
+      ),
+      view_matrix_total_row(config, data),
+    ],
+  )
+}
+
+fn view_matrix_header_cell(label_text: String) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-matrix-cell capability-matrix-header-cell"),
+      attribute.attribute("role", "columnheader"),
+    ],
+    [text(label_text)],
+  )
+}
+
+fn view_matrix_row(
+  config: Config(msg),
+  row: CapabilityRow,
+  columns: List(CapabilityColumn),
+) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-matrix-row"),
+      attribute.attribute("role", "row"),
+      attribute.attribute("data-testid", "capability-matrix-row"),
+    ],
+    [
+      div(
+        [
+          attribute.class("capability-matrix-cell capability-matrix-card-cell"),
+          attribute.attribute("role", "rowheader"),
+        ],
+        [
+          span(
+            [
+              attribute.class(
+                "capability-row-swatch "
+                <> task_color.card_border_class(row.card.color),
+              ),
+              attribute.attribute("aria-hidden", "true"),
+            ],
+            [],
+          ),
+          span([], [text(row.title)]),
+        ],
+      ),
+      ..list.append(
+        list.map(columns, fn(column) {
+          view_matrix_body_cell(config, row, column)
+        }),
+        [view_matrix_total_cell(config, row.health)],
+      )
+    ],
+  )
+}
+
+fn view_matrix_body_cell(
+  config: Config(msg),
+  row: CapabilityRow,
+  column: CapabilityColumn,
+) -> element.Element(msg) {
+  case list.find(row.cells, fn(cell) { cell.column.key == column.key }) {
+    Ok(cell) ->
+      case cell.tasks {
+        [] -> view_empty_matrix_cell(config)
+        _ -> view_matrix_health_cell(config, cell.health, False)
+      }
+    Error(_) -> view_empty_matrix_cell(config)
+  }
+}
+
+fn view_empty_matrix_cell(config: Config(msg)) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-matrix-cell capability-matrix-empty-cell"),
+      attribute.attribute("role", "cell"),
+      attribute.attribute("data-testid", "capability-matrix-empty-cell"),
+      attribute.attribute(
+        "title",
+        i18n.t(config.locale, i18n_text.CapabilityBoardEmptyCell),
+      ),
+    ],
+    [text("-")],
+  )
+}
+
+fn view_matrix_total_cell(
+  config: Config(msg),
+  health: CapabilityHealth,
+) -> element.Element(msg) {
+  view_matrix_health_cell(config, health, True)
+}
+
+fn view_matrix_health_cell(
+  config: Config(msg),
+  health: CapabilityHealth,
+  total: Bool,
+) -> element.Element(msg) {
+  let class = case total {
+    True -> "capability-matrix-cell capability-matrix-total-cell"
+    False -> "capability-matrix-cell"
+  }
+
+  div(
+    [
+      attribute.class(class),
+      attribute.attribute("role", "cell"),
+      attribute.attribute("data-testid", case total {
+        True -> "capability-matrix-total-cell"
+        False -> "capability-matrix-cell"
+      }),
+    ],
+    [
+      span([attribute.class("capability-matrix-total")], [
+        text(int.to_string(health_total(health))),
+      ]),
+      span([attribute.class("capability-matrix-breakdown")], [
+        text(
+          i18n.t(config.locale, i18n_text.MetricsOngoing)
+          <> " "
+          <> int.to_string(health.ongoing)
+          <> " / "
+          <> i18n.t(config.locale, i18n_text.CapabilityBoardComplete)
+          <> " "
+          <> int.to_string(health.done),
+        ),
       ]),
     ],
+  )
+}
+
+fn view_matrix_total_row(
+  config: Config(msg),
+  data: CapabilityData,
+) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-matrix-row capability-matrix-total-row"),
+      attribute.attribute("role", "row"),
+      attribute.attribute("data-testid", "capability-matrix-total-row"),
+    ],
+    [
+      div(
+        [
+          attribute.class("capability-matrix-cell capability-matrix-card-cell"),
+          attribute.attribute("role", "rowheader"),
+        ],
+        [text(i18n.t(config.locale, i18n_text.CapabilityBoardTotal))],
+      ),
+      ..list.append(
+        list.map(data.columns, fn(column) {
+          let tasks =
+            data.rows
+            |> list.flat_map(fn(row) {
+              case
+                list.find(row.cells, fn(cell) { cell.column.key == column.key })
+              {
+                Ok(cell) -> cell.tasks
+                Error(_) -> []
+              }
+            })
+          view_matrix_total_cell(config, health_for_tasks(tasks))
+        }),
+        [view_matrix_total_cell(config, data.health)],
+      )
+    ],
+  )
+}
+
+fn view_no_tasks(config: Config(msg)) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-list-empty"),
+      attribute.attribute("data-testid", "capability-list-empty"),
+    ],
+    [text(i18n.t(config.locale, i18n_text.CapabilityBoardNoTasks))],
   )
 }
 
@@ -477,7 +1087,7 @@ fn view_summary_chip(
   value: Int,
   tone_value: tone.Tone,
   extra_class: String,
-) -> Element(msg) {
+) -> element.Element(msg) {
   let chip =
     signal_chip.metric_int(label, value, tone_value)
     |> signal_chip.with_class("capability-summary-chip")
@@ -494,118 +1104,7 @@ fn view_summary_chip(
   |> signal_chip.view
 }
 
-fn pressure_label(locale: Locale, row: CapabilityRow) -> String {
-  case row.blocked_count > 0 {
-    True -> i18n.t(locale, i18n_text.CapabilityBoardPressureBlocked)
-    False ->
-      case row.pending, row.claimed, row.ongoing {
-        [], [], _ -> i18n.t(locale, i18n_text.CapabilityBoardPressureFlowing)
-        _, _, [] -> i18n.t(locale, i18n_text.CapabilityBoardPressureNoTraction)
-        _, _, _ -> i18n.t(locale, i18n_text.CapabilityBoardPressureFlowing)
-      }
-  }
-}
-
-fn pressure_tone(row: CapabilityRow) -> String {
-  case row.blocked_count > 0 {
-    True -> "blocked"
-    False ->
-      case row.pending, row.claimed, row.ongoing {
-        [], [], _ -> "neutral"
-        _, _, [] -> "warning"
-        _, _, _ -> "flowing"
-      }
-  }
-}
-
-fn view_lane_group(
-  config: Config(msg),
-  lane: LaneState,
-  tasks: List(Task),
-) -> Element(msg) {
-  let #(title, group_class, icon_name, state_name, empty_text) =
-    lane_metadata(config.locale, lane)
-
-  div(
-    [
-      attribute.class("capability-lane-group " <> group_class),
-      attribute.attribute("data-testid", "capability-lane-group"),
-      attribute.attribute("data-column-state", state_name),
-    ],
-    [
-      div([attribute.class("capability-lane-header")], [
-        div([attribute.class("capability-lane-title")], [
-          span(
-            [
-              attribute.class("capability-lane-icon"),
-              attribute.attribute("aria-hidden", "true"),
-            ],
-            [icons.nav_icon(icon_name, icons.Small)],
-          ),
-          h4([], [text(title)]),
-        ]),
-        span([attribute.class("column-count")], [
-          text(int.to_string(list.length(tasks))),
-        ]),
-      ]),
-      case tasks {
-        [] -> view_empty_group(empty_text)
-        _ ->
-          keyed.ul(
-            [
-              attribute.class(
-                "capability-lane-content capability-board-column-content",
-              ),
-            ],
-            list.map(tasks, fn(task) {
-              #(int.to_string(task.id), view_task_item(config, task))
-            }),
-          )
-      },
-    ],
-  )
-}
-
-fn lane_metadata(
-  locale: Locale,
-  lane: LaneState,
-) -> #(String, String, icons.NavIcon, String, String) {
-  case lane {
-    PendingLane -> #(
-      i18n.t(locale, i18n_text.MetricsAvailable),
-      "available",
-      icons.Pause,
-      "pending",
-      i18n.t(locale, i18n_text.CapabilityBoardEmptyPending),
-    )
-    ClaimedLane -> #(
-      task_state_ui.label(locale, Claimed(Taken)),
-      "claimed",
-      icons.Pause,
-      "claimed",
-      i18n.t(locale, i18n_text.CapabilityBoardEmptyClaimed),
-    )
-    OngoingLane -> #(
-      task_state_ui.label(locale, Claimed(Ongoing)),
-      "ongoing",
-      icons.Play,
-      "ongoing",
-      i18n.t(locale, i18n_text.CapabilityBoardEmptyOngoing),
-    )
-  }
-}
-
-fn view_empty_group(message: String) -> Element(msg) {
-  div(
-    [
-      attribute.class("capability-lane-empty"),
-      attribute.attribute("data-testid", "capability-lane-empty"),
-    ],
-    [span([attribute.class("empty-text")], [text(message)])],
-  )
-}
-
-fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task_item(config: Config(msg), task: Task) -> element.Element(msg) {
   let status_display = case task.status {
     Claimed(_) -> {
       let claimed_label = case claimed_by(task) {
@@ -698,7 +1197,9 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
   )
 }
 
-fn view_card_identity_swatch(card_title: Option(String)) -> Option(Element(msg)) {
+fn view_card_identity_swatch(
+  card_title: Option(String),
+) -> Option(element.Element(msg)) {
   case card_title {
     Some(title) ->
       Some(
@@ -712,5 +1213,159 @@ fn view_card_identity_swatch(card_title: Option(String)) -> Option(Element(msg))
         ),
       )
     None -> None
+  }
+}
+
+fn include_closed(config: Config(msg)) -> Bool {
+  case config.show_closed {
+    Some(value) -> value
+    None ->
+      case config.scope_kind, config.selected_card_id {
+        member_pool.PlanScopeCard, Some(card_id) ->
+          card_scope_defaults_to_closed(
+            card_id,
+            config.cards,
+            loaded_tasks(config.tasks),
+          )
+        _, _ -> False
+      }
+  }
+}
+
+fn card_scope_defaults_to_closed(
+  card_id: Int,
+  cards: List(Card),
+  tasks: List(Task),
+) -> Bool {
+  let has_child_cards =
+    list.any(cards, fn(card) { card.parent_card_id == Some(card_id) })
+  let has_direct_tasks =
+    list.any(tasks, fn(task) { task.card_id == Some(card_id) })
+
+  has_direct_tasks && !has_child_cards
+}
+
+fn loaded_tasks(tasks: Remote(List(Task))) -> List(Task) {
+  case tasks {
+    Loaded(values) -> values
+    _ -> []
+  }
+}
+
+fn task_in_card_subtree(task: Task, card: Card, all_cards: List(Card)) -> Bool {
+  case task.card_id {
+    Some(card_id) -> card_in_subtree(card_id, card.id, all_cards)
+    None -> False
+  }
+}
+
+fn card_in_subtree(
+  candidate_id: Int,
+  ancestor_id: Int,
+  all_cards: List(Card),
+) -> Bool {
+  case candidate_id == ancestor_id {
+    True -> True
+    False ->
+      case list.find(all_cards, fn(card) { card.id == candidate_id }) {
+        Ok(card) ->
+          case card.parent_card_id {
+            Some(parent_id) ->
+              card_in_subtree(parent_id, ancestor_id, all_cards)
+            None -> False
+          }
+        Error(_) -> False
+      }
+  }
+}
+
+fn health_for_tasks(tasks: List(Task)) -> CapabilityHealth {
+  CapabilityHealth(
+    available: list.count(tasks, fn(task) { task.status == Available }),
+    claimed: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
+    ongoing: list.count(tasks, fn(task) { task.status == Claimed(Ongoing) }),
+    done: list.count(tasks, fn(task) { task.status == Done }),
+    blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
+  )
+}
+
+fn health_total(health: CapabilityHealth) -> Int {
+  health.available + health.claimed + health.ongoing + health.done
+}
+
+fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {
+  case int.compare(b.health.blocked, a.health.blocked) {
+    order.Eq ->
+      case int.compare(health_total(b.health), health_total(a.health)) {
+        order.Eq -> string.compare(a.title, b.title)
+        other -> other
+      }
+    other -> other
+  }
+}
+
+fn sort_tasks(tasks: List(Task)) -> List(Task) {
+  list.sort(tasks, compare_tasks)
+}
+
+fn compare_tasks(a: Task, b: Task) -> order.Order {
+  case int.compare(task_rank(a), task_rank(b)) {
+    order.Eq ->
+      case int.compare(b.priority, a.priority) {
+        order.Eq ->
+          case string.compare(a.created_at, b.created_at) {
+            order.Eq -> int.compare(a.id, b.id)
+            other -> other
+          }
+        other -> other
+      }
+    other -> other
+  }
+}
+
+fn task_rank(task: Task) -> Int {
+  case task.blocked_count > 0, task.status {
+    True, _ -> 0
+    False, Available -> 1
+    False, Claimed(Ongoing) -> 2
+    False, Claimed(Taken) -> 3
+    False, Done -> 4
+  }
+}
+
+fn row_label(config: Config(msg)) -> String {
+  case config.scope_kind {
+    member_pool.PlanScopeCard ->
+      i18n.t(config.locale, i18n_text.CapabilityBoardCardColumn)
+    member_pool.PlanScopeLevel ->
+      i18n.t(config.locale, i18n_text.CapabilityBoardLevelColumn)
+  }
+}
+
+fn scope_kind_value(scope_kind: member_pool.PlanScopeKind) -> String {
+  case scope_kind {
+    member_pool.PlanScopeLevel -> "level"
+    member_pool.PlanScopeCard -> "card"
+  }
+}
+
+fn capability_mode_value(mode: member_pool.PlanCapabilityMode) -> String {
+  case mode {
+    member_pool.PlanCapabilityList -> "list"
+    member_pool.PlanCapabilityMatrix -> "matrix"
+  }
+}
+
+fn option_int_to_string(value: Option(Int)) -> String {
+  case value {
+    Some(id) -> int.to_string(id)
+    None -> ""
+  }
+}
+
+fn bool_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
   }
 }

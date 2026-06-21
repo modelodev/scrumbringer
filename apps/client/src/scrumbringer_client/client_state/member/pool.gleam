@@ -44,6 +44,18 @@ pub type PoolDragState {
   PoolDragDragging(over_my_tasks: Bool, rect: Rect)
 }
 
+/// Scope selector kind for Plan lenses.
+pub type PlanScopeKind {
+  PlanScopeLevel
+  PlanScopeCard
+}
+
+/// Display mode for the Plan capabilities lens.
+pub type PlanCapabilityMode {
+  PlanCapabilityList
+  PlanCapabilityMatrix
+}
+
 /// Rectangle geometry for hit testing.
 pub type Rect {
   Rect(left: Int, top: Int, width: Int, height: Int)
@@ -59,6 +71,10 @@ pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
 pub type Model {
   Model(
     view_mode: view_mode.ViewMode,
+    member_plan_scope_kind: PlanScopeKind,
+    member_plan_capability_mode: PlanCapabilityMode,
+    member_plan_scope_card_id: Option(Int),
+    member_plan_show_closed: Option(Bool),
     member_card_depth_filter: Option(Int),
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
@@ -118,6 +134,10 @@ pub type Model {
 pub fn default_model() -> Model {
   Model(
     view_mode: view_mode.Pool,
+    member_plan_scope_kind: PlanScopeLevel,
+    member_plan_capability_mode: PlanCapabilityList,
+    member_plan_scope_card_id: option.None,
+    member_plan_show_closed: option.None,
     member_card_depth_filter: option.None,
     member_tasks: NotAsked,
     member_tasks_pending: 0,

@@ -177,6 +177,20 @@ pub type Text {
   Hierarchies
   Tracking
   WorkSurfaceView
+  PlanScope
+  PlanScopeLevel
+  PlanScopeCard
+  PlanScopeAllLevels
+  PlanScopeSelectCard
+  PlanLens
+  PlanLensKanban
+  PlanLensCapabilities
+  PlanLensBlockers
+  PlanLensPeople
+  PlanCapabilityMode
+  PlanCapabilityList
+  PlanCapabilityMatrix
+  PlanClosed
   PoolPurpose
   ShowFilters
   HideFilters
@@ -244,6 +258,12 @@ pub type Text {
   CapabilityBoardEmptyClaimed
   CapabilityBoardEmptyOngoing
   CapabilityBoardPurpose
+  CapabilityBoardCardColumn
+  CapabilityBoardLevelColumn
+  CapabilityBoardTotal
+  CapabilityBoardComplete
+  CapabilityBoardNoTasks
+  CapabilityBoardEmptyCell
   CapabilityBoardOldest
   CapabilityBoardPressureBlocked
   CapabilityBoardPressureNoTraction
