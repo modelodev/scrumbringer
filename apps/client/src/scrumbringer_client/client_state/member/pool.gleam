@@ -63,6 +63,22 @@ pub type PlanCapabilityMode {
   PlanCapabilityMatrix
 }
 
+/// Card state filter for the Plan structure surface.
+pub type PlanStatusFilter {
+  PlanStatusAll
+  PlanStatusDraft
+  PlanStatusActive
+  PlanStatusClosed
+}
+
+/// Sort order for the Plan structure surface.
+pub type PlanSort {
+  PlanSortPath
+  PlanSortState
+  PlanSortDueDate
+  PlanSortPoolImpact
+}
+
 /// Rectangle geometry for hit testing.
 pub type Rect {
   Rect(left: Int, top: Int, width: Int, height: Int)
@@ -83,6 +99,9 @@ pub type Model {
     member_plan_capability_mode: PlanCapabilityMode,
     member_plan_scope_card_id: Option(Int),
     member_plan_show_closed: Option(Bool),
+    member_plan_status_filter: PlanStatusFilter,
+    member_plan_sort: PlanSort,
+    member_plan_collapsed_cards: Dict(Int, Bool),
     member_card_depth_filter: Option(Int),
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
@@ -147,6 +166,9 @@ pub fn default_model() -> Model {
     member_plan_capability_mode: PlanCapabilityList,
     member_plan_scope_card_id: option.None,
     member_plan_show_closed: option.None,
+    member_plan_status_filter: PlanStatusAll,
+    member_plan_sort: PlanSortPath,
+    member_plan_collapsed_cards: dict.new(),
     member_card_depth_filter: option.None,
     member_tasks: NotAsked,
     member_tasks_pending: 0,

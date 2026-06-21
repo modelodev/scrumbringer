@@ -2,6 +2,16 @@
 
 import domain/card.{type Card}
 import domain/task.{type Task}
+import scrumbringer_client/client_state/member/pool as member_pool
+
+pub type PlanFilters {
+  PlanFilters(
+    status: member_pool.PlanStatusFilter,
+    sort: member_pool.PlanSort,
+    search_query: String,
+    include_closed: Bool,
+  )
+}
 
 pub type CardRollup {
   CardRollup(

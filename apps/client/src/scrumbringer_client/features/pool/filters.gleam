@@ -1,5 +1,6 @@
 //// Member pool filter update workflow.
 
+import gleam/dict
 import gleam/option as opt
 import gleam/string
 
@@ -43,6 +44,12 @@ pub fn try_update(
         member_pool.Model(..model, member_plan_show_closed: opt.Some(value)),
         False,
       ))
+    pool_messages.MemberPlanStatusChanged(value) ->
+      opt.Some(handle_plan_status_changed(model, value))
+    pool_messages.MemberPlanSortChanged(value) ->
+      opt.Some(handle_plan_sort_changed(model, value))
+    pool_messages.MemberPlanCardToggled(card_id) ->
+      opt.Some(handle_plan_card_toggled(model, card_id))
     _ -> opt.None
   }
 }
@@ -146,6 +153,7 @@ fn handle_plan_scope_kind_changed(
       ..model,
       member_plan_scope_kind: kind,
       member_plan_show_closed: opt.None,
+      member_plan_collapsed_cards: dict.new(),
     ),
     False,
   )
@@ -185,6 +193,7 @@ fn handle_plan_scope_depth_changed(
       member_card_depth_filter: helpers_options.empty_to_int_opt(value),
       member_plan_scope_kind: member_pool.PlanScopeLevel,
       member_plan_show_closed: opt.None,
+      member_plan_collapsed_cards: dict.new(),
     ),
     False,
   )
@@ -200,7 +209,68 @@ fn handle_plan_scope_card_changed(
       member_plan_scope_card_id: helpers_options.empty_to_int_opt(value),
       member_plan_scope_kind: member_pool.PlanScopeCard,
       member_plan_show_closed: opt.None,
+      member_plan_collapsed_cards: dict.new(),
     ),
     False,
   )
+}
+
+fn handle_plan_status_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_plan_status_filter: parse_plan_status(value),
+    ),
+    False,
+  )
+}
+
+fn handle_plan_sort_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(member_pool.Model(..model, member_plan_sort: parse_plan_sort(value)), False)
+}
+
+fn handle_plan_card_toggled(
+  model: member_pool.Model,
+  card_id: Int,
+) -> #(member_pool.Model, Bool) {
+  let collapsed = case dict.get(model.member_plan_collapsed_cards, card_id) {
+    Ok(True) -> False
+    _ -> True
+  }
+
+  #(
+    member_pool.Model(
+      ..model,
+      member_plan_collapsed_cards: dict.insert(
+        model.member_plan_collapsed_cards,
+        card_id,
+        collapsed,
+      ),
+    ),
+    False,
+  )
+}
+
+fn parse_plan_status(value: String) -> member_pool.PlanStatusFilter {
+  case string.trim(value) {
+    "draft" -> member_pool.PlanStatusDraft
+    "active" -> member_pool.PlanStatusActive
+    "closed" -> member_pool.PlanStatusClosed
+    _ -> member_pool.PlanStatusAll
+  }
+}
+
+fn parse_plan_sort(value: String) -> member_pool.PlanSort {
+  case string.trim(value) {
+    "state" -> member_pool.PlanSortState
+    "due_date" -> member_pool.PlanSortDueDate
+    "pool_impact" -> member_pool.PlanSortPoolImpact
+    _ -> member_pool.PlanSortPath
+  }
 }

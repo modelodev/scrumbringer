@@ -44,6 +44,9 @@ pub type Msg {
   MemberPlanScopeDepthChanged(String)
   MemberPlanScopeCardChanged(String)
   MemberPlanClosedToggled(Bool)
+  MemberPlanStatusChanged(String)
+  MemberPlanSortChanged(String)
+  MemberPlanCardToggled(Int)
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)

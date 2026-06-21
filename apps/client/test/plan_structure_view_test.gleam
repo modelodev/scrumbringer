@@ -28,6 +28,8 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   let html = render(base_config())
 
   assert_contains(html, "data-testid=\"plan-structure-view\"")
+  assert_contains(html, "data-testid=\"plan-filter-status\"")
+  assert_contains(html, "data-testid=\"plan-filter-sort\"")
   assert_contains(html, "Root Initiative")
   assert_contains(html, "Portal Feature")
   assert_contains(html, "API Story")
@@ -35,6 +37,31 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   assert_contains(html, "plan-mode-kanban")
   assert_not_contains(html, "Lens")
   assert_not_contains(html, "Lente")
+}
+
+pub fn collapsed_card_hides_descendant_rows_and_marks_toggle_test() {
+  let html =
+    render(structure_view.Config(..base_config(), collapsed_card_ids: [1]))
+
+  assert_contains(html, "aria-expanded=\"false\"")
+  assert_contains(html, "Root Initiative")
+  assert_not_contains(html, "Portal Feature")
+  assert_not_contains(html, "API Story")
+  assert_not_contains(html, "Draft Behind Closed")
+}
+
+pub fn status_filter_limits_visible_rows_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        status_filter: member_pool.PlanStatusDraft,
+      ),
+    )
+
+  assert_contains(html, "Draft Checkout")
+  assert_not_contains(html, "plan-tree-title\">Root Initiative")
+  assert_not_contains(html, "plan-tree-title\">Portal Feature")
 }
 
 pub fn level_scope_uses_visible_level_name_and_parent_path_test() {
@@ -122,6 +149,9 @@ fn base_config() -> structure_view.Config(Int) {
     selected_depth: None,
     selected_card_id: None,
     show_closed: None,
+    status_filter: member_pool.PlanStatusAll,
+    sort_order: member_pool.PlanSortPath,
+    collapsed_card_ids: [],
     search_query: "",
     is_pm_or_admin: True,
     plan_mode: member_pool.PlanStructure,
@@ -130,6 +160,9 @@ fn base_config() -> structure_view.Config(Int) {
     on_scope_depth_change: fn(_) { 0 },
     on_scope_card_change: fn(_) { 0 },
     on_closed_toggled: fn(_) { 0 },
+    on_status_filter_change: fn(_) { 0 },
+    on_sort_change: fn(_) { 0 },
+    on_card_toggle: fn(id) { id },
     on_card_click: fn(id) { id },
     on_card_edit: fn(id) { id },
     on_card_delete: fn(id) { id },
@@ -145,6 +178,8 @@ fn cards() -> List(Card) {
     card(3, Some(2), "API Story", Active),
     card(4, Some(2), "Draft Checkout", Draft),
     card(5, None, "Closed Outcome", Closed),
+    card(6, Some(1), "Closed Gate", Closed),
+    card(7, Some(6), "Draft Behind Closed", Draft),
   ]
 }
 

@@ -6,10 +6,13 @@ import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h4, li, p, span, text, ul}
+import lustre/element/html.{
+  button, div, h4, label, li, option as html_option, p, select, span, text, ul,
+}
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -20,6 +23,7 @@ import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
@@ -35,6 +39,9 @@ pub type Config(msg) {
     selected_depth: Option(Int),
     selected_card_id: Option(Int),
     show_closed: Option(Bool),
+    status_filter: member_pool.PlanStatusFilter,
+    sort_order: member_pool.PlanSort,
+    collapsed_card_ids: List(Int),
     search_query: String,
     is_pm_or_admin: Bool,
     plan_mode: member_pool.PlanMode,
@@ -43,6 +50,9 @@ pub type Config(msg) {
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
+    on_status_filter_change: fn(String) -> msg,
+    on_sort_change: fn(String) -> msg,
+    on_card_toggle: fn(Int) -> msg,
     on_card_click: fn(Int) -> msg,
     on_card_edit: fn(Int) -> msg,
     on_card_delete: fn(Int) -> msg,
@@ -136,7 +146,75 @@ fn with_scope_bar(
       on_scope_card_change: config.on_scope_card_change,
       on_closed_toggled: config.on_closed_toggled,
     )),
+    view_plan_filters(config),
   ])
+}
+
+fn view_plan_filters(config: Config(msg)) -> Element(msg) {
+  let filters =
+    types.PlanFilters(
+      status: config.status_filter,
+      sort: config.sort_order,
+      search_query: config.search_query,
+      include_closed: include_closed(config),
+    )
+
+  div(
+    [
+      attribute.class("plan-filter-bar"),
+      attribute.attribute("data-testid", "plan-filter-bar"),
+    ],
+    [
+      label([attribute.class("plan-filter-control")], [
+        span([], [text("Estado")]),
+        select(
+          [
+            attribute.attribute("data-testid", "plan-filter-status"),
+            attribute.value(plan_status_value(filters.status)),
+            event.on_input(config.on_status_filter_change),
+            event.on_change(config.on_status_filter_change),
+          ],
+          [
+            html_option([attribute.value("all")], "Todas"),
+            html_option([attribute.value("draft")], "Draft"),
+            html_option([attribute.value("active")], "Active"),
+            html_option([attribute.value("closed")], "Closed"),
+          ],
+        ),
+      ]),
+      label([attribute.class("plan-filter-control")], [
+        span([], [text("Orden")]),
+        select(
+          [
+            attribute.attribute("data-testid", "plan-filter-sort"),
+            attribute.value(plan_sort_value(filters.sort)),
+            event.on_input(config.on_sort_change),
+            event.on_change(config.on_sort_change),
+          ],
+          [
+            html_option([attribute.value("path")], "Arbol"),
+            html_option([attribute.value("state")], "Estado"),
+            html_option([attribute.value("due_date")], "Vence"),
+            html_option([attribute.value("pool_impact")], "Pool impact"),
+          ],
+        ),
+      ]),
+      case string.trim(filters.search_query) {
+        "" -> element.none()
+        query ->
+          span([attribute.class("plan-filter-search-chip")], [
+            text("Buscar: " <> query),
+          ])
+      },
+      case filters.include_closed {
+        True ->
+          span([attribute.class("plan-filter-search-chip")], [
+            text("Cerradas incluidas"),
+          ])
+        False -> element.none()
+      },
+    ],
+  )
 }
 
 fn plan_mode_controls(config: Config(msg)) -> List(scope_bar.ModeControl(msg)) {
@@ -207,20 +285,23 @@ fn view_table(
 fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) {
   let types.CardRow(depth:, card:, path:, level_name:, ..) = row
   let indent = int.to_string({ depth - 1 } * 16)
-  button(
+  div(
     [
-      attribute.type_("button"),
-      attribute.class("plan-tree-trigger"),
+      attribute.class("plan-tree-cell"),
       attribute.style("padding-left", indent <> "px"),
-      attribute.attribute("data-testid", "plan-structure-row-trigger"),
-      attribute.attribute("title", path),
-      event.on_click(config.on_card_click(card.id)),
     ],
     [
-      span([attribute.class("plan-tree-marker")], [
-        text(tree_marker(config, card)),
-      ]),
-      span([attribute.class("plan-tree-title")], [text(card.title)]),
+      view_tree_toggle(config, card),
+      button(
+        [
+          attribute.type_("button"),
+          attribute.class("plan-tree-trigger"),
+          attribute.attribute("data-testid", "plan-structure-row-trigger"),
+          attribute.attribute("title", path),
+          event.on_click(config.on_card_click(card.id)),
+        ],
+        [span([attribute.class("plan-tree-title")], [text(card.title)])],
+      ),
       span([attribute.class("plan-tree-level")], [text(level_name)]),
       case path {
         "" -> element.none()
@@ -228,6 +309,47 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
       },
     ],
   )
+}
+
+fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
+  let has_children =
+    card_queries.direct_child_cards(card.id, config.cards) != []
+  let collapsed = is_collapsed(config, card.id)
+
+  case has_children {
+    True ->
+      button(
+        [
+          attribute.type_("button"),
+          attribute.class("plan-tree-toggle"),
+          attribute.attribute("data-testid", "plan-tree-toggle"),
+          attribute.attribute("aria-label", "Alternar " <> card.title),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(!collapsed),
+          ),
+          event.on_click(config.on_card_toggle(card.id)),
+        ],
+        [
+          span([attribute.class("plan-tree-marker")], [
+            text(case collapsed {
+              True -> ">"
+              False -> "v"
+            }),
+          ]),
+        ],
+      )
+    False ->
+      span(
+        [
+          attribute.class("plan-tree-leaf"),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [
+          text("o"),
+        ],
+      )
+  }
 }
 
 fn view_state_cell(row: types.StructureRow) -> Element(msg) {
@@ -490,17 +612,13 @@ fn structure_rows(
       config.selected_depth,
       config.selected_card_id,
     )
+    |> list.filter(fn(card) { matches_status(config, card) })
     |> list.filter(fn(card) { matches_search(config, card) })
 
   case config.scope_kind, config.selected_depth, config.selected_card_id {
     member_pool.PlanScopeLevel, Some(_), _ ->
       scoped_cards
-      |> list.sort(fn(a, b) {
-        string.compare(
-          card_queries.card_path(a, cards),
-          card_queries.card_path(b, cards),
-        )
-      })
+      |> list.sort(fn(a, b) { compare_cards(config, cards, a, b) })
       |> list.map(fn(card) { row_for_card(config, card, 1) })
     _, _, _ ->
       roots_for_scope(scoped_cards, config)
@@ -516,14 +634,21 @@ fn tree_rows(
 ) -> List(types.StructureRow) {
   let children =
     scoped_cards
-    |> list.filter(fn(child) { child.parent_card_id == Some(card.id) })
-    |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
-  [
-    row_for_card(config, card, depth),
-    ..list.flat_map(children, fn(child) {
-      tree_rows(config, scoped_cards, child, depth + 1)
+    |> list.filter(fn(child) {
+      nearest_visible_parent_id(child, scoped_cards, config.cards)
+      == Some(card.id)
     })
-  ]
+    |> list.sort(fn(a, b) { compare_cards(config, config.cards, a, b) })
+
+  case is_collapsed(config, card.id) {
+    True -> [row_for_card(config, card, depth)]
+    False -> [
+      row_for_card(config, card, depth),
+      ..list.flat_map(children, fn(child) {
+        tree_rows(config, scoped_cards, child, depth + 1)
+      })
+    ]
+  }
 }
 
 fn roots_for_scope(cards: List(Card), config: Config(msg)) -> List(Card) {
@@ -531,19 +656,52 @@ fn roots_for_scope(cards: List(Card), config: Config(msg)) -> List(Card) {
     member_pool.PlanScopeCard, Some(card_id) ->
       list.filter(cards, fn(card) { card.id == card_id })
     _, _ -> {
-      let card_ids = list.map(cards, fn(card) { card.id })
       case
         list.filter(cards, fn(card) {
-          case card.parent_card_id {
-            None -> True
-            Some(parent_id) -> !list.contains(card_ids, parent_id)
-          }
+          nearest_visible_parent_id(card, cards, config.cards) == None
         })
       {
         [] -> card_queries.top_level_cards(cards)
         roots -> roots
       }
+      |> list.sort(fn(a, b) { compare_cards(config, config.cards, a, b) })
     }
+  }
+}
+
+fn nearest_visible_parent_id(
+  card: Card,
+  visible_cards: List(Card),
+  all_cards: List(Card),
+) -> Option(Int) {
+  nearest_visible_parent_id_from(
+    card.parent_card_id,
+    list.map(visible_cards, fn(visible_card) { visible_card.id }),
+    all_cards,
+  )
+}
+
+fn nearest_visible_parent_id_from(
+  parent_id: Option(Int),
+  visible_ids: List(Int),
+  all_cards: List(Card),
+) -> Option(Int) {
+  case parent_id {
+    None -> None
+    Some(id) ->
+      case list.contains(visible_ids, id) {
+        True -> Some(id)
+        False ->
+          case list.find(all_cards, fn(card) { card.id == id }) {
+            Ok(parent) ->
+              nearest_visible_parent_id_from(
+                parent.parent_card_id,
+                visible_ids,
+                all_cards,
+              )
+            Error(_) -> None
+          }
+      }
   }
 }
 
@@ -670,15 +828,19 @@ fn rollup_for_card(
 }
 
 fn include_closed(config: Config(msg)) -> Bool {
-  case config.show_closed {
-    Some(value) -> value
-    None ->
-      card_queries.closed_default_for_scope(
-        config.cards,
-        config.tasks,
-        config.scope_kind,
-        config.selected_card_id,
-      )
+  case config.status_filter {
+    member_pool.PlanStatusClosed -> True
+    _ ->
+      case config.show_closed {
+        Some(value) -> value
+        None ->
+          card_queries.closed_default_for_scope(
+            config.cards,
+            config.tasks,
+            config.scope_kind,
+            config.selected_card_id,
+          )
+      }
   }
 }
 
@@ -703,18 +865,60 @@ fn matches_search(config: Config(msg), card: Card) -> Bool {
   }
 }
 
+fn matches_status(config: Config(msg), card: Card) -> Bool {
+  case config.status_filter, card.state {
+    member_pool.PlanStatusAll, _ -> True
+    member_pool.PlanStatusDraft, Draft -> True
+    member_pool.PlanStatusActive, Active -> True
+    member_pool.PlanStatusClosed, Closed -> True
+    _, _ -> False
+  }
+}
+
+fn compare_cards(
+  config: Config(msg),
+  cards: List(Card),
+  a: Card,
+  b: Card,
+) -> order.Order {
+  case config.sort_order {
+    member_pool.PlanSortPath ->
+      string.compare(
+        card_queries.card_path(a, cards),
+        card_queries.card_path(b, cards),
+      )
+    member_pool.PlanSortState ->
+      case int.compare(card_state_rank(a), card_state_rank(b)) {
+        order.Eq -> string.compare(a.title, b.title)
+        other -> other
+      }
+    member_pool.PlanSortDueDate ->
+      case string.compare(due_date_sort_value(a), due_date_sort_value(b)) {
+        order.Eq -> string.compare(a.title, b.title)
+        other -> other
+      }
+    member_pool.PlanSortPoolImpact ->
+      case
+        int.compare(
+          rollup_for_card(b, config.cards, config.tasks).pool_impact,
+          rollup_for_card(a, config.cards, config.tasks).pool_impact,
+        )
+      {
+        order.Eq -> string.compare(a.title, b.title)
+        other -> other
+      }
+  }
+}
+
+fn is_collapsed(config: Config(msg), card_id: Int) -> Bool {
+  list.contains(config.collapsed_card_ids, card_id)
+}
+
 fn first_column_label(config: Config(msg)) -> String {
   case config.scope_kind, config.selected_depth {
     member_pool.PlanScopeLevel, Some(depth) ->
       card_queries.depth_singular_label(config.depth_names, depth)
     _, _ -> "Card / Arbol"
-  }
-}
-
-fn tree_marker(config: Config(msg), card: Card) -> String {
-  case card_queries.direct_child_cards(card.id, config.cards) {
-    [] -> "o"
-    _ -> "v"
   }
 }
 
@@ -801,9 +1005,12 @@ fn action_event(
   case action {
     types.CreateSubcard -> #("+ Subcard", config.on_create_subcard(card.id))
     types.CreateTask -> #("+ Task", config.on_create_task_in_card(card.id))
-    types.ActivateSubtree -> #("Activar", config.on_card_edit(card.id))
-    types.MoveCard -> #("Mover a...", config.on_card_edit(card.id))
-    types.CloseCard -> #("Cerrar", config.on_card_edit(card.id))
+    types.ActivateSubtree -> #(
+      "Activar subarbol",
+      config.on_card_click(card.id),
+    )
+    types.MoveCard -> #("Mover a...", config.on_card_click(card.id))
+    types.CloseCard -> #("Cerrar", config.on_card_click(card.id))
     types.DeleteCard -> #("Eliminar", config.on_card_delete(card.id))
   }
 }
@@ -870,6 +1077,39 @@ fn card_state_tone(card: Card) -> tone.Tone {
     Draft -> tone.Warning
     Active -> tone.Available
     Closed -> tone.Neutral
+  }
+}
+
+fn card_state_rank(card: Card) -> Int {
+  case card.state {
+    Active -> 0
+    Draft -> 1
+    Closed -> 2
+  }
+}
+
+fn due_date_sort_value(card: Card) -> String {
+  case card.due_date {
+    Some(value) -> value
+    None -> "9999-12-31"
+  }
+}
+
+fn plan_status_value(status: member_pool.PlanStatusFilter) -> String {
+  case status {
+    member_pool.PlanStatusAll -> "all"
+    member_pool.PlanStatusDraft -> "draft"
+    member_pool.PlanStatusActive -> "active"
+    member_pool.PlanStatusClosed -> "closed"
+  }
+}
+
+fn plan_sort_value(sort: member_pool.PlanSort) -> String {
+  case sort {
+    member_pool.PlanSortPath -> "path"
+    member_pool.PlanSortState -> "state"
+    member_pool.PlanSortDueDate -> "due_date"
+    member_pool.PlanSortPoolImpact -> "pool_impact"
   }
 }
 

@@ -650,7 +650,10 @@ fn update_without_view_mode(
     | pool_messages.MemberPlanCapabilityModeChanged(_)
     | pool_messages.MemberPlanScopeDepthChanged(_)
     | pool_messages.MemberPlanScopeCardChanged(_)
-    | pool_messages.MemberPlanClosedToggled(_) -> #(model, effect.none())
+    | pool_messages.MemberPlanClosedToggled(_)
+    | pool_messages.MemberPlanStatusChanged(_)
+    | pool_messages.MemberPlanSortChanged(_)
+    | pool_messages.MemberPlanCardToggled(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.
     pool_messages.MemberPoolFiltersToggled

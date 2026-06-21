@@ -26,6 +26,7 @@
 //// - **features/admin/view.gleam**: client_state.Admin section views
 //// - **features/auth/view.gleam**: Auth views (login, register, etc.)
 
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -1472,6 +1473,9 @@ fn plan_structure_config(
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
     show_closed: model.member.pool.member_plan_show_closed,
+    status_filter: model.member.pool.member_plan_status_filter,
+    sort_order: model.member.pool.member_plan_sort,
+    collapsed_card_ids: collapsed_plan_card_ids(model.member.pool),
     search_query: model.member.pool.member_filters_q,
     is_pm_or_admin: permissions.can_manage_project_content(
       user.org_role,
@@ -1492,6 +1496,15 @@ fn plan_structure_config(
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_status_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanStatusChanged(value))
+    },
+    on_sort_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanSortChanged(value))
+    },
+    on_card_toggle: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanCardToggled(card_id))
     },
     on_card_click: fn(card_id) {
       client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
@@ -1522,6 +1535,17 @@ fn plan_structure_config(
       )
     },
   )
+}
+
+fn collapsed_plan_card_ids(pool: member_pool.Model) -> List(Int) {
+  pool.member_plan_collapsed_cards
+  |> dict.to_list
+  |> list.filter_map(fn(entry) {
+    case entry {
+      #(card_id, True) -> Ok(card_id)
+      #(_, False) -> Error(Nil)
+    }
+  })
 }
 
 fn people_config(
