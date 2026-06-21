@@ -52,6 +52,10 @@ pub type Msg {
   MemberPlanMoveCancelled
   MemberPlanMoveDestinationSearchChanged(String)
   MemberPlanMoveDestinationSelected(Int)
+  MemberPlanMoveDragStarted(Int)
+  MemberPlanMoveDragEntered(Int)
+  MemberPlanMoveDroppedOn(Int)
+  MemberPlanMoveDragEnded
   MemberPlanCardMoved(ApiResult(Card))
   MemberPoolFiltersToggled
   MemberClearFilters

@@ -743,6 +743,10 @@ fn update_without_view_mode(
     | pool_messages.MemberPlanMoveCancelled
     | pool_messages.MemberPlanMoveDestinationSearchChanged(_)
     | pool_messages.MemberPlanMoveDestinationSelected(_)
+    | pool_messages.MemberPlanMoveDragStarted(_)
+    | pool_messages.MemberPlanMoveDragEntered(_)
+    | pool_messages.MemberPlanMoveDroppedOn(_)
+    | pool_messages.MemberPlanMoveDragEnded
     | pool_messages.MemberPlanCardMoved(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.

@@ -63,6 +63,12 @@ pub type PlanMoveMode {
   PlanMovingCard(card_id: Int, destination_query: String)
 }
 
+/// Native drag state while the inline Plan movement mode is active.
+pub type PlanMoveDragState {
+  PlanMoveNotDragging
+  PlanMoveDraggingCard(card_id: Int, over_destination: Option(Int))
+}
+
 /// Display mode for the Capabilities surface.
 pub type PlanCapabilityMode {
   PlanCapabilityList
@@ -103,6 +109,7 @@ pub type Model {
     member_plan_scope_kind: PlanScopeKind,
     member_plan_mode: PlanMode,
     member_plan_move_mode: PlanMoveMode,
+    member_plan_move_drag: PlanMoveDragState,
     member_plan_move_in_flight: Bool,
     member_plan_move_error: Option(String),
     member_plan_capability_mode: PlanCapabilityMode,
@@ -174,6 +181,7 @@ pub fn default_model() -> Model {
     member_plan_scope_kind: PlanScopeProject,
     member_plan_mode: PlanStructure,
     member_plan_move_mode: PlanNotMoving,
+    member_plan_move_drag: PlanMoveNotDragging,
     member_plan_move_in_flight: False,
     member_plan_move_error: option.None,
     member_plan_capability_mode: PlanCapabilityList,

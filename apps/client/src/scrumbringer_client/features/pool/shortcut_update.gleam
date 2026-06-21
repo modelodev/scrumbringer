@@ -103,11 +103,22 @@ fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {
 
 fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
   case
+    model.pool.member_plan_move_drag,
     model.pool.member_create_dialog_mode,
     opt.is_some(model.notes.member_notes_task_id),
     opt.is_some(model.positions.member_position_edit_task)
   {
-    dialog_mode.DialogCreate, _, _ -> #(
+    member_pool.PlanMoveDraggingCard(_, _), _, _, _ -> #(
+      Model(
+        ..model,
+        pool: member_pool.Model(
+          ..model.pool,
+          member_plan_move_drag: member_pool.PlanMoveNotDragging,
+        ),
+      ),
+      effect.none(),
+    )
+    _, dialog_mode.DialogCreate, _, _ -> #(
       Model(
         ..model,
         pool: member_pool.Model(
@@ -117,14 +128,14 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, True, _ -> #(
+    _, _, True, _ -> #(
       Model(
         ..model,
         notes: member_notes.Model(..model.notes, member_notes_task_id: opt.None),
       ),
       effect.none(),
     )
-    _, _, True -> #(
+    _, _, _, True -> #(
       Model(
         ..model,
         positions: member_positions.Model(
@@ -135,7 +146,7 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, _, _ -> #(model, effect.none())
+    _, _, _, _ -> #(model, effect.none())
   }
 }
 

@@ -41,6 +41,7 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   assert_contains(html, "data-card-id=\"1\"")
   assert_contains(html, "plan-mode-structure")
   assert_contains(html, "plan-mode-kanban")
+  assert_not_contains(html, "data-testid=\"plan-move-drag-handle\"")
   assert_not_contains(html, "Lens")
   assert_not_contains(html, "Lente")
 }
@@ -249,8 +250,40 @@ pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
   assert_contains(html, "data-testid=\"plan-move-context\"")
   assert_contains(html, "Moviendo: API Story")
   assert_contains(html, "data-testid=\"plan-move-source\"")
+  assert_contains(html, "data-testid=\"plan-move-drag-handle\"")
+  assert_contains(html, "draggable=\"true\"")
   assert_contains(html, "data-testid=\"plan-move-here\"")
   assert_contains(html, "Mover aqui")
+}
+
+pub fn inline_move_drag_marks_source_as_dragging_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+        move_drag_state: member_pool.PlanMoveDraggingCard(3, None),
+      ),
+    )
+
+  assert_contains(html, "is-dragging-source")
+  assert_contains(html, "Arrastrando")
+}
+
+pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+        move_drag_state: member_pool.PlanMoveDraggingCard(3, Some(8)),
+      ),
+    )
+
+  assert_contains(html, "is-drop-active")
+  assert_contains(html, "data-testid=\"plan-drop-target-hint\"")
+  assert_contains(html, "Soltar dentro de Mobile Feature")
+  assert_contains(html, "data-testid=\"plan-move-here\"")
 }
 
 pub fn inline_move_mode_shows_invalid_reason_test() {
@@ -265,6 +298,50 @@ pub fn inline_move_mode_shows_invalid_reason_test() {
   assert_contains(html, "data-testid=\"plan-move-invalid\"")
   assert_contains(html, "Ya esta dentro de esta card.")
   assert_contains(html, "Cambiaria el nivel de la card.")
+}
+
+pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+        move_drag_state: member_pool.PlanMoveDraggingCard(3, Some(2)),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-move-invalid\"")
+  assert_contains(html, "Ya esta dentro de esta card.")
+  assert_not_contains(html, "Soltar dentro de Portal Feature")
+}
+
+pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-move-here\"")
+  assert_contains(html, "Mover aqui")
+  assert_contains(html, "data-testid=\"plan-move-destination-search\"")
+}
+
+pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
+  assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
+  assert_contains(html, "data-testid=\"plan-move-here\"")
+  assert_contains(html, "Mover aqui")
 }
 
 pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
@@ -325,6 +402,7 @@ fn base_config() -> structure_view.Config(Int) {
     is_pm_or_admin: True,
     plan_mode: member_pool.PlanStructure,
     move_mode: member_pool.PlanNotMoving,
+    move_drag_state: member_pool.PlanMoveNotDragging,
     move_in_flight: False,
     move_error: None,
     on_plan_mode_change: fn(_) { 0 },
@@ -343,6 +421,10 @@ fn base_config() -> structure_view.Config(Int) {
     on_move_cancelled: 0,
     on_move_destination_search_change: fn(_) { 0 },
     on_move_destination_selected: fn(id) { id },
+    on_move_drag_started: fn(id) { id },
+    on_move_drag_entered: fn(id) { id },
+    on_move_dropped: fn(id) { id },
+    on_move_drag_ended: 0,
     on_create_task_in_card: fn(id) { id },
     on_create_subcard: fn(id) { id },
   )

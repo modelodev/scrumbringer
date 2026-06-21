@@ -3,6 +3,7 @@
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
+import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -51,6 +52,7 @@ pub type Config(msg) {
     is_pm_or_admin: Bool,
     plan_mode: member_pool.PlanMode,
     move_mode: member_pool.PlanMoveMode,
+    move_drag_state: member_pool.PlanMoveDragState,
     move_in_flight: Bool,
     move_error: Option(String),
     on_plan_mode_change: fn(String) -> msg,
@@ -69,15 +71,25 @@ pub type Config(msg) {
     on_move_cancelled: msg,
     on_move_destination_search_change: fn(String) -> msg,
     on_move_destination_selected: fn(Int) -> msg,
+    on_move_drag_started: fn(Int) -> msg,
+    on_move_drag_entered: fn(Int) -> msg,
+    on_move_dropped: fn(Int) -> msg,
+    on_move_drag_ended: msg,
     on_create_task_in_card: fn(Int) -> msg,
     on_create_subcard: fn(Int) -> msg,
   )
 }
 
+type DropTargetState {
+  NotDropTarget
+  ValidDropTarget
+  InvalidDropTarget(detail_policy.MoveBlockedReason)
+  ActiveDropTarget
+}
+
 type MoveRowState {
-  MovingSource
-  ValidMoveDestination
-  InvalidMoveDestination(detail_policy.MoveBlockedReason)
+  MovingSource(is_dragging: Bool)
+  MoveTarget(DropTargetState)
   NotMoveCandidate
 }
 
@@ -491,6 +503,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
       attribute.class("plan-tree-mobile-row " <> move_row_class(config, row)),
       attribute.attribute("data-testid", "plan-tree-mobile-row"),
       attribute.attribute("data-card-id", int.to_string(card.id)),
+      ..move_drop_attributes(config, card)
     ],
     [
       div([attribute.class("plan-tree-mobile-main")], [
@@ -538,6 +551,7 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
     [
       attribute.class("plan-tree-cell " <> move_row_class(config, row)),
       attribute.style("padding-left", indent <> "px"),
+      ..move_drop_attributes(config, card)
     ],
     [
       view_tree_toggle(config, card),
@@ -650,7 +664,8 @@ fn view_actions_cell(
   render_context: String,
 ) -> Element(msg) {
   case config.move_mode {
-    member_pool.PlanMovingCard(_, _) -> view_move_actions_cell(config, row)
+    member_pool.PlanMovingCard(_, _) ->
+      view_move_actions_cell(config, row, render_context)
     member_pool.PlanNotMoving ->
       view_normal_actions_cell(config, row, render_context)
   }
@@ -688,20 +703,15 @@ fn view_normal_actions_cell(
 fn view_move_actions_cell(
   config: Config(msg),
   row: types.StructureRow,
+  render_context: String,
 ) -> Element(msg) {
   let types.CardRow(card:, ..) = row
 
   div([attribute.class("plan-row-actions plan-row-move-actions")], [
     case move_destination_state(config, card) {
-      MovingSource ->
-        span(
-          [
-            attribute.class("plan-move-source-chip"),
-            attribute.attribute("data-testid", "plan-move-source"),
-          ],
-          [text("Moviendo")],
-        )
-      ValidMoveDestination ->
+      MovingSource(is_dragging) ->
+        view_move_source(config, card, render_context, is_dragging)
+      MoveTarget(ValidDropTarget) ->
         button(
           [
             attribute.type_("button"),
@@ -712,7 +722,27 @@ fn view_move_actions_cell(
           ],
           [text("Mover aqui")],
         )
-      InvalidMoveDestination(reason) ->
+      MoveTarget(ActiveDropTarget) ->
+        div([attribute.class("plan-drop-target-actions")], [
+          span(
+            [
+              attribute.class("plan-drop-target-hint"),
+              attribute.attribute("data-testid", "plan-drop-target-hint"),
+            ],
+            [text("Soltar dentro de " <> card.title)],
+          ),
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("plan-action-btn plan-move-here-btn"),
+              attribute.attribute("data-testid", "plan-move-here"),
+              attribute.disabled(config.move_in_flight),
+              event.on_click(config.on_move_destination_selected(card.id)),
+            ],
+            [text("Mover aqui")],
+          ),
+        ])
+      MoveTarget(InvalidDropTarget(reason)) ->
         div(
           [
             attribute.class("plan-move-invalid"),
@@ -727,8 +757,49 @@ fn view_move_actions_cell(
             ]),
           ],
         )
+      MoveTarget(NotDropTarget) -> element.none()
       NotMoveCandidate -> element.none()
     },
+  ])
+}
+
+fn view_move_source(
+  config: Config(msg),
+  card: Card,
+  render_context: String,
+  is_dragging: Bool,
+) -> Element(msg) {
+  div([attribute.class("plan-move-source-actions")], [
+    case render_context {
+      "desktop" ->
+        span(
+          [
+            attribute.class("plan-move-drag-handle"),
+            attribute.attribute("data-testid", "plan-move-drag-handle"),
+            attribute.attribute("role", "button"),
+            attribute.attribute("tabindex", "0"),
+            attribute.attribute("draggable", "true"),
+            attribute.attribute("aria-label", "Arrastrar " <> card.title),
+            attribute.attribute("title", "Arrastrar para mover"),
+            on_drag_start(config.on_move_drag_started(card.id)),
+            on_drag_end(config.on_move_drag_ended),
+          ],
+          [text("Arrastrar")],
+        )
+      _ -> element.none()
+    },
+    span(
+      [
+        attribute.class(source_chip_class(is_dragging)),
+        attribute.attribute("data-testid", "plan-move-source"),
+      ],
+      [
+        text(case is_dragging {
+          True -> "Arrastrando"
+          False -> "Moviendo"
+        }),
+      ],
+    ),
   ])
 }
 
@@ -1463,6 +1534,77 @@ fn action_testid(action: types.CardAction) -> String {
   }
 }
 
+fn source_chip_class(is_dragging: Bool) -> String {
+  case is_dragging {
+    True -> "plan-move-source-chip is-dragging"
+    False -> "plan-move-source-chip"
+  }
+}
+
+fn move_drop_attributes(config: Config(msg), card: Card) {
+  case move_destination_state(config, card) {
+    MoveTarget(ValidDropTarget) | MoveTarget(ActiveDropTarget) -> [
+      on_drag_enter(config.on_move_drag_entered(card.id)),
+      on_drag_over(config.on_move_drag_entered(card.id)),
+      on_drop(config.on_move_dropped(card.id)),
+    ]
+    MoveTarget(InvalidDropTarget(_)) -> [
+      on_drag_enter(config.on_move_drag_entered(card.id)),
+    ]
+    MoveTarget(NotDropTarget) | MovingSource(_) | NotMoveCandidate -> []
+  }
+}
+
+fn on_drag_start(msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("dragstart", {
+    decode.success(event.handler(
+      msg,
+      prevent_default: False,
+      stop_propagation: True,
+    ))
+  })
+}
+
+fn on_drag_enter(msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("dragenter", {
+    decode.success(event.handler(
+      msg,
+      prevent_default: False,
+      stop_propagation: True,
+    ))
+  })
+}
+
+fn on_drag_over(msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("dragover", {
+    decode.success(event.handler(
+      msg,
+      prevent_default: True,
+      stop_propagation: True,
+    ))
+  })
+}
+
+fn on_drop(msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("drop", {
+    decode.success(event.handler(
+      msg,
+      prevent_default: True,
+      stop_propagation: True,
+    ))
+  })
+}
+
+fn on_drag_end(msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("dragend", {
+    decode.success(event.handler(
+      msg,
+      prevent_default: False,
+      stop_propagation: True,
+    ))
+  })
+}
+
 fn moving_card(config: Config(msg)) -> Option(Card) {
   case config.move_mode {
     member_pool.PlanMovingCard(card_id, _) ->
@@ -1498,29 +1640,53 @@ fn move_search_state(
 
 fn move_destination_state(config: Config(msg), card: Card) -> MoveRowState {
   case moving_card(config) {
-    Some(source) if source.id == card.id -> MovingSource
-    Some(source) ->
-      case
-        detail_policy.move_blocked_reason(
-          source,
-          card,
-          config.cards,
-          config.tasks,
-        )
-      {
-        None -> ValidMoveDestination
-        Some(reason) -> InvalidMoveDestination(reason)
-      }
+    Some(source) if source.id == card.id ->
+      MovingSource(plan_dragging_source(config, source.id))
+    Some(source) -> MoveTarget(drop_target_state(config, source, card))
     None -> NotMoveCandidate
+  }
+}
+
+fn plan_dragging_source(config: Config(msg), card_id: Int) -> Bool {
+  case config.move_drag_state {
+    member_pool.PlanMoveDraggingCard(dragging_id, _) -> dragging_id == card_id
+    member_pool.PlanMoveNotDragging -> False
+  }
+}
+
+fn drop_target_state(
+  config: Config(msg),
+  source: Card,
+  destination: Card,
+) -> DropTargetState {
+  case
+    detail_policy.move_blocked_reason(
+      source,
+      destination,
+      config.cards,
+      config.tasks,
+    )
+  {
+    Some(reason) -> InvalidDropTarget(reason)
+    None ->
+      case config.move_drag_state {
+        member_pool.PlanMoveDraggingCard(_, Some(over_id))
+          if over_id == destination.id
+        -> ActiveDropTarget
+        _ -> ValidDropTarget
+      }
   }
 }
 
 fn move_row_class(config: Config(msg), row: types.StructureRow) -> String {
   let types.CardRow(card:, ..) = row
   case move_destination_state(config, card) {
-    MovingSource -> "is-moving-source"
-    ValidMoveDestination -> "is-move-valid"
-    InvalidMoveDestination(_) -> "is-move-invalid"
+    MovingSource(True) -> "is-moving-source is-dragging-source"
+    MovingSource(False) -> "is-moving-source"
+    MoveTarget(ValidDropTarget) -> "is-move-valid"
+    MoveTarget(ActiveDropTarget) -> "is-move-valid is-drop-active"
+    MoveTarget(InvalidDropTarget(_)) -> "is-move-invalid"
+    MoveTarget(NotDropTarget) -> ""
     NotMoveCandidate -> ""
   }
 }

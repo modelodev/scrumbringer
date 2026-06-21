@@ -1494,6 +1494,7 @@ fn plan_structure_config(
     ),
     plan_mode: model.member.pool.member_plan_mode,
     move_mode: model.member.pool.member_plan_move_mode,
+    move_drag_state: model.member.pool.member_plan_move_drag,
     move_in_flight: model.member.pool.member_plan_move_in_flight,
     move_error: model.member.pool.member_plan_move_error,
     on_plan_mode_change: fn(value) {
@@ -1554,6 +1555,18 @@ fn plan_structure_config(
         card_id,
       ))
     },
+    on_move_drag_started: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDragStarted(card_id))
+    },
+    on_move_drag_entered: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDragEntered(card_id))
+    },
+    on_move_dropped: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDroppedOn(card_id))
+    },
+    on_move_drag_ended: client_state.pool_msg(
+      pool_messages.MemberPlanMoveDragEnded,
+    ),
     on_create_task_in_card: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
         card_id,

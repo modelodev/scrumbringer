@@ -40,6 +40,18 @@ pub fn try_update(
     pool_messages.MemberPlanMoveDestinationSelected(destination_id) ->
       opt.Some(destination_selected(model, destination_id, context))
 
+    pool_messages.MemberPlanMoveDragStarted(card_id) ->
+      opt.Some(#(drag_started(model, card_id), effect.none()))
+
+    pool_messages.MemberPlanMoveDragEntered(destination_id) ->
+      opt.Some(#(drag_entered(model, destination_id), effect.none()))
+
+    pool_messages.MemberPlanMoveDroppedOn(destination_id) ->
+      opt.Some(destination_dropped(model, destination_id, context))
+
+    pool_messages.MemberPlanMoveDragEnded ->
+      opt.Some(#(clear_drag(model), effect.none()))
+
     pool_messages.MemberPlanCardMoved(Ok(card)) ->
       opt.Some(moved_ok(model, card, context))
 
@@ -63,6 +75,7 @@ fn move_requested(
           member_pool.Model(
             ..model,
             member_plan_move_mode: member_pool.PlanNotMoving,
+            member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.Some(
               detail_policy.move_blocked_reason_label(reason),
             ),
@@ -74,6 +87,7 @@ fn move_requested(
           member_pool.Model(
             ..model,
             member_plan_move_mode: member_pool.PlanMovingCard(card_id, ""),
+            member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.None,
             member_plan_move_in_flight: False,
             card_detail_open: opt.None,
@@ -85,6 +99,7 @@ fn move_requested(
       member_pool.Model(
         ..model,
         member_plan_move_mode: member_pool.PlanNotMoving,
+        member_plan_move_drag: member_pool.PlanMoveNotDragging,
         member_plan_move_error: opt.Some("No se encontro la card a mover."),
         member_plan_move_in_flight: False,
       ),
@@ -104,6 +119,54 @@ fn destination_search_changed(
         member_plan_move_mode: member_pool.PlanMovingCard(card_id, query),
       )
     member_pool.PlanNotMoving -> model
+  }
+}
+
+fn drag_started(model: member_pool.Model, card_id: Int) -> member_pool.Model {
+  case model.member_plan_move_mode, model.member_plan_move_in_flight {
+    member_pool.PlanMovingCard(moving_card_id, _), False
+      if moving_card_id == card_id
+    ->
+      member_pool.Model(
+        ..model,
+        member_plan_move_drag: member_pool.PlanMoveDraggingCard(
+          card_id,
+          opt.None,
+        ),
+        member_plan_move_error: opt.None,
+      )
+    _, _ -> model
+  }
+}
+
+fn drag_entered(
+  model: member_pool.Model,
+  destination_id: Int,
+) -> member_pool.Model {
+  case model.member_plan_move_drag {
+    member_pool.PlanMoveDraggingCard(card_id, _) ->
+      member_pool.Model(
+        ..model,
+        member_plan_move_drag: member_pool.PlanMoveDraggingCard(
+          card_id,
+          opt.Some(destination_id),
+        ),
+      )
+    member_pool.PlanMoveNotDragging -> model
+  }
+}
+
+fn destination_dropped(
+  model: member_pool.Model,
+  destination_id: Int,
+  context: Context(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case model.member_plan_move_drag {
+    member_pool.PlanMoveDraggingCard(_, _) -> {
+      let #(next, fx) = destination_selected(model, destination_id, context)
+      #(clear_drag(next), fx)
+    }
+    member_pool.PlanMoveNotDragging -> #(model, effect.none())
   }
 }
 
@@ -145,6 +208,7 @@ fn destination_selected(
             opt.Some(reason) -> #(
               member_pool.Model(
                 ..model,
+                member_plan_move_drag: member_pool.PlanMoveNotDragging,
                 member_plan_move_error: opt.Some(
                   detail_policy.move_blocked_reason_label(reason),
                 ),
@@ -155,6 +219,7 @@ fn destination_selected(
         _, _ -> #(
           member_pool.Model(
             ..model,
+            member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.Some(
               "No se encontro el destino seleccionado.",
             ),
@@ -176,6 +241,7 @@ fn moved_ok(
     member_pool.Model(
       ..model,
       member_plan_move_mode: member_pool.PlanNotMoving,
+      member_plan_move_drag: member_pool.PlanMoveNotDragging,
       member_plan_move_in_flight: False,
       member_plan_move_error: opt.None,
     ),
@@ -192,6 +258,7 @@ fn moved_error(
   #(
     member_pool.Model(
       ..model,
+      member_plan_move_drag: member_pool.PlanMoveNotDragging,
       member_plan_move_in_flight: False,
       member_plan_move_error: opt.Some(feedback),
     ),
@@ -203,7 +270,15 @@ fn cancel(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,
     member_plan_move_mode: member_pool.PlanNotMoving,
+    member_plan_move_drag: member_pool.PlanMoveNotDragging,
     member_plan_move_error: opt.None,
     member_plan_move_in_flight: False,
+  )
+}
+
+pub fn clear_drag(model: member_pool.Model) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_plan_move_drag: member_pool.PlanMoveNotDragging,
   )
 }

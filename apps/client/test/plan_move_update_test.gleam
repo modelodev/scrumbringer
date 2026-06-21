@@ -59,6 +59,7 @@ pub fn move_requested_enters_inline_mode_and_closes_detail_test() {
     )
 
   let assert member_pool.PlanMovingCard(3, "") = next.member_plan_move_mode
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
   let assert opt.None = next.card_detail_open
   let assert opt.None = next.member_plan_move_error
   let assert True = fx == effect.none()
@@ -82,6 +83,54 @@ pub fn destination_search_updates_query_test() {
   let assert True = fx == effect.none()
 }
 
+pub fn drag_started_only_marks_moving_source_test() {
+  let normal = member_pool.default_model()
+  let moving =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, ""),
+    )
+
+  let assert opt.Some(#(normal_next, normal_fx)) =
+    plan_move_update.try_update(
+      normal,
+      pool_messages.MemberPlanMoveDragStarted(3),
+      context(),
+    )
+  let assert opt.Some(#(moving_next, moving_fx)) =
+    plan_move_update.try_update(
+      moving,
+      pool_messages.MemberPlanMoveDragStarted(3),
+      context(),
+    )
+
+  let assert member_pool.PlanMoveNotDragging = normal_next.member_plan_move_drag
+  let assert member_pool.PlanMoveDraggingCard(3, opt.None) =
+    moving_next.member_plan_move_drag
+  let assert True = normal_fx == effect.none()
+  let assert True = moving_fx == effect.none()
+}
+
+pub fn drag_entered_marks_over_destination_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, ""),
+      member_plan_move_drag: member_pool.PlanMoveDraggingCard(3, opt.None),
+    )
+
+  let assert opt.Some(#(next, fx)) =
+    plan_move_update.try_update(
+      model,
+      pool_messages.MemberPlanMoveDragEntered(4),
+      context(),
+    )
+
+  let assert member_pool.PlanMoveDraggingCard(3, opt.Some(4)) =
+    next.member_plan_move_drag
+  let assert True = fx == effect.none()
+}
+
 pub fn valid_destination_starts_api_effect_with_in_flight_state_test() {
   let model =
     member_pool.Model(
@@ -98,6 +147,26 @@ pub fn valid_destination_starts_api_effect_with_in_flight_state_test() {
 
   let assert True = next.member_plan_move_in_flight
   let assert opt.None = next.member_plan_move_error
+  let assert False = fx == effect.none()
+}
+
+pub fn valid_drop_reuses_move_action_and_clears_drag_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, ""),
+      member_plan_move_drag: member_pool.PlanMoveDraggingCard(3, opt.Some(4)),
+    )
+
+  let assert opt.Some(#(next, fx)) =
+    plan_move_update.try_update(
+      model,
+      pool_messages.MemberPlanMoveDroppedOn(4),
+      context(),
+    )
+
+  let assert True = next.member_plan_move_in_flight
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
   let assert False = fx == effect.none()
 }
 
@@ -121,6 +190,48 @@ pub fn invalid_destination_keeps_mode_and_sets_reason_test() {
   let assert True = fx == effect.none()
 }
 
+pub fn invalid_drop_does_not_call_api_and_clears_drag_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, ""),
+      member_plan_move_drag: member_pool.PlanMoveDraggingCard(3, opt.Some(2)),
+    )
+
+  let assert opt.Some(#(next, fx)) =
+    plan_move_update.try_update(
+      model,
+      pool_messages.MemberPlanMoveDroppedOn(2),
+      context(),
+    )
+
+  let assert False = next.member_plan_move_in_flight
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
+  let assert opt.Some("Ya esta dentro de esta card.") =
+    next.member_plan_move_error
+  let assert True = fx == effect.none()
+}
+
+pub fn drag_end_clears_drag_without_leaving_move_mode_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, ""),
+      member_plan_move_drag: member_pool.PlanMoveDraggingCard(3, opt.Some(4)),
+    )
+
+  let assert opt.Some(#(next, fx)) =
+    plan_move_update.try_update(
+      model,
+      pool_messages.MemberPlanMoveDragEnded,
+      context(),
+    )
+
+  let assert member_pool.PlanMovingCard(3, "") = next.member_plan_move_mode
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
+  let assert True = fx == effect.none()
+}
+
 pub fn api_error_keeps_move_mode_and_shows_feedback_test() {
   let model =
     member_pool.Model(
@@ -138,6 +249,7 @@ pub fn api_error_keeps_move_mode_and_shows_feedback_test() {
     )
 
   let assert member_pool.PlanMovingCard(3, "New") = next.member_plan_move_mode
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
   let assert False = next.member_plan_move_in_flight
   let assert opt.Some("No se pudo mover la card: No") =
     next.member_plan_move_error
@@ -148,6 +260,7 @@ pub fn cancel_clears_move_mode_test() {
     member_pool.Model(
       ..member_pool.default_model(),
       member_plan_move_mode: member_pool.PlanMovingCard(3, "New"),
+      member_plan_move_drag: member_pool.PlanMoveDraggingCard(3, opt.Some(4)),
       member_plan_move_error: opt.Some("error"),
       member_plan_move_in_flight: True,
     )
@@ -160,6 +273,7 @@ pub fn cancel_clears_move_mode_test() {
     )
 
   let assert member_pool.PlanNotMoving = next.member_plan_move_mode
+  let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
   let assert opt.None = next.member_plan_move_error
   let assert False = next.member_plan_move_in_flight
   let assert True = fx == effect.none()
