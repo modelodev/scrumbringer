@@ -1524,8 +1524,6 @@ pub type CardMoveError {
   CannotMoveClosedCard
   CannotMoveIntoClosedCard
   DestinationDoesNotAcceptCards
-  DestinationAtWrongDepth
-  MoveWouldChangeDepth
   MoveWouldCreateCycle
   CardNotFound
   DestinationNotFound

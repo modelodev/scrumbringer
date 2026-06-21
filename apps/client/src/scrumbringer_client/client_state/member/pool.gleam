@@ -13,6 +13,7 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
@@ -66,7 +67,7 @@ pub type PlanMoveMode {
 /// Native drag state while the inline Plan movement mode is active.
 pub type PlanMoveDragState {
   PlanMoveNotDragging
-  PlanMoveDraggingCard(card_id: Int, over_destination: Option(Int))
+  PlanMoveDraggingCard(card_id: Int, over_destination: Option(MoveTarget))
 }
 
 /// Display mode for the Capabilities surface.

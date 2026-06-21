@@ -161,23 +161,24 @@ pub fn active_card_create_task_explains_pool_entry_test() {
   assert_contains(html, "available for someone with the matching capability")
 }
 
-pub fn move_card_dialog_lists_only_valid_same_level_destinations_test() {
+pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {
   let moving = card(3, opt.Some(1), Draft)
   let root = card(1, opt.None, Draft)
   let valid_parent = card(2, opt.None, Draft)
-  let too_deep = card(4, opt.Some(2), Draft)
+  let deeper_parent = card(4, opt.Some(2), Draft)
   let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
 
   let options =
     detail_policy.move_destinations(moving, [
       root,
       valid_parent,
-      too_deep,
+      deeper_parent,
       task_group,
     ])
 
-  let assert [destination] = options
-  let assert 2 = destination.id
+  let assert [first, second] = options
+  let assert 2 = first.id
+  let assert 4 = second.id
 }
 
 pub fn delete_disabled_when_card_has_operational_history_test() {
@@ -242,30 +243,39 @@ pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
     )
 
   let assert [
-    detail_policy.InvalidDestination(_, detail_policy.WouldChangeLevel),
+    detail_policy.ValidDestination(root_destination),
     detail_policy.InvalidDestination(_, detail_policy.SameParent),
     detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
     detail_policy.ValidDestination(destination),
     detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
     detail_policy.InvalidDestination(_, detail_policy.ClosedDestination),
   ] = entries
+  let assert 1 = root_destination.id
   let assert 4 = destination.id
 }
 
-pub fn root_card_cannot_move_reason_is_spanish_test() {
+pub fn root_card_can_move_when_card_destinations_exist_test() {
   let reason =
     detail_policy.move_unavailable_reason(
       card(1, opt.None, Draft),
       [
         card(1, opt.None, Draft),
+        card(2, opt.None, Draft),
       ],
       [],
     )
 
-  let assert opt.Some(detail_policy.RootCardCannotMove) = reason
+  let assert opt.None = reason
+}
+
+pub fn moving_card_to_root_is_blocked_only_when_already_root_test() {
+  let reason =
+    detail_policy.move_to_root_blocked_reason(card(1, opt.None, Draft))
+
+  let assert opt.Some(detail_policy.AlreadyAtProjectRoot) = reason
   assert_contains(
-    detail_policy.move_blocked_reason_label(detail_policy.RootCardCannotMove),
-    "cards raiz",
+    detail_policy.move_blocked_reason_label(detail_policy.AlreadyAtProjectRoot),
+    "raiz",
   )
 }
 

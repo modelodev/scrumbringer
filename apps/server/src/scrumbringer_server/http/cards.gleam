@@ -28,7 +28,6 @@ import api/cards/contracts as card_contracts
 import domain/card.{type Card}
 import gleam/http
 import gleam/int
-import gleam/json
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -103,12 +102,6 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
       )
     cards_db.DestinationNotFound ->
       api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
-    cards_db.MoveWouldChangeDepth ->
-      api.error(
-        422,
-        "MOVE_WOULD_CHANGE_DEPTH",
-        "Cannot move card to a different hierarchy level",
-      )
     cards_db.MoveWouldCreateCycle ->
       api.error(
         422,
@@ -435,8 +428,7 @@ fn card_action_response(
     pool_health: pool_health,
   )
   |> card_contracts.action_response_to_json
-  |> json.to_string
-  |> wisp.json_response(200)
+  |> api.ok
 }
 
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {

@@ -3,6 +3,7 @@ import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/json
+import gleam/option
 import gleam/string
 import pog
 import scrumbringer_server
@@ -133,6 +134,23 @@ fn move_card(
   card_id: Int,
   parent_card_id: Int,
 ) -> wisp.Response {
+  move_card_with_parent(handler, session, card_id, option.Some(parent_card_id))
+}
+
+fn move_card_to_root(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fixtures.Session,
+  card_id: Int,
+) -> wisp.Response {
+  move_card_with_parent(handler, session, card_id, option.None)
+}
+
+fn move_card_with_parent(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fixtures.Session,
+  card_id: Int,
+  parent_card_id: option.Option(Int),
+) -> wisp.Response {
   handler(
     simulate.request(
       http.Post,
@@ -140,7 +158,12 @@ fn move_card(
     )
     |> fixtures.with_auth(session)
     |> simulate.json_body(
-      json.object([#("parent_card_id", json.int(parent_card_id))]),
+      json.object([
+        #("parent_card_id", case parent_card_id {
+          option.Some(id) -> json.int(id)
+          option.None -> json.null()
+        }),
+      ]),
     ),
   )
 }
@@ -790,8 +813,9 @@ pub fn move_card_rejects_closed_destination_test() {
   |> expect.is_true
 }
 
-pub fn move_card_rejects_depth_change_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+pub fn move_card_allows_depth_change_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(root_a_id) =
     fixtures.create_card(handler, session, project_id, "Root A")
@@ -804,9 +828,58 @@ pub fn move_card_rejects_depth_change_test() {
 
   let res = move_card(handler, session, grandchild_id, root_b_id)
 
-  expect.expect_status(res, 422)
-  string.contains(simulate.read_body(res), "MOVE_WOULD_CHANGE_DEPTH")
-  |> expect.is_true
+  expect.expect_status(res, 200)
+  let assert Ok(parent_id) =
+    fixtures.query_nullable_int(
+      db,
+      "select parent_card_id from cards where id = $1",
+      [pog.int(grandchild_id)],
+    )
+  let assert option.Some(actual_parent_id) = parent_id
+  let assert True = actual_parent_id == root_b_id
+}
+
+pub fn move_card_allows_root_card_inside_another_card_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(root_a_id) =
+    fixtures.create_card(handler, session, project_id, "Root A")
+  let assert Ok(root_b_id) =
+    fixtures.create_card(handler, session, project_id, "Root B")
+
+  let res = move_card(handler, session, root_b_id, root_a_id)
+
+  expect.expect_status(res, 200)
+  let assert Ok(parent_id) =
+    fixtures.query_nullable_int(
+      db,
+      "select parent_card_id from cards where id = $1",
+      [pog.int(root_b_id)],
+    )
+  let assert option.Some(actual_parent_id) = parent_id
+  let assert True = actual_parent_id == root_a_id
+}
+
+pub fn move_card_allows_child_card_to_project_root_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(root_id) =
+    fixtures.create_card(handler, session, project_id, "Root")
+  let assert Ok(child_id) =
+    create_child_card(handler, session, project_id, root_id, "Child")
+
+  let res = move_card_to_root(handler, session, child_id)
+
+  expect.expect_status(res, 200)
+  let assert Ok(parent_id) =
+    fixtures.query_nullable_int(
+      db,
+      "select parent_card_id from cards where id = $1",
+      [pog.int(child_id)],
+    )
+  let assert option.None = parent_id
 }
 
 pub fn update_card_not_found_test() {

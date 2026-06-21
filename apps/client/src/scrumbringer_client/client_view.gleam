@@ -1550,19 +1550,19 @@ fn plan_structure_config(
         pool_messages.MemberPlanMoveDestinationSearchChanged(value),
       )
     },
-    on_move_destination_selected: fn(card_id) {
+    on_move_destination_selected: fn(target) {
       client_state.pool_msg(pool_messages.MemberPlanMoveDestinationSelected(
-        card_id,
+        target,
       ))
     },
     on_move_drag_started: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberPlanMoveDragStarted(card_id))
     },
-    on_move_drag_entered: fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberPlanMoveDragEntered(card_id))
+    on_move_drag_entered: fn(target) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDragEntered(target))
     },
-    on_move_dropped: fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberPlanMoveDroppedOn(card_id))
+    on_move_dropped: fn(target) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDroppedOn(target))
     },
     on_move_drag_ended: client_state.pool_msg(
       pool_messages.MemberPlanMoveDragEnded,

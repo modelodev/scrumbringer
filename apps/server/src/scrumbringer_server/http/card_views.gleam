@@ -53,7 +53,6 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
     | cards_db.CannotMoveIntoClosedCard
     | cards_db.DestinationDoesNotAcceptCards
     | cards_db.DestinationNotFound
-    | cards_db.MoveWouldChangeDepth
     | cards_db.MoveWouldCreateCycle -> unexpected_error_response()
     cards_db.DbError(_) -> database_error_response()
   }

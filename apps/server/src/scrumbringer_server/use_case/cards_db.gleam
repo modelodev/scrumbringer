@@ -60,7 +60,6 @@ pub type CardError {
   CannotMoveIntoClosedCard
   DestinationDoesNotAcceptCards
   DestinationNotFound
-  MoveWouldChangeDepth
   MoveWouldCreateCycle
   DbError(pog.QueryError)
 }
@@ -894,7 +893,6 @@ fn validate_move_card(
     "dest_closed" -> Error(CannotMoveIntoClosedCard)
     "dest_tasks" -> Error(DestinationDoesNotAcceptCards)
     "cycle" -> Error(MoveWouldCreateCycle)
-    "change_depth" | "wrong_depth" -> Error(MoveWouldChangeDepth)
     _ -> Error(InvalidParentCard)
   }
 }
@@ -905,29 +903,16 @@ fn move_validation_outcome(
   parent_card_id: Option(Int),
 ) -> Result(String, CardError) {
   pog.query(
-    "WITH RECURSIVE tree AS (
-       SELECT id, project_id, parent_card_id, execution_state, 1 AS depth
+    "WITH RECURSIVE current_card AS (
+       SELECT id, project_id, parent_card_id, execution_state
        FROM cards
-       WHERE parent_card_id IS NULL
-       UNION ALL
-       SELECT child.id,
-              child.project_id,
-              child.parent_card_id,
-              child.execution_state,
-              parent.depth + 1
-       FROM cards child
-       JOIN tree parent ON child.parent_card_id = parent.id
-     ),
-     current_card AS (
-       SELECT *
-       FROM tree
        WHERE id = $1
      ),
      destination AS (
-       SELECT tree.*
-       FROM tree, current_card
-       WHERE tree.id = $2
-         AND tree.project_id = current_card.project_id
+       SELECT cards.id, cards.project_id, cards.parent_card_id, cards.execution_state
+       FROM cards, current_card
+       WHERE cards.id = $2
+         AND cards.project_id = current_card.project_id
      ),
      subtree AS (
        SELECT id
@@ -943,9 +928,6 @@ fn move_validation_outcome(
        WHEN EXISTS (
          SELECT 1 FROM current_card WHERE execution_state = 'closed'
        ) THEN 'card_closed'
-       WHEN $2 IS NULL
-         AND EXISTS (SELECT 1 FROM current_card WHERE depth <> 1)
-         THEN 'change_depth'
        WHEN $2 IS NOT NULL
          AND NOT EXISTS (SELECT 1 FROM destination)
          THEN 'dest_not_found'
@@ -958,13 +940,6 @@ fn move_validation_outcome(
        WHEN $2 IS NOT NULL
          AND EXISTS (SELECT 1 FROM subtree WHERE id = $2)
          THEN 'cycle'
-       WHEN $2 IS NOT NULL
-         AND EXISTS (
-           SELECT 1
-           FROM current_card, destination
-           WHERE destination.depth <> current_card.depth - 1
-         )
-         THEN 'wrong_depth'
        ELSE 'ok'
      END",
   )

@@ -8,6 +8,7 @@ import gleam/string
 import lustre/element
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/plan/structure_view
 import scrumbringer_client/i18n/locale
@@ -253,7 +254,9 @@ pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
   assert_contains(html, "data-testid=\"plan-move-drag-handle\"")
   assert_contains(html, "draggable=\"true\"")
   assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover aqui")
+  assert_contains(html, "Mover dentro")
+  assert_contains(html, "data-testid=\"plan-move-root-option\"")
+  assert_contains(html, "Mover a raiz")
 }
 
 pub fn inline_move_drag_marks_source_as_dragging_test() {
@@ -276,7 +279,10 @@ pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
       structure_view.Config(
         ..base_config(),
         move_mode: member_pool.PlanMovingCard(3, ""),
-        move_drag_state: member_pool.PlanMoveDraggingCard(3, Some(8)),
+        move_drag_state: member_pool.PlanMoveDraggingCard(
+          3,
+          Some(move_target.InsideCard(8)),
+        ),
       ),
     )
 
@@ -297,7 +303,6 @@ pub fn inline_move_mode_shows_invalid_reason_test() {
 
   assert_contains(html, "data-testid=\"plan-move-invalid\"")
   assert_contains(html, "Ya esta dentro de esta card.")
-  assert_contains(html, "Cambiaria el nivel de la card.")
 }
 
 pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() {
@@ -306,7 +311,10 @@ pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() 
       structure_view.Config(
         ..base_config(),
         move_mode: member_pool.PlanMovingCard(3, ""),
-        move_drag_state: member_pool.PlanMoveDraggingCard(3, Some(2)),
+        move_drag_state: member_pool.PlanMoveDraggingCard(
+          3,
+          Some(move_target.InsideCard(2)),
+        ),
       ),
     )
 
@@ -325,7 +333,7 @@ pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover aqui")
+  assert_contains(html, "Mover dentro")
   assert_contains(html, "data-testid=\"plan-move-destination-search\"")
 }
 
@@ -341,7 +349,7 @@ pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
   assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
   assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
   assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover aqui")
+  assert_contains(html, "Mover dentro")
 }
 
 pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
@@ -373,11 +381,19 @@ pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
   assert_contains(by_id, "Mobile Feature")
 }
 
-pub fn root_cards_disable_move_with_reason_test() {
-  let html = render(base_config())
+pub fn root_cards_can_enter_move_mode_when_card_destinations_exist_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        cards: [card(9, None, "Sibling Initiative", Active), ..cards()],
+        move_mode: member_pool.PlanMovingCard(1, ""),
+      ),
+    )
 
-  assert_contains(html, "Las cards raiz no tienen un padre alternativo.")
-  assert_contains(html, "aria-disabled=\"true\"")
+  assert_not_contains(html, "Las cards raiz no tienen un padre alternativo.")
+  assert_not_contains(html, "data-testid=\"plan-move-root-option\"")
+  assert_contains(html, "data-testid=\"plan-move-here\"")
 }
 
 fn base_config() -> structure_view.Config(Int) {
@@ -420,10 +436,10 @@ fn base_config() -> structure_view.Config(Int) {
     on_move_requested: fn(id) { id },
     on_move_cancelled: 0,
     on_move_destination_search_change: fn(_) { 0 },
-    on_move_destination_selected: fn(id) { id },
+    on_move_destination_selected: fn(_) { 0 },
     on_move_drag_started: fn(id) { id },
-    on_move_drag_entered: fn(id) { id },
-    on_move_dropped: fn(id) { id },
+    on_move_drag_entered: fn(_) { 0 },
+    on_move_dropped: fn(_) { 0 },
     on_move_drag_ended: 0,
     on_create_task_in_card: fn(id) { id },
     on_create_subcard: fn(id) { id },

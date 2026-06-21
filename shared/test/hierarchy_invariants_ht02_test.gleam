@@ -109,6 +109,46 @@ pub fn moving_card_under_descendant_is_rejected_test() {
     )
 }
 
+pub fn moving_root_card_under_valid_card_is_allowed_test() {
+  let root_id = card_id.new(1)
+  let destination_id = card_id.new(2)
+  let root = draft_card(root_id, project_id.new(1), option.None)
+  let destination = draft_card(destination_id, project_id.new(1), option.None)
+  let hierarchy = card_entity.CardHierarchy([root, destination])
+  let auth =
+    permissions.authorize_manage_structure_unchecked(
+      user_id.new(7),
+      project_id.new(1),
+    )
+
+  let assert Ok(updated) =
+    card_entity.move_card_to_parent(
+      root,
+      auth,
+      option.Some(destination_id),
+      hierarchy,
+    )
+  let assert option.Some(parent_id) = updated.parent
+  let assert True = parent_id == destination_id
+}
+
+pub fn moving_child_card_to_project_root_is_allowed_test() {
+  let root_id = card_id.new(1)
+  let child_id = card_id.new(2)
+  let root = draft_card(root_id, project_id.new(1), option.None)
+  let child = draft_card(child_id, project_id.new(1), option.Some(root_id))
+  let hierarchy = card_entity.CardHierarchy([root, child])
+  let auth =
+    permissions.authorize_manage_structure_unchecked(
+      user_id.new(7),
+      project_id.new(1),
+    )
+
+  let assert Ok(updated) =
+    card_entity.move_card_to_parent(child, auth, option.None, hierarchy)
+  let assert option.None = updated.parent
+}
+
 fn draft_card(
   id: card_id.CardId,
   project: project_id.ProjectId,

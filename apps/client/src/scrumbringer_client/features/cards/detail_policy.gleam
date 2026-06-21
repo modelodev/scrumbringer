@@ -18,13 +18,14 @@ pub type DisabledReason {
 }
 
 pub type MoveBlockedReason {
-  RootCardCannotMove
+  SourceClosed
+  AlreadyAtProjectRoot
   SameParent
   ClosedDestination
   DestinationContainsTasks
-  WouldChangeLevel
-  WouldCreateCycle
   SelfOrDescendant
+  DestinationNotFound
+  NoAvailableDestination
 }
 
 pub type MoveDestination {
@@ -123,18 +124,14 @@ pub fn move_destination_entries(
   cards: List(Card),
   tasks: List(Task),
 ) -> List(MoveDestination) {
-  case card.parent_card_id {
-    None -> []
-    Some(_) ->
-      cards
-      |> list.filter(fn(candidate) { candidate.project_id == card.project_id })
-      |> list.map(fn(candidate) {
-        case move_blocked_reason(card, candidate, cards, tasks) {
-          None -> ValidDestination(candidate)
-          Some(reason) -> InvalidDestination(candidate, reason)
-        }
-      })
-  }
+  cards
+  |> list.filter(fn(candidate) { candidate.project_id == card.project_id })
+  |> list.map(fn(candidate) {
+    case move_blocked_reason(card, candidate, cards, tasks) {
+      None -> ValidDestination(candidate)
+      Some(reason) -> InvalidDestination(candidate, reason)
+    }
+  })
 }
 
 pub fn move_unavailable_reason(
@@ -142,14 +139,24 @@ pub fn move_unavailable_reason(
   cards: List(Card),
   tasks: List(Task),
 ) -> Option(MoveBlockedReason) {
-  case card.parent_card_id {
-    None -> Some(RootCardCannotMove)
-    Some(_) -> {
-      case move_destinations_with_tasks(card, cards, tasks) {
-        [] -> Some(WouldChangeLevel)
-        _ -> None
+  case card.state {
+    Closed -> Some(SourceClosed)
+    _ ->
+      case
+        card.parent_card_id,
+        move_destinations_with_tasks(card, cards, tasks)
+      {
+        None, [] -> Some(NoAvailableDestination)
+        _, _ -> None
       }
-    }
+  }
+}
+
+pub fn move_to_root_blocked_reason(card: Card) -> Option(MoveBlockedReason) {
+  case card.state, card.parent_card_id {
+    Closed, _ -> Some(SourceClosed)
+    _, None -> Some(AlreadyAtProjectRoot)
+    _, Some(_) -> None
   }
 }
 
@@ -173,42 +180,34 @@ pub fn move_blocked_reason(
   cards: List(Card),
   tasks: List(Task),
 ) -> Option(MoveBlockedReason) {
-  let current_depth = card_depth(card, cards)
-  let destination_depth = card_depth(destination, cards)
   let destination_is_descendant = is_descendant(destination, card, cards)
   let accepts_children = accepts_child_cards(destination, cards, tasks)
 
-  case card.parent_card_id, destination.id == card.id {
-    None, _ -> Some(RootCardCannotMove)
-    _, True -> Some(SelfOrDescendant)
-    Some(parent_id), _ if destination.id == parent_id -> Some(SameParent)
-    _, _ ->
-      case
-        destination_is_descendant,
-        destination.state,
-        destination_depth == current_depth - 1,
-        accepts_children
-      {
-        True, _, _, _ -> Some(SelfOrDescendant)
-        _, Closed, _, _ -> Some(ClosedDestination)
-        _, _, False, _ -> Some(WouldChangeLevel)
-        _, _, _, False -> Some(DestinationContainsTasks)
-        _, _, _, True -> None
+  case card.state, card.parent_card_id, destination.id == card.id {
+    Closed, _, _ -> Some(SourceClosed)
+    _, _, True -> Some(SelfOrDescendant)
+    _, Some(parent_id), _ if destination.id == parent_id -> Some(SameParent)
+    _, _, _ ->
+      case destination_is_descendant, destination.state, accepts_children {
+        True, _, _ -> Some(SelfOrDescendant)
+        _, Closed, _ -> Some(ClosedDestination)
+        _, _, False -> Some(DestinationContainsTasks)
+        _, _, True -> None
       }
   }
 }
 
 pub fn move_blocked_reason_label(reason: MoveBlockedReason) -> String {
   case reason {
-    RootCardCannotMove -> "Las cards raiz no tienen un padre alternativo."
+    SourceClosed -> "La card cerrada no se puede mover."
+    AlreadyAtProjectRoot -> "Ya esta en la raiz del proyecto."
     SameParent -> "Ya esta dentro de esta card."
     ClosedDestination -> "La card de destino esta cerrada."
     DestinationContainsTasks ->
       "Contiene tasks directas y no puede recibir subcards."
-    WouldChangeLevel -> "Cambiaria el nivel de la card."
-    WouldCreateCycle ->
-      "No se puede mover una card dentro de si misma o de su arbol."
     SelfOrDescendant -> "No se puede elegir la propia card ni una descendiente."
+    DestinationNotFound -> "No se encontro el destino seleccionado."
+    NoAvailableDestination -> "No hay destinos disponibles para esta card."
   }
 }
 

@@ -19,6 +19,7 @@ import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/card_picker
@@ -70,10 +71,10 @@ pub type Config(msg) {
     on_move_requested: fn(Int) -> msg,
     on_move_cancelled: msg,
     on_move_destination_search_change: fn(String) -> msg,
-    on_move_destination_selected: fn(Int) -> msg,
+    on_move_destination_selected: fn(move_target.MoveTarget) -> msg,
     on_move_drag_started: fn(Int) -> msg,
-    on_move_drag_entered: fn(Int) -> msg,
-    on_move_dropped: fn(Int) -> msg,
+    on_move_drag_entered: fn(move_target.MoveTarget) -> msg,
+    on_move_dropped: fn(move_target.MoveTarget) -> msg,
     on_move_drag_ended: msg,
     on_create_task_in_card: fn(Int) -> msg,
     on_create_subcard: fn(Int) -> msg,
@@ -259,6 +260,7 @@ fn view_move_destination_search(config: Config(msg)) -> Element(msg) {
         event.on_change(config.on_move_destination_search_change),
       ]),
     ]),
+    view_move_root_option(config),
     case string.trim(query) {
       "" -> element.none()
       _ ->
@@ -303,7 +305,9 @@ fn view_move_destination_option(
       attribute.attribute("role", "option"),
       attribute.attribute("aria-label", option.label),
       attribute.disabled(disabled || config.move_in_flight),
-      event.on_click(config.on_move_destination_selected(option.id)),
+      event.on_click(
+        config.on_move_destination_selected(move_target.InsideCard(option.id)),
+      ),
     ],
     [
       span([attribute.class("plan-card-picker-title")], [text(option.title)]),
@@ -325,6 +329,36 @@ fn view_move_destination_option(
       },
     ],
   )
+}
+
+fn view_move_root_option(config: Config(msg)) -> Element(msg) {
+  case moving_card(config) {
+    Some(card) ->
+      case detail_policy.move_to_root_blocked_reason(card) {
+        None ->
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("plan-card-picker-option plan-move-root-option"),
+              attribute.attribute("data-testid", "plan-move-root-option"),
+              attribute.disabled(config.move_in_flight),
+              event.on_click(config.on_move_destination_selected(
+                move_target.ProjectRoot,
+              )),
+            ],
+            [
+              span([attribute.class("plan-card-picker-title")], [
+                text("Mover a raiz"),
+              ]),
+              span([attribute.class("plan-card-picker-meta")], [
+                text("Quedara como card principal del proyecto"),
+              ]),
+            ],
+          )
+        Some(_) -> element.none()
+      }
+    None -> element.none()
+  }
 }
 
 fn move_option_class(disabled: Bool) -> String {
@@ -718,9 +752,13 @@ fn view_move_actions_cell(
             attribute.class("plan-action-btn plan-move-here-btn"),
             attribute.attribute("data-testid", "plan-move-here"),
             attribute.disabled(config.move_in_flight),
-            event.on_click(config.on_move_destination_selected(card.id)),
+            event.on_click(
+              config.on_move_destination_selected(move_target.InsideCard(
+                card.id,
+              )),
+            ),
           ],
-          [text("Mover aqui")],
+          [text("Mover dentro")],
         )
       MoveTarget(ActiveDropTarget) ->
         div([attribute.class("plan-drop-target-actions")], [
@@ -737,9 +775,13 @@ fn view_move_actions_cell(
               attribute.class("plan-action-btn plan-move-here-btn"),
               attribute.attribute("data-testid", "plan-move-here"),
               attribute.disabled(config.move_in_flight),
-              event.on_click(config.on_move_destination_selected(card.id)),
+              event.on_click(
+                config.on_move_destination_selected(move_target.InsideCard(
+                  card.id,
+                )),
+              ),
             ],
-            [text("Mover aqui")],
+            [text("Mover dentro")],
           ),
         ])
       MoveTarget(InvalidDropTarget(reason)) ->
@@ -1544,12 +1586,16 @@ fn source_chip_class(is_dragging: Bool) -> String {
 fn move_drop_attributes(config: Config(msg), card: Card) {
   case move_destination_state(config, card) {
     MoveTarget(ValidDropTarget) | MoveTarget(ActiveDropTarget) -> [
-      on_drag_enter(config.on_move_drag_entered(card.id)),
-      on_drag_over(config.on_move_drag_entered(card.id)),
-      on_drop(config.on_move_dropped(card.id)),
+      on_drag_enter(
+        config.on_move_drag_entered(move_target.InsideCard(card.id)),
+      ),
+      on_drag_over(config.on_move_drag_entered(move_target.InsideCard(card.id))),
+      on_drop(config.on_move_dropped(move_target.InsideCard(card.id))),
     ]
     MoveTarget(InvalidDropTarget(_)) -> [
-      on_drag_enter(config.on_move_drag_entered(card.id)),
+      on_drag_enter(
+        config.on_move_drag_entered(move_target.InsideCard(card.id)),
+      ),
     ]
     MoveTarget(NotDropTarget) | MovingSource(_) | NotMoveCandidate -> []
   }
@@ -1670,7 +1716,10 @@ fn drop_target_state(
     Some(reason) -> InvalidDropTarget(reason)
     None ->
       case config.move_drag_state {
-        member_pool.PlanMoveDraggingCard(_, Some(over_id))
+        member_pool.PlanMoveDraggingCard(
+          _,
+          Some(move_target.InsideCard(over_id)),
+        )
           if over_id == destination.id
         -> ActiveDropTarget
         _ -> ValidDropTarget

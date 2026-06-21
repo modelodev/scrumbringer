@@ -196,6 +196,28 @@ pub fn activate_card(
   )
 }
 
+/// Move a card under another card, or to the project root with `None`.
+pub fn move_card(
+  card_id: Int,
+  parent_card_id: option.Option(Int),
+  to_msg: fn(ApiResult(contracts.CardActionResponse)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("parent_card_id", case parent_card_id {
+        option.Some(id) -> json.int(id)
+        option.None -> json.null()
+      }),
+    ])
+  core.request(
+    core.Post,
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/move",
+    option.Some(body),
+    card_action_response_decoder(),
+    to_msg,
+  )
+}
+
 /// List all tasks belonging to a card.
 pub fn list_card_tasks(
   card_id: Int,

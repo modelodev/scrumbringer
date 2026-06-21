@@ -25,6 +25,7 @@ import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/task_tabs
 
@@ -51,12 +52,12 @@ pub type Msg {
   MemberPlanMoveRequested(Int)
   MemberPlanMoveCancelled
   MemberPlanMoveDestinationSearchChanged(String)
-  MemberPlanMoveDestinationSelected(Int)
+  MemberPlanMoveDestinationSelected(MoveTarget)
   MemberPlanMoveDragStarted(Int)
-  MemberPlanMoveDragEntered(Int)
-  MemberPlanMoveDroppedOn(Int)
+  MemberPlanMoveDragEntered(MoveTarget)
+  MemberPlanMoveDroppedOn(MoveTarget)
   MemberPlanMoveDragEnded
-  MemberPlanCardMoved(ApiResult(Card))
+  MemberPlanCardMoved(ApiResult(card_contracts.CardActionResponse))
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)

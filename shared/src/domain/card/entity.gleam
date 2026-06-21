@@ -35,8 +35,6 @@ pub type CardMoveError {
   CannotMoveClosedCard
   CannotMoveIntoClosedCard
   DestinationDoesNotAcceptCards
-  DestinationAtWrongDepth
-  MoveWouldChangeDepth
   MoveWouldCreateCycle
   PermissionProjectMismatch
   CardNotFound
