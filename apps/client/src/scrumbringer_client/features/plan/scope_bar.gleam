@@ -74,8 +74,13 @@ fn view_scope_controls(config: Config(msg)) -> Element(msg) {
         attribute.attribute("data-testid", "plan-scope-kind"),
         attribute.value(scope_kind_value(config.scope_kind)),
         event.on_input(config.on_scope_kind_change),
+        event.on_change(config.on_scope_kind_change),
       ],
       [
+        html_option(
+          [attribute.value("project")],
+          i18n.t(config.locale, i18n_text.PlanScopeProject),
+        ),
         html_option(
           [attribute.value("level")],
           i18n.t(config.locale, i18n_text.PlanScopeLevel),
@@ -87,6 +92,7 @@ fn view_scope_controls(config: Config(msg)) -> Element(msg) {
       ],
     ),
     case config.scope_kind {
+      member_pool.PlanScopeProject -> element.none()
       member_pool.PlanScopeLevel -> view_depth_selector(config)
       member_pool.PlanScopeCard -> view_card_search(config)
     },
@@ -99,6 +105,7 @@ fn view_depth_selector(config: Config(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "plan-scope-depth"),
       attribute.value(option_int_to_string(config.selected_depth)),
       event.on_input(config.on_scope_depth_change),
+      event.on_change(config.on_scope_depth_change),
     ],
     [
       html_option(
@@ -133,6 +140,9 @@ fn view_card_search(config: Config(msg)) -> Element(msg) {
       event.on_input(fn(value) {
         config.on_scope_card_change(card_id_for_search_value(config, value))
       }),
+      event.on_change(fn(value) {
+        config.on_scope_card_change(card_id_for_search_value(config, value))
+      }),
     ]),
     element.element(
       "datalist",
@@ -148,7 +158,7 @@ fn view_mode_controls(config: Config(msg)) -> Element(msg) {
     controls ->
       div([attribute.class("plan-mode-controls")], [
         span([attribute.class("plan-mode-label")], [
-          text(i18n.t(config.locale, i18n_text.PlanCapabilityMode)),
+          text(i18n.t(config.locale, i18n_text.PlanMode)),
         ]),
         ..list.map(controls, view_mode_button)
       ])
@@ -212,6 +222,7 @@ fn card_search_label(card: Card) -> String {
 
 fn scope_kind_value(scope_kind: member_pool.PlanScopeKind) -> String {
   case scope_kind {
+    member_pool.PlanScopeProject -> "project"
     member_pool.PlanScopeLevel -> "level"
     member_pool.PlanScopeCard -> "card"
   }

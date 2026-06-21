@@ -44,13 +44,20 @@ pub type PoolDragState {
   PoolDragDragging(over_my_tasks: Bool, rect: Rect)
 }
 
-/// Scope selector kind for Plan lenses.
+/// Scope selector kind for Plan surfaces.
 pub type PlanScopeKind {
+  PlanScopeProject
   PlanScopeLevel
   PlanScopeCard
 }
 
-/// Display mode for the Plan capabilities lens.
+/// Display mode for the Plan surface.
+pub type PlanMode {
+  PlanStructure
+  PlanKanban
+}
+
+/// Display mode for the Capabilities surface.
 pub type PlanCapabilityMode {
   PlanCapabilityList
   PlanCapabilityMatrix
@@ -72,6 +79,7 @@ pub type Model {
   Model(
     view_mode: view_mode.ViewMode,
     member_plan_scope_kind: PlanScopeKind,
+    member_plan_mode: PlanMode,
     member_plan_capability_mode: PlanCapabilityMode,
     member_plan_scope_card_id: Option(Int),
     member_plan_show_closed: Option(Bool),
@@ -134,7 +142,8 @@ pub type Model {
 pub fn default_model() -> Model {
   Model(
     view_mode: view_mode.Pool,
-    member_plan_scope_kind: PlanScopeLevel,
+    member_plan_scope_kind: PlanScopeProject,
+    member_plan_mode: PlanStructure,
     member_plan_capability_mode: PlanCapabilityList,
     member_plan_scope_card_id: option.None,
     member_plan_show_closed: option.None,

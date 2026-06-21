@@ -78,6 +78,7 @@ import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/people/view as people_view
+import scrumbringer_client/features/plan/structure_view as plan_structure_view
 import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
 import scrumbringer_client/features/pool/task_details_dialog_config
@@ -1315,16 +1316,25 @@ fn build_center_panel(
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(pool_context, user)
-  let cards_content =
-    kanban_board.view(kanban_config(
-      model,
-      user,
-      cards,
-      data.tasks,
-      data.task_types,
-      data.org_users,
-      data.my_capability_ids,
-    ))
+  let cards_content = case model.member.pool.member_plan_mode {
+    member_pool.PlanStructure ->
+      plan_structure_view.view(plan_structure_config(
+        model,
+        user,
+        cards,
+        data.tasks,
+      ))
+    member_pool.PlanKanban ->
+      kanban_board.view(kanban_config(
+        model,
+        user,
+        cards,
+        data.tasks,
+        data.task_types,
+        data.org_users,
+        data.my_capability_ids,
+      ))
+  }
   let people_content = people_view.view(people_config(model))
   let capabilities_content =
     capability_board_view.view(capability_board_config(
@@ -1425,6 +1435,10 @@ fn kanban_config(
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
     show_closed: model.member.pool.member_plan_show_closed,
+    plan_mode: model.member.pool.member_plan_mode,
+    on_plan_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanModeChanged(value))
+    },
     on_scope_kind_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
     },
@@ -1436,6 +1450,76 @@ fn kanban_config(
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+  )
+}
+
+fn plan_structure_config(
+  model: client_state.Model,
+  user: User,
+  cards: List(Card),
+  tasks: List(Task),
+) -> plan_structure_view.Config(client_state.Msg) {
+  plan_structure_view.Config(
+    locale: model.ui.locale,
+    cards: cards,
+    tasks: tasks,
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    show_closed: model.member.pool.member_plan_show_closed,
+    search_query: model.member.pool.member_filters_q,
+    is_pm_or_admin: permissions.can_manage_project_content(
+      user.org_role,
+      state_selectors.selected_project(model),
+    ),
+    plan_mode: model.member.pool.member_plan_mode,
+    on_plan_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanModeChanged(value))
+    },
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_card_click: fn(card_id) {
+      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+    },
+    on_card_edit: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
+      )
+    },
+    on_card_delete: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+      )
+    },
+    on_create_task_in_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+        card_id,
+      ))
+    },
+    on_create_subcard: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(
+          admin_cards.CardDialogCreate(case card_id {
+            0 -> opt.None
+            _ -> opt.Some(card_id)
+          }),
+        ),
+      )
     },
   )
 }

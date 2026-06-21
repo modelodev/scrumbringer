@@ -128,20 +128,24 @@ Riesgo de producto:
 - El usuario no sabe si abrir una card es navegar hacia abajo, gestionarla o
   ejecutarla.
 
-### H4. Existe una vista de jerarquia parcialmente preparada pero no integrada
+### H4. La vista de jerarquia preparada ya no debe duplicar perfiles
 
-Existe `apps/client/src/scrumbringer_client/features/hierarchy/scope_view.gleam`
-con conceptos como:
+`apps/client/src/scrumbringer_client/features/hierarchy/scope_view.gleam`
+contenia conceptos de perfil que solapaban el sidebar:
 
-- `DepthScope`;
-- `CardScope`;
 - `TrackingProfile`;
 - `CoordinationProfile`;
 - `ExecutionProfile`.
 
-Sin embargo, el flujo principal de `Cards` no usa esta vista. Esto sugiere que
-la idea de producto fue modelada parcialmente, pero no llego a la navegacion
-principal.
+Esos perfiles no deben formar parte de la superficie activa. La UI canonica para
+Plan se expresa ahora como:
+
+- `Scope`: `Proyecto`, `Nivel` o `Card`;
+- `Mode`: `Estructura` o `Kanban`;
+- detalle contextual en el area central.
+
+`scope_view.gleam` queda limitado a scopes reales de jerarquia (`DepthScope` y
+`CardScope`) para no mantener un segundo sistema de navegacion.
 
 Riesgo de producto:
 
@@ -232,23 +236,37 @@ dentro de una superficie principal dedicada.
 5. `Personas` debe seguir siendo la vista de disponibilidad/equipo.
 6. Las cards deben parecer estructura, compromiso y preparacion; no ownership
    personal.
-7. El kanban de cards debe ser una lente posible, no la representacion base de
+7. El kanban de cards debe ser un modo posible, no la representacion base de
    la jerarquia.
 8. Las vistas vacias deben ensenar el modelo, no solo mostrar columnas vacias.
 9. La experiencia movil debe tener navegacion propia, no depender de sidebars
    ocultos.
 
-## Decision Fuerte: Scope + Lens
+## Decision Fuerte: Sidebar + Scope + Mode
 
 ScrumBringer no debe crear una pantalla distinta por cada entidad, nivel o
-pregunta operativa. Las vistas principales deben componerse con dos conceptos:
+pregunta operativa. Las vistas principales deben componerse con tres conceptos:
 
-- `Scope`: sobre que conjunto de trabajo se mira.
-- `Lens`: que pregunta se quiere responder sobre ese conjunto.
+- `Sidebar`: que vista principal esta usando el usuario.
+- `Scope`: sobre que conjunto de trabajo se mira dentro de esa vista.
+- `Mode`: variante interna de esa vista cuando aporta claridad.
 
 Esta decision permite cubrir mas necesidades con menos pantallas y evita que la
 flexibilidad de niveles de cards convierta la navegacion en una lista creciente
 de vistas.
+
+La etiqueta `Lens` no debe aparecer como selector visible si el sidebar ya ha
+elegido la vista. Por ejemplo, dentro de `Capacidades` no debe haber otro
+control que permita elegir `Kanban`, `Personas` o `Bloqueos`.
+
+Lectura de UI:
+
+```text
+Sidebar = Pool | Plan | Capacidades | Personas
+Scope = Proyecto | Cards activas | Card | Nivel
+Mode = variante propia de la vista actual
+Filters = reducen el resultado, no cambian de vista
+```
 
 ### Scopes
 
@@ -290,60 +308,65 @@ contexto:
 - riesgo y vencimiento;
 - impacto si una card se activa.
 
-### Lenses
-
-Una `Lens` define la pregunta:
+### Vistas Y Modos
 
 ```text
-Structure
-Flow
-Capabilities
-Blockers
-People
-Risk
+Pool
+Plan: Estructura | Kanban
+Capacidades: Lista | Matriz
+Personas
 ```
 
 Lectura de producto:
 
-- `Structure`: como se descompone el trabajo.
-- `Flow`: que esta abierto, reclamado, en curso o cerrado.
-- `Capabilities`: que manos hacen falta y cuales ya terminaron su actividad.
-- `Blockers`: que tasks esperan dependencias y donde impactan.
-- `People`: quien esta trabajando en que.
-- `Risk`: due dates, Pool alto, antiguedad y senales de saturacion.
+- `Pool`: que puedo reclamar ahora.
+- `Plan / Estructura`: como se descompone el trabajo y que pasaria si se
+  activa, cierra o mueve una rama.
+- `Plan / Kanban`: como fluye el trabajo activo por estado inferido.
+- `Capacidades / Lista`: que capacidades existen y donde queda actividad.
+- `Capacidades / Matriz`: donde se concentra el trabajo por card y capacidad.
+- `Personas`: quien esta trabajando en que.
+
+Las preguntas de bloqueos y riesgo se expresan inicialmente como senales,
+filtros y columnas dentro de estas vistas. Solo deberian convertirse en vista
+principal si despues demuestran una necesidad no cubierta.
 
 ### Regla De Producto
 
 No se crean pantallas como `Hitos`, `Entregas`, `Historias`, `Dashboard de
 card`, `Dashboard de nivel` o `Bloqueos de card` como rutas principales
-separadas. Se crea una superficie con selector de `Scope` y `Lens`.
+separadas. Cada vista principal usa scope y, si hace falta, modo interno.
 
 Ejemplos:
 
 ```text
-Scope: CardSubtree(Q3 Plataforma)
-Lens: Capabilities
+Sidebar: Capacidades
+Scope: Card(Q3 Plataforma)
+Mode: Matriz
 ```
 
 Responde: que capacidades tiene esta card por debajo y cuales estan completas.
 
 ```text
-Scope: Depth(Entrega)
-Lens: Flow
+Sidebar: Plan
+Scope: Nivel(Entrega)
+Mode: Kanban
 ```
 
 Responde: como estan todas las entregas del proyecto.
 
 ```text
-Scope: ActiveCards
-Lens: Blockers
+Sidebar: Plan
+Scope: Proyecto
+Mode: Estructura
+Filtro: con bloqueos
 ```
 
 Responde: que trabajo activo esta esperando dependencias.
 
 Esta decision es base para `Plan` y para cualquier dashboard centralizado. Si
-una necesidad nueva no encaja como `Scope + Lens`, debe justificarse antes de
-crear una nueva pantalla principal.
+una necesidad nueva no encaja como vista principal + scope + modo/filtro, debe
+justificarse antes de crear una nueva pantalla principal.
 
 ## Propuesta De Producto
 
@@ -388,109 +411,194 @@ Razon:
 
 ### Vista Plan
 
-`Plan` debe ser la superficie canonica para cards.
+`Plan` debe ser la superficie canonica para entender, preparar y modificar la
+estructura de cards. No es una vista para reclamar trabajo y no debe competir
+con `Pool`, `Capacidades` o `Personas`.
 
-Debe permitir dos escalas:
+Decision cerrada:
 
-- vista por nivel;
-- vista por card/scope.
+- el sidebar decide la vista principal: `Pool`, `Plan`, `Capacidades`,
+  `Personas`;
+- `Plan` muestra una cabecera con scope, modo y filtros;
+- no hay selector visible de `Lens`, porque seria redundante con el sidebar;
+- `Plan / Estructura` es la vista base;
+- `Plan / Kanban` es un modo de Plan, no una entrada separada del sidebar;
+- el centro funciona como un explorador de estructura: tabla-arbol y detalle
+  contextual;
+- el panel derecho sigue siendo `Mi trabajo` y no cambia de responsabilidad.
 
-Debe ofrecer scopes y lentes internas, no rutas hermanas del sidebar:
+Formula de navegacion:
 
-- `Mapa`: estructura padre/hijo;
-- `Nivel`: cards de un nivel concreto;
-- `Estado`: draft/active/closed;
-- `Riesgo`: due dates, bloqueo, pool impact.
+```text
+Sidebar = vista principal
+Scope = Proyecto / Nivel / Card
+Modo = Estructura / Kanban
+Filtros = Estado / Orden / Buscar / Cerradas
+Acciones = contextuales por permisos y estructura de card
+```
 
-Primera version recomendada:
+Objetivo de la vista:
 
 ```text
 Plan
-Estructura de cards y trabajo preparado para el pool.
+Estructura de cards y trabajo preparado.
 
-[Mapa] [Nivel] [Estado]
+Scope: [ Proyecto v ]                       Buscar: [          ]
+Modo:  [ Estructura ] [ Kanban ]
 
-Nivel: [Todos v]   Estado: [Abiertas v]   Buscar: [          ]
+Estado: [ Abiertas v ] Orden: [ Riesgo v ] [ ] Cerradas
 
-Resumen
-3 niveles - 6 cards - 12 tasks hoja - 4 listas para pool
-
-Hito: E2E Root Epic                         Closed
-  Entrega: E2E Initiative A                 Active
-    Historia: E2E Task Group A              Active - 0/1
-      Task: E2E Draft Leaf Task             Claimed
+3 niveles   12 cards   38 tasks   9 disponibles   4 entrarian al pool
 ```
 
-La vista no tiene que parecer un diagrama complejo. Puede ser una lista
-jerarquica densa con indentacion, chips y acciones contextuales.
-
-### Vista Por Nivel Dentro De Plan
-
-Cuando el usuario elige un nivel, el titulo debe usar el nombre configurado:
+El cuerpo principal es una tabla-arbol densa. No debe parecer un diagrama de
+mapa mental ni un backlog tradicional con tarjetas grandes.
 
 ```text
-Plan / Features
-Cards de nivel 2 del proyecto.
-
-[Mapa] [Nivel] [Estado]
-Nivel: Features
-
-Feature                     Padre             Estado   Tasks   Vence
-E2E Initiative A            E2E Root Epic      Active   1       -
++------------------------------------------------------------------------------+
+| Card / Arbol                     Estado   Tasks   Pool impact   Vence   Acc. |
++------------------------------------------------------------------------------+
+| v Hito Q3 Plataforma             Active   12/38   ya activo     30 jun  Ver  |
+|   v Entrega Portal clientes      Active   8/21    ya activo     28 jun  Ver  |
+|     Historia API Cleanup         Active   3/5     ya activo     vencida Ver  |
+|     Historia Checkout nuevo      Draft    0/8     +8            28 jun  Ver  |
+|     Historia Emails sistema      Active   2/4     ya activo     -       Ver  |
+|   > Entrega Infraestructura      Draft    0/12    +12           -       Ver  |
++------------------------------------------------------------------------------+
 ```
 
-La vista debe explicar claramente:
-
-- que nivel se esta viendo;
-- de que padres cuelgan esas cards;
-- cuantas tasks hoja hay debajo;
-- cuantas tasks entrarian al pool si se activa esa card/subarbol;
-- si la card esta `draft`, `active` o `closed`.
-
-### Vista Por Card
-
-Al abrir una card, la pantalla debe comportarse como scope operativo:
+Cuando `Scope = Nivel`, la misma vista cambia la proyeccion sin crear otra
+pantalla. La primera columna usa el nombre visible configurado del nivel.
 
 ```text
-Plan / E2E Root Epic
+Plan
+Estructura de cards y trabajo preparado.
 
-E2E Root Epic                         Closed
-root
+Scope: [ Nivel v ] [ Historias v ]             Buscar: [ api      ]
+Modo:  [ Estructura ] [ Kanban ]
+Estado: [ Abiertas v ] Orden: [ Riesgo v ] [ ] Cerradas
 
-Camino
-Root
+9 Historias   18 tasks   6 disponibles   2 bloqueadas
 
-Contenido directo
-Entregas (1)
-  E2E Initiative A                    Active
-
-Trabajo debajo
-1 card activa - 1 task hoja - 1 claimed - 0 disponibles
-
-Acciones
-[+ Crear subcard] [Activar subarbol] [Mas]
++--------------------------------------------------------------------------------+
+| Historia             Padre                 Estado   Tasks   Pool impact  Vence |
++--------------------------------------------------------------------------------+
+| API Cleanup          Q3 / Portal clientes  Active   3/5     ya activo    vencida|
+| Checkout nuevo       Q3 / Portal clientes  Draft    0/8     +8           28 jun |
+| Emails sistema       Q3 / Portal Core      Active   2/4     ya activo    -      |
++--------------------------------------------------------------------------------+
 ```
 
-Si la card contiene tasks directamente:
+Cuando `Scope = Card`, el centro puede dividirse en tabla-arbol y detalle
+contextual. El detalle vive en el area central, no en el panel derecho global.
 
 ```text
-Plan / E2E Task Group A
-
-E2E Task Group A                      Active - 0/1
-leaf
-
-Tasks
-E2E Draft Leaf Task                   Claimed - admin@example.com
-
-[+ Crear task]
++-----------------------------------+------------------------------------------+
+| Estructura                        | API Cleanup                              |
+|                                   | Active - Historia                        |
+| v Q3 Plataforma                   |                                          |
+|   v Portal clientes               | 5 tasks - 3 disponibles - 1 bloqueada    |
+|     * API Cleanup                 | Backend 3 - QA 1                         |
+|     o Checkout nuevo              | Vence: vencida                           |
+|                                   |                                          |
+|                                   | Contenido                                |
+|                                   | Revisar contratos API       disponible  |
+|                                   | Migrar auth middleware      reclamada   |
+|                                   | Limpiar endpoints legacy    en curso    |
+|                                   |                                          |
+|                                   | [ + Task ] [ Mas v ]                     |
++-----------------------------------+------------------------------------------+
 ```
 
-Reglas:
+Reglas de contenido:
 
-- Si una card contiene cards, el foco visual son subcards.
-- Si una card contiene tasks, el foco visual son tasks.
-- No mostrar cards y tasks como si fueran colecciones equivalentes si el
-  modelo impide mezclar ambas.
+- Si una card contiene subcards, el detalle prioriza subcards directas.
+- Si una card contiene tasks, el detalle prioriza tasks directas.
+- No se muestran cards y tasks como colecciones equivalentes si el modelo impide
+  mezclar ambas.
+- Las capacidades, personas, bloqueos y riesgo aparecen aqui solo como resumen
+  compacto; sus vistas completas viven en `Capacidades`, `Personas` o futuras
+  vistas especificas.
+- `Plan / Estructura` no permite reclamar trabajo. Las acciones sobre tasks
+  siguen el modelo de Pool y detalle de task.
+
+Acciones contextuales:
+
+- `+ Subcard`: visible si la card acepta subcards y el usuario puede gestionar
+  estructura.
+- `+ Task`: visible si la card acepta tasks. En card activa, la task creada
+  entra al Pool; en card draft, queda preparada hasta activacion.
+- `Activar subarbol`: accion de manager, muestra impacto de tasks que entrarian
+  al Pool y aviso si supera el limite blando del proyecto.
+- `Cerrar`: accion secundaria, no a mano; bloquea si hay descendant tasks
+  claimed/ongoing.
+- `Mover a...`: accion secundaria bajo `Mas`, nunca drag/drop libre en esta
+  primera version.
+- `Eliminar`: deshabilitado si hay historial operativo y explica que debe
+  cerrarse en su lugar.
+
+Movimiento de card:
+
+```text
+Mas v
+  Mover a...
+  Cerrar...
+  Eliminar   disabled si hay historial
+
+Mover API Cleanup
+
+Padre actual
+Q3 Plataforma / Portal clientes
+
+Nuevo padre
+[ Buscar entrega... ]
+
+Destinos validos
+o Portal Core
+o Infraestructura
+o Pagos
+
+No disponibles
+Checkout nuevo - No es una Entrega
+API Cleanup - No puede moverse bajo si misma
+
+[Cancelar] [Mover]
+```
+
+La vista cubre una necesidad no cubierta por el resto del sidebar:
+
+- `Pool`: responde que puedo reclamar ahora.
+- `Capacidades`: responde que manos hacen falta y donde hay carga.
+- `Personas`: responde quien esta haciendo que.
+- `Plan / Estructura`: responde que hemos decidido construir, como esta
+  descompuesto, donde vive cada cosa y que pasaria si activamos, cerramos o
+  movemos una parte del arbol.
+
+Reutilizacion esperada en codigo:
+
+- extraer queries comunes de scope/arbol antes de implementar nueva UI;
+- reutilizar `work_surface` para cabecera/resumen;
+- generalizar `scope_bar` para que no este acoplado a capacidades;
+- crear componentes pequenos para tabla operativa, indentacion de arbol,
+  breakdown de estado y celda/accion de drill-down;
+- no reutilizar `card_with_tasks_surface` para la tabla-arbol si fuerza un
+  patron de cards grandes o nested cards.
+
+Tipos esperados:
+
+```text
+PlanScope = ProjectScope | LevelScope(Int) | CardScope(Int)
+PlanMode = StructureMode | KanbanMode
+PlanFilters = estado + orden + busqueda + include_closed
+StructureRow = CardRow(depth, card, path, rollup, allowed_actions)
+StructureDetail = SubcardsDetail(...) | TasksDetail(...) | EmptyCardDetail(...)
+CardAction = CreateSubcard | CreateTask | ActivateSubtree | MoveCard | CloseCard | DeleteCard
+ActionAvailability = Available | Disabled(reason)
+```
+
+Estos tipos pueden tener otros nombres si encajan mejor con la nomenclatura
+existente, pero deben hacer explicito que una card con subcards y una card con
+tasks no son el mismo caso visual.
 
 ### Kanban De Cards
 
@@ -499,10 +607,12 @@ base para todo.
 
 Uso recomendado:
 
-- lente `Estado` dentro de `Plan`;
-- util para managers que quieren ver draft/active/closed;
+- modo `Kanban` dentro de `Plan`;
+- util para managers que quieren ver pendientes/en curso/cerradas por estado
+  inferido;
 - debe mostrar nivel/path en cada card;
-- debe tener titulo contextual, por ejemplo `Plan / Estado`, no solo `Kanban`.
+- debe tener titulo contextual dentro de `Plan`, no una entrada separada del
+  sidebar.
 
 Definicion de la vista:
 
@@ -568,9 +678,9 @@ cambiar su estado.
 
 ### Capacidades
 
-La vista de `Capacidades` es una lente dentro de `Plan`. No introduce fases
-manuales ni capacidades persistidas en card. Todas las capacidades se derivan de
-las tasks descendientes del scope elegido.
+La vista de `Capacidades` es una entrada principal del sidebar. No introduce
+fases manuales ni capacidades persistidas en card. Todas las capacidades se
+derivan de las tasks descendientes del scope elegido.
 
 Pregunta principal:
 
@@ -589,15 +699,15 @@ Esta vista debe servir para:
 
 #### Cabecera
 
-La cabecera reutiliza el patron `Scope + Lens` de Kanban. El scope se mantiene
-al cambiar entre Kanban, Capacidades, Bloqueos y Personas.
+La cabecera reutiliza el patron de scope de `Plan`, pero no muestra selector de
+otras vistas principales. El sidebar ya indica que el usuario esta en
+`Capacidades`.
 
 ```text
 Capacidades
 Tasks activas agrupadas por capacidad dentro del scope.
 
 Scope: [Tipo de scope] [Selector contextual]
-Vista: [Kanban] [Capacidades] [Bloqueos] [Personas]
 
 Modo: [Lista] [Matriz]
 [Con trabajo para mi]  Estado: [Abiertas]  Orden: [Riesgo]  [ ] Cerradas
@@ -638,7 +748,6 @@ actividad pendiente o relevante.
 | Tasks activas agrupadas por capacidad dentro del scope.    |
 |                                                            |
 | Scope: [ Nivel v ] [ Historias v ]                         |
-| Vista: [ Kanban ] [ Capacidades ] [ Bloqueos ] [ Personas ]|
 |                                                            |
 | Modo: [ Lista ] [ Matriz ]                                 |
 | [ Con trabajo para mi ] Estado: [ Abiertas v ] [ ] Cerradas|
@@ -695,7 +804,6 @@ Mockup con scope `Nivel`:
 | Tasks activas agrupadas por card y capacidad dentro del scope.             |
 |                                                                            |
 | Scope: [ Nivel v ] [ Historias v ]                                         |
-| Vista: [ Kanban ] [ Capacidades ] [ Bloqueos ] [ Personas ]                |
 |                                                                            |
 | Modo: [ Lista ] [ Matriz ]                                                 |
 | [ Con trabajo para mi ] Estado: [ Abiertas v ] Orden: [ Riesgo v ]         |
@@ -729,7 +837,6 @@ Mockup con scope `Card` que contiene subcards:
 |                                                                            |
 | Scope: [ Card v ] [ Buscar card activa... ]                                |
 | Q3 Plataforma / Portal clientes                                            |
-| Vista: [ Kanban ] [ Capacidades ] [ Bloqueos ] [ Personas ]                |
 |                                                                            |
 | Modo: [ Lista ] [ Matriz ]                                                 |
 | [ Con trabajo para mi ] Estado: [ Abiertas v ] Orden: [ Riesgo v ]         |
@@ -756,7 +863,6 @@ Mockup con scope `Card` que contiene tasks directamente:
 |                                                                            |
 | Scope: [ Card v ] [ Checkout nuevo ]                                       |
 | Q3 Plataforma / Portal clientes / Checkout nuevo                           |
-| Vista: [ Kanban ] [ Capacidades ] [ Bloqueos ] [ Personas ]                |
 |                                                                            |
 | Modo: [ Lista ] [ Matriz ]                                                 |
 | [ Con trabajo para mi ] Estado: [ Abiertas v ] Orden: [ Riesgo v ]         |
@@ -924,8 +1030,9 @@ Sin `temporal.md` disponible, esta seccion queda provisional.
 
 Necesidades que probablemente cubre la iteracion:
 
-- Ver fases/avance sin copiar Monday: la lente `Estado` permite ver
-  draft/active/closed, pero dentro del modelo de cards y tasks.
+- Ver fases/avance sin copiar Monday: `Plan / Kanban` permite ver
+  pendientes/en curso/cerradas por estado inferido, dentro del modelo de cards
+  y tasks.
 - Ver hitos/entregas/historias: la vista `Plan` muestra niveles configurados
   por proyecto.
 - Preparar trabajo futuro: `draft` vive en Plan y no ensucia el Pool.
@@ -936,7 +1043,8 @@ Necesidades que probablemente cubre la iteracion:
 
 Necesidades pendientes de confirmar contra `temporal.md`:
 
-- si habia pantallas nuevas pedidas que ahora se sustituyen por lentes de Plan;
+- si habia pantallas nuevas pedidas que ahora se sustituyen por vistas, scopes,
+  modos o filtros;
 - si habia reportes o metricas especificas no cubiertas;
 - si habia conceptos tradicionales que necesiten traduccion a ScrumBringer;
 - si habia workflows de usuarios que requieren informacion ausente en Plan.
@@ -959,9 +1067,9 @@ explique claramente:
 1. Reestructurar sidebar izquierdo.
 2. Crear/ajustar vista `Plan`.
 3. Integrar nombres de niveles dentro de `Plan`.
-4. Adoptar `Scope + Lens` como contrato para Plan y dashboard.
+4. Adoptar `Sidebar + Scope + Mode` como contrato de navegacion.
 5. Sustituir el kanban base de cards por una vista jerarquica.
-6. Mantener kanban como lente de estado dentro de `Plan`.
+6. Mantener kanban como modo dentro de `Plan`.
 7. Limpiar `Mis tarjetas` del panel derecho.
 8. Anadir navegacion movil minima.
 9. Revisar empty states de niveles/cards.
@@ -1010,25 +1118,20 @@ Criterios:
 - Empty states explican como crear la primera card/subcard/task.
 - Validacion visual con datos de 1, 2 y 3 niveles.
 
-### Historia 3: Scope + Lens dentro de Plan
+### Historia 3: Scope y modos dentro de vistas principales
 
-Como usuario quiero elegir el alcance y la lente del plan para responder
-preguntas distintas sin saltar entre pantallas distintas.
+Como usuario quiero elegir el alcance y el modo de la vista actual para
+responder preguntas distintas sin saltar entre pantallas innecesarias.
 
 Criterios:
 
-- `Scope` permite elegir proyecto, cards activas, una card con su subarbol o
-  un nivel configurado.
-- `Lens` permite elegir estructura, flujo, capacidades, bloqueos, personas o
-  riesgo.
-- La combinacion `CardSubtree + Capabilities` muestra capacidades agregadas de
-  esa card y su subarbol.
-- La combinacion `Depth + Flow` muestra todas las cards de ese nivel con estado
-  y progreso.
-- La combinacion `ActiveCards + Blockers` muestra dependencias pendientes en
-  trabajo activo.
-- El titulo y subtitulo cambian segun el scope y la lente.
-- Scopes y lenses no se duplican en el sidebar.
+- `Scope` permite elegir proyecto, cards activas, una card o un nivel
+  configurado cuando la vista lo necesite.
+- `Plan` permite modo `Estructura` y `Kanban`.
+- `Capacidades` permite modo `Lista` y `Matriz`.
+- El titulo y subtitulo cambian segun la vista, el scope y el modo.
+- El selector de modo nunca ofrece vistas principales de otro sidebar item.
+- Scopes y modos no se duplican como entradas del sidebar.
 - Las URLs son compartibles.
 
 ### Historia 4: Card scope claro
@@ -1073,7 +1176,7 @@ Criterios:
 ## Preguntas De Producto Para Decidir
 
 1. La etiqueta `Plan`, es la mejor palabra para sustituir `Tarjetas`?
-2. El kanban de cards debe seguir existiendo como lente `Estado` o eliminarse
+2. El kanban de cards debe seguir existiendo como modo de `Plan` o eliminarse
    hasta que haya una necesidad mas fuerte?
 3. En el panel derecho, preferimos eliminar del todo el bloque de cards o
    renombrarlo a `Contexto`?
@@ -1093,8 +1196,8 @@ La mejor primera iteracion es pequena pero estructural:
 1. Cambiar el sidebar a cuatro modos: `Pool`, `Plan`, `Capacidades`, `Personas`.
 2. Convertir `Plan` en la vista base de cards usando una lista jerarquica.
 3. Mover los niveles configurados a un selector dentro de `Plan`.
-4. Adoptar `Scope + Lens` como contrato de vistas para card, nivel y dashboard.
-5. Mantener kanban como lente `Estado`, no como vista base.
+4. Adoptar `Sidebar + Scope + Mode` como contrato de navegacion.
+5. Mantener kanban como modo de `Plan`, no como vista base.
 6. Quitar el lenguaje `Mis tarjetas`.
 7. Anadir navegacion movil minima.
 

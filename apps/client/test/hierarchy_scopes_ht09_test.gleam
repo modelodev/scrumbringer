@@ -2,7 +2,7 @@ import domain/card.{type Card, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
-import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -33,16 +33,6 @@ fn base_card(id: Int, title: String, parent_id, state) -> Card {
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
     has_new_notes: False,
-  )
-}
-
-fn task_type(id: Int, name: String, capability_id) -> TaskType {
-  TaskType(
-    id: id,
-    name: name,
-    icon: "bolt",
-    capability_id: capability_id,
-    tasks_count: 1,
   )
 }
 
@@ -101,11 +91,6 @@ fn config(scope: scope_view.Scope) -> scope_view.Config(String) {
       task(10, "Wire direct task", 1, Some(2)),
       claimed_task(11, "Backend claimed", 2, Some(2)),
     ],
-    task_types: [
-      task_type(1, "Frontend", Some(7)),
-      task_type(2, "Backend", Some(8)),
-    ],
-    capabilities: [#(7, "Frontend"), #(8, "Backend")],
     depth_names: [
       scope_view.DepthName(1, "Epic", "Epics"),
       scope_view.DepthName(2, "Story", "Stories"),
@@ -118,38 +103,16 @@ fn config(scope: scope_view.Scope) -> scope_view.Config(String) {
   )
 }
 
-pub fn tracking_profile_hides_closed_cards_by_default_test() {
+pub fn depth_scope_hides_closed_cards_by_default_test() {
   let html =
-    scope_view.view(config(scope_view.TrackingProfile))
+    scope_view.view(config(scope_view.DepthScope(2)))
     |> element.to_document_string
 
-  assert_contains(html, "Tracking")
-  assert_contains(html, "Platform Epic")
+  assert_contains(html, "Stories")
   assert_contains(html, "Checkout Story")
   assert_not_contains(html, "Closed Story")
-}
-
-pub fn coordination_profile_groups_cards_by_execution_state_test() {
-  let html =
-    scope_view.view(config(scope_view.CoordinationProfile))
-    |> element.to_document_string
-
-  assert_contains(html, "Draft")
-  assert_contains(html, "Active")
-  assert_contains(html, "Platform Epic")
-  assert_contains(html, "Checkout Story")
-}
-
-pub fn execution_profile_groups_tasks_by_capability_test() {
-  let html =
-    scope_view.view(config(scope_view.ExecutionProfile))
-    |> element.to_document_string
-
-  assert_contains(html, "Execution")
-  assert_contains(html, "Frontend")
-  assert_contains(html, "Backend")
-  assert_contains(html, "Wire direct task")
-  assert_contains(html, "Backend claimed")
+  assert_not_contains(html, "Tracking")
+  assert_not_contains(html, "Execution")
 }
 
 pub fn card_scope_shows_direct_subcards_or_tasks_test() {

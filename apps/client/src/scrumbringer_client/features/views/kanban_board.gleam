@@ -31,7 +31,6 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
@@ -45,6 +44,7 @@ import scrumbringer_client/ui/card_with_tasks_surface
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
+import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // Types
@@ -79,6 +79,8 @@ pub type KanbanConfig(msg) {
     selected_depth: option.Option(Int),
     selected_card_id: option.Option(Int),
     show_closed: option.Option(Bool),
+    plan_mode: member_pool.PlanMode,
+    on_plan_mode_change: fn(String) -> msg,
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
@@ -246,13 +248,36 @@ fn with_scope_bar(
       selected_card_id: config.selected_card_id,
       show_closed: include_closed,
       id_prefix: "kanban-plan",
-      mode_controls: [],
+      mode_controls: plan_mode_controls(config),
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,
       on_closed_toggled: config.on_closed_toggled,
     )),
   ])
+}
+
+fn plan_mode_controls(
+  config: KanbanConfig(msg),
+) -> List(scope_bar.ModeControl(msg)) {
+  [
+    plan_mode_control(config, i18n_text.PlanModeStructure, "structure"),
+    plan_mode_control(config, i18n_text.PlanModeKanban, "kanban"),
+  ]
+}
+
+fn plan_mode_control(
+  config: KanbanConfig(msg),
+  label_key: i18n_text.Text,
+  value: String,
+) -> scope_bar.ModeControl(msg) {
+  scope_bar.ModeControl(
+    label: i18n.t(config.locale, label_key),
+    value: value,
+    active: plan_mode_value(config.plan_mode) == value,
+    testid: "plan-mode-" <> value,
+    on_select: config.on_plan_mode_change(value),
+  )
 }
 
 fn view_column(
@@ -465,7 +490,7 @@ fn compute_progress(
   list.map(cards, fn(card) {
     let card_tasks =
       list.filter(tasks, fn(task) {
-        task_in_card_subtree(task, card, all_cards)
+        card_queries.task_in_card_subtree(task, card.id, all_cards)
       })
     let completed = list.count(card_tasks, fn(t) { t.status == Done })
     let total = list.length(card_tasks)
@@ -479,24 +504,12 @@ fn compute_progress(
 }
 
 fn cards_in_scope(config: KanbanConfig(msg)) -> List(Card) {
-  case config.scope_kind {
-    member_pool.PlanScopeLevel ->
-      case config.selected_depth {
-        option.None -> config.cards
-        option.Some(depth) ->
-          list.filter(config.cards, fn(card) {
-            detail_policy.card_depth(card, config.cards) == depth
-          })
-      }
-    member_pool.PlanScopeCard ->
-      case config.selected_card_id {
-        option.None -> config.cards
-        option.Some(card_id) ->
-          list.filter(config.cards, fn(card) {
-            card_in_subtree(card.id, card_id, config.cards)
-          })
-      }
-  }
+  card_queries.cards_for_scope(
+    config.cards,
+    config.scope_kind,
+    config.selected_depth,
+    config.selected_card_id,
+  )
 }
 
 fn show_closed(
@@ -507,27 +520,13 @@ fn show_closed(
   case config.show_closed {
     option.Some(value) -> value
     option.None ->
-      case config.scope_kind, config.selected_card_id {
-        member_pool.PlanScopeCard, option.Some(card_id) ->
-          card_scope_defaults_to_closed(card_id, scoped_cards, tasks)
-        _, _ -> False
-      }
+      card_queries.closed_default_for_scope(
+        scoped_cards,
+        tasks,
+        config.scope_kind,
+        config.selected_card_id,
+      )
   }
-}
-
-fn card_scope_defaults_to_closed(
-  card_id: Int,
-  scoped_cards: List(Card),
-  tasks: List(Task),
-) -> Bool {
-  let has_child_cards =
-    list.any(scoped_cards, fn(card) {
-      card.parent_card_id == option.Some(card_id)
-    })
-  let has_direct_tasks =
-    list.any(tasks, fn(task) { task.card_id == option.Some(card_id) })
-
-  has_direct_tasks && !has_child_cards
 }
 
 fn has_work_in_progress(tasks: List(Task)) -> Bool {
@@ -537,33 +536,6 @@ fn has_work_in_progress(tasks: List(Task)) -> Bool {
       _ -> False
     }
   })
-}
-
-fn task_in_card_subtree(task: Task, card: Card, all_cards: List(Card)) -> Bool {
-  case task.card_id {
-    option.Some(card_id) -> card_in_subtree(card_id, card.id, all_cards)
-    option.None -> False
-  }
-}
-
-fn card_in_subtree(
-  candidate_id: Int,
-  ancestor_id: Int,
-  all_cards: List(Card),
-) -> Bool {
-  case candidate_id == ancestor_id {
-    True -> True
-    False ->
-      case list.find(all_cards, fn(card) { card.id == candidate_id }) {
-        Ok(card) ->
-          case card.parent_card_id {
-            option.Some(parent_id) ->
-              card_in_subtree(parent_id, ancestor_id, all_cards)
-            option.None -> False
-          }
-        Error(_) -> False
-      }
-  }
 }
 
 fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
@@ -622,5 +594,12 @@ fn task_rank(task: Task) -> Int {
     False, Claimed(Ongoing) -> 2
     False, Claimed(Taken) -> 3
     False, Done -> 4
+  }
+}
+
+fn plan_mode_value(mode: member_pool.PlanMode) -> String {
+  case mode {
+    member_pool.PlanStructure -> "structure"
+    member_pool.PlanKanban -> "kanban"
   }
 }

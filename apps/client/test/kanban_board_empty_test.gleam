@@ -38,6 +38,8 @@ pub fn kanban_board_renders_empty_column_texts_test() {
       selected_depth: None,
       selected_card_id: None,
       show_closed: None,
+      plan_mode: member_pool.PlanKanban,
+      on_plan_mode_change: fn(_value) { 0 },
       on_scope_kind_change: fn(_value) { 0 },
       on_scope_depth_change: fn(_value) { 0 },
       on_scope_card_change: fn(_value) { 0 },

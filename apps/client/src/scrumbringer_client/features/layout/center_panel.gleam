@@ -285,7 +285,7 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
 
   let testid = case config.view_mode {
     Pool -> "pool-canvas"
-    Cards -> "kanban-board"
+    Cards -> "plan-view"
     Capabilities -> "capabilities-view"
     People -> "people-view"
   }

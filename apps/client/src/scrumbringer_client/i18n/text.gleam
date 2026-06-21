@@ -178,10 +178,14 @@ pub type Text {
   Tracking
   WorkSurfaceView
   PlanScope
+  PlanScopeProject
   PlanScopeLevel
   PlanScopeCard
   PlanScopeAllLevels
   PlanScopeSelectCard
+  PlanMode
+  PlanModeStructure
+  PlanModeKanban
   PlanCapabilityMode
   PlanCapabilityList
   PlanCapabilityMatrix

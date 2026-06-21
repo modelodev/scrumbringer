@@ -39,6 +39,7 @@ pub type Msg {
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
   MemberPlanScopeKindChanged(String)
+  MemberPlanModeChanged(String)
   MemberPlanCapabilityModeChanged(String)
   MemberPlanScopeDepthChanged(String)
   MemberPlanScopeCardChanged(String)

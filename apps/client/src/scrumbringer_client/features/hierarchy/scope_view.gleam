@@ -1,8 +1,7 @@
-//// Card tree scope/profile views for member navigation.
+//// Card tree scope views for member navigation.
 
-import domain/card.{type Card, type CardPhase, Active, Closed, Draft}
+import domain/card.{type Card, Closed}
 import domain/task.{type Task}
-import domain/task_type.{type TaskType}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -20,9 +19,6 @@ pub type DepthName {
 pub type Scope {
   DepthScope(Int)
   CardScope(Int)
-  TrackingProfile
-  CoordinationProfile
-  ExecutionProfile
 }
 
 pub type Config(msg) {
@@ -30,8 +26,6 @@ pub type Config(msg) {
     locale: Locale,
     cards: List(Card),
     tasks: List(Task),
-    task_types: List(TaskType),
-    capabilities: List(#(Int, String)),
     depth_names: List(DepthName),
     scope: Scope,
     include_closed: Bool,
@@ -53,9 +47,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       case config.scope {
         DepthScope(depth) -> view_depth_scope(config, depth)
         CardScope(card_id) -> view_card_scope(config, card_id)
-        TrackingProfile -> view_tracking_profile(config)
-        CoordinationProfile -> view_coordination_profile(config)
-        ExecutionProfile -> view_execution_profile(config)
       },
     ],
   )
@@ -102,114 +93,6 @@ fn view_card_scope(config: Config(msg), card_id: Int) -> Element(msg) {
   div([attribute.class("card-tree-card-scope")], [
     view_card_grid(config, direct_cards),
     view_tasks("Direct tasks", direct_tasks, config.on_task_opened),
-  ])
-}
-
-fn view_tracking_profile(config: Config(msg)) -> Element(msg) {
-  div(
-    [attribute.class("card-tree-profile card-tree-tracking")],
-    list.append(
-      [
-        view_scope_section(
-          "Tracking",
-          view_card_grid(config, visible_cards(config)),
-        ),
-      ],
-      list.append(view_depth_sections(config), [
-        view_scope_section("Coordination", view_coordination_profile(config)),
-        view_scope_section("Execution", view_execution_profile(config)),
-        view_card_scope_preview(config),
-      ]),
-    ),
-  )
-}
-
-fn view_coordination_profile(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("card-tree-profile card-tree-coordination")], [
-    view_state_group(config, "Draft", Draft),
-    view_state_group(config, "Active", Active),
-    view_state_group(config, "Closed", Closed),
-  ])
-}
-
-fn view_execution_profile(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("card-tree-profile card-tree-execution")], [
-    h4([], [text("Execution")]),
-    ..list.map(config.capabilities, fn(capability) {
-      let #(capability_id, name) = capability
-      view_tasks(
-        name,
-        tasks_for_capability(config, capability_id),
-        config.on_task_opened,
-      )
-    })
-  ])
-}
-
-fn view_scope_section(title: String, body: Element(msg)) -> Element(msg) {
-  div([attribute.class("card-tree-section")], [
-    h4([attribute.class("card-tree-section-title")], [text(title)]),
-    body,
-  ])
-}
-
-fn view_depth_sections(config: Config(msg)) -> List(Element(msg)) {
-  list.map(config.depth_names, fn(depth_name) {
-    let DepthName(depth: depth, plural_name: plural, ..) = depth_name
-    view_scope_section(plural, view_depth_scope(config, depth))
-  })
-}
-
-fn view_card_scope_preview(config: Config(msg)) -> Element(msg) {
-  let cards = visible_cards(config)
-  case list.find(cards, fn(card) { has_direct_cards(config, card.id) }) {
-    Ok(card) -> view_card_scope_section(config, card)
-    Error(_) -> view_first_card_with_direct_contents(config, cards)
-  }
-}
-
-fn view_first_card_with_direct_contents(
-  config: Config(msg),
-  cards: List(Card),
-) -> Element(msg) {
-  case list.find(cards, fn(card) { has_direct_contents(config, card.id) }) {
-    Ok(card) -> view_card_scope_section(config, card)
-    Error(_) ->
-      div([attribute.class("card-tree-section card-tree-section-empty")], [
-        h4([attribute.class("card-tree-section-title")], [text("Card scope")]),
-        view_empty_depth(config, 1),
-      ])
-  }
-}
-
-fn view_card_scope_section(config: Config(msg), card: Card) -> Element(msg) {
-  view_scope_section(
-    "Card scope: " <> card.title,
-    view_card_scope(config, card.id),
-  )
-}
-
-fn has_direct_cards(config: Config(msg), card_id: Int) -> Bool {
-  list.any(config.cards, fn(card) { card.parent_card_id == Some(card_id) })
-}
-
-fn has_direct_contents(config: Config(msg), card_id: Int) -> Bool {
-  let has_cards = has_direct_cards(config, card_id)
-  let has_tasks =
-    list.any(config.tasks, fn(task) { task.card_id == Some(card_id) })
-  has_cards || has_tasks
-}
-
-fn view_state_group(
-  config: Config(msg),
-  label: String,
-  state: CardPhase,
-) -> Element(msg) {
-  let cards =
-    visible_cards(config) |> list.filter(fn(card) { card.state == state })
-  div([attribute.class("card-tree-state-group")], [
-    h4([], [text(label)]),
-    view_card_grid(config, cards),
   ])
 }
 
@@ -278,20 +161,6 @@ fn visible_cards(config: Config(msg)) -> List(Card) {
   }
 }
 
-fn tasks_for_capability(config: Config(msg), capability_id: Int) -> List(Task) {
-  config.tasks
-  |> list.filter(fn(task) {
-    case
-      list.find(config.task_types, fn(task_type) {
-        task_type.id == task.type_id
-      })
-    {
-      Ok(task_type) -> task_type.capability_id == Some(capability_id)
-      Error(_) -> False
-    }
-  })
-}
-
 fn card_depth(card: Card, cards: List(Card)) -> Int {
   case card.parent_card_id {
     None -> 1
@@ -314,9 +183,6 @@ fn scope_title(config: Config(msg)) -> String {
   case config.scope {
     DepthScope(depth) -> depth_label(config.depth_names, depth)
     CardScope(_) -> "Card scope"
-    TrackingProfile -> "Tracking"
-    CoordinationProfile -> "Coordination"
-    ExecutionProfile -> "Execution"
   }
 }
 
@@ -324,8 +190,5 @@ fn scope_id(scope: Scope) -> String {
   case scope {
     DepthScope(depth) -> "depth:" <> int.to_string(depth)
     CardScope(card_id) -> "card:" <> int.to_string(card_id)
-    TrackingProfile -> "profile:tracking"
-    CoordinationProfile -> "profile:coordination"
-    ExecutionProfile -> "profile:execution"
   }
 }

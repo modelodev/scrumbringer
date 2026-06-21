@@ -18,7 +18,6 @@ import lustre/element/keyed
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
@@ -384,7 +383,9 @@ fn build_rows(
   |> list.filter_map(fn(card) {
     let row_tasks =
       tasks
-      |> list.filter(fn(task) { task_in_card_subtree(task, card, config.cards) })
+      |> list.filter(fn(task) {
+        card_queries.task_in_card_subtree(task, card.id, config.cards)
+      })
 
     case row_tasks {
       [] -> Error(Nil)
@@ -420,39 +421,12 @@ fn build_rows(
 }
 
 fn row_cards(config: Config(msg)) -> List(Card) {
-  case config.scope_kind {
-    member_pool.PlanScopeLevel ->
-      case config.selected_depth {
-        None -> top_level_cards(config.cards)
-        Some(depth) ->
-          list.filter(config.cards, fn(card) {
-            detail_policy.card_depth(card, config.cards) == depth
-          })
-      }
-    member_pool.PlanScopeCard ->
-      case config.selected_card_id {
-        None -> top_level_cards(config.cards)
-        Some(card_id) ->
-          case direct_child_cards(card_id, config.cards) {
-            [] ->
-              config.cards
-              |> list.filter(fn(card) { card.id == card_id })
-            children -> children
-          }
-      }
-  }
-}
-
-fn top_level_cards(cards: List(Card)) -> List(Card) {
-  case list.filter(cards, fn(card) { card.parent_card_id == None }) {
-    [] -> cards
-    roots -> roots
-  }
-}
-
-fn direct_child_cards(card_id: Int, cards: List(Card)) -> List(Card) {
-  cards
-  |> list.filter(fn(card) { card.parent_card_id == Some(card_id) })
+  card_queries.row_cards_for_scope(
+    config.cards,
+    config.scope_kind,
+    config.selected_depth,
+    config.selected_card_id,
+  )
 }
 
 fn columns_for_tasks(
@@ -1027,61 +1001,21 @@ fn include_closed(config: Config(msg)) -> Bool {
     Some(value) -> value
     None ->
       case config.scope_kind, config.selected_card_id {
-        member_pool.PlanScopeCard, Some(card_id) ->
-          card_scope_defaults_to_closed(
-            card_id,
+        _, _ ->
+          card_queries.closed_default_for_scope(
             config.cards,
             loaded_tasks(config.tasks),
+            config.scope_kind,
+            config.selected_card_id,
           )
-        _, _ -> False
       }
   }
-}
-
-fn card_scope_defaults_to_closed(
-  card_id: Int,
-  cards: List(Card),
-  tasks: List(Task),
-) -> Bool {
-  let has_child_cards =
-    list.any(cards, fn(card) { card.parent_card_id == Some(card_id) })
-  let has_direct_tasks =
-    list.any(tasks, fn(task) { task.card_id == Some(card_id) })
-
-  has_direct_tasks && !has_child_cards
 }
 
 fn loaded_tasks(tasks: Remote(List(Task))) -> List(Task) {
   case tasks {
     Loaded(values) -> values
     _ -> []
-  }
-}
-
-fn task_in_card_subtree(task: Task, card: Card, all_cards: List(Card)) -> Bool {
-  case task.card_id {
-    Some(card_id) -> card_in_subtree(card_id, card.id, all_cards)
-    None -> False
-  }
-}
-
-fn card_in_subtree(
-  candidate_id: Int,
-  ancestor_id: Int,
-  all_cards: List(Card),
-) -> Bool {
-  case candidate_id == ancestor_id {
-    True -> True
-    False ->
-      case list.find(all_cards, fn(card) { card.id == candidate_id }) {
-        Ok(card) ->
-          case card.parent_card_id {
-            Some(parent_id) ->
-              card_in_subtree(parent_id, ancestor_id, all_cards)
-            None -> False
-          }
-        Error(_) -> False
-      }
   }
 }
 
@@ -1141,6 +1075,8 @@ fn task_rank(task: Task) -> Int {
 
 fn row_label(config: Config(msg)) -> String {
   case config.scope_kind {
+    member_pool.PlanScopeProject ->
+      i18n.t(config.locale, i18n_text.CapabilityBoardCardColumn)
     member_pool.PlanScopeCard ->
       i18n.t(config.locale, i18n_text.CapabilityBoardCardColumn)
     member_pool.PlanScopeLevel ->

@@ -646,6 +646,7 @@ fn update_without_view_mode(
     | pool_messages.MemberPoolSearchChanged(_)
     | pool_messages.MemberPoolSearchDebounced(_)
     | pool_messages.MemberPlanScopeKindChanged(_)
+    | pool_messages.MemberPlanModeChanged(_)
     | pool_messages.MemberPlanCapabilityModeChanged(_)
     | pool_messages.MemberPlanScopeDepthChanged(_)
     | pool_messages.MemberPlanScopeCardChanged(_)
