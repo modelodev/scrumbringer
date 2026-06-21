@@ -695,6 +695,14 @@ fn task_closed_reason(status: task_status.TaskPhase) -> Option(String) {
   }
 }
 
+fn root_card_execution_state(state: card.CardPhase) -> String {
+  case state {
+    card.Draft -> "draft"
+    card.Active -> "active"
+    card.Closed -> "closed"
+  }
+}
+
 fn claim_mode_to_string(mode: task_status.ClaimedState) -> String {
   case mode {
     task_status.Taken -> "taken"
@@ -830,7 +838,7 @@ pub fn insert_root_card(
       params,
     )
 
-  let state = card.state_to_string(opts.state)
+  let state = root_card_execution_state(opts.state)
   let closed_fields = case opts.state {
     card.Closed -> ", closed_by_kind, closed_reason"
     _ -> ""
@@ -918,49 +926,49 @@ pub fn assign_card_to_parent_card(
   })
 }
 
-/// Assign available root-pool tasks (card_id is null) to a parent card.
+/// Assign available root-pool tasks (card_id is null) to a card.
 pub fn assign_available_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  parent_card_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
   assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    parent_card_id,
+    card_id,
     task_status.Available,
     limit,
   )
 }
 
-/// Assign claimed root-pool tasks (card_id is null) to a parent card.
+/// Assign claimed root-pool tasks (card_id is null) to a card.
 pub fn assign_claimed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  parent_card_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
   assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    parent_card_id,
+    card_id,
     task_status.Claimed(task_status.Taken),
     limit,
   )
 }
 
-/// Assign completed root-pool tasks (card_id is null) to a parent card.
+/// Assign completed root-pool tasks (card_id is null) to a card.
 pub fn assign_completed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  parent_card_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
   assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    parent_card_id,
+    card_id,
     task_status.Done,
     limit,
   )
@@ -969,27 +977,26 @@ pub fn assign_completed_pool_tasks_to_parent_card(
 fn assign_pool_tasks_to_parent_card_by_status(
   db: pog.Connection,
   project_id: Int,
-  parent_card_id: Int,
+  card_id: Int,
   status: task_status.TaskPhase,
   limit: Int,
 ) -> Result(Nil, String) {
   let status = task_status.task_status_to_string(status)
   pog.query(
     "UPDATE tasks
-     SET parent_card_id = $2
+     SET card_id = $2
      WHERE id IN (
        SELECT id
        FROM tasks
        WHERE project_id = $1
          AND card_id IS NULL
-         AND parent_card_id IS NULL
          AND status = $3
        ORDER BY id
        LIMIT $4
      )",
   )
   |> pog.parameter(pog.int(project_id))
-  |> pog.parameter(pog.int(parent_card_id))
+  |> pog.parameter(pog.int(card_id))
   |> pog.parameter(pog.text(status))
   |> pog.parameter(pog.int(limit))
   |> pog.execute(db)
