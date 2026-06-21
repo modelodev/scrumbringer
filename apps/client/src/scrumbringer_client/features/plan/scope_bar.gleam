@@ -1,8 +1,7 @@
-import domain/card.{type Card, Active}
+import domain/card.{type Card}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
@@ -12,6 +11,7 @@ import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view
+import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -128,28 +128,99 @@ fn view_depth_selector(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_card_search(config: Config(msg)) -> Element(msg) {
-  let datalist_id = config.id_prefix <> "-active-card-options"
+  let listbox_id = config.id_prefix <> "-active-card-options"
+  let options = card_picker.active_options(config.cards, config.depth_names)
 
   div([attribute.class("plan-card-scope-control")], [
     input([
       attribute.type_("search"),
-      attribute.attribute("list", datalist_id),
       attribute.attribute("data-testid", "plan-scope-card-search"),
+      attribute.attribute("role", "combobox"),
+      attribute.attribute("aria-controls", listbox_id),
+      attribute.attribute("aria-expanded", "true"),
+      attribute.attribute("autocomplete", "off"),
       attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
-      attribute.value(selected_card_label(config)),
+      attribute.value(card_picker.selected_label(
+        config.cards,
+        config.depth_names,
+        config.selected_card_id,
+      )),
       event.on_input(fn(value) {
-        config.on_scope_card_change(card_id_for_search_value(config, value))
+        config.on_scope_card_change(card_picker.search_value_to_card_id(
+          config.cards,
+          config.depth_names,
+          value,
+        ))
       }),
       event.on_change(fn(value) {
-        config.on_scope_card_change(card_id_for_search_value(config, value))
+        config.on_scope_card_change(card_picker.search_value_to_card_id(
+          config.cards,
+          config.depth_names,
+          value,
+        ))
       }),
     ]),
-    element.element(
-      "datalist",
-      [attribute.id(datalist_id)],
-      active_card_datalist_options(config),
-    ),
+    view_card_options(listbox_id, options, config.on_scope_card_change),
   ])
+}
+
+fn view_card_options(
+  listbox_id: String,
+  options: List(card_picker.CardOption),
+  on_scope_card_change: fn(String) -> msg,
+) -> Element(msg) {
+  div(
+    [
+      attribute.id(listbox_id),
+      attribute.class("plan-card-picker-options"),
+      attribute.attribute("data-testid", "plan-scope-card-options"),
+      attribute.attribute("role", "listbox"),
+    ],
+    case options {
+      [] -> [
+        span(
+          [
+            attribute.class("plan-card-picker-empty"),
+            attribute.attribute("data-testid", "plan-scope-card-no-results"),
+          ],
+          [text("Sin cards activas")],
+        ),
+      ]
+      _ ->
+        list.map(options, fn(option) {
+          view_card_option(option, on_scope_card_change)
+        })
+    },
+  )
+}
+
+fn view_card_option(
+  option: card_picker.CardOption,
+  on_scope_card_change: fn(String) -> msg,
+) -> Element(msg) {
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class("plan-card-picker-option"),
+      attribute.attribute("data-testid", "plan-scope-card-option"),
+      attribute.attribute("data-card-id", int.to_string(option.id)),
+      attribute.attribute("role", "option"),
+      attribute.attribute("aria-label", option.label),
+      event.on_click(on_scope_card_change(int.to_string(option.id))),
+    ],
+    [
+      span([attribute.class("plan-card-picker-title")], [text(option.title)]),
+      span([attribute.class("plan-card-picker-meta")], [
+        text(
+          option.path
+          <> " - "
+          <> option.level_name
+          <> " #"
+          <> int.to_string(option.id),
+        ),
+      ]),
+    ],
+  )
 }
 
 fn view_mode_controls(config: Config(msg)) -> Element(msg) {
@@ -182,42 +253,6 @@ fn view_mode_button(control: ModeControl(msg)) -> Element(msg) {
     ],
     [text(control.label)],
   )
-}
-
-fn active_card_datalist_options(config: Config(msg)) -> List(Element(msg)) {
-  config.cards
-  |> active_cards
-  |> list.map(fn(card) {
-    html_option([attribute.value(card_search_label(card))], "")
-  })
-}
-
-fn active_cards(cards: List(Card)) -> List(Card) {
-  cards
-  |> list.filter(fn(card) { card.state == Active })
-  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
-}
-
-fn selected_card_label(config: Config(msg)) -> String {
-  case config.selected_card_id {
-    Some(card_id) ->
-      case list.find(config.cards, fn(card) { card.id == card_id }) {
-        Ok(card) -> card_search_label(card)
-        Error(_) -> ""
-      }
-    None -> ""
-  }
-}
-
-fn card_id_for_search_value(config: Config(msg), value: String) -> String {
-  case list.find(config.cards, fn(card) { card_search_label(card) == value }) {
-    Ok(card) -> int.to_string(card.id)
-    Error(_) -> ""
-  }
-}
-
-fn card_search_label(card: Card) -> String {
-  card.title <> " #" <> int.to_string(card.id)
 }
 
 fn scope_kind_value(scope_kind: member_pool.PlanScopeKind) -> String {

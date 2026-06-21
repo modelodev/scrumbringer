@@ -17,6 +17,10 @@ pub fn kanban_column_headers_show_icons_test() {
     kanban_board.KanbanConfig(
       locale: i18n_locale.En,
       theme: theme.Default,
+      surface_title: "Kanban",
+      surface_purpose: "Card flow by state",
+      show_task_preview: True,
+      allow_task_claim: True,
       cards: [],
       tasks: [],
       task_types: [],

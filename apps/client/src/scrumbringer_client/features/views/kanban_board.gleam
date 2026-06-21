@@ -55,6 +55,10 @@ pub type KanbanConfig(msg) {
   KanbanConfig(
     locale: Locale,
     theme: Theme,
+    surface_title: String,
+    surface_purpose: String,
+    show_task_preview: Bool,
+    allow_task_claim: Bool,
     cards: List(Card),
     tasks: List(Task),
     task_types: List(TaskType),
@@ -196,8 +200,8 @@ fn view_surface_header(
   include_closed: Bool,
 ) -> element.Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
-    title: i18n.t(config.locale, i18n_text.Kanban),
-    purpose: i18n.t(config.locale, i18n_text.KanbanSurfacePurpose),
+    title: config.surface_title,
+    purpose: config.surface_purpose,
     summary: [
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.KanbanSummaryCards),
@@ -357,12 +361,20 @@ fn view_card(
   cwp: CardWithProgress,
 ) -> element.Element(msg) {
   let health = task_health(cwp.tasks)
+  let preview_tasks = case config.show_task_preview {
+    True -> next_relevant_tasks(cwp.tasks)
+    False -> []
+  }
+  let task_testid = case config.show_task_preview {
+    True -> option.Some("kanban-task-item")
+    False -> option.None
+  }
 
   card_with_tasks_surface.view(card_with_tasks_surface.Config(
     locale: config.locale,
     theme: config.theme,
     card: cwp.card,
-    tasks: next_relevant_tasks(cwp.tasks),
+    tasks: preview_tasks,
     org_users: config.org_users,
     preview_limit: 3,
     progress_completed: cwp.completed,
@@ -372,15 +384,22 @@ fn view_card(
     status_items: view_health_items(config, health),
     on_card_click: option.Some(config.on_card_click(cwp.card.id)),
     on_task_click: config.on_task_click,
-    on_task_claim: config.on_task_claim,
+    on_task_claim: task_claim_handler(config),
     header_actions: header_actions(config, cwp.card),
     footer_actions: [],
     root_attributes: [
       attribute.attribute("data-testid", "card-item"),
       attribute.attribute("data-card-id", int.to_string(cwp.card.id)),
     ],
-    task_item_testid: option.Some("kanban-task-item"),
+    task_item_testid: task_testid,
   ))
+}
+
+fn task_claim_handler(config: KanbanConfig(msg)) -> fn(Int, Int) -> msg {
+  case config.allow_task_claim {
+    True -> config.on_task_claim
+    False -> fn(_task_id, _version) { config.on_card_click(0) }
+  }
 }
 
 fn view_health_items(

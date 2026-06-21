@@ -79,6 +79,7 @@ import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/people/view as people_view
+import scrumbringer_client/features/plan/kanban_view as plan_kanban_view
 import scrumbringer_client/features/plan/structure_view as plan_structure_view
 import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
@@ -1326,7 +1327,7 @@ fn build_center_panel(
         data.tasks,
       ))
     member_pool.PlanKanban ->
-      kanban_board.view(kanban_config(
+      plan_kanban_view.view(kanban_config(
         model,
         user,
         cards,
@@ -1391,6 +1392,10 @@ fn kanban_config(
   kanban_board.KanbanConfig(
     locale: model.ui.locale,
     theme: model.ui.theme,
+    surface_title: i18n.t(model.ui.locale, i18n_text.Kanban),
+    surface_purpose: i18n.t(model.ui.locale, i18n_text.KanbanSurfacePurpose),
+    show_task_preview: True,
+    allow_task_claim: True,
     cards: cards,
     tasks: tasks,
     task_types: task_types,

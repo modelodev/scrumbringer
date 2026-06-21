@@ -19,12 +19,12 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
+import scrumbringer_client/features/plan/tree_table
 import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
-import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
@@ -257,29 +257,101 @@ fn view_table(
   config: Config(msg),
   rows: List(types.StructureRow),
 ) -> Element(msg) {
-  data_table.new()
-  |> data_table.with_class("plan-structure-table")
-  |> data_table.with_caption("Plan structure")
-  |> data_table.with_columns([
-    data_table.column_with_class(
-      first_column_label(config),
-      fn(row) { view_tree_cell(config, row) },
-      "plan-col-tree",
-      "plan-cell-tree",
+  tree_table.view(
+    tree_table.Config(
+      caption: "Plan structure",
+      class_name: "plan-structure-table",
+      columns: [
+        tree_table.column(
+          first_column_label(config),
+          fn(row) { view_tree_cell(config, row) },
+          "plan-col-tree",
+          "plan-cell-tree",
+        ),
+        tree_table.column(
+          "Estado",
+          fn(row) { view_state_cell(row) },
+          "plan-col-state",
+          "plan-cell-state",
+        ),
+        tree_table.column(
+          "Tasks",
+          fn(row) { view_task_count_cell(row) },
+          "plan-col-tasks",
+          "plan-cell-tasks",
+        ),
+        tree_table.column(
+          "Pool impact",
+          fn(row) { view_pool_impact_cell(row) },
+          "plan-col-pool",
+          "plan-cell-pool",
+        ),
+        tree_table.column(
+          "Vence",
+          fn(row) { view_due_date_cell(row) },
+          "plan-col-due",
+          "plan-cell-due",
+        ),
+        tree_table.column(
+          "Acciones",
+          fn(row) { view_actions_cell(config, row) },
+          "plan-col-actions",
+          "plan-cell-actions",
+        ),
+      ],
+      rows: rows,
+      key_fn: row_key,
+      mobile_row: fn(row) { view_mobile_row(config, row) },
     ),
-    data_table.column("Estado", fn(row) { view_state_cell(row) }),
-    data_table.column("Tasks", fn(row) { view_task_count_cell(row) }),
-    data_table.column("Pool impact", fn(row) { view_pool_impact_cell(row) }),
-    data_table.column("Vence", fn(row) { view_due_date_cell(row) }),
-    data_table.column_with_class(
-      "Acciones",
-      fn(row) { view_actions_cell(config, row) },
-      "plan-col-actions",
-      "plan-cell-actions",
-    ),
-  ])
-  |> data_table.with_rows(rows, row_key)
-  |> data_table.view
+  )
+}
+
+fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg) {
+  let types.CardRow(card:, path:, level_name:, rollup:, ..) = row
+
+  div(
+    [
+      attribute.class("plan-tree-mobile-row"),
+      attribute.attribute("data-testid", "plan-tree-mobile-row"),
+      attribute.attribute("data-card-id", int.to_string(card.id)),
+    ],
+    [
+      div([attribute.class("plan-tree-mobile-main")], [
+        view_tree_toggle(config, card),
+        button(
+          [
+            attribute.type_("button"),
+            attribute.class("plan-tree-trigger"),
+            attribute.attribute("data-testid", "plan-structure-row-trigger"),
+            attribute.attribute("title", path),
+            event.on_click(config.on_card_click(card.id)),
+          ],
+          [span([attribute.class("plan-tree-title")], [text(card.title)])],
+        ),
+      ]),
+      div([attribute.class("plan-tree-mobile-path")], [
+        span([attribute.class("plan-tree-level")], [text(level_name)]),
+        case path {
+          "" -> element.none()
+          _ -> span([attribute.class("plan-tree-path")], [text(path)])
+        },
+      ]),
+      div([attribute.class("plan-tree-mobile-meta")], [
+        view_state_cell(row),
+        span([attribute.class("plan-task-count")], [
+          text(
+            int.to_string(rollup.completed_tasks)
+            <> "/"
+            <> int.to_string(rollup.total_tasks)
+            <> " tasks",
+          ),
+        ]),
+        view_pool_impact_cell(row),
+        view_due_date_cell(row),
+      ]),
+      view_actions_cell(config, row),
+    ],
+  )
 }
 
 fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) {
@@ -400,6 +472,8 @@ fn view_actions_cell(
   row: types.StructureRow,
 ) -> Element(msg) {
   let types.CardRow(card:, actions:, ..) = row
+  let primary_create = primary_create_action(actions)
+
   div([attribute.class("plan-row-actions")], [
     button(
       [
@@ -410,8 +484,112 @@ fn view_actions_cell(
       ],
       [text("Ver")],
     ),
-    ..list.map(actions, fn(action) { view_compact_action(config, card, action) })
+    view_contextual_create_action(config, card, primary_create),
+    view_secondary_action_menu(config, card, actions, primary_create),
   ])
+}
+
+fn view_contextual_create_action(
+  config: Config(msg),
+  card: Card,
+  planned: Option(types.PlannedAction),
+) -> Element(msg) {
+  case planned {
+    Some(action) -> {
+      let types.PlannedAction(action: action_kind, availability:) = action
+      let #(label, msg) = action_event(config, card, action_kind)
+      let #(disabled, title) = availability_attrs(availability)
+
+      button(
+        [
+          attribute.type_("button"),
+          attribute.class("plan-action-btn plan-action-primary"),
+          attribute.attribute("data-testid", "plan-action-contextual-create"),
+          attribute.attribute("aria-label", label),
+          attribute.attribute("title", case title {
+            "" -> label
+            _ -> title
+          }),
+          attribute.disabled(disabled),
+          event.on_click(msg),
+        ],
+        [text("+")],
+      )
+    }
+    None -> element.none()
+  }
+}
+
+fn view_secondary_action_menu(
+  config: Config(msg),
+  card: Card,
+  actions: List(types.PlannedAction),
+  primary_create: Option(types.PlannedAction),
+) -> Element(msg) {
+  element.element(
+    "details",
+    [
+      attribute.class("plan-action-menu"),
+      attribute.attribute("data-testid", "plan-action-menu"),
+    ],
+    [
+      element.element(
+        "summary",
+        [
+          attribute.class("plan-action-btn plan-action-menu-toggle"),
+          attribute.attribute("data-testid", "plan-action-menu-toggle"),
+          attribute.attribute("aria-label", "Mas acciones"),
+        ],
+        [text("...")],
+      ),
+      div(
+        [attribute.class("plan-action-menu-panel")],
+        actions
+          |> list.filter(fn(action) {
+            !same_planned_action(action, primary_create)
+          })
+          |> list.map(fn(action) { view_compact_action(config, card, action) }),
+      ),
+    ],
+  )
+}
+
+fn primary_create_action(
+  actions: List(types.PlannedAction),
+) -> Option(types.PlannedAction) {
+  case find_available_action(actions, types.CreateSubcard) {
+    Some(action) -> Some(action)
+    None -> find_available_action(actions, types.CreateTask)
+  }
+}
+
+fn find_available_action(
+  actions: List(types.PlannedAction),
+  target: types.CardAction,
+) -> Option(types.PlannedAction) {
+  case
+    list.find(actions, fn(planned) {
+      let types.PlannedAction(action:, availability:) = planned
+      action == target && availability == types.Available
+    })
+  {
+    Ok(action) -> Some(action)
+    Error(_) -> None
+  }
+}
+
+fn same_planned_action(
+  planned: types.PlannedAction,
+  maybe_other: Option(types.PlannedAction),
+) -> Bool {
+  case maybe_other {
+    Some(other) -> {
+      let types.PlannedAction(action: action_a, ..) = planned
+      let types.PlannedAction(action: action_b, ..) = other
+      action_a == action_b
+    }
+    None -> False
+  }
 }
 
 fn view_compact_action(
@@ -572,19 +750,31 @@ fn view_detail_action(
 }
 
 fn view_empty_state(config: Config(msg)) -> Element(msg) {
+  let #(title, body, show_create) = case
+    config.scope_kind,
+    config.selected_card_id
+  {
+    member_pool.PlanScopeCard, None -> #(
+      "Selecciona una card activa",
+      "Busca una card para ver su subarbol, capacidades, tasks y riesgo.",
+      False,
+    )
+    _, _ -> #(
+      "No hay cards en este scope.",
+      "Crea una card o cambia el scope para revisar otra parte del plan.",
+      config.is_pm_or_admin,
+    )
+  }
+
   div(
     [
       attribute.class("plan-structure-empty"),
       attribute.attribute("data-testid", "plan-structure-empty"),
     ],
     [
-      h4([], [text("No hay cards en este scope.")]),
-      p([], [
-        text(
-          "Crea una card o cambia el scope para revisar otra parte del plan.",
-        ),
-      ]),
-      case config.is_pm_or_admin {
+      h4([], [text(title)]),
+      p([], [text(body)]),
+      case show_create {
         True ->
           button(
             [
@@ -604,25 +794,30 @@ fn structure_rows(
   config: Config(msg),
   include_closed: Bool,
 ) -> List(types.StructureRow) {
-  let cards = visible_cards(config, include_closed)
-  let scoped_cards =
-    card_queries.cards_for_scope(
-      cards,
-      config.scope_kind,
-      config.selected_depth,
-      config.selected_card_id,
-    )
-    |> list.filter(fn(card) { matches_status(config, card) })
-    |> list.filter(fn(card) { matches_search(config, card) })
-
   case config.scope_kind, config.selected_depth, config.selected_card_id {
-    member_pool.PlanScopeLevel, Some(_), _ ->
-      scoped_cards
-      |> list.sort(fn(a, b) { compare_cards(config, cards, a, b) })
-      |> list.map(fn(card) { row_for_card(config, card, 1) })
-    _, _, _ ->
-      roots_for_scope(scoped_cards, config)
-      |> list.flat_map(fn(card) { tree_rows(config, scoped_cards, card, 1) })
+    member_pool.PlanScopeCard, _, None -> []
+    _, _, _ -> {
+      let cards = visible_cards(config, include_closed)
+      let scoped_cards =
+        card_queries.cards_for_scope(
+          cards,
+          config.scope_kind,
+          config.selected_depth,
+          config.selected_card_id,
+        )
+        |> list.filter(fn(card) { matches_status(config, card) })
+        |> list.filter(fn(card) { matches_search(config, card) })
+
+      case config.scope_kind, config.selected_depth {
+        member_pool.PlanScopeLevel, Some(_) ->
+          scoped_cards
+          |> list.sort(fn(a, b) { compare_cards(config, cards, a, b) })
+          |> list.map(fn(card) { row_for_card(config, card, 1) })
+        _, _ ->
+          roots_for_scope(scoped_cards, config)
+          |> list.flat_map(fn(card) { tree_rows(config, scoped_cards, card, 1) })
+      }
+    }
   }
 }
 

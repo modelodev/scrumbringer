@@ -56,7 +56,9 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
 
   assert_contains(html, "data-testid=\"plan-scope-bar\"")
   assert_contains(html, "data-testid=\"plan-scope-card-search\"")
-  assert_contains(html, "Checkout #2")
+  assert_contains(html, "Checkout")
+  assert_contains(html, "Epic #2")
+  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
   assert_not_contains(html, "data-testid=\"plan-scope-card\"")
   assert_not_contains(html, "Lens")
 }

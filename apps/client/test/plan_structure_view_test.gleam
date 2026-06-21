@@ -33,6 +33,10 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   assert_contains(html, "Root Initiative")
   assert_contains(html, "Portal Feature")
   assert_contains(html, "API Story")
+  assert_contains(html, "data-testid=\"plan-tree-table\"")
+  assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
+  assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
+  assert_contains(html, "data-card-id=\"1\"")
   assert_contains(html, "plan-mode-structure")
   assert_contains(html, "plan-mode-kanban")
   assert_not_contains(html, "Lens")
@@ -95,6 +99,24 @@ pub fn card_scope_with_subcards_prioritizes_subcards_detail_test() {
   assert_not_contains(html, "Contenido: tasks")
 }
 
+pub fn card_scope_without_selection_shows_empty_state_not_full_tree_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        scope_kind: member_pool.PlanScopeCard,
+        selected_card_id: None,
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-structure-empty\"")
+  assert_contains(html, "Selecciona una card activa")
+  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
+  assert_not_contains(html, "plan-tree-title\">Root Initiative")
+  assert_not_contains(html, "plan-tree-title\">Portal Feature")
+  assert_not_contains(html, "plan-tree-title\">API Story")
+}
+
 pub fn card_scope_with_tasks_prioritizes_tasks_detail_test() {
   let html =
     render(
@@ -108,6 +130,22 @@ pub fn card_scope_with_tasks_prioritizes_tasks_detail_test() {
   assert_contains(html, "Contenido: tasks")
   assert_contains(html, "Implement API")
   assert_not_contains(html, "Contenido: subcards")
+}
+
+pub fn card_scope_selection_shows_only_selected_subtree_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        scope_kind: member_pool.PlanScopeCard,
+        selected_card_id: Some(2),
+      ),
+    )
+
+  assert_not_contains(html, "plan-tree-title\">Root Initiative")
+  assert_contains(html, "plan-tree-title\">Portal Feature")
+  assert_contains(html, "plan-tree-title\">API Story")
+  assert_contains(html, "plan-tree-title\">Draft Checkout")
 }
 
 pub fn closed_cards_are_hidden_until_closed_toggle_applies_test() {
@@ -131,6 +169,32 @@ pub fn incompatible_actions_are_disabled_with_reason_test() {
 
   assert_contains(html, "data-testid=\"plan-action-create-task\"")
   assert_contains(html, "Esta card contiene subcards")
+  assert_contains(html, "data-testid=\"plan-action-delete-card\"")
+  assert_contains(html, "Tiene historial operativo")
+}
+
+pub fn row_actions_are_detail_contextual_create_and_secondary_menu_test() {
+  let html = render(base_config())
+
+  assert_contains(html, "data-testid=\"plan-card-detail-action\"")
+  assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
+  assert_contains(html, "data-testid=\"plan-action-menu\"")
+  assert_contains(html, "data-testid=\"plan-action-menu-toggle\"")
+}
+
+pub fn secondary_action_menu_keeps_close_and_delete_disabled_reasons_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        scope_kind: member_pool.PlanScopeCard,
+        selected_card_id: Some(1),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-action-menu\"")
+  assert_contains(html, "data-testid=\"plan-action-close-card\"")
+  assert_contains(html, "Hay tasks reclamadas o en curso debajo")
   assert_contains(html, "data-testid=\"plan-action-delete-card\"")
   assert_contains(html, "Tiene historial operativo")
 }

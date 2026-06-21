@@ -78,10 +78,14 @@ pub fn view(config: CenterPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div([attribute.class("center-toolbar")], [
-    // Filters only - navigation moved to sidebar (Story 4.8 UX)
-    view_filters(config),
-  ])
+  case config.view_mode {
+    Cards -> element.none()
+    _ ->
+      div([attribute.class("center-toolbar")], [
+        // Filters only - navigation moved to sidebar (Story 4.8 UX)
+        view_filters(config),
+      ])
+  }
 }
 
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
