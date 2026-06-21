@@ -687,15 +687,37 @@ pub fn cards_create(
   }
 
   "-- name: create_card
-INSERT INTO cards (project_id, title, description, color, created_by, parent_card_id)
-VALUES (
-  $1,
-  $2,
-  $3,
-  NULLIF($4, ''),
-  $5,
-  case when $6 <= 0 then null else $6 end
+WITH input AS (
+  SELECT
+    $1::int AS project_id,
+    $2::text AS title,
+    $3::text AS description,
+    NULLIF($4, '')::text AS color,
+    $5::int AS created_by,
+    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id
 )
+INSERT INTO cards (
+  project_id,
+  title,
+  description,
+  color,
+  created_by,
+  parent_card_id
+)
+SELECT
+  project_id,
+  title,
+  description,
+  color,
+  created_by,
+  parent_card_id
+FROM input
+WHERE parent_card_id IS NULL
+   OR NOT EXISTS (
+     SELECT 1
+     FROM tasks
+     WHERE card_id = parent_card_id
+   )
 RETURNING
     id,
     project_id,

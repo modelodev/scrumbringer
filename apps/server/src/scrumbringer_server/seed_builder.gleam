@@ -1331,11 +1331,25 @@ fn build_root_cards(
             discovery_id,
             2,
           ))
+          use discovery_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            discovery_id,
+            "Discovery - Research tasks",
+            Some(
+              "Task leaf for loose research work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            20,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              discovery_id,
+              discovery_tasks_id,
               4,
             ),
           )
@@ -1374,11 +1388,25 @@ fn build_root_cards(
             hardening_id,
             2,
           ))
+          use hardening_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            hardening_id,
+            "Hardening - QA tasks",
+            Some(
+              "Task leaf for QA and rollout work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            8,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              hardening_id,
+              hardening_tasks_id,
               3,
             ),
           )
@@ -1402,11 +1430,25 @@ fn build_root_cards(
             compliance_id,
             1,
           ))
+          use compliance_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            compliance_id,
+            "Compliance - Review tasks",
+            Some(
+              "Task leaf for documentation checks while the root remains a pure card group.",
+            ),
+            card.Draft,
+            4,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              compliance_id,
+              compliance_tasks_id,
               2,
             ),
           )
@@ -1433,11 +1475,25 @@ fn build_root_cards(
             completed_id,
             2,
           ))
+          use completed_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            completed_id,
+            "Release 1.4 - Completion tasks",
+            Some(
+              "Closed task leaf preserving completed task coverage without mixing child kinds.",
+            ),
+            card.Closed,
+            17,
+            Some(days_ago_timestamp(16)),
+            Some(days_ago_timestamp(6)),
+          ))
           use _ <- result.try(
             seed_db.assign_completed_pool_tasks_to_parent_card(
               db,
               project_id,
-              completed_id,
+              completed_tasks_id,
               4,
             ),
           )
@@ -1448,7 +1504,7 @@ fn build_root_cards(
             project_id,
             "Release 1.5 - Launch train",
             Some(
-              "The currently active root card with in-flight delivery work, claimed tasks and visible loose scope.",
+              "The currently active root card with in-flight delivery cards and a dedicated task leaf.",
             ),
             card.Active,
             12,
@@ -1461,17 +1517,31 @@ fn build_root_cards(
             active_id,
             2,
           ))
+          use active_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            active_id,
+            "Release 1.5 - Delivery tasks",
+            Some(
+              "Active task leaf with launch-train work while the root remains a pure card group.",
+            ),
+            card.Active,
+            10,
+            Some(days_ago_timestamp(3)),
+            None,
+          ))
           use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
             db,
             project_id,
-            active_id,
+            active_tasks_id,
             2,
           ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              active_id,
+              active_tasks_id,
               3,
             ),
           )
@@ -1482,7 +1552,7 @@ fn build_root_cards(
             project_id,
             "Release 1.6 - Next wave",
             Some(
-              "A ready root card with enough queued cards and loose tasks to preview the upcoming tranche of work.",
+              "A ready root card with enough queued cards and a task leaf to preview the upcoming tranche of work.",
             ),
             card.Draft,
             6,
@@ -1495,11 +1565,25 @@ fn build_root_cards(
             backlog_id,
             2,
           ))
+          use backlog_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            backlog_id,
+            "Release 1.6 - Queued tasks",
+            Some(
+              "Task leaf for upcoming loose work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            5,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              backlog_id,
+              backlog_tasks_id,
               3,
             ),
           )
@@ -1510,7 +1594,7 @@ fn build_root_cards(
             project_id,
             "Design spike - Future experiments",
             Some(
-              "Small ready root card mixing discovery cards and one loose task to keep the list visually varied.",
+              "Small ready root card with discovery cards and a task leaf to keep the list visually varied.",
             ),
             card.Draft,
             2,
@@ -1523,11 +1607,25 @@ fn build_root_cards(
             design_spike_id,
             1,
           ))
+          use design_spike_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            design_spike_id,
+            "Design spike - Research tasks",
+            Some(
+              "Task leaf for discovery work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            2,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              design_spike_id,
+              design_spike_tasks_id,
               2,
             ),
           )
@@ -1556,7 +1654,7 @@ fn build_root_cards(
             project_id,
             "Client refresh - Preparation",
             Some(
-              "Primary ready root card with several cards and loose tasks for visual inspection of the new split view.",
+              "Primary ready root card with several child cards and a task leaf for visual inspection of the new split view.",
             ),
             card.Draft,
             11,
@@ -1569,11 +1667,25 @@ fn build_root_cards(
             prep_id,
             3,
           ))
+          use prep_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            prep_id,
+            "Client refresh - Prep tasks",
+            Some(
+              "Task leaf for preparation work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            10,
+            None,
+            None,
+          ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              prep_id,
+              prep_tasks_id,
               4,
             ),
           )
@@ -1597,17 +1709,31 @@ fn build_root_cards(
             active_bugfix_id,
             1,
           ))
+          use active_bugfix_tasks_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            active_bugfix_id,
+            "Hotfix train - Repair tasks",
+            Some(
+              "Task leaf for active bugfix work while the root remains a pure card group.",
+            ),
+            card.Active,
+            4,
+            Some(days_ago_timestamp(1)),
+            None,
+          ))
           use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
             db,
             project_id,
-            active_bugfix_id,
+            active_bugfix_tasks_id,
             1,
           ))
           use _ <- result.try(
             seed_db.assign_available_pool_tasks_to_parent_card(
               db,
               project_id,
-              active_bugfix_id,
+              active_bugfix_tasks_id,
               1,
             ),
           )
@@ -1640,7 +1766,7 @@ fn build_root_cards(
             project_id,
             "Ops cleanup - Ready",
             Some(
-              "Card-heavy ready root card with little loose work, useful to contrast against the more ad-hoc planning root cards.",
+              "Card-heavy ready root card, useful to contrast against the more ad-hoc planning root cards.",
             ),
             card.Draft,
             2,
@@ -1702,6 +1828,37 @@ fn insert_seed_root_card(
       completed_at: completed_at,
     ),
   )
+}
+
+fn insert_seed_child_card(
+  db: pog.Connection,
+  state: BuildState,
+  project_id: Int,
+  parent_card_id: Int,
+  name: String,
+  description: Option(String),
+  child_card_state: card.CardPhase,
+  created_days_ago: Int,
+  activated_at: Option(String),
+  completed_at: Option(String),
+) -> Result(Int, String) {
+  use child_id <- result.try(insert_seed_root_card(
+    db,
+    state,
+    project_id,
+    name,
+    description,
+    child_card_state,
+    created_days_ago,
+    activated_at,
+    completed_at,
+  ))
+  use _ <- result.try(seed_db.assign_card_to_parent_card(
+    db,
+    child_id,
+    parent_card_id,
+  ))
+  Ok(child_id)
 }
 
 fn build_task_positions(

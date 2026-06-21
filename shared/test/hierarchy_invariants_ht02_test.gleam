@@ -49,6 +49,25 @@ pub fn task_group_rejects_card_child_test() {
     card_entity.add_card_child(parent, project_id.new(1), card_id.new(3))
 }
 
+pub fn flat_children_with_cards_and_tasks_are_rejected_test() {
+  let assert Error(card_structure.MixedChildKinds) =
+    card_structure.from_children([card_id.new(2)], [task_id.new(3)])
+}
+
+pub fn flat_children_are_reconstructed_as_one_child_kind_test() {
+  let child_card_id = card_id.new(2)
+  let child_task_id = task_id.new(3)
+
+  let assert Ok(card_structure.Empty) = card_structure.from_children([], [])
+  let assert Ok(card_group) = card_structure.from_children([child_card_id], [])
+  let assert card_structure.CardGroup(card_children) = card_group
+  let assert True = card_children == [child_card_id]
+
+  let assert Ok(task_group) = card_structure.from_children([], [child_task_id])
+  let assert card_structure.TaskGroup(task_children) = task_group
+  let assert True = task_children == [child_task_id]
+}
+
 pub fn closed_card_rejects_new_children_test() {
   let parent = closed_card(card_id.new(1), project_id.new(1), option.None)
 

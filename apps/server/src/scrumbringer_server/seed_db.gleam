@@ -884,6 +884,8 @@ pub fn assign_cards_to_parent_card(
   parent_card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
+  use _ <- result.try(require_parent_card_accepts_cards(db, parent_card_id))
+
   pog.query(
     "UPDATE cards
      SET parent_card_id = $2
@@ -912,6 +914,8 @@ pub fn assign_card_to_parent_card(
   card_id: Int,
   parent_card_id: Int,
 ) -> Result(Nil, String) {
+  use _ <- result.try(require_parent_card_accepts_cards(db, parent_card_id))
+
   pog.query(
     "UPDATE cards
      SET parent_card_id = $2
@@ -981,6 +985,8 @@ fn assign_pool_tasks_to_parent_card_by_status(
   status: task_status.TaskPhase,
   limit: Int,
 ) -> Result(Nil, String) {
+  use _ <- result.try(require_parent_card_accepts_tasks(db, card_id))
+
   let status = task_status.task_status_to_string(status)
   pog.query(
     "UPDATE tasks
@@ -1590,4 +1596,60 @@ pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
 fn int_decoder() {
   use value <- decode.field(0, decode.int)
   decode.success(value)
+}
+
+fn bool_decoder() {
+  use value <- decode.field(0, decode.bool)
+  decode.success(value)
+}
+
+fn require_parent_card_accepts_cards(
+  db: pog.Connection,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  require_parent_child_kind(
+    db,
+    parent_card_id,
+    "SELECT NOT EXISTS (
+       SELECT 1 FROM tasks WHERE card_id = $1
+     )",
+    "require_parent_card_accepts_cards",
+    "parent card already contains tasks",
+  )
+}
+
+fn require_parent_card_accepts_tasks(
+  db: pog.Connection,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  require_parent_child_kind(
+    db,
+    parent_card_id,
+    "SELECT NOT EXISTS (
+       SELECT 1 FROM cards WHERE parent_card_id = $1
+     )",
+    "require_parent_card_accepts_tasks",
+    "parent card already contains child cards",
+  )
+}
+
+fn require_parent_child_kind(
+  db: pog.Connection,
+  parent_card_id: Int,
+  query: String,
+  operation: String,
+  rejection_message: String,
+) -> Result(Nil, String) {
+  pog.query(query)
+  |> pog.parameter(pog.int(parent_card_id))
+  |> pog.returning(bool_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { operation <> ": " <> string.inspect(e) })
+  |> result.try(fn(result) {
+    case result.rows {
+      [True] -> Ok(Nil)
+      [False] -> Error(rejection_message)
+      _ -> Error(operation <> " returned no row")
+    }
+  })
 }

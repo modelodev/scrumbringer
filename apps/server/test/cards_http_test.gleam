@@ -687,33 +687,16 @@ pub fn complete_task_does_not_roll_up_when_child_card_stays_open_test() {
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
     create_child_card(handler, session, project_id, root_id, "Open child")
-  let assert Ok(user_id) =
-    fixtures.query_int(
-      db,
-      "select id from users where email = 'admin@example.com'",
-      [],
-    )
+  let assert Ok(task_leaf_id) =
+    create_child_card(handler, session, project_id, root_id, "Task leaf")
   let assert Ok(task_id) =
-    fixtures.query_int(
-      db,
-      "insert into tasks (
-         title,
-         project_id,
-         type_id,
-         priority,
-         status,
-         created_by,
-         card_id,
-         execution_state
-       )
-       values ('Mixed legacy task', $1, $2, 3, 'available', $3, $4, 'available')
-       returning id",
-      [
-        pog.int(project_id),
-        pog.int(type_id),
-        pog.int(user_id),
-        pog.int(root_id),
-      ],
+    fixtures.create_task_with_card(
+      handler,
+      session,
+      project_id,
+      type_id,
+      task_leaf_id,
+      "Leaf task",
     )
 
   expect.expect_status(activate_card(handler, session, root_id), 200)
