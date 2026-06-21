@@ -37,7 +37,6 @@ fn make_model() -> Model {
     note_error: option.None,
     tasks: NotAsked,
     metrics: NotAsked,
-    move_dialog_open: False,
     activation_confirm_open: False,
   )
 }
@@ -84,7 +83,6 @@ pub fn initial_model_has_correct_defaults_test() {
   let assert option.None = model.note_error
   let assert NotAsked = model.tasks
   let assert NotAsked = model.metrics
-  let assert False = model.move_dialog_open
   // AC21: Default tab is Tasks
   let assert card_tabs.TasksTab = model.active_tab
 }

@@ -79,6 +79,7 @@ fn config(card) -> detail_modal_entry.Config(String) {
     on_create_task: decode.success("create"),
     on_create_card: decode.success("create-card"),
     on_activate_card: decode.success("activate-card"),
+    on_move_card: decode.success("move-card"),
     on_delete_card: decode.success("delete-card"),
     on_close: decode.success("close"),
   )

@@ -27,6 +27,7 @@ pub type Config(msg) {
     on_create_task: decode.Decoder(msg),
     on_create_card: decode.Decoder(msg),
     on_activate_card: decode.Decoder(msg),
+    on_move_card: decode.Decoder(msg),
     on_delete_card: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
   )
@@ -45,6 +46,7 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
     on_create_task: on_create_task,
     on_create_card: on_create_card,
     on_activate_card: on_activate_card,
+    on_move_card: on_move_card,
     on_delete_card: on_delete_card,
     on_close: on_close,
   ) = config
@@ -71,6 +73,7 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
     event.on("create-task-requested", on_create_task),
     event.on("create-card-requested", on_create_card),
     event.on("activate-requested", on_activate_card),
+    event.on("move-card-requested", on_move_card),
     event.on("delete-card-requested", on_delete_card),
     event.on("close-requested", on_close),
   ]

@@ -431,6 +431,7 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
     on_create_task: decode_create_task_event(),
     on_create_card: decode_create_card_event(),
     on_activate_card: decode_activate_card_event(),
+    on_move_card: decode_move_card_event(),
     on_delete_card: decode_delete_card_event(),
     on_close: decode_card_detail_close_event(),
   ))
@@ -497,6 +498,16 @@ fn decode_activate_card_event() -> decode.Decoder(Msg) {
     decode.field("card_id", decode.int, decode.success),
     fn(card_id) {
       decode.success(pool_msg(pool_messages.CardActivateRequested(card_id)))
+    },
+  )
+}
+
+/// Decoder for move-card-requested event.
+fn decode_move_card_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(pool_msg(pool_messages.MemberPlanMoveRequested(card_id)))
     },
   )
 }

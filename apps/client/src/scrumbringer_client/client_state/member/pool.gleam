@@ -57,6 +57,12 @@ pub type PlanMode {
   PlanKanban
 }
 
+/// Inline card movement state for Plan / Structure.
+pub type PlanMoveMode {
+  PlanNotMoving
+  PlanMovingCard(card_id: Int, destination_query: String)
+}
+
 /// Display mode for the Capabilities surface.
 pub type PlanCapabilityMode {
   PlanCapabilityList
@@ -96,6 +102,9 @@ pub type Model {
     view_mode: view_mode.ViewMode,
     member_plan_scope_kind: PlanScopeKind,
     member_plan_mode: PlanMode,
+    member_plan_move_mode: PlanMoveMode,
+    member_plan_move_in_flight: Bool,
+    member_plan_move_error: Option(String),
     member_plan_capability_mode: PlanCapabilityMode,
     member_plan_scope_card_id: Option(Int),
     member_plan_scope_card_query: String,
@@ -164,6 +173,9 @@ pub fn default_model() -> Model {
     view_mode: view_mode.Pool,
     member_plan_scope_kind: PlanScopeProject,
     member_plan_mode: PlanStructure,
+    member_plan_move_mode: PlanNotMoving,
+    member_plan_move_in_flight: False,
+    member_plan_move_error: option.None,
     member_plan_capability_mode: PlanCapabilityList,
     member_plan_scope_card_id: option.None,
     member_plan_scope_card_query: "",

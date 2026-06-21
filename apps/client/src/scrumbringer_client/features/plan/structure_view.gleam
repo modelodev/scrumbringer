@@ -11,19 +11,23 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, h4, label, li, option as html_option, p, select, span, text, ul,
+  button, div, h4, input, label, li, option as html_option, p, select, span,
+  text, ul,
 }
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
+import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/features/plan/tree_table
 import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
@@ -46,6 +50,9 @@ pub type Config(msg) {
     search_query: String,
     is_pm_or_admin: Bool,
     plan_mode: member_pool.PlanMode,
+    move_mode: member_pool.PlanMoveMode,
+    move_in_flight: Bool,
+    move_error: Option(String),
     on_plan_mode_change: fn(String) -> msg,
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
@@ -58,9 +65,20 @@ pub type Config(msg) {
     on_card_click: fn(Int) -> msg,
     on_card_edit: fn(Int) -> msg,
     on_card_delete: fn(Int) -> msg,
+    on_move_requested: fn(Int) -> msg,
+    on_move_cancelled: msg,
+    on_move_destination_search_change: fn(String) -> msg,
+    on_move_destination_selected: fn(Int) -> msg,
     on_create_task_in_card: fn(Int) -> msg,
     on_create_subcard: fn(Int) -> msg,
   )
+}
+
+type MoveRowState {
+  MovingSource
+  ValidMoveDestination
+  InvalidMoveDestination(detail_policy.MoveBlockedReason)
+  NotMoveCandidate
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
@@ -76,6 +94,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ],
     [
       view_surface_header(config, summary, include_closed),
+      view_move_feedback(config),
       case rows {
         [] -> view_empty_state(config)
         _ -> view_body(config, rows, detail)
@@ -119,11 +138,54 @@ fn view_surface_header(
         tone.Blocked,
       ),
     ],
-    actions: [],
+    actions: move_header_actions(config),
     extra_class: Some("plan-structure-header"),
     testid: Some("plan-structure-header"),
   ))
   |> with_scope_bar(config, include_closed)
+}
+
+fn move_header_actions(config: Config(msg)) -> List(Element(msg)) {
+  case moving_card(config) {
+    Some(card) -> [
+      div(
+        [
+          attribute.class("plan-move-context"),
+          attribute.attribute("data-testid", "plan-move-context"),
+        ],
+        [
+          span([attribute.class("plan-move-context-label")], [
+            text("Moviendo: " <> card.title),
+          ]),
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("work-surface-action"),
+              attribute.attribute("data-testid", "plan-move-cancel"),
+              event.on_click(config.on_move_cancelled),
+            ],
+            [text("Cancelar")],
+          ),
+        ],
+      ),
+    ]
+    None -> []
+  }
+}
+
+fn view_move_feedback(config: Config(msg)) -> Element(msg) {
+  case config.move_error {
+    Some(message) ->
+      div(
+        [
+          attribute.class("plan-move-feedback"),
+          attribute.attribute("data-testid", "plan-move-feedback"),
+          attribute.attribute("role", "status"),
+        ],
+        [text(message)],
+      )
+    None -> element.none()
+  }
 }
 
 fn with_scope_bar(
@@ -155,6 +217,112 @@ fn with_scope_bar(
 }
 
 fn plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
+  case config.move_mode {
+    member_pool.PlanMovingCard(_, _) -> [view_move_destination_search(config)]
+    member_pool.PlanNotMoving -> normal_plan_refinement_controls(config)
+  }
+}
+
+fn view_move_destination_search(config: Config(msg)) -> Element(msg) {
+  let #(query, options) = move_search_state(config)
+  let listbox_id = "plan-move-destination-options"
+
+  div([attribute.class("plan-move-search")], [
+    label([attribute.class("plan-filter-control")], [
+      span([], [text("Buscar destino")]),
+      input([
+        attribute.type_("search"),
+        attribute.attribute("data-testid", "plan-move-destination-search"),
+        attribute.attribute("role", "combobox"),
+        attribute.attribute("aria-controls", listbox_id),
+        attribute.attribute(
+          "aria-expanded",
+          attribute_value.boolean(query != ""),
+        ),
+        attribute.attribute("aria-autocomplete", "list"),
+        attribute.attribute("autocomplete", "off"),
+        attribute.placeholder("Titulo, ruta o #id"),
+        attribute.value(query),
+        event.on_input(config.on_move_destination_search_change),
+        event.on_change(config.on_move_destination_search_change),
+      ]),
+    ]),
+    case string.trim(query) {
+      "" -> element.none()
+      _ ->
+        div(
+          [
+            attribute.id(listbox_id),
+            attribute.class("plan-card-picker-options plan-move-picker-options"),
+            attribute.attribute("data-testid", "plan-move-destination-options"),
+            attribute.attribute("role", "listbox"),
+          ],
+          case options {
+            [] -> [
+              span([attribute.class("plan-card-picker-empty")], [
+                text("Sin destinos para esa busqueda."),
+              ]),
+            ]
+            _ ->
+              list.map(options, fn(option) {
+                view_move_destination_option(config, option)
+              })
+          },
+        )
+    },
+  ])
+}
+
+fn view_move_destination_option(
+  config: Config(msg),
+  option: card_picker.CardOption,
+) -> Element(msg) {
+  let disabled = case option.disabled_reason {
+    Some(_) -> True
+    None -> False
+  }
+
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(move_option_class(disabled)),
+      attribute.attribute("data-testid", "plan-move-destination-option"),
+      attribute.attribute("data-card-id", int.to_string(option.id)),
+      attribute.attribute("role", "option"),
+      attribute.attribute("aria-label", option.label),
+      attribute.disabled(disabled || config.move_in_flight),
+      event.on_click(config.on_move_destination_selected(option.id)),
+    ],
+    [
+      span([attribute.class("plan-card-picker-title")], [text(option.title)]),
+      span([attribute.class("plan-card-picker-meta")], [
+        text(
+          option.path
+          <> " - "
+          <> option.level_name
+          <> " #"
+          <> int.to_string(option.id),
+        ),
+      ]),
+      case option.disabled_reason {
+        Some(reason) ->
+          span([attribute.class("plan-move-destination-reason")], [
+            text(reason),
+          ])
+        None -> element.none()
+      },
+    ],
+  )
+}
+
+fn move_option_class(disabled: Bool) -> String {
+  case disabled {
+    True -> "plan-card-picker-option is-disabled"
+    False -> "plan-card-picker-option"
+  }
+}
+
+fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
   let filters =
     types.PlanFilters(
       status: config.status_filter,
@@ -303,7 +471,7 @@ fn view_table(
         ),
         tree_table.column(
           "Acciones",
-          fn(row) { view_actions_cell(config, row) },
+          fn(row) { view_actions_cell(config, row, "desktop") },
           "plan-col-actions",
           "plan-cell-actions",
         ),
@@ -320,7 +488,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
 
   div(
     [
-      attribute.class("plan-tree-mobile-row"),
+      attribute.class("plan-tree-mobile-row " <> move_row_class(config, row)),
       attribute.attribute("data-testid", "plan-tree-mobile-row"),
       attribute.attribute("data-card-id", int.to_string(card.id)),
     ],
@@ -358,7 +526,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
         view_pool_impact_cell(row),
         view_due_date_cell(row),
       ]),
-      view_actions_cell(config, row),
+      view_actions_cell(config, row, "mobile"),
     ],
   )
 }
@@ -368,7 +536,7 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
   let indent = int.to_string({ depth - 1 } * 16)
   div(
     [
-      attribute.class("plan-tree-cell"),
+      attribute.class("plan-tree-cell " <> move_row_class(config, row)),
       attribute.style("padding-left", indent <> "px"),
     ],
     [
@@ -479,6 +647,19 @@ fn view_due_date_cell(row: types.StructureRow) -> Element(msg) {
 fn view_actions_cell(
   config: Config(msg),
   row: types.StructureRow,
+  render_context: String,
+) -> Element(msg) {
+  case config.move_mode {
+    member_pool.PlanMovingCard(_, _) -> view_move_actions_cell(config, row)
+    member_pool.PlanNotMoving ->
+      view_normal_actions_cell(config, row, render_context)
+  }
+}
+
+fn view_normal_actions_cell(
+  config: Config(msg),
+  row: types.StructureRow,
+  render_context: String,
 ) -> Element(msg) {
   let types.CardRow(card:, actions:, ..) = row
   let primary_create = primary_create_action(actions)
@@ -494,7 +675,60 @@ fn view_actions_cell(
       [text("Ver")],
     ),
     view_contextual_create_action(config, card, primary_create),
-    view_secondary_action_menu(config, card, actions, primary_create),
+    view_secondary_action_menu(
+      config,
+      card,
+      actions,
+      primary_create,
+      render_context,
+    ),
+  ])
+}
+
+fn view_move_actions_cell(
+  config: Config(msg),
+  row: types.StructureRow,
+) -> Element(msg) {
+  let types.CardRow(card:, ..) = row
+
+  div([attribute.class("plan-row-actions plan-row-move-actions")], [
+    case move_destination_state(config, card) {
+      MovingSource ->
+        span(
+          [
+            attribute.class("plan-move-source-chip"),
+            attribute.attribute("data-testid", "plan-move-source"),
+          ],
+          [text("Moviendo")],
+        )
+      ValidMoveDestination ->
+        button(
+          [
+            attribute.type_("button"),
+            attribute.class("plan-action-btn plan-move-here-btn"),
+            attribute.attribute("data-testid", "plan-move-here"),
+            attribute.disabled(config.move_in_flight),
+            event.on_click(config.on_move_destination_selected(card.id)),
+          ],
+          [text("Mover aqui")],
+        )
+      InvalidMoveDestination(reason) ->
+        div(
+          [
+            attribute.class("plan-move-invalid"),
+            attribute.attribute("data-testid", "plan-move-invalid"),
+          ],
+          [
+            span([attribute.class("plan-move-invalid-label")], [
+              text("No disponible"),
+            ]),
+            span([attribute.class("plan-move-invalid-reason")], [
+              text(detail_policy.move_blocked_reason_label(reason)),
+            ]),
+          ],
+        )
+      NotMoveCandidate -> element.none()
+    },
   ])
 }
 
@@ -534,32 +768,20 @@ fn view_secondary_action_menu(
   card: Card,
   actions: List(types.PlannedAction),
   primary_create: Option(types.PlannedAction),
+  render_context: String,
 ) -> Element(msg) {
-  element.element(
-    "details",
-    [
-      attribute.class("plan-action-menu"),
-      attribute.attribute("data-testid", "plan-action-menu"),
-    ],
-    [
-      element.element(
-        "summary",
-        [
-          attribute.class("plan-action-btn plan-action-menu-toggle"),
-          attribute.attribute("data-testid", "plan-action-menu-toggle"),
-          attribute.attribute("aria-label", "Mas acciones"),
-        ],
-        [text("...")],
-      ),
-      div(
-        [attribute.class("plan-action-menu-panel")],
-        actions
-          |> list.filter(fn(action) {
-            !same_planned_action(action, primary_create)
-          })
-          |> list.map(fn(action) { view_compact_action(config, card, action) }),
-      ),
-    ],
+  action_menu.view(
+    "...",
+    "plan-action-menu-toggle",
+    "plan-action-menu-" <> render_context <> "-" <> int.to_string(card.id),
+    Some("Mas acciones"),
+    "plan-action-menu",
+    "plan-action-btn plan-action-menu-toggle",
+    "plan-action-menu-panel",
+    "plan-action-menu-item",
+    actions
+      |> list.filter(fn(action) { !same_planned_action(action, primary_create) })
+      |> list.map(fn(action) { planned_action_menu_item(config, card, action) }),
   )
 }
 
@@ -601,26 +823,18 @@ fn same_planned_action(
   }
 }
 
-fn view_compact_action(
+fn planned_action_menu_item(
   config: Config(msg),
   card: Card,
   planned: types.PlannedAction,
-) -> Element(msg) {
+) -> action_menu.Item(msg) {
   let types.PlannedAction(action:, availability:) = planned
   let #(label, msg) = action_event(config, card, action)
-  let #(disabled, title) = availability_attrs(availability)
-
-  button(
-    [
-      attribute.type_("button"),
-      attribute.class(action_class(action)),
-      attribute.attribute("data-testid", action_testid(action)),
-      attribute.attribute("title", title),
-      attribute.disabled(disabled),
-      event.on_click(msg),
-    ],
-    [text(label)],
-  )
+  case availability {
+    types.Available -> action_menu.item(label, action_testid(action), msg)
+    types.Disabled(reason) ->
+      action_menu.disabled_item(label, action_testid(action), reason, msg)
+  }
 }
 
 fn view_detail(
@@ -1162,9 +1376,14 @@ fn action_availability(
         _, Closed -> types.Disabled("La card esta cerrada")
       }
     types.MoveCard ->
-      case config.is_pm_or_admin {
-        True -> types.Available
-        False -> types.Disabled("Solo managers pueden mover cards")
+      case
+        config.is_pm_or_admin,
+        detail_policy.move_unavailable_reason(card, config.cards, config.tasks)
+      {
+        True, None -> types.Available
+        True, Some(reason) ->
+          types.Disabled(detail_policy.move_blocked_reason_label(reason))
+        False, _ -> types.Disabled("Solo managers pueden mover cards")
       }
     types.CloseCard ->
       case
@@ -1209,7 +1428,7 @@ fn action_event(
       "Activar subarbol",
       config.on_card_click(card.id),
     )
-    types.MoveCard -> #("Mover a...", config.on_card_click(card.id))
+    types.MoveCard -> #("Mover a...", config.on_move_requested(card.id))
     types.CloseCard -> #("Cerrar", config.on_card_click(card.id))
     types.DeleteCard -> #("Eliminar", config.on_card_delete(card.id))
   }
@@ -1241,6 +1460,68 @@ fn action_testid(action: types.CardAction) -> String {
     types.MoveCard -> "plan-action-move-card"
     types.CloseCard -> "plan-action-close-card"
     types.DeleteCard -> "plan-action-delete-card"
+  }
+}
+
+fn moving_card(config: Config(msg)) -> Option(Card) {
+  case config.move_mode {
+    member_pool.PlanMovingCard(card_id, _) ->
+      case list.find(config.cards, fn(card) { card.id == card_id }) {
+        Ok(card) -> Some(card)
+        Error(_) -> None
+      }
+    member_pool.PlanNotMoving -> None
+  }
+}
+
+fn move_query(config: Config(msg)) -> String {
+  case config.move_mode {
+    member_pool.PlanMovingCard(_, query) -> query
+    member_pool.PlanNotMoving -> ""
+  }
+}
+
+fn move_search_state(
+  config: Config(msg),
+) -> #(String, List(card_picker.CardOption)) {
+  let query = move_query(config)
+  let options = case moving_card(config) {
+    Some(card) ->
+      detail_policy.move_destination_entries(card, config.cards, config.tasks)
+      |> card_picker.move_destination_options(config.cards, config.depth_names)
+      |> card_picker.filter_options(query)
+    None -> []
+  }
+
+  #(query, options)
+}
+
+fn move_destination_state(config: Config(msg), card: Card) -> MoveRowState {
+  case moving_card(config) {
+    Some(source) if source.id == card.id -> MovingSource
+    Some(source) ->
+      case
+        detail_policy.move_blocked_reason(
+          source,
+          card,
+          config.cards,
+          config.tasks,
+        )
+      {
+        None -> ValidMoveDestination
+        Some(reason) -> InvalidMoveDestination(reason)
+      }
+    None -> NotMoveCandidate
+  }
+}
+
+fn move_row_class(config: Config(msg), row: types.StructureRow) -> String {
+  let types.CardRow(card:, ..) = row
+  case move_destination_state(config, card) {
+    MovingSource -> "is-moving-source"
+    ValidMoveDestination -> "is-move-valid"
+    InvalidMoveDestination(_) -> "is-move-invalid"
+    NotMoveCandidate -> ""
   }
 }
 

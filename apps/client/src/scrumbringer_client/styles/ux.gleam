@@ -442,12 +442,7 @@ pub fn css() -> List(String) {
     ".card-move-dialog { position: relative; z-index: 2; width: min(520px, 100%); max-height: min(76vh, 620px); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--sb-border); border-radius: 12px; background: var(--sb-surface); box-shadow: var(--sb-shadow-modal); }",
     ".card-move-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
     ".card-move-dialog-title { font-size: var(--sb-font-lg); font-weight: var(--sb-weight-bold); color: var(--sb-text-strong); }",
-    ".card-move-dialog-help, .card-move-empty { color: var(--sb-muted); font-size: var(--sb-font-base); line-height: var(--sb-line-body); }",
-    ".card-move-options, .card-move-invalid-list { display: flex; flex-direction: column; gap: 8px; }",
-    ".card-move-option, .card-move-invalid { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-elevated); }",
-    ".card-move-option-title, .card-move-invalid-title { font-weight: var(--sb-weight-semibold); color: var(--sb-text); overflow-wrap: anywhere; }",
-    ".card-move-invalid { background: color-mix(in oklab, var(--sb-warning) 7%, var(--sb-surface)); }",
-    ".card-move-invalid-reason { color: var(--sb-muted); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
+    ".card-move-dialog-help { color: var(--sb-muted); font-size: var(--sb-font-base); line-height: var(--sb-line-body); }",
     // AC21: Card modal tabs
     ".modal-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; padding: 0 20px 12px; border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); align-items: stretch; }",
     ".modal-tab { padding: 6px 14px; background: transparent; border: 1px solid transparent; border-radius: 999px; cursor: pointer; font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); color: color-mix(in oklab, var(--sb-text) 68%, var(--sb-muted)); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; min-height: 34px; min-width: 112px; }",

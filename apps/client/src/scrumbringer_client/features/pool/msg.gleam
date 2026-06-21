@@ -48,6 +48,11 @@ pub type Msg {
   MemberPlanStatusChanged(String)
   MemberPlanSortChanged(String)
   MemberPlanCardToggled(Int)
+  MemberPlanMoveRequested(Int)
+  MemberPlanMoveCancelled
+  MemberPlanMoveDestinationSearchChanged(String)
+  MemberPlanMoveDestinationSelected(Int)
+  MemberPlanCardMoved(ApiResult(Card))
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)

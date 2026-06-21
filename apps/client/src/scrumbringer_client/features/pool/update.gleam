@@ -28,6 +28,8 @@
 import gleam/option as opt
 import lustre/effect
 
+import domain/remote.{type Remote, Loaded}
+import domain/task.{type Task}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -40,6 +42,7 @@ import scrumbringer_client/features/pool/filters_route
 import scrumbringer_client/features/pool/metrics_route
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/people_route
+import scrumbringer_client/features/pool/plan_move_update
 import scrumbringer_client/features/pool/positions_route
 import scrumbringer_client/features/pool/preferences_effect
 import scrumbringer_client/features/pool/refresh_update
@@ -51,6 +54,7 @@ import scrumbringer_client/features/pool/task_route
 import scrumbringer_client/features/pool/view_mode_route
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/utils/card_queries
 
 fn pool_shortcut_model(model: client_state.Model) -> shortcut_update.Model {
   shortcut_update.Model(
@@ -415,6 +419,84 @@ fn update_without_task_templates(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case try_pool_plan_move_update(model, inner, member_refresh) {
+    opt.Some(result) -> result
+    opt.None -> update_without_plan_move(model, inner, member_refresh)
+  }
+}
+
+fn try_pool_plan_move_update(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
+  case
+    plan_move_update.try_update(
+      model.member.pool,
+      inner,
+      plan_move_context(model),
+    )
+  {
+    opt.Some(#(pool, fx)) -> {
+      let updated =
+        client_state.update_member(model, fn(member) {
+          member_state.MemberModel(..member, pool: pool)
+        })
+      opt.Some(apply_plan_move_refresh(updated, inner, fx, member_refresh))
+    }
+    opt.None -> opt.None
+  }
+}
+
+fn apply_plan_move_refresh(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  fx: effect.Effect(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case inner {
+    pool_messages.MemberPlanCardMoved(Ok(_)) -> {
+      let #(refreshed, refresh_fx) = member_refresh(model)
+      #(refreshed, effect.batch([fx, refresh_fx]))
+    }
+    _ -> #(model, fx)
+  }
+}
+
+fn plan_move_context(
+  model: client_state.Model,
+) -> plan_move_update.Context(client_state.Msg) {
+  plan_move_update.Context(
+    cards: card_queries.get_project_cards(
+      model.member.pool.member_cards_store,
+      model.admin.cards.cards,
+      model.core.selected_project_id,
+    ),
+    tasks: model.member.pool.member_tasks
+      |> task_list_or_empty,
+    on_card_moved: fn(result) {
+      client_state.pool_msg(pool_messages.MemberPlanCardMoved(result))
+    },
+    on_success_toast: app_effects.toast_success,
+    on_error_toast: app_effects.toast_error,
+  )
+}
+
+fn task_list_or_empty(tasks: Remote(List(Task))) -> List(Task) {
+  case tasks {
+    Loaded(values) -> values
+    _ -> []
+  }
+}
+
+fn update_without_plan_move(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case try_pool_filters_update(model, inner, member_refresh) {
     opt.Some(result) -> result
     opt.None -> update_without_filters(model, inner, member_refresh)
@@ -655,6 +737,13 @@ fn update_without_view_mode(
     | pool_messages.MemberPlanStatusChanged(_)
     | pool_messages.MemberPlanSortChanged(_)
     | pool_messages.MemberPlanCardToggled(_) -> #(model, effect.none())
+
+    // Handled by plan_move_update.try_update before this dispatch.
+    pool_messages.MemberPlanMoveRequested(_)
+    | pool_messages.MemberPlanMoveCancelled
+    | pool_messages.MemberPlanMoveDestinationSearchChanged(_)
+    | pool_messages.MemberPlanMoveDestinationSelected(_)
+    | pool_messages.MemberPlanCardMoved(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.
     pool_messages.MemberPoolFiltersToggled

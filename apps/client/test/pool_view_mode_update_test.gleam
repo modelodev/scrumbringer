@@ -53,3 +53,25 @@ pub fn try_update_ignores_non_view_mode_messages_test() {
       context(opt.Some(7)),
     )
 }
+
+pub fn plan_mode_change_to_kanban_cancels_move_mode_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, "New"),
+      member_plan_move_error: opt.Some("error"),
+      member_plan_move_in_flight: True,
+    )
+
+  let assert opt.Some(view_mode_update.Update(next, _)) =
+    view_mode_update.try_update(
+      model,
+      pool_messages.MemberPlanModeChanged("kanban"),
+      context(opt.Some(7)),
+    )
+
+  let assert member_pool.PlanKanban = next.member_plan_mode
+  let assert member_pool.PlanNotMoving = next.member_plan_move_mode
+  let assert opt.None = next.member_plan_move_error
+  let assert False = next.member_plan_move_in_flight
+}

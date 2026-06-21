@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
+import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/utils/card_queries
 
@@ -16,6 +17,7 @@ pub type CardOption {
     path: String,
     level_name: String,
     label: String,
+    disabled_reason: Option(String),
   )
 }
 
@@ -52,6 +54,25 @@ pub fn filter_options(
         || normalize(int.to_string(option.id)) == normalized_query
       })
   }
+}
+
+pub fn move_destination_options(
+  destinations: List(detail_policy.MoveDestination),
+  cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> List(CardOption) {
+  destinations
+  |> list.map(fn(destination) {
+    case destination {
+      detail_policy.ValidDestination(card) ->
+        option_for_card(card, cards, depth_names)
+      detail_policy.InvalidDestination(card, reason) ->
+        CardOption(
+          ..option_for_card(card, cards, depth_names),
+          disabled_reason: Some(detail_policy.move_blocked_reason_label(reason)),
+        )
+    }
+  })
 }
 
 pub fn selected_label(
@@ -127,6 +148,7 @@ fn option_for_card(
     path: visible_path,
     level_name: level_name,
     label: label,
+    disabled_reason: None,
   )
 }
 

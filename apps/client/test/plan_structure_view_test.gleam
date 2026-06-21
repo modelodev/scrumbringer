@@ -209,6 +209,8 @@ pub fn row_actions_are_detail_contextual_create_and_secondary_menu_test() {
   assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
   assert_contains(html, "data-testid=\"plan-action-menu\"")
   assert_contains(html, "data-testid=\"plan-action-menu-toggle\"")
+  assert_contains(html, "aria-haspopup=\"menu\"")
+  assert_contains(html, "role=\"menuitem\"")
 }
 
 pub fn secondary_action_menu_keeps_close_and_delete_disabled_reasons_test() {
@@ -226,6 +228,79 @@ pub fn secondary_action_menu_keeps_close_and_delete_disabled_reasons_test() {
   assert_contains(html, "Hay tasks reclamadas o en curso debajo")
   assert_contains(html, "data-testid=\"plan-action-delete-card\"")
   assert_contains(html, "Tiene historial operativo")
+}
+
+pub fn move_action_enters_inline_mode_without_opening_detail_test() {
+  let html = render(base_config())
+
+  assert_contains(html, "data-testid=\"plan-action-move-card\"")
+  assert_not_contains(html, "card-move-dialog")
+}
+
+pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-move-context\"")
+  assert_contains(html, "Moviendo: API Story")
+  assert_contains(html, "data-testid=\"plan-move-source\"")
+  assert_contains(html, "data-testid=\"plan-move-here\"")
+  assert_contains(html, "Mover aqui")
+}
+
+pub fn inline_move_mode_shows_invalid_reason_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, ""),
+      ),
+    )
+
+  assert_contains(html, "data-testid=\"plan-move-invalid\"")
+  assert_contains(html, "Ya esta dentro de esta card.")
+  assert_contains(html, "Cambiaria el nivel de la card.")
+}
+
+pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
+  let by_title =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, "Mobile"),
+      ),
+    )
+  let by_path =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, "Root Initiative"),
+      ),
+    )
+  let by_id =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        move_mode: member_pool.PlanMovingCard(3, "#8"),
+      ),
+    )
+
+  assert_contains(by_title, "data-testid=\"plan-move-destination-search\"")
+  assert_contains(by_title, "Mobile Feature")
+  assert_contains(by_path, "Portal Feature")
+  assert_contains(by_id, "Mobile Feature")
+}
+
+pub fn root_cards_disable_move_with_reason_test() {
+  let html = render(base_config())
+
+  assert_contains(html, "Las cards raiz no tienen un padre alternativo.")
+  assert_contains(html, "aria-disabled=\"true\"")
 }
 
 fn base_config() -> structure_view.Config(Int) {
@@ -249,6 +324,9 @@ fn base_config() -> structure_view.Config(Int) {
     search_query: "",
     is_pm_or_admin: True,
     plan_mode: member_pool.PlanStructure,
+    move_mode: member_pool.PlanNotMoving,
+    move_in_flight: False,
+    move_error: None,
     on_plan_mode_change: fn(_) { 0 },
     on_scope_kind_change: fn(_) { 0 },
     on_scope_depth_change: fn(_) { 0 },
@@ -261,6 +339,10 @@ fn base_config() -> structure_view.Config(Int) {
     on_card_click: fn(id) { id },
     on_card_edit: fn(id) { id },
     on_card_delete: fn(id) { id },
+    on_move_requested: fn(id) { id },
+    on_move_cancelled: 0,
+    on_move_destination_search_change: fn(_) { 0 },
+    on_move_destination_selected: fn(id) { id },
     on_create_task_in_card: fn(id) { id },
     on_create_subcard: fn(id) { id },
   )
@@ -275,6 +357,7 @@ fn cards() -> List(Card) {
     card(5, None, "Closed Outcome", Closed),
     card(6, Some(1), "Closed Gate", Closed),
     card(7, Some(6), "Draft Behind Closed", Draft),
+    card(8, Some(1), "Mobile Feature", Active),
   ]
 }
 

@@ -80,6 +80,9 @@ fn plan_mode_changed(
       ..model,
       view_mode: view_mode.Cards,
       member_plan_mode: mode,
+      member_plan_move_mode: member_pool.PlanNotMoving,
+      member_plan_move_error: opt.None,
+      member_plan_move_in_flight: False,
     ),
     ReplaceMemberRoute(state),
   )

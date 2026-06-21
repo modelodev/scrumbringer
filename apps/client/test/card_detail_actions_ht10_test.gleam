@@ -206,13 +206,67 @@ pub fn closed_card_detail_disables_create_actions_with_reason_test() {
 }
 
 pub fn move_card_dialog_explains_invalid_destinations_test() {
+  let root = card(1, opt.None, Draft)
   let moving = card(3, opt.Some(1), Draft)
   let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
   let explanation =
-    detail_policy.invalid_move_explanation(moving, task_group, [])
+    detail_policy.invalid_move_explanation(moving, task_group, [
+      root,
+      moving,
+      task_group,
+    ])
 
-  assert_contains(explanation, "same level")
-  assert_contains(explanation, "does not accept child cards")
+  assert_contains(explanation, "Contiene tasks directas")
+}
+
+pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
+  let root = card(1, opt.None, Draft)
+  let current_parent = card(2, opt.Some(1), Draft)
+  let moving = card(3, opt.Some(2), Draft)
+  let valid_parent = card(4, opt.Some(1), Draft)
+  let child = card(5, opt.Some(3), Draft)
+  let closed_parent = card(6, opt.Some(1), Closed)
+
+  let entries =
+    detail_policy.move_destination_entries(
+      moving,
+      [
+        root,
+        current_parent,
+        moving,
+        valid_parent,
+        child,
+        closed_parent,
+      ],
+      [],
+    )
+
+  let assert [
+    detail_policy.InvalidDestination(_, detail_policy.WouldChangeLevel),
+    detail_policy.InvalidDestination(_, detail_policy.SameParent),
+    detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
+    detail_policy.ValidDestination(destination),
+    detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
+    detail_policy.InvalidDestination(_, detail_policy.ClosedDestination),
+  ] = entries
+  let assert 4 = destination.id
+}
+
+pub fn root_card_cannot_move_reason_is_spanish_test() {
+  let reason =
+    detail_policy.move_unavailable_reason(
+      card(1, opt.None, Draft),
+      [
+        card(1, opt.None, Draft),
+      ],
+      [],
+    )
+
+  let assert opt.Some(detail_policy.RootCardCannotMove) = reason
+  assert_contains(
+    detail_policy.move_blocked_reason_label(detail_policy.RootCardCannotMove),
+    "cards raiz",
+  )
 }
 
 pub fn create_task_never_auto_claims_for_creator_test() {

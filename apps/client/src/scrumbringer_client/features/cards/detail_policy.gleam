@@ -17,6 +17,21 @@ pub type DisabledReason {
   CardHasOperationalHistory
 }
 
+pub type MoveBlockedReason {
+  RootCardCannotMove
+  SameParent
+  ClosedDestination
+  DestinationContainsTasks
+  WouldChangeLevel
+  WouldCreateCycle
+  SelfOrDescendant
+}
+
+pub type MoveDestination {
+  ValidDestination(card: Card)
+  InvalidDestination(card: Card, reason: MoveBlockedReason)
+}
+
 pub type Policy {
   Policy(
     structure: DetailStructure,
@@ -94,23 +109,106 @@ pub fn direct_child_cards(card: Card, cards: List(Card)) -> List(Card) {
 }
 
 pub fn move_destinations(card: Card, cards: List(Card)) -> List(Card) {
-  let current_depth = card_depth(card, cards)
-  cards
-  |> list.filter(fn(candidate) {
-    candidate.id != card.id
-    && candidate.id != option_to_disallowed_parent_id(card.parent_card_id)
-    && candidate.project_id == card.project_id
-    && candidate.state != Closed
-    && card_depth(candidate, cards) == current_depth - 1
-    && accepts_child_cards(candidate, cards)
-    && !is_descendant(candidate, card, cards)
+  move_destination_entries(card, cards, [])
+  |> list.filter_map(fn(entry) {
+    case entry {
+      ValidDestination(card) -> Ok(card)
+      InvalidDestination(_, _) -> Error(Nil)
+    }
   })
 }
 
-fn option_to_disallowed_parent_id(parent_id: Option(Int)) -> Int {
-  case parent_id {
-    Some(id) -> id
-    None -> -1
+pub fn move_destination_entries(
+  card: Card,
+  cards: List(Card),
+  tasks: List(Task),
+) -> List(MoveDestination) {
+  case card.parent_card_id {
+    None -> []
+    Some(_) ->
+      cards
+      |> list.filter(fn(candidate) { candidate.project_id == card.project_id })
+      |> list.map(fn(candidate) {
+        case move_blocked_reason(card, candidate, cards, tasks) {
+          None -> ValidDestination(candidate)
+          Some(reason) -> InvalidDestination(candidate, reason)
+        }
+      })
+  }
+}
+
+pub fn move_unavailable_reason(
+  card: Card,
+  cards: List(Card),
+  tasks: List(Task),
+) -> Option(MoveBlockedReason) {
+  case card.parent_card_id {
+    None -> Some(RootCardCannotMove)
+    Some(_) -> {
+      case move_destinations_with_tasks(card, cards, tasks) {
+        [] -> Some(WouldChangeLevel)
+        _ -> None
+      }
+    }
+  }
+}
+
+pub fn move_destinations_with_tasks(
+  card: Card,
+  cards: List(Card),
+  tasks: List(Task),
+) -> List(Card) {
+  move_destination_entries(card, cards, tasks)
+  |> list.filter_map(fn(entry) {
+    case entry {
+      ValidDestination(card) -> Ok(card)
+      InvalidDestination(_, _) -> Error(Nil)
+    }
+  })
+}
+
+pub fn move_blocked_reason(
+  card: Card,
+  destination: Card,
+  cards: List(Card),
+  tasks: List(Task),
+) -> Option(MoveBlockedReason) {
+  let current_depth = card_depth(card, cards)
+  let destination_depth = card_depth(destination, cards)
+  let destination_is_descendant = is_descendant(destination, card, cards)
+  let accepts_children = accepts_child_cards(destination, cards, tasks)
+
+  case card.parent_card_id, destination.id == card.id {
+    None, _ -> Some(RootCardCannotMove)
+    _, True -> Some(SelfOrDescendant)
+    Some(parent_id), _ if destination.id == parent_id -> Some(SameParent)
+    _, _ ->
+      case
+        destination_is_descendant,
+        destination.state,
+        destination_depth == current_depth - 1,
+        accepts_children
+      {
+        True, _, _, _ -> Some(SelfOrDescendant)
+        _, Closed, _, _ -> Some(ClosedDestination)
+        _, _, False, _ -> Some(WouldChangeLevel)
+        _, _, _, False -> Some(DestinationContainsTasks)
+        _, _, _, True -> None
+      }
+  }
+}
+
+pub fn move_blocked_reason_label(reason: MoveBlockedReason) -> String {
+  case reason {
+    RootCardCannotMove -> "Las cards raiz no tienen un padre alternativo."
+    SameParent -> "Ya esta dentro de esta card."
+    ClosedDestination -> "La card de destino esta cerrada."
+    DestinationContainsTasks ->
+      "Contiene tasks directas y no puede recibir subcards."
+    WouldChangeLevel -> "Cambiaria el nivel de la card."
+    WouldCreateCycle ->
+      "No se puede mover una card dentro de si misma o de su arbol."
+    SelfOrDescendant -> "No se puede elegir la propia card ni una descendiente."
   }
 }
 
@@ -119,17 +217,10 @@ pub fn invalid_move_explanation(
   destination: Card,
   cards: List(Card),
 ) -> String {
-  let same_level_text = case
-    card_depth(destination, cards) == card_depth(card, cards) - 1
-  {
-    True -> "Destination keeps the card at the same level."
-    False -> "Destination must keep the card at the same level."
+  case move_blocked_reason(card, destination, cards, []) {
+    Some(reason) -> move_blocked_reason_label(reason)
+    None -> "Destino disponible."
   }
-  let accepts_text = case accepts_child_cards(destination, cards) {
-    True -> "Destination accepts child cards."
-    False -> "Destination does not accept child cards."
-  }
-  same_level_text <> " " <> accepts_text
 }
 
 pub fn task_is_auto_claimed(task: Task, creator_id: Int) -> Bool {
@@ -170,8 +261,13 @@ fn has_operational_history(
   || !list.is_empty(direct_tasks)
 }
 
-fn accepts_child_cards(card: Card, cards: List(Card)) -> Bool {
-  case structure_for(card, direct_child_cards(card, cards), []) {
+fn accepts_child_cards(card: Card, cards: List(Card), tasks: List(Task)) -> Bool {
+  let direct_tasks = case tasks {
+    [] -> []
+    _ -> list.filter(tasks, fn(task) { task.card_id == Some(card.id) })
+  }
+
+  case structure_for(card, direct_child_cards(card, cards), direct_tasks) {
     EmptyCard | CardGroup -> True
     TaskGroup -> False
   }

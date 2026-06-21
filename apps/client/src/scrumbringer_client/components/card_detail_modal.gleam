@@ -92,7 +92,6 @@ pub type Model {
     note_error: Option(String),
     tasks: Remote(List(Task)),
     metrics: Remote(CardModalMetrics),
-    move_dialog_open: Bool,
     activation_confirm_open: Bool,
   )
 }
@@ -127,8 +126,7 @@ pub type Msg {
   ActivateCardClicked
   ActivateCardCancelled
   ActivateCardConfirmed
-  MoveDialogOpened
-  MoveDialogClosed
+  MoveRequested
   DeleteCardClicked
   // Actions that emit events to parent
   CreateTaskClicked
@@ -354,7 +352,6 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       note_error: option.None,
       tasks: NotAsked,
       metrics: NotAsked,
-      move_dialog_open: False,
       activation_confirm_open: False,
     ),
     effect.none(),
@@ -511,12 +508,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       emit_activate_requested(model.card_id),
     )
 
-    MoveDialogOpened -> #(Model(..model, move_dialog_open: True), effect.none())
-
-    MoveDialogClosed -> #(
-      Model(..model, move_dialog_open: False),
-      effect.none(),
-    )
+    MoveRequested -> #(model, emit_move_requested(model.card_id))
 
     DeleteCardClicked -> #(model, emit_delete_card_requested(model.card_id))
 
@@ -628,6 +620,11 @@ fn emit_delete_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
   emit_card_id_event("delete-card-requested", card_id)
 }
 
+/// Emit move-card-requested custom event to parent.
+fn emit_move_requested(card_id: option.Option(Int)) -> Effect(Msg) {
+  emit_card_id_event("move-card-requested", card_id)
+}
+
 fn emit_card_id_event(name: String, card_id: option.Option(Int)) -> Effect(Msg) {
   let detail = case card_id {
     option.Some(id) -> json.object([#("card_id", json.int(id))])
@@ -737,10 +734,6 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     },
     case model.activation_confirm_open {
       True -> view_activation_confirm_dialog(model, card)
-      False -> element.none()
-    },
-    case model.move_dialog_open {
-      True -> view_move_dialog(model, card)
       False -> element.none()
     },
   ])
@@ -982,7 +975,7 @@ fn view_move_action(model: Model, card: Card) -> Element(Msg) {
     False ->
       ui_button.icon_text(
         t(model.locale, i18n_text.HierarchyMoveTo),
-        MoveDialogOpened,
+        MoveRequested,
         icons.Return,
         ui_button.Secondary,
         ui_button.EntityAction,
@@ -1257,121 +1250,6 @@ fn view_task_claim_status(task: Task) -> Element(Msg) {
   }
 
   span([attribute.class("card-task-info")], [text(claimed_text)])
-}
-
-fn view_move_dialog(model: Model, card: Card) -> Element(Msg) {
-  let destinations = detail_policy.move_destinations(card, model.cards)
-
-  div([attribute.class("card-move-dialog-shell")], [
-    div(
-      [attribute.class("modal-backdrop"), event.on_click(MoveDialogClosed)],
-      [],
-    ),
-    div(
-      [
-        attribute.class("card-move-dialog"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
-        attribute.attribute("aria-labelledby", "card-move-dialog-title"),
-        attribute.attribute("data-testid", "card-move-dialog"),
-      ],
-      [
-        div([attribute.class("card-move-dialog-header")], [
-          span(
-            [
-              attribute.class("card-move-dialog-title"),
-              attribute.id("card-move-dialog-title"),
-            ],
-            [text(t(model.locale, i18n_text.HierarchyMoveTo))],
-          ),
-          ui_button.icon(
-            t(model.locale, i18n_text.Close),
-            MoveDialogClosed,
-            icons.Close,
-            ui_button.Ghost,
-            ui_button.EntityAction,
-          )
-            |> ui_button.with_testid("card-move-close")
-            |> ui_button.view,
-        ]),
-        div([attribute.class("card-move-dialog-help")], [
-          text(
-            "Only same-level destinations that accept child cards are listed.",
-          ),
-        ]),
-        case list.is_empty(destinations) {
-          True ->
-            div([attribute.class("card-move-empty")], [
-              text("No valid same-level destinations are available."),
-            ])
-          False ->
-            div(
-              [attribute.class("card-move-options")],
-              list.map(destinations, view_move_destination),
-            )
-        },
-        view_invalid_move_examples(card, model.cards, destinations),
-      ],
-    ),
-  ])
-}
-
-fn view_move_destination(destination: Card) -> Element(Msg) {
-  div(
-    [
-      attribute.class("card-move-option"),
-      attribute.attribute("data-testid", "card-move-option"),
-    ],
-    [
-      span([attribute.class("card-move-option-title")], [
-        text(destination.title),
-      ]),
-    ],
-  )
-}
-
-fn view_invalid_move_examples(
-  card: Card,
-  cards: List(Card),
-  destinations: List(Card),
-) -> Element(Msg) {
-  let destination_ids =
-    list.map(destinations, fn(destination) { destination.id })
-  let invalid =
-    cards
-    |> list.filter(fn(candidate) {
-      candidate.project_id == card.project_id
-      && candidate.id != card.id
-      && !list.contains(destination_ids, candidate.id)
-    })
-
-  case list.is_empty(invalid) {
-    True -> element.none()
-    False ->
-      div(
-        [attribute.class("card-move-invalid-list")],
-        list.map(invalid, fn(candidate) {
-          div(
-            [
-              attribute.class("card-move-invalid"),
-              attribute.attribute("data-testid", "card-move-invalid"),
-            ],
-            [
-              span([attribute.class("card-move-invalid-title")], [
-                text(candidate.title),
-              ]),
-              span([attribute.class("card-move-invalid-reason")], [
-                text(detail_policy.invalid_move_explanation(
-                  card,
-                  candidate,
-                  cards,
-                )),
-              ]),
-            ],
-          )
-        }),
-      )
-  }
 }
 
 fn action_policy(model: Model, card: Card) -> detail_policy.Policy {

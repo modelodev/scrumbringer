@@ -1493,6 +1493,9 @@ fn plan_structure_config(
       state_selectors.selected_project(model),
     ),
     plan_mode: model.member.pool.member_plan_mode,
+    move_mode: model.member.pool.member_plan_move_mode,
+    move_in_flight: model.member.pool.member_plan_move_in_flight,
+    move_error: model.member.pool.member_plan_move_error,
     on_plan_mode_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanModeChanged(value))
     },
@@ -1534,6 +1537,22 @@ fn plan_structure_config(
       client_state.pool_msg(
         pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
       )
+    },
+    on_move_requested: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
+    },
+    on_move_cancelled: client_state.pool_msg(
+      pool_messages.MemberPlanMoveCancelled,
+    ),
+    on_move_destination_search_change: fn(value) {
+      client_state.pool_msg(
+        pool_messages.MemberPlanMoveDestinationSearchChanged(value),
+      )
+    },
+    on_move_destination_selected: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDestinationSelected(
+        card_id,
+      ))
     },
     on_create_task_in_card: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
@@ -1789,6 +1808,9 @@ fn member_cards_config(
     },
     fn(card_id) {
       client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
+    },
+    fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
     },
     fn(card_id) {
       client_state.pool_msg(
