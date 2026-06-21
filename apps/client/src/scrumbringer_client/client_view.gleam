@@ -1437,9 +1437,6 @@ fn kanban_config(
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
     },
-    on_lens_selected: fn(mode) {
-      client_state.pool_msg(pool_messages.ViewModeChanged(mode))
-    },
   )
 }
 
@@ -1511,9 +1508,6 @@ fn capability_board_config(
     },
     on_capability_mode_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanCapabilityModeChanged(value))
-    },
-    on_lens_selected: fn(mode) {
-      client_state.pool_msg(pool_messages.ViewModeChanged(mode))
     },
   )
 }

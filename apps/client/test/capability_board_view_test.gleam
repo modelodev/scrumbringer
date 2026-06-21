@@ -8,7 +8,6 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskType, TaskTypeInline}
-import domain/view_mode
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -94,14 +93,6 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     on_scope_card_change: fn(_) { 0 },
     on_closed_toggled: fn(_) { 0 },
     on_capability_mode_change: fn(_) { 0 },
-    on_lens_selected: fn(mode) {
-      case mode {
-        view_mode.Cards -> 1
-        view_mode.Capabilities -> 2
-        view_mode.People -> 3
-        _ -> 0
-      }
-    },
   )
 }
 
@@ -203,9 +194,10 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"plan-scope-lens\"")
+  assert_contains(html, "data-testid=\"plan-scope-bar\"")
   assert_contains(html, "data-testid=\"capability-mode-list\"")
   assert_contains(html, "data-testid=\"capability-mode-matrix\"")
+  assert_not_contains(html, ">Lens<")
   assert_contains(html, "data-testid=\"capability-list\"")
   assert_contains(html, "Backend")
   assert_contains(html, "Frontend")
@@ -260,6 +252,7 @@ pub fn capability_board_card_scope_rows_direct_children_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"plan-scope-card-search\"")
+  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
   assert_contains(html, ">Card<")
   assert_contains(html, "Checkout")
 }

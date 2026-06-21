@@ -42,7 +42,6 @@ pub fn kanban_column_headers_show_icons_test() {
       on_scope_depth_change: fn(_value) { 0 },
       on_scope_card_change: fn(_value) { 0 },
       on_closed_toggled: fn(_value) { 0 },
-      on_lens_selected: fn(_mode) { 0 },
     )
 
   let html = kanban_board.view(config) |> element.to_document_string

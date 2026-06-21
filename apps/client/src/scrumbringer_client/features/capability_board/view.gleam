@@ -1,12 +1,11 @@
 import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
-import domain/card.{type Card, Active}
+import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded}
 import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
-import domain/view_mode
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -14,17 +13,15 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{
-  button, div, h4, input, label, option as html_option, select, span, text,
-}
+import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
-import lustre/event
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
+import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -70,7 +67,6 @@ pub type Config(msg) {
     on_scope_card_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
     on_capability_mode_change: fn(String) -> msg,
-    on_lens_selected: fn(view_mode.ViewMode) -> msg,
   )
 }
 
@@ -204,7 +200,7 @@ fn view_surface_header(
     extra_class: Some("capability-board-header"),
     testid: Some("capability-board-header"),
   ))
-  |> with_scope_lens_controls(config, include_closed)
+  |> with_scope_bar(config, include_closed)
 }
 
 fn capability_summary(
@@ -248,243 +244,53 @@ fn capability_summary(
   }
 }
 
-fn with_scope_lens_controls(
+fn with_scope_bar(
   header: element.Element(msg),
   config: Config(msg),
   include_closed: Bool,
 ) -> element.Element(msg) {
-  div([attribute.class("plan-lens-shell")], [
+  div([attribute.class("plan-scope-shell")], [
     header,
-    div(
-      [
-        attribute.class("plan-scope-lens"),
-        attribute.attribute("data-testid", "plan-scope-lens"),
-      ],
-      [
-        view_scope_controls(config),
-        view_lens_controls(config),
-        view_mode_controls(config),
-        label([attribute.class("plan-closed-toggle")], [
-          input([
-            attribute.type_("checkbox"),
-            attribute.checked(include_closed),
-            attribute.attribute("data-testid", "plan-closed-toggle"),
-            event.on_check(config.on_closed_toggled),
-          ]),
-          span([], [text(i18n.t(config.locale, i18n_text.PlanClosed))]),
-        ]),
-      ],
-    ),
+    scope_bar.view(scope_bar.Config(
+      locale: config.locale,
+      cards: config.cards,
+      depth_names: config.depth_names,
+      scope_kind: config.scope_kind,
+      selected_depth: config.selected_depth,
+      selected_card_id: config.selected_card_id,
+      show_closed: include_closed,
+      id_prefix: "capability-plan",
+      mode_controls: capability_mode_controls(config),
+      on_scope_kind_change: config.on_scope_kind_change,
+      on_scope_depth_change: config.on_scope_depth_change,
+      on_scope_card_change: config.on_scope_card_change,
+      on_closed_toggled: config.on_closed_toggled,
+    )),
   ])
 }
 
-fn view_scope_controls(config: Config(msg)) -> element.Element(msg) {
-  div([attribute.class("plan-scope-controls")], [
-    label([], [text(i18n.t(config.locale, i18n_text.PlanScope))]),
-    select(
-      [
-        attribute.attribute("data-testid", "plan-scope-kind"),
-        attribute.value(scope_kind_value(config.scope_kind)),
-        event.on_input(config.on_scope_kind_change),
-      ],
-      [
-        html_option(
-          [attribute.value("level")],
-          i18n.t(config.locale, i18n_text.PlanScopeLevel),
-        ),
-        html_option(
-          [attribute.value("card")],
-          i18n.t(config.locale, i18n_text.PlanScopeCard),
-        ),
-      ],
-    ),
-    case config.scope_kind {
-      member_pool.PlanScopeLevel -> view_depth_selector(config)
-      member_pool.PlanScopeCard -> view_card_selector(config)
-    },
-  ])
-}
-
-fn view_depth_selector(config: Config(msg)) -> element.Element(msg) {
-  select(
-    [
-      attribute.attribute("data-testid", "plan-scope-depth"),
-      attribute.value(option_int_to_string(config.selected_depth)),
-      event.on_input(config.on_scope_depth_change),
-    ],
-    [
-      html_option(
-        [attribute.value("")],
-        i18n.t(config.locale, i18n_text.PlanScopeAllLevels),
-      ),
-      ..list.map(config.depth_names, fn(depth_name) {
-        let scope_view.DepthName(depth: depth, plural_name: label, ..) =
-          depth_name
-        html_option(
-          [
-            attribute.value(int.to_string(depth)),
-            attribute.selected(config.selected_depth == Some(depth)),
-          ],
-          label,
-        )
-      })
-    ],
-  )
-}
-
-fn view_card_selector(config: Config(msg)) -> element.Element(msg) {
-  div([attribute.class("plan-card-scope-control")], [
-    input([
-      attribute.type_("search"),
-      attribute.attribute("list", "capability-active-card-options"),
-      attribute.attribute("data-testid", "plan-scope-card-search"),
-      attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
-      attribute.value(selected_card_label(config)),
-      event.on_input(fn(value) {
-        config.on_scope_card_change(card_id_for_search_value(config, value))
-      }),
-    ]),
-    element.element(
-      "datalist",
-      [attribute.id("capability-active-card-options")],
-      active_card_datalist_options(config),
-    ),
-    select(
-      [
-        attribute.attribute("data-testid", "plan-scope-card"),
-        attribute.value(option_int_to_string(config.selected_card_id)),
-        event.on_input(config.on_scope_card_change),
-      ],
-      [
-        html_option(
-          [attribute.value("")],
-          i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
-        ),
-        ..active_card_options(config)
-      ],
-    ),
-  ])
-}
-
-fn active_card_options(config: Config(msg)) -> List(element.Element(msg)) {
-  config.cards
-  |> list.filter(fn(card) { card.state == Active })
-  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
-  |> list.map(fn(card) {
-    html_option(
-      [
-        attribute.value(int.to_string(card.id)),
-        attribute.selected(config.selected_card_id == Some(card.id)),
-      ],
-      card.title,
-    )
-  })
-}
-
-fn active_card_datalist_options(
+fn capability_mode_controls(
   config: Config(msg),
-) -> List(element.Element(msg)) {
-  config.cards
-  |> list.filter(fn(card) { card.state == Active })
-  |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
-  |> list.map(fn(card) {
-    html_option([attribute.value(card_search_label(card))], "")
-  })
+) -> List(scope_bar.ModeControl(msg)) {
+  [
+    capability_mode_control(config, i18n_text.PlanCapabilityList, "list"),
+    capability_mode_control(config, i18n_text.PlanCapabilityMatrix, "matrix"),
+  ]
 }
 
-fn selected_card_label(config: Config(msg)) -> String {
-  case config.selected_card_id {
-    Some(card_id) ->
-      case list.find(config.cards, fn(card) { card.id == card_id }) {
-        Ok(card) -> card_search_label(card)
-        Error(_) -> ""
-      }
-    None -> ""
-  }
-}
-
-fn card_id_for_search_value(config: Config(msg), value: String) -> String {
-  case list.find(config.cards, fn(card) { card_search_label(card) == value }) {
-    Ok(card) -> int.to_string(card.id)
-    Error(_) -> ""
-  }
-}
-
-fn card_search_label(card: Card) -> String {
-  card.title <> " #" <> int.to_string(card.id)
-}
-
-fn view_lens_controls(config: Config(msg)) -> element.Element(msg) {
-  div([attribute.class("plan-lens-controls")], [
-    span([attribute.class("plan-lens-label")], [
-      text(i18n.t(config.locale, i18n_text.PlanLens)),
-    ]),
-    view_lens_button(config, i18n_text.PlanLensKanban, False, view_mode.Cards),
-    view_lens_button(
-      config,
-      i18n_text.PlanLensCapabilities,
-      True,
-      view_mode.Capabilities,
-    ),
-    view_lens_button(config, i18n_text.PlanLensPeople, False, view_mode.People),
-  ])
-}
-
-fn view_lens_button(
-  config: Config(msg),
-  label_key: i18n_text.Text,
-  active: Bool,
-  mode: view_mode.ViewMode,
-) -> element.Element(msg) {
-  let class = case active {
-    True -> "plan-lens-btn is-active"
-    False -> "plan-lens-btn"
-  }
-
-  button(
-    [
-      attribute.type_("button"),
-      attribute.class(class),
-      attribute.attribute("aria-pressed", case active {
-        True -> "true"
-        False -> "false"
-      }),
-      event.on_click(config.on_lens_selected(mode)),
-    ],
-    [text(i18n.t(config.locale, label_key))],
-  )
-}
-
-fn view_mode_controls(config: Config(msg)) -> element.Element(msg) {
-  div([attribute.class("plan-capability-mode")], [
-    span([attribute.class("plan-lens-label")], [
-      text(i18n.t(config.locale, i18n_text.PlanCapabilityMode)),
-    ]),
-    view_mode_button(config, i18n_text.PlanCapabilityList, "list"),
-    view_mode_button(config, i18n_text.PlanCapabilityMatrix, "matrix"),
-  ])
-}
-
-fn view_mode_button(
+fn capability_mode_control(
   config: Config(msg),
   label_key: i18n_text.Text,
   value: String,
-) -> element.Element(msg) {
+) -> scope_bar.ModeControl(msg) {
   let active = capability_mode_value(config.capability_mode) == value
-  let class = case active {
-    True -> "plan-lens-btn is-active"
-    False -> "plan-lens-btn"
-  }
 
-  button(
-    [
-      attribute.type_("button"),
-      attribute.class(class),
-      attribute.attribute("data-testid", "capability-mode-" <> value),
-      attribute.attribute("aria-pressed", bool_string(active)),
-      event.on_click(config.on_capability_mode_change(value)),
-    ],
-    [text(i18n.t(config.locale, label_key))],
+  scope_bar.ModeControl(
+    label: i18n.t(config.locale, label_key),
+    value: value,
+    active: active,
+    testid: "capability-mode-" <> value,
+    on_select: config.on_capability_mode_change(value),
   )
 }
 
@@ -1342,30 +1148,9 @@ fn row_label(config: Config(msg)) -> String {
   }
 }
 
-fn scope_kind_value(scope_kind: member_pool.PlanScopeKind) -> String {
-  case scope_kind {
-    member_pool.PlanScopeLevel -> "level"
-    member_pool.PlanScopeCard -> "card"
-  }
-}
-
 fn capability_mode_value(mode: member_pool.PlanCapabilityMode) -> String {
   case mode {
     member_pool.PlanCapabilityList -> "list"
     member_pool.PlanCapabilityMatrix -> "matrix"
-  }
-}
-
-fn option_int_to_string(value: Option(Int)) -> String {
-  case value {
-    Some(id) -> int.to_string(id)
-    None -> ""
-  }
-}
-
-fn bool_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
   }
 }

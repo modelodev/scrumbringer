@@ -182,11 +182,6 @@ pub type Text {
   PlanScopeCard
   PlanScopeAllLevels
   PlanScopeSelectCard
-  PlanLens
-  PlanLensKanban
-  PlanLensCapabilities
-  PlanLensBlockers
-  PlanLensPeople
   PlanCapabilityMode
   PlanCapabilityList
   PlanCapabilityMatrix

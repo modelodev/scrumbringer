@@ -42,7 +42,6 @@ pub fn kanban_board_renders_empty_column_texts_test() {
       on_scope_depth_change: fn(_value) { 0 },
       on_scope_card_change: fn(_value) { 0 },
       on_closed_toggled: fn(_value) { 0 },
-      on_lens_selected: fn(_mode) { 0 },
     )
 
   let html = kanban_board.view(config) |> element.to_document_string

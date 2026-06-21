@@ -86,7 +86,6 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     on_scope_depth_change: fn(_value) { 0 },
     on_scope_card_change: fn(_value) { 0 },
     on_closed_toggled: fn(_value) { 0 },
-    on_lens_selected: fn(_mode) { 0 },
   )
 }
 
@@ -276,10 +275,11 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
 
   assert_contains(html, "kanban-surface-header")
   assert_contains(html, "Card flow by state")
-  assert_contains(html, "data-testid=\"plan-scope-lens\"")
+  assert_contains(html, "data-testid=\"plan-scope-bar\"")
   assert_contains(html, "data-testid=\"plan-scope-kind\"")
   assert_contains(html, "data-testid=\"plan-scope-depth\"")
   assert_contains(html, "data-testid=\"plan-closed-toggle\"")
+  assert_not_contains(html, ">Lens<")
   assert_contains(html, "work-surface-chip")
   assert_contains(html, "Cards")
   assert_contains(html, "Available")
@@ -354,6 +354,7 @@ pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
   assert_contains(html, "Closed")
   assert_contains(html, "Sprint")
   assert_contains(html, "data-testid=\"plan-scope-card-search\"")
+  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
 }
 
 pub fn kanban_card_health_and_preview_prioritize_active_work_test() {

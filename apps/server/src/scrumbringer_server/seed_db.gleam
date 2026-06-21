@@ -898,6 +898,26 @@ pub fn assign_cards_to_parent_card(
   })
 }
 
+/// Assign a specific card to a parent card.
+pub fn assign_card_to_parent_card(
+  db: pog.Connection,
+  card_id: Int,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "UPDATE cards
+     SET parent_card_id = $2
+     WHERE id = $1",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.int(parent_card_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "assign_card_to_parent_card: " <> string.inspect(e)
+  })
+}
+
 /// Assign available root-pool tasks (card_id is null) to a parent card.
 pub fn assign_available_pool_tasks_to_parent_card(
   db: pog.Connection,
@@ -977,6 +997,26 @@ fn assign_pool_tasks_to_parent_card_by_status(
   |> result.map_error(fn(e) {
     "assign_pool_tasks_to_parent_card_by_status: " <> string.inspect(e)
   })
+}
+
+/// Insert a task dependency.
+pub fn insert_task_dependency(
+  db: pog.Connection,
+  task_id: Int,
+  depends_on_task_id: Int,
+  created_by: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "INSERT INTO task_dependencies (task_id, depends_on_task_id, created_by)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING",
+  )
+  |> pog.parameter(pog.int(task_id))
+  |> pog.parameter(pog.int(depends_on_task_id))
+  |> pog.parameter(pog.int(created_by))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "insert_task_dependency: " <> string.inspect(e) })
 }
 
 // =============================================================================
