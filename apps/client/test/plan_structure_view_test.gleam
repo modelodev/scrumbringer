@@ -110,7 +110,7 @@ pub fn card_scope_without_selection_shows_empty_state_not_full_tree_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-structure-empty\"")
-  assert_contains(html, "Selecciona una card activa")
+  assert_contains(html, "Select an active card")
   assert_contains(html, "data-testid=\"plan-scope-card-search\"")
   assert_not_contains(html, "plan-tree-title\">Root Initiative")
   assert_not_contains(html, "plan-tree-title\">Portal Feature")
@@ -212,6 +212,7 @@ fn base_config() -> structure_view.Config(Int) {
     scope_kind: member_pool.PlanScopeProject,
     selected_depth: None,
     selected_card_id: None,
+    card_query: "",
     show_closed: None,
     status_filter: member_pool.PlanStatusAll,
     sort_order: member_pool.PlanSortPath,
@@ -223,6 +224,7 @@ fn base_config() -> structure_view.Config(Int) {
     on_scope_kind_change: fn(_) { 0 },
     on_scope_depth_change: fn(_) { 0 },
     on_scope_card_change: fn(_) { 0 },
+    on_scope_card_search_change: fn(_) { 0 },
     on_closed_toggled: fn(_) { 0 },
     on_status_filter_change: fn(_) { 0 },
     on_sort_change: fn(_) { 0 },

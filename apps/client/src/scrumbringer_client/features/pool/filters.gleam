@@ -39,6 +39,8 @@ pub fn try_update(
       opt.Some(handle_plan_scope_depth_changed(model, value))
     pool_messages.MemberPlanScopeCardChanged(value) ->
       opt.Some(handle_plan_scope_card_changed(model, value))
+    pool_messages.MemberPlanScopeCardSearchChanged(value) ->
+      opt.Some(handle_plan_scope_card_search_changed(model, value))
     pool_messages.MemberPlanClosedToggled(value) ->
       opt.Some(#(
         member_pool.Model(..model, member_plan_show_closed: opt.Some(value)),
@@ -152,6 +154,7 @@ fn handle_plan_scope_kind_changed(
     member_pool.Model(
       ..model,
       member_plan_scope_kind: kind,
+      member_plan_scope_card_query: "",
       member_plan_show_closed: opt.None,
       member_plan_collapsed_cards: dict.new(),
     ),
@@ -192,6 +195,7 @@ fn handle_plan_scope_depth_changed(
       ..model,
       member_card_depth_filter: helpers_options.empty_to_int_opt(value),
       member_plan_scope_kind: member_pool.PlanScopeLevel,
+      member_plan_scope_card_query: "",
       member_plan_show_closed: opt.None,
       member_plan_collapsed_cards: dict.new(),
     ),
@@ -208,8 +212,23 @@ fn handle_plan_scope_card_changed(
       ..model,
       member_plan_scope_card_id: helpers_options.empty_to_int_opt(value),
       member_plan_scope_kind: member_pool.PlanScopeCard,
+      member_plan_scope_card_query: "",
       member_plan_show_closed: opt.None,
       member_plan_collapsed_cards: dict.new(),
+    ),
+    False,
+  )
+}
+
+fn handle_plan_scope_card_search_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Bool) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_plan_scope_card_query: value,
+      member_plan_scope_kind: member_pool.PlanScopeCard,
     ),
     False,
   )

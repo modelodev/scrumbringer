@@ -43,12 +43,14 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
       scope_kind: member_pool.PlanScopeCard,
       selected_depth: None,
       selected_card_id: Some(2),
+      card_query: "",
       show_closed: True,
       id_prefix: "test-plan",
       mode_controls: [],
       on_scope_kind_change: fn(_) { 0 },
       on_scope_depth_change: fn(_) { 0 },
       on_scope_card_change: fn(_) { 0 },
+      on_scope_card_search_change: fn(_) { 0 },
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
@@ -72,6 +74,7 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
       scope_kind: member_pool.PlanScopeLevel,
       selected_depth: Some(1),
       selected_card_id: None,
+      card_query: "",
       show_closed: False,
       id_prefix: "test-plan",
       mode_controls: [
@@ -86,6 +89,7 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
       on_scope_kind_change: fn(_) { 0 },
       on_scope_depth_change: fn(_) { 0 },
       on_scope_card_change: fn(_) { 0 },
+      on_scope_card_search_change: fn(_) { 0 },
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
@@ -94,4 +98,31 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
   assert_contains(html, "data-testid=\"capability-mode-list\"")
   assert_contains(html, "aria-pressed=\"true\"")
   assert_contains(html, "data-testid=\"plan-scope-depth\"")
+}
+
+pub fn scope_bar_filters_card_options_by_query_test() {
+  let html =
+    scope_bar.Config(
+      locale: locale.En,
+      cards: [card(2, "Checkout"), card(1, "Sprint")],
+      depth_names: [scope_view.DepthName(1, "Epic", "Epics")],
+      scope_kind: member_pool.PlanScopeCard,
+      selected_depth: None,
+      selected_card_id: None,
+      card_query: "sprint",
+      show_closed: True,
+      id_prefix: "test-plan",
+      mode_controls: [],
+      on_scope_kind_change: fn(_) { 0 },
+      on_scope_depth_change: fn(_) { 0 },
+      on_scope_card_change: fn(_) { 0 },
+      on_scope_card_search_change: fn(_) { 0 },
+      on_closed_toggled: fn(_) { 0 },
+    )
+    |> scope_bar.view
+    |> element.to_document_string
+
+  assert_contains(html, "value=\"sprint\"")
+  assert_contains(html, "Sprint")
+  assert_not_contains(html, "Checkout")
 }

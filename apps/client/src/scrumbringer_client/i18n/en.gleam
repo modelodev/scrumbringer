@@ -212,9 +212,15 @@ pub fn translate(text: Text) -> String {
     text.PlanScopeCard -> "Card"
     text.PlanScopeAllLevels -> "All levels"
     text.PlanScopeSelectCard -> "Select an active card"
+    text.PlanScopeNoActiveCards -> "No active cards"
     text.PlanMode -> "Mode"
     text.PlanModeStructure -> "Structure"
     text.PlanModeKanban -> "Kanban"
+    text.PlanEmptyCardScopeBody ->
+      "Search for a card to review its subtree, capabilities, tasks, and risk."
+    text.PlanEmptyScopeTitle -> "No cards in this scope."
+    text.PlanEmptyScopeBody ->
+      "Create a card or change the scope to review another part of the plan."
     text.PlanCapabilityMode -> "Mode"
     text.PlanCapabilityList -> "List"
     text.PlanCapabilityMatrix -> "Matrix"

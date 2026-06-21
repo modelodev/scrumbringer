@@ -1023,7 +1023,7 @@ fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
 fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
   case model.member.pool.view_mode {
     view_mode.Pool -> i18n_text.Pool
-    view_mode.Cards -> i18n_text.Kanban
+    view_mode.Cards -> i18n_text.MemberCards
     view_mode.Capabilities -> i18n_text.CapabilitiesBoard
     view_mode.People -> i18n_text.People
   }
@@ -1440,6 +1440,7 @@ fn kanban_config(
     scope_kind: model.member.pool.member_plan_scope_kind,
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     show_closed: model.member.pool.member_plan_show_closed,
     plan_mode: model.member.pool.member_plan_mode,
     on_plan_mode_change: fn(value) {
@@ -1453,6 +1454,11 @@ fn kanban_config(
     },
     on_scope_card_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
@@ -1477,6 +1483,7 @@ fn plan_structure_config(
     scope_kind: model.member.pool.member_plan_scope_kind,
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     show_closed: model.member.pool.member_plan_show_closed,
     status_filter: model.member.pool.member_plan_status_filter,
     sort_order: model.member.pool.member_plan_sort,
@@ -1498,6 +1505,11 @@ fn plan_structure_config(
     },
     on_scope_card_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
@@ -1606,6 +1618,7 @@ fn capability_board_config(
     capability_mode: model.member.pool.member_plan_capability_mode,
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     show_closed: model.member.pool.member_plan_show_closed,
     on_scope_kind_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
@@ -1615,6 +1628,11 @@ fn capability_board_config(
     },
     on_scope_card_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))

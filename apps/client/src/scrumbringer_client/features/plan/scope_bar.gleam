@@ -24,12 +24,14 @@ pub type Config(msg) {
     scope_kind: member_pool.PlanScopeKind,
     selected_depth: Option(Int),
     selected_card_id: Option(Int),
+    card_query: String,
     show_closed: Bool,
     id_prefix: String,
     mode_controls: List(ModeControl(msg)),
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
+    on_scope_card_search_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
   )
 }
@@ -129,7 +131,18 @@ fn view_depth_selector(config: Config(msg)) -> Element(msg) {
 
 fn view_card_search(config: Config(msg)) -> Element(msg) {
   let listbox_id = config.id_prefix <> "-active-card-options"
-  let options = card_picker.active_options(config.cards, config.depth_names)
+  let options =
+    card_picker.active_options(config.cards, config.depth_names)
+    |> card_picker.filter_options(config.card_query)
+  let input_value = case config.card_query {
+    "" ->
+      card_picker.selected_label(
+        config.cards,
+        config.depth_names,
+        config.selected_card_id,
+      )
+    query -> query
+  }
 
   div([attribute.class("plan-card-scope-control")], [
     input([
@@ -138,33 +151,24 @@ fn view_card_search(config: Config(msg)) -> Element(msg) {
       attribute.attribute("role", "combobox"),
       attribute.attribute("aria-controls", listbox_id),
       attribute.attribute("aria-expanded", "true"),
+      attribute.attribute("aria-autocomplete", "list"),
       attribute.attribute("autocomplete", "off"),
       attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
-      attribute.value(card_picker.selected_label(
-        config.cards,
-        config.depth_names,
-        config.selected_card_id,
-      )),
-      event.on_input(fn(value) {
-        config.on_scope_card_change(card_picker.search_value_to_card_id(
-          config.cards,
-          config.depth_names,
-          value,
-        ))
-      }),
-      event.on_change(fn(value) {
-        config.on_scope_card_change(card_picker.search_value_to_card_id(
-          config.cards,
-          config.depth_names,
-          value,
-        ))
-      }),
+      attribute.value(input_value),
+      event.on_input(config.on_scope_card_search_change),
+      event.on_change(config.on_scope_card_search_change),
     ]),
-    view_card_options(listbox_id, options, config.on_scope_card_change),
+    view_card_options(
+      config.locale,
+      listbox_id,
+      options,
+      config.on_scope_card_change,
+    ),
   ])
 }
 
 fn view_card_options(
+  locale: Locale,
   listbox_id: String,
   options: List(card_picker.CardOption),
   on_scope_card_change: fn(String) -> msg,
@@ -183,7 +187,7 @@ fn view_card_options(
             attribute.class("plan-card-picker-empty"),
             attribute.attribute("data-testid", "plan-scope-card-no-results"),
           ],
-          [text("Sin cards activas")],
+          [text(i18n.t(locale, i18n_text.PlanScopeNoActiveCards))],
         ),
       ]
       _ ->

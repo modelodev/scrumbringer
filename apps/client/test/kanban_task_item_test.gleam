@@ -85,12 +85,14 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     scope_kind: member_pool.PlanScopeLevel,
     selected_depth: None,
     selected_card_id: None,
+    card_query: "",
     show_closed: None,
     plan_mode: member_pool.PlanKanban,
     on_plan_mode_change: fn(_value) { 0 },
     on_scope_kind_change: fn(_value) { 0 },
     on_scope_depth_change: fn(_value) { 0 },
     on_scope_card_change: fn(_value) { 0 },
+    on_scope_card_search_change: fn(_value) { 0 },
     on_closed_toggled: fn(_value) { 0 },
   )
 }

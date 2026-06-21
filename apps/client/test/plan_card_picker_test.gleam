@@ -44,6 +44,27 @@ pub fn picker_options_include_only_active_cards_test() {
   assert_not_contains(labels, "Closed Release")
 }
 
+pub fn picker_filters_options_by_title_path_and_id_test() {
+  let options = card_picker.active_options(cards(), depth_names())
+
+  let by_title =
+    options
+    |> card_picker.filter_options("checkout")
+    |> list.map(fn(option) { option.id })
+  let by_path =
+    options
+    |> card_picker.filter_options("api")
+    |> list.map(fn(option) { option.id })
+  let by_id =
+    options
+    |> card_picker.filter_options("#4")
+    |> list.map(fn(option) { option.id })
+
+  let assert [4, 2] = by_title
+  let assert [5, 4] = by_path
+  let assert [4] = by_id
+}
+
 fn depth_names() -> List(scope_view.DepthName) {
   [
     scope_view.DepthName(1, "Initiative", "Initiatives"),

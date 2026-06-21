@@ -43,6 +43,7 @@ pub type Msg {
   MemberPlanCapabilityModeChanged(String)
   MemberPlanScopeDepthChanged(String)
   MemberPlanScopeCardChanged(String)
+  MemberPlanScopeCardSearchChanged(String)
   MemberPlanClosedToggled(Bool)
   MemberPlanStatusChanged(String)
   MemberPlanSortChanged(String)

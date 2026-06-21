@@ -183,9 +183,13 @@ pub type Text {
   PlanScopeCard
   PlanScopeAllLevels
   PlanScopeSelectCard
+  PlanScopeNoActiveCards
   PlanMode
   PlanModeStructure
   PlanModeKanban
+  PlanEmptyCardScopeBody
+  PlanEmptyScopeTitle
+  PlanEmptyScopeBody
   PlanCapabilityMode
   PlanCapabilityList
   PlanCapabilityMatrix

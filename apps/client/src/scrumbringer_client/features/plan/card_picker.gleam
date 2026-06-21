@@ -34,6 +34,26 @@ pub fn active_options(
   |> list.map(fn(card) { option_for_card(card, cards, depth_names) })
 }
 
+pub fn filter_options(
+  options: List(CardOption),
+  query: String,
+) -> List(CardOption) {
+  let normalized_query = normalize(query)
+
+  case normalized_query {
+    "" -> options
+    _ ->
+      options
+      |> list.filter(fn(option) {
+        string.contains(normalize(option.title), normalized_query)
+        || string.contains(normalize(option.path), normalized_query)
+        || string.contains(normalize(option.label), normalized_query)
+        || normalize("#" <> int.to_string(option.id)) == normalized_query
+        || normalize(int.to_string(option.id)) == normalized_query
+      })
+  }
+}
+
 pub fn selected_label(
   cards: List(Card),
   depth_names: List(scope_view.DepthName),

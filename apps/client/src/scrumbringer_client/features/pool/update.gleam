@@ -650,6 +650,7 @@ fn update_without_view_mode(
     | pool_messages.MemberPlanCapabilityModeChanged(_)
     | pool_messages.MemberPlanScopeDepthChanged(_)
     | pool_messages.MemberPlanScopeCardChanged(_)
+    | pool_messages.MemberPlanScopeCardSearchChanged(_)
     | pool_messages.MemberPlanClosedToggled(_)
     | pool_messages.MemberPlanStatusChanged(_)
     | pool_messages.MemberPlanSortChanged(_)

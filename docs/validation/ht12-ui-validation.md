@@ -138,7 +138,7 @@ Latest LAN evidence on this host:
 - Expected: placing a task in a card that already contains child cards returns
   `CARD_HAS_CHILD_CARDS`.
 - Expected: ambiguous task placement that specifies both `card_id` and
-  `parent_card_id` returns `TASK_PARENT_CARD_CONFLICT`, not a legacy milestone
+  `parent_card_id` returns `TASK_PARENT_CARD_CONFLICT`, not a legacy planning artifact
   error code.
 
 ### 3. Task Creation Contexts
@@ -292,8 +292,8 @@ and returns `TASK_HAS_OPERATIONAL_HISTORY` when a hard delete is not allowed.
 
 The card/task contextual UI was also tightened for the multilingual user sweep:
 task creation context hints now come from i18n keys instead of embedded English
-strings, Spanish card phase labels render as `Pendiente`, `En curso`, and
-`Cerrada`, and card action blockers use typed reasons translated by the modal.
+strings, Spanish card phase labels render as `Draft`, `En curso`, and
+`Closed`, and card action blockers use typed reasons translated by the modal.
 This prevents card detail and creation flows from leaking English copy in the
 Spanish UI while keeping the policy layer free of display strings.
 

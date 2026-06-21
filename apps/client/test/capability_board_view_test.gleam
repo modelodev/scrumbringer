@@ -87,10 +87,12 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     capability_mode: member_pool.PlanCapabilityList,
     selected_depth: Some(1),
     selected_card_id: None,
+    card_query: "",
     show_closed: None,
     on_scope_kind_change: fn(_) { 0 },
     on_scope_depth_change: fn(_) { 0 },
     on_scope_card_change: fn(_) { 0 },
+    on_scope_card_search_change: fn(_) { 0 },
     on_closed_toggled: fn(_) { 0 },
     on_capability_mode_change: fn(_) { 0 },
   )

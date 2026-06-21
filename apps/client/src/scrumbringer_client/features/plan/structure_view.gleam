@@ -38,6 +38,7 @@ pub type Config(msg) {
     scope_kind: member_pool.PlanScopeKind,
     selected_depth: Option(Int),
     selected_card_id: Option(Int),
+    card_query: String,
     show_closed: Option(Bool),
     status_filter: member_pool.PlanStatusFilter,
     sort_order: member_pool.PlanSort,
@@ -49,6 +50,7 @@ pub type Config(msg) {
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
+    on_scope_card_search_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
     on_status_filter_change: fn(String) -> msg,
     on_sort_change: fn(String) -> msg,
@@ -138,12 +140,14 @@ fn with_scope_bar(
       scope_kind: config.scope_kind,
       selected_depth: config.selected_depth,
       selected_card_id: config.selected_card_id,
+      card_query: config.card_query,
       show_closed: include_closed,
       id_prefix: "plan-structure",
       mode_controls: plan_mode_controls(config),
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,
+      on_scope_card_search_change: config.on_scope_card_search_change,
       on_closed_toggled: config.on_closed_toggled,
     )),
     view_plan_filters(config),
@@ -209,7 +213,7 @@ fn view_plan_filters(config: Config(msg)) -> Element(msg) {
       case filters.include_closed {
         True ->
           span([attribute.class("plan-filter-search-chip")], [
-            text("Cerradas incluidas"),
+            text("Incluye closed"),
           ])
         False -> element.none()
       },
@@ -755,13 +759,13 @@ fn view_empty_state(config: Config(msg)) -> Element(msg) {
     config.selected_card_id
   {
     member_pool.PlanScopeCard, None -> #(
-      "Selecciona una card activa",
-      "Busca una card para ver su subarbol, capacidades, tasks y riesgo.",
+      i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+      i18n.t(config.locale, i18n_text.PlanEmptyCardScopeBody),
       False,
     )
     _, _ -> #(
-      "No hay cards en este scope.",
-      "Crea una card o cambia el scope para revisar otra parte del plan.",
+      i18n.t(config.locale, i18n_text.PlanEmptyScopeTitle),
+      i18n.t(config.locale, i18n_text.PlanEmptyScopeBody),
       config.is_pm_or_admin,
     )
   }
