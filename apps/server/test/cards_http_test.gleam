@@ -488,7 +488,9 @@ pub fn create_task_rejects_closed_card_test() {
     )
 
   expect.expect_status(res, 422)
-  string.contains(simulate.read_body(res), "Invalid card_id") |> expect.is_true
+  let body = simulate.read_body(res)
+  expect.expect_json_contains_code(body, "VALIDATION_ERROR")
+  string.contains(body, "Card is closed") |> expect.is_true
 }
 
 pub fn create_card_rejects_parent_with_tasks_test() {

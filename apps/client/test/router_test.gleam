@@ -188,6 +188,19 @@ pub fn format_member_cards_with_project_test() {
   )
 }
 
+pub fn format_member_cards_kanban_with_project_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&view=cards&plan_mode=kanban",
+  )
+}
+
 pub fn format_member_capabilities_with_project_test() {
   assert_equal(
     router.format(member_route(Some(2), Some(view_mode.Capabilities))),
@@ -279,6 +292,17 @@ pub fn roundtrip_member_cards_with_scope_test() {
     |> url_state.with_project(2)
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+
+  let route = router.Member(state)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_member_cards_kanban_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
 
   let route = router.Member(state)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))

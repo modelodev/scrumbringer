@@ -1394,8 +1394,7 @@ fn kanban_config(
     theme: model.ui.theme,
     surface_title: i18n.t(model.ui.locale, i18n_text.Kanban),
     surface_purpose: i18n.t(model.ui.locale, i18n_text.KanbanSurfacePurpose),
-    show_task_preview: True,
-    allow_task_claim: True,
+    purpose: kanban_board.ExecutionKanban,
     cards: cards,
     tasks: tasks,
     task_types: task_types,
@@ -1604,6 +1603,20 @@ fn capability_board_config(
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
     search_query: model.member.pool.member_filters_q,
+    on_capability_scope_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
+        value,
+      ))
+    },
+    on_type_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
+    },
+    on_capability_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
+    },
     on_task_click: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
     },

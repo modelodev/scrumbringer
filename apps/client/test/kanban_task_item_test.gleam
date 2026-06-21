@@ -48,8 +48,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     theme: theme.Default,
     surface_title: "Kanban",
     surface_purpose: "Card flow by state",
-    show_task_preview: True,
-    allow_task_claim: True,
+    purpose: kanban_board.ExecutionKanban,
     cards: [card],
     tasks: tasks,
     task_types: [

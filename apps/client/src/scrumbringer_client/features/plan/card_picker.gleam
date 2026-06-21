@@ -109,19 +109,24 @@ fn option_for_card(
     "" -> full_path
     _ -> parent_path <> " / " <> card.title
   }
+  let label = case parent_path {
+    "" -> card.title <> " - " <> level_name <> " #" <> int.to_string(card.id)
+    _ ->
+      card.title
+      <> " - "
+      <> visible_path
+      <> " - "
+      <> level_name
+      <> " #"
+      <> int.to_string(card.id)
+  }
 
   CardOption(
     id: card.id,
     title: card.title,
     path: visible_path,
     level_name: level_name,
-    label: card.title
-      <> " - "
-      <> visible_path
-      <> " - "
-      <> level_name
-      <> " #"
-      <> int.to_string(card.id),
+    label: label,
   )
 }
 

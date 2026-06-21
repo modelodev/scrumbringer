@@ -23,7 +23,7 @@ import lustre/element
 import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
 
-import domain/card.{type Card, Closed}
+import domain/card.{type Card, Active, Closed, Draft}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
@@ -50,6 +50,11 @@ import scrumbringer_client/utils/card_queries
 // Types
 // =============================================================================
 
+pub type KanbanPurpose {
+  ExecutionKanban
+  PlanKanban
+}
+
 /// Configuration for the kanban board
 pub type KanbanConfig(msg) {
   KanbanConfig(
@@ -57,8 +62,7 @@ pub type KanbanConfig(msg) {
     theme: Theme,
     surface_title: String,
     surface_purpose: String,
-    show_task_preview: Bool,
-    allow_task_claim: Bool,
+    purpose: KanbanPurpose,
     cards: List(Card),
     tasks: List(Task),
     task_types: List(TaskType),
@@ -148,10 +152,7 @@ pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
   let visible_cards =
     cards_with_progress
     |> list.filter(fn(cwp) {
-      case cwp.card.state {
-        Closed -> include_closed
-        _ -> True
-      }
+      card_visible_for_purpose(config, cwp.card, include_closed)
     })
 
   let pendiente =
@@ -256,6 +257,7 @@ fn with_scope_bar(
       show_closed: include_closed,
       id_prefix: "kanban-plan",
       mode_controls: plan_mode_controls(config),
+      refinement_controls: [],
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,
@@ -365,13 +367,13 @@ fn view_card(
   cwp: CardWithProgress,
 ) -> element.Element(msg) {
   let health = task_health(cwp.tasks)
-  let preview_tasks = case config.show_task_preview {
-    True -> next_relevant_tasks(cwp.tasks)
-    False -> []
+  let preview_tasks = case config.purpose {
+    ExecutionKanban -> next_relevant_tasks(cwp.tasks)
+    PlanKanban -> []
   }
-  let task_testid = case config.show_task_preview {
-    True -> option.Some("kanban-task-item")
-    False -> option.None
+  let task_testid = case config.purpose {
+    ExecutionKanban -> option.Some("kanban-task-item")
+    PlanKanban -> option.None
   }
 
   card_with_tasks_surface.view(card_with_tasks_surface.Config(
@@ -400,9 +402,9 @@ fn view_card(
 }
 
 fn task_claim_handler(config: KanbanConfig(msg)) -> fn(Int, Int) -> msg {
-  case config.allow_task_claim {
-    True -> config.on_task_claim
-    False -> fn(_task_id, _version) { config.on_card_click(0) }
+  case config.purpose {
+    ExecutionKanban -> config.on_task_claim
+    PlanKanban -> fn(_task_id, _version) { config.on_card_click(0) }
   }
 }
 
@@ -533,6 +535,20 @@ fn cards_in_scope(config: KanbanConfig(msg)) -> List(Card) {
     config.selected_depth,
     config.selected_card_id,
   )
+}
+
+fn card_visible_for_purpose(
+  config: KanbanConfig(msg),
+  card: Card,
+  include_closed: Bool,
+) -> Bool {
+  case config.purpose, card.state {
+    PlanKanban, Active -> True
+    PlanKanban, Closed -> include_closed
+    PlanKanban, Draft -> False
+    ExecutionKanban, Closed -> include_closed
+    ExecutionKanban, _ -> True
+  }
 }
 
 fn show_closed(

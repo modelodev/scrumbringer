@@ -74,14 +74,15 @@ pub fn plan_toolbar_does_not_render_pool_filters_test() {
   assert_not_contains(html, "data-testid=\"filter-capability-scope\"")
 }
 
-pub fn capabilities_toolbar_keeps_type_and_search_without_capability_test() {
+pub fn capabilities_toolbar_does_not_render_global_pool_filters_test() {
   let html =
     center_panel.view(base_config(view_mode.Capabilities))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"capabilities-toolbar\"")
-  assert_contains(html, "data-testid=\"filter-type\"")
-  assert_contains(html, "data-testid=\"filter-search-capabilities\"")
-  assert_contains(html, "data-testid=\"filter-capability-scope\"")
+  assert_contains(html, "data-testid=\"capabilities-view\"")
+  assert_not_contains(html, "data-testid=\"capabilities-toolbar\"")
+  assert_not_contains(html, "data-testid=\"filter-type\"")
+  assert_not_contains(html, "data-testid=\"filter-search-capabilities\"")
+  assert_not_contains(html, "data-testid=\"filter-capability-scope\"")
   assert_not_contains(html, "data-testid=\"filter-capability\"")
 }

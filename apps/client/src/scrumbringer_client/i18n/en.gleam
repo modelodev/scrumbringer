@@ -347,7 +347,7 @@ pub fn translate(text: Text) -> String {
     text.ActivatingHierarchy -> "Activating..."
     text.HierarchyActivated -> "Hierarchy activated"
     text.HierarchyActivationPoolImpact(pool_impact) ->
-      int.to_string(pool_impact) <> " tasks opened in Pool"
+      "On activation: +" <> int.to_string(pool_impact) <> " tasks"
     text.HierarchyActivationPoolSaturated(pool_open_after, healthy_pool_limit) ->
       "Pool at "
       <> int.to_string(pool_open_after)

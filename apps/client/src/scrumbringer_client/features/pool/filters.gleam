@@ -31,8 +31,6 @@ pub fn try_update(
       opt.Some(handle_search_debounced(model, value))
     pool_messages.MemberPlanScopeKindChanged(value) ->
       opt.Some(handle_plan_scope_kind_changed(model, value))
-    pool_messages.MemberPlanModeChanged(value) ->
-      opt.Some(handle_plan_mode_changed(model, value))
     pool_messages.MemberPlanCapabilityModeChanged(value) ->
       opt.Some(handle_plan_capability_mode_changed(model, value))
     pool_messages.MemberPlanScopeDepthChanged(value) ->
@@ -160,18 +158,6 @@ fn handle_plan_scope_kind_changed(
     ),
     False,
   )
-}
-
-fn handle_plan_mode_changed(
-  model: member_pool.Model,
-  value: String,
-) -> #(member_pool.Model, Bool) {
-  let mode = case string.trim(value) {
-    "kanban" -> member_pool.PlanKanban
-    _ -> member_pool.PlanStructure
-  }
-
-  #(member_pool.Model(..model, member_plan_mode: mode), False)
 }
 
 fn handle_plan_capability_mode_changed(

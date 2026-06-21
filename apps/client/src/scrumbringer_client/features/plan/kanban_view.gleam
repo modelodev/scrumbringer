@@ -10,8 +10,7 @@ pub fn view(config: kanban_board.KanbanConfig(msg)) -> Element(msg) {
       ..config,
       surface_title: "Plan",
       surface_purpose: "Estructura de cards y trabajo preparado.",
-      show_task_preview: False,
-      allow_task_claim: False,
+      purpose: kanban_board.PlanKanban,
     ),
   )
 }

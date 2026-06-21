@@ -35,6 +35,7 @@ pub fn parse_empty_url_test() {
   state |> url_state.search |> assert_none
   state |> url_state.expanded_card |> assert_none
   state |> url_state.card_depth |> assert_none
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
 }
 
 pub fn parse_project_only_test() {
@@ -65,6 +66,22 @@ pub fn parse_cards_depth_test() {
 
   state |> url_state.view |> assert_equal(view_mode.Cards)
   state |> url_state.card_depth |> assert_equal(Some(2))
+}
+
+pub fn parse_cards_kanban_mode_test() {
+  let assert Ok(uri) = uri.parse("/app?view=cards&plan_mode=kanban")
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanKanbanParam)
+}
+
+pub fn parse_cards_structure_mode_test() {
+  let assert Ok(uri) = uri.parse("/app?view=cards&plan_mode=structure")
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
 }
 
 pub fn parse_view_mode_capabilities_test() {
@@ -106,6 +123,22 @@ pub fn parse_depth_without_cards_redirects_and_clears_depth_test() {
 
   state |> url_state.view |> assert_equal(view_mode.People)
   state |> url_state.card_depth |> assert_none
+}
+
+pub fn parse_plan_mode_without_cards_redirects_to_structure_test() {
+  let assert Ok(uri) = uri.parse("/app?view=people&plan_mode=kanban")
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
+
+  state |> url_state.view |> assert_equal(view_mode.People)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
+}
+
+pub fn parse_invalid_plan_mode_redirects_to_structure_test() {
+  let assert Ok(uri) = uri.parse("/app?view=cards&plan_mode=grid")
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
 }
 
 pub fn parse_query_string_directly_test() {
@@ -387,6 +420,28 @@ pub fn to_query_string_capabilities_test() {
   query |> assert_equal("project=8&view=capabilities")
 }
 
+pub fn to_query_string_cards_kanban_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+    |> url_state.to_query_string
+
+  query |> assert_equal("project=8&view=cards&plan_mode=kanban")
+}
+
+pub fn to_query_string_cards_structure_omits_default_plan_mode_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanStructureParam)
+    |> url_state.to_query_string
+
+  query |> assert_equal("project=8&view=cards")
+}
+
 // =============================================================================
 // to_app_url tests
 // =============================================================================
@@ -426,8 +481,24 @@ pub fn roundtrip_test() {
 
   reparsed |> url_state.project |> assert_equal(Some(8))
   reparsed |> url_state.view |> assert_equal(view_mode.Cards)
+  reparsed |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
   reparsed |> url_state.type_filter |> assert_equal(Some(2))
   reparsed |> url_state.card_depth |> assert_equal(Some(2))
+}
+
+pub fn roundtrip_cards_kanban_test() {
+  let original =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+
+  let query = url_state.to_query_string(original)
+  let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
+
+  reparsed |> url_state.project |> assert_equal(Some(8))
+  reparsed |> url_state.view |> assert_equal(view_mode.Cards)
+  reparsed |> url_state.plan_mode |> assert_equal(url_state.PlanKanbanParam)
 }
 
 pub fn roundtrip_with_encoded_search_test() {

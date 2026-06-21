@@ -77,6 +77,10 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     type_filter: None,
     capability_filter: None,
     search_query: "",
+    on_capability_scope_change: fn(_) { 0 },
+    on_type_filter_change: fn(_) { 0 },
+    on_capability_filter_change: fn(_) { 0 },
+    on_search_change: fn(_) { 0 },
     on_task_click: fn(id) { id },
     on_task_claim: fn(id, version) { id + version },
     depth_names: [
@@ -199,6 +203,13 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
   assert_contains(html, "data-testid=\"plan-scope-bar\"")
   assert_contains(html, "data-testid=\"capability-mode-list\"")
   assert_contains(html, "data-testid=\"capability-mode-matrix\"")
+  assert_contains(html, "data-testid=\"capability-my-capabilities-action\"")
+  assert_contains(html, "data-testid=\"capability-filter-type\"")
+  assert_contains(html, "data-testid=\"capability-filter-capability\"")
+  assert_contains(html, "data-testid=\"capability-filter-search\"")
+  assert_not_contains(html, "data-testid=\"capabilities-toolbar\"")
+  assert_not_contains(html, "data-testid=\"filter-type\"")
+  assert_not_contains(html, "data-testid=\"filter-capability\"")
   assert_not_contains(html, ">Lens<")
   assert_contains(html, "data-testid=\"capability-list\"")
   assert_contains(html, "Backend")

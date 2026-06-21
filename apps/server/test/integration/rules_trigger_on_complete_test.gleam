@@ -17,10 +17,26 @@ import gleeunit
 import pog
 import scrumbringer_server
 import support/assertions as expect
+import wisp
 import wisp/simulate
 
 pub fn main() {
   gleeunit.main()
+}
+
+fn activate_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fixtures.Session,
+  card_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
+    )
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(json.object([])),
+  )
 }
 
 // =============================================================================
@@ -490,6 +506,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
     )
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Feature Card")
+  expect.expect_status(activate_card(handler, session, card_id), 200)
 
   // Create workflow with rule and template
   let assert Ok(workflow_id) =

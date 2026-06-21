@@ -482,7 +482,7 @@ Modo:  [ Estructura ] [ Kanban ]
 
 Estado: [ Abiertas v ] Orden: [ Riesgo v ] [ ] Cerradas
 
-3 niveles   12 cards   38 tasks   9 disponibles   4 entrarian al pool
+3 niveles   12 cards   38 tasks   9 disponibles   4 al activar
 ```
 
 El cuerpo principal es una tabla-arbol densa. No debe parecer un diagrama de
@@ -490,7 +490,7 @@ mapa mental ni un backlog tradicional con tarjetas grandes.
 
 ```text
 +------------------------------------------------------------------------------+
-| Card / Arbol                     Estado   Tasks   Pool impact   Vence   Acc. |
+| Card / Arbol                     Estado   Tasks   Al activar    Vence   Acc. |
 +------------------------------------------------------------------------------+
 | v Hito Q3 Plataforma             Active   12/38   ya activo     30 jun  Ver  |
 |   v Entrega Portal clientes      Active   8/21    ya activo     28 jun  Ver  |
@@ -515,7 +515,7 @@ Estado: [ Abiertas v ] Orden: [ Riesgo v ] [ ] Cerradas
 9 Historias   18 tasks   6 disponibles   2 bloqueadas
 
 +--------------------------------------------------------------------------------+
-| Historia             Padre                 Estado   Tasks   Pool impact  Vence |
+| Historia             Padre                 Estado   Tasks   Al activar  Vence |
 +--------------------------------------------------------------------------------+
 | API Cleanup          Q3 / Portal clientes  Active   3/5     ya activo    vencida|
 | Checkout nuevo       Q3 / Portal clientes  Draft    0/8     +8           28 jun |
@@ -668,7 +668,7 @@ Problemas observados:
 - Cerrar y eliminar aparecen demasiado a mano, cuando deben comportarse como
   operaciones excepcionales.
 - La tabla fuerza columnas estrechas y rompe encabezados como `Estado`,
-  `Tasks`, `Pool impact` y `Vence`.
+  `Tasks`, `Al activar` y `Vence`.
 - En movil, la tabla se degrada a una lista larga de celdas y acciones
   repetidas; no se siente como una vista movil disenada.
 - El sidebar movil sigue sin navegacion primaria equivalente.
@@ -729,7 +729,7 @@ Modo:  [ Estructura ] [ Kanban ]
 Buscar: [ card, task... ]
 Estado: [ Todas v ] Orden: [ Arbol v ] [ ] Cerradas
 
-10 Cards   3 Tasks   3 Disponibles   0 Entrarian al pool   0 Bloqueada
+10 Cards   3 Tasks   3 Disponibles   0 Al activar   0 Bloqueada
 ```
 
 No deben aparecer `Mis capacidades`, `Tipo` o `Capacidad` encima de `Plan` salvo
@@ -931,8 +931,7 @@ operativas:
 
 ```text
 work_surface.header
-work_surface.scope_toolbar
-work_surface.filter_bar
+work_surface.view_controls
 work_surface.summary
 work_surface.empty_state
 ```
@@ -1004,6 +1003,287 @@ Cobertura esperada:
 8. Solo entonces extraer `work_scope` y generalizar `work_surface`.
 9. Limpiar codigo obsoleto, nombres incompatibles y tests que validen el modelo
    anterior.
+
+#### 10. Unificar Barra De Control De Vista
+
+Tras estabilizar `Plan / Estructura`, `Plan / Kanban` y `Capacidades`, la
+siguiente mejora debe homogeneizar la anatomia de las vistas principales sin
+meter filtros innecesarios ni crear una superficie generica que oculte la
+mision de cada vista.
+
+Esta seccion prevalece sobre wireframes anteriores del mismo documento cuando
+exista conflicto de copy o estructura. En particular, reemplaza la etiqueta
+anterior de impacto de activacion por `Al activar` y reemplaza cualquier idea de `filter_bar` separada por una
+barra unica de control de vista.
+
+Problema actual:
+
+- `Plan` tiene tres bloques visibles: header, scope y cuerpo.
+- `Capacidades` tiene cuatro bloques visibles: configuracion de mis
+  capacidades, header, scope y cuerpo.
+- Los filtros de `Plan` (`Estado`, `Orden`, `Cerradas`) compiten con el scope
+  cuando aparecen como una barra separada.
+- El cuerpo pierde altura util en pantallas pequenas.
+- El impacto de activacion es correcto tecnicamente, pero no comunica bien al usuario que
+  representa una consecuencia de activar una card.
+
+Decision:
+
+Todas las vistas operativas deben seguir la misma anatomia:
+
+```text
+[Header de vista]
+Titulo + descripcion + chips resumen + acciones propias
+
+[Barra de control de vista]
+Contexto: scope + selector dependiente
+Modo: variantes internas de la vista
+| separador visual |
+Refinamiento: filtros minimos propios de esa vista
+
+[Cuerpo]
+Contenido principal
+```
+
+La barra no debe llamarse `refinement` en la interfaz. Para el usuario es una
+unica barra de control de vista. Internamente puede modelarse como:
+
+```text
+ViewControls
+  context_controls
+  mode_controls
+  refinement_controls
+```
+
+Wireframe desktop para `Plan`:
+
+```text
+Plan
+Estructura de cards y trabajo preparado.
+[10 Tarjetas] [3 Tasks] [3 Disponibles] [0 Al activar] [0 Bloqueadas]
+
+Scope  [Card v] [Release 1.5 - Launch train]
+Modo   [Estructura] [Kanban]        |        Estado [Todas v]  Orden [Arbol v]  [ ] Closed
+
+<cuerpo>
+```
+
+Wireframe movil para la misma barra:
+
+```text
+Plan
+Estructura de cards y trabajo preparado.
+[10 Tarjetas] [3 Tasks] [3 Disponibles]
+
+Scope
+[Card v]
+[Release 1.5 - Launch train]
+
+Modo
+[Estructura] [Kanban]
+
+Refinar
+[Estado v]
+[Orden v]
+[ ] Closed
+
+<cuerpo>
+```
+
+Reglas:
+
+- El header de vista queda arriba y no contiene filtros de detalle.
+- La barra de control contiene contexto, modo y refinamientos minimos.
+- En desktop, contexto/modo y refinamiento viven en la misma surface separados
+  visualmente.
+- En movil, la misma barra se apila por grupos; no se fuerza una unica linea.
+- Si una vista no necesita refinamiento, esa zona no se renderiza.
+- Si los filtros crecen mucho en una vista futura, entonces se permite una barra
+  secundaria o panel de filtros, pero no para `Plan` en su estado actual.
+
+#### 11. Filtros De Estado En Plan
+
+El filtro de estado tiene sentido en `Plan / Estructura`, porque esta vista
+responde:
+
+```text
+Que hemos preparado, que esta activo, que esta cerrado y que pasaria si se
+activa una parte del arbol?
+```
+
+No debe convertirse en un filtro protagonista ni aplicarse igual a todos los
+modos.
+
+Reglas por modo:
+
+- `Plan / Estructura`: permite `Todas`, `Draft`, `Active`, `Closed`.
+- `Plan / Kanban`: el universo normal debe ser `Active`; `Closed` puede entrar
+  mediante toggle, pero `Draft` no debe mezclarse por defecto porque el kanban
+  es lectura de flujo activo.
+- `Closed` debe mantener su logica explicita: si el toggle `Closed` esta
+  desactivado, las cards cerradas no aparecen aunque exista filtro de estado.
+- `Estado` debe vivir en la zona de refinamiento de la barra de control, junto
+  a `Orden`.
+
+Tests minimos:
+
+- `Plan / Estructura` renderiza `Estado` y `Orden` dentro de la barra de
+  control, no como filtros globales de `Pool`.
+- `Plan / Estructura` con `Estado = Draft` muestra solo rows draft dentro del
+  scope actual.
+- `Plan / Estructura` con `Estado = Active` muestra solo rows active dentro del
+  scope actual.
+- `Plan / Estructura` con `Estado = Closed` no muestra cerradas si el toggle
+  `Closed` esta desactivado.
+- `Plan / Estructura` con `Estado = Closed` y toggle `Closed` activado muestra
+  solo cerradas dentro del scope actual.
+- `Scope = Card` + filtro de estado filtra el subarbol seleccionado, no cae al
+  proyecto entero.
+- `Plan / Kanban` no ofrece `Draft` como refinamiento principal salvo que se
+  decida explicitamente una variante de planificacion distinta.
+
+#### 12. Capacidades Y Configuracion Personal
+
+`Capacidades` debe compartir la misma anatomia de `Plan`, pero no debe copiar
+sus filtros. Su mision es distinta: entender que capacidades aparecen en un
+scope y donde hay actividad.
+
+Decision:
+
+- `Configuracion de mis capacidades` no debe ser un bloque permanente por
+  encima de la vista.
+- Debe moverse a una accion propia del header: `Mis capacidades`.
+- Solo debe aparecer como bloque visible si hay una situacion accionable:
+  usuario sin capacidades configuradas, capacidades incompletas para la vista
+  actual o error de configuracion.
+
+Wireframe:
+
+```text
+Capacidades                                      [Mis capacidades]
+Tasks activas agrupadas por capacidad dentro del scope.
+[9 Cards] [18 Tasks activas] [4 Capacidades] [3 Para mi]
+
+Scope  [Nivel v] [Historias v]
+Modo   [Lista] [Matriz]          |          [Con trabajo para mi] Estado [Abiertas v] Orden [Riesgo v] [ ] Closed
+
+<cuerpo>
+```
+
+Tests minimos:
+
+- `Capacidades` renderiza la accion `Mis capacidades` en el header.
+- `Capacidades` no renderiza el bloque de configuracion personal permanente si
+  el usuario ya tiene capacidades configuradas y no hay aviso.
+- Si el usuario no tiene capacidades configuradas, se renderiza un aviso
+  accionable, no una configuracion completa siempre abierta.
+- `Capacidades` conserva scope y modo al cambiar entre `Lista` y `Matriz`.
+- `Capacidades` no hereda filtros de `Plan` que no tengan sentido para la vista.
+
+#### 13. Renombrar Impacto De Activacion
+
+La metrica `Al activar` representa cuantas tasks entrarian al `Pool` si se activa una
+card o subarbol draft. Es una metrica de consecuencia operacional, no una
+metrica permanente de estado.
+
+Problema:
+
+Si el seed muestra siempre `0`, la columna parece inutil. En realidad el dato
+solo se entiende cuando existen cards `Draft` con tasks disponibles debajo.
+
+Decision de copy:
+
+- Renombrar columna/chip de impacto de activacion a `Al activar`.
+- Valores recomendados:
+  - `+3 tasks`: si al activar entrarian tres tasks al pool;
+  - `ya activo`: si la card ya esta activa;
+  - `-`: si no aplica;
+  - `bloqueado`: si la activacion no se puede ejecutar.
+
+Reglas:
+
+- `Al activar` aparece en `Plan / Estructura`.
+- No aparece como metrica principal en `Pool`.
+- Antes de activar un subarbol, la confirmacion debe usar el mismo calculo y el
+  mismo lenguaje visual.
+- El seed debe incluir al menos una card draft con tasks disponibles debajo para
+  que la vista muestre `+N tasks`.
+
+Tests minimos:
+
+- Card `Draft` con descendant tasks disponibles muestra `+N tasks`.
+- Card `Active` muestra `ya activo`.
+- Card sin impacto muestra `-`.
+- La confirmacion de `Activar subarbol` usa el mismo numero que la columna
+  `Al activar`.
+- Los tests de seeds comprueban que existe al menos un caso visible con impacto
+  no cero.
+
+#### 14. Reutilizacion Y Limpieza Tecnica
+
+La mejora debe reutilizar componentes existentes antes de crear abstracciones
+nuevas. La extraccion solo esta justificada si elimina duplicacion real entre
+`Plan`, `Capacidades` y `Personas`.
+
+Reutilizar primero:
+
+- `work_surface` para header, chips resumen y empty states cuando ya cubra la
+  necesidad.
+- `features/plan/scope_bar.gleam` como punto de partida del control de scope,
+  manteniendo su API estable hasta que haya contrato probado.
+- `features/plan/card_picker.gleam` para seleccionar cards activas desde
+  `Plan` y `Capacidades`.
+- `ui/signal_chip.gleam` para chips resumen y metricas compactas.
+- `features/plan/tree_table.gleam` solo como componente local de `Plan` mientras
+  ninguna otra vista necesite exactamente la misma tabla-arbol.
+
+Extracciones permitidas despues de estabilizar comportamiento:
+
+```text
+features/work_scope/types.gleam
+features/work_scope/queries.gleam
+features/work_scope/scope_bar.gleam
+features/work_scope/card_picker.gleam
+
+features/layout/view_controls.gleam
+features/layout/work_surface.gleam
+```
+
+Criterios para extraer:
+
+- El mismo patron debe estar usado al menos por dos vistas reales.
+- La extraccion debe reducir codigo o estados divergentes, no solo mover
+  nombres.
+- La API publica debe modelar zonas opcionales con tipos explicitos; no debe
+  depender de listas vacias anonimas para indicar ausencia de controles.
+- La extraccion debe preservar la mision propia de cada vista: `Plan` prepara y
+  activa estructura, `Capacidades` muestra trabajo por capacidad, `Personas`
+  muestra distribucion de trabajo por miembro.
+
+Limpieza obligatoria:
+
+- Eliminar filtros antiguos de `Pool` que se rendericen en vistas que no son
+  `Pool`.
+- Eliminar booleans de configuracion de Kanban que hayan quedado sustituidos
+  por ADTs como `KanbanPurpose`.
+- Eliminar CSS de barras antiguas si la barra de control unificada lo reemplaza.
+- Eliminar nombres ambiguos como `scope_bar` si el modulo ya no pertenece solo
+  a `Plan`; moverlo o renombrarlo cuando se extraiga.
+- Eliminar tests que validen la estructura anterior si ya contradicen el modelo
+  nuevo.
+- Revisar seeds para que muestren casos reales de `Draft`, `Active`, `Closed`,
+  `Al activar +N`, card con subcards, card con tasks y card sin contenido.
+
+Tests de regresion globales:
+
+- `Plan`, `Capacidades` y `Personas` usan la misma anatomia de header + barra
+  de control + cuerpo.
+- Ninguna vista principal renderiza filtros de otra vista.
+- En desktop la barra de control no empuja el cuerpo innecesariamente.
+- En movil la barra se apila sin overflow, solapes ni textos cortados.
+- `agent-browser` valida `Plan / Estructura`, `Plan / Kanban`,
+  `Capacidades / Lista` y `Capacidades / Matriz` en desktop y `390x844`.
+- Las capturas de validacion deben incluir un seed con `Al activar +N`.
 
 ### Kanban De Cards
 
@@ -1548,7 +1828,7 @@ Criterios:
 
 - El detalle/scope de card muestra breadcrumb.
 - Muestra contenido directo y resumen de trabajo debajo.
-- `Activar subarbol` muestra conteo de tasks que entrarian al pool.
+- `Activar subarbol` muestra conteo de tasks que entrarian al activar.
 - El limite blando del pool aparece como aviso si aplica.
 - `Cerrar` no esta demasiado a mano y respeta bloqueo por tasks claimed/ongoing.
 - `Mover` no compite visualmente con `Crear task/subcard`.

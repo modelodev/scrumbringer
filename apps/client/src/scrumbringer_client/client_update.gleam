@@ -78,6 +78,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
+import scrumbringer_client/features/plan/url as plan_url
 
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/admin/cards as admin_cards_workflow
@@ -300,6 +301,14 @@ fn current_route(model: client_state.Model) -> router.Route {
         opt.None -> url_state.empty()
       }
       let state = url_state.with_view(state, model.member.pool.view_mode)
+      let state = case model.member.pool.view_mode {
+        view_mode.Cards ->
+          url_state.with_plan_mode(
+            state,
+            plan_url.mode_to_url(model.member.pool.member_plan_mode),
+          )
+        _ -> state
+      }
       let state =
         url_state.with_capability_scope(
           state,
@@ -341,6 +350,44 @@ pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
 
 fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
+}
+
+fn current_browser_uri() -> opt.Option(Uri) {
+  let raw =
+    client_ffi.location_pathname()
+    <> client_ffi.location_search()
+    <> client_ffi.location_hash()
+
+  raw
+  |> uri.parse
+  |> opt.from_result
+}
+
+fn apply_authenticated_browser_route(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case current_browser_uri() {
+    opt.None -> #(model, effect.none())
+    opt.Some(uri) ->
+      case router.parse_uri(uri) {
+        router.Parsed(router.Member(_) as route)
+        | router.Parsed(router.Config(_, _) as route)
+        | router.Parsed(router.Org(_) as route) ->
+          apply_route_fields(model, route)
+
+        router.Redirect(router.Member(_) as route)
+        | router.Redirect(router.Config(_, _) as route)
+        | router.Redirect(router.Org(_) as route) -> {
+          let #(model, route_fx) = apply_route_fields(model, route)
+          #(
+            model,
+            effect.batch([write_url(client_state.Replace, route), route_fx]),
+          )
+        }
+
+        _ -> #(model, effect.none())
+      }
+  }
 }
 
 /// Registers keydown effect.
@@ -568,6 +615,9 @@ fn apply_route_fields(
               pool: member_pool.Model(
                 ..pool,
                 view_mode: new_view,
+                member_plan_mode: plan_url.mode_from_url(url_state.plan_mode(
+                  state,
+                )),
                 member_card_depth_filter: url_state.card_depth(state),
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
@@ -1834,12 +1884,14 @@ pub fn update(
             auth_checked: True,
           )
         })
+      let #(model, route_fx) = apply_authenticated_browser_route(model)
       let #(model, boot) = bootstrap_admin(model)
       let #(model, hyd_fx) = hydrate_model(model)
 
       #(
         model,
         effect.batch([
+          route_fx,
           boot,
           hyd_fx,
           replace_url(model),

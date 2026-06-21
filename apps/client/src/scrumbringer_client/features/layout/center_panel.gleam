@@ -79,26 +79,20 @@ pub fn view(config: CenterPanelConfig(msg)) -> Element(msg) {
 
 fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
-    Cards -> element.none()
-    _ ->
+    Pool | People ->
       div([attribute.class("center-toolbar")], [
         // Filters only - navigation moved to sidebar (Story 4.8 UX)
         view_filters(config),
       ])
+    Cards | Capabilities -> element.none()
   }
 }
 
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
+    Pool -> view_work_filters(config)
     People -> view_people_filters(config)
-    Capabilities ->
-      view_work_filters_variant(
-        config,
-        show_capability_filter: False,
-        toolbar_testid: Some("capabilities-toolbar"),
-        search_testid: Some("filter-search-capabilities"),
-      )
-    _ -> view_work_filters(config)
+    Cards | Capabilities -> element.none()
   }
 }
 

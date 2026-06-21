@@ -36,11 +36,18 @@ pub type ViewParam {
   AssignmentsView(assignments_view_mode.AssignmentsViewMode)
 }
 
+/// Display mode supported by the Plan surface URL state.
+pub type PlanModeParam {
+  PlanStructureParam
+  PlanKanbanParam
+}
+
 /// Estado de URL - solo se puede crear mediante parse().
 pub opaque type UrlState {
   UrlState(
     project: option.Option(Int),
     view: option.Option(ViewParam),
+    plan_mode: option.Option(PlanModeParam),
     capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
@@ -60,6 +67,7 @@ type UrlQueryParams {
   UrlQueryParams(
     project: option.Option(Int),
     view: option.Option(ViewParam),
+    plan_mode: option.Option(PlanModeParam),
     capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
@@ -73,6 +81,7 @@ type QueryError {
   InvalidEncoding(String)
   InvalidProject(String)
   InvalidView(String)
+  InvalidPlanMode(String)
   InvalidScope(String)
   InvalidType(String)
   InvalidCapability(String)
@@ -94,6 +103,7 @@ pub fn empty() -> UrlState {
   UrlState(
     project: option.None,
     view: option.None,
+    plan_mode: option.None,
     capability_scope: capability_scope.default(),
     type_filter: option.None,
     capability_filter: option.None,
@@ -152,9 +162,19 @@ pub fn with_view(state: UrlState, mode: view_mode.ViewMode) -> UrlState {
       UrlState(
         ..state,
         view: option.Some(MemberView(mode)),
+        plan_mode: option.None,
         card_depth: option.None,
       )
   }
+}
+
+/// Builder: updates the Plan display mode.
+pub fn with_plan_mode(state: UrlState, mode: PlanModeParam) -> UrlState {
+  UrlState(
+    ..state,
+    view: option.Some(MemberView(view_mode.Cards)),
+    plan_mode: option.Some(mode),
+  )
 }
 
 /// Builder: actualiza el modo de vista de assignments.
@@ -162,12 +182,22 @@ pub fn with_assignments_view(
   state: UrlState,
   mode: assignments_view_mode.AssignmentsViewMode,
 ) -> UrlState {
-  UrlState(..state, view: option.Some(AssignmentsView(mode)))
+  UrlState(
+    ..state,
+    view: option.Some(AssignmentsView(mode)),
+    plan_mode: option.None,
+    card_depth: option.None,
+  )
 }
 
 /// Builder: limpia la vista explicita.
 pub fn without_view(state: UrlState) -> UrlState {
-  UrlState(..state, view: option.None)
+  UrlState(
+    ..state,
+    view: option.None,
+    plan_mode: option.None,
+    card_depth: option.None,
+  )
 }
 
 /// Builder: actualiza el filtro de tipo.
@@ -221,6 +251,10 @@ pub fn clear_filters(state: UrlState) -> UrlState {
     search: option.None,
     expanded_card: option.None,
     card_depth: option.None,
+    plan_mode: case view_param(state) {
+      option.Some(view_mode.Cards) -> state.plan_mode
+      _ -> option.None
+    },
   )
 }
 
@@ -261,6 +295,14 @@ pub fn assignments_view_param(
 pub fn view(state: UrlState) -> view_mode.ViewMode {
   view_param(state)
   |> member_view_or_default
+}
+
+/// Provides Plan mode (default Structure).
+pub fn plan_mode(state: UrlState) -> PlanModeParam {
+  case view_param(state), state.plan_mode {
+    option.Some(view_mode.Cards), option.Some(mode) -> mode
+    _, _ -> PlanStructureParam
+  }
 }
 
 fn member_view_or_default(
@@ -349,6 +391,7 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
       state.project |> option.map(fn(p) { "project=" <> int.to_string(p) }),
       view_param(state)
         |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
+      plan_mode_query_param(state),
       case capability_scope.is_default(state.capability_scope) {
         True -> option.None
         False ->
@@ -398,6 +441,7 @@ fn to_state(params: UrlQueryParams) -> UrlState {
   UrlState(
     project: params.project,
     view: params.view,
+    plan_mode: params.plan_mode,
     capability_scope: params.capability_scope,
     type_filter: params.type_filter,
     capability_filter: params.capability_filter,
@@ -405,6 +449,14 @@ fn to_state(params: UrlQueryParams) -> UrlState {
     expanded_card: params.expanded_card,
     card_depth: params.card_depth,
   )
+}
+
+fn plan_mode_query_param(state: UrlState) -> option.Option(String) {
+  case view_param(state), state.plan_mode {
+    option.Some(view_mode.Cards), option.Some(PlanKanbanParam) ->
+      option.Some("plan_mode=kanban")
+    _, _ -> option.None
+  }
 }
 
 fn context_errors(
@@ -425,6 +477,7 @@ fn context_errors(
     option.Some(MemberView(view_mode.Cards)) -> True
     _ -> False
   }
+  let has_plan_mode = has("plan_mode")
 
   case context {
     Member ->
@@ -432,6 +485,7 @@ fn context_errors(
         [
           #(has("view") && !view_is_member, "view"),
           #(has("depth") && !view_is_cards, "depth"),
+          #(has_plan_mode && !view_is_cards, "plan_mode"),
         ],
         fn(entry) {
           case entry.0 {
@@ -451,6 +505,7 @@ fn context_errors(
           #(has("search"), "search"),
           #(has("card"), "card"),
           #(has("depth"), "depth"),
+          #(has("plan_mode"), "plan_mode"),
         ],
         fn(entry) {
           case entry.0 {
@@ -470,6 +525,7 @@ fn context_errors(
           #(has("search"), "search"),
           #(has("card"), "card"),
           #(has("depth"), "depth"),
+          #(has("plan_mode"), "plan_mode"),
           #(has("view") && !view_is_assignments, "view"),
         ],
         fn(entry) {
@@ -491,6 +547,7 @@ fn context_errors(
           #(has("search"), "search"),
           #(has("card"), "card"),
           #(has("depth"), "depth"),
+          #(has("plan_mode"), "plan_mode"),
         ],
         fn(entry) {
           case entry.0 {
@@ -509,6 +566,8 @@ fn parse_query_params(query: String) -> ParsedParams {
   let #(project, project_error) =
     parse_optional_int_param(params, "project", InvalidProject)
   let #(view, view_error) = parse_optional_view_param(params, "view")
+  let #(plan_mode, plan_mode_error) =
+    parse_optional_plan_mode_param(params, "plan_mode")
   let #(capability_scope, scope_error) =
     parse_optional_capability_scope(params, "scope")
   let #(type_filter, type_error) =
@@ -524,6 +583,7 @@ fn parse_query_params(query: String) -> ParsedParams {
   let known_keys = [
     "project",
     "view",
+    "plan_mode",
     "scope",
     "type",
     "cap",
@@ -540,6 +600,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     UrlQueryParams(
       project: project,
       view: view,
+      plan_mode: plan_mode,
       capability_scope: capability_scope,
       type_filter: type_filter,
       capability_filter: capability_filter,
@@ -552,6 +613,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     [
       project_error,
       view_error,
+      plan_mode_error,
       scope_error,
       type_error,
       cap_error,
@@ -633,6 +695,20 @@ fn parse_optional_view_param(
   }
 }
 
+fn parse_optional_plan_mode_param(
+  params: List(#(String, String)),
+  key: String,
+) -> #(option.Option(PlanModeParam), option.Option(QueryError)) {
+  case get_string(params, key) {
+    option.None -> #(option.None, option.None)
+    option.Some(raw) ->
+      case plan_mode_param_from_raw(raw) {
+        option.Some(mode) -> #(option.Some(mode), option.None)
+        option.None -> #(option.None, option.Some(InvalidPlanMode(raw)))
+      }
+  }
+}
+
 fn parse_optional_capability_scope(
   params: List(#(String, String)),
   key: String,
@@ -658,6 +734,14 @@ fn view_param_from_raw(raw: String) -> option.Option(ViewParam) {
         Ok(mode) -> option.Some(AssignmentsView(mode))
         Error(_) -> option.None
       }
+  }
+}
+
+fn plan_mode_param_from_raw(raw: String) -> option.Option(PlanModeParam) {
+  case raw {
+    "structure" -> option.Some(PlanStructureParam)
+    "kanban" -> option.Some(PlanKanbanParam)
+    _ -> option.None
   }
 }
 

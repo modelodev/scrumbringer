@@ -1,4 +1,4 @@
-import domain/card.{Active, Card}
+import domain/card.{Active, Card, Closed, Draft}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
@@ -39,14 +39,33 @@ pub fn plan_kanban_keeps_plan_title_and_hides_claimable_task_ui_test() {
   assert_not_contains(html, "draggable=\"true\"")
 }
 
+pub fn plan_kanban_uses_active_universe_and_closed_toggle_test() {
+  let default_html =
+    config([])
+    |> kanban_view.view
+    |> element.to_document_string
+
+  assert_contains(default_html, "Release 1.5")
+  assert_not_contains(default_html, "Draft prep")
+  assert_not_contains(default_html, "Closed outcome")
+
+  let closed_html =
+    kanban_board.KanbanConfig(..config([]), show_closed: Some(True))
+    |> kanban_view.view
+    |> element.to_document_string
+
+  assert_contains(closed_html, "Release 1.5")
+  assert_not_contains(closed_html, "Draft prep")
+  assert_contains(closed_html, "Closed outcome")
+}
+
 fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
   kanban_board.KanbanConfig(
     locale: i18n_locale.En,
     theme: theme.Default,
     surface_title: "Kanban",
     surface_purpose: "Card flow by state",
-    show_task_preview: True,
-    allow_task_claim: True,
+    purpose: kanban_board.ExecutionKanban,
     cards: [
       Card(
         id: 1,
@@ -57,6 +76,36 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
         color: Some(card.Blue),
         state: Active,
         task_count: 1,
+        completed_count: 0,
+        created_by: 1,
+        created_at: "2026-01-01T00:00:00Z",
+        due_date: None,
+        has_new_notes: False,
+      ),
+      Card(
+        id: 2,
+        project_id: 1,
+        parent_card_id: None,
+        title: "Draft prep",
+        description: "",
+        color: Some(card.Blue),
+        state: Draft,
+        task_count: 0,
+        completed_count: 0,
+        created_by: 1,
+        created_at: "2026-01-01T00:00:00Z",
+        due_date: None,
+        has_new_notes: False,
+      ),
+      Card(
+        id: 3,
+        project_id: 1,
+        parent_card_id: None,
+        title: "Closed outcome",
+        description: "",
+        color: Some(card.Blue),
+        state: Closed,
+        task_count: 0,
         completed_count: 0,
         created_by: 1,
         created_at: "2026-01-01T00:00:00Z",

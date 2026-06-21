@@ -13,8 +13,11 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{div, h4, span, text}
+import lustre/element/html.{
+  button, div, h4, input, label, option as html_option, select, span, text,
+}
 import lustre/element/keyed
+import lustre/event
 
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -53,6 +56,10 @@ pub type Config(msg) {
     type_filter: Option(Int),
     capability_filter: Option(Int),
     search_query: String,
+    on_capability_scope_change: fn(String) -> msg,
+    on_type_filter_change: fn(String) -> msg,
+    on_capability_filter_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
     depth_names: List(scope_view.DepthName),
@@ -197,11 +204,23 @@ fn view_surface_header(
     title: i18n.t(config.locale, i18n_text.CapabilitiesBoard),
     purpose: i18n.t(config.locale, i18n_text.CapabilityBoardPurpose),
     summary: capability_summary(config, state),
-    actions: [],
+    actions: [view_my_capabilities_action(config)],
     extra_class: Some("capability-board-header"),
     testid: Some("capability-board-header"),
   ))
   |> with_scope_bar(config, include_closed)
+}
+
+fn view_my_capabilities_action(config: Config(msg)) -> element.Element(msg) {
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class("work-surface-action"),
+      attribute.attribute("data-testid", "capability-my-capabilities-action"),
+      event.on_click(config.on_capability_scope_change("mine")),
+    ],
+    [text(i18n.t(config.locale, i18n_text.MyCapabilitiesLabel))],
+  )
 }
 
 fn capability_summary(
@@ -263,6 +282,7 @@ fn with_scope_bar(
       show_closed: include_closed,
       id_prefix: "capability-plan",
       mode_controls: capability_mode_controls(config),
+      refinement_controls: capability_refinement_controls(config),
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,
@@ -270,6 +290,98 @@ fn with_scope_bar(
       on_closed_toggled: config.on_closed_toggled,
     )),
   ])
+}
+
+fn capability_refinement_controls(
+  config: Config(msg),
+) -> List(element.Element(msg)) {
+  [
+    label([attribute.class("plan-filter-control")], [
+      span([], [text(i18n.t(config.locale, i18n_text.TypeLabel))]),
+      select(
+        [
+          attribute.attribute("data-testid", "capability-filter-type"),
+          attribute.value(option_int_to_string(config.type_filter)),
+          event.on_input(config.on_type_filter_change),
+        ],
+        type_options(config.locale, config.task_types),
+      ),
+    ]),
+    label([attribute.class("plan-filter-control")], [
+      span([], [text(i18n.t(config.locale, i18n_text.CapabilityLabel))]),
+      select(
+        [
+          attribute.attribute("data-testid", "capability-filter-capability"),
+          attribute.value(option_int_to_string(config.capability_filter)),
+          event.on_input(config.on_capability_filter_change),
+        ],
+        capability_options(config.locale, config.capabilities),
+      ),
+    ]),
+    label([attribute.class("plan-filter-control capability-search-control")], [
+      span([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
+      input([
+        attribute.type_("search"),
+        attribute.attribute("data-testid", "capability-filter-search"),
+        attribute.placeholder(i18n.t(config.locale, i18n_text.SearchPlaceholder)),
+        attribute.value(config.search_query),
+        event.on_input(config.on_search_change),
+      ]),
+    ]),
+  ]
+}
+
+fn type_options(
+  locale: Locale,
+  task_types: Remote(List(TaskType)),
+) -> List(element.Element(msg)) {
+  let base = [
+    html_option([attribute.value("")], i18n.t(locale, i18n_text.AllOption)),
+  ]
+
+  case task_types {
+    Loaded(values) ->
+      list.append(
+        base,
+        list.map(values, fn(task_type) {
+          html_option(
+            [attribute.value(int.to_string(task_type.id))],
+            task_type.name,
+          )
+        }),
+      )
+    _ -> base
+  }
+}
+
+fn capability_options(
+  locale: Locale,
+  capabilities: Remote(List(Capability)),
+) -> List(element.Element(msg)) {
+  let base = [
+    html_option([attribute.value("")], i18n.t(locale, i18n_text.AllOption)),
+  ]
+
+  case capabilities {
+    Loaded(values) ->
+      list.append(
+        base,
+        list.map(values, fn(capability) {
+          html_option(
+            [attribute.value(int.to_string(capability.id))],
+            capability.name,
+          )
+        }),
+      )
+    _ -> base
+  }
+}
+
+fn option_int_to_string(value: Option(Int)) -> String {
+  case value {
+    Some(int_value) -> int.to_string(int_value)
+    None -> ""
+  }
 }
 
 fn capability_mode_controls(

@@ -109,7 +109,7 @@ fn view_surface_header(
         tone.Available,
       ),
       work_surface.summary_chip(
-        "Entrarian al pool",
+        "Al activar",
         int.to_string(summary.pool_impact),
         tone.Warning,
       ),
@@ -144,17 +144,17 @@ fn with_scope_bar(
       show_closed: include_closed,
       id_prefix: "plan-structure",
       mode_controls: plan_mode_controls(config),
+      refinement_controls: plan_refinement_controls(config),
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,
       on_scope_card_search_change: config.on_scope_card_search_change,
       on_closed_toggled: config.on_closed_toggled,
     )),
-    view_plan_filters(config),
   ])
 }
 
-fn view_plan_filters(config: Config(msg)) -> Element(msg) {
+fn plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
   let filters =
     types.PlanFilters(
       status: config.status_filter,
@@ -163,11 +163,7 @@ fn view_plan_filters(config: Config(msg)) -> Element(msg) {
       include_closed: include_closed(config),
     )
 
-  div(
-    [
-      attribute.class("plan-filter-bar"),
-      attribute.attribute("data-testid", "plan-filter-bar"),
-    ],
+  list.append(
     [
       label([attribute.class("plan-filter-control")], [
         span([], [text("Estado")]),
@@ -199,25 +195,29 @@ fn view_plan_filters(config: Config(msg)) -> Element(msg) {
             html_option([attribute.value("path")], "Arbol"),
             html_option([attribute.value("state")], "Estado"),
             html_option([attribute.value("due_date")], "Vence"),
-            html_option([attribute.value("pool_impact")], "Pool impact"),
+            html_option([attribute.value("pool_impact")], "Al activar"),
           ],
         ),
       ]),
+    ],
+    list.append(
       case string.trim(filters.search_query) {
-        "" -> element.none()
-        query ->
+        "" -> []
+        query -> [
           span([attribute.class("plan-filter-search-chip")], [
             text("Buscar: " <> query),
-          ])
+          ]),
+        ]
       },
       case filters.include_closed {
-        True ->
+        True -> [
           span([attribute.class("plan-filter-search-chip")], [
             text("Incluye closed"),
-          ])
-        False -> element.none()
+          ]),
+        ]
+        False -> []
       },
-    ],
+    ),
   )
 }
 
@@ -247,13 +247,18 @@ fn view_body(
   rows: List(types.StructureRow),
   detail: Option(types.StructureDetail),
 ) -> Element(msg) {
-  case detail {
-    Some(value) ->
+  case config.scope_kind, detail {
+    member_pool.PlanScopeCard, Some(value) ->
+      div([attribute.class("plan-card-scope-layout")], [
+        view_detail(config, value),
+        view_table(config, rows),
+      ])
+    _, Some(value) ->
       div([attribute.class("plan-structure-split")], [
         view_table(config, rows),
         view_detail(config, value),
       ])
-    None -> view_table(config, rows)
+    _, None -> view_table(config, rows)
   }
 }
 
@@ -285,7 +290,7 @@ fn view_table(
           "plan-cell-tasks",
         ),
         tree_table.column(
-          "Pool impact",
+          "Al activar",
           fn(row) { view_pool_impact_cell(row) },
           "plan-col-pool",
           "plan-cell-pool",
@@ -449,9 +454,9 @@ fn view_task_count_cell(row: types.StructureRow) -> Element(msg) {
 fn view_pool_impact_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, rollup:, ..) = row
   let label = case card.state {
-    Draft -> "+" <> int.to_string(rollup.pool_impact)
+    Draft -> "+" <> int.to_string(rollup.pool_impact) <> " tasks"
     Active -> "ya activo"
-    Closed -> "cerrada"
+    Closed -> "-"
   }
   let tone_value = case card.state {
     Draft -> tone.Warning
@@ -1027,19 +1032,15 @@ fn rollup_for_card(
 }
 
 fn include_closed(config: Config(msg)) -> Bool {
-  case config.status_filter {
-    member_pool.PlanStatusClosed -> True
-    _ ->
-      case config.show_closed {
-        Some(value) -> value
-        None ->
-          card_queries.closed_default_for_scope(
-            config.cards,
-            config.tasks,
-            config.scope_kind,
-            config.selected_card_id,
-          )
-      }
+  case config.show_closed {
+    Some(value) -> value
+    None ->
+      card_queries.closed_default_for_scope(
+        config.cards,
+        config.tasks,
+        config.scope_kind,
+        config.selected_card_id,
+      )
   }
 }
 
@@ -1323,9 +1324,9 @@ fn task_status_label(task: Task) -> String {
 
 fn pool_impact_label(card: Card, rollup: types.CardRollup) -> String {
   case card.state {
-    Draft -> "+" <> int.to_string(rollup.pool_impact) <> " al pool"
+    Draft -> "+" <> int.to_string(rollup.pool_impact) <> " tasks"
     Active -> "ya activo"
-    Closed -> "cerrada"
+    Closed -> "-"
   }
 }
 

@@ -34,7 +34,7 @@ fn context() -> card_detail_update.Context(Nil) {
     on_error_toast: fn(_message) { effect.none() },
     hierarchy_activated: "Hierarchy activated",
     hierarchy_pool_impact: fn(pool_impact) {
-      "Pool impact " <> int.to_string(pool_impact)
+      "Al activar " <> int.to_string(pool_impact)
     },
     hierarchy_pool_saturated: fn(pool_open_after, healthy_pool_limit) {
       "Pool at "

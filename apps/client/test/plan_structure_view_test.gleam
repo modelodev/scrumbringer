@@ -30,6 +30,8 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   assert_contains(html, "data-testid=\"plan-structure-view\"")
   assert_contains(html, "data-testid=\"plan-filter-status\"")
   assert_contains(html, "data-testid=\"plan-filter-sort\"")
+  assert_contains(html, "Al activar")
+  assert_not_contains(html, "Pool impact")
   assert_contains(html, "Root Initiative")
   assert_contains(html, "Portal Feature")
   assert_contains(html, "API Story")
@@ -142,6 +144,8 @@ pub fn card_scope_selection_shows_only_selected_subtree_test() {
       ),
     )
 
+  assert_contains(html, "plan-card-scope-layout")
+  assert_not_contains(html, "plan-structure-split")
   assert_not_contains(html, "plan-tree-title\">Root Initiative")
   assert_contains(html, "plan-tree-title\">Portal Feature")
   assert_contains(html, "plan-tree-title\">API Story")
@@ -155,6 +159,31 @@ pub fn closed_cards_are_hidden_until_closed_toggle_applies_test() {
 
   assert_not_contains(hidden, "Closed Outcome")
   assert_contains(shown, "Closed Outcome")
+}
+
+pub fn closed_status_filter_still_respects_closed_toggle_test() {
+  let hidden =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        status_filter: member_pool.PlanStatusClosed,
+        show_closed: Some(False),
+      ),
+    )
+  let shown =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        status_filter: member_pool.PlanStatusClosed,
+        show_closed: Some(True),
+      ),
+    )
+
+  assert_contains(hidden, "data-testid=\"plan-structure-empty\"")
+  assert_not_contains(hidden, "Closed Outcome")
+  assert_contains(shown, "Closed Outcome")
+  assert_not_contains(shown, "plan-tree-title\">Root Initiative")
+  assert_not_contains(shown, "plan-tree-title\">Draft Checkout")
 }
 
 pub fn incompatible_actions_are_disabled_with_reason_test() {
@@ -276,7 +305,7 @@ fn tasks() -> List(Task) {
   [
     task(1, "Implement API", Some(3), Available),
     task(2, "Review API", Some(3), Claimed(Taken)),
-    task(3, "Draft pool impact", Some(4), Available),
+    task(3, "Draft activation impact", Some(4), Available),
   ]
 }
 

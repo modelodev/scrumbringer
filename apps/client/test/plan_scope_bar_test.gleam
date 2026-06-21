@@ -47,6 +47,7 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
       show_closed: True,
       id_prefix: "test-plan",
       mode_controls: [],
+      refinement_controls: [],
       on_scope_kind_change: fn(_) { 0 },
       on_scope_depth_change: fn(_) { 0 },
       on_scope_card_change: fn(_) { 0 },
@@ -58,9 +59,11 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
 
   assert_contains(html, "data-testid=\"plan-scope-bar\"")
   assert_contains(html, "data-testid=\"plan-scope-card-search\"")
+  assert_contains(html, "aria-expanded=\"false\"")
   assert_contains(html, "Checkout")
   assert_contains(html, "Epic #2")
-  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
+  assert_not_contains(html, "Checkout - Checkout")
+  assert_not_contains(html, "data-testid=\"plan-scope-card-option\"")
   assert_not_contains(html, "data-testid=\"plan-scope-card\"")
   assert_not_contains(html, "Lens")
 }
@@ -86,6 +89,7 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
           on_select: 1,
         ),
       ],
+      refinement_controls: [],
       on_scope_kind_change: fn(_) { 0 },
       on_scope_depth_change: fn(_) { 0 },
       on_scope_card_change: fn(_) { 0 },
@@ -113,6 +117,7 @@ pub fn scope_bar_filters_card_options_by_query_test() {
       show_closed: True,
       id_prefix: "test-plan",
       mode_controls: [],
+      refinement_controls: [],
       on_scope_kind_change: fn(_) { 0 },
       on_scope_depth_change: fn(_) { 0 },
       on_scope_card_change: fn(_) { 0 },
@@ -123,6 +128,8 @@ pub fn scope_bar_filters_card_options_by_query_test() {
     |> element.to_document_string
 
   assert_contains(html, "value=\"sprint\"")
+  assert_contains(html, "aria-expanded=\"true\"")
+  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
   assert_contains(html, "Sprint")
   assert_not_contains(html, "Checkout")
 }

@@ -60,7 +60,7 @@ pub fn task_types_list_sorted_by_name_test() {
   }
 
   let assert Ok(task_types) = decode.run(dynamic, response_decoder)
-  task_types |> expect.equal(["Alpha", "Zulu"])
+  task_types |> expect.equal(["Alpha", "General", "Zulu"])
 }
 
 pub fn task_types_create_requires_project_admin_and_csrf_test() {
