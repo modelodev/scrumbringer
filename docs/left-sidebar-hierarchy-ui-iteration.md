@@ -308,6 +308,40 @@ contexto:
 - riesgo y vencimiento;
 - impacto si una card se activa.
 
+### Regla De Scope Comun
+
+`Plan`, `Capacidades` y `Personas` deben compartir el mismo lenguaje de scope.
+No debe existir una barra de filtros propia para `Personas` desconectada del
+resto de vistas.
+
+La cabecera de estas vistas debe seguir esta gramatica:
+
+```text
+Vista principal
+Proposito breve
+
+Scope: [ Proyecto | Nivel | Card ] [ selector contextual ]
+Modo:  [ variante propia de la vista ] cuando aplique
+Buscar: [ texto dentro del scope ]
+Filtros secundarios
+Resumen en chips
+```
+
+Implicaciones:
+
+- `Personas` puede verse para todo el proyecto, para un nivel o para una card.
+- `Scope = Card` en `Personas` muestra personas implicadas en esa card y todo
+  su subarbol.
+- `Scope = Nivel` en `Personas` muestra coordinacion humana sobre todas las
+  cards activas de ese nivel.
+- La busqueda de `Personas` debe buscar dentro del scope por persona, task,
+  card y capacidad.
+- El selector de card no debe ser un `select` simple. Debe comportarse como un
+  combobox con busqueda, mostrando cards activas y su path para evitar
+  ambiguedad en proyectos grandes.
+- Los filtros especificos de cada vista refinan el resultado, pero no cambian
+  la vista principal ni sustituyen al scope.
+
 ### Vistas Y Modos
 
 ```text
@@ -599,6 +633,377 @@ ActionAvailability = Available | Disabled(reason)
 Estos tipos pueden tener otros nombres si encajan mejor con la nomenclatura
 existente, pero deben hacer explicito que una card con subcards y una card con
 tasks no son el mismo caso visual.
+
+### Plan De Mejora De La Vista Plan
+
+Revision realizada sobre:
+
+- `http://192.168.1.120:8443/app/pool?project=6&view=cards`;
+- scope `Proyecto`, `Nivel` y `Card`;
+- modo `Estructura`;
+- modo `Kanban`;
+- viewport desktop y movil.
+
+Diagnostico:
+
+La implementacion actual ya captura la arquitectura base de la decision
+`Sidebar + Scope + Mode`, pero todavia arrastra patrones anteriores de `Pool` y
+del kanban antiguo. La vista empieza a comunicar jerarquia, pero no separa con
+suficiente claridad planificacion, ejecucion y reclamacion.
+
+Problemas observados:
+
+- La barra superior de filtros sigue pareciendo del `Pool`: `Mis capacidades`,
+  `Tipo`, `Capacidad` y `Buscar` aparecen por encima de `Plan`.
+- `Scope = Card` sin card seleccionada sigue mostrando el arbol completo.
+- El selector de card usa una experiencia tipo `input + datalist`, insuficiente
+  para proyectos con muchas cards activas.
+- En modo `Kanban`, el titulo principal pasa a `Kanban`; deberia seguir siendo
+  `Plan` con `Kanban` como modo interno.
+- `Plan / Kanban` permite reclamar tasks, lo que rompe la regla de que el
+  trabajo se reclama en `Pool`.
+- Cada fila de `Plan / Estructura` muestra demasiadas acciones visibles:
+  `Ver`, `+ Subcard`, `+ Task`, `Activar subarbol`, `Mover`, `Cerrar`,
+  `Eliminar`.
+- Cerrar y eliminar aparecen demasiado a mano, cuando deben comportarse como
+  operaciones excepcionales.
+- La tabla fuerza columnas estrechas y rompe encabezados como `Estado`,
+  `Tasks`, `Pool impact` y `Vence`.
+- En movil, la tabla se degrada a una lista larga de celdas y acciones
+  repetidas; no se siente como una vista movil disenada.
+- El sidebar movil sigue sin navegacion primaria equivalente.
+
+Objetivo de mejora:
+
+`Plan` debe sentirse como una superficie de planificacion estructural. Debe
+servir para entender, preparar, activar, cerrar o mover partes del arbol, pero
+no para reclamar trabajo. La vista debe compartir lenguaje visual y codigo base
+con `Capacidades` y `Personas` sin perder su mision propia.
+
+#### Norte Arquitectonico
+
+El destino deseable sigue siendo que `Plan`, `Capacidades` y `Personas`
+compartan un contrato comun de scope, cabecera y filtros base. Sin embargo, esa
+extraccion no debe abrir la iteracion.
+
+Razon:
+
+- El scope actual ya esta parcialmente compartido, aunque mal nombrado.
+- `features/plan/scope_bar.gleam` ya lo consumen `Plan`, `Plan / Kanban` y
+  `Capacidades`.
+- Moverlo al principio convertiria una mejora de producto en una migracion de
+  nombres y API.
+- Primero debe estabilizarse el comportamiento visible de `Plan`.
+
+Destino tecnico posterior:
+
+```text
+features/work_scope/types.gleam
+features/work_scope/queries.gleam
+features/work_scope/scope_bar.gleam
+features/work_scope/card_picker.gleam
+```
+
+Ese destino solo debe abordarse cuando `Plan`, `Plan / Kanban` y `Capacidades`
+hayan demostrado un contrato estable.
+
+#### 1. Sacar filtros de `Pool` fuera de `Plan`
+
+`center_panel` no debe renderizar filtros globales antes de todas las vistas.
+
+Regla:
+
+- `Pool` renderiza filtros de trabajo reclamable.
+- `Plan` renderiza filtros de estructura.
+- `Capacidades` renderiza filtros de capacidades.
+- `Personas` renderiza filtros de coordinacion.
+
+Cabecera esperada de `Plan`:
+
+```text
+Plan
+Estructura de cards y trabajo preparado.
+
+Scope: [ Proyecto v ]
+Modo:  [ Estructura ] [ Kanban ]
+Buscar: [ card, task... ]
+Estado: [ Todas v ] Orden: [ Arbol v ] [ ] Cerradas
+
+10 Cards   3 Tasks   3 Disponibles   0 Entrarian al pool   0 Bloqueada
+```
+
+No deben aparecer `Mis capacidades`, `Tipo` o `Capacidad` encima de `Plan` salvo
+que sean filtros explicitamente propios del modo actual y esten justificados.
+
+Tests minimos:
+
+- `Plan` no renderiza filtros de `Pool`: `Tipo`, `Capacidad` ni
+  `Mis capacidades`.
+- `Pool` conserva sus filtros actuales.
+- `Capacidades` y `Personas` no pierden sus filtros propios.
+
+#### 2. Corregir `Scope = Card`
+
+Si `Scope = Card` no tiene card seleccionada, la vista no debe caer al proyecto
+entero.
+
+Estado correcto:
+
+```text
+Selecciona una card activa
+Busca una card para ver su subarbol, capacidades, tasks y riesgo.
+
+[ Buscar card activa... ]
+```
+
+Reglas:
+
+- `Scope = Card` sin seleccion renderiza empty state, no arbol completo.
+- El empty state debe mantener visible el selector de card.
+- No debe activar automaticamente una card ni cambiar el scope sin accion del
+  usuario.
+
+Tests minimos:
+
+- `Scope = Card` sin seleccion no muestra filas del arbol.
+- `Scope = Card` con seleccion muestra solo esa card y su subarbol.
+- Cambiar de `Card` a `Proyecto` restaura el arbol completo.
+
+#### 3. Separar `Plan / Kanban` del kanban reclamable
+
+El modo `Kanban` de `Plan` no debe reutilizar sin control el kanban que muestra
+tasks reclamables. Debe existir una variante especifica de lectura de cards:
+
+```text
+features/plan/kanban_view.gleam
+```
+
+Reglas:
+
+- El titulo de superficie sigue siendo `Plan`.
+- `Kanban` aparece como modo activo.
+- No hay botones de reclamar tasks.
+- Las columnas representan estado inferido, no transiciones manuales.
+- Las cards muestran path, nivel, rollup de tasks, riesgo y acciones
+  contextuales.
+- El click principal abre detalle de card o entra en la card segun la decision
+  de navegacion que se cierre.
+
+Acciones permitidas:
+
+- `Ver`;
+- `Entrar` si la card tiene subcards;
+- `+ Task` o `+ Subcard` si aplica;
+- `Activar subarbol` como accion secundaria y confirmada.
+
+Tests minimos:
+
+- `Plan / Kanban` no renderiza botones de reclamar tasks.
+- `Plan / Kanban` no renderiza acciones de arrastrar tasks.
+- El titulo de superficie sigue siendo `Plan`; `Kanban` aparece como modo.
+- Las columnas siguen siendo lectura inferida, no destinos de drag/drop.
+
+#### 4. Reducir acciones visibles por fila
+
+La fila de `Plan / Estructura` debe optimizar lectura, no exponer toda la
+administracion en primer plano.
+
+Acciones visibles recomendadas:
+
+```text
+[Ver]  [+]  [...]
+```
+
+Lectura:
+
+- `Ver`: abre detalle.
+- `+`: crea el unico tipo valido segun el contenido de la card.
+- `...`: menu secundario con `Activar subarbol`, `Mover a...`, `Cerrar` y
+  `Eliminar`.
+
+Reglas:
+
+- `Cerrar` y `Eliminar` nunca deben ser acciones prominentes.
+- `Eliminar` deshabilitado debe explicar que hay historial operativo y que debe
+  cerrarse en su lugar.
+- `Activar subarbol` debe mostrar impacto de pool antes de confirmar.
+- `Cerrar` debe bloquear si existen descendant tasks claimed/ongoing.
+
+Tests minimos:
+
+- La fila renderiza `Ver`, una accion contextual `+` y un menu secundario.
+- El menu secundario conserva razones disabled de cerrar/eliminar.
+- Cerrar/eliminar no aparecen como acciones prominentes.
+- La accion `+` respeta card con subcards, card con tasks y card vacia.
+
+#### 5. Mejorar selector de card
+
+El selector de card actual puede quedarse corto en proyectos grandes. Debe
+mejorarse antes de extraerlo como componente compartido.
+
+Requisitos:
+
+- lista solo cards activas;
+- muestra titulo, path, nivel visible e id si hace falta desambiguar;
+- busca por titulo y path;
+- resuelve duplicados por path/id;
+- no acepta texto parcial ambiguo como seleccion valida;
+- mantiene foco y navegacion por teclado;
+- expone estado sin resultados;
+- puede reutilizarse posteriormente por `Capacidades` y `Personas`.
+
+Tests minimos:
+
+- dos cards con el mismo titulo se distinguen por path/id.
+- escribir texto parcial no cambia scope si no hay seleccion exacta.
+- teclado permite navegar resultados y seleccionar.
+- cards `Draft` y `Closed` no aparecen como opciones de scope de card activa.
+
+#### 6. Crear una tabla-arbol operacional local a Plan
+
+`ui/data_table.gleam` es valida para tablas generales, pero `Plan` necesita una
+tabla-arbol con comportamiento propio.
+
+Propuesta inicial:
+
+```text
+features/plan/tree_table.gleam
+```
+
+Debe cubrir:
+
+- columna principal flexible con indentacion, toggle, titulo, path y nivel;
+- columnas numericas compactas con ancho minimo estable;
+- acciones colapsables;
+- version movil como lista jerarquica compacta;
+- encabezados que no se rompan verticalmente;
+- rows keyed para estabilidad en Lustre.
+
+No debe convertirse en una abstraccion enorme para todos los casos. Es un
+componente local de `Plan`. Si despues `Capacidades` o `Personas` demuestran
+necesidades equivalentes, se sube a `ui/`.
+
+Tests minimos:
+
+- los encabezados no se rompen verticalmente en desktop.
+- en movil no se repiten acciones como una tabla colapsada ilegible.
+- cada fila mantiene key estable.
+- la indentacion comunica jerarquia sin ocultar path ni nivel.
+
+#### 7. Validar responsive especifico
+
+En movil, `Plan / Estructura` no debe depender de una tabla colapsada
+automaticamente.
+
+Wireframe movil:
+
+```text
+Plan
+Scope: Card - Release 1.5
+Modo: [Estructura] [Kanban]
+
+v Release 1.5
+  Active   0/3 tasks   ya activo
+
+  P6 - Release Notes
+  Draft   +0 pool   -
+  [Ver] [+] [...]
+
+  P6 - Retrospective
+  Draft   +0 pool   -
+  [Ver] [+] [...]
+```
+
+Validacion:
+
+- `agent-browser` desktop para scope proyecto, nivel y card.
+- `agent-browser` movil para legibilidad, acciones y seleccion de card.
+- captura de `Plan / Estructura` y `Plan / Kanban` antes de cerrar.
+
+La navegacion movil primaria (`Pool | Plan | Caps | Personas`) queda como
+historia separada de navegacion global. No debe mezclarse con esta iteracion de
+Plan salvo que bloquee la validacion minima.
+
+#### 8. Extraer `WorkScope` y unificar `work_surface`
+
+`work_surface` debe convertirse en el lenguaje comun de superficies
+operativas:
+
+```text
+work_surface.header
+work_surface.scope_toolbar
+work_surface.filter_bar
+work_surface.summary
+work_surface.empty_state
+```
+
+Debe usarse en:
+
+- `Plan / Estructura`;
+- `Plan / Kanban`;
+- `Capacidades / Lista`;
+- `Capacidades / Matriz`;
+- `Personas`.
+
+La reutilizacion debe ser visual y estructural, no una pantalla generica que
+oculte las diferencias de mision entre vistas.
+
+Esta extraccion queda deliberadamente al final.
+
+Condiciones para hacerla:
+
+- `Plan / Estructura` tiene UX estable.
+- `Plan / Kanban` ya no hereda comportamiento reclamable.
+- `Capacidades` mantiene su mision sin forzarse a parecer `Plan`.
+- `Personas` tiene definido su uso de scope.
+
+Destino tecnico:
+
+```text
+features/work_scope/types.gleam
+features/work_scope/queries.gleam
+features/work_scope/scope_bar.gleam
+features/work_scope/card_picker.gleam
+
+features/layout/work_surface.gleam
+```
+
+La extraccion debe mover lo que ya exista en otros sitios si queda obsoleto,
+innecesario o incompatible con esta estructura.
+
+#### 9. Tests Y Validacion
+
+Cobertura esperada:
+
+- tests de ausencia de filtros de `Pool` dentro de `Plan`;
+- tests de `Scope = Card` sin seleccion;
+- tests de que `Plan / Kanban` no renderiza acciones de reclamar tasks;
+- tests de que `Plan / Kanban` no renderiza acciones de arrastrar tasks;
+- tests de acciones disponibles segun card con subcards, card con tasks y card
+  vacia;
+- tests de que cerrar/eliminar quedan en acciones secundarias o deshabilitadas
+  segun historial;
+- tests de card picker con duplicados, path/id y texto ambiguo;
+- tests de i18n para labels de scope, modo y empty states;
+- validacion `agent-browser` desktop para scope proyecto, nivel y card;
+- validacion `agent-browser` movil para navegacion, legibilidad y acciones;
+- captura de `Plan / Estructura` y `Plan / Kanban` antes de dar por cerrada la
+  historia.
+
+#### Orden De Ejecucion Recomendado
+
+1. Sacar filtros de `Pool` fuera de `Plan` en `center_panel`.
+2. Corregir `Scope = Card` vacio con empty state.
+3. Crear `Plan / Kanban` especifico, sin reclamacion ni drag de tasks.
+4. Reducir acciones visibles de `Plan / Estructura` a `Ver`, `+` contextual y
+   menu secundario.
+5. Mejorar el selector de card con path, nivel, teclado y resolucion de
+   duplicados.
+6. Crear `features/plan/tree_table.gleam` o equivalente local.
+7. Validar desktop y movil con `agent-browser`.
+8. Solo entonces extraer `work_scope` y generalizar `work_surface`.
+9. Limpiar codigo obsoleto, nombres incompatibles y tests que validen el modelo
+   anterior.
 
 ### Kanban De Cards
 
