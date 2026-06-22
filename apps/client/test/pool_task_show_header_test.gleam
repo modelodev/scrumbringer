@@ -35,7 +35,7 @@ pub fn task_show_header_renders_loaded_task_test() {
   assert_contains(html, "Available")
   assert_contains(html, "Unassigned")
   assert_contains(html, "No due date")
-  assert_contains(html, "task-detail-title")
+  assert_contains(html, "task-show-title")
 }
 
 pub fn task_show_header_renders_assigned_task_test() {
@@ -68,7 +68,7 @@ pub fn task_show_header_renders_loading_title_test() {
     |> element.to_document_string
 
   assert_contains(html, "Loading")
-  assert_contains(html, "task-detail-title")
+  assert_contains(html, "task-show-title")
 }
 
 pub fn task_show_header_localizes_close_label_test() {

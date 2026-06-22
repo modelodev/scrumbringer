@@ -11,7 +11,7 @@
 ////
 //// Non-responsibilities:
 //// - Card CRUD operations (handled by parent)
-//// - domain_task.Task details (handled by other views)
+//// - Task Show surfaces (handled by other views)
 
 import gleam/int
 import gleam/list

@@ -1,4 +1,4 @@
-//// Task detail notes tab.
+//// Task Show notes tab.
 
 import gleam/list
 import gleam/option as opt

@@ -1,4 +1,4 @@
-//// Operational summary for a task detail view.
+//// Operational summary for a Task Show view.
 
 import gleam/option as opt
 
@@ -28,11 +28,11 @@ pub fn view(config: Config) -> Element(msg) {
   let is_owner_empty = owner_is_empty(config)
   let blocker_count = blocking_count(config)
 
-  div([attribute.class("task-detail-summary")], [
-    div([attribute.class("task-detail-summary-title")], [
+  div([attribute.class("task-show-summary")], [
+    div([attribute.class("task-show-summary-title")], [
       text(t(config.locale, i18n_text.TaskOperationalSummary)),
     ]),
-    div([attribute.class("task-detail-summary-grid")], [
+    div([attribute.class("task-show-summary-grid")], [
       summary_item(
         t(config.locale, i18n_text.Status),
         task_state.label(config.locale, domain_task.status(config.task)),
@@ -68,13 +68,13 @@ pub fn view(config: Config) -> Element(msg) {
 }
 
 fn summary_item(label: String, value: String, muted: Bool) -> Element(msg) {
-  div([attribute.class("task-detail-summary-item")], [
-    div([attribute.class("task-detail-summary-label")], [text(label)]),
+  div([attribute.class("task-show-summary-item")], [
+    div([attribute.class("task-show-summary-label")], [text(label)]),
     div(
       [
         attribute.class(case muted {
-          True -> "task-detail-summary-value muted"
-          False -> "task-detail-summary-value"
+          True -> "task-show-summary-value muted"
+          False -> "task-show-summary-value"
         }),
       ],
       [text(value)],

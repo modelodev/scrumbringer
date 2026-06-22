@@ -46,7 +46,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     False -> reading_actions(config)
   }
 
-  div([attribute.class("task-detail-footer task-action-bar")], actions)
+  div([attribute.class("task-show-footer task-action-bar")], actions)
 }
 
 fn reading_actions(config: Config(msg)) -> List(Element(msg)) {
@@ -85,8 +85,8 @@ fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
       config.edit_in_flight || !config.edit_dirty,
     )
     |> button.with_class(case config.edit_in_flight {
-      True -> "btn-loading task-detail-save"
-      False -> "task-detail-save"
+      True -> "btn-loading task-show-save"
+      False -> "task-show-save"
     })
     |> button.view
 

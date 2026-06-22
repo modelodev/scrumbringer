@@ -12,7 +12,7 @@ import domain/task.{type Task, type TaskDependency}
 
 import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/pool/task_show_summary
-import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -30,7 +30,7 @@ pub type Config(msg) {
     pinned_notes: List(pinned_context.PinnedNote),
     on_open_notes: msg,
     on_open_parent_card: fn(Int) -> msg,
-    editor: detail_editor.Config(msg),
+    editor: show_editor.Config(msg),
   )
 }
 
@@ -59,7 +59,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             on_open_notes: config.on_open_notes,
           )),
           parent_card_context(config),
-          detail_editor.view_readonly_fields(config.editor, task),
+          show_editor.view_readonly_fields(config.editor, task),
         ])
       opt.None ->
         div([attribute.class("loading")], [
@@ -70,7 +70,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 pub fn is_dirty(config: Config(msg), task: Task) -> Bool {
-  detail_editor.is_dirty(config.editor, task)
+  show_editor.is_dirty(config.editor, task)
 }
 
 fn parent_card_context(config: Config(msg)) -> Element(msg) {

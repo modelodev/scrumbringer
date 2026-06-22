@@ -19,9 +19,9 @@ import scrumbringer_client/features/pool/task_created_feedback
 import scrumbringer_client/features/pool/task_created_update
 import scrumbringer_client/features/tasks/create_update as task_create_update
 import scrumbringer_client/features/tasks/dependency_update as dependency_workflow
-import scrumbringer_client/features/tasks/detail_permissions
 import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 import scrumbringer_client/features/tasks/notes_update as task_notes_update
+import scrumbringer_client/features/tasks/show_permissions
 import scrumbringer_client/features/tasks/show_state
 import scrumbringer_client/features/tasks/show_update as task_show_update
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -693,7 +693,7 @@ fn can_edit_selected_task(
   model: client_state.Model,
   current_task: task.Task,
 ) -> Bool {
-  detail_permissions.can_edit(selected_user_id(model), current_task)
+  show_permissions.can_edit(selected_user_id(model), current_task)
 }
 
 fn selected_user_id(model: client_state.Model) -> opt.Option(Int) {

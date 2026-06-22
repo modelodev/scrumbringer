@@ -1,11 +1,11 @@
-//// Pure task detail edit form validation and change detection.
+//// Pure Task Show edit form validation and change detection.
 
 import gleam/int
 import gleam/option as opt
 import gleam/string
 
 import domain/task.{type Task}
-import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/features/tasks/show_editor
 
 pub type Input {
   Input(
@@ -81,7 +81,7 @@ pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
 }
 
 pub fn task_description_text(current_task: Task) -> String {
-  detail_editor.task_description_text(current_task)
+  show_editor.task_description_text(current_task)
 }
 
 fn validate_title(title: String, labels: Labels) -> Result(String, String) {

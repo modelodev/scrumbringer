@@ -43,7 +43,7 @@ fn error_context() -> show_update.ErrorContext(Nil) {
   )
 }
 
-fn detail_context() -> show_update.Context(Nil) {
+fn show_context() -> show_update.Context(Nil) {
   show_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
@@ -60,7 +60,7 @@ fn dispatch_context_with_edit(
   can_edit,
 ) -> show_update.DispatchContext(Nil) {
   show_update.DispatchContext(
-    open_context: detail_context(),
+    open_context: show_context(),
     edit_context: edit_context(current_task, can_edit),
     success_context: success_context(),
     error_context: error_context(),
@@ -69,11 +69,11 @@ fn dispatch_context_with_edit(
 
 fn apply_pool_update(model, message, context) {
   let assert Some(show_update.Update(next, fx, policy)) =
-    show_update.try_update(detail_model(model), message, context)
+    show_update.try_update(show_model(model), message, context)
   #(next.pool, fx, policy)
 }
 
-fn detail_model(pool: member_pool.Model) -> show_update.Model {
+fn show_model(pool: member_pool.Model) -> show_update.Model {
   show_update.Model(
     pool: pool,
     notes: member_notes.default_model(),
@@ -108,7 +108,7 @@ fn sample_task() -> Task {
 }
 
 pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
-  let model = detail_model(member_pool.default_model())
+  let model = show_model(member_pool.default_model())
 
   let assert Some(show_update.Update(next, fx, auth_policy)) =
     show_update.try_update(
@@ -127,7 +127,7 @@ pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
 pub fn try_update_error_checks_auth_after_local_feedback_test() {
   let err = sample_error()
   let model =
-    detail_model(
+    show_model(
       member_pool.Model(
         ..member_pool.default_model(),
         member_task_show_edit_in_flight: True,
@@ -149,10 +149,10 @@ pub fn try_update_error_checks_auth_after_local_feedback_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn try_update_ignores_non_detail_messages_test() {
+pub fn try_update_ignores_non_show_messages_test() {
   let assert None =
     show_update.try_update(
-      detail_model(member_pool.default_model()),
+      show_model(member_pool.default_model()),
       pool_messages.MemberPoolVisibilityChanged("all-open"),
       dispatch_context(),
     )

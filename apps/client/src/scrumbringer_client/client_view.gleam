@@ -188,7 +188,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
         )
       _ -> element.none()
     },
-    // Global task detail dialog (renders from list/canvas/pool)
+    // Global Task Show dialog (renders from list/canvas/pool)
     case model.member.notes.member_notes_task_id {
       opt.Some(task_id) ->
         task_show_config.view(

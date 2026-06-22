@@ -56,7 +56,7 @@ fn dispatch_context() -> show_update.DispatchContext(Nil) {
   )
 }
 
-fn detail_model(pool: member_pool.Model) -> show_update.Model {
+fn show_model(pool: member_pool.Model) -> show_update.Model {
   show_update.Model(
     pool: pool,
     notes: member_notes.default_model(),
@@ -103,7 +103,7 @@ pub fn show_update_ok_replaces_task_and_emits_success_toast_test() {
 
   let assert Some(show_update.Update(next, fx, policy)) =
     show_update.try_update(
-      detail_model(model),
+      show_model(model),
       pool_messages.MemberTaskUpdated(Ok(updated)),
       dispatch_context(),
     )
@@ -127,7 +127,7 @@ pub fn show_update_error_sets_local_error_and_emits_feedback_test() {
 
   let assert Some(show_update.Update(next, fx, policy)) =
     show_update.try_update(
-      detail_model(model),
+      show_model(model),
       pool_messages.MemberTaskUpdated(Error(err)),
       dispatch_context(),
     )

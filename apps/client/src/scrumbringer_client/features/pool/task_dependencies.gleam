@@ -1,4 +1,4 @@
-//// domain_task.Task detail dependencies tab.
+//// domain_task.Task Show dependencies tab.
 
 import gleam/int
 import gleam/list

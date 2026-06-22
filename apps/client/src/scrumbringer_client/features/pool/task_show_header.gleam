@@ -71,7 +71,7 @@ fn base_header_config(
     header_class: "detail-header",
     title_row_class: "detail-title-row",
     title_class: "detail-title",
-    title_id: "task-detail-title",
+    title_id: "task-show-title",
     close_button_class: "modal-close btn-icon",
   )
 }

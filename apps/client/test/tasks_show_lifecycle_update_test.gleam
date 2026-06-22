@@ -40,7 +40,7 @@ fn sample_task() -> Task {
   )
 }
 
-fn detail_context() -> show_update.Context(Nil) {
+fn show_context() -> show_update.Context(Nil) {
   show_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
@@ -76,7 +76,7 @@ fn error_context() -> show_update.ErrorContext(Nil) {
 
 fn dispatch_context() -> show_update.DispatchContext(Nil) {
   show_update.DispatchContext(
-    open_context: detail_context(),
+    open_context: show_context(),
     edit_context: edit_context(),
     success_context: success_context(),
     error_context: error_context(),

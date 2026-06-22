@@ -40,7 +40,7 @@ import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/features/pool/task_show_details
 import scrumbringer_client/features/pool/task_show_footer
 import scrumbringer_client/features/pool/task_show_header
-import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -148,9 +148,9 @@ pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
   div([attribute.class("task-show task-show-panel")], [
     div(
       [
-        attribute.class("task-show-content task-detail-content"),
+        attribute.class("task-show-content"),
         attribute.attribute("role", "complementary"),
-        attribute.attribute("aria-labelledby", "task-detail-title"),
+        attribute.attribute("aria-labelledby", "task-show-title"),
       ],
       [
         div(
@@ -162,7 +162,7 @@ pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
             view_task_show_tabs(config),
           ],
         ),
-        div([attribute.class("task-show-body task-detail-body")], [
+        div([attribute.class("task-show-body")], [
           view_task_tab_content(config),
         ]),
         view_task_footer(config),
@@ -319,8 +319,8 @@ fn pinned_task_notes(
   }
 }
 
-fn editor_config(config: TaskShowConfig(msg)) -> detail_editor.Config(msg) {
-  detail_editor.Config(
+fn editor_config(config: TaskShowConfig(msg)) -> show_editor.Config(msg) {
+  show_editor.Config(
     locale: config.locale,
     current_user_id: config.current_user_id,
     editing: config.editor.editing,

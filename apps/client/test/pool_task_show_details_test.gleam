@@ -10,7 +10,7 @@ import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_details
-import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/pinned_context
 
@@ -116,8 +116,8 @@ fn parent_card() -> Card {
   )
 }
 
-fn editor_config(current_user_id: Option(Int)) -> detail_editor.Config(String) {
-  detail_editor.Config(
+fn editor_config(current_user_id: Option(Int)) -> show_editor.Config(String) {
+  show_editor.Config(
     locale: locale.En,
     current_user_id: current_user_id,
     editing: False,

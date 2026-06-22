@@ -1,4 +1,4 @@
-//// Pure task detail state transitions.
+//// Pure Task Show state transitions.
 
 import gleam/int
 import gleam/option as opt
@@ -9,7 +9,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/tasks/detail_edit_form
+import scrumbringer_client/features/tasks/show_edit_form
 import scrumbringer_client/features/tasks/task_list
 import scrumbringer_client/ui/show_tabs
 
@@ -70,9 +70,9 @@ fn edit_fields(maybe_task: opt.Option(Task)) -> EditFields {
     opt.Some(task) ->
       EditFields(
         title: task.title,
-        description: detail_edit_form.task_description_text(task),
+        description: show_edit_form.task_description_text(task),
         priority: int.to_string(task.priority),
-        type_id: int.to_string(detail_edit_form.task_type_id(task)),
+        type_id: int.to_string(show_edit_form.task_type_id(task)),
         card_id: id_to_form_value(task.card_id),
       )
     opt.None ->
@@ -230,7 +230,7 @@ pub fn edit_invalid(
 
 pub fn edit_unchanged(
   pool: member_pool.Model,
-  submission: detail_edit_form.Submission,
+  submission: show_edit_form.Submission,
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
@@ -247,7 +247,7 @@ pub fn edit_unchanged(
 
 pub fn edit_started_submit(
   pool: member_pool.Model,
-  submission: detail_edit_form.Submission,
+  submission: show_edit_form.Submission,
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
@@ -270,11 +270,11 @@ pub fn task_updated(
     member_tasks: task_list.replace(pool.member_tasks, updated_task),
     member_task_show_editing: False,
     member_task_show_edit_title: updated_task.title,
-    member_task_show_edit_description: detail_edit_form.task_description_text(
+    member_task_show_edit_description: show_edit_form.task_description_text(
       updated_task,
     ),
     member_task_show_edit_priority: int.to_string(updated_task.priority),
-    member_task_show_edit_type_id: int.to_string(detail_edit_form.task_type_id(
+    member_task_show_edit_type_id: int.to_string(show_edit_form.task_type_id(
       updated_task,
     )),
     member_task_show_edit_card_id: id_to_form_value(updated_task.card_id),

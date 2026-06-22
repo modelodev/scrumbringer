@@ -1,4 +1,4 @@
-//// Pure permissions for task detail interactions.
+//// Pure permissions for Task Show interactions.
 
 import gleam/option as opt
 

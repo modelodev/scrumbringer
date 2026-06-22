@@ -7,7 +7,7 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskType, TaskTypeInline}
-import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -50,8 +50,8 @@ fn claimed_task() -> Task {
   )
 }
 
-fn config(current_user_id) -> detail_editor.Config(String) {
-  detail_editor.Config(
+fn config(current_user_id) -> show_editor.Config(String) {
+  show_editor.Config(
     locale: locale.En,
     current_user_id: current_user_id,
     editing: False,
@@ -83,9 +83,9 @@ fn config(current_user_id) -> detail_editor.Config(String) {
   )
 }
 
-pub fn detail_editor_renders_config_data_without_root_model_test() {
+pub fn show_editor_renders_config_data_without_root_model_test() {
   let html =
-    detail_editor.view_readonly_fields(config(Some(7)), claimed_task())
+    show_editor.view_readonly_fields(config(Some(7)), claimed_task())
     |> element.to_document_string
 
   assert_contains(html, "Details")
@@ -93,20 +93,20 @@ pub fn detail_editor_renders_config_data_without_root_model_test() {
   assert_contains(html, "Review release checklist.")
 }
 
-pub fn detail_editor_hides_edit_for_other_claimed_task_test() {
+pub fn show_editor_hides_edit_for_other_claimed_task_test() {
   let html =
-    detail_editor.view_readonly_fields(config(Some(8)), claimed_task())
+    show_editor.view_readonly_fields(config(Some(8)), claimed_task())
     |> element.to_document_string
 
   assert_not_contains(html, "Edit task")
   assert_contains(html, "claim the task to keep editing")
 }
 
-pub fn detail_editor_hides_edit_for_completed_task_test() {
+pub fn show_editor_hides_edit_for_completed_task_test() {
   let completed_state = task_state.Done("2026-06-14T12:00:00Z")
   let task = Task(..claimed_task(), state: completed_state)
   let html =
-    detail_editor.view_readonly_fields(config(Some(7)), task)
+    show_editor.view_readonly_fields(config(Some(7)), task)
     |> element.to_document_string
 
   assert_not_contains(html, "Edit task")
@@ -114,7 +114,7 @@ pub fn detail_editor_hides_edit_for_completed_task_test() {
   assert_not_contains(html, "claim the task to keep editing")
 }
 
-pub fn detail_editor_marks_current_type_option_selected_test() {
+pub fn show_editor_marks_current_type_option_selected_test() {
   let task_type =
     TaskType(
       id: 1,
@@ -124,8 +124,8 @@ pub fn detail_editor_marks_current_type_option_selected_test() {
       tasks_count: 0,
     )
   let html =
-    detail_editor.view_form(
-      detail_editor.Config(
+    show_editor.view_form(
+      show_editor.Config(
         ..config(Some(7)),
         editing: True,
         task_types: Loaded([task_type]),
@@ -138,10 +138,10 @@ pub fn detail_editor_marks_current_type_option_selected_test() {
   assert_contains(html, "selected")
 }
 
-pub fn detail_editor_renders_segmented_priority_test() {
+pub fn show_editor_renders_segmented_priority_test() {
   let html =
-    detail_editor.view_form(
-      detail_editor.Config(..config(Some(7)), editing: True),
+    show_editor.view_form(
+      show_editor.Config(..config(Some(7)), editing: True),
       claimed_task(),
     )
     |> element.to_document_string

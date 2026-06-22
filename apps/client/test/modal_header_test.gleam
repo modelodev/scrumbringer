@@ -338,7 +338,7 @@ pub fn view_detail_renders_span_title_test() {
       meta: None,
       progress: None,
       on_close: Nil,
-      class_prefix: "task-detail",
+      class_prefix: "task-show",
     )
 
   // When: Render
@@ -378,7 +378,7 @@ pub fn view_detail_with_meta_and_progress_test() {
       meta: Some(text("2/5 completadas")),
       progress: Some(span([], [text("40%")])),
       on_close: Nil,
-      class_prefix: "task-detail",
+      class_prefix: "task-show",
     )
 
   // When: Render

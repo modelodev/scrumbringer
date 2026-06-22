@@ -57,10 +57,10 @@
 ////   meta: Some(meta_row),
 ////   progress: None,
 ////   on_close: CloseClicked,
-////   header_class: "task-detail-header",
-////   title_row_class: "task-detail-title-row",
-////   title_class: "task-detail-title",
-////   title_id: "task-detail-title",
+////   header_class: "task-show-header",
+////   title_row_class: "task-show-title-row",
+////   title_class: "task-show-title",
+////   title_id: "task-show-title",
 ////   close_button_class: "modal-close btn-icon",
 //// ))
 //// ```
@@ -339,7 +339,7 @@ pub type DetailConfig(msg) {
     progress: Option(Element(msg)),
     /// Message to emit when close button is clicked
     on_close: msg,
-    /// CSS class prefix for all elements (e.g., "task-detail" or "card-show")
+    /// CSS class prefix for all elements (e.g., "task-show" or "card-show")
     class_prefix: String,
   )
 }

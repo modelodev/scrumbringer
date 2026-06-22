@@ -17,7 +17,7 @@ import domain/task.{type Task}
 import domain/task_state
 import domain/task_type.{type TaskType}
 
-import scrumbringer_client/features/tasks/detail_permissions
+import scrumbringer_client/features/tasks/show_permissions
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -50,7 +50,7 @@ pub type Config(msg) {
 }
 
 fn can_edit_task(config: Config(msg), current_task: Task) -> Bool {
-  detail_permissions.can_edit(config.current_user_id, current_task)
+  show_permissions.can_edit(config.current_user_id, current_task)
 }
 
 pub fn permission_hint(
@@ -85,8 +85,8 @@ pub fn is_dirty(config: Config(msg), current_task: Task) -> Bool {
 pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
   form(
     [
-      attribute.class("task-detail-edit-form"),
-      attribute.id("task-detail-edit-form"),
+      attribute.class("task-show-edit-form"),
+      attribute.id("task-show-edit-form"),
       event.on_submit(fn(_) { config.on_submitted }),
     ],
     [
@@ -95,7 +95,7 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
           i18n.t(config.locale, i18n_text.Title),
           input([
             attribute.type_("text"),
-            attribute.class("task-detail-edit-input"),
+            attribute.class("task-show-edit-input"),
             attribute.attribute("maxlength", "56"),
             attribute.value(config.edit_title),
             attribute.autofocus(True),
@@ -108,7 +108,7 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
           i18n.t(config.locale, i18n_text.Description),
           textarea(
             [
-              attribute.class("task-detail-edit-textarea"),
+              attribute.class("task-show-edit-textarea"),
               attribute.rows(5),
               attribute.value(config.edit_description),
               event.on_input(config.on_description_changed),
@@ -120,13 +120,13 @@ pub fn view_form(config: Config(msg), current_task: Task) -> Element(msg) {
         ),
       ]),
       view_edit_section(i18n.t(config.locale, i18n_text.TaskEditPlanning), [
-        div([attribute.class("task-detail-edit-grid")], [
+        div([attribute.class("task-show-edit-grid")], [
           view_type_field(config, current_task),
           view_priority_field(config),
         ]),
       ]),
       view_edit_section(i18n.t(config.locale, i18n_text.TaskEditLocation), [
-        div([attribute.class("task-detail-edit-grid")], [
+        div([attribute.class("task-show-edit-grid")], [
           view_card_field(config),
         ]),
       ]),
@@ -139,8 +139,8 @@ fn view_edit_section(
   title: String,
   children: List(Element(msg)),
 ) -> Element(msg) {
-  div([attribute.class("task-detail-edit-section")], [
-    div([attribute.class("task-detail-edit-section-title")], [text(title)]),
+  div([attribute.class("task-show-edit-section")], [
+    div([attribute.class("task-show-edit-section-title")], [text(title)]),
     ..children
   ])
 }
@@ -164,7 +164,7 @@ pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
                 ui_button.Secondary,
                 ui_button.EntityAction,
               )
-              |> ui_button.with_class("task-detail-edit-toggle")
+              |> ui_button.with_class("task-show-edit-toggle")
               |> ui_button.view
             False -> element.none()
           }
@@ -321,7 +321,7 @@ pub fn view_readonly_fields(
   }
   let desc_empty = current_task.description == opt.None
 
-  div([attribute.class("task-detail-editor-stack")], [
+  div([attribute.class("task-show-editor-stack")], [
     view_intro(config, current_task),
     case config.editing {
       True -> view_form(config, current_task)
@@ -340,13 +340,13 @@ pub fn view_readonly_fields(
 }
 
 fn view_value_field(label: String, value: String, muted: Bool) -> Element(msg) {
-  div([attribute.class("task-detail-field")], [
-    div([attribute.class("task-detail-field-label")], [text(label)]),
+  div([attribute.class("task-show-field")], [
+    div([attribute.class("task-show-field-label")], [text(label)]),
     div(
       [
         attribute.class(case muted {
-          True -> "task-detail-field-value muted"
-          False -> "task-detail-field-value"
+          True -> "task-show-field-value muted"
+          False -> "task-show-field-value"
         }),
       ],
       [text(value)],

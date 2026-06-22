@@ -4,29 +4,28 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/tasks/detail_permissions
+import scrumbringer_client/features/tasks/show_permissions
 
 pub fn current_user_can_edit_available_task_test() {
   let assert True =
-    detail_permissions.can_edit(Some(7), task(task_state.Available))
+    show_permissions.can_edit(Some(7), task(task_state.Available))
 }
 
 pub fn anonymous_user_cannot_edit_available_task_test() {
-  let assert False =
-    detail_permissions.can_edit(None, task(task_state.Available))
+  let assert False = show_permissions.can_edit(None, task(task_state.Available))
 }
 
 pub fn claimant_can_edit_claimed_task_test() {
-  let assert True = detail_permissions.can_edit(Some(7), task(claimed_by(7)))
+  let assert True = show_permissions.can_edit(Some(7), task(claimed_by(7)))
 }
 
 pub fn other_user_cannot_edit_claimed_task_test() {
-  let assert False = detail_permissions.can_edit(Some(8), task(claimed_by(7)))
+  let assert False = show_permissions.can_edit(Some(8), task(claimed_by(7)))
 }
 
 pub fn completed_task_is_read_only_for_claimant_test() {
   let assert False =
-    detail_permissions.can_edit(
+    show_permissions.can_edit(
       Some(7),
       task(task_state.Done("2026-06-14T12:00:00Z")),
     )

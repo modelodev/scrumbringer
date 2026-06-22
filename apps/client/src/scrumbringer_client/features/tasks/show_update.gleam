@@ -17,7 +17,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/tasks/detail_edit_form
+import scrumbringer_client/features/tasks/show_edit_form
 import scrumbringer_client/features/tasks/show_state
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/ui/show_tabs
@@ -375,16 +375,16 @@ fn submit_task_show_edit(
   case context.current_task, context.can_edit {
     opt.Some(current_task), True -> {
       case
-        detail_edit_form.evaluate(
+        show_edit_form.evaluate(
           current_task,
-          detail_edit_form.Input(
+          show_edit_form.Input(
             title: model.member_task_show_edit_title,
             description: model.member_task_show_edit_description,
             priority: model.member_task_show_edit_priority,
             type_id: model.member_task_show_edit_type_id,
             card_id: model.member_task_show_edit_card_id,
           ),
-          detail_edit_form.Labels(
+          show_edit_form.Labels(
             title_required: context.title_required,
             title_too_long_max_56: context.title_too_long_max_56,
             type_required: context.type_required,
@@ -392,15 +392,15 @@ fn submit_task_show_edit(
           ),
         )
       {
-        detail_edit_form.Invalid(message) -> #(
+        show_edit_form.Invalid(message) -> #(
           show_state.edit_invalid(model, message),
           effect.none(),
         )
-        detail_edit_form.Unchanged(submission) -> #(
+        show_edit_form.Unchanged(submission) -> #(
           show_state.edit_unchanged(model, submission),
           effect.none(),
         )
-        detail_edit_form.Changed(submission) -> #(
+        show_edit_form.Changed(submission) -> #(
           show_state.edit_started_submit(model, submission),
           task_operations_api.update_task(
             current_task.id,

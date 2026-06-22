@@ -204,7 +204,7 @@ pub fn incompatible_actions_are_disabled_with_reason_test() {
   assert_contains(html, "Tiene historial operativo")
 }
 
-pub fn row_actions_are_detail_contextual_create_and_secondary_menu_test() {
+pub fn row_actions_are_show_contextual_create_and_secondary_menu_test() {
   let html = render(base_config())
 
   assert_contains(html, "data-testid=\"plan-card-show-action\"")

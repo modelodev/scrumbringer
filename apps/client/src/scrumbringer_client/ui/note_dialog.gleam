@@ -3,7 +3,7 @@
 //// ## Mission
 ////
 //// Provides a unified, accessible note creation dialog for use within modals
-//// (card detail, task detail). Follows the Config(msg) pattern for flexibility.
+//// (Card Show, Task Show). Follows the Config(msg) pattern for flexibility.
 ////
 //// ## Usage
 ////

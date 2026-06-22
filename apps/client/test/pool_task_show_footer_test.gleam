@@ -22,7 +22,7 @@ pub fn task_show_footer_renders_close_only_without_task_test() {
     task_show_footer.view(config(None, current_user_id: Some(7)))
     |> element.to_document_string
 
-  assert_contains(html, "task-detail-footer")
+  assert_contains(html, "task-show-footer")
   assert_contains(html, "task-action-bar")
   assert_contains(html, "Close")
   assert_not_contains(html, "Claim task")

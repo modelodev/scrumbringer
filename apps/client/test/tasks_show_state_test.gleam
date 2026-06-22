@@ -8,7 +8,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/tasks/detail_edit_form
+import scrumbringer_client/features/tasks/show_edit_form
 import scrumbringer_client/features/tasks/show_state
 import scrumbringer_client/ui/show_tabs
 
@@ -38,8 +38,8 @@ fn sample_task() -> Task {
   )
 }
 
-fn submission(title: String, description: String) -> detail_edit_form.Submission {
-  detail_edit_form.Submission(
+fn submission(title: String, description: String) -> show_edit_form.Submission {
+  show_edit_form.Submission(
     title: title,
     description: description,
     priority: 2,

@@ -314,7 +314,7 @@ pub fn task_show_surface_renders_edit_controls_for_owner_test() {
     |> task_show_view(42)
     |> element.to_document_string
 
-  assert_contains(html, "task-detail-edit-toggle")
+  assert_contains(html, "task-show-edit-toggle")
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
   assert_contains(html, "Edit task")
@@ -364,7 +364,7 @@ pub fn task_show_surface_renders_edit_controls_for_unclaimed_task_test() {
     |> task_show_view(42)
     |> element.to_document_string
 
-  assert_contains(html, "task-detail-edit-toggle")
+  assert_contains(html, "task-show-edit-toggle")
   assert_contains(html, "Edit task")
 }
 
