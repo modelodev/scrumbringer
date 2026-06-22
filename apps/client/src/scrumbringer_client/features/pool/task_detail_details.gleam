@@ -14,6 +14,7 @@ import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/pinned_context
 
 pub type Config(msg) {
   Config(
@@ -21,6 +22,8 @@ pub type Config(msg) {
     task: opt.Option(Task),
     dependencies: Remote(List(TaskDependency)),
     parent_card_title: opt.Option(String),
+    pinned_notes: List(pinned_context.PinnedNote),
+    on_open_notes: msg,
     editor: detail_editor.Config(msg),
   )
 }
@@ -40,6 +43,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
                 parent_card_title: config.parent_card_title,
               ))
           },
+          pinned_context.view(pinned_context.Config(
+            title: i18n.t(config.locale, i18n_text.PinnedContext),
+            notes: config.pinned_notes,
+            open_notes_label: i18n.t(config.locale, i18n_text.OpenNotes),
+            more_label: fn(count) {
+              i18n.t(config.locale, i18n_text.MorePinnedNotes(count))
+            },
+            on_open_notes: config.on_open_notes,
+          )),
           detail_editor.view_readonly_fields(config.editor, task),
         ])
       opt.None ->

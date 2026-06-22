@@ -117,6 +117,9 @@ pub type Text {
   Removing
   Delete
   DeleteAsAdmin
+  PinNote
+  UnpinNote
+  CannotPinNote
   Deleting
   Deleted
   NoneOption
@@ -149,6 +152,9 @@ pub type Text {
   AddNote
   NotePlaceholder
   RecentNotes
+  PinnedContext
+  OpenNotes
+  MorePinnedNotes(count: Int)
   Dependencies
   AddDependency
   NoDependencies

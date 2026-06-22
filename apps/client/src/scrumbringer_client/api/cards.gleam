@@ -264,13 +264,58 @@ pub fn create_card_note(
   content: String,
   to_msg: fn(ApiResult(CardNote)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("content", json.string(content))])
+  create_card_note_with_url(card_id, content, option.None, to_msg)
+}
+
+/// Create a note for a card with an optional explicit URL.
+pub fn create_card_note_with_url(
+  card_id: Int,
+  content: String,
+  url: option.Option(String),
+  to_msg: fn(ApiResult(CardNote)) -> msg,
+) -> Effect(msg) {
+  let url_json = case url {
+    option.Some(value) -> json.string(value)
+    option.None -> json.null()
+  }
+  let body =
+    json.object([#("content", json.string(content)), #("url", url_json)])
   let decoder =
     decode.field("note", card_codec.card_note_decoder(), decode.success)
   core.request(
     core.Post,
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Pin or unpin a card note.
+pub fn set_card_note_pinned(
+  card_id: Int,
+  note_id: Int,
+  pinned: Bool,
+  to_msg: fn(ApiResult(CardNote)) -> msg,
+) -> Effect(msg) {
+  let method = case pinned {
+    True -> core.Post
+    False -> core.Delete
+  }
+  let body = case pinned {
+    True -> option.Some(json.object([]))
+    False -> option.None
+  }
+  let decoder =
+    decode.field("note", card_codec.card_note_decoder(), decode.success)
+  core.request(
+    method,
+    "/api/v1/cards/"
+      <> int.to_string(card_id)
+      <> "/notes/"
+      <> int.to_string(note_id)
+      <> "/pin",
+    body,
     decoder,
     to_msg,
   )

@@ -15,6 +15,7 @@ fn note_context() -> notes_update.Context(Nil) {
     note_added: "Note added",
     on_note_added: fn(_result) { Nil },
     on_note_deleted: fn(_note_id, _result) { Nil },
+    on_note_pinned: fn(_note_id, _result) { Nil },
     on_notes_fetched: fn(_result) { Nil },
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
   )
@@ -213,6 +214,71 @@ pub fn note_try_update_added_error_checks_auth_test() {
   let assert False = next.member_note_in_flight
   let assert Some("boom") = next.member_note_error
   let assert True = fx != effect.none()
+}
+
+pub fn note_try_update_pin_clicked_sets_in_flight_test() {
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes_task_id: Some(42),
+    )
+
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinClicked(10, True),
+      note_context(),
+    )
+
+  let assert Some(10) = next.member_note_pin_in_flight
+  let assert True = fx != effect.none()
+}
+
+pub fn note_try_update_pinned_ok_replaces_note_test() {
+  let previous = sample_note()
+  let updated = TaskNote(..previous, pinned: True)
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes: remote.Loaded([previous]),
+      member_note_pin_in_flight: Some(previous.id),
+    )
+
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinned(previous.id, Ok(updated)),
+      note_context(),
+    )
+
+  let assert True = next.member_notes == remote.Loaded([updated])
+  let assert None = next.member_note_pin_in_flight
+  let assert True = fx == effect.none()
+}
+
+pub fn note_try_update_pinned_error_checks_auth_test() {
+  let err = sample_error()
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_note_pin_in_flight: Some(10),
+    )
+
+  let assert Some(notes_update.Update(
+    next,
+    fx,
+    notes_update.CheckAuth(policy_err),
+  )) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinned(10, Error(err)),
+      note_context(),
+    )
+
+  let assert True = policy_err == err
+  let assert None = next.member_note_pin_in_flight
+  let assert Some("boom") = next.member_note_error
+  let assert True = fx == effect.none()
 }
 
 pub fn note_try_update_ignores_non_note_messages_test() {

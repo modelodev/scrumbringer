@@ -10,6 +10,7 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_detail_details
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/locale
+import scrumbringer_client/ui/pinned_context
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
@@ -40,17 +41,51 @@ pub fn task_detail_details_renders_loading_state_test() {
   assert_not_contains(html, "Edit task")
 }
 
-fn config(
+pub fn task_detail_details_renders_pinned_context_test() {
+  let html =
+    task_detail_details.view(
+      config_with_pins(Some(claimed_task()), Some(7), [
+        pinned_note(1, "Spec"),
+        pinned_note(2, "Decision"),
+        pinned_note(3, "PR"),
+        pinned_note(4, "Extra"),
+      ]),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Pinned context")
+  assert_contains(html, "Spec")
+  assert_contains(html, "Decision")
+  assert_contains(html, "PR")
+  assert_not_contains(html, "Extra")
+  assert_contains(html, "+1 in notes")
+}
+
+fn config_with_pins(
   task: Option(Task),
   current_user_id: Option(Int),
+  pinned_notes: List(pinned_context.PinnedNote),
 ) -> task_detail_details.Config(String) {
   task_detail_details.Config(
     locale: locale.En,
     task: task,
     dependencies: NotAsked,
     parent_card_title: Some("Release card"),
+    pinned_notes: pinned_notes,
+    on_open_notes: "notes",
     editor: editor_config(current_user_id),
   )
+}
+
+fn config(
+  task: Option(Task),
+  current_user_id: Option(Int),
+) -> task_detail_details.Config(String) {
+  config_with_pins(task, current_user_id, [])
+}
+
+fn pinned_note(id: Int, content: String) -> pinned_context.PinnedNote {
+  pinned_context.PinnedNote(id: id, content: content, url: None)
 }
 
 fn editor_config(current_user_id: Option(Int)) -> detail_editor.Config(String) {

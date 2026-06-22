@@ -34,6 +34,7 @@ fn make_model() -> Model {
     note_content: "",
     note_in_flight: False,
     note_error: option.None,
+    note_pin_in_flight: option.None,
     tasks: NotAsked,
     activation_confirm_open: False,
   )
@@ -78,6 +79,7 @@ pub fn initial_model_has_correct_defaults_test() {
   let assert NotAsked = model.notes
   let assert "" = model.note_content
   let assert False = model.note_in_flight
+  let assert option.None = model.note_pin_in_flight
   let assert option.None = model.note_error
   let assert NotAsked = model.tasks
   let assert show_tabs.CardSummaryTab = model.active_tab

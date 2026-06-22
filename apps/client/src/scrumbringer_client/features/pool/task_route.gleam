@@ -435,6 +435,9 @@ fn note_context(
     on_note_deleted: fn(note_id, result) {
       client_state.pool_msg(pool_messages.MemberNoteDeleted(note_id, result))
     },
+    on_note_pinned: fn(note_id, result) {
+      client_state.pool_msg(pool_messages.MemberNotePinned(note_id, result))
+    },
     on_notes_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberNotesFetched(result))
     },

@@ -51,6 +51,7 @@ fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
     on_note_content_changed: fn(value) { "note:" <> value },
     on_note_submitted: "note-submit",
     on_note_delete: fn(_) { "note-delete" },
+    on_note_pin_toggle: fn(_, _) { "note-pin" },
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
     on_complete: fn(_, _) { "complete" },

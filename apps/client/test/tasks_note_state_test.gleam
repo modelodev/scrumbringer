@@ -104,3 +104,34 @@ pub fn note_state_add_failed_stops_in_flight_and_sets_error_test() {
   let assert False = next.member_note_in_flight
   let assert Some("boom") = next.member_note_error
 }
+
+pub fn note_state_pin_transitions_replace_note_test() {
+  let previous = sample_note()
+  let updated =
+    TaskNote(..previous, pinned: True, updated_at: "2026-03-20T15:00:00Z")
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes: remote.Loaded([previous]),
+    )
+
+  let started = note_state.pin_started(model, previous.id)
+  let next = note_state.pinned(started, updated)
+
+  let assert True = started.member_note_pin_in_flight == Some(previous.id)
+  let assert True = next.member_notes == remote.Loaded([updated])
+  let assert None = next.member_note_pin_in_flight
+}
+
+pub fn note_state_pin_failed_clears_in_flight_and_sets_error_test() {
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_note_pin_in_flight: Some(10),
+    )
+
+  let next = note_state.pin_failed(model, sample_error())
+
+  let assert None = next.member_note_pin_in_flight
+  let assert Some("boom") = next.member_note_error
+}

@@ -89,11 +89,13 @@ fn config(
     note_error: None,
     note_in_flight: note_in_flight,
     delete_in_flight: None,
+    pin_in_flight: None,
     on_dialog_opened: "open",
     on_dialog_closed: "close",
     on_content_changed: fn(value) { "content-" <> value },
     on_submitted: "submit",
     on_delete: fn(_id) { "delete" },
+    on_pin_toggle: fn(_id, _pinned) { "pin" },
   )
 }
 

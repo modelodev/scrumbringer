@@ -18,6 +18,7 @@ pub type Context(parent_msg) {
     note_added: String,
     on_note_added: fn(ApiResult(TaskNote)) -> parent_msg,
     on_note_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
+    on_note_pinned: fn(Int, ApiResult(TaskNote)) -> parent_msg,
     on_notes_fetched: fn(ApiResult(List(TaskNote))) -> parent_msg,
     on_success_toast: fn(String) -> Effect(parent_msg),
   )
@@ -80,6 +81,18 @@ pub fn try_update(
 
     pool_messages.MemberNoteDeleted(_note_id, Error(err)) ->
       handle_deleted_error(model, err)
+      |> with_auth_check(err)
+
+    pool_messages.MemberNotePinClicked(note_id, pinned) ->
+      handle_pin_clicked(model, note_id, pinned, context)
+      |> without_auth_check
+
+    pool_messages.MemberNotePinned(_note_id, Ok(note)) ->
+      handle_pinned_ok(model, note)
+      |> without_auth_check
+
+    pool_messages.MemberNotePinned(_note_id, Error(err)) ->
+      handle_pinned_error(model, err)
       |> with_auth_check(err)
 
     _ -> opt.None
@@ -236,4 +249,36 @@ fn handle_deleted_error(
   err: ApiError,
 ) -> #(member_notes.Model, Effect(parent_msg)) {
   #(note_state.delete_failed(model, err), effect.none())
+}
+
+fn handle_pin_clicked(
+  model: member_notes.Model,
+  note_id: Int,
+  pinned: Bool,
+  context: Context(parent_msg),
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  case model.member_note_pin_in_flight, model.member_notes_task_id {
+    opt.Some(_), _ -> #(model, effect.none())
+    _, opt.None -> #(model, effect.none())
+    opt.None, opt.Some(task_id) -> #(
+      note_state.pin_started(model, note_id),
+      task_notes_api.set_task_note_pinned(task_id, note_id, pinned, fn(result) {
+        context.on_note_pinned(note_id, result)
+      }),
+    )
+  }
+}
+
+fn handle_pinned_ok(
+  model: member_notes.Model,
+  note: TaskNote,
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  #(note_state.pinned(model, note), effect.none())
+}
+
+fn handle_pinned_error(
+  model: member_notes.Model,
+  err: ApiError,
+) -> #(member_notes.Model, Effect(parent_msg)) {
+  #(note_state.pin_failed(model, err), effect.none())
 }

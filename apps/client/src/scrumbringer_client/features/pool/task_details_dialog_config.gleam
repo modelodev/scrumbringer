@@ -36,6 +36,7 @@ pub type Callbacks(msg) {
     on_note_content_changed: fn(String) -> msg,
     on_note_submitted: msg,
     on_note_delete: fn(Int) -> msg,
+    on_note_pin_toggle: fn(Int, Bool) -> msg,
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
@@ -159,11 +160,13 @@ fn notes_config(
     error: notes.member_note_error,
     in_flight: notes.member_note_in_flight,
     delete_in_flight: notes.member_note_delete_in_flight,
+    pin_in_flight: notes.member_note_pin_in_flight,
     on_dialog_opened: callbacks.on_note_dialog_opened,
     on_dialog_closed: callbacks.on_note_dialog_closed,
     on_content_changed: callbacks.on_note_content_changed,
     on_submitted: callbacks.on_note_submitted,
     on_delete: callbacks.on_note_delete,
+    on_pin_toggle: callbacks.on_note_pin_toggle,
   )
 }
 

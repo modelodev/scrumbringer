@@ -19,6 +19,7 @@
 ////
 //// - **features/pool/view.gleam**: Imports and renders these dialogs
 
+import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
@@ -27,7 +28,7 @@ import lustre/element/html.{div, text}
 import lustre/event
 
 import domain/card.{type Card}
-import domain/remote.{type Remote}
+import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
 import domain/task_type.{type TaskType}
 
@@ -42,6 +43,7 @@ import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
 pub type TaskDetailsConfig(msg) {
@@ -112,11 +114,13 @@ pub type TaskNotesConfig(msg) {
     error: opt.Option(String),
     in_flight: Bool,
     delete_in_flight: opt.Option(Int),
+    pin_in_flight: opt.Option(Int),
     on_dialog_opened: msg,
     on_dialog_closed: msg,
     on_content_changed: fn(String) -> msg,
     on_submitted: msg,
     on_delete: fn(Int) -> msg,
+    on_pin_toggle: fn(Int, Bool) -> msg,
   )
 }
 
@@ -243,8 +247,28 @@ fn details_config(
     task: config.task,
     dependencies: config.dependencies.items,
     parent_card_title: config.editor.parent_card_title,
+    pinned_notes: pinned_task_notes(config.notes.items),
+    on_open_notes: config.on_tab_clicked(show_tabs.TaskNotesTab),
     editor: editor_config(config),
   )
+}
+
+fn pinned_task_notes(
+  notes: Remote(List(TaskNote)),
+) -> List(pinned_context.PinnedNote) {
+  case notes {
+    Loaded(items) ->
+      items
+      |> list.filter(fn(note) { note.pinned })
+      |> list.map(fn(note) {
+        pinned_context.PinnedNote(
+          id: note.id,
+          content: note.content,
+          url: note.url,
+        )
+      })
+    _ -> []
+  }
 }
 
 fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
@@ -283,11 +307,13 @@ fn view_notes(config: TaskDetailsConfig(msg)) -> Element(msg) {
     note_error: config.notes.error,
     note_in_flight: config.notes.in_flight,
     delete_in_flight: config.notes.delete_in_flight,
+    pin_in_flight: config.notes.pin_in_flight,
     on_dialog_opened: config.notes.on_dialog_opened,
     on_dialog_closed: config.notes.on_dialog_closed,
     on_content_changed: config.notes.on_content_changed,
     on_submitted: config.notes.on_submitted,
     on_delete: config.notes.on_delete,
+    on_pin_toggle: config.notes.on_pin_toggle,
   ))
 }
 

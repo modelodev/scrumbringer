@@ -59,6 +59,7 @@ import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
+import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
@@ -88,6 +89,7 @@ pub type Model {
     note_content: String,
     note_in_flight: Bool,
     note_error: Option(String),
+    note_pin_in_flight: Option(Int),
     tasks: Remote(List(Task)),
     activation_confirm_open: Bool,
   )
@@ -117,6 +119,8 @@ pub type Msg {
   NoteCreated(ApiResult(CardNote))
   NoteDeleteClicked(Int)
   NoteDeleted(Int, ApiResult(Nil))
+  NotePinClicked(Int, Bool)
+  NotePinned(Int, ApiResult(CardNote))
   // Card operations
   CreateCardClicked
   ActivateCardClicked
@@ -341,6 +345,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       note_content: "",
       note_in_flight: False,
       note_error: option.None,
+      note_pin_in_flight: option.None,
       tasks: NotAsked,
       activation_confirm_open: False,
     ),
@@ -471,6 +476,27 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    NotePinClicked(note_id, pinned) -> handle_pin_note(model, note_id, pinned)
+
+    NotePinned(_note_id, Ok(note)) -> #(
+      Model(
+        ..model,
+        note_pin_in_flight: option.None,
+        note_error: option.None,
+        notes: Loaded(replace_note(model.notes, note)),
+      ),
+      effect.none(),
+    )
+
+    NotePinned(_note_id, Error(err)) -> #(
+      Model(
+        ..model,
+        note_pin_in_flight: option.None,
+        note_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
+
     CreateCardClicked -> #(model, emit_create_card_requested(model.card_id))
 
     ActivateCardClicked -> #(
@@ -547,6 +573,27 @@ fn handle_delete_note(model: Model, note_id: Int) -> #(Model, Effect(Msg)) {
   }
 }
 
+fn handle_pin_note(
+  model: Model,
+  note_id: Int,
+  pinned: Bool,
+) -> #(Model, Effect(Msg)) {
+  case model.note_pin_in_flight, model.card_id {
+    option.Some(_), _ -> #(model, effect.none())
+    _, option.None -> #(model, effect.none())
+    option.None, option.Some(card_id) -> #(
+      Model(
+        ..model,
+        note_pin_in_flight: option.Some(note_id),
+        note_error: option.None,
+      ),
+      api_cards.set_card_note_pinned(card_id, note_id, pinned, fn(result) {
+        NotePinned(note_id, result)
+      }),
+    )
+  }
+}
+
 fn append_note(notes: Remote(List(CardNote)), note: CardNote) -> List(CardNote) {
   case notes {
     Loaded(existing) -> list.append(existing, [note])
@@ -558,6 +605,22 @@ fn remove_note(notes: Remote(List(CardNote)), note_id: Int) -> List(CardNote) {
   case notes {
     Loaded(existing) -> list.filter(existing, fn(note) { note.id != note_id })
     _ -> []
+  }
+}
+
+fn replace_note(
+  notes: Remote(List(CardNote)),
+  updated_note: CardNote,
+) -> List(CardNote) {
+  case notes {
+    Loaded(existing) ->
+      list.map(existing, fn(note) {
+        case note.id == updated_note.id {
+          True -> updated_note
+          False -> note
+        }
+      })
+    _ -> [updated_note]
   }
 }
 
@@ -1041,7 +1104,32 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
       description ->
         div([attribute.class("card-summary-description")], [text(description)])
     },
+    pinned_context.view(pinned_context.Config(
+      title: t(model.locale, i18n_text.PinnedContext),
+      notes: card_pinned_notes(model),
+      open_notes_label: t(model.locale, i18n_text.OpenNotes),
+      more_label: fn(count) {
+        t(model.locale, i18n_text.MorePinnedNotes(count))
+      },
+      on_open_notes: TabClicked(show_tabs.CardNotesTab),
+    )),
   ])
+}
+
+fn card_pinned_notes(model: Model) -> List(pinned_context.PinnedNote) {
+  case model.notes {
+    Loaded(notes) ->
+      notes
+      |> list.filter(fn(note) { note.pinned })
+      |> list.map(fn(note) {
+        pinned_context.PinnedNote(
+          id: note.id,
+          content: note.content,
+          url: note.url,
+        )
+      })
+    _ -> []
+  }
 }
 
 fn summary_item(label: String, value: String) -> Element(Msg) {
@@ -1097,7 +1185,10 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
           list.map(list.reverse(notes), fn(note) { note_to_view(model, note) }),
           t(model.locale, i18n_text.Delete),
           t(model.locale, i18n_text.DeleteAsAdmin),
+          t(model.locale, i18n_text.PinNote),
+          t(model.locale, i18n_text.UnpinNote),
           NoteDeleteClicked,
+          NotePinClicked,
         )
     },
   ])
@@ -1125,6 +1216,8 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     id: id,
     user_id: user_id,
     content: content,
+    url: url,
+    pinned: pinned,
     created_at: created_at,
     author_email: author_email,
     author_project_role: author_project_role,
@@ -1147,6 +1240,14 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     author: author_label,
     created_at: created_at,
     content: content,
+    url: url,
+    pinned: pinned,
+    can_pin: can_delete,
+    pin_in_flight: model.note_pin_in_flight == option.Some(id),
+    pin_disabled_reason: case can_delete {
+      True -> option.None
+      False -> option.Some(t(model.locale, i18n_text.CannotPinNote))
+    },
     can_delete: can_delete,
     delete_context: delete_context,
     author_email: author_email,

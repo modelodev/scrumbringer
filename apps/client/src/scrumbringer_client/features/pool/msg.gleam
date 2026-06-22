@@ -154,6 +154,8 @@ pub type Msg {
   MemberNoteAdded(ApiResult(TaskNote))
   MemberNoteDeleteClicked(Int)
   MemberNoteDeleted(Int, ApiResult(Nil))
+  MemberNotePinClicked(Int, Bool)
+  MemberNotePinned(Int, ApiResult(TaskNote))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))

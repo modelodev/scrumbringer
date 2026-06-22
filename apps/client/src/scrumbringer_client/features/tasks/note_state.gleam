@@ -131,3 +131,49 @@ pub fn delete_failed(
     member_note_error: opt.Some(err.message),
   )
 }
+
+pub fn pin_started(
+  notes_model: member_notes.Model,
+  note_id: Int,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_pin_in_flight: opt.Some(note_id),
+    member_note_error: opt.None,
+  )
+}
+
+pub fn pinned(
+  notes_model: member_notes.Model,
+  updated_note: TaskNote,
+) -> member_notes.Model {
+  let notes = case notes_model.member_notes {
+    Loaded(items) ->
+      items
+      |> list.map(fn(note) {
+        case note.id == updated_note.id {
+          True -> updated_note
+          False -> note
+        }
+      })
+      |> Loaded
+    other -> other
+  }
+
+  member_notes.Model(
+    ..notes_model,
+    member_notes: notes,
+    member_note_pin_in_flight: opt.None,
+  )
+}
+
+pub fn pin_failed(
+  notes_model: member_notes.Model,
+  err: ApiError,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_pin_in_flight: opt.None,
+    member_note_error: opt.Some(err.message),
+  )
+}

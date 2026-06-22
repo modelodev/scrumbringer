@@ -32,11 +32,13 @@ pub type Config(msg) {
     note_error: opt.Option(String),
     note_in_flight: Bool,
     delete_in_flight: opt.Option(Int),
+    pin_in_flight: opt.Option(Int),
     on_dialog_opened: msg,
     on_dialog_closed: msg,
     on_content_changed: fn(String) -> msg,
     on_submitted: msg,
     on_delete: fn(Int) -> msg,
+    on_pin_toggle: fn(Int, Bool) -> msg,
   )
 }
 
@@ -86,7 +88,10 @@ fn notes_content(config: Config(msg)) -> Element(msg) {
             list.map(notes, fn(note) { task_note_to_view(config, note) }),
             t(config, i18n_text.Delete),
             t(config, i18n_text.DeleteAsAdmin),
+            t(config, i18n_text.PinNote),
+            t(config, i18n_text.UnpinNote),
             config.on_delete,
+            config.on_pin_toggle,
           )
       }
   }
@@ -124,6 +129,8 @@ fn task_note_to_view(config: Config(msg), note: TaskNote) -> notes_list.NoteView
     id: id,
     user_id: user_id,
     content: content,
+    url: url,
+    pinned: pinned,
     created_at: created_at,
     ..,
   ) = note
@@ -144,6 +151,14 @@ fn task_note_to_view(config: Config(msg), note: TaskNote) -> notes_list.NoteView
     author: author,
     created_at: created_at,
     content: content,
+    url: url,
+    pinned: pinned,
+    can_pin: can_delete,
+    pin_in_flight: config.pin_in_flight == opt.Some(id),
+    pin_disabled_reason: case can_delete {
+      True -> opt.None
+      False -> opt.Some(t(config, i18n_text.CannotPinNote))
+    },
     can_delete: can_delete && config.delete_in_flight != opt.Some(id),
     delete_context: delete_context,
     author_email: "",
