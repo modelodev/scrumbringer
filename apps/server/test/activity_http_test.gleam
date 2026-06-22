@@ -1,7 +1,7 @@
 import domain/activity/activity_codec
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/kind
-import domain/activity/subject.{ActivityCard, ActivityTask}
+import domain/activity/subject.{type ActivitySubject, ActivityCard, ActivityTask}
 import domain/card/id as card_id_domain
 import domain/task/id as task_id_domain
 import fixtures
@@ -136,6 +136,70 @@ pub fn card_activity_includes_descendant_task_activity_items_test() {
   |> expect.is_true
 }
 
+pub fn task_activity_includes_note_create_pin_and_unpin_events_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
+
+  let note_res = create_task_note(handler, session, task_id, "OAuth decision")
+  expect.expect_status(note_res, 200)
+  let note_id = decode_note_id(simulate.read_body(note_res))
+
+  expect.expect_status(pin_task_note(handler, session, task_id, note_id), 200)
+  expect.expect_status(unpin_task_note(handler, session, task_id, note_id), 200)
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/activity",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 200)
+  let events = decode_activity(simulate.read_body(res))
+  let task_subject = ActivityTask(task_id_domain.new(task_id))
+
+  has_event(events, task_subject, kind.NoteCreated) |> expect.is_true
+  has_event(events, task_subject, kind.NotePinned) |> expect.is_true
+  has_event(events, task_subject, kind.NoteUnpinned) |> expect.is_true
+}
+
+pub fn card_activity_includes_note_create_pin_and_unpin_events_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(card_id) =
+    fixtures.create_card(handler, session, project_id, "API Cleanup")
+
+  let note_res = create_card_note(handler, session, card_id, "Scope decision")
+  expect.expect_status(note_res, 200)
+  let note_id = decode_note_id(simulate.read_body(note_res))
+
+  expect.expect_status(pin_card_note(handler, session, card_id, note_id), 200)
+  expect.expect_status(unpin_card_note(handler, session, card_id, note_id), 200)
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/activity",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 200)
+  let events = decode_activity(simulate.read_body(res))
+  let card_subject = ActivityCard(card_id_domain.new(card_id))
+
+  has_event(events, card_subject, kind.NoteCreated) |> expect.is_true
+  has_event(events, card_subject, kind.NotePinned) |> expect.is_true
+  has_event(events, card_subject, kind.NoteUnpinned) |> expect.is_true
+}
+
 pub fn activity_requires_project_membership_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -221,6 +285,124 @@ fn claim_task(
   )
 }
 
+fn create_task_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  task_id: Int,
+  content: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+    )
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(
+      json.object([
+        #("content", json.string(content)),
+        #("url", json.string("https://example.com/task-note")),
+      ]),
+    ),
+  )
+}
+
+fn create_card_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  card_id: Int,
+  content: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
+    )
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(
+      json.object([
+        #("content", json.string(content)),
+        #("url", json.string("https://example.com/card-note")),
+      ]),
+    ),
+  )
+}
+
+fn pin_task_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  task_id: Int,
+  note_id: Int,
+) -> wisp.Response {
+  task_note_pin(handler, session, task_id, note_id, http.Post)
+}
+
+fn unpin_task_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  task_id: Int,
+  note_id: Int,
+) -> wisp.Response {
+  task_note_pin(handler, session, task_id, note_id, http.Delete)
+}
+
+fn task_note_pin(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  task_id: Int,
+  note_id: Int,
+  method: http.Method,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      method,
+      "/api/v1/tasks/"
+        <> int.to_string(task_id)
+        <> "/notes/"
+        <> int.to_string(note_id)
+        <> "/pin",
+    )
+    |> fixtures.with_auth(session),
+  )
+}
+
+fn pin_card_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  card_id: Int,
+  note_id: Int,
+) -> wisp.Response {
+  card_note_pin(handler, session, card_id, note_id, http.Post)
+}
+
+fn unpin_card_note(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  card_id: Int,
+  note_id: Int,
+) -> wisp.Response {
+  card_note_pin(handler, session, card_id, note_id, http.Delete)
+}
+
+fn card_note_pin(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  card_id: Int,
+  note_id: Int,
+  method: http.Method,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      method,
+      "/api/v1/cards/"
+        <> int.to_string(card_id)
+        <> "/notes/"
+        <> int.to_string(note_id)
+        <> "/pin",
+    )
+    |> fixtures.with_auth(session),
+  )
+}
+
 fn activate_card(
   handler: fixtures.Handler,
   session: fixtures.Session,
@@ -234,6 +416,39 @@ fn activate_card(
     |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([])),
   )
+}
+
+fn has_event(
+  events: List(ActivityEvent),
+  expected_subject: ActivitySubject,
+  expected_kind: kind.ActivityKind,
+) -> Bool {
+  events
+  |> list.any(fn(event) {
+    event.subject == expected_subject && event.kind == expected_kind
+  })
+}
+
+fn decode_note_id(body: String) -> Int {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let note_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+
+  let data_decoder = {
+    use id <- decode.field("note", note_decoder)
+    decode.success(id)
+  }
+
+  let response_decoder = {
+    use id <- decode.field("data", data_decoder)
+    decode.success(id)
+  }
+
+  let assert Ok(id) = decode.run(dynamic, response_decoder)
+  id
 }
 
 fn decode_activity(body: String) -> List(ActivityEvent) {

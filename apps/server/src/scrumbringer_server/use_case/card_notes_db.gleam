@@ -13,6 +13,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/sql
+import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/persisted_field
 import scrumbringer_server/use_case/persisted_role
 import scrumbringer_server/use_case/service_error.{
@@ -73,6 +74,30 @@ pub fn create_note(
   }
 }
 
+/// Creates a card note and records the user-visible activity event.
+pub fn create_note_with_audit(
+  db: pog.Connection,
+  org_id: Int,
+  card_id: Int,
+  user_id: Int,
+  content: String,
+  url: Option(String),
+) -> Result(Note, ServiceError) {
+  pog.transaction(db, fn(tx) {
+    use note <- result.try(create_note(tx, card_id, user_id, content, url))
+    use _ <- result.try(insert_note_audit(
+      tx,
+      org_id,
+      note,
+      card_id,
+      user_id,
+      audit_events_db.NoteCreated,
+    ))
+    Ok(note)
+  })
+  |> result.map_error(transaction_error_to_service_error)
+}
+
 /// Deletes a note by ID.
 pub fn delete_note(
   db: pog.Connection,
@@ -100,6 +125,28 @@ pub fn set_note_pinned(
   }
 }
 
+/// Updates whether a card note is pinned and records the activity event.
+pub fn set_note_pinned_with_audit(
+  db: pog.Connection,
+  org_id: Int,
+  card_id: Int,
+  note_id: Int,
+  actor_user_id: Int,
+  pinned: Bool,
+) -> Result(Note, ServiceError) {
+  pog.transaction(db, fn(tx) {
+    use note <- result.try(set_note_pinned(tx, card_id, note_id, pinned))
+    use _ <- result.try(
+      insert_note_audit(tx, org_id, note, card_id, actor_user_id, case pinned {
+        True -> audit_events_db.NotePinned
+        False -> audit_events_db.NoteUnpinned
+      }),
+    )
+    Ok(note)
+  })
+  |> result.map_error(transaction_error_to_service_error)
+}
+
 fn note_from_list_row(row: sql.CardNotesListRow) -> Result(Note, ServiceError) {
   note_from_fields(
     id: row.id,
@@ -115,6 +162,34 @@ fn note_from_list_row(row: sql.CardNotesListRow) -> Result(Note, ServiceError) {
     author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
   )
+}
+
+fn insert_note_audit(
+  db: pog.Connection,
+  org_id: Int,
+  note: Note,
+  card_id: Int,
+  actor_user_id: Int,
+  event_type: audit_events_db.EventType,
+) -> Result(Nil, ServiceError) {
+  audit_events_db.insert_for_card(
+    db,
+    org_id,
+    project_ids.to_int(note.project_id),
+    card_id,
+    actor_user_id,
+    event_type,
+  )
+  |> result.map_error(DbError)
+}
+
+fn transaction_error_to_service_error(
+  error: pog.TransactionError(ServiceError),
+) -> ServiceError {
+  case error {
+    pog.TransactionRolledBack(error) -> error
+    pog.TransactionQueryError(error) -> DbError(error)
+  }
 }
 
 fn note_from_create_row(

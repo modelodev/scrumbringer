@@ -142,7 +142,7 @@ pub type TaskEventInsertOptions {
     project_id: Int,
     task_id: Int,
     actor_user_id: Int,
-    event_type: audit_events_db.TaskEventType,
+    event_type: audit_events_db.EventType,
     created_at: Option(String),
   )
 }

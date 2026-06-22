@@ -12,6 +12,9 @@ pub fn audit_event_kind_codec_roundtrip_test() {
     kind_codec.CardMoved,
     kind_codec.TaskDependencyAdded,
     kind_codec.TaskDependencyRemoved,
+    kind_codec.NoteCreated,
+    kind_codec.NotePinned,
+    kind_codec.NoteUnpinned,
   ]
 
   let assert True =

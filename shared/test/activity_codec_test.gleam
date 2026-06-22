@@ -85,6 +85,9 @@ pub fn activity_kind_covers_audit_schema_values_test() {
     "card_moved",
     "task_dependency_added",
     "task_dependency_removed",
+    "note_created",
+    "note_pinned",
+    "note_unpinned",
   ]
 
   let assert True =

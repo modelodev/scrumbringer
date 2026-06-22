@@ -8,35 +8,85 @@ import gleam/dynamic/decode
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
-/// A row you get from running the `audit_events_insert` query
-/// defined in `./src/scrumbringer_server/sql/audit_events_insert.sql`.
+/// A row you get from running the `audit_events_insert_card` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_card.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type AuditEventsInsertRow {
-  AuditEventsInsertRow(id: Int)
+pub type AuditEventsInsertCardRow {
+  AuditEventsInsertCardRow(id: Int)
 }
 
-/// name: audit_events_insert
+/// name: audit_events_insert_card
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn audit_events_insert(
+pub fn audit_events_insert_card(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
   arg_4: Int,
   arg_5: String,
-) -> Result(pog.Returned(AuditEventsInsertRow), pog.QueryError) {
+) -> Result(pog.Returned(AuditEventsInsertCardRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    decode.success(AuditEventsInsertRow(id:))
+    decode.success(AuditEventsInsertCardRow(id:))
   }
 
-  "-- name: audit_events_insert
+  "-- name: audit_events_insert_card
+insert into audit_events (
+  org_id,
+  project_id,
+  card_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `audit_events_insert_task` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_task.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AuditEventsInsertTaskRow {
+  AuditEventsInsertTaskRow(id: Int)
+}
+
+/// name: audit_events_insert_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn audit_events_insert_task(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(AuditEventsInsertTaskRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AuditEventsInsertTaskRow(id:))
+  }
+
+  "-- name: audit_events_insert_task
 insert into audit_events (
   org_id,
   project_id,

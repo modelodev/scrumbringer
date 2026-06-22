@@ -1,4 +1,4 @@
--- name: audit_events_insert
+-- name: audit_events_insert_task
 insert into audit_events (
   org_id,
   project_id,

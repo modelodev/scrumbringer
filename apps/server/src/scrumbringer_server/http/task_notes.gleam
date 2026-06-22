@@ -208,7 +208,16 @@ fn create_note_payload(
 ) -> Result(wisp.Response, wisp.Response) {
   use _ <- result.try(require_task_access(db, task_id, user.id))
 
-  case task_notes_db.create_note(db, task_id, user.id, content, url) {
+  case
+    task_notes_db.create_note_with_audit(
+      db,
+      user.org_id,
+      task_id,
+      user.id,
+      content,
+      url,
+    )
+  {
     Ok(note) -> Ok(api.ok(note_presenters.note_response(note)))
     Error(error) -> Error(service_error_response.to_database_response(error))
   }
@@ -279,7 +288,7 @@ fn set_note_pinned(
   let auth.Ctx(db: db, ..) = ctx
 
   case authorize_note_delete(db, user, task_id, note_id) {
-    Ok(Nil) -> set_note_pinned_in_db(db, task_id, note_id, pinned)
+    Ok(Nil) -> set_note_pinned_in_db(db, user, task_id, note_id, pinned)
     Error(resp) -> resp
   }
 }
@@ -323,11 +332,21 @@ fn delete_note_in_db(
 
 fn set_note_pinned_in_db(
   db: pog.Connection,
+  user: StoredUser,
   task_id: Int,
   note_id: Int,
   pinned: Bool,
 ) -> wisp.Response {
-  case task_notes_db.set_note_pinned(db, task_id, note_id, pinned) {
+  case
+    task_notes_db.set_note_pinned_with_audit(
+      db,
+      user.org_id,
+      task_id,
+      note_id,
+      user.id,
+      pinned,
+    )
+  {
     Ok(note) -> api.ok(note_presenters.note_response(note))
     Error(error) -> service_error_response.to_response(error)
   }

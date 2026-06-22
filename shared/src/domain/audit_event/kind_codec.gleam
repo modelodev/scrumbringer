@@ -12,6 +12,9 @@ pub type Kind {
   CardMoved
   TaskDependencyAdded
   TaskDependencyRemoved
+  NoteCreated
+  NotePinned
+  NoteUnpinned
 }
 
 pub fn to_string(kind: Kind) -> String {
@@ -25,6 +28,9 @@ pub fn to_string(kind: Kind) -> String {
     CardMoved -> "card_moved"
     TaskDependencyAdded -> "task_dependency_added"
     TaskDependencyRemoved -> "task_dependency_removed"
+    NoteCreated -> "note_created"
+    NotePinned -> "note_pinned"
+    NoteUnpinned -> "note_unpinned"
   }
 }
 
@@ -39,6 +45,9 @@ pub fn parse(value: String) -> Result(Kind, String) {
     "card_moved" -> Ok(CardMoved)
     "task_dependency_added" -> Ok(TaskDependencyAdded)
     "task_dependency_removed" -> Ok(TaskDependencyRemoved)
+    "note_created" -> Ok(NoteCreated)
+    "note_pinned" -> Ok(NotePinned)
+    "note_unpinned" -> Ok(NoteUnpinned)
     other -> Error(other)
   }
 }
