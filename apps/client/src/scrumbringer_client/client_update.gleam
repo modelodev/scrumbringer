@@ -334,6 +334,13 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           model.member.pool.member_card_depth_filter,
         )
+      let state = case model.member.pool.member_plan_scope_kind,
+        model.member.pool.member_plan_scope_card_id
+      {
+        member_pool.PlanScopeCard, opt.Some(card_id) ->
+          url_state.with_card_work_scope(state, card_id)
+        _, _ -> state
+      }
       router.Member(state)
     }
   }
@@ -619,6 +626,11 @@ fn apply_route_fields(
                   state,
                 )),
                 member_card_depth_filter: url_state.card_depth(state),
+                member_plan_scope_kind: case url_state.card_work_scope(state) {
+                  opt.Some(_) -> member_pool.PlanScopeCard
+                  opt.None -> pool.member_plan_scope_kind
+                },
+                member_plan_scope_card_id: url_state.card_work_scope(state),
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),
