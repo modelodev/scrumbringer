@@ -335,6 +335,7 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
       ],
       reserve_actions_slot: False,
       action_slot_class: None,
+      content_testid: Some("mobile-task-open"),
       testid: None,
     ),
     task_item.Div,

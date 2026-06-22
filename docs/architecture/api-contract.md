@@ -554,8 +554,8 @@ Routes:
 ```json
 {
   "id": 42,
-  "origin_type": "task",
-  "origin_id": 999,
+  "task_id": 999,
+  "card_id": null,
   "outcome": "applied",
   "created_at": "2026-01-12T17:00:00Z",
   "suppression_reason": "inactive",
@@ -1258,8 +1258,8 @@ Rule executions:
     "executions": [
       {
         "id": 42,
-        "origin_type": "task",
-        "origin_id": 999,
+        "task_id": 999,
+        "card_id": null,
         "outcome": "applied",
         "created_at": "2026-01-12T17:00:00Z",
         "user_id": 123,

@@ -1,7 +1,7 @@
 import gleam/option.{None, Some}
 
 import domain/api_error.{ApiError}
-import domain/card.{type Card, Card, Pendiente}
+import domain/card.{type Card, Card, Draft}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/card_refresh
@@ -151,7 +151,7 @@ pub fn try_update_ignores_non_card_refresh_messages_test() {
   let assert None =
     card_refresh.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
     )
 }
 
@@ -163,15 +163,16 @@ fn sample_card(id: Int, project_id: Int) -> Card {
   Card(
     id: id,
     project_id: project_id,
-    milestone_id: None,
+    parent_card_id: None,
     title: "Card",
     description: "",
     color: None,
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }

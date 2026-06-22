@@ -1,0 +1,1171 @@
+//// Task workflow message handlers.
+////
+//// ## Mission
+////
+//// Handles task workflow messages by coordinating validation, authorization,
+//// and database operations. This is the main entry point for task business logic.
+////
+//// ## Responsibilities
+////
+//// - Route messages to appropriate handlers
+//// - Coordinate validation and authorization
+//// - Execute database operations
+//// - Map database errors to domain errors
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request parsing (see `http/tasks.gleam`)
+//// - JSON serialization (see `http/tasks/presenters.gleam`)
+//// - Pure SQL queries (see `repository/tasks/queries.gleam`)
+////
+//// ## Relations
+////
+//// - **types.gleam**: Message, Response, Error types
+//// - **validation.gleam**: Input validation helpers
+//// - **authorization.gleam**: Authorization checks
+
+import domain/field_update
+import domain/task as domain_task
+import domain/task_state
+import domain/task_status.{type TaskPhase, Available, Claimed, Done}
+import gleam/dynamic/decode
+import gleam/option.{type Option, None, Some}
+import gleam/result
+import pog
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/audit_events_db
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/rules_engine
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/task_types_db
+import scrumbringer_server/use_case/work_sessions_db
+import scrumbringer_server/use_case/workflows/authorization
+import scrumbringer_server/use_case/workflows/types.{
+  type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
+  AlreadyClaimed, CardHasChildCards, ClaimOwnershipConflict, ClaimTask,
+  CompleteTask, CreateTask, CreateTaskType, DbError, DeleteTask, DeleteTaskType,
+  GetTask, InvalidTransition, ListTaskTypes, ListTasks, NotAuthorized, NotFound,
+  ReleaseTask, TaskBlockedByDependencies, TaskDeleted, TaskHasOperationalHistory,
+  TaskNotClaimable, TaskResult, TaskTypeAlreadyExists, TaskTypeCreated,
+  TaskTypeDeleted, TaskTypeInUse, TaskTypeUpdated, TaskTypesList, TasksList,
+  UpdateTask, UpdateTaskType, ValidationError, VersionConflict,
+}
+import scrumbringer_server/use_case/workflows/validation
+
+// =============================================================================
+// Main Handler
+// =============================================================================
+
+/// Handle a task workflow message and return a domain result.
+pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
+  case message {
+    ListTaskTypes(project_id, user_id) ->
+      handle_list_task_types(db, project_id, user_id)
+
+    CreateTaskType(project_id, user_id, org_id, name, icon, capability_id) ->
+      handle_create_task_type(
+        db,
+        project_id,
+        user_id,
+        org_id,
+        name,
+        icon,
+        capability_id,
+      )
+
+    UpdateTaskType(type_id, user_id, name, icon, capability_id) ->
+      handle_update_task_type(db, type_id, user_id, name, icon, capability_id)
+
+    DeleteTaskType(type_id, user_id) ->
+      handle_delete_task_type(db, type_id, user_id)
+
+    ListTasks(project_id, user_id, filters) ->
+      handle_list_tasks(db, project_id, user_id, filters)
+
+    CreateTask(
+      project_id: project_id,
+      user_id: user_id,
+      org_id: org_id,
+      title: title,
+      description: description,
+      priority: priority,
+      type_id: type_id,
+      card_id: card_id,
+      parent_card_id: parent_card_id,
+    ) ->
+      handle_create_task(
+        db,
+        project_id,
+        user_id,
+        org_id,
+        title,
+        description,
+        priority,
+        type_id,
+        card_id,
+        parent_card_id,
+      )
+
+    GetTask(task_id, user_id) -> handle_get_task(db, task_id, user_id)
+
+    UpdateTask(task_id, user_id, org_id, version, updates) ->
+      handle_update_task(db, task_id, user_id, org_id, version, updates)
+
+    DeleteTask(task_id, user_id) -> handle_delete_task(db, task_id, user_id)
+
+    ClaimTask(task_id, user_id, org_id, version) ->
+      handle_claim_task(db, task_id, user_id, org_id, version)
+
+    ReleaseTask(task_id, user_id, org_id, version) ->
+      handle_release_task(db, task_id, user_id, org_id, version)
+
+    CompleteTask(task_id, user_id, org_id, version) ->
+      handle_complete_task(db, task_id, user_id, org_id, version)
+  }
+}
+
+// =============================================================================
+// Message Handlers
+// =============================================================================
+
+fn handle_list_task_types(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+
+  case task_types_db.list_task_types_for_project(db, project_id) {
+    Ok(task_types) -> Ok(TaskTypesList(task_types))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to list task types"))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Failed to list task types"))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to list task types"))
+  }
+}
+
+fn handle_create_task_type(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  _org_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_admin(db, project_id, user_id)
+  use _ <- validation.validate_capability_in_project(
+    db,
+    capability_id,
+    project_id,
+  )
+
+  case
+    task_types_db.create_task_type(db, project_id, name, icon, capability_id)
+  {
+    Ok(task_type) -> Ok(TaskTypeCreated(task_type))
+    Error(service_error.AlreadyExists) -> Error(TaskTypeAlreadyExists)
+    Error(service_error.InvalidReference("capability_id")) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to create task type"))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to create task type"))
+    Error(service_error.NotFound) ->
+      Error(ValidationError("Failed to create task type"))
+  }
+}
+
+/// Story 4.9 AC13: Update task type name, icon, or capability.
+fn handle_update_task_type(
+  db: pog.Connection,
+  type_id: Int,
+  user_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(Response, Error) {
+  use project_id <- result.try(require_task_type_project_id(db, type_id))
+  use _ <- authorization.require_project_admin(db, project_id, user_id)
+  use _ <- validation.validate_capability_in_project(
+    db,
+    capability_id,
+    project_id,
+  )
+
+  case task_types_db.update_task_type(db, type_id, name, icon, capability_id) {
+    Ok(task_type) -> Ok(TaskTypeUpdated(task_type))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to update task type"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to update task type"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Task type already exists"))
+  }
+}
+
+fn require_task_type_project_id(
+  db: pog.Connection,
+  type_id: Int,
+) -> Result(Int, Error) {
+  case task_types_db.get_task_type_project_id(db, type_id) {
+    Ok(Some(project_id)) -> Ok(project_id)
+    Ok(None) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+/// Story 4.9 AC14: Delete task type (only if no tasks use it).
+fn handle_delete_task_type(
+  db: pog.Connection,
+  type_id: Int,
+  _user_id: Int,
+) -> Result(Response, Error) {
+  case task_types_db.delete_task_type(db, type_id) {
+    Ok(deleted_id) -> Ok(TaskTypeDeleted(deleted_id))
+    Error(service_error.Conflict("task_type_in_use")) -> Error(TaskTypeInUse)
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Failed to delete task type"))
+  }
+}
+
+fn handle_list_tasks(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  filters: TaskFilters,
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+
+  case
+    tasks_queries.list_tasks_for_project(
+      db,
+      project_id,
+      user_id,
+      filters.status,
+      filters.type_id,
+      filters.capability_id,
+      filters.q,
+      filters.blocked,
+    )
+  {
+    Ok(tasks) -> Ok(TasksList(tasks))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(message)) ->
+      Error(
+        DbError(pog.PostgresqlError(
+          code: "UNEXPECTED_SERVICE_ERROR",
+          name: "unexpected_service_error",
+          message: message,
+        )),
+      )
+    Error(service_error.ValidationError(message)) ->
+      Error(ValidationError(message))
+    Error(service_error.InvalidReference(message)) ->
+      Error(ValidationError(message))
+    Error(service_error.NotFound) -> Error(ValidationError("Not found"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+    Error(service_error.Conflict(message)) -> Error(ValidationError(message))
+  }
+}
+
+fn handle_create_task(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  org_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Option(Int),
+  parent_card_id: Option(Int),
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+  use validated_title <- validation.validate_task_title(title)
+  use _ <- validation.validate_priority(priority)
+  use _ <- validation.validate_task_type_in_project(db, type_id, project_id)
+  use card_id <- result.try(normalize_card_id(card_id))
+  use _ <- result.try(validate_task_create_card(db, project_id, card_id))
+
+  case
+    tasks_queries.create_task(
+      db,
+      org_id,
+      type_id,
+      project_id,
+      validated_title,
+      description,
+      priority,
+      user_id,
+      card_id,
+      parent_card_id,
+      None,
+    )
+  {
+    Ok(task) -> {
+      // Trigger rules engine for task creation (null → available)
+      let ctx =
+        rules_engine.TaskContext(task.id, project_id, org_id, type_id, card_id)
+      let _ = evaluate_task_rules_created(db, ctx, user_id)
+      Ok(TaskResult(task))
+    }
+    Error(service_error.InvalidReference("type_id")) ->
+      Error(ValidationError("Invalid type_id"))
+    Error(service_error.InvalidReference("card_id")) ->
+      Error(ValidationError("Invalid card_id"))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+    Error(service_error.NotFound) -> Error(NotFound)
+  }
+}
+
+fn normalize_card_id(card_id: Option(Int)) -> Result(Option(Int), Error) {
+  case card_id {
+    None -> Ok(None)
+    Some(id) if id > 0 -> Ok(Some(id))
+    Some(_) -> Error(ValidationError("Invalid card_id"))
+  }
+}
+
+fn validate_task_create_card(
+  db: pog.Connection,
+  project_id: Int,
+  card_id: Option(Int),
+) -> Result(Nil, Error) {
+  case card_id {
+    None -> Ok(Nil)
+    Some(id) -> {
+      use outcome <- result.try(task_create_card_outcome(db, project_id, id))
+      case outcome {
+        "ok" -> Ok(Nil)
+        "not_found" -> Error(ValidationError("Invalid card_id"))
+        "closed" -> Error(ValidationError("Card is closed"))
+        "has_cards" -> Error(CardHasChildCards)
+        _ -> Error(ValidationError("Invalid card_id"))
+      }
+    }
+  }
+}
+
+fn task_create_card_outcome(
+  db: pog.Connection,
+  project_id: Int,
+  card_id: Int,
+) -> Result(String, Error) {
+  pog.query(
+    "WITH target AS (
+       SELECT id, execution_state
+       FROM cards
+       WHERE id = $2
+         AND project_id = $1
+     )
+     SELECT CASE
+       WHEN NOT EXISTS (SELECT 1 FROM target) THEN 'not_found'
+       WHEN EXISTS (
+         SELECT 1 FROM target WHERE execution_state = 'closed'
+       ) THEN 'closed'
+       WHEN EXISTS (
+         SELECT 1 FROM cards child WHERE child.parent_card_id = $2
+       ) THEN 'has_cards'
+       ELSE 'ok'
+     END",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(card_id))
+  |> pog.returning(string_decoder())
+  |> pog.execute(db)
+  |> result.map_error(DbError)
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [outcome] -> Ok(outcome)
+      _ -> Error(ValidationError("Invalid card_id"))
+    }
+  })
+}
+
+fn string_decoder() {
+  use value <- decode.field(0, decode.string)
+  decode.success(value)
+}
+
+fn handle_get_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Ok(task) -> Ok(TaskResult(task))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn handle_update_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+) -> Result(Response, Error) {
+  use _ <- validation.validate_optional_title(updates.title)
+  use _ <- validation.validate_optional_priority(updates.priority)
+
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(current) ->
+      update_task_for_current(
+        db,
+        task_id,
+        user_id,
+        org_id,
+        version,
+        updates,
+        current,
+      )
+  }
+}
+
+fn handle_delete_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(_) ->
+      case tasks_queries.delete_task(db, task_id) {
+        Ok(deleted_id) -> Ok(TaskDeleted(deleted_id))
+        Error(service_error.Conflict("task_has_operational_history")) ->
+          Error(TaskHasOperationalHistory)
+        Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+        Error(service_error.NotFound) -> Error(NotFound)
+        Error(service_error.DbError(e)) -> Error(DbError(e))
+        Error(service_error.InvalidReference(_)) ->
+          Error(ValidationError("Invalid reference"))
+        Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+        Error(service_error.Unexpected(_)) ->
+          Error(ValidationError("Unexpected error"))
+        Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+      }
+  }
+}
+
+fn update_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  use Nil <- result.try(authorize_task_edit(current, user_id))
+  update_editable_task(db, task_id, user_id, org_id, version, updates, current)
+}
+
+fn authorize_task_edit(
+  current: domain_task.Task,
+  user_id: Int,
+) -> Result(Nil, Error) {
+  case current.state {
+    task_state.Available -> Ok(Nil)
+    task_state.Claimed(claimed_by: owner_id, ..) if owner_id == user_id ->
+      Ok(Nil)
+    task_state.Claimed(..) | task_state.Done(..) -> Error(NotAuthorized)
+  }
+}
+
+fn update_editable_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  use _ <- validation.validate_type_update(
+    db,
+    updates.type_id,
+    current.project_id,
+  )
+  use _ <- result.try(validate_placement_update(db, user_id, current, updates))
+
+  let title_update = field_update.to_option(updates.title)
+  let description_update = field_update.to_option(updates.description)
+  let priority_update = field_update.to_option(updates.priority)
+  let type_id_update = field_update.to_option(updates.type_id)
+
+  case
+    tasks_queries.update_editable_task(
+      db,
+      task_id,
+      user_id,
+      title_update,
+      description_update,
+      priority_update,
+      type_id_update,
+      updates.due_date,
+      updates.parent_card_id,
+      updates.card_id,
+      version,
+    )
+  {
+    Ok(task) -> {
+      use _ <- result.try(record_due_date_change(
+        db,
+        org_id,
+        task.project_id,
+        task_id,
+        user_id,
+        current.due_date,
+        task.due_date,
+      ))
+      Ok(TaskResult(task))
+    }
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn record_due_date_change(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  task_id: Int,
+  user_id: Int,
+  previous_due_date: Option(String),
+  next_due_date: Option(String),
+) -> Result(Nil, Error) {
+  case previous_due_date == next_due_date {
+    True -> Ok(Nil)
+    False ->
+      audit_events_db.insert_for_task(
+        db,
+        org_id,
+        project_id,
+        task_id,
+        user_id,
+        audit_events_db.DueDateChanged,
+      )
+      |> result.map_error(DbError)
+  }
+}
+
+fn validate_placement_update(
+  db: pog.Connection,
+  user_id: Int,
+  current: domain_task.Task,
+  updates: TaskUpdates,
+) -> Result(Nil, Error) {
+  use _ <- result.try(validate_card_update(
+    db,
+    user_id,
+    current.project_id,
+    updates.card_id,
+  ))
+
+  Ok(Nil)
+}
+
+fn validate_card_update(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+  card_update: field_update.FieldUpdate(Option(Int)),
+) -> Result(Nil, Error) {
+  case card_update {
+    field_update.Unchanged | field_update.Set(None) -> Ok(Nil)
+    field_update.Set(Some(card_id)) ->
+      case cards_db.get_card(db, card_id, user_id) {
+        Ok(card) ->
+          case card.project_id == project_id {
+            True -> Ok(Nil)
+            False -> Error(ValidationError("Invalid card_id"))
+          }
+        Error(_) -> Error(ValidationError("Invalid card_id"))
+      }
+  }
+}
+
+fn handle_claim_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(current) ->
+      claim_task_for_current(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn claim_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  case domain_task.status(current), current.blocked_count {
+    Claimed(_), _ -> Error(AlreadyClaimed)
+    Done, _ -> Error(InvalidTransition)
+    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
+    Available, _ ->
+      claim_available_task(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn claim_available_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  use _ <- result.try(require_task_claimable(db, current))
+
+  case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
+    Ok(task) -> claim_task_success(db, task_id, user_id, org_id, current, task)
+    Error(service_error.NotFound) -> detect_conflict(db, task_id, user_id)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn require_task_claimable(
+  db: pog.Connection,
+  task: domain_task.Task,
+) -> Result(Nil, Error) {
+  case task.card_id {
+    None -> Ok(Nil)
+    Some(card_id) -> {
+      use claimable <- result.try(card_task_is_claimable(db, card_id))
+      case claimable {
+        True -> Ok(Nil)
+        False -> Error(TaskNotClaimable)
+      }
+    }
+  }
+}
+
+fn card_task_is_claimable(
+  db: pog.Connection,
+  card_id: Int,
+) -> Result(Bool, Error) {
+  pog.query(
+    "WITH RECURSIVE ancestors AS (
+       SELECT id, parent_card_id, execution_state
+       FROM cards
+       WHERE id = $1
+       UNION ALL
+       SELECT parent.id, parent.parent_card_id, parent.execution_state
+       FROM cards parent
+       JOIN ancestors child ON child.parent_card_id = parent.id
+     )
+     SELECT EXISTS (
+       SELECT 1
+       FROM ancestors target
+       WHERE target.id = $1
+         AND target.execution_state = 'active'
+     )
+     AND NOT EXISTS (
+       SELECT 1
+       FROM ancestors
+       WHERE execution_state = 'closed'
+     )",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.returning(bool_decoder())
+  |> pog.execute(db)
+  |> result.map_error(DbError)
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [claimable] -> Ok(claimable)
+      _ -> Ok(False)
+    }
+  })
+}
+
+fn bool_decoder() {
+  use value <- decode.field(0, decode.bool)
+  decode.success(value)
+}
+
+fn claim_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: domain_task.Task,
+  task: domain_task.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  Ok(TaskResult(task))
+}
+
+fn handle_release_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(current) ->
+      release_task_for_current(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn release_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  case domain_task.status(current) {
+    Available | Done -> Error(InvalidTransition)
+    Claimed(_) ->
+      release_task_for_claimed(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn release_task_for_claimed(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  case task_state.claimed_by(current.state) {
+    Some(id) if id == user_id ->
+      release_task_for_owner(db, task_id, user_id, org_id, version, current)
+    _ -> Error(NotAuthorized)
+  }
+}
+
+fn release_task_for_owner(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  let _ =
+    work_sessions_db.close_session_for_task(
+      db,
+      user_id,
+      task_id,
+      "task_released",
+    )
+
+  case tasks_queries.release_task(db, org_id, task_id, user_id, version) {
+    Ok(task) ->
+      release_task_success(db, task_id, user_id, org_id, current, task)
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn release_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: domain_task.Task,
+  task: domain_task.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  Ok(TaskResult(task))
+}
+
+fn handle_complete_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(current) ->
+      complete_task_for_current(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn complete_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  case domain_task.status(current) {
+    Available | Done -> Error(InvalidTransition)
+    Claimed(_) ->
+      complete_task_for_claimed(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn complete_task_for_claimed(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  case task_state.claimed_by(current.state) {
+    Some(id) if id == user_id ->
+      complete_task_for_owner(db, task_id, user_id, org_id, version, current)
+    _ -> Error(NotAuthorized)
+  }
+}
+
+fn complete_task_for_owner(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
+  let _ =
+    work_sessions_db.close_session_for_task(db, user_id, task_id, "task_closed")
+
+  case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
+    Ok(task) ->
+      complete_task_success(db, task_id, user_id, org_id, current, task)
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn complete_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: domain_task.Task,
+  task: domain_task.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  let _ = maybe_rollup_card_after_complete(db, current.card_id, user_id)
+  Ok(TaskResult(task))
+}
+
+fn maybe_rollup_card_after_complete(
+  db: pog.Connection,
+  card_id: Option(Int),
+  user_id: Int,
+) -> Nil {
+  case card_id {
+    None -> Nil
+    Some(id) -> {
+      let _ = cards_db.rollup_closed_cards(db, id, user_id)
+      Nil
+    }
+  }
+}
+
+// =============================================================================
+// Conflict Detection
+// =============================================================================
+
+fn detect_conflict(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+
+    Ok(current) -> conflict_from_task(current)
+  }
+}
+
+fn conflict_from_task(current: domain_task.Task) -> Result(Response, Error) {
+  case domain_task.status(current), current.blocked_count {
+    Claimed(_), _ ->
+      Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
+    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
+    Available, _ -> Error(TaskNotClaimable)
+    _, _ -> Error(VersionConflict)
+  }
+}
+
+// =============================================================================
+// Rules Engine Integration
+// =============================================================================
+
+/// Evaluate task rules after a state change.
+/// This is a fire-and-forget call - errors are silently ignored to not block
+/// the main operation.
+fn evaluate_task_rules(
+  db: pog.Connection,
+  ctx: rules_engine.TaskContext,
+  user_id: Int,
+  from_state: TaskPhase,
+  to_state: TaskPhase,
+) -> Nil {
+  let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
+  // Fire and forget - don't block on rules engine
+  let _ = rules_engine.evaluate_rules(db, event)
+  Nil
+}
+
+/// Evaluate task rules for a newly created task (null → available).
+fn evaluate_task_rules_created(
+  db: pog.Connection,
+  ctx: rules_engine.TaskContext,
+  user_id: Int,
+) -> Nil {
+  let event = rules_engine.task_event(ctx, user_id, None, Available)
+  // Fire and forget - don't block on rules engine
+  let _ = rules_engine.evaluate_rules(db, event)
+  Nil
+}
+
+/// Evaluate card rules if task belongs to a card and its state might have changed.
+/// Card states: pendiente (no progress), en_curso (some progress), cerrada (all complete)
+fn maybe_evaluate_card_rules(
+  db: pog.Connection,
+  card_id: Option(Int),
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+) -> Nil {
+  case card_id {
+    None -> Nil
+    Some(cid) ->
+      evaluate_card_rules_for_task(db, cid, project_id, org_id, user_id)
+  }
+}
+
+fn evaluate_card_rules_for_task(
+  db: pog.Connection,
+  card_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+) -> Nil {
+  case cards_db.get_card(db, card_id, user_id) {
+    Error(_) -> Nil
+    Ok(card) -> {
+      let event =
+        rules_engine.card_event(
+          card_id,
+          project_id,
+          org_id,
+          user_id,
+          None,
+          card.state,
+        )
+
+      let _ = rules_engine.evaluate_rules(db, event)
+      Nil
+    }
+  }
+}

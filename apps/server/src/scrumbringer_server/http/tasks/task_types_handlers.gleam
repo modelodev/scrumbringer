@@ -12,13 +12,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task type persistence (see `services/task_types_db.gleam`)
-//// - Workflow orchestration (see `services/workflows/handlers.gleam`)
+//// - Task type repository (see `use_case/task_types_db.gleam`)
+//// - Workflow orchestration (see `use_case/workflows/handlers.gleam`)
 ////
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for user identity
-//// - Uses `services/workflows/handlers.gleam` for domain operations
+//// - Uses `use_case/workflows/handlers.gleam` for domain operations
 
 import gleam/http
 import gleam/result
@@ -28,9 +28,9 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/payload_responses
 import scrumbringer_server/http/tasks/payloads
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/workflows/handlers as workflow
-import scrumbringer_server/services/workflows/types as workflow_types
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/workflows/handlers as workflow
+import scrumbringer_server/use_case/workflows/types as workflow_types
 import wisp
 
 /// Lists task types for a project.
@@ -232,6 +232,7 @@ fn list_task_types_response(
     workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_)
     | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
@@ -246,6 +247,7 @@ fn create_task_type_response(
     workflow_types.TaskTypesList(_)
     | workflow_types.TaskTypeUpdated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_)
     | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
@@ -260,6 +262,7 @@ fn update_task_type_response(
     workflow_types.TaskTypesList(_)
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeDeleted(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_)
     | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
@@ -273,6 +276,7 @@ fn delete_task_type_response(
     workflow_types.TaskTypesList(_)
     | workflow_types.TaskTypeCreated(_)
     | workflow_types.TaskTypeUpdated(_)
+    | workflow_types.TaskDeleted(_)
     | workflow_types.TasksList(_)
     | workflow_types.TaskResult(_) -> Error(unexpected_response())
   }
@@ -284,12 +288,15 @@ fn list_task_types_error_response(error: workflow_types.Error) -> wisp.Response 
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
     | workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -305,11 +312,14 @@ fn create_task_type_error_response(error: workflow_types.Error) -> wisp.Response
       api.error(422, "VALIDATION_ERROR", message)
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.NotFound
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -325,11 +335,14 @@ fn update_task_type_error_response(error: workflow_types.Error) -> wisp.Response
       api.error(422, "VALIDATION_ERROR", "Task type name already exists")
     workflow_types.NotFound -> not_found_response()
     workflow_types.DbError(_) -> database_error_response()
-    workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeInUse
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()
@@ -344,11 +357,14 @@ fn delete_task_type_error_response(error: workflow_types.Error) -> wisp.Response
     workflow_types.NotFound -> not_found_response()
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.ValidationError(_)
-    | workflow_types.TaskMilestoneInheritedFromCard
-    | workflow_types.InvalidMovePoolToMilestone
+    | workflow_types.TaskParentCardInheritedFromCard
+    | workflow_types.CardHasChildCards
+    | workflow_types.InvalidMovePoolToParentCard
     | workflow_types.TaskTypeAlreadyExists
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
+    | workflow_types.TaskNotClaimable
+    | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
     | workflow_types.ClaimOwnershipConflict(_) -> unexpected_error()

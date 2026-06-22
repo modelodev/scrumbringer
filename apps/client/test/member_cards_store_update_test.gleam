@@ -1,5 +1,5 @@
 import domain/api_error.{type ApiError, ApiError}
-import domain/card.{type Card, Card, Pendiente}
+import domain/card.{type Card, Card, Draft}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
 import scrumbringer_client/client_state
@@ -21,15 +21,16 @@ fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
     id: id,
     project_id: project_id,
-    milestone_id: option.None,
+    parent_card_id: option.None,
     title: title,
     description: "",
     color: option.None,
-    state: Pendiente,
+    state: Draft,
     task_count: 0,
     completed_count: 0,
     created_by: 1,
     created_at: "2026-02-01T00:00:00Z",
+    due_date: option.None,
     has_new_notes: False,
   )
 }

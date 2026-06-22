@@ -4,8 +4,8 @@
 //// Note: All resources are now project-scoped (no org-scoped workflows/templates).
 
 import pog
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 // =============================================================================

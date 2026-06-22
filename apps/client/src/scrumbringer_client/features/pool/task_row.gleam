@@ -81,6 +81,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       actions: [div([attribute.class("task-row-actions")], claim_actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,
+      content_testid: opt.Some("task-show-open"),
       testid: opt.None,
     ),
     task_item.Div,

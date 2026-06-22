@@ -1,6 +1,6 @@
 import domain/api_token_scope
 import gleam/string
-import scrumbringer_server/services/api_tokens
+import scrumbringer_server/use_case/api_tokens
 import support/assertions as expect
 
 pub fn parse_scope_accepts_known_resources_and_access_test() {
@@ -25,8 +25,6 @@ pub fn supported_scope_strings_match_public_contract_test() {
     "cards:write",
     "notes:read",
     "notes:write",
-    "milestones:read",
-    "milestones:write",
   ])
 }
 
@@ -41,9 +39,9 @@ pub fn parse_scope_rejects_unknown_access_test() {
 }
 
 pub fn scope_to_string_returns_wire_value_test() {
-  api_token_scope.MilestonesRead
+  api_token_scope.CardsRead
   |> api_tokens.scope_to_string
-  |> expect.equal("milestones:read")
+  |> expect.equal("cards:read")
 }
 
 pub fn public_id_from_bearer_extracts_public_id_test() {

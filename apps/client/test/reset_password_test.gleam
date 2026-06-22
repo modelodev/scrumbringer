@@ -91,7 +91,7 @@ pub fn consume_success_routes_to_login_test() {
   let #(model, _) = reset_password.update(model, token_flow.Submitted)
 
   let #(next, action) =
-    reset_password.update(model, token_flow.Completed(Ok(Nil)))
+    reset_password.update(model, token_flow.Finished(Ok(Nil)))
 
   let token_flow.Model(state: state, ..) = next
 
@@ -113,7 +113,7 @@ pub fn consume_failure_sets_invalid_state_test() {
   let err = ApiError(status: 403, code: "RESET_TOKEN_USED", message: "Used")
 
   let #(next, action) =
-    reset_password.update(model, token_flow.Completed(Error(err)))
+    reset_password.update(model, token_flow.Finished(Error(err)))
 
   let token_flow.Model(state: state, submit_error: submit_error, ..) = next
 

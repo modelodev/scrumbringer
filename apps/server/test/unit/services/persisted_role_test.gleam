@@ -1,6 +1,6 @@
 import gleam/option
-import scrumbringer_server/services/persisted_role
-import scrumbringer_server/services/service_error
+import scrumbringer_server/use_case/persisted_role
+import scrumbringer_server/use_case/service_error
 
 pub fn org_role_service_error_includes_invalid_value_test() {
   let assert Error(service_error.Unexpected("Invalid persisted org role: owner")) =

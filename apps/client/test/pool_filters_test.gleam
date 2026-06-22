@@ -1,34 +1,36 @@
 import gleam/option.{None, Some}
 
-import domain/task_status.{Available, Completed}
 import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/filters
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/pool/visibility.{AllOpen, Blocked}
+import scrumbringer_client/pool_prefs
 
 fn default_pool() -> member_pool.Model {
   member_pool.default_model()
 }
 
-pub fn status_changed_parses_status_and_requests_refresh_test() {
+pub fn visibility_changed_parses_visibility_and_requests_refresh_test() {
   let #(pool, should_refresh) =
-    filters.handle_status_changed(default_pool(), "available")
+    filters.handle_visibility_changed(default_pool(), "blocked")
 
-  let assert Some(Available) = pool.member_filters_status
+  let assert Blocked = pool.member_pool_visibility
   let assert True = should_refresh
 }
 
-pub fn status_changed_clears_blank_or_invalid_and_requests_refresh_test() {
+pub fn visibility_changed_falls_back_to_default_and_requests_refresh_test() {
   let pool =
-    member_pool.Model(..default_pool(), member_filters_status: Some(Completed))
+    member_pool.Model(..default_pool(), member_pool_visibility: Blocked)
 
-  let #(blank_pool, blank_refresh) = filters.handle_status_changed(pool, "  ")
+  let #(blank_pool, blank_refresh) =
+    filters.handle_visibility_changed(pool, "  ")
   let #(invalid_pool, invalid_refresh) =
-    filters.handle_status_changed(pool, "unknown")
+    filters.handle_visibility_changed(pool, "unknown")
 
-  let assert None = blank_pool.member_filters_status
+  let assert AllOpen = blank_pool.member_pool_visibility
   let assert True = blank_refresh
-  let assert None = invalid_pool.member_filters_status
+  let assert AllOpen = invalid_pool.member_pool_visibility
   let assert True = invalid_refresh
 }
 
@@ -68,7 +70,7 @@ pub fn clear_resets_all_filters_and_scope_test() {
   let pool =
     member_pool.Model(
       ..default_pool(),
-      member_filters_status: Some(Completed),
+      member_pool_visibility: Blocked,
       member_filters_type_id: Some(11),
       member_filters_capability_id: Some(12),
       member_filters_q: "backend",
@@ -77,7 +79,7 @@ pub fn clear_resets_all_filters_and_scope_test() {
 
   let #(next, should_refresh) = filters.handle_clear(pool)
 
-  let assert None = next.member_filters_status
+  let assert AllOpen = next.member_pool_visibility
   let assert None = next.member_filters_type_id
   let assert None = next.member_filters_capability_id
   let assert "" = next.member_filters_q
@@ -103,10 +105,10 @@ pub fn filters_try_update_handles_refreshing_filter_message_test() {
   let assert Some(#(pool, should_refresh)) =
     filters.try_update(
       default_pool(),
-      pool_messages.MemberPoolStatusChanged("available"),
+      pool_messages.MemberPoolVisibilityChanged("blocked"),
     )
 
-  let assert Some(Available) = pool.member_filters_status
+  let assert Blocked = pool.member_pool_visibility
   let assert True = should_refresh
 }
 
@@ -123,5 +125,8 @@ pub fn filters_try_update_handles_non_refreshing_search_message_test() {
 
 pub fn filters_try_update_ignores_non_filter_message_test() {
   let assert None =
-    filters.try_update(default_pool(), pool_messages.MemberPoolFiltersToggled)
+    filters.try_update(
+      default_pool(),
+      pool_messages.MemberPoolViewModeSet(pool_prefs.Canvas),
+    )
 }

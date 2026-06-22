@@ -50,8 +50,10 @@ pub fn header(config: HeaderConfig(msg)) -> Element(msg) {
 
 pub fn surface(config: SurfaceConfig(msg)) -> Element(msg) {
   div(surface_attrs(config), [
-    config.header,
-    optional_slot("work-surface-filters", config.filters),
+    div([attribute.class("work-surface-chrome")], [
+      config.header,
+      optional_slot("work-surface-filters", config.filters),
+    ]),
     optional_slot("work-surface-state", config.state),
     optional_slot("work-surface-content", config.content),
   ])

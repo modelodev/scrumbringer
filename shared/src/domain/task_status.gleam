@@ -8,14 +8,14 @@
 ////
 //// ```gleam
 //// import shared/domain/task_status.{
-////   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
+////   type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 //// }
 ////
 //// case status {
 ////   Available -> "Task is available"
 ////   Claimed(Taken) -> "Task is claimed but not being worked on"
 ////   Claimed(Ongoing) -> "Task is actively being worked on"
-////   Completed -> "Task is done"
+////   Done -> "Task is done"
 //// }
 //// ```
 
@@ -27,7 +27,7 @@
 ///
 /// - `Available`: Task is open and can be claimed
 /// - `Claimed(ClaimedState)`: Task is assigned to someone
-/// - `Completed`: Task is finished
+/// - `Done`: Task is finished
 ///
 /// ## Example
 ///
@@ -36,13 +36,13 @@
 ///   Available -> allow_claim(task)
 ///   Claimed(Ongoing) -> show_timer(task)
 ///   Claimed(Taken) -> show_claimed_badge(task)
-///   Completed -> show_completed_badge(task)
+///   Done -> show_completed_badge(task)
 /// }
 /// ```
-pub type TaskStatus {
+pub type TaskPhase {
   Available
   Claimed(ClaimedState)
-  Completed
+  Done
 }
 
 /// Sub-state for claimed tasks.
@@ -73,14 +73,14 @@ pub type ClaimedState {
 ///   WorkAvailable -> show_claim_button()
 ///   WorkClaimed -> show_release_button()
 ///   WorkOngoing -> show_timer()
-///   WorkCompleted -> show_done_badge()
+///   WorkDone -> show_done_badge()
 /// }
 /// ```
 pub type WorkState {
   WorkAvailable
   WorkClaimed
   WorkOngoing
-  WorkCompleted
+  WorkDone
 }
 
 /// User currently working on a task.
@@ -98,8 +98,8 @@ pub type OngoingBy {
 }
 
 /// Error returned when an external task status/work state cannot be parsed.
-pub type TaskStatusParseError {
-  UnknownTaskStatus(String)
+pub type TaskPhaseParseError {
+  UnknownTaskPhase(String)
   UnknownWorkState(String)
 }
 
@@ -107,7 +107,7 @@ pub type TaskStatusParseError {
 // Status Parsing
 // =============================================================================
 
-/// Parse a task status string into TaskStatus.
+/// Parse a task status string into TaskPhase.
 ///
 /// ## Example
 ///
@@ -115,22 +115,22 @@ pub type TaskStatusParseError {
 /// parse_task_status("available")  // -> Ok(Available)
 /// parse_task_status("claimed")    // -> Ok(Claimed(Taken))
 /// parse_task_status("ongoing")    // -> Ok(Claimed(Ongoing))
-/// parse_task_status("completed")  // -> Ok(Completed)
-/// parse_task_status("invalid")    // -> Error(UnknownTaskStatus("invalid"))
+/// parse_task_status("completed")  // -> Ok(Done)
+/// parse_task_status("invalid")    // -> Error(UnknownTaskPhase("invalid"))
 /// ```
 pub fn parse_task_status(
   value: String,
-) -> Result(TaskStatus, TaskStatusParseError) {
+) -> Result(TaskPhase, TaskPhaseParseError) {
   case value {
     "available" -> Ok(Available)
     "claimed" -> Ok(Claimed(Taken))
     "ongoing" -> Ok(Claimed(Ongoing))
-    "completed" -> Ok(Completed)
-    other -> Error(UnknownTaskStatus(other))
+    "completed" -> Ok(Done)
+    other -> Error(UnknownTaskPhase(other))
   }
 }
 
-/// Convert TaskStatus to string for API.
+/// Convert TaskPhase to string for API.
 ///
 /// ## Example
 ///
@@ -138,14 +138,14 @@ pub fn parse_task_status(
 /// task_status_to_string(Available)        // -> "available"
 /// task_status_to_string(Claimed(Taken))   // -> "claimed"
 /// task_status_to_string(Claimed(Ongoing)) // -> "ongoing"
-/// task_status_to_string(Completed)        // -> "completed"
+/// task_status_to_string(Done)        // -> "completed"
 /// ```
-pub fn task_status_to_string(status: TaskStatus) -> String {
+pub fn task_status_to_string(status: TaskPhase) -> String {
   case status {
     Available -> "available"
     Claimed(Taken) -> "claimed"
     Claimed(Ongoing) -> "ongoing"
-    Completed -> "completed"
+    Done -> "completed"
   }
 }
 
@@ -157,25 +157,23 @@ pub fn task_status_to_string(status: TaskStatus) -> String {
 /// parse_work_state("available")  // -> Ok(WorkAvailable)
 /// parse_work_state("claimed")    // -> Ok(WorkClaimed)
 /// parse_work_state("ongoing")    // -> Ok(WorkOngoing)
-/// parse_work_state("completed")  // -> Ok(WorkCompleted)
+/// parse_work_state("completed")  // -> Ok(WorkDone)
 /// parse_work_state("invalid")    // -> Error(UnknownWorkState("invalid"))
 /// ```
-pub fn parse_work_state(
-  value: String,
-) -> Result(WorkState, TaskStatusParseError) {
+pub fn parse_work_state(value: String) -> Result(WorkState, TaskPhaseParseError) {
   case value {
     "available" -> Ok(WorkAvailable)
     "claimed" -> Ok(WorkClaimed)
     "ongoing" -> Ok(WorkOngoing)
-    "completed" -> Ok(WorkCompleted)
+    "completed" -> Ok(WorkDone)
     other -> Error(UnknownWorkState(other))
   }
 }
 
 /// Convert parse errors into stable labels for diagnostics.
-pub fn parse_error_to_string(error: TaskStatusParseError) -> String {
+pub fn parse_error_to_string(error: TaskPhaseParseError) -> String {
   case error {
-    UnknownTaskStatus(value) -> "Unknown task status: " <> value
+    UnknownTaskPhase(value) -> "Unknown task status: " <> value
     UnknownWorkState(value) -> "Unknown work state: " <> value
   }
 }
@@ -192,39 +190,39 @@ pub fn work_state_to_string(state: WorkState) -> String {
     WorkAvailable -> "available"
     WorkClaimed -> "claimed"
     WorkOngoing -> "ongoing"
-    WorkCompleted -> "completed"
+    WorkDone -> "completed"
   }
 }
 
-/// Convert TaskStatus into a WorkState for UI display.
+/// Convert TaskPhase into a WorkState for UI display.
 ///
 /// ## Example
 ///
 /// ```gleam
 /// to_work_state(Claimed(Ongoing)) // -> WorkOngoing
 /// ```
-pub fn to_work_state(status: TaskStatus) -> WorkState {
+pub fn to_work_state(status: TaskPhase) -> WorkState {
   case status {
     Available -> WorkAvailable
     Claimed(Taken) -> WorkClaimed
     Claimed(Ongoing) -> WorkOngoing
-    Completed -> WorkCompleted
+    Done -> WorkDone
   }
 }
 
-/// Convert WorkState into a TaskStatus.
+/// Convert WorkState into a TaskPhase.
 ///
 /// ## Example
 ///
 /// ```gleam
 /// from_work_state(WorkClaimed) // -> Claimed(Taken)
 /// ```
-pub fn from_work_state(state: WorkState) -> TaskStatus {
+pub fn from_work_state(state: WorkState) -> TaskPhase {
   case state {
     WorkAvailable -> Available
     WorkClaimed -> Claimed(Taken)
     WorkOngoing -> Claimed(Ongoing)
-    WorkCompleted -> Completed
+    WorkDone -> Done
   }
 }
 
@@ -243,19 +241,19 @@ pub fn from_work_state(state: WorkState) -> TaskStatus {
 /// from_db("available", False)  // -> Ok(Available)
 /// from_db("claimed", False)    // -> Ok(Claimed(Taken))
 /// from_db("claimed", True)     // -> Ok(Claimed(Ongoing))
-/// from_db("completed", False)  // -> Ok(Completed)
-/// from_db("invalid", False)    // -> Error(UnknownTaskStatus("invalid"))
+/// from_db("completed", False)  // -> Ok(Done)
+/// from_db("invalid", False)    // -> Error(UnknownTaskPhase("invalid"))
 /// ```
 pub fn from_db(
   status: String,
   is_ongoing: Bool,
-) -> Result(TaskStatus, TaskStatusParseError) {
+) -> Result(TaskPhase, TaskPhaseParseError) {
   case status, is_ongoing {
     "available", _ -> Ok(Available)
     "claimed", True -> Ok(Claimed(Ongoing))
     "claimed", False -> Ok(Claimed(Taken))
-    "completed", _ -> Ok(Completed)
-    other, _ -> Error(UnknownTaskStatus(other))
+    "completed", _ -> Ok(Done)
+    other, _ -> Error(UnknownTaskPhase(other))
   }
 }
 
@@ -267,13 +265,13 @@ pub fn from_db(
 /// to_db_status(Available)        // -> "available"
 /// to_db_status(Claimed(Taken))   // -> "claimed"
 /// to_db_status(Claimed(Ongoing)) // -> "claimed"
-/// to_db_status(Completed)        // -> "completed"
+/// to_db_status(Done)        // -> "completed"
 /// ```
-pub fn to_db_status(status: TaskStatus) -> String {
+pub fn to_db_status(status: TaskPhase) -> String {
   case status {
     Available -> "available"
     Claimed(_) -> "claimed"
-    Completed -> "completed"
+    Done -> "completed"
   }
 }
 
@@ -286,7 +284,7 @@ pub fn to_db_status(status: TaskStatus) -> String {
 /// to_db_ongoing(Claimed(Taken))   // -> False
 /// to_db_ongoing(Available)        // -> False
 /// ```
-pub fn to_db_ongoing(status: TaskStatus) -> Bool {
+pub fn to_db_ongoing(status: TaskPhase) -> Bool {
   case status {
     Claimed(Ongoing) -> True
     _ -> False
@@ -306,7 +304,7 @@ pub fn to_db_ongoing(status: TaskStatus) -> Bool {
 /// is_claimed(Claimed(Ongoing)) // -> True
 /// is_claimed(Available)        // -> False
 /// ```
-pub fn is_claimed(status: TaskStatus) -> Bool {
+pub fn is_claimed(status: TaskPhase) -> Bool {
   case status {
     Claimed(_) -> True
     _ -> False
@@ -321,7 +319,7 @@ pub fn is_claimed(status: TaskStatus) -> Bool {
 /// is_ongoing(Claimed(Ongoing)) // -> True
 /// is_ongoing(Claimed(Taken))   // -> False
 /// ```
-pub fn is_ongoing(status: TaskStatus) -> Bool {
+pub fn is_ongoing(status: TaskPhase) -> Bool {
   case status {
     Claimed(Ongoing) -> True
     _ -> False
@@ -335,14 +333,14 @@ pub fn is_ongoing(status: TaskStatus) -> Bool {
 /// ```gleam
 /// parse_filter("available")  // -> Ok(Available)
 /// parse_filter("claimed")    // -> Ok(Claimed(Taken))
-/// parse_filter("completed")  // -> Ok(Completed)
+/// parse_filter("completed")  // -> Ok(Done)
 /// parse_filter("invalid")    // -> Error(Nil)
 /// ```
-pub fn parse_filter(value: String) -> Result(TaskStatus, Nil) {
+pub fn parse_filter(value: String) -> Result(TaskPhase, Nil) {
   case value {
     "available" -> Ok(Available)
     "claimed" -> Ok(Claimed(Taken))
-    "completed" -> Ok(Completed)
+    "completed" -> Ok(Done)
     _ -> Error(Nil)
   }
 }
@@ -355,6 +353,6 @@ pub fn parse_filter(value: String) -> Result(TaskStatus, Nil) {
 /// to_filter_string(Available) // -> "available"
 /// to_filter_string(Claimed(_)) // -> "claimed"
 /// ```
-pub fn to_filter_string(status: TaskStatus) -> String {
+pub fn to_filter_string(status: TaskPhase) -> String {
   to_db_status(status)
 }

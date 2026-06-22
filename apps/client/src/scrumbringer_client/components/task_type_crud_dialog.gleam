@@ -35,8 +35,8 @@ import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
-import domain/capability/codec as capability_codec
-import domain/task/codec as task_codec
+import domain/capability/capability_codec
+import domain/task/task_codec
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/api/tasks/task_types as api_task_types

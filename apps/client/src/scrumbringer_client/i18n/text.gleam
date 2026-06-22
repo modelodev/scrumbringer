@@ -52,7 +52,8 @@ pub type Text {
   TaskCreatedNotVisibleByFilters
   TaskClaimed
   TaskReleased
-  TaskCompleted
+  TaskDone
+  TaskDeleted
   SkillsSaved
   NoteAdded
 
@@ -63,6 +64,7 @@ pub type Text {
   TaskVersionConflict
   TaskAlreadyClaimed
   TaskBlockedByDependencies
+  TaskHasOperationalHistory
   TaskNotFound
   TaskMutationRolledBack
 
@@ -75,6 +77,16 @@ pub type Text {
   SelectUserFirst
   InvalidXY
   ContentRequired
+  TaskCreateCardHasChildCards
+  TaskCreateParentCardConflict
+  TaskCreateRootPoolHint
+  TaskCreateMissingCard
+  TaskCreateDraftCardHint
+  TaskCreateActiveCardHint
+  TaskCreateClosedCard
+  CardClosedCannotReceiveChildren
+  CardHasOperationalHistory
+  ActivateHierarchyManagerOnly
 
   // Accessibility
   SkipToContent
@@ -105,6 +117,9 @@ pub type Text {
   Removing
   Delete
   DeleteAsAdmin
+  PinNote
+  UnpinNote
+  CannotPinNote
   Deleting
   Deleted
   NoneOption
@@ -137,6 +152,9 @@ pub type Text {
   AddNote
   NotePlaceholder
   RecentNotes
+  PinnedContext
+  OpenNotes
+  MorePinnedNotes(count: Int)
   Dependencies
   AddDependency
   NoDependencies
@@ -150,6 +168,9 @@ pub type Text {
   Blocked
   BlockedByTasks(count: Int)
   HiddenBlockedByFilters(count: Int)
+  TaskOverdue(due_date: String)
+  TaskDueToday
+  TaskDueSoon(due_date: String)
   EditPosition
   XLabel
   YLabel
@@ -162,11 +183,36 @@ pub type Text {
   Kanban
   CapabilitiesBoard
   People
-  Milestones
+  Hierarchies
+  Tracking
   WorkSurfaceView
+  PlanScope
+  PlanScopeProject
+  PlanScopeLevel
+  PlanScopeCard
+  PlanScopeAllLevels
+  PlanScopeSelectCard
+  PlanScopeNoActiveCards
+  PlanMode
+  PlanModeStructure
+  PlanModeKanban
+  KanbanColumnPending
+  PlanEmptyCardScopeBody
+  PlanEmptyScopeTitle
+  PlanEmptyScopeBody
+  PlanCapabilityMode
+  PlanCapabilityList
+  PlanCapabilityMatrix
+  PlanClosed
   PoolPurpose
-  ShowFilters
-  HideFilters
+  PoolVisibilityLabel
+  PoolVisibilityAllOpen
+  PoolVisibilityReadyToClaim
+  PoolVisibilityBlocked
+  PoolOpenCount
+  PoolReadyCount
+  PoolBlockedCount
+  PoolHealthyLimit
   NewTask
   Description
   Priority
@@ -190,7 +236,16 @@ pub type Text {
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
-  HideCompletedTasks
+  NoOpenPoolTasks
+  NoOpenPoolTasksBody
+  NoClaimablePoolTasks
+  NoClaimablePoolTasksBlockedBody(count: Int)
+  NoClaimablePoolTasksBody
+  NoBlockedPoolTasks
+  NoBlockedPoolTasksBody
+  ViewBlockedTasks
+  ViewOpenTasks
+  HideDoneTasks
   TypeNumber(type_id: Int)
   MetaType
   MetaPriority
@@ -223,6 +278,16 @@ pub type Text {
   PeopleAvailableCapacity
   PeopleNoClaimedTasks
   PeopleNoCardContext
+  PeopleShowLabel
+  PeopleFilterEveryone
+  PeopleFilterWithWork
+  PeopleFilterAttention
+  PeopleFilterFree
+  PeopleSortLabel
+  PeopleSortAttention
+  PeopleSortName
+  PeopleSortClaimed
+  PeopleCardScopeNoWork
   CapabilityBoardLoading
   CapabilityBoardEmpty
   CapabilityBoardNoResults
@@ -231,90 +296,104 @@ pub type Text {
   CapabilityBoardEmptyClaimed
   CapabilityBoardEmptyOngoing
   CapabilityBoardPurpose
+  CapabilityBoardCardColumn
+  CapabilityBoardLevelColumn
+  CapabilityBoardTotal
+  CapabilityBoardComplete
+  CapabilityBoardNoTasks
+  CapabilityBoardEmptyCell
   CapabilityBoardOldest
   CapabilityBoardPressureBlocked
   CapabilityBoardPressureNoTraction
   CapabilityBoardPressureFlowing
   NoCapability
-  MilestonesEmpty
-  MilestonesNoResults
-  MilestonesLoadError
-  MilestonesPurpose
-  CreateMilestone
-  CreateFirstMilestone
-  MilestoneCreated
-  MilestoneCreateFailed
-  ShowCompletedMilestones
-  ShowEmptyMilestones
-  MilestonesReady
-  MilestonesActive
-  MilestonesCompleted
-  MilestoneStateReady
-  MilestoneStateActive
-  MilestoneStateCompleted
-  MilestoneEmptyHint
-  MilestoneDone
-  MilestoneActivationTitle
-  MilestoneActivationBody(cards_count: Int, tasks_count: Int)
-  MilestoneActivationWarning
-  MilestoneDetails
-  MilestoneTabOverview
-  MilestoneTabContent
-  MilestoneTabPlanning
-  ActivateMilestone
-  ActivatingMilestone
-  MilestoneActivated
-  MilestoneActivateFailed
-  EditMilestone
-  DeleteMilestone
-  DeleteMilestoneTitle
-  DeleteMilestoneConfirm(name: String)
-  MilestoneUpdated
-  MilestoneUpdateFailed
-  MilestoneDeleted
-  MilestoneDeleteFailed
-  MilestoneDeleteNotAllowed
-  MilestoneAlreadyActive
-  MilestoneActivationIrreversible
-  MilestoneOpenDetails
-  MilestoneMoreActions
-  MilestoneMoveTo
-  MilestoneCardsLabel
-  MilestoneTasksLabel
-  MilestoneCardsProgress(completed: Int, total: Int)
-  MilestoneTasksProgress(completed: Int, total: Int)
-  MilestoneStructureSummary
-  MilestoneActions
-  MilestoneSearchPlaceholder
-  MilestoneLooseTasksNotice
-  MilestoneLooseTasksHint
-  MilestoneCardTasksEmpty
-  MilestoneCardTasksRegion(name: String)
-  MilestoneNoSelection
-  MilestoneNoSelectionHint
-  MilestoneCardsCount(cards_count: Int)
-  MilestoneLooseTasksCount(tasks_count: Int)
-  MilestoneBlockedTasksCount(tasks_count: Int)
-  MilestoneEmptyCardsCount(cards_count: Int)
-  MilestoneCardsWithoutProgressCount(cards_count: Int)
-  MilestoneStructureComplete
-  MilestoneLooseTasksDiagnostic(tasks_count: Int)
-  MilestoneBlockedTasksDiagnostic(tasks_count: Int)
-  MilestoneEmptyCardsDiagnostic(cards_count: Int)
-  MilestoneCardsWithoutProgressDiagnostic(cards_count: Int)
-  MilestoneCardEmpty
-  MilestoneCardNoProgress
-  MilestoneCardBlocked
-  MilestoneCardComplete
+  HierarchiesEmpty
+  HierarchiesNoResults
+  HierarchiesLoadError
+  HierarchiesPurpose
+  CreateHierarchy
+  CreateFirstHierarchy
+  HierarchyCreated
+  HierarchyCreateFailed
+  ShowDoneHierarchies
+  ShowEmptyHierarchies
+  HierarchiesActive
+  HierarchiesDone
+  HierarchyStateReady
+  HierarchyStateActive
+  HierarchyStateDone
+  HierarchyEmptyHint
+  HierarchyDone
+  HierarchyActivationTitle
+  HierarchyActivationBody(cards_count: Int, tasks_count: Int)
+  HierarchyActivationWarning
+  HierarchyDetails
+  HierarchyTabOverview
+  HierarchyTabContent
+  HierarchyTabPlanning
+  ActivateHierarchy
+  ActivatingHierarchy
+  HierarchyActivated
+  HierarchyActivationPoolImpact(pool_impact: Int)
+  HierarchyActivationPoolSaturated(
+    pool_open_after: Int,
+    healthy_pool_limit: Int,
+  )
+  HierarchyActivateFailed
+  EditHierarchy
+  DeleteHierarchy
+  DeleteHierarchyTitle
+  DeleteHierarchyConfirm(name: String)
+  HierarchyUpdated
+  HierarchyUpdateFailed
+  HierarchyDeleted
+  HierarchyDeleteFailed
+  HierarchyDeleteNotAllowed
+  HierarchyAlreadyActive
+  HierarchyActivationIrreversible
+  HierarchyOpenDetails
+  HierarchyMoreActions
+  HierarchyMoveTo
+  HierarchyCardsLabel
+  HierarchyTasksLabel
+  HierarchyCardsProgress(completed: Int, total: Int)
+  HierarchyTasksProgress(completed: Int, total: Int)
+  HierarchyStructureSummary
+  HierarchyActions
+  HierarchySearchPlaceholder
+  HierarchyLooseTasksNotice
+  HierarchyLooseTasksHint
+  HierarchyCardTasksEmpty
+  HierarchyCardTasksRegion(name: String)
+  HierarchyNoSelection
+  HierarchyNoSelectionHint
+  HierarchyCardsCount(cards_count: Int)
+  HierarchyLooseTasksCount(tasks_count: Int)
+  HierarchyBlockedTasksCount(tasks_count: Int)
+  HierarchyEmptyCardsCount(cards_count: Int)
+  HierarchyCardsWithoutProgressCount(cards_count: Int)
+  HierarchyStructureComplete
+  HierarchyLooseTasksDiagnostic(tasks_count: Int)
+  HierarchyBlockedTasksDiagnostic(tasks_count: Int)
+  HierarchyEmptyCardsDiagnostic(cards_count: Int)
+  HierarchyCardsWithoutProgressDiagnostic(cards_count: Int)
+  HierarchyCardEmpty
+  HierarchyCardNoProgress
+  HierarchyCardBlocked
+  HierarchyCardComplete
+  OpenIn
+  ViewInPlan
   ViewInKanban
-  MilestoneTotalTasksCount(tasks_count: Int)
-  MilestoneTaskStatusAvailable
-  MilestoneTaskStatusClaimed
-  MilestoneTaskStatusCompleted
-  ExpandMilestoneCard(name: String)
-  CollapseMilestoneCard(name: String)
-  ExpandMilestone(name: String)
-  CollapseMilestone(name: String)
+  ViewInCapabilities
+  ViewInPeople
+  HierarchyTotalTasksCount(tasks_count: Int)
+  HierarchyTaskPhaseAvailable
+  HierarchyTaskPhaseClaimed
+  HierarchyTaskPhaseDone
+  ExpandHierarchyCard(name: String)
+  CollapseHierarchyCard(name: String)
+  ExpandHierarchy(name: String)
+  CollapseHierarchy(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
   PeopleActiveSection
@@ -373,7 +452,6 @@ pub type Text {
   ResourceTasks
   ResourceCards
   ResourceNotes
-  ResourceMilestones
   LastUsed
   ExpiresAtOptional
   Revoke
@@ -418,7 +496,7 @@ pub type Text {
   WindowDays(days: Int)
   Claimed
   Released
-  Completed
+  Done
   MetricsOverview
   LoadingOverview
   ReleasePercent
@@ -615,10 +693,10 @@ pub type Text {
   DeleteCard
   CardTitle
   CardDescription
-  CardState
-  CardStatePendiente
-  CardStateEnCurso
-  CardStateCerrada
+  CardPhase
+  CardPhaseDraft
+  CardPhaseActive
+  CardPhaseClosed
   CardTasks
   CardProgress
   CardCreated
@@ -629,9 +707,9 @@ pub type Text {
   NoCardsYet
   CardTaskCount(completed: Int, total: Int)
   KanbanEmptyColumn
-  KanbanEmptyPendiente
-  KanbanEmptyEnCurso
-  KanbanEmptyCerrada
+  KanbanEmptyDraft
+  KanbanEmptyActive
+  KanbanEmptyClosed
   KanbanSurfacePurpose
   KanbanSummaryCards
   KanbanSummaryOngoing
@@ -706,11 +784,11 @@ pub type Text {
   TaskStateAvailable
   TaskStateClaimed
   TaskStateOngoing
-  TaskStateCompleted
+  TaskStateDone
   TaskStateAvailableHint
   TaskStateClaimedHint
   TaskStateOngoingHint
-  TaskStateCompletedHint
+  TaskStateDoneHint
   TaskNextActionLabel
   TaskNextActionClaim
   TaskNextActionStart
@@ -761,6 +839,7 @@ pub type Text {
   RuleMetricsNoRules
   ViewDetails
   OpenTask
+  OpenCard
   AgeLabel
   ParentCardLabel
   RuleMetricsDrilldown
@@ -805,8 +884,11 @@ pub type Text {
 
   // Card detail (member)
   CardAddTask
+  CardAddSubcard
+  CardEmptyWorkTitle
+  CardEmptyWorkBody
   CardTasksEmpty
-  CardTasksCompleted
+  CardTasksDone
   TaskType
   TaskTitlePlaceholder
 
@@ -826,8 +908,8 @@ pub type Text {
   QuickTask
   NoTasksYet
   CardTasksMore(hidden_count: Int)
-  NewCardInThisMilestone
-  MilestoneTarget
+  NewCardInThisHierarchy
+  HierarchyTarget
   Configuration
   Team
   // Note: Capabilities is already defined in the Capabilities section above
@@ -838,7 +920,7 @@ pub type Text {
   Rules
   // Story 4.9: Cards config filters (UX improvements)
   ShowEmptyCards
-  ShowCompletedCards
+  ShowDoneCards
   Organization
   OrgUsers
   Invites
@@ -870,26 +952,35 @@ pub type Text {
   // AC21: Tab labels
   TabTasks
   TabNotes
-  // 5.4.1: Task detail modal
+  TabSummary
+  TabWork
+  TabActivity
+  ActivityLoading
+  ActivityEmpty
+  ActivityLoadFailed
+  ActivityLoadMore(remaining: Int)
+  // 5.4.1: Task Show
   TabDetails
   TabDependencies
-  TabMetrics
+  TabBlockers
   EditTask
   TaskUpdated
   TaskEditPlanning
   TaskEditLocation
   TaskEditKeyboardHint
   TaskEditRequiresClaim
-  TaskEditCompletedReadOnly
-  MilestoneLabel
-  NoMilestone
-  TaskMilestoneInheritedFromCard
+  TaskEditDoneReadOnly
+  HierarchyLabel
+  NoHierarchy
+  TaskHierarchyInheritedFromCard
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
+  TaskDueDateLabel
+  NoDueDate
   TaskBlockingClear
   MetricsTasksTotal
-  MetricsTasksCompleted
+  MetricsTasksDone
   MetricsProgress
   MetricsRebotesAvg
   MetricsPoolLifetimeAvg

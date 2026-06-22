@@ -41,6 +41,13 @@ pub fn replace(
   update(tasks, updated_task.id, fn(_task) { updated_task })
 }
 
+pub fn remove(tasks: Remote(List(Task)), task_id: Int) -> Remote(List(Task)) {
+  case tasks {
+    Loaded(items) -> Loaded(list.filter(items, fn(task) { task.id != task_id }))
+    _ -> tasks
+  }
+}
+
 pub fn set_state(
   tasks: Remote(List(Task)),
   task_id: Int,

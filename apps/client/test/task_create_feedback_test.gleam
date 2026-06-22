@@ -11,6 +11,7 @@ import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/task_created_feedback
 import scrumbringer_client/features/pool/task_created_update
+import scrumbringer_client/features/pool/visibility
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/toast
 
@@ -26,12 +27,11 @@ fn make_task(id: Int, title: String, type_id: Int) -> Task {
     description: Some("Task description"),
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -94,7 +94,7 @@ pub fn post_create_effects_emit_feedback_timeout_and_toast_test() {
 fn config(locale, type_filter) -> task_created_feedback.Config {
   task_created_feedback.Config(
     locale: locale,
-    status_filter: None,
+    visibility: visibility.default(),
     work_filters: available_tasks.Config(
       tasks: Loaded([]),
       task_types: Loaded([]),
@@ -103,6 +103,7 @@ fn config(locale, type_filter) -> task_created_feedback.Config {
       capability_filter: None,
       search_query: "",
       capability_scope: AllCapabilities,
+      visibility: visibility.default(),
     ),
   )
 }

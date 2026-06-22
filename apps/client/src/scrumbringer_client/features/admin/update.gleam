@@ -283,14 +283,11 @@ fn update_without_api_tokens(
     admin_messages.AssignmentsRemoveClicked(_, _)
     | admin_messages.AssignmentsRemoveCancelled
     | admin_messages.AssignmentsRemoveConfirmed
-    | admin_messages.AssignmentsRemoveCompleted(_, _, _) -> #(
-      model,
-      effect.none(),
-    )
+    | admin_messages.AssignmentsRemoveDone(_, _, _) -> #(model, effect.none())
 
     // Handled by assignments_route.try_update before this dispatch.
     admin_messages.AssignmentsRoleChanged(_, _, _)
-    | admin_messages.AssignmentsRoleChangeCompleted(_, _, _) -> #(
+    | admin_messages.AssignmentsRoleChangeDone(_, _, _) -> #(
       model,
       effect.none(),
     )

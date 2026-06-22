@@ -1,9 +1,11 @@
 import gleam/int
 import gleam/option.{type Option}
+import gleam/order
 import gleam/string
 
 import domain/card.{type CardColor}
-import domain/task.{type Task, type TaskNote, Task}
+import domain/note/entity.{type Note}
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{Claimed}
 import lustre/attribute
@@ -13,6 +15,7 @@ import lustre/event
 
 import scrumbringer_client/features/pool/labels as pool_labels
 import scrumbringer_client/features/pool/task_hover
+import scrumbringer_client/features/pool/urgency
 import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
@@ -29,18 +32,19 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     theme: Theme,
-    task: Task,
+    task: domain_task.Task,
     current_user_id: Option(Int),
     card_title: Option(String),
     card_color: Option(CardColor),
     x: Int,
     y: Int,
     age_days: Int,
+    project_today: String,
     highlight_class: String,
     touch_preview: Bool,
     disable_actions: Bool,
     hidden_blocked_count: Option(Int),
-    notes: List(TaskNote),
+    notes: List(Note),
     on_claim: msg,
     on_release: msg,
     on_complete: msg,
@@ -56,8 +60,9 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let Task(id: id, task_type: task_type, title: title, status: status, ..) =
+  let domain_task.Task(id: id, task_type: task_type, title: title, ..) =
     config.task
+  let status = domain_task.status(config.task)
 
   let is_mine =
     task_state.claimed_by(config.task.state) == config.current_user_id
@@ -66,6 +71,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       config.card_color,
       config.x,
       config.age_days,
+      config.task.due_date,
+      config.project_today,
       config.task.blocked_count,
       config.highlight_class,
       config.touch_preview,
@@ -85,6 +92,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         "aria-describedby",
         "task-preview-" <> int.to_string(id),
       ),
+      attribute.attribute("aria-label", task_accessible_label(config)),
+      attribute.attribute("title", task_accessible_label(config)),
       attribute.attribute("tabindex", "0"),
       event.on("mouseenter", event_decoders.message(config.on_hover_opened)),
       event.on("mouseleave", event_decoders.message(config.on_hover_closed)),
@@ -105,6 +114,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             config.task,
             "task-blocked-card",
           ),
+          due_signal(config),
           claim_action,
           top_left_action,
         ]),
@@ -176,6 +186,66 @@ fn mobile_context(config: Config(msg)) -> Element(msg) {
   ])
 }
 
+fn task_accessible_label(config: Config(msg)) -> String {
+  let base = config.task.title
+  let with_blocked = case config.task.blocked_count > 0 {
+    True ->
+      base
+      <> ". "
+      <> pool_labels.blocked_by_tasks(config.locale, config.task.blocked_count)
+    False -> base
+  }
+
+  case due_label(config) {
+    option.Some(label) -> with_blocked <> ". " <> label
+    option.None -> with_blocked
+  }
+}
+
+fn due_signal(config: Config(msg)) -> Element(msg) {
+  case due_label(config) {
+    option.Some(label) ->
+      span(
+        [
+          attribute.class(
+            "task-card-signal task-card-signal-due " <> due_class(config),
+          ),
+          attribute.attribute("data-testid", "task-card-signal-due"),
+          attribute.attribute("title", label),
+          attribute.attribute("aria-label", label),
+        ],
+        [icons.nav_icon(icons.Calendar, icons.XSmall)],
+      )
+    option.None -> element.none()
+  }
+}
+
+fn due_label(config: Config(msg)) -> Option(String) {
+  case config.task.due_date {
+    option.Some(due_date) ->
+      case string.compare(due_date, config.project_today) {
+        order.Lt ->
+          option.Some(pool_labels.task_overdue(config.locale, due_date))
+        order.Eq -> option.Some(pool_labels.task_due_today(config.locale))
+        order.Gt ->
+          option.Some(pool_labels.task_due_soon(config.locale, due_date))
+      }
+    option.None -> option.None
+  }
+}
+
+fn due_class(config: Config(msg)) -> String {
+  case config.task.due_date {
+    option.Some(due_date) ->
+      case string.compare(due_date, config.project_today) {
+        order.Lt -> "is-overdue"
+        order.Eq -> "is-due-today"
+        order.Gt -> "is-due-soon"
+      }
+    option.None -> ""
+  }
+}
+
 fn card_context(card_title: Option(String)) -> Element(msg) {
   case card_title {
     option.Some(title) ->
@@ -242,7 +312,8 @@ fn claim_action(locale: Locale, config: Config(msg)) -> Element(msg) {
 }
 
 fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {
-  let descriptive_label = task_state_ui.next_action(locale, config.task.status)
+  let descriptive_label =
+    task_state_ui.next_action(locale, domain_task.status(config.task))
 
   task_actions.claim_icon(
     descriptive_label,
@@ -279,7 +350,7 @@ fn complete_action(
   is_mine: Bool,
   config: Config(msg),
 ) -> Element(msg) {
-  case config.task.status, is_mine {
+  case domain_task.status(config.task), is_mine {
     Claimed(_), True ->
       task_actions.complete_icon(
         task_state_ui.complete_action(locale),
@@ -299,6 +370,8 @@ fn card_classes(
   card_color: Option(CardColor),
   x: Int,
   age_days: Int,
+  due_date: Option(String),
+  project_today: String,
   blocked_count: Int,
   highlight_class: String,
   touch_preview: Bool,
@@ -311,7 +384,7 @@ fn card_classes(
     "" -> base_classes
     border_class -> base_classes <> " " <> border_class
   }
-  let with_decay = case decay_to_shake_class(age_days) {
+  let with_decay = case urgency.shake_class(age_days, due_date, project_today) {
     "" -> with_border
     shake_class -> with_border <> " " <> shake_class
   }
@@ -329,24 +402,13 @@ fn card_classes(
 fn card_style(x: Int, y: Int) -> String {
   let size = 128
   let size_str = int.to_string(size)
-  "position:absolute; left:clamp(0px,"
+  "position:absolute; left:max(0px,"
   <> int.to_string(x)
-  <> "px,calc(100% - "
-  <> size_str
-  <> "px)); top:max(0px,"
+  <> "px); top:max(0px,"
   <> int.to_string(y)
   <> "px); width:"
   <> size_str
   <> "px; height:"
   <> size_str
   <> "px;"
-}
-
-fn decay_to_shake_class(age_days: Int) -> String {
-  case age_days {
-    d if d < 9 -> ""
-    d if d < 18 -> "decay-shake-low"
-    d if d < 27 -> "decay-shake-medium"
-    _ -> "decay-shake-high"
-  }
 }

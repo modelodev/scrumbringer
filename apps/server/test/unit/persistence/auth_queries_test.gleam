@@ -1,8 +1,8 @@
 import gleam/option.{None, Some}
 import pog
-import scrumbringer_server/persistence/auth/queries
-import scrumbringer_server/services/auth_logic
-import scrumbringer_server/services/store_state
+import scrumbringer_server/repository/auth/queries
+import scrumbringer_server/use_case/auth_logic
+import scrumbringer_server/use_case/store_state
 import support/assertions as expect
 
 pub fn user_from_row_decodes_human_identity_test() {

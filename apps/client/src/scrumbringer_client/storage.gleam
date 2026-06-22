@@ -2,8 +2,6 @@
 ////
 //// Centralizes key-specific decoding/encoding to avoid raw string usage.
 
-import gleam/option
-
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme
@@ -14,31 +12,6 @@ const sidebar_storage_key = "scrumbringer:sidebar-collapsed"
 pub type SidebarStateStorage {
   SidebarStateStored(ui_state.SidebarCollapse)
   SidebarStateInvalid(String)
-}
-
-pub fn load_pool_filters_visibility(
-  default_visible: Bool,
-) -> pool_prefs.FiltersVisibility {
-  theme.local_storage_get(pool_prefs.filters_visible_storage_key)
-  |> pool_prefs.decode_filters_visibility
-  |> filters_visibility_or_default(default_visible)
-}
-
-fn filters_visibility_or_default(
-  value: option.Option(pool_prefs.FiltersVisibility),
-  default_visible: Bool,
-) -> pool_prefs.FiltersVisibility {
-  case value {
-    option.None -> pool_prefs.visibility_from_bool(default_visible)
-    option.Some(visibility) -> visibility
-  }
-}
-
-pub fn save_pool_filters_visibility(value: pool_prefs.FiltersVisibility) -> Nil {
-  theme.local_storage_set(
-    pool_prefs.filters_visible_storage_key,
-    pool_prefs.encode_filters_visibility(value),
-  )
 }
 
 pub fn load_pool_view_mode() -> pool_prefs.ViewMode {

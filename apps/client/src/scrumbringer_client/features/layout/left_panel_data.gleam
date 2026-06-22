@@ -18,6 +18,8 @@ pub type MemberRouteConfig {
     type_filter: Option(Int),
     capability_filter: Option(Int),
     search: Option(String),
+    card_depth: Option(Int),
+    plan_mode: url_state.PlanModeParam,
   )
 }
 
@@ -37,8 +39,34 @@ pub fn member_route(config: MemberRouteConfig, mode: ViewMode) -> router.Route {
   router.Member(member_state(config, mode))
 }
 
+pub fn member_plan_route(config: MemberRouteConfig) -> router.Route {
+  router.Member(member_state(config, view_mode.Cards))
+}
+
+pub fn member_kanban_route(config: MemberRouteConfig) -> router.Route {
+  router.Member(
+    member_state(config, view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam),
+  )
+}
+
+pub fn member_depth_route(config: MemberRouteConfig, depth: Int) -> router.Route {
+  router.Member(
+    member_state(config, view_mode.Cards)
+    |> url_state.with_card_depth(Some(depth)),
+  )
+}
+
 pub fn current_member_route(config: MemberRouteConfig) -> router.Route {
-  member_route(config, config.view_mode)
+  let state =
+    member_state(config, config.view_mode)
+    |> url_state.with_card_depth(config.card_depth)
+
+  case config.view_mode {
+    view_mode.Cards ->
+      router.Member(url_state.with_plan_mode(state, config.plan_mode))
+    _ -> router.Member(state)
+  }
 }
 
 pub fn admin_route(

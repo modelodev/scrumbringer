@@ -37,7 +37,7 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
       workflow_id,
       Some(type_id),
       "Test Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res = get_workflow_metrics(handler, session, workflow_id)
@@ -70,21 +70,29 @@ pub fn rule_metrics_returns_correct_counts_test() {
       workflow_id,
       Some(type_id),
       "Counts Rule",
-      task_status.Completed,
+      task_status.Done,
     )
+  let assert Ok(task1_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Metric 1")
+  let assert Ok(task2_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Metric 2")
+  let assert Ok(task3_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Metric 3")
+  let assert Ok(task4_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Metric 4")
 
   let ts = execution_time()
   let assert Ok(Nil) =
-    insert_execution(db, rule_id, admin_id, "task", 1, "applied", "", ts)
+    insert_execution(db, rule_id, admin_id, "task", task1_id, "applied", "", ts)
   let assert Ok(Nil) =
-    insert_execution(db, rule_id, admin_id, "task", 2, "applied", "", ts)
+    insert_execution(db, rule_id, admin_id, "task", task2_id, "applied", "", ts)
   let assert Ok(Nil) =
     insert_execution(
       db,
       rule_id,
       admin_id,
       "task",
-      3,
+      task3_id,
       "suppressed",
       "idempotent",
       ts,
@@ -95,7 +103,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
       rule_id,
       admin_id,
       "task",
-      4,
+      task4_id,
       "suppressed",
       "not_user_triggered",
       ts,
@@ -138,8 +146,20 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       workflow_id,
       Some(type_id),
       "Breakdown Rule",
-      task_status.Completed,
+      task_status.Done,
     )
+  let assert Ok(task1_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 1")
+  let assert Ok(task2_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 2")
+  let assert Ok(task3_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 3")
+  let assert Ok(task4_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 4")
+  let assert Ok(task5_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 5")
+  let assert Ok(task6_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Breakdown 6")
 
   let ts = execution_time()
   let assert Ok(Nil) =
@@ -148,7 +168,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      1,
+      task1_id,
       "suppressed",
       "idempotent",
       ts,
@@ -159,7 +179,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      2,
+      task2_id,
       "suppressed",
       "idempotent",
       ts,
@@ -170,7 +190,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      3,
+      task3_id,
       "suppressed",
       "idempotent",
       ts,
@@ -181,7 +201,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      4,
+      task4_id,
       "suppressed",
       "not_user_triggered",
       ts,
@@ -192,7 +212,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      5,
+      task5_id,
       "suppressed",
       "not_matching",
       ts,
@@ -203,7 +223,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       rule_id,
       admin_id,
       "task",
-      6,
+      task6_id,
       "suppressed",
       "inactive",
       ts,
@@ -267,7 +287,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 1",
-      task_status.Completed,
+      task_status.Done,
     )
   let assert Ok(rule2_id) =
     fixtures.create_rule(
@@ -276,35 +296,74 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 2",
-      task_status.Completed,
+      task_status.Done,
     )
+  let assert Ok(task1_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 1")
+  let assert Ok(task2_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 2")
+  let assert Ok(task3_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 3")
+  let assert Ok(task4_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 4")
+  let assert Ok(task5_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 5")
+  let assert Ok(task6_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Aggregate 6")
 
   let ts = execution_time()
-  let assert Ok(Nil) =
-    insert_execution(db, rule1_id, admin_id, "task", 1, "applied", "", ts)
-  let assert Ok(Nil) =
-    insert_execution(db, rule1_id, admin_id, "task", 2, "applied", "", ts)
   let assert Ok(Nil) =
     insert_execution(
       db,
       rule1_id,
       admin_id,
       "task",
-      3,
+      task1_id,
+      "applied",
+      "",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule1_id,
+      admin_id,
+      "task",
+      task2_id,
+      "applied",
+      "",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule1_id,
+      admin_id,
+      "task",
+      task3_id,
       "suppressed",
       "idempotent",
       ts,
     )
 
   let assert Ok(Nil) =
-    insert_execution(db, rule2_id, admin_id, "task", 4, "applied", "", ts)
+    insert_execution(
+      db,
+      rule2_id,
+      admin_id,
+      "task",
+      task4_id,
+      "applied",
+      "",
+      ts,
+    )
   let assert Ok(Nil) =
     insert_execution(
       db,
       rule2_id,
       admin_id,
       "task",
-      5,
+      task5_id,
       "suppressed",
       "not_user_triggered",
       ts,
@@ -315,7 +374,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       rule2_id,
       admin_id,
       "task",
-      6,
+      task6_id,
       "suppressed",
       "not_matching",
       ts,
@@ -366,34 +425,44 @@ pub fn executions_list_returns_paginated_results_test() {
       workflow_id,
       Some(type_id),
       "Executions Rule",
-      task_status.Completed,
+      task_status.Done,
     )
+  let assert Ok(task1_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Execution 1")
+  let assert Ok(task2_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Execution 2")
+  let assert Ok(task3_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Execution 3")
+  let assert Ok(task4_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Execution 4")
+  let assert Ok(task5_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Execution 5")
 
   let ts = execution_time()
   let assert Ok(Nil) =
-    insert_execution(db, rule_id, admin_id, "task", 1, "applied", "", ts)
+    insert_execution(db, rule_id, admin_id, "task", task1_id, "applied", "", ts)
   let assert Ok(Nil) =
-    insert_execution(db, rule_id, admin_id, "task", 2, "applied", "", ts)
+    insert_execution(db, rule_id, admin_id, "task", task2_id, "applied", "", ts)
   let assert Ok(Nil) =
     insert_execution(
       db,
       rule_id,
       admin_id,
       "task",
-      3,
+      task3_id,
       "suppressed",
       "idempotent",
       ts,
     )
   let assert Ok(Nil) =
-    insert_execution(db, rule_id, admin_id, "task", 4, "applied", "", ts)
+    insert_execution(db, rule_id, admin_id, "task", task4_id, "applied", "", ts)
   let assert Ok(Nil) =
     insert_execution(
       db,
       rule_id,
       admin_id,
       "task",
-      5,
+      task5_id,
       "suppressed",
       "not_user_triggered",
       ts,
@@ -436,7 +505,7 @@ pub fn executions_list_empty_returns_empty_array_test() {
       workflow_id,
       Some(type_id),
       "Empty Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res = get_rule_executions(handler, session, rule_id, None, None)
@@ -515,7 +584,7 @@ pub fn invalid_execution_limit_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Invalid Limit Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res =
@@ -549,7 +618,7 @@ pub fn duplicate_execution_offset_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Duplicate Offset Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   let res =
@@ -738,20 +807,20 @@ fn insert_execution(
   db: pog.Connection,
   rule_id: Int,
   user_id: Int,
-  origin_type: String,
-  origin_id: Int,
+  target_type: String,
+  target_id: Int,
   outcome: String,
   suppression_reason: String,
   created_at: timestamp.Timestamp,
 ) -> Result(Nil, String) {
   let sql =
-    "INSERT INTO rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id, created_at) "
-    <> "VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7)"
+    "INSERT INTO rule_executions (rule_id, task_id, card_id, outcome, suppression_reason, user_id, created_at) "
+    <> "VALUES ($1, CASE WHEN $2 = 'task' THEN $3::bigint ELSE NULL END, CASE WHEN $2 = 'card' THEN $3::bigint ELSE NULL END, $4, NULLIF($5, ''), $6, $7)"
 
   pog.query(sql)
   |> pog.parameter(pog.int(rule_id))
-  |> pog.parameter(pog.text(origin_type))
-  |> pog.parameter(pog.int(origin_id))
+  |> pog.parameter(pog.text(target_type))
+  |> pog.parameter(pog.int(target_id))
   |> pog.parameter(pog.text(outcome))
   |> pog.parameter(pog.text(suppression_reason))
   |> pog.parameter(pog.int(user_id))

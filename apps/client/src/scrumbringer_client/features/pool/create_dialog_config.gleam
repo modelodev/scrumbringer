@@ -17,7 +17,6 @@ pub fn view(
   on_priority_changed: fn(String) -> msg,
   on_type_id_changed: fn(String) -> msg,
   on_type_options_retry_clicked: msg,
-  on_card_id_changed: fn(String) -> msg,
 ) -> Element(msg) {
   create_dialog.view(from_state(
     locale,
@@ -30,7 +29,6 @@ pub fn view(
     on_priority_changed,
     on_type_id_changed,
     on_type_options_retry_clicked,
-    on_card_id_changed,
   ))
 }
 
@@ -45,7 +43,6 @@ pub fn from_state(
   on_priority_changed: fn(String) -> msg,
   on_type_id_changed: fn(String) -> msg,
   on_type_options_retry_clicked: msg,
-  on_card_id_changed: fn(String) -> msg,
 ) -> create_dialog.Config(msg) {
   create_dialog.Config(
     locale: locale,
@@ -55,10 +52,8 @@ pub fn from_state(
     priority: pool.member_create_priority,
     type_id: pool.member_create_type_id,
     card_id: pool.member_create_card_id,
-    milestone_id: pool.member_create_milestone_id,
     in_flight: pool.member_create_in_flight,
     task_types: pool.member_task_types,
-    milestones: pool.member_milestones,
     cards: cards,
     on_close: on_close,
     on_submit: on_submit,
@@ -67,6 +62,5 @@ pub fn from_state(
     on_priority_changed: on_priority_changed,
     on_type_id_changed: on_type_id_changed,
     on_type_options_retry_clicked: on_type_options_retry_clicked,
-    on_card_id_changed: on_card_id_changed,
   )
 }

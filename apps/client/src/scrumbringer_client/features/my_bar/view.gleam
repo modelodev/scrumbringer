@@ -44,10 +44,10 @@ import lustre/element/keyed
 import domain/card
 import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task, Task, claimed_by}
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{
-  type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
+  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 }
 
 import scrumbringer_client/i18n/i18n
@@ -71,7 +71,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     has_active_projects: Bool,
-    member_tasks: Remote(List(Task)),
+    member_tasks: Remote(List(domain_task.Task)),
     member_metrics: Remote(MyMetrics),
     task_row_config: TaskRowConfig(msg),
     on_create_task_in_card: fn(Int) -> msg,
@@ -85,7 +85,7 @@ pub type TaskRowConfig(msg) {
     user_id: Int,
     active_task_id: opt.Option(Int),
     disable_actions: Bool,
-    task_card_info: fn(Task) ->
+    task_card_info: fn(domain_task.Task) ->
       #(opt.Option(String), opt.Option(card.CardColor)),
     on_claim: fn(Int, Int) -> msg,
     on_start: fn(Int) -> msg,
@@ -153,14 +153,14 @@ type CardGroup {
     card_id: opt.Option(Int),
     card_title: opt.Option(String),
     card_color: opt.Option(card.CardColor),
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
   )
 }
 
 /// Groups tasks by card_id and renders them with collapsible headers.
 fn view_tasks_grouped_by_card(
   config: Config(msg),
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
 ) -> Element(msg) {
   // Group tasks by card_id
   let groups = group_tasks_by_card(tasks)
@@ -172,11 +172,11 @@ fn view_tasks_grouped_by_card(
 }
 
 /// Group tasks by their card_id, keeping order stable.
-fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
+fn group_tasks_by_card(tasks: List(domain_task.Task)) -> List(CardGroup) {
   // First, separate tasks with cards from those without
   let #(with_card, without_card) =
     list.partition(tasks, fn(t) {
-      let Task(card_id: card_id, ..) = t
+      let domain_task.Task(card_id: card_id, ..) = t
       opt.is_some(card_id)
     })
 
@@ -184,7 +184,7 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
   let card_groups =
     with_card
     |> list.group(fn(t) {
-      let Task(card_id: card_id, ..) = t
+      let domain_task.Task(card_id: card_id, ..) = t
       grouped_card_id(card_id)
     })
     |> dict.to_list()
@@ -193,7 +193,7 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
       // Get card info from first task in group
       case card_tasks {
         [first, ..] -> {
-          let Task(
+          let domain_task.Task(
             card_id: card_id,
             card_title: card_title,
             card_color: card_color,
@@ -254,7 +254,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
 
   let total = list.length(tasks)
   let completed =
-    list.count(tasks, fn(t) { task_state.to_status(t.state) == Completed })
+    list.count(tasks, fn(t) { task_state.to_status(t.state) == Done })
 
   let header_title = case card_title {
     opt.Some(title) -> title
@@ -296,7 +296,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
     keyed.div(
       [attribute.class("task-list")],
       list.map(tasks, fn(t) {
-        let Task(id: task_id, ..) = t
+        let domain_task.Task(id: task_id, ..) = t
         #(
           int.to_string(task_id),
           view_member_bar_task_row(config.task_row_config, t),
@@ -349,7 +349,7 @@ pub fn view_member_metrics_panel(
             data_table.column(t(i18n_text.Released), fn(_) {
               text(int.to_string(released_count))
             }),
-            data_table.column(t(i18n_text.Completed), fn(_) {
+            data_table.column(t(i18n_text.Done), fn(_) {
               text(int.to_string(completed_count))
             }),
           ])
@@ -363,15 +363,14 @@ pub fn view_member_metrics_panel(
 /// Render a task row for the bar/list view mode.
 pub fn view_member_bar_task_row(
   config: TaskRowConfig(msg),
-  task: Task,
+  task: domain_task.Task,
 ) -> Element(msg) {
-  let Task(
+  let domain_task.Task(
     id: id,
     type_id: _type_id,
     task_type: task_type,
     title: title,
     priority: priority,
-    status: status,
     created_at: _created_at,
     version: version,
     card_id: _card_id,
@@ -379,8 +378,9 @@ pub fn view_member_bar_task_row(
     card_color: card_color,
     ..,
   ) = task
+  let status = domain_task.status(task)
 
-  let is_mine = claimed_by(task) == opt.Some(config.user_id)
+  let is_mine = domain_task.claimed_by(task) == opt.Some(config.user_id)
 
   let type_label = task_type.name
 
@@ -482,6 +482,7 @@ pub fn view_member_bar_task_row(
       actions: [div([attribute.class("task-row-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,
+      content_testid: opt.None,
       testid: opt.None,
     ),
     task_item.Div,
@@ -491,21 +492,24 @@ pub fn view_member_bar_task_row(
 // Inline icon helper removed in favor of ui/task_type_icon.view
 
 /// Status rank for sorting (lower = higher priority).
-pub fn member_bar_status_rank(status: TaskStatus) -> Int {
+pub fn member_bar_status_rank(status: TaskPhase) -> Int {
   case status {
     Claimed(Ongoing) -> 0
     Claimed(Taken) -> 1
     Available -> 2
-    Completed -> 3
+    Done -> 3
   }
 }
 
 /// Compare tasks for bar sorting (priority desc, status, created desc).
-pub fn compare_member_bar_tasks(a: Task, b: Task) -> order.Order {
-  let Task(priority: priority_a, status: status_a, created_at: created_at_a, ..) =
-    a
-  let Task(priority: priority_b, status: status_b, created_at: created_at_b, ..) =
-    b
+pub fn compare_member_bar_tasks(
+  a: domain_task.Task,
+  b: domain_task.Task,
+) -> order.Order {
+  let domain_task.Task(priority: priority_a, created_at: created_at_a, ..) = a
+  let domain_task.Task(priority: priority_b, created_at: created_at_b, ..) = b
+  let status_a = domain_task.status(a)
+  let status_b = domain_task.status(b)
 
   case int.compare(priority_b, priority_a) {
     order.Eq ->

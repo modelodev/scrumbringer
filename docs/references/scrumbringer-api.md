@@ -61,8 +61,8 @@ Supported Bearer scopes:
 - `cards:write`
 - `notes:read`
 - `notes:write`
-- `milestones:read`
-- `milestones:write`
+- `hierarchies:read`
+- `hierarchies:write`
 
 ## Supported Routes
 
@@ -108,12 +108,12 @@ Create task body:
   "priority": 3,
   "type_id": 1,
   "card_id": 20,
-  "milestone_id": 30
+  "parent_card_id": 30
 }
 ```
 
 Only `title`, `priority`, and `type_id` are core creation fields. Include
-`description`, `card_id`, and `milestone_id` when known.
+`description`, `card_id`, and `parent_card_id` when known.
 
 Patch task body examples:
 
@@ -126,7 +126,7 @@ Patch task body examples:
 ```
 
 ```json
-{ "milestone_id": 30 }
+{ "parent_card_id": 30 }
 ```
 
 Task transition body:
@@ -172,11 +172,11 @@ Create/patch card body:
   "title": "Importer stabilization",
   "description": "Work needed to make importer retries observable.",
   "color": "blue",
-  "milestone_id": 30
+  "parent_card_id": 30
 }
 ```
 
-`color` and `milestone_id` are optional. Delete only after explicit
+`color` and `parent_card_id` are optional. Delete only after explicit
 confirmation; cards with tasks may be rejected.
 
 ### Card Notes
@@ -193,17 +193,17 @@ confirmation; cards with tasks may be rejected.
 
 Delete card notes only after explicit confirmation.
 
-### Milestones
+### Hierarchies
 
 | Action | Method | Path | Scope |
 | --- | --- | --- | --- |
-| List project milestones | `GET` | `/api/v1/projects/:project_id/milestones` | `milestones:read` |
-| Get milestone | `GET` | `/api/v1/milestones/:milestone_id` | `milestones:read` |
-| Create milestone | `POST` | `/api/v1/projects/:project_id/milestones` | `milestones:write` |
-| Patch milestone | `PATCH` | `/api/v1/milestones/:milestone_id` | `milestones:write` |
-| Delete milestone | `DELETE` | `/api/v1/milestones/:milestone_id` | `milestones:write` |
+| List project hierarchies | `GET` | `/api/v1/projects/:project_id/hierarchies` | `hierarchies:read` |
+| Get hierarchy | `GET` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:read` |
+| Create hierarchy | `POST` | `/api/v1/projects/:project_id/hierarchies` | `hierarchies:write` |
+| Patch hierarchy | `PATCH` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:write` |
+| Delete hierarchy | `DELETE` | `/api/v1/hierarchies/:parent_card_id` | `hierarchies:write` |
 
-Create/patch milestone body:
+Create/patch hierarchy body:
 
 ```json
 {
@@ -212,7 +212,7 @@ Create/patch milestone body:
 }
 ```
 
-Delete milestones only after explicit confirmation.
+Delete hierarchies only after explicit confirmation.
 
 ## Not Bearer-Supported
 
@@ -237,8 +237,8 @@ note, or propose a human-admin action.
 
 Use this when the user asks the agent to shape work:
 
-- Start with a milestone if the work has a delivery outcome.
-- Use cards for coherent slices under that milestone.
+- Start with a hierarchy if the work has a delivery outcome.
+- Use cards for coherent slices under that hierarchy.
 - Use tasks for pullable units with clear completion criteria.
 - Avoid putting a person's name in a task title as an assignment signal.
 - Prefer "Available work" language over "assigned to".

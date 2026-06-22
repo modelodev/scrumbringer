@@ -20,6 +20,7 @@ pub fn view(
   action_menu.view(
     trigger_label,
     trigger_testid,
+    trigger_testid <> "-menu",
     option.None,
     "move-menu",
     "move-menu-trigger",

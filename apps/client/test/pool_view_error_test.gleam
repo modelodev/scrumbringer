@@ -26,6 +26,12 @@ fn pool_callbacks() -> pool_view.Callbacks(String) {
     on_drag_moved: fn(_, _) { "drag-moved" },
     on_drag_ended: "drag-ended",
     on_create_opened: "create-open",
+    on_capability_scope_change: fn(_) { "capability-scope" },
+    on_type_filter_change: fn(_) { "type-filter" },
+    on_capability_filter_change: fn(_) { "capability-filter" },
+    on_search_change: fn(_) { "search" },
+    on_visibility_change: fn(_) { "visibility" },
+    on_view_mode_change: fn(_) { "view-mode" },
     on_now_working_pause: "pause",
     on_now_working_start: fn(_) { "start" },
     on_claim: fn(_, _) { "claim" },
@@ -51,6 +57,7 @@ fn pool_context(model: Model) {
     active_task_id: opt.None,
     now_working_sessions: [],
     cards: [],
+    capabilities: [],
     pool: model.member.pool,
     now_working: model.member.now_working,
     skills: model.member.skills,
@@ -93,6 +100,7 @@ pub fn view_pool_main_shows_tasks_error_test() {
       my_role: project_role.Manager,
       created_at: "2026-01-01T00:00:00Z",
       members_count: 1,
+      card_depth_names: [],
     )
 
   let model =

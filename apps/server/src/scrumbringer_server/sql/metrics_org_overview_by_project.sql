@@ -4,18 +4,18 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-  from task_events e
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.project_id
 ), task_counts as (
   select
     t.project_id,
-    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
-    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case when t.execution_state = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.execution_state = 'claimed' then 1 else 0 end), 0) as wip_count,
     coalesce(sum(case
-      when t.status = 'claimed'
+      when t.execution_state = 'claimed'
         and exists(
           select 1 from user_task_work_session ws
           where ws.task_id = t.id and ws.ended_at is null
@@ -28,12 +28,12 @@ with event_counts as (
 ), time_stats as (
   select
     t.project_id,
-    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
+    avg(extract(epoch from (t.closed_at - t.claimed_at)) * 1000)::bigint
       as avg_claim_to_complete_ms,
     avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
       as avg_time_in_claimed_ms,
     coalesce(sum(case
-      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      when t.execution_state = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count
   from tasks t
   join projects p on p.id = t.project_id

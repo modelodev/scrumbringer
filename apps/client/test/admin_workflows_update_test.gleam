@@ -38,7 +38,7 @@ fn rule(id: Int, name: String, templates: List(RuleTemplate)) -> Rule {
     workflow_id: 3,
     name: name,
     goal: opt.None,
-    target: TaskRule(task_status.Completed, opt.None),
+    target: TaskRule(task_status.Done, opt.None),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     templates: templates,
@@ -348,7 +348,7 @@ pub fn try_workflows_update_ignores_non_workflow_messages_test() {
   let assert opt.None =
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       workflow_feedback_context(),
     )
 }
@@ -527,7 +527,7 @@ pub fn try_rules_update_ignores_non_rule_messages_test() {
   let assert opt.None =
     workflows_update.try_rules_update(
       admin_rules.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       rules_context(opt.None),
       rule_feedback_context(),
     )

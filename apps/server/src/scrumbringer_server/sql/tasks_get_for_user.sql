@@ -8,9 +8,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -27,17 +30,18 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  coalesce(t.milestone_id, 0) as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
@@ -49,14 +53,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by

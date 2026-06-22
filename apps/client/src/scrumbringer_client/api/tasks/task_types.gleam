@@ -11,7 +11,7 @@
 ////
 //// ## Relations
 ////
-//// - **domain/task/codec.gleam**: Provides task type decoder
+//// - **domain/task/task_codec.gleam**: Provides task type decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -23,7 +23,7 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import domain/task_type.{type TaskType}
 import scrumbringer_client/api/core
 

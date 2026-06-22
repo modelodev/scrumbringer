@@ -8,17 +8,17 @@
 ////
 //// - Authorize project managers
 //// - Parse and validate workflow payloads
-//// - Delegate persistence to workflow services
+//// - Delegate repository to workflow use_case
 ////
 //// ## Non-responsibilities
 ////
-//// - Workflow persistence (see `services/workflows_db.gleam`)
-//// - Project membership checks (see `services/projects_db.gleam`)
+//// - Workflow repository (see `use_case/workflows_db.gleam`)
+//// - Project membership checks (see `use_case/projects_db.gleam`)
 ////
 //// ## Relations
 ////
-//// - Uses `services/projects_db` for access checks
-//// - Uses `services/workflows_db` for persistence
+//// - Uses `use_case/projects_db` for access checks
+//// - Uses `use_case/workflows_db` for repository
 
 import gleam/http
 import gleam/option.{type Option, None, Some}
@@ -32,10 +32,10 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/workflows/payloads as workflow_payloads
 import scrumbringer_server/http/workflows/presenters as workflow_presenters
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/service_error
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/workflows_db
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/workflows_db
 import wisp
 
 // =============================================================================

@@ -12,7 +12,7 @@
 ////
 //// ## Relations
 ////
-//// - **domain/task/codec.gleam**: Provides task decoder
+//// - **domain/task/task_codec.gleam**: Provides task decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -25,9 +25,8 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/metrics.{type TaskModalMetrics, TaskModalMetrics}
 import domain/task.{type Task, type TaskFilters, TaskFilters}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import domain/task_status
 import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
@@ -147,7 +146,6 @@ pub fn create_task(
     priority,
     type_id,
     option.None,
-    option.None,
     to_msg,
   )
 }
@@ -160,7 +158,6 @@ pub fn create_task_with_card(
   priority: Int,
   type_id: Int,
   card_id: option.Option(Int),
-  milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let entries = [
@@ -177,11 +174,6 @@ pub fn create_task_with_card(
 
   let entries = case card_id {
     option.Some(cid) -> list.append(entries, [#("card_id", json.int(cid))])
-    option.None -> entries
-  }
-
-  let entries = case milestone_id {
-    option.Some(mid) -> list.append(entries, [#("milestone_id", json.int(mid))])
     option.None -> entries
   }
 
@@ -252,6 +244,19 @@ pub fn complete_task(
   )
 }
 
+/// Delete a task that has no operational history.
+pub fn delete_task(
+  task_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    core.Delete,
+    "/api/v1/tasks/" <> int.to_string(task_id),
+    option.None,
+    to_msg,
+  )
+}
+
 /// Get a single task by ID.
 pub fn get_task(task_id: Int, to_msg: fn(ApiResult(Task)) -> msg) -> Effect(msg) {
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
@@ -264,21 +269,7 @@ pub fn get_task(task_id: Int, to_msg: fn(ApiResult(Task)) -> msg) -> Effect(msg)
   )
 }
 
-/// Get modal metrics payload for a task.
-pub fn get_task_metrics(
-  task_id: Int,
-  to_msg: fn(ApiResult(TaskModalMetrics)) -> msg,
-) -> Effect(msg) {
-  core.request(
-    core.Get,
-    "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
-    option.None,
-    decode.field("metrics", task_metrics_decoder(), decode.success),
-    to_msg,
-  )
-}
-
-/// Update editable task fields from the task detail modal.
+/// Update editable task fields from Task Show.
 pub type TaskUpdatePayload {
   TaskUpdatePayload(
     version: Int,
@@ -287,7 +278,6 @@ pub type TaskUpdatePayload {
     priority: Int,
     type_id: Int,
     card_id: option.Option(Int),
-    milestone_id: option.Option(Int),
   )
 }
 
@@ -304,7 +294,6 @@ pub fn update_task(
       #("priority", json.int(payload.priority)),
       #("type_id", json.int(payload.type_id)),
       #("card_id", optional_int(payload.card_id)),
-      #("milestone_id", optional_int(payload.milestone_id)),
     ])
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
@@ -323,15 +312,15 @@ fn optional_int(value: option.Option(Int)) -> json.Json {
   }
 }
 
-/// Update milestone assignment for a task.
-pub fn update_task_milestone(
+/// Update hierarchy assignment for a task.
+pub fn update_task_hierarchy(
   task_id: Int,
-  milestone_id: option.Option(Int),
+  parent_card_id: option.Option(Int),
   to_msg: fn(ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
-  let fields = case milestone_id {
-    option.Some(id) -> [#("milestone_id", json.int(id))]
-    option.None -> [#("milestone_id", json.null())]
+  let fields = case parent_card_id {
+    option.Some(id) -> [#("parent_card_id", json.int(id))]
+    option.None -> [#("parent_card_id", json.null())]
   }
   let body = json.object(fields)
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
@@ -342,32 +331,4 @@ pub fn update_task_milestone(
     decoder,
     to_msg,
   )
-}
-
-fn task_metrics_decoder() -> decode.Decoder(TaskModalMetrics) {
-  use claim_count <- decode.field("claim_count", decode.int)
-  use release_count <- decode.field("release_count", decode.int)
-  use unique_executors <- decode.field("unique_executors", decode.int)
-  use first_claim_at <- decode.field(
-    "first_claim_at",
-    decode.optional(decode.string),
-  )
-  use current_state_duration_s <- decode.field(
-    "current_state_duration_s",
-    decode.int,
-  )
-  use pool_lifetime_s <- decode.field("pool_lifetime_s", decode.int)
-  use session_count <- decode.field("session_count", decode.int)
-  use total_work_time_s <- decode.field("total_work_time_s", decode.int)
-
-  decode.success(TaskModalMetrics(
-    claim_count: claim_count,
-    release_count: release_count,
-    unique_executors: unique_executors,
-    first_claim_at: first_claim_at,
-    current_state_duration_s: current_state_duration_s,
-    pool_lifetime_s: pool_lifetime_s,
-    session_count: session_count,
-    total_work_time_s: total_work_time_s,
-  ))
 }

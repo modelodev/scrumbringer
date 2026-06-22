@@ -9,7 +9,6 @@ import scrumbringer_client/pool_prefs
 
 pub type Persistence {
   NoPersistence
-  SaveFiltersVisible(Bool)
   SaveViewMode(pool_prefs.ViewMode)
 }
 
@@ -18,36 +17,13 @@ pub fn try_update(
   inner: pool_messages.Msg,
 ) -> opt.Option(#(member_pool.Model, Persistence)) {
   case inner {
-    pool_messages.MemberPoolFiltersToggled -> {
-      let #(pool, visible) = handle_filters_toggled(model)
-      opt.Some(#(pool, SaveFiltersVisible(visible)))
-    }
     pool_messages.MemberPoolViewModeSet(mode) ->
       opt.Some(#(handle_view_mode_set(model, mode), SaveViewMode(mode)))
-    pool_messages.MemberListHideCompletedToggled ->
+    pool_messages.MemberListHideDoneToggled ->
       opt.Some(#(handle_hide_completed_toggled(model), NoPersistence))
     pool_messages.MemberListCardToggled(card_id) ->
       opt.Some(#(handle_list_card_toggled(model, card_id), NoPersistence))
     _ -> opt.None
-  }
-}
-
-pub fn handle_filters_toggled(
-  model: member_pool.Model,
-) -> #(member_pool.Model, Bool) {
-  let visible = !model.member_pool_filters_visible
-  #(member_pool.Model(..model, member_pool_filters_visible: visible), visible)
-}
-
-pub fn handle_filters_shown(
-  model: member_pool.Model,
-) -> #(member_pool.Model, Bool) {
-  case model.member_pool_filters_visible {
-    True -> #(model, False)
-    False -> #(
-      member_pool.Model(..model, member_pool_filters_visible: True),
-      True,
-    )
   }
 }
 

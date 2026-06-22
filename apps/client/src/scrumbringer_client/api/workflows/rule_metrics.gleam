@@ -2,7 +2,7 @@
 
 import gleam/dynamic/decode
 import gleam/int
-import gleam/option.{None}
+import gleam/option.{type Option, None}
 
 import lustre/effect.{type Effect}
 
@@ -233,8 +233,8 @@ pub fn get_rule_metrics_detailed(
 pub type RuleExecution {
   RuleExecution(
     id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Option(Int),
+    card_id: Option(Int),
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -259,8 +259,16 @@ pub type RuleExecutionsResponse {
 
 fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
   use id <- decode.field("id", decode.int)
-  use origin_type <- decode.field("origin_type", decode.string)
-  use origin_id <- decode.field("origin_id", decode.int)
+  use task_id <- decode.optional_field(
+    "task_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use card_id <- decode.optional_field(
+    "card_id",
+    None,
+    decode.optional(decode.int),
+  )
   use outcome <- decode.field("outcome", decode.string)
   use suppression_reason <- decode.optional_field(
     "suppression_reason",
@@ -272,8 +280,8 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
   use created_at <- decode.field("created_at", decode.string)
   decode.success(RuleExecution(
     id: id,
-    origin_type: origin_type,
-    origin_id: origin_id,
+    task_id: task_id,
+    card_id: card_id,
     outcome: outcome,
     suppression_reason: suppression_reason,
     user_id: user_id,

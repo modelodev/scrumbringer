@@ -20,6 +20,8 @@ fn base_config() -> left_panel_data.MemberRouteConfig {
     type_filter: Some(7),
     capability_filter: Some(9),
     search: Some("sync"),
+    card_depth: None,
+    plan_mode: url_state.PlanStructureParam,
   )
 }
 
@@ -47,6 +49,16 @@ pub fn member_route_preserves_project_filters_and_search_test() {
   state |> url_state.type_filter |> assert_equal(Some(7))
   state |> url_state.capability_filter |> assert_equal(Some(9))
   state |> url_state.search |> assert_equal(Some("sync"))
+  state |> url_state.card_depth |> assert_equal(None)
+}
+
+pub fn member_depth_route_sets_cards_view_and_depth_test() {
+  let route = left_panel_data.member_depth_route(base_config(), 2)
+  let assert router.Member(state) = route
+
+  state |> url_state.project |> assert_equal(Some(42))
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.card_depth |> assert_equal(Some(2))
 }
 
 pub fn current_member_route_uses_member_state_test() {
@@ -62,6 +74,21 @@ pub fn current_member_route_uses_member_state_test() {
   state |> url_state.view |> assert_equal(view_mode.Capabilities)
 }
 
+pub fn current_member_route_preserves_plan_mode_for_cards_test() {
+  let config =
+    left_panel_data.MemberRouteConfig(
+      ..base_config(),
+      view_mode: view_mode.Cards,
+      plan_mode: url_state.PlanKanbanParam,
+    )
+
+  let route = left_panel_data.current_member_route(config)
+  let assert router.Member(state) = route
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanKanbanParam)
+}
+
 pub fn member_state_omits_optional_values_when_absent_test() {
   let config =
     left_panel_data.MemberRouteConfig(
@@ -70,6 +97,8 @@ pub fn member_state_omits_optional_values_when_absent_test() {
       type_filter: None,
       capability_filter: None,
       search: None,
+      card_depth: None,
+      plan_mode: url_state.PlanStructureParam,
     )
 
   let state = left_panel_data.member_state(config, view_mode.People)

@@ -60,7 +60,7 @@ pub fn task_types_list_sorted_by_name_test() {
   }
 
   let assert Ok(task_types) = decode.run(dynamic, response_decoder)
-  task_types |> expect.equal(["Alpha", "Zulu"])
+  task_types |> expect.equal(["Alpha", "General", "Zulu"])
 }
 
 pub fn task_types_create_requires_project_admin_and_csrf_test() {
@@ -678,7 +678,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   |> expect.is_true
 }
 
-pub fn task_events_persist_for_lifecycle_actions_test() {
+pub fn audit_events_persist_for_lifecycle_actions_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -705,19 +705,117 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   let task_id =
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
-  count_task_events(db, task_id, "task_created") |> expect.equal(1)
-  count_task_events_for_actor(db, task_id, admin_id, "task_created")
+  count_audit_events(db, task_id, "task_created") |> expect.equal(1)
+  count_audit_events_for_actor(db, task_id, admin_id, "task_created")
   |> expect.equal(1)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  count_task_events(db, task_id, "task_claimed") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_claimed") |> expect.equal(1)
 
   release_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
-  count_task_events(db, task_id, "task_released") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_released") |> expect.equal(1)
 
   claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
   complete_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
-  count_task_events(db, task_id, "task_completed") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_closed") |> expect.equal(1)
+}
+
+pub fn delete_task_without_operational_history_removes_task_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Clean", "", 3, type_id)
+
+  delete_task(handler, session, csrf, task_id) |> expect.equal(204)
+  count_task_rows(db, task_id) |> expect.equal(0)
+  count_audit_events(db, task_id, "task_created") |> expect.equal(0)
+}
+
+pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Claimed", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  let res = delete_task_response(handler, session, csrf, task_id)
+
+  expect.expect_status(res, 409)
+  string.contains(simulate.read_body(res), "TASK_HAS_OPERATIONAL_HISTORY")
+  |> expect.is_true
+  count_task_rows(db, task_id) |> expect.equal(1)
+}
+
+pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+  let noted_task =
+    create_task(handler, session, csrf, project_id, "Noted", "", 3, type_id)
+  let blocked_task =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker_task =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  create_task_note(handler, session, csrf, noted_task, "Operational context")
+  |> expect.equal(200)
+  create_dependency(handler, session, csrf, blocked_task, blocker_task)
+  |> expect.equal(200)
+
+  delete_task(handler, session, csrf, noted_task) |> expect.equal(409)
+  delete_task(handler, session, csrf, blocker_task) |> expect.equal(409)
+  count_task_rows(db, noted_task) |> expect.equal(1)
+  count_task_rows(db, blocker_task) |> expect.equal(1)
 }
 
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
@@ -893,7 +991,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let claimed_left =
     single_int(
       db,
-      "select count(*) from tasks where project_id = $1 and claimed_by = $2 and status = 'claimed'",
+      "select count(*) from tasks where project_id = $1 and claimed_by = $2 and execution_state = 'claimed'",
       [pog.int(project_id), pog.int(member_id)],
     )
   claimed_left |> expect.equal(0)
@@ -1156,9 +1254,9 @@ pub fn task_dependencies_reject_completed_dependency_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Deps Completed")
+  create_project(handler, session, csrf, "Deps Done")
   let project_id =
-    single_int(db, "select id from projects where name = 'Deps Completed'", [])
+    single_int(db, "select id from projects where name = 'Deps Done'", [])
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1180,16 +1278,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       type_id,
     )
   let task_completed =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Task Completed",
-      "",
-      1,
-      type_id,
-    )
+    create_task(handler, session, csrf, project_id, "Task Done", "", 1, type_id)
 
   let claim_status =
     claim_task(
@@ -1284,11 +1373,11 @@ pub fn blocked_task_claim_succeeds_after_dependency_completed_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Blocked Claim Completed")
+  create_project(handler, session, csrf, "Blocked Claim Done")
   let project_id =
     single_int(
       db,
-      "select id from projects where name = 'Blocked Claim Completed'",
+      "select id from projects where name = 'Blocked Claim Done'",
       [],
     )
 
@@ -1398,6 +1487,360 @@ pub fn task_dependencies_schema_indices_present_test() {
       [],
     )
   index_count |> expect.equal(2)
+}
+
+pub fn pool_includes_available_root_pool_task_test() {
+  let #(_, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 RootPool")
+
+  create_task(
+    handler,
+    session,
+    csrf,
+    project_id,
+    "RootPool task",
+    "",
+    3,
+    type_id,
+  )
+
+  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  expect.expect_status(res, 200)
+  decode_task_titles(simulate.read_body(res)) |> expect.equal(["RootPool task"])
+}
+
+pub fn pool_excludes_task_under_draft_card_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Draft Card")
+  let draft_card = insert_card_state(db, project_id, "Draft", "draft")
+
+  create_task_with_card(
+    handler,
+    session,
+    csrf,
+    project_id,
+    "Draft task",
+    "",
+    3,
+    type_id,
+    draft_card,
+  )
+
+  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  expect.expect_status(res, 200)
+  decode_task_titles(simulate.read_body(res)) |> expect.equal([])
+}
+
+pub fn pool_includes_task_under_active_card_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Active Card")
+  let active_card = insert_card_state(db, project_id, "Active", "active")
+
+  create_task_with_card(
+    handler,
+    session,
+    csrf,
+    project_id,
+    "Active-card task",
+    "",
+    3,
+    type_id,
+    active_card,
+  )
+
+  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  expect.expect_status(res, 200)
+  decode_task_titles(simulate.read_body(res))
+  |> expect.equal(["Active-card task"])
+}
+
+pub fn dependency_blocks_available_and_claimed_tasks_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Blocked")
+  let blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  create_dependency(handler, session, csrf, blocked, blocker)
+  |> expect.equal(200)
+
+  let blocked_res =
+    list_project_tasks(handler, session, csrf, project_id, "blocked=true")
+  expect.expect_status(blocked_res, 200)
+  decode_task_titles(simulate.read_body(blocked_res))
+  |> expect.equal(["Blocked"])
+
+  let claim_blocked =
+    claim_task_response(
+      handler,
+      session,
+      csrf,
+      blocked,
+      task_version(db, blocked),
+    )
+  expect.expect_status(claim_blocked, 409)
+  simulate.read_body(claim_blocked)
+  |> string.contains("CONFLICT_BLOCKED")
+  |> expect.is_true
+
+  claim_task(handler, session, csrf, blocker, task_version(db, blocker))
+  |> expect.equal(200)
+
+  let still_blocked =
+    claim_task_response(
+      handler,
+      session,
+      csrf,
+      blocked,
+      task_version(db, blocked),
+    )
+  expect.expect_status(still_blocked, 409)
+}
+
+pub fn dependency_unblocks_when_dependency_closed_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Closed Dependency")
+  let blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  create_dependency(handler, session, csrf, blocked, blocker)
+  |> expect.equal(200)
+  claim_task(handler, session, csrf, blocker, task_version(db, blocker))
+  |> expect.equal(200)
+  complete_task(handler, session, csrf, blocker, task_version(db, blocker))
+  |> expect.equal(200)
+
+  let unblocked_res =
+    list_project_tasks(handler, session, csrf, project_id, "blocked=false")
+  expect.expect_status(unblocked_res, 200)
+  decode_task_titles(simulate.read_body(unblocked_res))
+  |> list.contains("Blocked")
+  |> expect.is_true
+  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  |> expect.equal(200)
+}
+
+pub fn delete_dependency_target_unblocks_task_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Delete Dependency")
+  let blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  create_dependency(handler, session, csrf, blocked, blocker)
+  |> expect.equal(200)
+  delete_dependency(handler, session, csrf, blocked, blocker)
+  |> expect.equal(204)
+  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  |> expect.equal(200)
+}
+
+pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
+  let #(db, handler, admin_session, admin_csrf, project_id, type_id) =
+    ht08_project("HT08 Close Owner")
+
+  create_member_user(handler, db, "owner@example.com", "inv_owner")
+  create_member_user(handler, db, "other-owner@example.com", "inv_other_owner")
+  let owner_id =
+    single_int(db, "select id from users where email = 'owner@example.com'", [])
+  let other_id =
+    single_int(
+      db,
+      "select id from users where email = 'other-owner@example.com'",
+      [],
+    )
+  add_member(handler, admin_session, admin_csrf, project_id, owner_id, "member")
+  add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
+
+  let owner_login = login_as(handler, "owner@example.com", "passwordpassword")
+  let owner_session = find_cookie_value(owner_login.headers, "sb_session")
+  let owner_csrf = find_cookie_value(owner_login.headers, "sb_csrf")
+  let other_login =
+    login_as(handler, "other-owner@example.com", "passwordpassword")
+  let other_session = find_cookie_value(other_login.headers, "sb_session")
+  let other_csrf = find_cookie_value(other_login.headers, "sb_csrf")
+
+  let task_id =
+    create_task(
+      handler,
+      owner_session,
+      owner_csrf,
+      project_id,
+      "Owned",
+      "",
+      3,
+      type_id,
+    )
+  claim_task(
+    handler,
+    owner_session,
+    owner_csrf,
+    task_id,
+    task_version(db, task_id),
+  )
+  |> expect.equal(200)
+
+  let other_close =
+    complete_task_response(
+      handler,
+      other_session,
+      other_csrf,
+      task_id,
+      task_version(db, task_id),
+    )
+  expect.expect_status(other_close, 403)
+
+  complete_task(
+    handler,
+    owner_session,
+    owner_csrf,
+    task_id,
+    task_version(db, task_id),
+  )
+  |> expect.equal(200)
+}
+
+pub fn dependency_would_create_cycle_is_rejected_test() {
+  let #(_, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Cycle")
+  let task_a =
+    create_task(handler, session, csrf, project_id, "Task A", "", 3, type_id)
+  let task_b =
+    create_task(handler, session, csrf, project_id, "Task B", "", 3, type_id)
+
+  create_dependency(handler, session, csrf, task_a, task_b) |> expect.equal(200)
+  create_dependency(handler, session, csrf, task_b, task_a) |> expect.equal(422)
+}
+
+pub fn cross_project_dependency_is_rejected_test() {
+  let #(db, handler, session, csrf, project_one_id, type_one_id) =
+    ht08_project("HT08 Cross One")
+  create_project(handler, session, csrf, "HT08 Cross Two")
+  let project_two_id =
+    single_int(db, "select id from projects where name = 'HT08 Cross Two'", [])
+  create_task_type(handler, session, csrf, project_two_id, "Bug", "bug-ant", 0)
+  let type_two_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_two_id)],
+    )
+
+  let task_one =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_one_id,
+      "Task One",
+      "",
+      3,
+      type_one_id,
+    )
+  let task_two =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_two_id,
+      "Task Two",
+      "",
+      3,
+      type_two_id,
+    )
+
+  create_dependency(handler, session, csrf, task_one, task_two)
+  |> expect.equal(422)
+}
+
+pub fn pool_filters_by_user_capabilities_test() {
+  let #(db, handler, admin_session, admin_csrf, project_id, _) =
+    ht08_project("HT08 Capabilities")
+  let frontend = insert_capability(db, project_id, "Frontend")
+  let backend = insert_capability(db, project_id, "Backend")
+  create_task_type(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Frontend Task",
+    "bolt",
+    frontend,
+  )
+  create_task_type(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Backend Task",
+    "bug-ant",
+    backend,
+  )
+  let frontend_type =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Frontend Task'",
+      [pog.int(project_id)],
+    )
+  let backend_type =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Backend Task'",
+      [pog.int(project_id)],
+    )
+
+  create_member_user(handler, db, "cap-user@example.com", "inv_cap")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'cap-user@example.com'",
+      [],
+    )
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    "member",
+  )
+  grant_capability(db, project_id, member_id, frontend)
+
+  create_task(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Visible frontend",
+    "",
+    3,
+    frontend_type,
+  )
+  create_task(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Hidden backend",
+    "",
+    3,
+    backend_type,
+  )
+
+  let member_login =
+    login_as(handler, "cap-user@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+
+  let res =
+    list_project_tasks(handler, member_session, member_csrf, project_id, "")
+  expect.expect_status(res, 200)
+  decode_task_titles(simulate.read_body(res))
+  |> expect.equal(["Visible frontend"])
 }
 
 pub fn me_metrics_returns_counts_test() {
@@ -1807,16 +2250,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     )
 
   let completed_id =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Completed",
-      "",
-      3,
-      bug_type_id,
-    )
+    create_task(handler, session, csrf, project_id, "Done", "", 3, bug_type_id)
 
   claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
   claim_task(handler, session, csrf, completed_id, 1) |> expect.equal(200)
@@ -1868,7 +2302,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(completed_res, 200)
   decode_task_titles(simulate.read_body(completed_res))
-  |> expect.equal(["Completed"])
+  |> expect.equal(["Done"])
 
   let type_res =
     handler(
@@ -1885,7 +2319,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(type_res, 200)
   decode_task_titles(simulate.read_body(type_res))
-  |> expect.equal(["Completed", "Available"])
+  |> expect.equal(["Done", "Available"])
 
   let invalid_status_res =
     handler(
@@ -2518,19 +2952,19 @@ fn task_version(db: pog.Connection, task_id: Int) -> Int {
   single_int(db, "select version from tasks where id = $1", [pog.int(task_id)])
 }
 
-fn count_task_events(
+fn count_audit_events(
   db: pog.Connection,
   task_id: Int,
   event_type: String,
 ) -> Int {
   single_int(
     db,
-    "select count(*) from task_events where task_id = $1 and event_type = $2",
+    "select count(*) from audit_events where task_id = $1 and event_type = $2",
     [pog.int(task_id), pog.text(event_type)],
   )
 }
 
-fn count_task_events_for_actor(
+fn count_audit_events_for_actor(
   db: pog.Connection,
   task_id: Int,
   actor_user_id: Int,
@@ -2538,9 +2972,61 @@ fn count_task_events_for_actor(
 ) -> Int {
   single_int(
     db,
-    "select count(*) from task_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
+    "select count(*) from audit_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
     [pog.int(task_id), pog.int(actor_user_id), pog.text(event_type)],
   )
+}
+
+fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
+  single_int(db, "select count(*) from tasks where id = $1", [
+    pog.int(task_id),
+  ])
+}
+
+fn delete_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+) -> Int {
+  let res = delete_task_response(handler, session, csrf, task_id)
+  res.status
+}
+
+fn delete_task_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Delete, "/api/v1/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf),
+  )
+}
+
+fn create_task_note(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  content: String,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(json.object([#("content", json.string(content))])),
+    )
+
+  res.status
 }
 
 fn claim_task(
@@ -2650,6 +3136,17 @@ fn complete_task(
   task_id: Int,
   version: Int,
 ) -> Int {
+  let res = complete_task_response(handler, session, csrf, task_id, version)
+  res.status
+}
+
+fn complete_task_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  version: Int,
+) -> wisp.Response {
   let res =
     handler(
       simulate.request(
@@ -2662,7 +3159,7 @@ fn complete_task(
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
-  res.status
+  res
 }
 
 fn decode_task_titles(body: String) -> List(String) {
@@ -2685,6 +3182,29 @@ fn decode_task_titles(body: String) -> List(String) {
 
   let assert Ok(tasks) = decode.run(dynamic, response_decoder)
   tasks
+}
+
+fn list_project_tasks(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  query: String,
+) -> wisp.Response {
+  let url =
+    "/api/v1/projects/"
+    <> int_to_string(project_id)
+    <> "/tasks"
+    <> case query {
+      "" -> ""
+      value -> "?" <> value
+    }
+
+  handler(
+    simulate.request(http.Get, url)
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf),
+  )
 }
 
 fn create_project(
@@ -2793,6 +3313,60 @@ fn create_task(
   id
 }
 
+fn create_task_with_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Int,
+) -> Int {
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([
+        #("title", json.string(title)),
+        #("description", json.string(description)),
+        #("priority", json.int(priority)),
+        #("type_id", json.int(type_id)),
+        #("card_id", json.int(card_id)),
+      ]),
+    )
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+
+  let data_decoder = {
+    use task <- decode.field("task", task_decoder)
+    decode.success(task)
+  }
+
+  let response_decoder = {
+    use id <- decode.field("data", data_decoder)
+    decode.success(id)
+  }
+
+  let assert Ok(id) = decode.run(dynamic, response_decoder)
+  id
+}
+
 fn add_member(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
@@ -2848,6 +3422,70 @@ fn insert_capability(db: pog.Connection, project_id: Int, name: String) -> Int {
     |> pog.execute(db)
 
   id
+}
+
+fn grant_capability(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  capability_id: Int,
+) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into project_member_capabilities (project_id, user_id, capability_id) values ($1, $2, $3)",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.int(capability_id))
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn insert_card_state(
+  db: pog.Connection,
+  project_id: Int,
+  title: String,
+  execution_state: String,
+) -> Int {
+  let assert Ok(pog.Returned(rows: [id, ..], ..)) =
+    pog.query(
+      "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, $3) returning id",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.text(title))
+    |> pog.parameter(pog.text(execution_state))
+    |> pog.returning({
+      use id <- decode.field(0, decode.int)
+      decode.success(id)
+    })
+    |> pog.execute(db)
+
+  id
+}
+
+fn ht08_project(name: String) {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, name)
+  let project_id =
+    single_int(db, "select id from projects where name = $1", [pog.text(name)])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  #(db, handler, session, csrf, project_id, type_id)
 }
 
 fn create_member_user(

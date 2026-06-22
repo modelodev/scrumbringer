@@ -2,8 +2,14 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{type ApiError, ApiError}
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
 import domain/remote
-import domain/task.{type TaskNote, TaskNote}
+import domain/task/id as task_id
+import domain/user/id as user_id
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -15,18 +21,26 @@ fn note_context() -> notes_update.Context(Nil) {
     note_added: "Note added",
     on_note_added: fn(_result) { Nil },
     on_note_deleted: fn(_note_id, _result) { Nil },
+    on_note_pinned: fn(_note_id, _result) { Nil },
     on_notes_fetched: fn(_result) { Nil },
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
-fn sample_note() -> TaskNote {
-  TaskNote(
-    id: 10,
-    task_id: 42,
-    user_id: 7,
+fn sample_note() -> Note {
+  Note(
+    id: note_id.new(10),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(7),
     content: "Reviewed",
+    url: None,
+    pinned: False,
     created_at: "2026-03-20T14:00:00Z",
+    updated_at: "2026-03-20T14:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }
 
@@ -124,7 +138,7 @@ pub fn local_note_submitted_with_content_sets_in_flight_test() {
 }
 
 pub fn local_note_added_ok_prepends_note_and_closes_dialog_test() {
-  let previous = TaskNote(..sample_note(), id: 9, content: "Previous")
+  let previous = Note(..sample_note(), id: note_id.new(9), content: "Previous")
   let model =
     member_notes.Model(
       ..member_notes.default_model(),
@@ -212,11 +226,76 @@ pub fn note_try_update_added_error_checks_auth_test() {
   let assert True = fx != effect.none()
 }
 
+pub fn note_try_update_pin_clicked_sets_in_flight_test() {
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes_task_id: Some(42),
+    )
+
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinClicked(10, True),
+      note_context(),
+    )
+
+  let assert Some(10) = next.member_note_pin_in_flight
+  let assert True = fx != effect.none()
+}
+
+pub fn note_try_update_pinned_ok_replaces_note_test() {
+  let previous = sample_note()
+  let updated = Note(..previous, pinned: True)
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes: remote.Loaded([previous]),
+      member_note_pin_in_flight: Some(note_id.to_int(previous.id)),
+    )
+
+  let assert Some(notes_update.Update(next, fx, notes_update.NoAuthCheck)) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinned(note_id.to_int(previous.id), Ok(updated)),
+      note_context(),
+    )
+
+  let assert True = next.member_notes == remote.Loaded([updated])
+  let assert None = next.member_note_pin_in_flight
+  let assert True = fx == effect.none()
+}
+
+pub fn note_try_update_pinned_error_checks_auth_test() {
+  let err = sample_error()
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_note_pin_in_flight: Some(10),
+    )
+
+  let assert Some(notes_update.Update(
+    next,
+    fx,
+    notes_update.CheckAuth(policy_err),
+  )) =
+    notes_update.try_update(
+      model,
+      pool_messages.MemberNotePinned(10, Error(err)),
+      note_context(),
+    )
+
+  let assert True = policy_err == err
+  let assert None = next.member_note_pin_in_flight
+  let assert Some("boom") = next.member_note_error
+  let assert True = fx == effect.none()
+}
+
 pub fn note_try_update_ignores_non_note_messages_test() {
   let assert None =
     notes_update.try_update(
       member_notes.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       note_context(),
     )
 }

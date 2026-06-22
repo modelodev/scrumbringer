@@ -7,7 +7,7 @@ import fixtures
 import gleeunit
 import pog
 import scrumbringer_server
-import scrumbringer_server/services/authorization
+import scrumbringer_server/use_case/authorization
 import support/assertions as expect
 
 pub fn main() {

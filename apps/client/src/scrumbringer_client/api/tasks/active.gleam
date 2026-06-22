@@ -13,7 +13,7 @@
 ////
 //// ## Relations
 ////
-//// - **domain/task/codec.gleam**: Provides work sessions payload decoder
+//// - **domain/task/task_codec.gleam**: Provides work sessions payload decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/json
@@ -23,7 +23,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/task.{type WorkSessionsPayload}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import scrumbringer_client/api/core
 
 // =============================================================================

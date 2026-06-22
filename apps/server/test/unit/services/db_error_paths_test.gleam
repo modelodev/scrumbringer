@@ -1,10 +1,10 @@
 import fixtures
 import gleam/option.{None}
 import scrumbringer_server
-import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/org_invites_db
-import scrumbringer_server/services/service_error
-import scrumbringer_server/services/task_templates_db
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/org_invites_db
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/task_templates_db
 import support/assertions as expect
 
 pub fn cards_db_returns_not_found_for_missing_card_test() {
@@ -22,7 +22,9 @@ pub fn cards_db_update_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.update_card(db, 999_999, None, "Title", None, None, 1) {
+  case
+    cards_db.update_card(db, 999_999, None, "Title", None, None, None, 1, 1)
+  {
     Ok(_) -> expect.fail()
     Error(cards_db.CardNotFound) -> Nil
     Error(_) -> expect.fail()
@@ -34,7 +36,8 @@ pub fn cards_db_delete_returns_not_found_test() {
   let scrumbringer_server.App(db: db, ..) = app
 
   case cards_db.delete_card(db, 999_999) {
-    Ok(_) -> Nil
+    Ok(_) -> expect.fail()
+    Error(cards_db.CardNotFound) -> Nil
     Error(_) -> expect.fail()
   }
 }

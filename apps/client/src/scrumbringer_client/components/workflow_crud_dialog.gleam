@@ -31,7 +31,7 @@ import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/workflow.{type Workflow}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/components/crud_dialog_base

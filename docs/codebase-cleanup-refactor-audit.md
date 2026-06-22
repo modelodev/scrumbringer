@@ -91,7 +91,7 @@ rama.
 | --- | --- | --- |
 | `client_state/types.gleam` | Cerrado bajo vigilancia | Ya no actua como cajon de forms o dialog targets; solo debe cambiar si aparece un tipo transversal real |
 | Aliases de slices admin/member | Residuo aceptable | No tienen callers externos y ayudan a leer el shell de estado; eliminarlos ahora seria churn |
-| `milestones/update.gleam` shell | Residuo aceptado | Filtros, seleccion, refresh, dialogos, movimientos, expansion y create ya tienen owner; partir contratos sin owner nuevo solo mueve imports |
+| `hierarchies/update.gleam` shell | Residuo aceptado | Filtros, seleccion, refresh, dialogos, movimientos, expansion y create ya tienen owner; partir contratos sin owner nuevo solo mueve imports |
 | `pool/update.gleam` shell | Parcial sano | Tareas, metricas, rule metrics, posiciones, skills y auth ya fueron extraidos; otro corte exige familia funcional nueva |
 | CRUD/UI universal | Descartado | Los dialogos comparten piezas, no un contrato unico de producto |
 | Wrappers opacos para todos los IDs | Descartado por ahora | Sin bug real de mezcla de IDs, el churn supera el valor |
@@ -132,7 +132,7 @@ Lectura reforzada del estado actual:
 | Cerrado | Owner real, API publica minima, test cercano o barrido negativo | Mantener guardarrail; no tocar por tamano |
 | Cerrado bajo vigilancia | El diseno es correcto, pero puede degradarse por nuevos callers o tipos publicos | Repetir barridos antes de tocar areas cercanas |
 | Parcial sano | Queda residuo, pero esta justificado por frontera HTTP, SQL, DOM, UI gestual o shell de composicion | Clasificar nuevos matches; no exigir cero matches |
-| Pendiente real | Hay handlers publicos accidentales, owners duplicados, sentinels cruzando a negocio o roots con contexto/apply/auth repetidos | Hacer un corte pequeno con tests por la entrada de produccion |
+| Pending real | Hay handlers publicos accidentales, owners duplicados, sentinels cruzando a negocio o roots con contexto/apply/auth repetidos | Hacer un corte pequeno con tests por la entrada de produccion |
 | Descartado | La solucion crea framework, facade o wrapper sin borrar una decision duplicada | No reabrir sin nueva evidencia |
 
 El refuerzo cambia tambien el peso de la evidencia: un test que llama a un
@@ -173,7 +173,7 @@ V/C/R estimado:
 | --- | --- | --- | --- |
 | Medio-alto | Media-baja | Bajo | Ejecutado; todos los handlers tenian mensajes `AdminMsg` equivalentes y produccion consume el update por `try_update` desde el route |
 
-Este fue mejor candidato que seguir partiendo pool o milestones porque no crea
+Este fue mejor candidato que seguir partiendo pool o hierarchies porque no crea
 ningun owner nuevo: solo alinea una extraccion ya hecha con la frontera publica
 correcta.
 
@@ -226,7 +226,7 @@ Con estos datos, la mejor lectura del estado es:
   contrato verificable.
 - Parcial sano significa que el residuo esta en una frontera tecnica y no cruza
   a dominio ni a reglas de producto.
-- Pendiente real significa que todavia hay una decision duplicada o un root que
+- Pending real significa que todavia hay una decision duplicada o un root que
   conserva conocimiento operativo de un subflujo.
 - Descartado significa que una abstraccion aumentaria superficie conceptual sin
   borrar una decision duplicada.
@@ -243,7 +243,7 @@ No ordena por tamano del archivo, sino por valor, complejidad y riesgo.
 | Normalizar convenciones JSON en payloads | Medio-alto | Baja | Bajo | Ejecutar solo cuando haya repeticion real como `active 0/1`; no crear framework de payloads |
 | Sentinels SQL nombrados | Medio | Baja | Bajo | Mantener en frontera; no perseguir cero matches en SQL generado |
 | Nuevos routes admin | Medio | Media | Medio | Solo si el root vuelve a mostrar context/apply/auth repetidos y tests migrables |
-| Pool/milestones update | Medio | Media-alta | Medio | Pool ya tiene cortes por tareas, metricas operativas, metricas de reglas, posiciones, skills y auth comun; milestones ya separa filtros, seleccion, refresh, dialogos, movimientos, expansion y create; queda bajo vigilancia solo para contratos/feedback/root policy |
+| Pool/hierarchies update | Medio | Media-alta | Medio | Pool ya tiene cortes por tareas, metricas operativas, metricas de reglas, posiciones, skills y auth comun; hierarchies ya separa filtros, seleccion, refresh, dialogos, movimientos, expansion y create; queda bajo vigilancia solo para contratos/feedback/root policy |
 | CRUD universal | Bajo | Alta | Medio | Descartado; helpers pequenos sobre `crud_dialog_base` son suficientes |
 | Wrappers opacos para todos los IDs | Medio | Alta | Alto | Descartado por ahora; solo ante bugs reales de mezcla de IDs |
 
@@ -269,14 +269,14 @@ Esta matriz evita dos extremos: dejar deuda porque "compila" y crear capas
 porque "parece mas limpio". El cambio correcto es el que borra conocimiento
 duplicado del owner equivocado y queda protegido por un control repetible.
 
-### Pendientes reales tras el refuerzo
+### Pendings reales tras el refuerzo
 
 El informe no debe vender como deuda todo lo que aun se parece. Tras el nuevo
 barrido, los pendientes reales son estos:
 
-| Pendiente | Evidencia requerida antes de actuar | Solucion aceptable |
+| Pending | Evidencia requerida antes de actuar | Solucion aceptable |
 | --- | --- | --- |
-| Milestones como root amplio | Barrido de handlers que mezclen contexto, efectos y apply de subflujos ya nombrados | Extraer un owner existente por vez, con tests de update/view; filtros, seleccion, refresh, dialogos, movimientos, expansion y create ya tienen owner parcial |
+| Hierarchies como root amplio | Barrido de handlers que mezclen contexto, efectos y apply de subflujos ya nombrados | Extraer un owner existente por vez, con tests de update/view; filtros, seleccion, refresh, dialogos, movimientos, expansion y create ya tienen owner parcial |
 | Pool como root todavia grande | Nueva evidencia de otra familia mezclada distinta de tareas, metricas operativas, metricas de reglas, posiciones, skills y auth | No cortar por longitud; repetir el patron de routes concretos solo si hay owner funcional claro |
 | Helpers admin de listas remotas con scope | Ejecutado: el bloque duplicado desaparece de `features/admin/workflows.gleam` y `features/admin/task_templates.gleam` | Mantener `features/admin/scoped_remote_list.gleam` como owner puro de operaciones `Remote(List(_))` con scope org/proyecto |
 | Nuevos formularios o estados en root cliente | `rg` debe detectar tipos especificos entrando en `client_state.gleam` o `client_state/types.gleam` | Mover al modulo de estado del feature y actualizar tests cercanos |
@@ -471,8 +471,8 @@ Con ese criterio, el mejor siguiente esfuerzo no es partir mas archivos por iner
 | Deuda real | Evidencia actual | Accion optima | Por que no hacer mas |
 | --- | --- | --- | --- |
 | Sentinels de tasks sin nombres semanticos | Ejecutado en `persistence/tasks/queries.gleam`: `0`, `-1`, `""` y `"__unset__"` quedan como constantes privadas de frontera | Mantener `FieldUpdate` como API tipada y no exponer valores SQL fuera de persistencia | No crear un DSL de updates SQL hasta ver repeticion identica en mas modulos |
-| Sentinels de task templates y milestones | Ejecutado en `task_templates_db.gleam` y `milestones_db.gleam`: los valores de update/create quedan nombrados | Mantener el mismo patron que cards/workflows sin mover valores al dominio | No extraer helper comun si la semantica no es exactamente igual |
-| Sentinels del rules engine | Ejecutado en `services/rules_engine.gleam`: `no_task_type_filter_value`, `no_card_id_create_value` y `no_task_milestone_id` nombran los `0` tecnicos | Mantenerlos privados dentro del motor mientras sean parametros de query/creacion | No moverlos a dominio ni crear helper generico de ids ausentes |
+| Sentinels de task templates y hierarchies | Ejecutado en `task_templates_db.gleam` y `hierarchies_db.gleam`: los valores de update/create quedan nombrados | Mantener el mismo patron que cards/workflows sin mover valores al dominio | No extraer helper comun si la semantica no es exactamente igual |
+| Sentinels del rules engine | Ejecutado en `services/rules_engine.gleam`: `no_task_type_filter_value`, `no_card_id_create_value` y `no_task_parent_card_id` nombran los `0` tecnicos | Mantenerlos privados dentro del motor mientras sean parametros de query/creacion | No moverlos a dominio ni crear helper generico de ids ausentes |
 | Duplicados parciales de `Workflow` y `Rule` | Ejecutado: servidor usa `WorkflowRecord` y `RuleRecord`; `Workflow`/`Rule` quedan reservados a shared | Mantener records de servidor cuando el shape sea parcial o de persistencia | No forzar shared si el servidor contiene shape parcial |
 | Admin root aun concentra routing general | Ejecutado: `features/admin/update.gleam` queda en 346 lineas y delega la familia members/search en `members_route.gleam`; `route_support.gleam` elimina copias exactas de auth en routes admin | Mantener `members_route.gleam` como route de area y no fusionar los updates puros de miembros | No crear dispatcher generico ni routes vacios por simetria |
 | CRUD visual aun puede divergir | Helpers opcionales, merge de payload fields, botones CRUD comunes y submit de `ui/dialog` ya centralizados sobre `ui/button` | Revisar nuevas piezas solo si aparecen en tres o mas dialogos | No introducir componente CRUD universal ni atributos arbitrarios |
@@ -496,7 +496,7 @@ Este informe no es solo una lista teorica. Varias recomendaciones ya han sido co
 | `Card` duplicado en servidor | Ejecutado | `cards_db.gleam` devuelve `domain/card.Card` | Un solo contrato publico de card |
 | `RuleTemplate` duplicado en servidor | Ejecutado | `rules_db.gleam` devuelve `domain/workflow.RuleTemplate` | Menos drift entre reglas del dominio y servidor |
 | `Workflow`/`Rule` duplicados en servidor | Ejecutado | `workflows_db.gleam` expone `WorkflowRecord`; `rules_db.gleam` expone `RuleRecord` sin templates cargadas | Los nombres canonicos quedan reservados al dominio compartido |
-| Sentinels SQL | Ejecutado parcialmente | Sentinels nombrados en persistencia de cards/workflows/tasks/task_templates/milestones | Los valores magicos quedan en frontera SQL |
+| Sentinels SQL | Ejecutado parcialmente | Sentinels nombrados en persistencia de cards/workflows/tasks/task_templates/hierarchies | Los valores magicos quedan en frontera SQL |
 | `Task` duplicado en mapper | Ejecutado | Mapper de tareas devuelve `domain/task.Task` | La entidad central usa el contrato canonico |
 | `status`/`work_state` de task | Ejecutado | `presenters.task_json` deriva `status` y `work_state` desde `TaskState`; `presenters_test.gleam` cubre drift entre campos redundantes y estado canonico | Menos estados paralelos en la frontera HTTP |
 | Active flags de workflows/rules | Ejecutado | `http/payload_fields.gleam` decodifica `active` de PATCH `0/1` a `Option(Bool)`; los handlers de workflows/rules ya no normalizan enteros | La convencion HTTP queda en Parse y el Process recibe tipos de dominio |
@@ -536,18 +536,18 @@ Este informe no es solo una lista teorica. Varias recomendaciones ya han sido co
 | Pool rule metrics route | Ejecutado | `features/pool/rule_metrics_route.gleam` contiene context callbacks, auth policy y apply de `admin.metrics` para `features/admin/rule_metrics.gleam`; `pool/update.gleam` delega en el route y deja de importar el workflow admin de metricas de reglas | El root de pool deja de conocer detalles operativos de metricas de reglas sin mover la logica de producto |
 | Pool positions route | Ejecutado | `features/pool/positions_route.gleam` contiene contexto i18n/toasts, auth policy y apply de `member.positions` para `position_update.gleam`; `pool/update.gleam` delega en el route y deja de importar `position_update` o el submodelo de posiciones | El root de pool deja de conocer edicion, guardado y refetch de posiciones sin mover la logica pura de posiciones |
 | Pool skills route | Ejecutado | `features/pool/skills_route.gleam` contiene contexto i18n/toasts, auth policy y apply de `member.skills` para `features/skills/update.gleam`; `pool/update.gleam` delega en el route y deja de importar el workflow de skills o el submodelo de skills | El root de pool deja de conocer seleccion, guardado y refetch de skills sin mover la logica pura de skills |
-| Milestone filters update | Ejecutado parcialmente | `features/milestones/filters.gleam` contiene ahora los filtros de lista y las transiciones de estado de filtros; `milestones_update.gleam` delega toggles/search; `milestones_filters_test.gleam` cubre las transiciones directas | Se empieza a reducir `milestones/update.gleam` por owner existente sin mezclar summary/card expansion con filtros |
-| Milestone selection update | Ejecutado parcialmente | `features/milestones/selection.gleam` contiene ahora la transicion `select_milestone`; `milestones_update.gleam` delega `MemberMilestoneDetailsClicked`; `milestones_selection_test.gleam` cubre seleccion y limpieza de flags de dialogo | La seleccion queda junto a `selected_progress` sin crear un route nuevo ni mezclar efectos |
-| Milestone refresh update | Ejecutado | `features/milestones/refresh.gleam` contiene el routing de fetch ok/error y las derivaciones privadas de refresh; `milestones_update.gleam` ya no aplica fetch ok/error directamente; `milestone_refresh_test.gleam` cubre el comportamiento por `try_update` y los helpers publicos usados por el root | El apply del refresh multi-proyecto queda junto a las derivaciones de refresh sin crear una capa nueva; la API publica queda en `try_update`, `mark_pending` y `loading_unless_loaded` |
-| Milestone dialog update | Ejecutado | `features/milestones/dialog_update.gleam` contiene apertura/cierre, cambios de campos, submits y respuestas de create/edit/delete/activate; `pool/milestones_route.gleam` compone primero este owner y luego `milestones/update.gleam`; `pool/shortcut_update.gleam` usa el cierre de dialogo para Escape; `milestones_update_test.gleam` prueba create/edit/delete por `try_update` | Los efectos API/focus y helpers de dialogo salen del workflow general, y la superficie publica queda reducida a `try_update` + cierre por Escape |
-| Milestone movement update | Ejecutado parcialmente | `features/milestones/movement_update.gleam` contiene drag start/end, drop, movimiento por click de cards/tasks, validacion de milestones `Ready`, lookup de card/task de origen, respuestas ok/error y `Context` propio para callbacks de card/task moved; su superficie publica queda en `Context` y `try_update`; `pool/milestones_route.gleam` lo compone despues de dialogos y antes del workflow general; `milestones_update_test.gleam` apunta los tests directos de movimiento al modulo nuevo | Las APIs de cards/tasks, sus callbacks y las reglas de movimiento salen del shell general sin crear un dispatcher generico |
-| Milestone expansion update | Ejecutado parcialmente | `features/milestones/expansion.gleam` contiene el toggle de summary y el toggle de cards expandidas; `milestones/update.gleam` delega `MemberMilestoneSummaryToggled` y `MemberMilestoneCardToggled`; `milestones_expansion_test.gleam` cubre expand/collapse y preservacion de otras cards | El estado visual local sale del shell general sin mezclarse con filtros ni crear un route root-aware innecesario |
-| Milestone create update | Ejecutado parcialmente | `features/milestones/create_update.gleam` contiene quick-create de task y card desde milestone; `pool/milestones_route.gleam` lo compone despues de movimiento y antes del workflow residual; `milestones_create_update_test.gleam` cubre apertura de task dialog, root policy de card dialog e ignorado de mensajes ajenos | `milestones/update.gleam` deja de importar `dialog_mode` y de conocer campos `member_create_*`; la politica root-aware sigue aplicada en `pool/milestones_route.gleam` |
+| Hierarchy filters update | Ejecutado parcialmente | `features/hierarchies/filters.gleam` contiene ahora los filtros de lista y las transiciones de estado de filtros; `hierarchies_update.gleam` delega toggles/search; `hierarchies_filters_test.gleam` cubre las transiciones directas | Se empieza a reducir `hierarchies/update.gleam` por owner existente sin mezclar summary/card expansion con filtros |
+| Hierarchy selection update | Ejecutado parcialmente | `features/hierarchies/selection.gleam` contiene ahora la transicion `select_hierarchy`; `hierarchies_update.gleam` delega `MemberHierarchyDetailsClicked`; `hierarchies_selection_test.gleam` cubre seleccion y limpieza de flags de dialogo | La seleccion queda junto a `selected_progress` sin crear un route nuevo ni mezclar efectos |
+| Hierarchy refresh update | Ejecutado | `features/hierarchies/refresh.gleam` contiene el routing de fetch ok/error y las derivaciones privadas de refresh; `hierarchies_update.gleam` ya no aplica fetch ok/error directamente; `hierarchy_refresh_test.gleam` cubre el comportamiento por `try_update` y los helpers publicos usados por el root | El apply del refresh multi-proyecto queda junto a las derivaciones de refresh sin crear una capa nueva; la API publica queda en `try_update`, `mark_pending` y `loading_unless_loaded` |
+| Hierarchy dialog update | Ejecutado | `features/hierarchies/dialog_update.gleam` contiene apertura/cierre, cambios de campos, submits y respuestas de create/edit/delete/activate; `pool/hierarchies_route.gleam` compone primero este owner y luego `hierarchies/update.gleam`; `pool/shortcut_update.gleam` usa el cierre de dialogo para Escape; `hierarchies_update_test.gleam` prueba create/edit/delete por `try_update` | Los efectos API/focus y helpers de dialogo salen del workflow general, y la superficie publica queda reducida a `try_update` + cierre por Escape |
+| Hierarchy movement update | Ejecutado parcialmente | `features/hierarchies/movement_update.gleam` contiene drag start/end, drop, movimiento por click de cards/tasks, validacion de hierarchies `Ready`, lookup de card/task de origen, respuestas ok/error y `Context` propio para callbacks de card/task moved; su superficie publica queda en `Context` y `try_update`; `pool/hierarchies_route.gleam` lo compone despues de dialogos y antes del workflow general; `hierarchies_update_test.gleam` apunta los tests directos de movimiento al modulo nuevo | Las APIs de cards/tasks, sus callbacks y las reglas de movimiento salen del shell general sin crear un dispatcher generico |
+| Hierarchy expansion update | Ejecutado parcialmente | `features/hierarchies/expansion.gleam` contiene el toggle de summary y el toggle de cards expandidas; `hierarchies/update.gleam` delega `MemberHierarchySummaryToggled` y `MemberHierarchyCardToggled`; `hierarchies_expansion_test.gleam` cubre expand/collapse y preservacion de otras cards | El estado visual local sale del shell general sin mezclarse con filtros ni crear un route root-aware innecesario |
+| Hierarchy create update | Ejecutado parcialmente | `features/hierarchies/create_update.gleam` contiene quick-create de task y card desde hierarchy; `pool/hierarchies_route.gleam` lo compone despues de movimiento y antes del workflow residual; `hierarchies_create_update_test.gleam` cubre apertura de task dialog, root policy de card dialog e ignorado de mensajes ajenos | `hierarchies/update.gleam` deja de importar `dialog_mode` y de conocer campos `member_create_*`; la politica root-aware sigue aplicada en `pool/hierarchies_route.gleam` |
 | Project projections servidor | Ejecutado | `ProjectRecord`, `ProjectMemberRecord`, `StoredProject` y `StoredProjectMember` sustituyen los nombres internos ambiguos; el presenter publico no expone `org_id` ni `project_id` internos | Solo el dominio compartido conserva los nombres canonicos `Project`/`ProjectMember` |
 | CRUD UI helpers | Ejecutado parcialmente | `crud_dialog_base.gleam` centraliza atributos opcionales de campos (`aria-label`, `placeholder`, `autofocus`), merge de payload fields y botones comunes mediante `ui/button`; los CRUD dialogs eliminan helpers locales duplicados | Reduce duplicacion concreta sin introducir motor CRUD |
 | Dialog submit helpers | Ejecutado | `ui/dialog.gleam` distingue submit de formulario externo y accion por mensaje mediante `submit_button_with_locale_form` y `submit_button_with_locale_click`; ambos reutilizan `ui/button`; `ui/confirm_dialog.gleam` recibe `button.Intent` tipado y deriva `btn-loading` internamente | Los dialogs dejan de construir botones submit raw con atributos arbitrarios o deducir intencion desde strings CSS |
 | Pool dialog submits | Ejecutado parcialmente | `features/pool/create_dialog.gleam`, `position_edit_dialog.gleam` y `task_dependencies.gleam` reutilizan los helpers tipados de `ui/dialog`; el retry de task types en `create_dialog.gleam` y las acciones de `task_detail_footer.gleam` pasan por `ui/button`, conservando `task-detail-save` como clase de compatibilidad | Se reduce duplicacion DOM sin perder comportamiento propio del detalle de tarea |
-| UI shared buttons | Ejecutado parcialmente | `empty_state.gleam`, `card_section_header.gleam`, `copyable_input.gleam`, el dialogo de activacion de milestones, confirm dialogs, close buttons de modal, el retry de task type en pool, acciones simples de dialogs de capabilities, cabecera/dismiss de API tokens, delete de proyectos, drill de metricas, crear tarea desde My Bar, trigger de forgot password, acciones simples de members, claim primario de task card, acciones de perfil del right panel y botones de drawer del shell movil delegan en `ui/button`, `ui/action_buttons`, `ui/task_actions` o `ui/modal_close_button`; `ui/button.with_autofocus` conserva foco inicial sin volver a botones raw; `ui/button.with_attribute` cubre atributos ARIA puntuales sin escapar a `button` raw; `icon_picker.gleam` queda como excepcion por ser control de seleccion con estado propio | El contrato de botones semanticos se aplica en componentes reutilizables sin forzar controles que no son acciones simples |
+| UI shared buttons | Ejecutado parcialmente | `empty_state.gleam`, `card_section_header.gleam`, `copyable_input.gleam`, el dialogo de activacion de hierarchies, confirm dialogs, close buttons de modal, el retry de task type en pool, acciones simples de dialogs de capabilities, cabecera/dismiss de API tokens, delete de proyectos, drill de metricas, crear tarea desde My Bar, trigger de forgot password, acciones simples de members, claim primario de task card, acciones de perfil del right panel y botones de drawer del shell movil delegan en `ui/button`, `ui/action_buttons`, `ui/task_actions` o `ui/modal_close_button`; `ui/button.with_autofocus` conserva foco inicial sin volver a botones raw; `ui/button.with_attribute` cubre atributos ARIA puntuales sin escapar a `button` raw; `icon_picker.gleam` queda como excepcion por ser control de seleccion con estado propio | El contrato de botones semanticos se aplica en componentes reutilizables sin forzar controles que no son acciones simples |
 | Capabilities dialog actions | Ejecutado | `features/admin/capabilities_view.gleam` ya no importa `button`; delete y save members usan `ui/button` con intent/scope semanticos y tests de vista | Las acciones de dialog dejan de reconstruir `btn-danger`/`btn-primary` manualmente |
 | API token view actions | Ejecutado | `features/admin/api_tokens_view.gleam` ya no importa `button`; create token y dismiss del secreto usan `ui/button` con scopes global/entity y tests de vista | La pantalla conserva la separacion contrato/estado ya ejecutada y deja de reconstruir acciones simples en DOM raw |
 | Project dialog actions | Ejecutado | `features/projects/view.gleam` ya no importa `button`; el submit destructivo del dialogo de borrado usa `ui/button` con intent `Danger`, disabled y copy de loading | La accion irreversible se expresa con el mismo contrato semantico que otros deletes |
@@ -564,7 +564,7 @@ Lectura del estado:
 
 - "Ejecutado" significa que la responsabilidad principal ya se movio al owner correcto.
 - "Ejecutado parcialmente" significa que el patron se aplico donde habia bajo riesgo, pero no conviene afirmar cobertura total sin otro barrido especifico.
-- "Pendiente" significa que el valor de producto/codigo sigue existiendo, pero requiere otra iteracion con tests especificos.
+- "Pending" significa que el valor de producto/codigo sigue existiendo, pero requiere otra iteracion con tests especificos.
 
 El estado actual de `client_state/types.gleam` ya es una restriccion fuerte: solo debe contener tipos transversales reales. Si vuelve a recibir un formulario, target de dialogo, preview, modelo de pantalla o estado de interaccion, se estaria reintroduciendo la mezcla de responsabilidades que este informe busca eliminar.
 
@@ -581,9 +581,9 @@ El informe queda reforzado con estas senales concretas del codigo actual:
 - `apps/server/src/scrumbringer_server/http/tasks/presenters.gleam` ya no serializa `status`/`work_state` desde campos redundantes del record. Los deriva desde `TaskState`, igual que hace el mapper al reconstruir `domain/task.Task`.
 - `apps/server/test/unit/presenters_test.gleam` incluye un caso con `TaskState.Claimed(... Ongoing)` y campos `status/work_state` obsoletos para verificar que JSON responde `"claimed"` y `"ongoing"` desde el ADT canonico.
 - `shared/src/domain/field_update.gleam` ya existe como modelo tipado para updates parciales, pero el SQL generado aun contiene sentinels. La lectura correcta es "frontera tecnica contenida", no "sentinels completamente eliminados".
-- `http/tasks/payloads.gleam` normaliza `card_id` y `milestone_id` no positivos en create/update antes de construir mensajes de workflow. `services/workflows/handlers.gleam` ya no necesita interpretar `Some(0)` como ausencia.
+- `http/tasks/payloads.gleam` normaliza `card_id` y `parent_card_id` no positivos en create/update antes de construir mensajes de workflow. `services/workflows/handlers.gleam` ya no necesita interpretar `Some(0)` como ausencia.
 - `http/workflows/payloads.gleam` y `http/rules/payloads.gleam` decodifican el `active` entero de PATCH como `Option(Bool)` mediante `http/payload_fields.gleam`; los handlers ya no contienen `normalize_active`.
-- `services/rules_engine.gleam` nombra los `0` tecnicos usados para filtro de task type, card id de creacion y milestone ausente. Siguen siendo privados del motor y no suben a dominio.
+- `services/rules_engine.gleam` nombra los `0` tecnicos usados para filtro de task type, card id de creacion y hierarchy ausente. Siguen siendo privados del motor y no suben a dominio.
 - `projects_db.Project`/`ProjectMember` y `store_state.Project`/`ProjectMember` ya no existen como tipos publicos del servidor. Los records internos se llaman `ProjectRecord`, `ProjectMemberRecord`, `StoredProject` y `StoredProjectMember`, dejando `Project` y `ProjectMember` como nombres canonicos del dominio compartido. El presenter de proyectos ya no filtra `org_id` ni `project_id` a la respuesta publica.
 - `crud_dialog_base.gleam` ya contiene helpers pequenos para atributos opcionales de campos (`with_optional_aria_label`, `with_optional_placeholder`, `with_autofocus_when`), para payload fields opcionales (`prepend_fields`) y para botones CRUD comunes delegando en `ui/button`. `card_crud_dialog`, `workflow_crud_dialog`, `task_template_crud_dialog`, `rule_crud_dialog` y `task_type_crud_dialog` ya no mantienen copias locales de esos helpers.
 - `ui/dialog.gleam` ya no expone un submit con atributos arbitrarios. Distingue submit de formulario externo (`submit_button_with_locale_form`) y accion por mensaje (`submit_button_with_locale_click`), ambos reutilizando `ui/button`.
@@ -611,7 +611,7 @@ El informe queda reforzado con estas senales concretas del codigo actual:
 - `features/admin/org_settings_view.gleam` ya no llama a `task_icon_button_with_class` con `"btn-icon btn-xs btn-danger-icon"`; usa un helper semantico de delete con disabled/testid en `action_buttons.gleam`.
 - El barrido de tipos publicos confirma que `Workflow`, `Rule`, `ApiToken` e `IntegrationUser` publicos solo quedan en `shared/src/domain`. En servidor, los shapes parciales u operativos se llaman `WorkflowRecord`, `RuleRecord` y `ApiTokenRecord`.
 - `ProjectGrant` ya vive junto al contrato publico de API tokens en `shared/src/domain/api_token.gleam`; `VerifiedToken`, bearer, hash y auditoria siguen siendo responsabilidad exclusiva del servidor.
-- El barrido de sentinels confirma que cards, workflows, tasks, task templates y milestones ya tienen valores de frontera nombrados en constantes privadas. El SQL generado puede seguir conteniendo esos valores porque es la frontera tecnica.
+- El barrido de sentinels confirma que cards, workflows, tasks, task templates y hierarchies ya tienen valores de frontera nombrados en constantes privadas. El SQL generado puede seguir conteniendo esos valores porque es la frontera tecnica.
 
 Estas senales confirman que el plan debe pasar de consolidar tipos globales a reducir orquestadores grandes y evitar que los nuevos subflujos vuelvan a depender de modulos antiguos.
 
@@ -696,7 +696,7 @@ Solucion ejecutada:
 Por que esta es la mejor solucion ahora:
 
 - Refuerza la entidad central del producto sin cambiar el contrato publico de `Task`.
-- Aprovecha `TaskState`, `TaskStatus`, `WorkState`, `TaskTypeInline` y `OngoingBy` ya existentes.
+- Aprovecha `TaskState`, `TaskPhase`, `WorkState`, `TaskTypeInline` y `OngoingBy` ya existentes.
 - Evita introducir un constructor smart o un tipo opaco mientras el record compartido sigue siendo publico y usado por cliente/servidor.
 - Reduce drift en la frontera HTTP, que es donde el usuario y el cliente consumen el estado de la tarea.
 - Tiene una prueba cercana al modulo que decide el JSON, no una prueba indirecta de handler con DB.
@@ -758,10 +758,10 @@ El barrido de sentinels encontro un caso que cruzaba la frontera HTTP: `services
 
 Solucion ejecutada:
 
-1. `decode_create_task` aplica `normalize_optional_id` a `card_id` y `milestone_id`.
+1. `decode_create_task` aplica `normalize_optional_id` a `card_id` y `parent_card_id`.
 2. El helper ya existente de payloads mantiene el contrato usado en update: IDs no positivos representan ausencia.
 3. `normalize_card_id` en `services/workflows/handlers.gleam` deja de conocer `Some(0)` y solo valida `None`, IDs positivos o error.
-4. `tasks_payloads_test.gleam` cubre create con `card_id = 0` y `milestone_id = -1`, verificando que ambos llegan como `None`.
+4. `tasks_payloads_test.gleam` cubre create con `card_id = 0` y `parent_card_id = -1`, verificando que ambos llegan como `None`.
 
 Por que esta es la mejor solucion ahora:
 
@@ -780,7 +780,7 @@ Definition of Done especifica para este corte:
 
 | Garantia | Criterio |
 | --- | --- |
-| Sentinel en frontera HTTP | Cumplido: `decode_create_task` normaliza `card_id` y `milestone_id` |
+| Sentinel en frontera HTTP | Cumplido: `decode_create_task` normaliza `card_id` y `parent_card_id` |
 | Handler sin sentinel especifico | Cumplido: no queda `Some(0)` en `services/workflows/handlers.gleam` |
 | Reuso local | Cumplido: se reutiliza `normalize_optional_id` en payloads |
 | Test cercano | Cumplido: `decode_create_task_payload_normalizes_non_positive_optional_ids_test` cubre el contrato |
@@ -856,7 +856,7 @@ El estado del informe se apoya en evidencia que puede repetirse desde el reposit
 | `rg "fn normalize_active|Some\\(0\\) -> Ok\\(Some\\(False\\)\\)" apps/server/src/scrumbringer_server/http/{rules.gleam,workflows.gleam}` | sin matches | Los handlers de rules/workflows no deben interpretar el flag entero de PATCH. |
 | `rg "optional_active_flag_decoder|active: Option\\(Bool\\)|decode_update_payload_decodes_inactive_flag_test|decode_update_payload_rejects_unknown_active_flag_test" apps/server/src/scrumbringer_server/http apps/server/test/{rules_payloads_test.gleam,workflows_payloads_test.gleam}` | debe encontrar el helper, los payloads tipados y tests de `0/2` | La convencion `0/1` queda protegida en payloads. |
 | `rg "option_to_value\\([^\\n]*, 0\\)" apps/server/src/scrumbringer_server/services/rules_engine.gleam` | sin matches | El rules engine no debe tener `0` anonimos para valores de query/creacion. |
-| `rg "no_task_type_filter_value|no_card_id_create_value|no_task_milestone_id" apps/server/src/scrumbringer_server/services/rules_engine.gleam` | debe encontrar las constantes privadas | Los valores tecnicos quedan nombrados junto al owner que los usa. |
+| `rg "no_task_type_filter_value|no_card_id_create_value|no_task_parent_card_id" apps/server/src/scrumbringer_server/services/rules_engine.gleam` | debe encontrar las constantes privadas | Los valores tecnicos quedan nombrados junto al owner que los usa. |
 | `rg "pub type Project \\{|pub type ProjectMember \\{" apps/server/src/scrumbringer_server shared/src` | solo matches en `shared/src/domain/project.gleam` | Los records internos del servidor ya no compiten por el nombre canonico. |
 | `rg "#\\(\\\"org_id\\\"|#\\(\\\"project_id\\\"" apps/server/src/scrumbringer_server/http/projects/presenters.gleam` | sin matches | El presenter publico de proyectos no debe filtrar campos internos. |
 | `rg "project_json_does_not_expose_internal_org_id_test|project_member_json_does_not_expose_internal_project_id_test" apps/server/test/unit/presenters_test.gleam` | debe encontrar ambos tests | El contrato de frontera de `Project`/`ProjectMember` queda protegido sin DB. |
@@ -865,7 +865,7 @@ El estado del informe se apoya en evidencia que puede repetirse desde el reposit
 | `rg "attribute\\.type_\\(\"submit\"\\)|attribute\\.form\\(|btn-loading" apps/client/src/scrumbringer_client/features/pool/create_dialog.gleam apps/client/src/scrumbringer_client/features/pool/position_edit_dialog.gleam apps/client/src/scrumbringer_client/features/pool/task_dependencies.gleam` | sin matches relevantes en los footers migrados | Los submits principales de esos dialogs pasan por `ui/dialog` y `ui/button`. |
 | `rg "submit_button_with_locale_(form|click)\\(" apps/client/src apps/client/test` | matches en call sites migrados y tests | La variante elegida queda explicita: formulario externo o accion por mensaje. |
 | `rg "html\\.button" apps/client/src/scrumbringer_client --glob '*.gleam'` | solo encuentra `ui/button.gleam` e `ui/icon_picker.gleam` | El uso cualificado directo de `html.button` esta cerrado salvo la primitiva y el control de seleccion de iconos. |
-| `rg "import lustre/element/html\\.\\{[^\\n]*button" apps/client/src/scrumbringer_client/features apps/client/src/scrumbringer_client/ui --glob '*.gleam'` | encuentra imports directos de `button` en primitives/helpers UI, layout, pool, milestones, admin y otras features | No es un fallo automatico; es el barrido que obliga a clasificar cada caso antes de tocar codigo. |
+| `rg "import lustre/element/html\\.\\{[^\\n]*button" apps/client/src/scrumbringer_client/features apps/client/src/scrumbringer_client/ui --glob '*.gleam'` | encuentra imports directos de `button` en primitives/helpers UI, layout, pool, hierarchies, admin y otras features | No es un fallo automatico; es el barrido que obliga a clasificar cada caso antes de tocar codigo. |
 | `rg "btn-xs btn|btn-sm btn|attribute\\.attribute\\(\"aria-label\", remove_label\\)|attribute\\.attribute\\(\"title\", remove_label\\)" apps/client/src/scrumbringer_client/features/assignments/components/{project_card.gleam,user_card.gleam}` | sin matches | Las acciones inline de assignments pasan por `ui/button`; los toggles de expansion quedan fuera del barrido por ser controles con `aria-expanded`. |
 | `rg "btn-xs btn-secondary|btn btn-sm btn-secondary task-detail-edit-toggle" apps/client/src/scrumbringer_client/features/admin/rule_metrics_view.gleam apps/client/src/scrumbringer_client/features/tasks/detail_editor.gleam` | sin matches | Las acciones simples de metricas y entrada a edicion de tarea pasan por `ui/button`; quedan fuera quick ranges y prioridad por ser controles con estado ARIA propio. |
 | `rg "attribute\\.type_\\(\"submit\"\\)|btn-loading" apps/client/src/scrumbringer_client/features/auth/view.gleam` | solo queda `btn-loading` dentro de `loading_class` | Los submits de auth pasan por `ui/button.submit`; el literal de loading queda encapsulado como compatibilidad visual. |
@@ -906,7 +906,7 @@ con estado propio a una primitiva pensada para acciones simples.
 | Grupo | Ejemplos | Estado | Accion correcta |
 | --- | --- | --- | --- |
 | Primitiva o helper UI | `ui/button.gleam`, `ui/action_buttons.gleam`, `ui/modal_close_button.gleam`, `ui/tabs.gleam`, `ui/action_menu.gleam`, `ui/toast.gleam` | Aceptable si la API publica es semantica | Mantener raw interno y testear la API expuesta |
-| Control de seleccion/expansion | `ui/icon_picker.gleam`, filas de milestones, quick ranges, prioridad, toggles de cards/tasks | Aceptable con `aria-pressed`, `aria-expanded`, `aria-controls` o rol equivalente | No migrar por defecto; crear una primitiva de control solo si hay 3+ usos con la misma semantica |
+| Control de seleccion/expansion | `ui/icon_picker.gleam`, filas de hierarchies, quick ranges, prioridad, toggles de cards/tasks | Aceptable con `aria-pressed`, `aria-expanded`, `aria-controls` o rol equivalente | No migrar por defecto; crear una primitiva de control solo si hay 3+ usos con la misma semantica |
 | Superficie gestual | Drag handle de task card, drawers responsive, filas clicables | Aceptable si el comportamiento depende de gestos/layout | No forzar `ui/button`; revisar con pruebas visuales/interaccion si se redisenan |
 | Accion textual simple | Retry, Cancel, Save, Create, Back, Delete, Add cuando no tienen estado propio | Deuda si se monta con `button` raw y clases manuales | Migrar a `ui/button`, `ui/dialog` o `ui/action_buttons` preservando labels, disabled, testid y bubbling |
 
@@ -1343,20 +1343,20 @@ V/C/R:
 
 | Valor | Complejidad | Riesgo | Decision |
 | --- | --- | --- | --- |
-| Medio-alto | Baja | Bajo | Ejecutado antes de otro corte amplio de pool o milestones |
+| Medio-alto | Baja | Bajo | Ejecutado antes de otro corte amplio de pool o hierarchies |
 
-### Hallazgo B: pool y milestones siguen grandes, pero no equivalen
+### Hallazgo B: pool y hierarchies siguen grandes, pero no equivalen
 
 Estado: parcial bajo vigilancia.
 
 Evidencia actual:
 
 - `features/pool/update.gleam` sigue cerca de 874 lineas.
-- `features/milestones/update.gleam` sigue cerca de 182 lineas.
+- `features/hierarchies/update.gleam` sigue cerca de 182 lineas.
 - Pool ya tiene `task_route.gleam`, `metrics_route.gleam`,
   `rule_metrics_route.gleam`, `positions_route.gleam`, `skills_route.gleam`
   y `route_support.gleam`.
-- Milestones ya saco filtros, seleccion, refresh, dialogos, movimientos, expansion y create a owners propios.
+- Hierarchies ya saco filtros, seleccion, refresh, dialogos, movimientos, expansion y create a owners propios.
 
 Lectura reforzada:
 
@@ -1364,7 +1364,7 @@ Lectura reforzada:
   encontrar otra familia funcional concreta, distinta de tareas, metricas
   operativas, metricas de reglas, posiciones, skills y auth, con handlers,
   apply y tests separables.
-- Milestones tampoco debe dividirse por secciones visuales. El siguiente corte
+- Hierarchies tampoco debe dividirse por secciones visuales. El siguiente corte
   solo tiene sentido si separa una responsabilidad de producto distinta de
   filtros, seleccion, refresh, dialogos, movimientos, expansion y create, y si
   reduce imports del root. El residuo actual se considera shell de contratos,
@@ -1375,7 +1375,7 @@ Control previo obligatorio:
 ```sh
 rg -n "case inner|apply_|context|auth|refresh|dialog|selected_|expanded_" \
   apps/client/src/scrumbringer_client/features/pool/update.gleam \
-  apps/client/src/scrumbringer_client/features/milestones/update.gleam
+  apps/client/src/scrumbringer_client/features/hierarchies/update.gleam
 ```
 
 Decision:
@@ -1489,7 +1489,7 @@ Impacto DRY:
 
 Impacto de tipos:
 
-- `TaskState`, `TaskStatus`, `WorkState`, `TaskTypeInline` y `OngoingBy` quedan alineados en un unico record canonico.
+- `TaskState`, `TaskPhase`, `WorkState`, `TaskTypeInline` y `OngoingBy` quedan alineados en un unico record canonico.
 - El servidor deja de filtrar detalles parciales que obligan a recomponer significado mas tarde.
 
 Riesgo y limite:
@@ -1647,13 +1647,13 @@ Estado actual:
 Situacion actual:
 
 - `TaskState` esta bien modelado como ADT: disponible, reclamada y completada no son flags independientes.
-- `TaskStatus` y `WorkState` conviven con `TaskState`.
-- El mapper y el presenter ya derivan `TaskStatus` y `WorkState` desde `TaskState`; los campos redundantes quedan como compatibilidad del contrato compartido, no como fuente de decision.
+- `TaskPhase` y `WorkState` conviven con `TaskState`.
+- El mapper y el presenter ya derivan `TaskPhase` y `WorkState` desde `TaskState`; los campos redundantes quedan como compatibilidad del contrato compartido, no como fuente de decision.
 
 Mejora concreta:
 
 - Mantener `TaskState` como owner del ciclo de vida con metadatos.
-- Derivar `TaskStatus` y `WorkState` desde `TaskState` cuando se pueda.
+- Derivar `TaskPhase` y `WorkState` desde `TaskState` cuando se pueda.
 - Evitar que mappers o presenters calculen estados en paralelo desde flags sueltos.
 - Consolidar conversiones de DB alrededor de `task_state.from_db` cuando se necesiten `claimed_by`, `claimed_at` o `completed_at`.
 
@@ -1664,7 +1664,7 @@ Impacto:
 
 Limite:
 
-- No eliminar `TaskStatus` si sigue siendo util como contrato compacto, filtro o campo SQL.
+- No eliminar `TaskPhase` si sigue siendo util como contrato compacto, filtro o campo SQL.
 
 ### 2.2 `RuleTarget`
 
@@ -1693,7 +1693,7 @@ Problema:
 - Hay sentinels como `"__unset__"`, `0` o `-1` para representar campos no actualizados o ausentes en operaciones SQL.
 - Son practicos, pero fragiles si se propagan fuera de la frontera de persistencia.
 - En tasks ya existe una API superior correcta (`FieldUpdate`) para updates parciales, y la conversion a parametros SQL queda confinada en constantes privadas de `persistence/tasks/queries.gleam`.
-- En cards y workflows el patron ya esta mejor encaminado porque los valores tecnicos tienen constantes privadas (`no_milestone_*`, `unchanged_text_value`).
+- En cards y workflows el patron ya esta mejor encaminado porque los valores tecnicos tienen constantes privadas (`no_hierarchy_*`, `unchanged_text_value`).
 
 Mejora concreta:
 
@@ -1707,7 +1707,7 @@ Mejora concreta:
   - id opcional sin cambio;
   - id opcional borrado.
 - Mantener `sql/tasks_update.sql` como frontera tecnica: puede seguir comparando contra `$7 = -1` o `$3 = '__unset__'`, siempre que el valor venga nombrado desde Gleam y no suba a dominio/servicio.
-- Mantener el mismo patron en `task_templates_db.gleam` y `milestones_db.gleam`, donde los valores de update/create tambien quedan nombrados localmente.
+- Mantener el mismo patron en `task_templates_db.gleam` y `hierarchies_db.gleam`, donde los valores de update/create tambien quedan nombrados localmente.
 
 Impacto:
 
@@ -1923,29 +1923,29 @@ Limite:
 
 - No fusionar esto con assignments de proyecto si las reglas de producto no son identicas.
 
-### 4.4 `features/pool/update.gleam` y `features/milestones/update.gleam`
+### 4.4 `features/pool/update.gleam` y `features/hierarchies/update.gleam`
 
 Problema:
 
 - Son modulos grandes, pero parte de su tamano viene de orquestar muchos subflujos.
-- Ya existen modulos auxiliares en milestones y rutas parciales en pool.
+- Ya existen modulos auxiliares en hierarchies y rutas parciales en pool.
 
 Mejora concreta:
 
 - No empezar por una division mecanica por longitud.
-- En milestones, mantener el primer corte de filtros ejecutado: `filters.gleam` ya contiene `toggle_show_completed`, `toggle_show_empty` y `set_search_query`.
-- En milestones, mantener el corte de seleccion ejecutado: `selection.gleam` ya contiene `select_milestone` junto a `selected_progress`.
-- En milestones, mantener el corte de refresh ejecutado: `refresh.gleam` ya contiene el routing de `MemberProjectMilestonesFetched` siguiendo el patron existente de `pool/card_refresh.gleam`.
-- En milestones, mantener el corte de dialogos ejecutado: `dialog_update.gleam` contiene apertura/cierre, cambios de campos, submits y respuestas de create/edit/delete/activate; el atajo Escape en `pool/shortcut_update.gleam` consume ese owner directamente.
-- En milestones, mantener tambien el corte de movimiento ejecutado: `movement_update.gleam` contiene drag start/end, drop, movimiento por click de cards/tasks, validacion de milestones `Ready`, lookup de origen y respuestas ok/error.
-- En milestones, mantener tambien el corte de expansion ejecutado: `expansion.gleam` contiene toggle de summary y cards expandidas, con tests directos de expand/collapse y preservacion de otras cards.
-- En milestones, mantener tambien el corte de create ejecutado: `create_update.gleam` contiene quick-create de task/card desde milestones, y el route aplica la root policy de abrir card dialog.
-- En milestones, mover los siguientes handlers solo a modulos nuevos o existentes cuando el owner sea igual de claro; no quedan candidatos evidentes distintos de contratos, feedback y root policy tras filtros, seleccion, refresh, dialogos, movimientos, expansion y create.
+- En hierarchies, mantener el primer corte de filtros ejecutado: `filters.gleam` ya contiene `toggle_show_completed`, `toggle_show_empty` y `set_search_query`.
+- En hierarchies, mantener el corte de seleccion ejecutado: `selection.gleam` ya contiene `select_hierarchy` junto a `selected_progress`.
+- En hierarchies, mantener el corte de refresh ejecutado: `refresh.gleam` ya contiene el routing de `MemberProjectHierarchiesFetched` siguiendo el patron existente de `pool/card_refresh.gleam`.
+- En hierarchies, mantener el corte de dialogos ejecutado: `dialog_update.gleam` contiene apertura/cierre, cambios de campos, submits y respuestas de create/edit/delete/activate; el atajo Escape en `pool/shortcut_update.gleam` consume ese owner directamente.
+- En hierarchies, mantener tambien el corte de movimiento ejecutado: `movement_update.gleam` contiene drag start/end, drop, movimiento por click de cards/tasks, validacion de hierarchies `Ready`, lookup de origen y respuestas ok/error.
+- En hierarchies, mantener tambien el corte de expansion ejecutado: `expansion.gleam` contiene toggle de summary y cards expandidas, con tests directos de expand/collapse y preservacion de otras cards.
+- En hierarchies, mantener tambien el corte de create ejecutado: `create_update.gleam` contiene quick-create de task/card desde hierarchies, y el route aplica la root policy de abrir card dialog.
+- En hierarchies, mover los siguientes handlers solo a modulos nuevos o existentes cuando el owner sea igual de claro; no quedan candidatos evidentes distintos de contratos, feedback y root policy tras filtros, seleccion, refresh, dialogos, movimientos, expansion y create.
 - En pool, mantener el corte ya ejecutado de `task_route.gleam` como owner de la familia tarea.
 - En pool, extraer nuevos adapters solo si aparece otra familia clara con mezcla de contexto, auth, efectos y apply.
 - No mover drag completo a `task_route.gleam`: drag es interaccion de pool; solo reutiliza `mutation_context` porque esa parte si pertenece a tarea.
-- No mover summary/card expansion a `filters.gleam`: son estado de vista, no criterio de filtrado; el owner correcto es `milestones/expansion.gleam`.
-- No crear `milestones/route.gleam` todavia: `pool/milestones_route.gleam` ya compone los workflows root-aware y dentro de milestones cada familia extraida tiene owner concreto.
+- No mover summary/card expansion a `filters.gleam`: son estado de vista, no criterio de filtrado; el owner correcto es `hierarchies/expansion.gleam`.
+- No crear `hierarchies/route.gleam` todavia: `pool/hierarchies_route.gleam` ya compone los workflows root-aware y dentro de hierarchies cada familia extraida tiene owner concreto.
 
 Impacto:
 
@@ -1999,7 +1999,7 @@ Mejora concreta:
 - Crear variantes concretas solo cuando cambien el tratamiento:
   - `InvalidTypeId`
   - `InvalidCardId`
-  - `InvalidMilestoneId`
+  - `InvalidHierarchyId`
   - `InvalidCapabilityId`
 - Conservar un fallback como `InvalidReference(String)` si hay referencias poco frecuentes.
 
@@ -2091,7 +2091,7 @@ Estado: parcial avanzado. Capabilities, los cuatro flujos de tasks, `pool/task_r
 3. Mantener capabilities como referencia de corte ya ejecutado: dispatch fino mas subupdates concretos.
 4. Mantener `pool/task_route.gleam` como route de familia: agrupa los adapters de tarea que antes vivian en el root de pool.
 5. Mantener los `route_support.gleam` limitados a auth before/after; no ampliarlos a contextos, feedback o ADTs.
-6. Revisar milestones solo con la misma evidencia: owner funcional claro, tests cercanos y barrido de imports antes/despues.
+6. Revisar hierarchies solo con la misma evidencia: owner funcional claro, tests cercanos y barrido de imports antes/despues.
 
 Resultado esperado:
 
@@ -2153,7 +2153,7 @@ Evidencia actual:
 
 - `with_optional_aria_label`, `with_optional_placeholder` y `with_autofocus_when` tienen tests directos en `crud_dialog_base_test.gleam`.
 - `prepend_fields` tiene test directo de orden de merge y reemplaza `append_fields` local en `workflow_crud_dialog`, `rule_crud_dialog` y `task_template_crud_dialog`.
-- `ui/button.gleam` soporta botones `submit` asociados a `form` externo, acumulacion de clases de compatibilidad y `autofocus` nativo; `crud_dialog_base.gleam` usa ese contrato para cancel, submit, primary action y danger action, y milestones lo usa para el dialogo de activacion.
+- `ui/button.gleam` soporta botones `submit` asociados a `form` externo, acumulacion de clases de compatibilidad y `autofocus` nativo; `crud_dialog_base.gleam` usa ese contrato para cancel, submit, primary action y danger action, y hierarchies lo usa para el dialogo de activacion.
 - `ui/dialog.gleam` separa submit por formulario (`submit_button_with_locale_form`) de submit-like por mensaje (`submit_button_with_locale_click`), eliminando `submit_button_with_locale_attrs`.
 - Los dialogos CRUD migrados siguen renderizando sus campos y reglas locales; solo delegan atributos opcionales repetidos.
 - El barrido `rg "fn maybe_add_(aria_label|placeholder|autofocus)" apps/client/src/scrumbringer_client/components/*crud_dialog.gleam` debe quedar vacio.
@@ -2273,7 +2273,7 @@ Motivo:
 
 Alternativa recomendada:
 
-- Extraer adapters por feature: tasks, admin, capabilities, pool o milestones.
+- Extraer adapters por feature: tasks, admin, capabilities, pool o hierarchies.
 
 ### Wrappers opacos para todos los IDs
 
@@ -2464,15 +2464,15 @@ para la siguiente iteracion.
 | --- | --- | --- |
 | `wc -l apps/client/src/scrumbringer_client/client_state.gleam apps/client/src/scrumbringer_client/client_state/types.gleam apps/client/src/scrumbringer_client/features/admin/update.gleam apps/client/src/scrumbringer_client/features/capabilities/update.gleam` | `399`, `14`, `346`, `288` lineas | Los roots restantes se juzgan por responsabilidad e imports, no por longitud aislada |
 | `wc -l apps/client/src/scrumbringer_client/features/pool/update.gleam apps/client/src/scrumbringer_client/features/pool/task_route.gleam apps/client/src/scrumbringer_client/features/pool/metrics_route.gleam apps/client/src/scrumbringer_client/features/pool/rule_metrics_route.gleam apps/client/src/scrumbringer_client/features/pool/positions_route.gleam apps/client/src/scrumbringer_client/features/pool/skills_route.gleam` | `874`, `631`, `74`, `72`, `70` y `75` lineas | Pool conserva el shell de dispatch; tarea, metricas operativas, metricas de reglas, posiciones y skills tienen routes root-aware propios; no se valora solo el total de lineas |
-| `wc -l apps/client/src/scrumbringer_client/features/milestones/update.gleam apps/client/src/scrumbringer_client/features/milestones/dialog_update.gleam apps/client/src/scrumbringer_client/features/milestones/movement_update.gleam apps/client/src/scrumbringer_client/features/milestones/create_update.gleam apps/client/src/scrumbringer_client/features/milestones/expansion.gleam apps/client/src/scrumbringer_client/features/milestones/filters.gleam apps/client/src/scrumbringer_client/features/milestones/selection.gleam apps/client/src/scrumbringer_client/features/milestones/refresh.gleam` | `182`, `620`, `341`, `62`, `36`, `76`, `45` y `171` lineas | Milestones conserva un shell de contratos/feedback/root policy; dialogos, movimientos, create, expansion, filtros, seleccion y refresh ya salieron a owners existentes |
-| `rg "api_milestones\|dialog_helpers\|milestone_ids\|app_effects\|handle_milestone_(activate\|activated\|edit_clicked\|delete_clicked\|dialog_closed\|name_changed\|description_changed\|create_submitted\|created\|edit_submitted\|delete_submitted\|updated\|deleted\|create_clicked)" apps/client/src/scrumbringer_client/features/milestones/update.gleam` | Sin matches | El workflow general de milestones ya no contiene APIs/helpers/handlers de dialogo; delega en `milestones/dialog_update.gleam` desde `pool/milestones_route.gleam` |
-| `rg "api_cards\|task_operations_api\|card_in_milestone\|task_in_milestone\|can_move_between_ready_milestones\|is_ready_milestone\|handle_milestone_(card_drag\|task_drag\|drag_ended\|dropped\|card_move\|task_move)\|MemberMilestone(CardDragStarted\|TaskDragStarted\|DragEnded\|DroppedOn\|CardMoveClicked\|TaskMoveClicked\|CardMoved\|TaskMoved)" apps/client/src/scrumbringer_client/features/milestones/update.gleam` | Sin matches | El workflow general de milestones ya no contiene APIs/helpers/handlers de movimiento; delega en `milestones/movement_update.gleam` desde `pool/milestones_route.gleam` |
-| `rg "domain/card\|domain/task\|on_milestone_card_moved\|on_milestone_task_moved" apps/client/src/scrumbringer_client/features/milestones/update.gleam` | Sin matches | El contrato general de milestones ya no arrastra tipos ni callbacks de movimiento; `movement_update.Context` contiene esa responsabilidad |
-| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/milestones/movement_update.gleam` | Solo `Context` y `try_update` | Los handlers internos de drag/drop/move no quedan como API publica accidental del modulo |
-| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/milestones/refresh.gleam` + barrido de usos | Solo quedan publicos `try_update`, `mark_pending` y `loading_unless_loaded`; `ProjectFetched`, `project_fetched`, `project_failed`, `milestones_fetched` y `milestones_failed` son privados | Las derivaciones internas de refresh dejan de ser API externa; produccion conserva solo el route de refresh y los helpers usados al arrancar carga multi-proyecto |
-| `rg "dict\|member_milestone_summary_expanded\|member_milestone_expanded_cards\|handle_milestone_summary_toggled\|handle_milestone_card_toggled\|milestone_card_expanded_or_default" apps/client/src/scrumbringer_client/features/milestones/update.gleam` | Sin matches | El workflow general de milestones ya no contiene estructuras ni helpers de expansion local; delega en `milestones/expansion.gleam` |
-| `rg "dialog_mode\|member_create_milestone_id\|member_create_card_id\|MemberMilestoneCreate(Task\|Card)Clicked\|handle_milestone_create_task_clicked" apps/client/src/scrumbringer_client/features/milestones/update.gleam` | Sin matches | El workflow general de milestones ya no contiene estado ni mensajes de quick-create; delega en `milestones/create_update.gleam` |
-| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/milestones/dialog_update.gleam` + barrido de usos | Solo quedan publicos `try_update` y `handle_milestone_dialog_closed`; los tests directos de create/edit/delete pasan por `try_update` | La API publica accidental de dialogos queda cerrada: produccion conserva el route normal y el cierre por Escape, y los handlers internos dejan de ser contrato externo |
+| `wc -l apps/client/src/scrumbringer_client/features/hierarchies/update.gleam apps/client/src/scrumbringer_client/features/hierarchies/dialog_update.gleam apps/client/src/scrumbringer_client/features/hierarchies/movement_update.gleam apps/client/src/scrumbringer_client/features/hierarchies/create_update.gleam apps/client/src/scrumbringer_client/features/hierarchies/expansion.gleam apps/client/src/scrumbringer_client/features/hierarchies/filters.gleam apps/client/src/scrumbringer_client/features/hierarchies/selection.gleam apps/client/src/scrumbringer_client/features/hierarchies/refresh.gleam` | `182`, `620`, `341`, `62`, `36`, `76`, `45` y `171` lineas | Hierarchies conserva un shell de contratos/feedback/root policy; dialogos, movimientos, create, expansion, filtros, seleccion y refresh ya salieron a owners existentes |
+| `rg "api_hierarchies\|dialog_helpers\|parent_card_ids\|app_effects\|handle_hierarchy_(activate\|activated\|edit_clicked\|delete_clicked\|dialog_closed\|name_changed\|description_changed\|create_submitted\|created\|edit_submitted\|delete_submitted\|updated\|deleted\|create_clicked)" apps/client/src/scrumbringer_client/features/hierarchies/update.gleam` | Sin matches | El workflow general de hierarchies ya no contiene APIs/helpers/handlers de dialogo; delega en `hierarchies/dialog_update.gleam` desde `pool/hierarchies_route.gleam` |
+| `rg "api_cards\|task_operations_api\|card_in_hierarchy\|task_in_hierarchy\|can_move_between_ready_hierarchies\|is_ready_hierarchy\|handle_hierarchy_(card_drag\|task_drag\|drag_ended\|dropped\|card_move\|task_move)\|MemberHierarchy(CardDragStarted\|TaskDragStarted\|DragEnded\|DroppedOn\|CardMoveClicked\|TaskMoveClicked\|CardMoved\|TaskMoved)" apps/client/src/scrumbringer_client/features/hierarchies/update.gleam` | Sin matches | El workflow general de hierarchies ya no contiene APIs/helpers/handlers de movimiento; delega en `hierarchies/movement_update.gleam` desde `pool/hierarchies_route.gleam` |
+| `rg "domain/card\|domain/task\|on_hierarchy_card_moved\|on_hierarchy_task_moved" apps/client/src/scrumbringer_client/features/hierarchies/update.gleam` | Sin matches | El contrato general de hierarchies ya no arrastra tipos ni callbacks de movimiento; `movement_update.Context` contiene esa responsabilidad |
+| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/hierarchies/movement_update.gleam` | Solo `Context` y `try_update` | Los handlers internos de drag/drop/move no quedan como API publica accidental del modulo |
+| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/hierarchies/refresh.gleam` + barrido de usos | Solo quedan publicos `try_update`, `mark_pending` y `loading_unless_loaded`; `ProjectFetched`, `project_fetched`, `project_failed`, `hierarchies_fetched` y `hierarchies_failed` son privados | Las derivaciones internas de refresh dejan de ser API externa; produccion conserva solo el route de refresh y los helpers usados al arrancar carga multi-proyecto |
+| `rg "dict\|member_hierarchy_summary_expanded\|member_hierarchy_expanded_cards\|handle_hierarchy_summary_toggled\|handle_hierarchy_card_toggled\|hierarchy_card_expanded_or_default" apps/client/src/scrumbringer_client/features/hierarchies/update.gleam` | Sin matches | El workflow general de hierarchies ya no contiene estructuras ni helpers de expansion local; delega en `hierarchies/expansion.gleam` |
+| `rg "dialog_mode\|member_create_parent_card_id\|member_create_card_id\|MemberHierarchyCreate(Task\|Card)Clicked\|handle_hierarchy_create_task_clicked" apps/client/src/scrumbringer_client/features/hierarchies/update.gleam` | Sin matches | El workflow general de hierarchies ya no contiene estado ni mensajes de quick-create; delega en `hierarchies/create_update.gleam` |
+| `rg "^pub fn\|^pub type" apps/client/src/scrumbringer_client/features/hierarchies/dialog_update.gleam` + barrido de usos | Solo quedan publicos `try_update` y `handle_hierarchy_dialog_closed`; los tests directos de create/edit/delete pasan por `try_update` | La API publica accidental de dialogos queda cerrada: produccion conserva el route normal y el cierre por Escape, y los handlers internos dejan de ser contrato externo |
 | `rg "fn (prepend_for_scope\|replace_loaded_by_id\|remove_loaded_by_id\|map_loaded)" apps/client/src/scrumbringer_client/features/admin/workflows.gleam apps/client/src/scrumbringer_client/features/admin/task_templates.gleam` | Sin matches | La deuda DRY concreta se cerro: el owner admin pequeno para listas remotas con scope org/proyecto es `scoped_remote_list.gleam` |
 | `rg` de tipos especificos de feature en `client_state.gleam` | Sin matches | El root de estado no conserva forms, dialog targets, drag state ni modelos de pantalla |
 | `rg "features/tasks/update" apps/client/src apps/client/test` | Sin matches | El orquestador obsoleto de tasks no sigue siendo dependencia tecnica |
@@ -2481,23 +2481,23 @@ para la siguiente iteracion.
 | `rg "features/admin/rule_metrics|rule_metrics_workflow|rule_metrics_context|apply_pool_rule_metrics_update|rule_metrics_auth_error" apps/client/src/scrumbringer_client/features/pool/update.gleam` | Sin matches | El root de pool ya no adapta directamente metricas de reglas; delega en `pool/rule_metrics_route.gleam` |
 | `rg "position_update|position_update_context|apply_pool_positions_update|position_auth_error|update_member_positions|client_state/member/positions" apps/client/src/scrumbringer_client/features/pool/update.gleam` | Sin matches | El root de pool ya no adapta directamente posiciones; delega en `pool/positions_route.gleam` |
 | `rg "skills_workflow|skills_context|apply_pool_skills_update|skills_auth_error|update_member_skills|client_state/member/skills|selected_user_id" apps/client/src/scrumbringer_client/features/pool/update.gleam` | Sin matches | El root de pool ya no adapta directamente skills; delega en `pool/skills_route.gleam` |
-| `rg` de botones raw en milestones | El dialogo de activacion ya no importa `html.button`; quedan botones raw en toggles/rows/drag donde son controles interactivos especificos | Las acciones simples migran a `ui/button` sin forzar controles de seleccion o expansion |
+| `rg` de botones raw en hierarchies | El dialogo de activacion ya no importa `html.button`; quedan botones raw en toggles/rows/drag donde son controles interactivos especificos | Las acciones simples migran a `ui/button` sin forzar controles de seleccion o expansion |
 | `rg "button\\(|import lustre/element/html\\.\\{[^\\n]*button" src/scrumbringer_client/features/admin/capabilities_view.gleam src/scrumbringer_client/features/pool/create_dialog.gleam` | Sin matches | Las acciones simples migradas en capabilities y pool create ya no dependen de `button` raw |
 | `rg "button\\(|import lustre/element/html\\.\\{[^\\n]*button" src/scrumbringer_client/features/admin/api_tokens_view.gleam src/scrumbringer_client/features/projects/view.gleam src/scrumbringer_client/features/metrics/view.gleam` | Sin matches | Las acciones simples migradas en API tokens, proyectos y metricas ya no dependen de `button` raw |
 | `rg "modal_close_button|attribute\\.class\\(\\\"btn-close\\\"\\)|\\[text\\(\\\"X\\\"\\)\\]" src/scrumbringer_client/features/admin/rule_metrics_view.gleam` | Solo encuentra `modal_close_button` | El cierre del drilldown de metricas de reglas conserva la clase legacy via componente reusable y no reconstruye el boton raw |
 | `rg "button\\(|import lustre/element/html\\.\\{[^\\n]*button|event\\.on_click\\(config\\.on_create_task_in_card" src/scrumbringer_client/features/my_bar/view.gleam` | Sin matches | Crear tarea desde una tarjeta en My Bar reutiliza `ui/action_buttons` y no reconstruye la accion con DOM raw |
 | `rg "^\\s*button\\(|import lustre/element/html\\.\\{[^\\n]*button|attribute\\.class\\(\\\"auth-forgot\\\"\\)" src/scrumbringer_client/features/auth/view.gleam` | Sin matches | Forgot password conserva su clase visual local mediante `ui_button.with_class`, pero delega semantica, tipo nativo y click en `ui/button` |
 | `rg "class\\(case is_selected|btn btn-primary btn-xs|btn btn-secondary btn-xs|attribute\\.class\\(case config\\.members\\.members_add_in_flight" src/scrumbringer_client/features/admin/views/members.gleam` | Sin matches | `Select`/`Selected` y `Add member` del alta de miembros ya no reconstruyen clases legacy; el control es deliberadamente estrecho porque el modulo conserva botones raw fuera de ese flujo |
-| `rg "confirm_class|^\\s*button\\(|import lustre/element/html\\.\\{[^\\n]*button|btn-danger btn-loading|btn-primary btn-loading" src/scrumbringer_client/ui/confirm_dialog.gleam src/scrumbringer_client/features/admin/views/members.gleam src/scrumbringer_client/features/invites/view.gleam src/scrumbringer_client/features/milestones/dialogs.gleam` | Sin matches | Confirm dialogs usan `button.Intent` tipado y members ya no monta acciones simples con `button` raw ni clases combinadas legacy |
+| `rg "confirm_class|^\\s*button\\(|import lustre/element/html\\.\\{[^\\n]*button|btn-danger btn-loading|btn-primary btn-loading" src/scrumbringer_client/ui/confirm_dialog.gleam src/scrumbringer_client/features/admin/views/members.gleam src/scrumbringer_client/features/invites/view.gleam src/scrumbringer_client/features/hierarchies/dialogs.gleam` | Sin matches | Confirm dialogs usan `button.Intent` tipado y members ya no monta acciones simples con `button` raw ni clases combinadas legacy |
 | `rg "attribute\\.class\\(\\\"task-card-primary-action\\\"\\)|icons\\.nav_icon\\(icons\\.HandRaised" src/scrumbringer_client/features/pool/task_card.gleam` | Sin matches | El claim primario de task card reutiliza `ui/task_actions.claim_icon`; la clase local queda como compatibilidad, no como reconstruccion raw del boton |
 | `rg "attribute\\.class\\(\\\"btn-icon-only|attribute\\.attribute\\(\\\"data-testid\\\", \\\"preferences-btn\\\"\\)|attribute\\.attribute\\(\\\"data-testid\\\", \\\"logout-btn\\\"\\)|event\\.on_click\\(config\\.on_logout\\)|event\\.on_click\\(config\\.on_preferences_toggle\\)" src/scrumbringer_client/features/layout/right_panel.gleam` | Sin matches | Las acciones de perfil del right panel usan `ui/button.icon` y solo conservan clases/test ids via helpers semanticos |
 | `rg "import lustre/element/html\\.\\{[^\\n]*button|view_heroicon_inline\\(\\\"bars-3|view_heroicon_inline\\(\\\"user-circle|attribute\\.class\\(\\\"mobile-(menu|user)-btn\\\"\\)|event\\.on_click\\(config\\.on_(left|right)_drawer_toggle\\)" src/scrumbringer_client/features/layout/member_mobile_shell.gleam` | Sin matches | Los botones del topbar movil usan `ui/button.icon`; el icono de menu queda tipado en `ui/icons.Menu` |
-| `gleam format --check src test`, `gleam check --target javascript`, `gleam test --target javascript` en `apps/client` | Pasan; la suite JS reporta `1695 passed, no failures` tras cerrar API publica accidental en capabilities/dependencies, derivar opciones de reglas desde tipos canonicos y centralizar claimability | Las extracciones de `pool/task_route.gleam`, `pool/metrics_route.gleam`, `pool/rule_metrics_route.gleam`, `pool/positions_route.gleam`, `pool/skills_route.gleam`, dialogos/movimientos/create/expansion/filtros/seleccion/refresh de milestones, el helper admin `scoped_remote_list.gleam`, la migracion de botones del dialogo de activacion, y las nuevas acciones simples en pool/capabilities/API tokens/proyectos/metricas/My Bar/auth/members/confirm dialogs/right panel/shell movil quedan cubiertas por compilacion y tests de cliente |
+| `gleam format --check src test`, `gleam check --target javascript`, `gleam test --target javascript` en `apps/client` | Pasan; la suite JS reporta `1695 passed, no failures` tras cerrar API publica accidental en capabilities/dependencies, derivar opciones de reglas desde tipos canonicos y centralizar claimability | Las extracciones de `pool/task_route.gleam`, `pool/metrics_route.gleam`, `pool/rule_metrics_route.gleam`, `pool/positions_route.gleam`, `pool/skills_route.gleam`, dialogos/movimientos/create/expansion/filtros/seleccion/refresh de hierarchies, el helper admin `scoped_remote_list.gleam`, la migracion de botones del dialogo de activacion, y las nuevas acciones simples en pool/capabilities/API tokens/proyectos/metricas/My Bar/auth/members/confirm dialogs/right panel/shell movil quedan cubiertas por compilacion y tests de cliente |
 | `rg "Some\\(0\\)" apps/server/src/scrumbringer_server/services/workflows/handlers.gleam` | Sin matches | El sentinel de ausencia de card en create task queda fuera del workflow handler |
 | `rg` de `TaskState` en `http/tasks/presenters.gleam` | Encuentra `status: _status`, `work_state: _work_state`, `task_state.to_status(state)` y `task_state.to_work_state(state)` | El presenter ignora campos redundantes y serializa desde el ADT canonico |
 | `rg "task_json_derives_status_and_work_state_from_task_state_test" apps/server/test/unit/presenters_test.gleam` | Encuentra el test | El drift de lifecycle queda protegido cerca del presenter |
 | `rg` de `ProjectGrant` y conversiones | Definiciones en `shared/src/domain/api_token.gleam`; usos en servidor importan el owner compartido | El ADT de grant no vive en el servicio operativo |
-| `rg` de normalizacion de create task | `decode_create_task` normaliza `card_id` y `milestone_id`; el test de payload existe | La frontera JSON absorbe IDs no positivos antes del workflow |
+| `rg` de normalizacion de create task | `decode_create_task` normaliza `card_id` y `parent_card_id`; el test de payload existe | La frontera JSON absorbe IDs no positivos antes del workflow |
 
 Resultado del refuerzo:
 
@@ -2540,52 +2540,52 @@ lectura superficial:
 | Mover todos los records del servidor a shared | Filtra persistencia/autorizacion al contrato publico | Compartir solo entidades canonicas; mantener `Record`/`Projection` internos |
 | Envolver todos los IDs con tipos opacos en un unico corte | Aumenta churn y obliga a tocar muchas fronteras sin bug concreto | Introducir wrappers solo donde haya mezcla real de IDs o invariante nueva |
 | Perseguir cero matches de sentinels | SQL, JSON y DOM necesitan representar ausencia o compatibilidad | Nombrar o convertir en la frontera; exigir que no crucen a negocio |
-| Partir milestones/pool por longitud | Reduce lineas sin reducir decisiones duplicadas | Extraer solo si hay owner funcional claro y el root pierde imports operativos |
+| Partir hierarchies/pool por longitud | Reduce lineas sin reducir decisiones duplicadas | Extraer solo si hay owner funcional claro y el root pierde imports operativos |
 
-### Auditoria reforzada de milestones
+### Auditoria reforzada de hierarchies
 
-Milestones era el mejor candidato para dudas porque acumulo mucho codigo nuevo
+Hierarchies era el mejor candidato para dudas porque acumulo mucho codigo nuevo
 en la rama. El refuerzo actual no lo da por limpio por intuicion: lo clasifica
 por responsabilidades ya separadas y por lo que queda deliberadamente en el
 shell.
 
 | Responsabilidad | Owner actual | Estado | Motivo |
 | --- | --- | --- | --- |
-| Filtros de lista | `features/milestones/filters.gleam` | Cerrado bajo tests | Transiciones puras de filtros, sin efectos ni root policy |
-| Seleccion de milestone | `features/milestones/selection.gleam` | Cerrado bajo tests | Actualiza selected/flags locales sin mezclar dialogos |
-| Refresh multi-proyecto | `features/milestones/refresh.gleam` | Cerrado bajo tests | Respuestas fetch ok/error y derivaciones de refresh quedan juntas |
-| Dialogos CRUD/activate | `features/milestones/dialog_update.gleam` | Cerrado bajo guardarrail | Owner claro y superficie publica reducida a `try_update` + cierre por Escape |
-| Movimiento de cards/tasks | `features/milestones/movement_update.gleam` | Cerrado bajo guardarrail | Solo expone `Context` y `try_update`; handlers internos no son API publica |
-| Expansion visual local | `features/milestones/expansion.gleam` | Cerrado bajo tests | Estado de vista separado de filtros y refresh |
-| Quick-create desde milestone | `features/milestones/create_update.gleam` | Cerrado bajo tests | Apertura de task dialog y root policy de card quedan fuera del workflow general |
-| Contratos, feedback y root policy | `features/milestones/update.gleam` | Residuo aceptado | No conviene extraer un modulo `contracts` mientras solo mueva tipos y aumente imports |
+| Filtros de lista | `features/hierarchies/filters.gleam` | Cerrado bajo tests | Transiciones puras de filtros, sin efectos ni root policy |
+| Seleccion de hierarchy | `features/hierarchies/selection.gleam` | Cerrado bajo tests | Actualiza selected/flags locales sin mezclar dialogos |
+| Refresh multi-proyecto | `features/hierarchies/refresh.gleam` | Cerrado bajo tests | Respuestas fetch ok/error y derivaciones de refresh quedan juntas |
+| Dialogos CRUD/activate | `features/hierarchies/dialog_update.gleam` | Cerrado bajo guardarrail | Owner claro y superficie publica reducida a `try_update` + cierre por Escape |
+| Movimiento de cards/tasks | `features/hierarchies/movement_update.gleam` | Cerrado bajo guardarrail | Solo expone `Context` y `try_update`; handlers internos no son API publica |
+| Expansion visual local | `features/hierarchies/expansion.gleam` | Cerrado bajo tests | Estado de vista separado de filtros y refresh |
+| Quick-create desde hierarchy | `features/hierarchies/create_update.gleam` | Cerrado bajo tests | Apertura de task dialog y root policy de card quedan fuera del workflow general |
+| Contratos, feedback y root policy | `features/hierarchies/update.gleam` | Residuo aceptado | No conviene extraer un modulo `contracts` mientras solo mueva tipos y aumente imports |
 
-La mejora de mejor V/C/R dentro de milestones no era otro corte del shell
+La mejora de mejor V/C/R dentro de hierarchies no era otro corte del shell
 general, sino cerrar API publica accidental en `dialog_update.gleam`. El barrido
 previo mostro que produccion usaba `try_update` desde
-`pool/milestones_route.gleam` y `handle_milestone_dialog_closed` desde
+`pool/hierarchies_route.gleam` y `handle_hierarchy_dialog_closed` desde
 `pool/shortcut_update.gleam`; el resto de handlers publicos aparecian como
 detalle interno del propio modulo o como tests directos heredados del corte.
 
 La limpieza ejecutada reduce esa API a:
 
-- `try_update`, como entrada normal del route de milestones;
-- `handle_milestone_dialog_closed`, mientras `pool/shortcut_update.gleam`
+- `try_update`, como entrada normal del route de hierarchies;
+- `handle_hierarchy_dialog_closed`, mientras `pool/shortcut_update.gleam`
   necesite cerrar el dialogo desde Escape;
 - ningun otro handler publico.
 
-Los tests que llamaban directamente a `handle_milestone_create_submitted`,
-`handle_milestone_edit_clicked` y `handle_milestone_deleted_ok` ahora envian
-`MemberMilestoneCreateSubmitted`, `MemberMilestoneEditClicked` y
-`MemberMilestoneDeleted` a `try_update`. Asi se cierra una deuda de API publica
+Los tests que llamaban directamente a `handle_hierarchy_create_submitted`,
+`handle_hierarchy_edit_clicked` y `handle_hierarchy_deleted_ok` ahora envian
+`MemberHierarchyCreateSubmitted`, `MemberHierarchyEditClicked` y
+`MemberHierarchyDeleted` a `try_update`. Asi se cierra una deuda de API publica
 accidental sin anadir capas ni cambiar comportamiento.
 
 ### Matriz final V/C/R reforzada
 
 | Mejora candidata | Valor | Complejidad | Riesgo | Decision reforzada |
 | --- | --- | --- | --- | --- |
-| Auditar y reducir `pub` accidental en `milestones/dialog_update.gleam` | Medio | Baja-media | Bajo | Ejecutado: solo quedan publicos `try_update` y `handle_milestone_dialog_closed` |
-| Extraer `milestones/update.gleam` a `contracts.gleam` | Bajo-medio | Media | Medio | Rechazar por ahora: mueve tipos sin borrar una decision duplicada clara |
+| Auditar y reducir `pub` accidental en `hierarchies/dialog_update.gleam` | Medio | Baja-media | Bajo | Ejecutado: solo quedan publicos `try_update` y `handle_hierarchy_dialog_closed` |
+| Extraer `hierarchies/update.gleam` a `contracts.gleam` | Bajo-medio | Media | Medio | Rechazar por ahora: mueve tipos sin borrar una decision duplicada clara |
 | Seguir extrayendo pool por familias funcionales | Medio | Media | Medio | Solo ejecutar con evidencia de imports/context/apply repetidos, como se hizo con tasks/metrics/positions/skills |
 | Crear helpers UI para todos los botones raw restantes | Bajo | Alta | Medio | Rechazar: toggles, rows, drag handles y controles segmentados no son acciones simples |
 | Mantener barridos negativos de tipos canonicos | Alto | Baja | Bajo | Obligatorio como control de no regresion, sin nuevo codigo si el barrido sigue limpio |
@@ -2643,15 +2643,15 @@ barrido actual refuerza este criterio:
 | `features/tasks/notes_update.gleam` | `Context`, `AuthPolicy`, `Update`, `try_update` | Notas de tarea usan mensajes `MemberNote*`; los handlers internos no son contrato externo |
 | `features/tasks/mutation_update.gleam` | `MutationContext`, `DispatchContext`, `Policy`, `Update`, `Success`, `ErrorLabels`, `Context`, `ErrorContext`, `try_update`, `handle_claim_dropped`, `should_refetch_work_sessions`, `error_feedback` | Click/release/complete/success/error entran por mensajes `Member*`; drag conserva un puente publico real |
 | `features/tasks/detail_update.gleam` | `EditContext`, `Model`, `Context`, `DispatchContext`, `AuthPolicy`, `Update`, `SuccessContext`, `ErrorContext`, `try_update`, `error_feedback` | El route entra por mensajes `MemberTaskDetail*`, `MemberTaskUpdated` y `MemberTaskMetricsFetched`; `error_feedback` queda publico como helper puro testeado directamente |
-| `features/milestones/dialog_update.gleam` | `try_update`, `handle_milestone_dialog_closed` | El route usa `try_update`; Escape necesita cerrar dialogo desde `pool/shortcut_update.gleam` |
-| `features/milestones/refresh.gleam` | `try_update`, `mark_pending`, `loading_unless_loaded` | Refresh routing y helpers de carga multi-proyecto |
-| `features/milestones/movement_update.gleam` | `Context`, `try_update` | Movimiento necesita callbacks root-aware; los handlers de drag/drop quedan privados |
-| `features/milestones/create_update.gleam` | `try_update` | Quick-create no expone handlers internos |
+| `features/hierarchies/dialog_update.gleam` | `try_update`, `handle_hierarchy_dialog_closed` | El route usa `try_update`; Escape necesita cerrar dialogo desde `pool/shortcut_update.gleam` |
+| `features/hierarchies/refresh.gleam` | `try_update`, `mark_pending`, `loading_unless_loaded` | Refresh routing y helpers de carga multi-proyecto |
+| `features/hierarchies/movement_update.gleam` | `Context`, `try_update` | Movimiento necesita callbacks root-aware; los handlers de drag/drop quedan privados |
+| `features/hierarchies/create_update.gleam` | `try_update` | Quick-create no expone handlers internos |
 
 Guardarrail nuevo:
 
 ```sh
-rg -n "^pub fn|^pub type" apps/client/src/scrumbringer_client/features/capabilities/update.gleam apps/client/src/scrumbringer_client/features/capabilities/types.gleam apps/client/src/scrumbringer_client/features/tasks/{create_update,notes_update,mutation_update,detail_update}.gleam apps/client/src/scrumbringer_client/features/milestones/{dialog_update,refresh,movement_update,create_update}.gleam
+rg -n "^pub fn|^pub type" apps/client/src/scrumbringer_client/features/capabilities/update.gleam apps/client/src/scrumbringer_client/features/capabilities/types.gleam apps/client/src/scrumbringer_client/features/tasks/{create_update,notes_update,mutation_update,detail_update}.gleam apps/client/src/scrumbringer_client/features/hierarchies/{dialog_update,refresh,movement_update,create_update}.gleam
 ```
 
 Resultado esperado: no deben reaparecer aliases de compatibilidad ni handlers
@@ -2731,7 +2731,7 @@ contrato.
 | Card detail update | Cerrado como owner y API publica | `features/pool/card_detail_update.gleam` solo publica `Model`, `Context` y `try_update`; el barrido de `opened/closed/metrics_fetched_*` queda vacio | Mantener `card_detail.gleam` como owner puro de estado local y `card_detail_update.gleam` como adapter effectful |
 | Position update | Cerrado como owner y API publica | `features/pool/position_update.gleam` solo publica contratos de route y `try_update`; el barrido de helpers `fetched/opened/submitted/saved` queda vacio | Mantener validacion de coordenadas en `position_edit.gleam` y politica auth en `position_update.try_update` |
 | Skills update | Cerrado como owner y API publica | `features/skills/update.gleam` solo publica contratos de route y `try_update`; el barrido `skills_update.handle_` queda vacio en src/test | Mantener fetch/toggle/save como handlers privados y tests por mensajes de pool |
-| Milestones | Cerrado por owners parciales, con shell residual aceptado | Filtros, seleccion, refresh, dialogos, movimiento, expansion y quick-create tienen owner propio | No extraer `contracts.gleam` mientras solo mueva tipos; revisar solo si reaparece conocimiento operativo |
+| Hierarchies | Cerrado por owners parciales, con shell residual aceptado | Filtros, seleccion, refresh, dialogos, movimiento, expansion y quick-create tienen owner propio | No extraer `contracts.gleam` mientras solo mueva tipos; revisar solo si reaparece conocimiento operativo |
 | Pool | Parcial sano | Tareas, metricas, rule metrics, posiciones, skills y auth tienen routes/support concretos | Nuevos cortes solo con evidencia de otra familia funcional mezclada |
 | Admin | Cerrado para routes extraidos | Routes por area y `route_support` concentran context/auth/apply repetidos | No crear dispatcher admin generico |
 | UI compartida | Parcial sano | Acciones simples migran a `ui/button`/`ui/dialog`; controles gestuales o seleccionables quedan fuera | Clasificar cada `button` raw antes de migrar; no exigir cero matches |
@@ -2809,7 +2809,7 @@ Se cerro este punto en los subflujos que ya tenian owner claro:
 | `features/tasks/dependency_update.gleam` | `DependenciesModel`, `AuthPolicy`, `Update`, contextos y `try_update` | fetch de dependencias, dialogo de add, candidates, add/remove ok/error | `tasks_dependencies_update_test.gleam` entra por `pool_messages.MemberDependency*`; `pool/task_route.gleam` consume solo `try_update` y contratos |
 | `features/task_types/update.gleam` | contratos de route, feedback/auth/refresh y `try_update` | fetch, dialog, create form, icon preview, submit, success/error y CRUD component handlers | `task_types_update_test.gleam` entra por `admin_messages.TaskType*` y verifica `RefreshPolicy` |
 | `features/admin/task_templates.gleam` | contratos de route, feedback/auth, `try_update` y `fetch_task_templates` | fetch project, dialog open/close, CRUD transitions y feedback de exito | `admin_task_templates_update_test.gleam` entra por `pool_messages.TaskTemplate*` y `TaskTemplatesProjectFetched` |
-| `features/admin/cards.gleam` | contratos de route, feedback/auth/focus, `try_update`, `fetch_cards_for_project` y dos puentes reales | fetch, dialog open/close, CRUD transitions y filtros de lista | `admin_cards_update_test.gleam` entra por `pool_messages.Cards*`; `handle_open_card_dialog_for_milestone` y `handle_card_viewed` siguen publicos por integraciones reales |
+| `features/admin/cards.gleam` | contratos de route, feedback/auth/focus, `try_update`, `fetch_cards_for_project` y dos puentes reales | fetch, dialog open/close, CRUD transitions y filtros de lista | `admin_cards_update_test.gleam` entra por `pool_messages.Cards*`; `handle_open_card_dialog_for_hierarchy` y `handle_card_viewed` siguen publicos por integraciones reales |
 | `features/admin/workflows.gleam` | contratos de route, feedback/auth y entradas `try_workflows_update`, `try_rules_update`, `try_template_attachment_update` | fetch/dialog/CRUD de workflows, reglas, metricas de reglas y template attachment | `admin_workflows_update_test.gleam` entra por `pool_messages.Workflow*`, `Rule*` y `Template*`; los ADT de exito y transiciones locales son privados |
 
 Este refuerzo cambia el liston de cierre: no basta con que el owner exista. El
@@ -2877,12 +2877,12 @@ locales quedan privadas detras de `try_update`.
 Guardarrail especifico para cards:
 
 ```sh
-rg -n "cards\.(handle_cards_fetched|handle_open_card_dialog\(|handle_close_card_dialog|handle_card_crud|handle_show_empty|handle_show_completed|handle_state_filter|handle_search)|^pub fn handle_cards_fetched|^pub fn handle_open_card_dialog\(|^pub fn handle_close_card_dialog|^pub fn handle_card_crud|^pub fn handle_show_empty|^pub fn handle_show_completed|^pub fn handle_state_filter|^pub fn handle_search" apps/client/src/scrumbringer_client/features/admin/cards.gleam apps/client/test/admin_cards_update_test.gleam apps/client/src/scrumbringer_client/features/pool/admin_route.gleam apps/client/src/scrumbringer_client/features/pool/milestones_route.gleam apps/client/src/scrumbringer_client/features/pool/card_detail_update.gleam
+rg -n "cards\.(handle_cards_fetched|handle_open_card_dialog\(|handle_close_card_dialog|handle_card_crud|handle_show_empty|handle_show_completed|handle_state_filter|handle_search)|^pub fn handle_cards_fetched|^pub fn handle_open_card_dialog\(|^pub fn handle_close_card_dialog|^pub fn handle_card_crud|^pub fn handle_show_empty|^pub fn handle_show_completed|^pub fn handle_state_filter|^pub fn handle_search" apps/client/src/scrumbringer_client/features/admin/cards.gleam apps/client/test/admin_cards_update_test.gleam apps/client/src/scrumbringer_client/features/pool/admin_route.gleam apps/client/src/scrumbringer_client/features/pool/hierarchies_route.gleam apps/client/src/scrumbringer_client/features/pool/card_detail_update.gleam
 ```
 
-Resultado actual: sin matches. `handle_open_card_dialog_for_milestone` sigue
-publico porque `pool/milestones_route.gleam` lo usa para quick-create desde un
-milestone; `handle_card_viewed` sigue publico porque `pool/card_detail_update`
+Resultado actual: sin matches. `handle_open_card_dialog_for_hierarchy` sigue
+publico porque `pool/hierarchies_route.gleam` lo usa para quick-create desde un
+hierarchy; `handle_card_viewed` sigue publico porque `pool/card_detail_update`
 lo usa para limpiar el indicador de notas nuevas al abrir una card.
 
 Guardarrail unico para workflows/rules/template attachment:
@@ -3086,7 +3086,7 @@ la evidencia indicada antes de tocar codigo.
 | --- | --- | --- | --- |
 | Reducir API publica accidental en otro update | `rg "^pub fn|^pub type"` muestra handlers operativos publicos y tests los llaman directamente | Migrar tests a `try_update`, privatizar handlers y anadir guardarrail | Si el `pub` es contrato usado por otro owner o helper puro compartido |
 | Nuevo route en pool | `pool/update.gleam` vuelve a importar contexto/apply/auth de una familia funcional no extraida | Un route concreto con test de exito, auth y mensaje ignorado | Si solo reduce lineas o mueve `case` sin borrar imports operativos |
-| Nuevo corte en milestones | El shell mezcla efectos/root policy de un owner que ya tiene nombre de producto | Extraer un owner por vez y mantener `update.gleam` como shell | Si el corte solo crea `contracts.gleam` o wrappers de tipos |
+| Nuevo corte en hierarchies | El shell mezcla efectos/root policy de un owner que ya tiene nombre de producto | Extraer un owner por vez y mantener `update.gleam` como shell | Si el corte solo crea `contracts.gleam` o wrappers de tipos |
 | Mas UI compartida | Tres acciones simples repiten intent, disabled/loading y accesibilidad | Helper estrecho sobre `ui/button`/`ui/dialog` | Si el control es toggle, drag, segmented control, row clickable o primitiva UI |
 | Nuevos payload helpers | Dos o mas endpoints repiten la misma convencion de transporte | Helper de frontera en `payload_fields.gleam` con test | Si la convencion aparece una sola vez o pertenece a SQL generado |
 | Tipos compartidos adicionales | Un tipo publico con significado canonico aparece fuera de `shared/src/domain` | Mover contrato a shared o renombrar server como `Record`/`Projection` | Si el shape contiene `org_id`, hash, bearer, auditoria o persistencia interna |
@@ -3103,7 +3103,7 @@ estas limpiezas mientras no aparezca nueva evidencia:
 
 | Limpieza tentadora | Por que no es optima ahora | Senal que la reactivaria |
 | --- | --- | --- |
-| Extraer contratos de `milestones/update.gleam` a otro modulo | Moveria tipos y aumentaria imports sin borrar una decision duplicada clara | Otro modulo necesita esos contratos como owner real, no solo como comodidad |
+| Extraer contratos de `hierarchies/update.gleam` a otro modulo | Moveria tipos y aumentaria imports sin borrar una decision duplicada clara | Otro modulo necesita esos contratos como owner real, no solo como comodidad |
 | Eliminar aliases de slices admin/member | No tienen callers externos y ayudan a leer el shell de estado | Un feature/test empieza a importarlos como facade en vez de importar el owner real |
 | Crear CRUD universal | Mezcla copy, permisos y efectos distintos | Tres o mas dialogos comparten exactamente el mismo contrato de campos, submit, auth y feedback |
 | Migrar todo `button` raw | Algunos botones son controles de seleccion, drag, toggles o primitiva UI | Un barrido clasifica un caso como accion simple repetida con intent/accesibilidad comun |
@@ -3224,8 +3224,8 @@ Lectura actual:
 | Residuo | Clasificacion | Motivo |
 | --- | --- | --- |
 | `pool/filters.gleam`, `pool/preferences.gleam`, `pool/card_detail.gleam`, `pool/position_edit.gleam` | API pura interna aceptada | Son owners de estado consumidos por adapters effectful y tests puros; cerrarlos exigiria mezclar estado puro con efectos |
-| `admin/cards.gleam` | Puentes reales | `handle_open_card_dialog_for_milestone` y `handle_card_viewed` conectan milestones/card detail con admin cards |
-| `milestones/dialog_update.gleam` | Puente real | `handle_milestone_dialog_closed` lo usa shortcut/Escape |
+| `admin/cards.gleam` | Puentes reales | `handle_open_card_dialog_for_hierarchy` y `handle_card_viewed` conectan hierarchies/card detail con admin cards |
+| `hierarchies/dialog_update.gleam` | Puente real | `handle_hierarchy_dialog_closed` lo usa shortcut/Escape |
 | `auth/helpers.gleam` | Helper transversal deliberado | Centraliza 401/auth para routes admin y pool |
 | `tasks/mutation_update.gleam` | Integracion real de drag/drop | `handle_claim_dropped` lo consume `pool/drag_update.gleam` |
 
@@ -3263,7 +3263,7 @@ de estas cuatro salidas:
 | Owner cerrado | Un modulo deja de mezclar contexto, auth, feedback, apply o subflujos de otra familia funcional | Routes admin/pool y sub-updates de tasks/capabilities |
 | Frontera publica estrechada | Handlers operativos dejan de ser `pub` y produccion/tests entran por `try_update` o route | `task_types`, `projects`, `templates`, `cards`, `workflows`, `org_settings`, `rule_metrics`, `assignments`, `capabilities`, `dependencies`, `members` |
 | Tipo mejor alineado | El contrato canonico queda en `shared` o el record interno queda nombrado como persistencia/proyeccion | `Project`, `ProjectMember`, `ApiToken`, `IntegrationUser`, `Task`, `Card`, `Workflow`, `Rule` |
-| Residuo justificado | La API restante tiene consumidor real o separa core puro de efecto | `pool/filters`, `pool/preferences`, `pool/card_detail`, `pool/position_edit`, `auth/helpers`, `admin/cards`, `milestones/dialog_update`, `tasks/mutation_update` |
+| Residuo justificado | La API restante tiene consumidor real o separa core puro de efecto | `pool/filters`, `pool/preferences`, `pool/card_detail`, `pool/position_edit`, `auth/helpers`, `admin/cards`, `hierarchies/dialog_update`, `tasks/mutation_update` |
 
 Si una modificacion no encaja en ninguna salida, no debe permanecer como
 limpieza. Esta es la regla que evita conservar intentos intermedios que
@@ -3337,7 +3337,7 @@ Resultado: sin matches.
 | --- | --- | --- | --- |
 | DRY | Mejorado y acotado | Los cortes que permanecen eliminan owners duplicados o APIs accidentales; no se introduce CRUD universal ni facade generica | Mantener solo nuevos helpers con tres usos o una decision de frontera clara |
 | Tipos/ADT | Sano bajo guardarrail | Las entidades canonicas principales viven en `shared`; records internos conservan datos de autorizacion/persistencia | Repetir barrido de `pub type` antes de tocar servidor o shared |
-| API publica de updates | Cerrada para deudas detectadas | Capabilities y dependencies ya siguen el mismo patron que los cortes previos: `try_update` publico, handlers privados, tests por mensaje real | No perseguir cero `pub`; clasificar residuos por consumidor real |
+| API publica de updates | Closed para deudas detectadas | Capabilities y dependencies ya siguen el mismo patron que los cortes previos: `try_update` publico, handlers privados, tests por mensaje real | No perseguir cero `pub`; clasificar residuos por consumidor real |
 | UI compartida | Parcial sano | Botones/dialogos se han movido hacia primitivas reutilizables cuando el intent era comun | No forzar controles gestuales, toggles, tabs o rows seleccionables a helpers de accion simple |
 | Servidor/HTTP | Sano bajo frontera | Payload/presenter absorben convenciones de transporte; tests DB pasan con migraciones | Vigilar que sentinels y campos internos no vuelvan a handlers o contratos publicos |
 | Limpieza final | Con criterio objetivo | Una modificacion solo permanece si cierra owner, frontera, tipo o test | Borrar en futuros cortes cualquier cambio que solo mueva codigo de sitio |
@@ -3354,8 +3354,8 @@ lista cerrada:
 | `features/pool/filters.gleam` | Handlers de filtros y busqueda | Core puro compartido por update, shortcuts y tests |
 | `features/pool/preferences.gleam` | Handlers de preferencias visuales | Core puro de preferencias consumido por route/update |
 | `features/pool/position_edit.gleam` | Handlers del editor de posicion | Core de formulario y save/fetch consumido por adapter especifico |
-| `features/admin/cards.gleam` | `handle_open_card_dialog_for_milestone`, `handle_card_viewed` | Puentes reales desde milestones/card detail |
-| `features/milestones/dialog_update.gleam` | `handle_milestone_dialog_closed` | Puente real para Escape/shortcut |
+| `features/admin/cards.gleam` | `handle_open_card_dialog_for_hierarchy`, `handle_card_viewed` | Puentes reales desde hierarchies/card detail |
+| `features/hierarchies/dialog_update.gleam` | `handle_hierarchy_dialog_closed` | Puente real para Escape/shortcut |
 | `features/auth/helpers.gleam` | `handle_auth_error`, `handle_401_or` | Helper transversal de auth usado por routes |
 | `features/tasks/mutation_update.gleam` | `handle_claim_dropped` | Integracion publica real de drag/drop |
 
@@ -3371,7 +3371,7 @@ Estas soluciones no son optimas ahora, aunque podrian reducir lineas:
 | Propuesta rechazada | Por que no es mejor | Evidencia que podria reabrirla |
 | --- | --- | --- |
 | Partir mas `pool/update.gleam` por tamano | Tareas, metricas, rule metrics, posiciones, skills y auth ya tienen owners; otro corte sin familia nueva solo mueve imports | Un subflujo vuelve a mezclar contexto/apply/auth o tests directos de otro owner |
-| Extraer contratos genericos de milestones | Aumentaria imports y conceptos sin retirar decision duplicada | Otro owner necesita esos contratos como frontera real |
+| Extraer contratos genericos de hierarchies | Aumentaria imports y conceptos sin retirar decision duplicada | Otro owner necesita esos contratos como frontera real |
 | Crear framework CRUD/UI | Los dialogos comparten piezas, no un flujo unico de producto | Tres o mas dialogos con mismo contrato de campos, submit, permisos y feedback |
 | Envolver todos los IDs | Churn alto sin bug probado de mezcla | Bug real o frontera donde el tipo opaco elimine estados invalidos frecuentes |
 | Eliminar todos los `button` directos | Algunos son primitivas, controles de seleccion, tabs, drag o toggles | Clasificacion que detecte acciones simples repetidas con intent/accesibilidad comun |
@@ -3385,16 +3385,16 @@ tipo, test y guardarrail.
 El barrido de strings de negocio mostro un caso pequeno y accionable en
 `components/rule_crud_dialog.gleam`: el formulario ya validaba el submit con
 `workflow.parse_rule_target`, pero las opciones del selector de estado repetian
-los valores wire de `TaskStatus` y `CardState` como literales locales.
+los valores wire de `TaskPhase` y `CardPhase` como literales locales.
 
 Solucion ejecutada:
 
 1. `state_options_for_resource_type` conserva la frontera DOM como `String`,
    porque los valores vienen de un `<select>`.
 2. Los valores de tarea se derivan de
-   `task_status.task_status_to_string(Available | Claimed(Taken) | Completed)`.
+   `task_status.task_status_to_string(Available | Claimed(Taken) | Done)`.
 3. Los valores de card se derivan de
-   `card.state_to_string(Pendiente | EnCurso | Cerrada)`.
+   `card.state_to_string(Pending | InProgress | Closed)`.
 4. No se introduce un ADT propio del formulario ni un mapper generico: el
    dominio compartido sigue siendo el owner de los valores canonicos.
 5. `rule_crud_dialog_test.gleam` anade pruebas puras que verifican los valores
@@ -3537,7 +3537,7 @@ Resultado: solo tipos canonicos en `shared/src/domain`.
 | Task claimability | Cerrado | `TaskState` mas `blocked_count` gobiernan la capacidad de reclamar; servidor sigue siendo autoridad final |
 | Rule CRUD state values | Cerrado | La UI mantiene strings de DOM, pero los valores nacen de los tipos canonicos |
 | Updates con handlers publicos accidentales | Cerrado para los casos detectados | Mantener barridos; no exigir cero `pub` cuando hay consumidor real |
-| Pool y milestones roots | Parcial sano | No tocar por tamano; solo por nueva familia funcional con contexto/apply/auth duplicado |
+| Pool y hierarchies roots | Parcial sano | No tocar por tamano; solo por nueva familia funcional con contexto/apply/auth duplicado |
 | UI compartida | Parcial sano | Seguir usando primitivas existentes para acciones simples; no forzar toggles, drag, tabs o rows a helpers genericos |
 | Tipos compartidos | Sano bajo guardarrail | No mover a `shared` records con autorizacion, persistencia, hashes, bearer o auditoria |
 
@@ -3620,7 +3620,7 @@ evidencia concreta:
 - vigilar que `Workflow`, `Rule`, `ApiToken` e `IntegrationUser` no reaparezcan como tipos publicos de servidor y que los shapes internos mantengan sufijo `Record`;
 - extraer mas admin solo si el root vuelve a mostrar contexto/apply/auth repetido con tests propios;
 - tratar pool como parcialmente saneado: tareas y auth ya tienen owners; el siguiente corte exige otra familia funcional clara;
-- revisar milestones con el mismo liston usado en pool, no por longitud;
+- revisar hierarchies con el mismo liston usado en pool, no por longitud;
 - ampliar `crud_dialog_base` solo con piezas repetidas en tres o mas dialogos;
 - rechazar cualquier limpieza que no pueda demostrar owner retirado, frontera
   estrechada, tipo mejor modelado o test mas cercano a la entrada real.

@@ -16,7 +16,7 @@ gleam_json = "3.1.0"
 gleam_otp = "1.2.0"
 mist = "5.0.4"
 # Crypto
-# NOTE: Argon2 implementation is provided via an Erlang dependency in src/services/password.gleam.
+# NOTE: Argon2 implementation is provided via an Erlang dependency in src/use_case/password.gleam.
 gleam_crypto = "~> 1.0"
 shared = { path = "../../shared" }
 argon2 = ">= 1.2.0 and < 2.0.0"

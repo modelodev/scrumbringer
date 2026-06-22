@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option as opt
 
 import domain/card.{type Card}
+import domain/remote.{unwrap}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -21,6 +22,7 @@ pub fn from_state(
     active_task_id: state_selectors.now_working_active_task_id(model),
     now_working_sessions: state_selectors.now_working_all_sessions(model),
     cards: cards,
+    capabilities: unwrap(model.admin.capabilities.capabilities, []),
     pool: model.member.pool,
     now_working: model.member.now_working,
     skills: model.member.skills,
@@ -39,6 +41,26 @@ fn callbacks() -> pool_view.Callbacks(client_state.Msg) {
     on_create_opened: client_state.pool_msg(
       pool_messages.MemberCreateDialogOpened,
     ),
+    on_capability_scope_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
+        value,
+      ))
+    },
+    on_type_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
+    },
+    on_capability_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
+    },
+    on_visibility_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolVisibilityChanged(value))
+    },
+    on_view_mode_change: fn(mode) {
+      client_state.pool_msg(pool_messages.MemberPoolViewModeSet(mode))
+    },
     on_now_working_pause: client_state.pool_msg(
       pool_messages.MemberNowWorkingPauseClicked,
     ),
@@ -58,7 +80,7 @@ fn callbacks() -> pool_view.Callbacks(client_state.Msg) {
       ))
     },
     on_open: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_hover_opened: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskHoverOpened(task_id))

@@ -27,6 +27,7 @@ pub type Config(msg) {
     actions: List(lelement.Element(msg)),
     reserve_actions_slot: Bool,
     action_slot_class: Option(String),
+    content_testid: Option(String),
     testid: Option(String),
   )
 }
@@ -47,6 +48,7 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
     actions: actions,
     reserve_actions_slot: reserve_actions_slot,
     action_slot_class: action_slot_class,
+    content_testid: content_testid,
     testid: testid,
   ) = config
 
@@ -81,7 +83,13 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
   let content = case on_click {
     Some(msg) ->
       button(
-        content_button_attrs(content_class, msg, content_title, content_label),
+        content_button_attrs(
+          content_class,
+          msg,
+          content_title,
+          content_label,
+          content_testid,
+        ),
         [
           icon_el,
           span([attribute.class(title_css)], [text(title)]),
@@ -123,6 +131,7 @@ fn content_button_attrs(
   msg: msg,
   content_title: Option(String),
   content_label: Option(String),
+  content_testid: Option(String),
 ) -> List(attribute.Attribute(msg)) {
   let base = [
     attribute.class(content_class),
@@ -135,10 +144,16 @@ fn content_button_attrs(
     None -> base
   }
 
-  case content_label {
+  let with_label = case content_label {
     Some(value) ->
       list.append(with_title, [attribute.attribute("aria-label", value)])
     None -> with_title
+  }
+
+  case content_testid {
+    Some(value) ->
+      list.append(with_label, [attribute.attribute("data-testid", value)])
+    None -> with_label
   }
 }
 

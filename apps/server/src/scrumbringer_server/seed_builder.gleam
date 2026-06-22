@@ -13,6 +13,8 @@
 //// - Define seed configuration preset
 //// - Build complete scenarios with proper relationships
 //// - Manage data pools for realistic names/titles
+//// - HT-12 coverage: root pool, parent_card_id, due_date, closed, healthy,
+////   saturated, hierarchy, manager, member, capability
 ////
 //// ## Non-responsibilities
 ////
@@ -20,10 +22,11 @@
 //// - CLI or output (see seed.gleam)
 
 import domain/card
-import domain/milestone
 import domain/org_role
 import domain/project_role
-import domain/task_status.{type TaskStatus, Available, Claimed, Completed, Taken}
+import domain/task_status.{
+  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+}
 import domain/workflow
 import gleam/int
 import gleam/list
@@ -31,8 +34,8 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/seed_db
-import scrumbringer_server/services/rules_engine
-import scrumbringer_server/services/task_events_db
+import scrumbringer_server/use_case/audit_events_db
+import scrumbringer_server/use_case/rules_engine
 
 // =============================================================================
 // Types
@@ -79,7 +82,7 @@ pub type SeedResult {
     tasks: Int,
     cards: Int,
     rule_executions: Int,
-    task_events: Int,
+    audit_events: Int,
   )
 }
 
@@ -88,7 +91,7 @@ pub type TaskSeedInfo {
   TaskSeedInfo(
     task_id: Int,
     project_id: Int,
-    status: TaskStatus,
+    status: TaskPhase,
     created_at: String,
     created_by: Int,
     claimed_by: Option(Int),
@@ -115,7 +118,7 @@ type BuildState {
     task_ids: List(Int),
     task_seeds: List(TaskSeedInfo),
     template_ids: List(Int),
-    task_events_count: Int,
+    audit_events_count: Int,
     rule_executions_count: Int,
   )
 }
@@ -127,7 +130,7 @@ type BuildState {
 /// Realistic configuration with edge cases and variability.
 pub fn realistic_config() -> SeedConfig {
   SeedConfig(
-    user_count: 6,
+    user_count: 9,
     inactive_user_count: 2,
     project_count: 4,
     empty_project_count: 1,
@@ -196,7 +199,8 @@ fn user_email_pool() -> List(String) {
   [
     "member@example.com", "pm@example.com", "beta@example.com",
     "dev@example.com", "qa@example.com", "lead@example.com",
-    "intern@example.com", "contractor@example.com",
+    "intern@example.com", "contractor@example.com", "ops@example.com",
+    "design@example.com", "data@example.com",
   ]
 }
 
@@ -247,7 +251,7 @@ pub fn build_seed(
       task_ids: [],
       task_seeds: [],
       template_ids: [],
-      task_events_count: 0,
+      audit_events_count: 0,
       rule_executions_count: 0,
     )
 
@@ -262,8 +266,10 @@ pub fn build_seed(
   use state <- result.try(build_workflows(db, state, config))
   use state <- result.try(build_rules(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
-  use state <- result.try(build_milestones(db, state, config))
-  use state <- result.try(build_task_events(db, state, config))
+  use state <- result.try(build_plan_qa_scenarios(db, state, config))
+  use state <- result.try(build_people_qa_scenarios(db, state, config))
+  use state <- result.try(build_root_cards(db, state, config))
+  use state <- result.try(build_audit_events(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
   use state <- result.try(trigger_rule_executions(db, state, config))
@@ -277,7 +283,7 @@ pub fn build_seed(
     tasks: list.length(state.task_ids),
     cards: list.length(state.card_ids),
     rule_executions: state.rule_executions_count,
-    task_events: state.task_events_count,
+    audit_events: state.audit_events_count,
   ))
 }
 
@@ -326,10 +332,18 @@ fn build_projects(
   let names = list.take(project_names, config.project_count)
   let empty_start = int.max(0, list.length(names) - config.empty_project_count)
   let other_users = list.drop(state.user_ids, 1)
-  let assignable_users = case list.reverse(other_users) {
-    [] -> []
-    [_unassigned, ..rest] -> list.reverse(rest)
-  }
+  let assignable_users = other_users
+  let default_project_members = [state.admin_id, ..assignable_users]
+
+  use _ <- result.try(
+    list.try_map(default_project_members, fn(user_id) {
+      let role = case user_id == state.admin_id {
+        True -> project_role.Manager
+        False -> project_role.Member
+      }
+      seed_db.insert_member(db, default_project_id, user_id, role)
+    }),
+  )
 
   use project_results <- result.try(
     list.index_map(names, fn(name, idx) {
@@ -393,7 +407,7 @@ fn build_projects(
   let project_members =
     list.map(project_ids, fn(project_id) {
       case project_id == default_project_id {
-        True -> #(project_id, [])
+        True -> #(project_id, default_project_members)
         False ->
           case list.contains(empty_project_ids, project_id) {
             True -> #(project_id, [])
@@ -685,9 +699,9 @@ fn build_rules(
             db,
             seed_rule_options(
               workflow_id: active_wf,
-              name: "On Task Completed (Active)",
+              name: "On Task Done (Active)",
               goal: Some("Auto action on completion"),
-              target: workflow.TaskRule(Completed, Some(bug_id)),
+              target: workflow.TaskRule(Done, Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -697,9 +711,9 @@ fn build_rules(
             db,
             seed_rule_options(
               workflow_id: inactive_wf,
-              name: "On Task Completed (Inactive)",
+              name: "On Task Done (Inactive)",
               goal: Some("Should not trigger"),
-              target: workflow.TaskRule(Completed, Some(feature_id)),
+              target: workflow.TaskRule(Done, Some(feature_id)),
               active: True,
               created_at: None,
             ),
@@ -712,9 +726,9 @@ fn build_rules(
             db,
             seed_rule_options(
               workflow_id: single_wf,
-              name: "On Task Completed",
+              name: "On Task Done",
               goal: Some("Auto action on completion"),
-              target: workflow.TaskRule(Completed, Some(bug_id)),
+              target: workflow.TaskRule(Done, Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -806,19 +820,14 @@ fn build_tasks(
       let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
 
       let tasks = [
-        #(title_for(base_idx, "Task A"), bug_id, Completed, Some(card_all_done)),
+        #(title_for(base_idx, "Task A"), bug_id, Done, Some(card_all_done)),
         #(
           title_for(base_idx + 1, "Task B"),
           feature_id,
-          Completed,
+          Done,
           Some(card_all_done),
         ),
-        #(
-          title_for(base_idx + 2, "Task C"),
-          bug_id,
-          Completed,
-          Some(card_mixed),
-        ),
+        #(title_for(base_idx + 2, "Task C"), bug_id, Done, Some(card_mixed)),
         #(
           title_for(base_idx + 3, "Task D"),
           feature_id,
@@ -877,7 +886,7 @@ fn build_tasks(
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
             None,
           )
-          Completed -> #(
+          Done -> #(
             None,
             None,
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
@@ -902,6 +911,7 @@ fn build_tasks(
             card_id: card_id,
             created_from_rule_id: created_from_rule_id,
             pool_lifetime_s: pool_lifetime_s,
+            due_date: None,
             created_at: Some(created_at),
             claimed_at: claimed_at,
             completed_at: completed_at,
@@ -932,7 +942,823 @@ fn build_tasks(
   Ok(BuildState(..state, task_ids: task_ids, task_seeds: task_seeds))
 }
 
-fn build_task_events(
+fn build_plan_qa_scenarios(
+  db: pog.Connection,
+  state: BuildState,
+  _config: SeedConfig,
+) -> Result(BuildState, String) {
+  case active_project_ids(state) {
+    [] -> Ok(state)
+    [project_id, ..] -> {
+      case task_types_for_project(state.task_type_ids, project_id) {
+        None -> Ok(state)
+        Some(#(bug_id, feature_id, task_id)) -> {
+          let member_id = claimed_member_id(state, project_id, state.admin_id)
+          use no_capability_type_id <- result.try(seed_db.insert_task_type(
+            db,
+            project_id,
+            "Plan QA - No capability",
+            "document-text",
+          ))
+
+          use direct_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "Plan QA - Direct task card",
+            Some(
+              "Direct-task fixture for card-scope Kanban: no child cards, mixed statuses and a default-closed card scope.",
+            ),
+            card.Active,
+            4,
+            Some(days_ago_timestamp(3)),
+            None,
+          ))
+          use matrix_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "Plan QA - Multi-capability matrix",
+            Some(
+              "Capability-board fixture with child cards, empty matrix cells, no-capability tasks and an explicit blocked task.",
+            ),
+            card.Active,
+            5,
+            Some(days_ago_timestamp(4)),
+            None,
+          ))
+          use closed_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "Plan QA - Closed outcome",
+            Some(
+              "Closed Plan fixture with completed work for show-closed validation.",
+            ),
+            card.Closed,
+            18,
+            Some(days_ago_timestamp(16)),
+            Some(days_ago_timestamp(2)),
+          ))
+          use activation_impact_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "Plan QA - Draft activation impact",
+            Some(
+              "Draft fixture with four prepared tasks so Plan can show a meaningful +4 activation impact.",
+            ),
+            card.Draft,
+            8,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+
+          use api_id <- result.try(insert_plan_qa_child_card(
+            db,
+            state,
+            project_id,
+            matrix_id,
+            "Plan QA - API lane",
+            card.Blue,
+          ))
+          use ui_id <- result.try(insert_plan_qa_child_card(
+            db,
+            state,
+            project_id,
+            matrix_id,
+            "Plan QA - UI lane",
+            card.Green,
+          ))
+          use docs_id <- result.try(insert_plan_qa_child_card(
+            db,
+            state,
+            project_id,
+            matrix_id,
+            "Plan QA - Docs lane",
+            card.Purple,
+          ))
+
+          use direct_available <- result.try(insert_plan_qa_task_with_due(
+            db,
+            project_id,
+            direct_id,
+            bug_id,
+            "Plan QA - Direct available backend",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            4,
+            Some("CURRENT_DATE"),
+          ))
+          use direct_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            direct_id,
+            feature_id,
+            "Plan QA - Direct claimed frontend",
+            Claimed(Taken),
+            state.admin_id,
+            Some(member_id),
+            5,
+            3,
+          ))
+          use direct_done <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            direct_id,
+            no_capability_type_id,
+            "Plan QA - Direct done no capability",
+            Done,
+            state.admin_id,
+            None,
+            2,
+            2,
+          ))
+          use api_available <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            api_id,
+            bug_id,
+            "Plan QA - API available",
+            Available,
+            state.admin_id,
+            None,
+            3,
+            3,
+          ))
+          use api_dependency <- result.try(insert_plan_qa_task_with_due(
+            db,
+            project_id,
+            api_id,
+            task_id,
+            "Plan QA - Missing contract dependency",
+            Available,
+            state.admin_id,
+            None,
+            5,
+            2,
+            Some("CURRENT_DATE + 3"),
+          ))
+          use api_blocked <- result.try(insert_plan_qa_task_with_due(
+            db,
+            project_id,
+            api_id,
+            feature_id,
+            "Plan QA - Blocked integration",
+            Available,
+            state.admin_id,
+            None,
+            5,
+            1,
+            Some("CURRENT_DATE - 4"),
+          ))
+          use _ <- result.try(seed_db.insert_task_dependency(
+            db,
+            api_blocked.task_id,
+            api_dependency.task_id,
+            state.admin_id,
+          ))
+          use ui_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            feature_id,
+            "Plan QA - UI ongoing",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(member_id),
+            4,
+            2,
+          ))
+          use docs_no_capability <- result.try(insert_plan_qa_task_with_due(
+            db,
+            project_id,
+            docs_id,
+            no_capability_type_id,
+            "Plan QA - Docs no capability",
+            Available,
+            state.admin_id,
+            None,
+            2,
+            1,
+            Some("CURRENT_DATE + 5"),
+          ))
+          use pool_ready_due_today <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            bug_id,
+            "Pool QA - Ready due today",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            1,
+            Some("CURRENT_DATE"),
+          ))
+          use pool_dependency <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            task_id,
+            "Pool QA - Blocking dependency",
+            Available,
+            state.admin_id,
+            None,
+            3,
+            2,
+            Some("CURRENT_DATE + 2"),
+          ))
+          use pool_blocked_overdue <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            feature_id,
+            "Pool QA - Blocked overdue",
+            Available,
+            state.admin_id,
+            None,
+            5,
+            1,
+            Some("CURRENT_DATE - 2"),
+          ))
+          use _ <- result.try(seed_db.insert_task_dependency(
+            db,
+            pool_blocked_overdue.task_id,
+            pool_dependency.task_id,
+            state.admin_id,
+          ))
+          use closed_done <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            closed_id,
+            task_id,
+            "Plan QA - Closed done task",
+            Done,
+            state.admin_id,
+            None,
+            1,
+            2,
+          ))
+          use impact_backend <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            bug_id,
+            "Plan QA - Draft impact backend",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            2,
+          ))
+          use impact_frontend <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            feature_id,
+            "Plan QA - Draft impact frontend",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            2,
+          ))
+          use impact_qa <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            task_id,
+            "Plan QA - Draft impact QA",
+            Available,
+            state.admin_id,
+            None,
+            3,
+            2,
+          ))
+          use impact_docs <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            no_capability_type_id,
+            "Plan QA - Draft impact docs",
+            Available,
+            state.admin_id,
+            None,
+            2,
+            2,
+          ))
+
+          let new_card_ids = [
+            direct_id,
+            matrix_id,
+            closed_id,
+            activation_impact_id,
+            api_id,
+            ui_id,
+            docs_id,
+          ]
+          let new_task_seeds = [
+            direct_available,
+            direct_claimed,
+            direct_done,
+            api_available,
+            api_dependency,
+            api_blocked,
+            ui_ongoing,
+            docs_no_capability,
+            pool_ready_due_today,
+            pool_dependency,
+            pool_blocked_overdue,
+            closed_done,
+            impact_backend,
+            impact_frontend,
+            impact_qa,
+            impact_docs,
+          ]
+          let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
+
+          Ok(
+            BuildState(
+              ..state,
+              card_ids: list.append(state.card_ids, new_card_ids),
+              card_ids_by_project: append_cards_for_project(
+                state.card_ids_by_project,
+                project_id,
+                new_card_ids,
+              ),
+              task_ids: list.append(state.task_ids, new_task_ids),
+              task_seeds: list.append(state.task_seeds, new_task_seeds),
+            ),
+          )
+        }
+      }
+    }
+  }
+}
+
+fn build_people_qa_scenarios(
+  db: pog.Connection,
+  state: BuildState,
+  _config: SeedConfig,
+) -> Result(BuildState, String) {
+  case active_project_ids(state) {
+    [] -> Ok(state)
+    [project_id, ..] -> {
+      case task_types_for_project(state.task_type_ids, project_id) {
+        None -> Ok(state)
+        Some(#(bug_id, feature_id, task_id)) -> {
+          let members =
+            members_for_project(state.project_member_ids, project_id)
+          let non_admins =
+            list.filter(members, fn(user_id) { user_id != state.admin_id })
+          let api_owner = list_at_int(non_admins, 0, state.admin_id)
+          let blocked_owner = list_at_int(non_admins, 1, state.admin_id)
+          let loaded_owner = list_at_int(non_admins, 2, state.admin_id)
+          let review_owner = list_at_int(non_admins, 3, state.admin_id)
+          let support_owner = list_at_int(non_admins, 4, state.admin_id)
+
+          use coordination_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "People QA - Coordination stream",
+            Some(
+              "Active people-coordination fixture with distributed claimed, ongoing, blocked and free-person states.",
+            ),
+            card.Active,
+            3,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use api_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - API handoff",
+            Some("Task leaf for API handoff coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use ui_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - UI polish",
+            Some("Task leaf for UI polish coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use release_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - Release readiness",
+            Some("Task leaf for release readiness coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use support_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - Review support",
+            Some("Task leaf for review and support load distribution."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+
+          use admin_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            task_id,
+            "People QA - Facilitate rollout sync",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(state.admin_id),
+            4,
+            2,
+          ))
+          use api_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            api_id,
+            bug_id,
+            "People QA - API handoff ongoing",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(api_owner),
+            5,
+            2,
+          ))
+          use api_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            api_id,
+            task_id,
+            "People QA - API cleanup claimed",
+            Claimed(Taken),
+            state.admin_id,
+            Some(api_owner),
+            3,
+            1,
+          ))
+          use release_blocker <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            task_id,
+            "People QA - Release checklist blocker",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            1,
+          ))
+          use blocked_claim <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            feature_id,
+            "People QA - Blocked deploy approval",
+            Claimed(Taken),
+            state.admin_id,
+            Some(blocked_owner),
+            5,
+            1,
+          ))
+          use _ <- result.try(seed_db.insert_task_dependency(
+            db,
+            blocked_claim.task_id,
+            release_blocker.task_id,
+            state.admin_id,
+          ))
+          use loaded_one <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            feature_id,
+            "People QA - Polish empty state copy",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            3,
+            2,
+          ))
+          use loaded_two <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            feature_id,
+            "People QA - Polish mobile wrapping",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            3,
+            2,
+          ))
+          use loaded_three <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            bug_id,
+            "People QA - Verify filter contrast",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            2,
+            1,
+          ))
+          use loaded_four <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            task_id,
+            "People QA - Review scope labels",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            2,
+            1,
+          ))
+          use review_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            feature_id,
+            "People QA - Review dependency notes",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(review_owner),
+            4,
+            2,
+          ))
+          use review_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            bug_id,
+            "People QA - Review blocked owner summary",
+            Claimed(Taken),
+            state.admin_id,
+            Some(review_owner),
+            3,
+            1,
+          ))
+          use support_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            task_id,
+            "People QA - Support async handoff",
+            Claimed(Taken),
+            state.admin_id,
+            Some(support_owner),
+            2,
+            1,
+          ))
+          use support_available <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            task_id,
+            "People QA - Support intake available",
+            Available,
+            state.admin_id,
+            None,
+            2,
+            1,
+          ))
+
+          let new_card_ids = [
+            coordination_id,
+            api_id,
+            ui_id,
+            release_id,
+            support_id,
+          ]
+          let new_task_seeds = [
+            admin_ongoing,
+            api_ongoing,
+            api_claimed,
+            release_blocker,
+            blocked_claim,
+            loaded_one,
+            loaded_two,
+            loaded_three,
+            loaded_four,
+            review_ongoing,
+            review_claimed,
+            support_claimed,
+            support_available,
+          ]
+          let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
+
+          Ok(
+            BuildState(
+              ..state,
+              card_ids: list.append(state.card_ids, new_card_ids),
+              card_ids_by_project: append_cards_for_project(
+                state.card_ids_by_project,
+                project_id,
+                new_card_ids,
+              ),
+              task_ids: list.append(state.task_ids, new_task_ids),
+              task_seeds: list.append(state.task_seeds, new_task_seeds),
+            ),
+          )
+        }
+      }
+    }
+  }
+}
+
+fn insert_plan_qa_child_card(
+  db: pog.Connection,
+  state: BuildState,
+  project_id: Int,
+  parent_card_id: Int,
+  title: String,
+  color: card.CardColor,
+) -> Result(Int, String) {
+  use card_id <- result.try(seed_db.insert_card(
+    db,
+    seed_db.CardInsertOptions(
+      project_id: project_id,
+      title: title,
+      description: "Plan QA child card for matrix row coverage.",
+      color: Some(color),
+      created_by: state.admin_id,
+      created_at: Some(days_ago_timestamp(3)),
+    ),
+  ))
+  use _ <- result.try(seed_db.assign_card_to_parent_card(
+    db,
+    card_id,
+    parent_card_id,
+  ))
+  Ok(card_id)
+}
+
+fn insert_plan_qa_task(
+  db: pog.Connection,
+  project_id: Int,
+  card_id: Int,
+  type_id: Int,
+  title: String,
+  status: TaskPhase,
+  created_by: Int,
+  claimed_by: Option(Int),
+  priority: Int,
+  created_days_ago: Int,
+) -> Result(TaskSeedInfo, String) {
+  insert_plan_qa_task_with_due(
+    db,
+    project_id,
+    card_id,
+    type_id,
+    title,
+    status,
+    created_by,
+    claimed_by,
+    priority,
+    created_days_ago,
+    None,
+  )
+}
+
+fn insert_plan_qa_task_with_due(
+  db: pog.Connection,
+  project_id: Int,
+  card_id: Int,
+  type_id: Int,
+  title: String,
+  status: TaskPhase,
+  created_by: Int,
+  claimed_by: Option(Int),
+  priority: Int,
+  created_days_ago: Int,
+  due_date: Option(String),
+) -> Result(TaskSeedInfo, String) {
+  let created_at = days_ago_timestamp(created_days_ago)
+  let #(claimed_by, claimed_at, completed_at) = case status {
+    Claimed(_) -> #(
+      claimed_by,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+      None,
+    )
+    Done -> #(
+      None,
+      None,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+    )
+    Available -> #(None, None, None)
+  }
+
+  use task_id <- result.try(seed_db.insert_task(
+    db,
+    seed_db.TaskInsertOptions(
+      project_id: project_id,
+      type_id: type_id,
+      title: title,
+      description: "Plan QA fixture task",
+      priority: priority,
+      status: status,
+      created_by: created_by,
+      claimed_by: claimed_by,
+      card_id: Some(card_id),
+      created_from_rule_id: None,
+      pool_lifetime_s: 3600 * created_days_ago,
+      due_date: due_date,
+      created_at: Some(created_at),
+      claimed_at: claimed_at,
+      completed_at: completed_at,
+      last_entered_pool_at: Some(created_at),
+    ),
+  ))
+
+  Ok(TaskSeedInfo(
+    task_id: task_id,
+    project_id: project_id,
+    status: status,
+    created_at: created_at,
+    created_by: created_by,
+    claimed_by: claimed_by,
+  ))
+}
+
+fn insert_pool_qa_task_with_due(
+  db: pog.Connection,
+  project_id: Int,
+  type_id: Int,
+  title: String,
+  status: TaskPhase,
+  created_by: Int,
+  claimed_by: Option(Int),
+  priority: Int,
+  created_days_ago: Int,
+  due_date: Option(String),
+) -> Result(TaskSeedInfo, String) {
+  let created_at = days_ago_timestamp(created_days_ago)
+  let #(claimed_by, claimed_at, completed_at) = case status {
+    Claimed(_) -> #(
+      claimed_by,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+      None,
+    )
+    Done -> #(
+      None,
+      None,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+    )
+    Available -> #(None, None, None)
+  }
+
+  use task_id <- result.try(seed_db.insert_task(
+    db,
+    seed_db.TaskInsertOptions(
+      project_id: project_id,
+      type_id: type_id,
+      title: title,
+      description: "Pool QA fixture task",
+      priority: priority,
+      status: status,
+      created_by: created_by,
+      claimed_by: claimed_by,
+      card_id: None,
+      created_from_rule_id: None,
+      pool_lifetime_s: 3600 * created_days_ago,
+      due_date: due_date,
+      created_at: Some(created_at),
+      claimed_at: claimed_at,
+      completed_at: completed_at,
+      last_entered_pool_at: Some(created_at),
+    ),
+  ))
+
+  Ok(TaskSeedInfo(
+    task_id: task_id,
+    project_id: project_id,
+    status: status,
+    created_at: created_at,
+    created_by: created_by,
+    claimed_by: claimed_by,
+  ))
+}
+
+fn build_audit_events(
   db: pog.Connection,
   state: BuildState,
   config: SeedConfig,
@@ -948,12 +1774,12 @@ fn build_task_events(
             project_id: seed.project_id,
             task_id: seed.task_id,
             actor_user_id: seed.created_by,
-            event_type: task_events_db.TaskCreated,
+            event_type: audit_events_db.TaskCreated,
             created_at: Some(seed.created_at),
           )
         })
 
-      let per_task_events =
+      let per_audit_events =
         seeds
         |> list.index_map(fn(seed, idx) {
           task_event_options_for_seed(seed, idx, state, config)
@@ -964,7 +1790,7 @@ fn build_task_events(
 
       let all_events =
         created_events
-        |> list.append(per_task_events)
+        |> list.append(per_audit_events)
         |> list.append(per_user_events)
 
       use _ <- result.try(
@@ -973,12 +1799,12 @@ fn build_task_events(
         }),
       )
 
-      Ok(BuildState(..state, task_events_count: list.length(all_events)))
+      Ok(BuildState(..state, audit_events_count: list.length(all_events)))
     }
   }
 }
 
-fn build_milestones(
+fn build_root_cards(
   db: pog.Connection,
   state: BuildState,
   _config: SeedConfig,
@@ -989,230 +1815,333 @@ fn build_milestones(
     list.index_map(active_projects, fn(project_id, idx) {
       case idx {
         0 -> {
-          use discovery_id <- result.try(insert_seed_milestone(
+          use discovery_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Discovery - Research stream",
             Some(
-              "Early planning milestone with exploratory cards, loose research tasks and an explicit empty slot for future work.",
+              "Early planning root card with exploratory cards, loose research tasks and an explicit empty slot for future work.",
             ),
-            milestone.Ready,
+            card.Draft,
             21,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             discovery_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            discovery_id,
-            4,
-          ))
-
-          use empty_slot_id <- result.try(insert_seed_milestone(
+          use discovery_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            1,
+            discovery_id,
+            "Discovery - Research tasks",
+            Some(
+              "Task leaf for loose research work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            20,
+            None,
+            None,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              discovery_tasks_id,
+              4,
+            ),
+          )
+
+          use empty_slot_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Release shell - Empty placeholder",
             Some(
-              "Intentional empty milestone to exercise empty-state UX and show upcoming planning space.",
+              "Intentional empty root card to exercise empty-state UX and show upcoming planning space.",
             ),
-            milestone.Ready,
+            card.Draft,
             15,
             None,
             None,
           ))
           let _ = empty_slot_id
 
-          use hardening_id <- result.try(insert_seed_milestone(
+          use hardening_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            2,
             "Hardening - Pre-release QA",
             Some(
-              "Milestone packed with QA, polish and rollout preparation so the new milestones UI shows a realistic planning queue.",
+              "Root card packed with QA, polish and rollout preparation so the new root cards UI shows a realistic planning queue.",
             ),
-            milestone.Ready,
+            card.Draft,
             9,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             hardening_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            hardening_id,
-            3,
-          ))
-
-          use compliance_id <- result.try(insert_seed_milestone(
+          use hardening_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            3,
+            hardening_id,
+            "Hardening - QA tasks",
+            Some(
+              "Task leaf for QA and rollout work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            8,
+            None,
+            None,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              hardening_tasks_id,
+              3,
+            ),
+          )
+
+          use compliance_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Compliance - Documentation sweep",
             Some(
-              "Ready milestone dominated by loose documentation and compliance tasks, useful to validate the exception treatment in the new view.",
+              "Ready root card dominated by loose documentation and compliance tasks, useful to validate the exception treatment in the new view.",
             ),
-            milestone.Ready,
+            card.Draft,
             5,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             compliance_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
+          use compliance_tasks_id <- result.try(insert_seed_child_card(
             db,
+            state,
             project_id,
             compliance_id,
-            2,
+            "Compliance - Review tasks",
+            Some(
+              "Task leaf for documentation checks while the root remains a pure card group.",
+            ),
+            card.Draft,
+            4,
+            None,
+            None,
           ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              compliance_tasks_id,
+              2,
+            ),
+          )
           Ok(Nil)
         }
 
         1 -> {
-          use completed_id <- result.try(insert_seed_milestone(
+          use completed_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Release 1.4 - Closed",
             Some(
-              "Recently completed milestone used to exercise historical metrics and completed content sections.",
+              "Recently completed root card used to exercise historical metrics and completed content sections.",
             ),
-            milestone.Completed,
+            card.Closed,
             28,
             Some(days_ago_timestamp(18)),
             Some(days_ago_timestamp(6)),
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             completed_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_completed_pool_tasks_to_milestone(
-            db,
-            project_id,
-            completed_id,
-            4,
-          ))
-
-          use active_id <- result.try(insert_seed_milestone(
+          use completed_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            1,
+            completed_id,
+            "Release 1.4 - Completion tasks",
+            Some(
+              "Closed task leaf preserving completed task coverage without mixing child kinds.",
+            ),
+            card.Closed,
+            17,
+            Some(days_ago_timestamp(16)),
+            Some(days_ago_timestamp(6)),
+          ))
+          use _ <- result.try(
+            seed_db.assign_completed_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              completed_tasks_id,
+              4,
+            ),
+          )
+
+          use active_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Release 1.5 - Launch train",
             Some(
-              "The currently active milestone with in-flight delivery work, claimed tasks and visible loose scope.",
+              "The currently active root card with in-flight delivery cards and a dedicated task leaf.",
             ),
-            milestone.Active,
+            card.Active,
             12,
             Some(days_ago_timestamp(3)),
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             active_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_milestone(
-            db,
-            project_id,
-            active_id,
-            2,
-          ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            active_id,
-            3,
-          ))
-
-          use backlog_id <- result.try(insert_seed_milestone(
+          use active_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
+            active_id,
+            "Release 1.5 - Delivery tasks",
+            Some(
+              "Active task leaf with launch-train work while the root remains a pure card group.",
+            ),
+            card.Active,
+            10,
+            Some(days_ago_timestamp(3)),
+            None,
+          ))
+          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
+            db,
+            project_id,
+            active_tasks_id,
             2,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              active_tasks_id,
+              3,
+            ),
+          )
+
+          use backlog_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Release 1.6 - Next wave",
             Some(
-              "A ready milestone with enough queued cards and loose tasks to preview the upcoming tranche of work.",
+              "A ready root card with enough queued cards and a task leaf to preview the upcoming tranche of work.",
             ),
-            milestone.Ready,
+            card.Draft,
             6,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             backlog_id,
             2,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            backlog_id,
-            3,
-          ))
-
-          use design_spike_id <- result.try(insert_seed_milestone(
+          use backlog_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            3,
+            backlog_id,
+            "Release 1.6 - Queued tasks",
+            Some(
+              "Task leaf for upcoming loose work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            5,
+            None,
+            None,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              backlog_tasks_id,
+              3,
+            ),
+          )
+
+          use design_spike_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Design spike - Future experiments",
             Some(
-              "Small ready milestone mixing discovery cards and one loose task to keep the list visually varied.",
+              "Small ready root card with discovery cards and a task leaf to keep the list visually varied.",
             ),
-            milestone.Ready,
+            card.Draft,
             2,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             design_spike_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            design_spike_id,
-            2,
-          ))
-
-          use placeholder_id <- result.try(insert_seed_milestone(
+          use design_spike_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            4,
+            design_spike_id,
+            "Design spike - Research tasks",
+            Some(
+              "Task leaf for discovery work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            2,
+            None,
+            None,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              design_spike_tasks_id,
+              2,
+            ),
+          )
+
+          use placeholder_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Partner rollout - Placeholder",
             Some(
-              "Explicitly empty ready milestone reserved for partner rollout planning and empty-state validation.",
+              "Explicitly empty ready root card reserved for partner rollout planning and empty-state validation.",
             ),
-            milestone.Ready,
+            card.Draft,
             2,
             None,
             None,
@@ -1222,118 +2151,147 @@ fn build_milestones(
         }
 
         _ -> {
-          use prep_id <- result.try(insert_seed_milestone(
+          use prep_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            0,
             "Client refresh - Preparation",
             Some(
-              "Primary ready milestone with several cards and loose tasks for visual inspection of the new split view.",
+              "Primary ready root card with several child cards and a task leaf for visual inspection of the new split view.",
             ),
-            milestone.Ready,
+            card.Draft,
             11,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             prep_id,
             3,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            prep_id,
-            4,
-          ))
-
-          use active_bugfix_id <- result.try(insert_seed_milestone(
+          use prep_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            1,
+            prep_id,
+            "Client refresh - Prep tasks",
+            Some(
+              "Task leaf for preparation work while the root remains a pure card group.",
+            ),
+            card.Draft,
+            10,
+            None,
+            None,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              prep_tasks_id,
+              4,
+            ),
+          )
+
+          use active_bugfix_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Hotfix train - Active",
             Some(
-              "Active bugfix milestone so the seed includes another project with live milestone context.",
+              "Active bugfix root card so the seed includes another project with live root card context.",
             ),
-            milestone.Active,
+            card.Active,
             5,
             Some(days_ago_timestamp(1)),
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             active_bugfix_id,
             1,
           ))
-          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_milestone(
-            db,
-            project_id,
-            active_bugfix_id,
-            1,
-          ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            active_bugfix_id,
-            1,
-          ))
-
-          use follow_up_id <- result.try(insert_seed_milestone(
+          use active_bugfix_tasks_id <- result.try(insert_seed_child_card(
             db,
             state,
             project_id,
-            2,
+            active_bugfix_id,
+            "Hotfix train - Repair tasks",
+            Some(
+              "Task leaf for active bugfix work while the root remains a pure card group.",
+            ),
+            card.Active,
+            4,
+            Some(days_ago_timestamp(1)),
+            None,
+          ))
+          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_parent_card(
+            db,
+            project_id,
+            active_bugfix_tasks_id,
+            1,
+          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              active_bugfix_tasks_id,
+              1,
+            ),
+          )
+
+          use follow_up_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
             "Follow-up polish",
             Some(
-              "Secondary ready milestone with a small amount of work to make the milestone list feel more realistic.",
+              "Secondary ready root card with a small amount of work to make the root card list feel more realistic.",
             ),
-            milestone.Ready,
+            card.Draft,
             3,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
-            db,
-            project_id,
-            follow_up_id,
-            2,
-          ))
+          use _ <- result.try(
+            seed_db.assign_available_pool_tasks_to_parent_card(
+              db,
+              project_id,
+              follow_up_id,
+              2,
+            ),
+          )
 
-          use card_heavy_id <- result.try(insert_seed_milestone(
+          use card_heavy_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            3,
             "Ops cleanup - Ready",
             Some(
-              "Card-heavy ready milestone with little loose work, useful to contrast against the more ad-hoc planning milestones.",
+              "Card-heavy ready root card, useful to contrast against the more ad-hoc planning root cards.",
             ),
-            milestone.Ready,
+            card.Draft,
             2,
             None,
             None,
           ))
-          use _ <- result.try(seed_db.assign_cards_to_milestone(
+          use _ <- result.try(seed_db.assign_cards_to_parent_card(
             db,
             project_id,
             card_heavy_id,
             1,
           ))
 
-          use empty_ready_id <- result.try(insert_seed_milestone(
+          use empty_ready_id <- result.try(insert_seed_root_card(
             db,
             state,
             project_id,
-            4,
             "Archive prep - Empty",
             Some(
-              "Another ready-but-empty milestone so the left pane shows multiple realistic placeholders instead of a single artificial case.",
+              "Another ready-but-empty root card so the left pane shows multiple realistic placeholders instead of a single artificial case.",
             ),
-            milestone.Ready,
+            card.Draft,
             1,
             None,
             None,
@@ -1349,26 +2307,24 @@ fn build_milestones(
   Ok(state)
 }
 
-fn insert_seed_milestone(
+fn insert_seed_root_card(
   db: pog.Connection,
   state: BuildState,
   project_id: Int,
-  position: Int,
   name: String,
   description: Option(String),
-  milestone_state: milestone.MilestoneState,
+  root_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
   completed_at: Option(String),
 ) -> Result(Int, String) {
-  seed_db.insert_milestone(
+  seed_db.insert_root_card(
     db,
-    seed_db.MilestoneInsertOptions(
+    seed_db.RootCardInsertOptions(
       project_id: project_id,
       name: name,
       description: description,
-      state: milestone_state,
-      position: position,
+      state: root_card_state,
       created_by: state.admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,
@@ -1377,12 +2333,46 @@ fn insert_seed_milestone(
   )
 }
 
+fn insert_seed_child_card(
+  db: pog.Connection,
+  state: BuildState,
+  project_id: Int,
+  parent_card_id: Int,
+  name: String,
+  description: Option(String),
+  child_card_state: card.CardPhase,
+  created_days_ago: Int,
+  activated_at: Option(String),
+  completed_at: Option(String),
+) -> Result(Int, String) {
+  use child_id <- result.try(insert_seed_root_card(
+    db,
+    state,
+    project_id,
+    name,
+    description,
+    child_card_state,
+    created_days_ago,
+    activated_at,
+    completed_at,
+  ))
+  use _ <- result.try(seed_db.assign_card_to_parent_card(
+    db,
+    child_id,
+    parent_card_id,
+  ))
+  Ok(child_id)
+}
+
 fn build_task_positions(
   db: pog.Connection,
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let tasks = list.take(state.task_ids, 9)
+  let tasks =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.status == Available })
+    |> list.map(fn(seed) { seed.task_id })
   let users = list.take(state.user_ids, 3)
 
   case tasks, users {
@@ -1391,13 +2381,15 @@ fn build_task_positions(
     _, _ -> {
       use _ <- result.try(
         list.index_map(tasks, fn(task_id, idx) {
-          let user_id =
-            list_at_int(users, idx % list.length(users), state.admin_id)
-          let x = { idx % 3 } * 120
-          let y = { idx / 3 } * 80
-          seed_db.insert_task_position(db, task_id, user_id, x, y)
+          let x = { idx % 4 } * 156
+          let y = { idx / 4 } * 152
+
+          list.try_map(users, fn(user_id) {
+            seed_db.insert_task_position(db, task_id, user_id, x, y)
+          })
         })
-        |> result.all,
+        |> result.all
+        |> result.map(list.flatten),
       )
       Ok(state)
     }
@@ -1464,7 +2456,7 @@ fn build_work_sessions(
               started_at: Some("NOW() - INTERVAL '2 days'"),
               last_heartbeat_at: Some("NOW() - INTERVAL '1 day'"),
               ended_at: Some("NOW() - INTERVAL '1 day'"),
-              ended_reason: Some("task_completed"),
+              ended_reason: Some("task_closed"),
               created_at: None,
             ),
           ))
@@ -1507,7 +2499,7 @@ fn trigger_rule_executions(
               ),
               state.admin_id,
               Some(Claimed(Taken)),
-              Completed,
+              Done,
             )
           rules_engine.evaluate_rules(db, event)
           |> result.map_error(fn(_) { "Rule evaluation failed" })
@@ -1559,6 +2551,29 @@ fn cards_for_project(
   }
 }
 
+fn append_cards_for_project(
+  card_ids_by_project: List(#(Int, List(Int))),
+  project_id: Int,
+  new_card_ids: List(Int),
+) -> List(#(Int, List(Int))) {
+  case card_ids_by_project {
+    [] -> [#(project_id, new_card_ids)]
+    [first, ..rest] -> {
+      let #(existing_project_id, existing_card_ids) = first
+      case existing_project_id == project_id {
+        True -> [
+          #(existing_project_id, list.append(existing_card_ids, new_card_ids)),
+          ..rest
+        ]
+        False -> [
+          first,
+          ..append_cards_for_project(rest, project_id, new_card_ids)
+        ]
+      }
+    }
+  }
+}
+
 fn task_types_for_project(
   task_type_ids: List(#(Int, Int, Int, Int)),
   project_id: Int,
@@ -1602,7 +2617,7 @@ fn repeat_value(value: a, count: Int) -> List(a) {
   }
 }
 
-fn status_pool_from(distribution: StatusDistribution) -> List(TaskStatus) {
+fn status_pool_from(distribution: StatusDistribution) -> List(TaskPhase) {
   let StatusDistribution(
     available: available,
     claimed: claimed,
@@ -1612,12 +2627,12 @@ fn status_pool_from(distribution: StatusDistribution) -> List(TaskStatus) {
     repeat_value(Available, available),
     list.append(
       repeat_value(Claimed(Taken), claimed),
-      repeat_value(Completed, completed),
+      repeat_value(Done, completed),
     ),
   )
 }
 
-fn status_from_pool(pool: List(TaskStatus), idx: Int) -> TaskStatus {
+fn status_from_pool(pool: List(TaskPhase), idx: Int) -> TaskPhase {
   case pool {
     [] -> Available
     _ -> list_at_helper(pool, idx % list.length(pool), Available)
@@ -1678,16 +2693,16 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.TaskClaimed,
+        event_type: audit_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
-    Completed ->
+    Done ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.TaskClaimed,
+        event_type: audit_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
     Available -> None
@@ -1700,7 +2715,7 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.TaskReleased,
+        event_type: audit_events_db.TaskReleased,
         created_at: Some(release_time),
       ))
     False -> None
@@ -1713,20 +2728,20 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.TaskClaimed,
+        event_type: audit_events_db.TaskClaimed,
         created_at: Some(reclaim_time),
       ))
     False -> None
   }
 
   let complete_event = case seed.status {
-    Completed ->
+    Done ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: task_events_db.TaskCompleted,
+        event_type: audit_events_db.TaskClosed,
         created_at: Some(complete_time),
       ))
     Available | Claimed(_) -> None
@@ -1768,7 +2783,7 @@ fn first_claim_events_for_users(
       project_id: seed.project_id,
       task_id: seed.task_id,
       actor_user_id: user_id,
-      event_type: task_events_db.TaskClaimed,
+      event_type: audit_events_db.TaskClaimed,
       created_at: Some(timestamp_days_hours(login_days, hours)),
     )
   })
@@ -1834,7 +2849,7 @@ fn seeded_rule_for_task(
 }
 
 fn seeded_pool_lifetime_s(
-  status: TaskStatus,
+  status: TaskPhase,
   task_idx: Int,
   project_idx: Int,
 ) -> Int {
@@ -1849,12 +2864,12 @@ fn seeded_pool_lifetime_s(
   case status {
     Available -> base
     Claimed(_) -> int.max(300, base)
-    Completed -> int.max(900, base)
+    Done -> int.max(900, base)
   }
 }
 
 fn seeded_last_entered_pool_at(
-  status: TaskStatus,
+  status: TaskPhase,
   pool_lifetime_s: Int,
   base_days: Int,
   task_idx: Int,
@@ -1866,20 +2881,20 @@ fn seeded_last_entered_pool_at(
           Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
         False -> None
       }
-    Claimed(_) | Completed -> None
+    Claimed(_) | Done -> None
   }
 }
 
-fn is_claimed_status(status: TaskStatus) -> Bool {
+fn is_claimed_status(status: TaskPhase) -> Bool {
   case status {
     Claimed(_) -> True
-    Available | Completed -> False
+    Available | Done -> False
   }
 }
 
-fn is_completed_status(status: TaskStatus) -> Bool {
+fn is_completed_status(status: TaskPhase) -> Bool {
   case status {
-    Completed -> True
+    Done -> True
     Available | Claimed(_) -> False
   }
 }

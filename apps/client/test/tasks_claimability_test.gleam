@@ -30,7 +30,7 @@ pub fn claimed_task_cannot_be_claimed_test() {
 pub fn completed_task_cannot_be_claimed_test() {
   let assert False =
     claimability.can_claim(sample_task(
-      task_state.Completed(completed_at: "2026-06-01T12:00:00Z"),
+      task_state.Done(completed_at: "2026-06-01T12:00:00Z"),
       0,
     ))
 }
@@ -46,12 +46,11 @@ fn sample_task(state: task_state.TaskState, blocked_count: Int) -> Task {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

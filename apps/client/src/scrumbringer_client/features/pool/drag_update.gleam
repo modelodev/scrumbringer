@@ -7,7 +7,8 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/task.{type TaskNote, type TaskPosition}
+import domain/note/entity.{type Note}
+import domain/task.{type TaskPosition}
 import scrumbringer_client/api/tasks/notes as task_notes_api
 import scrumbringer_client/api/tasks/positions as task_positions_api
 import scrumbringer_client/app/effects as app_effects
@@ -36,7 +37,7 @@ pub type Context(parent_msg) {
     on_canvas_rect_fetched: fn(Int, Int) -> parent_msg,
     on_drag_offset_resolved: fn(Int, Int, Int) -> parent_msg,
     on_my_tasks_rect_fetched: fn(Int, Int, Int, Int) -> parent_msg,
-    on_hover_notes_fetched: fn(Int, ApiResult(List(TaskNote))) -> parent_msg,
+    on_hover_notes_fetched: fn(Int, ApiResult(List(Note))) -> parent_msg,
     on_long_press_check: fn(Int) -> parent_msg,
     on_position_saved: fn(ApiResult(TaskPosition)) -> parent_msg,
   )
@@ -330,7 +331,7 @@ fn drag_offset_resolved(
 fn hover_notes_fetched(
   model: Model,
   task_id: Int,
-  result: ApiResult(List(TaskNote)),
+  result: ApiResult(List(Note)),
 ) -> #(Model, Effect(parent_msg)) {
   #(
     Model(

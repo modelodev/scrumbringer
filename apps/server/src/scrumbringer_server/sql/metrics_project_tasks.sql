@@ -9,9 +9,12 @@ with task_scope as (
     t.title,
     coalesce(t.description, '') as description,
     t.priority,
-     t.status,
+     case
+       when t.execution_state = 'closed' then 'completed'
+       else t.execution_state
+     end as status,
      (
-       t.status = 'claimed'
+       t.execution_state = 'claimed'
        and exists(
          select 1
          from user_task_work_session ws
@@ -29,8 +32,9 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+    coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
   from tasks t
   join task_types tt on tt.id = t.type_id
@@ -40,9 +44,9 @@ with task_scope as (
     e.task_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as complete_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as complete_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
-  from task_events e
+  from audit_events e
   where e.project_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.task_id
@@ -64,6 +68,7 @@ select
   ts.claimed_at,
   ts.completed_at,
   ts.created_at,
+  ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,

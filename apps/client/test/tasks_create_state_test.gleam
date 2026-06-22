@@ -10,7 +10,6 @@ pub fn create_state_open_resets_dialog_context_test() {
       ..member_pool.default_model(),
       member_create_error: Some("boom"),
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let next = create_state.open(model)
@@ -18,7 +17,6 @@ pub fn create_state_open_resets_dialog_context_test() {
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert None = next.member_create_error
   let assert None = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
 }
 
 pub fn create_state_open_with_card_keeps_card_context_test() {
@@ -26,18 +24,19 @@ pub fn create_state_open_with_card_keeps_card_context_test() {
 
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert Some(42) = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert None = next.member_create_error
 }
 
 pub fn create_state_field_changes_update_only_form_fields_test() {
   let model =
-    member_pool.default_model()
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_card_id: Some(7),
+    )
     |> create_state.title_changed("Ship task")
     |> create_state.description_changed("Useful detail")
     |> create_state.priority_changed("5")
     |> create_state.type_id_changed("8")
-    |> create_state.card_id_changed("7")
 
   let assert "Ship task" = model.member_create_title
   let assert "Useful detail" = model.member_create_description
@@ -55,7 +54,6 @@ pub fn create_state_input_reads_form_and_selected_project_test() {
       member_create_priority: "5",
       member_create_type_id: "8",
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let input = create_state.input(model, Some(1))
@@ -66,7 +64,6 @@ pub fn create_state_input_reads_form_and_selected_project_test() {
   let assert "5" = input.priority
   let assert "8" = input.type_id
   let assert Some(7) = input.card_id
-  let assert Some(9) = input.milestone_id
 }
 
 pub fn create_state_submit_and_result_transitions_test() {
@@ -91,7 +88,6 @@ pub fn create_state_submit_and_result_transitions_test() {
       member_create_priority: "5",
       member_create_type_id: "8",
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
       member_create_in_flight: True,
     )
     |> create_state.created
@@ -103,5 +99,4 @@ pub fn create_state_submit_and_result_transitions_test() {
   let assert "3" = created.member_create_priority
   let assert "" = created.member_create_type_id
   let assert None = created.member_create_card_id
-  let assert None = created.member_create_milestone_id
 }

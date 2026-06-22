@@ -28,20 +28,22 @@
 import gleam/option as opt
 import lustre/effect
 
+import domain/remote.{type Remote, Loaded}
+import domain/task.{type Task}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
-import scrumbringer_client/features/pool/card_detail_update
+import scrumbringer_client/features/pool/card_show_update
 import scrumbringer_client/features/pool/drag_update
 import scrumbringer_client/features/pool/filters_route
 import scrumbringer_client/features/pool/metrics_route
-import scrumbringer_client/features/pool/milestones_route
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/people_route
+import scrumbringer_client/features/pool/plan_move_update
 import scrumbringer_client/features/pool/positions_route
 import scrumbringer_client/features/pool/preferences_effect
 import scrumbringer_client/features/pool/refresh_update
@@ -51,6 +53,9 @@ import scrumbringer_client/features/pool/shortcut_update
 import scrumbringer_client/features/pool/skills_route
 import scrumbringer_client/features/pool/task_route
 import scrumbringer_client/features/pool/view_mode_route
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/utils/card_queries
 
 fn pool_shortcut_model(model: client_state.Model) -> shortcut_update.Model {
   shortcut_update.Model(
@@ -96,13 +101,13 @@ fn update_pool_drag_model(
   })
 }
 
-fn pool_card_detail_model(model: client_state.Model) -> card_detail_update.Model {
-  card_detail_update.Model(pool: model.member.pool, cards: model.admin.cards)
+fn pool_card_show_model(model: client_state.Model) -> card_show_update.Model {
+  card_show_update.Model(pool: model.member.pool, cards: model.admin.cards)
 }
 
-fn update_pool_card_detail_model(
+fn update_pool_card_show_model(
   model: client_state.Model,
-  local: card_detail_update.Model,
+  local: card_show_update.Model,
 ) -> client_state.Model {
   let model =
     client_state.update_member(model, fn(member) {
@@ -188,12 +193,63 @@ fn pool_drag_context(
   )
 }
 
-fn card_detail_context() -> card_detail_update.Context(client_state.Msg) {
-  card_detail_update.Context(
+fn card_show_context(
+  model: client_state.Model,
+) -> card_show_update.Context(client_state.Msg) {
+  card_show_update.Context(
     on_card_marked: fn(_result) { client_state.NoOp },
-    on_card_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.CardMetricsFetched(result))
+    on_card_show_msg: fn(msg) {
+      client_state.pool_msg(pool_messages.CardShowMsg(msg))
     },
+    on_card_activated: fn(result) {
+      client_state.pool_msg(pool_messages.CardActivated(result))
+    },
+    on_create_task: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+        card_id,
+      ))
+    },
+    on_create_card: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(
+          admin_cards.CardDialogCreate(opt.Some(card_id)),
+        ),
+      )
+    },
+    on_activate_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
+    },
+    on_move_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
+    },
+    on_delete_card: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+      )
+    },
+    on_close: client_state.pool_msg(pool_messages.CloseCardShow),
+    on_success_toast: app_effects.toast_success,
+    on_error_toast: app_effects.toast_error,
+    hierarchy_activated: i18n.t(model.ui.locale, i18n_text.HierarchyActivated),
+    hierarchy_pool_impact: fn(pool_impact) {
+      i18n.t(
+        model.ui.locale,
+        i18n_text.HierarchyActivationPoolImpact(pool_impact),
+      )
+    },
+    hierarchy_pool_saturated: fn(pool_open_after, healthy_pool_limit) {
+      i18n.t(
+        model.ui.locale,
+        i18n_text.HierarchyActivationPoolSaturated(
+          pool_open_after,
+          healthy_pool_limit,
+        ),
+      )
+    },
+    hierarchy_activate_failed: i18n.t(
+      model.ui.locale,
+      i18n_text.HierarchyActivateFailed,
+    ),
   )
 }
 
@@ -218,27 +274,6 @@ pub fn update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let Context(member_refresh: member_refresh) = ctx
 
-  case try_milestones_update(model, inner, member_refresh) {
-    opt.Some(result) -> result
-    opt.None -> update_without_milestones(model, inner, member_refresh)
-  }
-}
-
-fn try_milestones_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  milestones_route.try_update(model, inner, member_refresh)
-}
-
-fn update_without_milestones(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case try_pool_shortcut_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_shortcuts(model, inner, member_refresh)
@@ -310,30 +345,50 @@ fn update_without_drag(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_card_detail_update(model, inner) {
+  case try_pool_card_show_update(model, inner, member_refresh) {
     opt.Some(result) -> result
-    opt.None -> update_without_card_detail(model, inner, member_refresh)
+    opt.None -> update_without_card_show(model, inner, member_refresh)
   }
 }
 
-fn try_pool_card_detail_update(
+fn try_pool_card_show_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    card_detail_update.try_update(
-      pool_card_detail_model(model),
+    card_show_update.try_update(
+      pool_card_show_model(model),
       inner,
-      card_detail_context(),
+      card_show_context(model),
     )
   {
-    opt.Some(#(local, fx)) ->
-      opt.Some(#(update_pool_card_detail_model(model, local), fx))
+    opt.Some(#(local, fx)) -> {
+      let updated = update_pool_card_show_model(model, local)
+      opt.Some(apply_card_show_refresh(updated, inner, fx, member_refresh))
+    }
     opt.None -> opt.None
   }
 }
 
-fn update_without_card_detail(
+fn apply_card_show_refresh(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  fx: effect.Effect(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case inner {
+    pool_messages.CardActivated(Ok(_)) -> {
+      let #(refreshed, refresh_fx) = member_refresh(model)
+      #(refreshed, effect.batch([fx, refresh_fx]))
+    }
+    _ -> #(model, fx)
+  }
+}
+
+fn update_without_card_show(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   member_refresh: fn(client_state.Model) ->
@@ -384,6 +439,84 @@ fn update_without_card_refresh(
 }
 
 fn update_without_task_templates(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case try_pool_plan_move_update(model, inner, member_refresh) {
+    opt.Some(result) -> result
+    opt.None -> update_without_plan_move(model, inner, member_refresh)
+  }
+}
+
+fn try_pool_plan_move_update(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
+  case
+    plan_move_update.try_update(
+      model.member.pool,
+      inner,
+      plan_move_context(model),
+    )
+  {
+    opt.Some(#(pool, fx)) -> {
+      let updated =
+        client_state.update_member(model, fn(member) {
+          member_state.MemberModel(..member, pool: pool)
+        })
+      opt.Some(apply_plan_move_refresh(updated, inner, fx, member_refresh))
+    }
+    opt.None -> opt.None
+  }
+}
+
+fn apply_plan_move_refresh(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  fx: effect.Effect(client_state.Msg),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case inner {
+    pool_messages.MemberPlanCardMoved(Ok(_)) -> {
+      let #(refreshed, refresh_fx) = member_refresh(model)
+      #(refreshed, effect.batch([fx, refresh_fx]))
+    }
+    _ -> #(model, fx)
+  }
+}
+
+fn plan_move_context(
+  model: client_state.Model,
+) -> plan_move_update.Context(client_state.Msg) {
+  plan_move_update.Context(
+    cards: card_queries.get_project_cards(
+      model.member.pool.member_cards_store,
+      model.admin.cards.cards,
+      model.core.selected_project_id,
+    ),
+    tasks: model.member.pool.member_tasks
+      |> task_list_or_empty,
+    on_card_moved: fn(result) {
+      client_state.pool_msg(pool_messages.MemberPlanCardMoved(result))
+    },
+    on_success_toast: app_effects.toast_success,
+    on_error_toast: app_effects.toast_error,
+  )
+}
+
+fn task_list_or_empty(tasks: Remote(List(Task))) -> List(Task) {
+  case tasks {
+    Loaded(values) -> values
+    _ -> []
+  }
+}
+
+fn update_without_plan_move(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   member_refresh: fn(client_state.Model) ->
@@ -612,23 +745,46 @@ fn update_without_view_mode(
     pool_messages.ViewModeChanged(_) -> #(model, effect.none())
 
     // Handled by pool_filters.try_update before this dispatch.
-    pool_messages.MemberPoolStatusChanged(_)
+    pool_messages.MemberPoolVisibilityChanged(_)
     | pool_messages.MemberPoolTypeChanged(_)
     | pool_messages.MemberPoolCapabilityChanged(_)
     | pool_messages.MemberPoolCapabilityScopeChanged(_)
     | pool_messages.MemberClearFilters
     | pool_messages.MemberPoolSearchChanged(_)
-    | pool_messages.MemberPoolSearchDebounced(_) -> #(model, effect.none())
+    | pool_messages.MemberPoolSearchDebounced(_)
+    | pool_messages.MemberPlanScopeKindChanged(_)
+    | pool_messages.MemberPlanModeChanged(_)
+    | pool_messages.MemberPlanCapabilityModeChanged(_)
+    | pool_messages.MemberPlanScopeDepthChanged(_)
+    | pool_messages.MemberPlanScopeCardChanged(_)
+    | pool_messages.MemberPlanScopeCardSearchChanged(_)
+    | pool_messages.MemberPlanClosedToggled(_)
+    | pool_messages.MemberPlanStatusChanged(_)
+    | pool_messages.MemberPlanSortChanged(_)
+    | pool_messages.MemberPlanCardToggled(_) -> #(model, effect.none())
+
+    // Handled by plan_move_update.try_update before this dispatch.
+    pool_messages.MemberPlanMoveRequested(_)
+    | pool_messages.MemberPlanMoveCancelled
+    | pool_messages.MemberPlanMoveDestinationSearchChanged(_)
+    | pool_messages.MemberPlanMoveDestinationSelected(_)
+    | pool_messages.MemberPlanMoveDragStarted(_)
+    | pool_messages.MemberPlanMoveDragEntered(_)
+    | pool_messages.MemberPlanMoveDroppedOn(_)
+    | pool_messages.MemberPlanMoveDragEnded
+    | pool_messages.MemberPlanCardMoved(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.
-    pool_messages.MemberPoolFiltersToggled
-    | pool_messages.MemberPoolViewModeSet(_)
-    | pool_messages.MemberListHideCompletedToggled
+    pool_messages.MemberPoolViewModeSet(_)
+    | pool_messages.MemberListHideDoneToggled
     | pool_messages.MemberListCardToggled(_) -> #(model, effect.none())
 
     // Handled by people_workflow.try_update before this dispatch.
     pool_messages.MemberPeopleRosterFetched(_)
-    | pool_messages.MemberPeopleRowToggled(_) -> #(model, effect.none())
+    | pool_messages.MemberPeopleRowToggled(_)
+    | pool_messages.MemberPeopleSearchChanged(_)
+    | pool_messages.MemberPeopleFilterChanged(_)
+    | pool_messages.MemberPeopleSortChanged(_) -> #(model, effect.none())
 
     // Handled by project_refresh.try_update before this dispatch.
     pool_messages.MemberProjectTasksFetched(_, _)
@@ -642,7 +798,6 @@ fn update_without_view_mode(
     | pool_messages.MemberCreateDescriptionChanged(_)
     | pool_messages.MemberCreatePriorityChanged(_)
     | pool_messages.MemberCreateTypeIdChanged(_)
-    | pool_messages.MemberCreateCardIdChanged(_)
     | pool_messages.MemberCreateTypeOptionsRetryClicked
     | pool_messages.MemberCreateSubmitted
     | pool_messages.MemberTaskCreated(_) -> #(model, effect.none())
@@ -651,9 +806,11 @@ fn update_without_view_mode(
     pool_messages.MemberClaimClicked(_, _)
     | pool_messages.MemberReleaseClicked(_, _)
     | pool_messages.MemberCompleteClicked(_, _)
+    | pool_messages.MemberDeleteTaskClicked(_)
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)
-    | pool_messages.MemberTaskCompleted(_) -> #(model, effect.none())
+    | pool_messages.MemberTaskDone(_)
+    | pool_messages.MemberTaskDeleted(_, _) -> #(model, effect.none())
 
     // Handled by now_working_workflow.try_update before this dispatch.
     pool_messages.MemberNowWorkingStartClicked(_)
@@ -706,20 +863,18 @@ fn update_without_view_mode(
     | pool_messages.MemberPositionSaved(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.
-    pool_messages.MemberTaskDetailsOpened(_)
-    | pool_messages.MemberTaskDetailsClosed
-    | pool_messages.MemberTaskDetailTabClicked(_)
-    | pool_messages.MemberTaskDetailEditStarted
-    | pool_messages.MemberTaskDetailEditCancelled
-    | pool_messages.MemberTaskDetailEditTitleChanged(_)
-    | pool_messages.MemberTaskDetailEditDescriptionChanged(_)
-    | pool_messages.MemberTaskDetailEditPriorityChanged(_)
-    | pool_messages.MemberTaskDetailEditTypeIdChanged(_)
-    | pool_messages.MemberTaskDetailEditCardIdChanged(_)
-    | pool_messages.MemberTaskDetailEditMilestoneIdChanged(_)
-    | pool_messages.MemberTaskDetailEditSubmitted
-    | pool_messages.MemberTaskUpdated(_)
-    | pool_messages.MemberTaskMetricsFetched(_) -> #(model, effect.none())
+    pool_messages.MemberTaskShowOpened(_)
+    | pool_messages.MemberTaskShowClosed
+    | pool_messages.MemberTaskShowTabClicked(_)
+    | pool_messages.MemberTaskShowEditStarted
+    | pool_messages.MemberTaskShowEditCancelled
+    | pool_messages.MemberTaskShowEditTitleChanged(_)
+    | pool_messages.MemberTaskShowEditDescriptionChanged(_)
+    | pool_messages.MemberTaskShowEditPriorityChanged(_)
+    | pool_messages.MemberTaskShowEditTypeIdChanged(_)
+    | pool_messages.MemberTaskShowEditCardIdChanged(_)
+    | pool_messages.MemberTaskShowEditSubmitted
+    | pool_messages.MemberTaskUpdated(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberDependenciesFetched(_)
@@ -741,7 +896,11 @@ fn update_without_view_mode(
     | pool_messages.MemberNoteSubmitted
     | pool_messages.MemberNoteAdded(_)
     | pool_messages.MemberNoteDeleteClicked(_)
-    | pool_messages.MemberNoteDeleted(_, _) -> #(model, effect.none())
+    | pool_messages.MemberNoteDeleted(_, _)
+    | pool_messages.MemberNotePinClicked(_, _)
+    | pool_messages.MemberNotePinned(_, _)
+    | pool_messages.MemberActivityMoreClicked
+    | pool_messages.MemberActivityFetched(_) -> #(model, effect.none())
 
     // Handled by cards_workflow.try_update before this dispatch.
     pool_messages.CardsFetched(_)
@@ -751,7 +910,7 @@ fn update_without_view_mode(
     | pool_messages.CardCrudUpdated(_)
     | pool_messages.CardCrudDeleted(_)
     | pool_messages.CardsShowEmptyToggled
-    | pool_messages.CardsShowCompletedToggled
+    | pool_messages.CardsShowDoneToggled
     | pool_messages.CardsStateFilterChanged(_)
     | pool_messages.CardsSearchChanged(_) -> #(model, effect.none())
 
@@ -777,43 +936,12 @@ fn update_without_view_mode(
     | pool_messages.MemberDragMoved(_, _)
     | pool_messages.MemberDragEnded -> #(model, effect.none())
 
-    pool_messages.MemberProjectMilestonesFetched(_, _)
-    | pool_messages.MemberMilestonesShowCompletedToggled
-    | pool_messages.MemberMilestonesShowEmptyToggled
-    | pool_messages.MemberMilestoneSearchChanged(_)
-    | pool_messages.MemberMilestoneSummaryToggled
-    | pool_messages.MemberMilestoneCardToggled(_)
-    | pool_messages.MemberMilestoneDetailsClicked(_)
-    | pool_messages.MemberMilestoneCreateTaskClicked(_)
-    | pool_messages.MemberMilestoneCreateCardClicked(_)
-    | pool_messages.MemberMilestoneCardDragStarted(_, _)
-    | pool_messages.MemberMilestoneTaskDragStarted(_, _)
-    | pool_messages.MemberMilestoneDroppedOn(_)
-    | pool_messages.MemberMilestoneDragEnded
-    | pool_messages.MemberMilestoneCardMoveClicked(_, _, _)
-    | pool_messages.MemberMilestoneTaskMoveClicked(_, _, _)
-    | pool_messages.MemberMilestoneCardMoved(_)
-    | pool_messages.MemberMilestoneTaskMoved(_)
-    | pool_messages.MemberMilestoneCreateClicked
-    | pool_messages.MemberMilestoneActivatePromptClicked(_)
-    | pool_messages.MemberMilestoneActivateClicked(_)
-    | pool_messages.MemberMilestoneActivated(_, _)
-    | pool_messages.MemberMilestoneEditClicked(_)
-    | pool_messages.MemberMilestoneDeleteClicked(_)
-    | pool_messages.MemberMilestoneDialogClosed
-    | pool_messages.MemberMilestoneNameChanged(_)
-    | pool_messages.MemberMilestoneDescriptionChanged(_)
-    | pool_messages.MemberMilestoneCreateSubmitted
-    | pool_messages.MemberMilestoneCreated(_)
-    | pool_messages.MemberMilestoneEditSubmitted(_)
-    | pool_messages.MemberMilestoneDeleteSubmitted(_)
-    | pool_messages.MemberMilestoneUpdated(_)
-    | pool_messages.MemberMilestoneDeleted(_, _) -> #(model, effect.none())
-
-    // Handled by card_detail_update.try_update before this dispatch.
-    pool_messages.OpenCardDetail(_)
-    | pool_messages.CloseCardDetail
-    | pool_messages.CardMetricsFetched(_) -> #(model, effect.none())
+    // Handled by card_show_update.try_update before this dispatch.
+    pool_messages.OpenCardShow(_)
+    | pool_messages.CloseCardShow
+    | pool_messages.CardShowMsg(_)
+    | pool_messages.CardActivateRequested(_)
+    | pool_messages.CardActivated(_) -> #(model, effect.none())
 
     // Handled by workflows_workflow.try_workflows_update before this dispatch.
     pool_messages.WorkflowsProjectFetched(_)
@@ -857,13 +985,9 @@ fn update_without_view_mode(
 }
 
 fn close_card_dialog_focus_target(
-  model: client_state.Model,
+  _model: client_state.Model,
 ) -> opt.Option(String) {
-  case model.admin.cards.cards_create_milestone_id {
-    opt.Some(milestone_id) ->
-      opt.Some(milestone_ids.quick_create_card_button_id(milestone_id))
-    opt.None -> opt.None
-  }
+  opt.None
 }
 
 /// Test helper: exposes close-card-dialog focus target resolution.

@@ -34,7 +34,7 @@ pub type Task {
 pub type Status {
   Available
   Claimed(by: Int)
-  Completed
+  Done
 }
 
 // 3. Constants
@@ -94,7 +94,7 @@ pub fn status_label(status: Status) -> String {
   case status {
     Available -> "Available"
     Claimed(by: _) -> "In Progress"
-    Completed -> "Done"
+    Done -> "Done"
   }
 }
 
@@ -247,7 +247,7 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 
 Los estados de carga, error, sin resultados o sin configuración en vistas de
 producto deben usar `empty_state.Meaning`. Las clases locales como
-`people-state` o `milestones-error` pueden mantenerse como modificadores de
+`people-state` o `hierarchies-error` pueden mantenerse como modificadores de
 compatibilidad, pero no deben ser la única fuente del significado visual.
 
 Las acciones nuevas de producto deben usar `ui/button` salvo que ya exista un

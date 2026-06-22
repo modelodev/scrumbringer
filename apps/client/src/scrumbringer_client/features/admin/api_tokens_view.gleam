@@ -634,11 +634,6 @@ fn scope_rows(config: Config(msg)) -> List(ScopeRow) {
       read: opt.Some(api_token_scope.NotesRead),
       write: opt.Some(api_token_scope.NotesWrite),
     ),
-    ScopeRow(
-      label: t(config, i18n_text.ResourceMilestones),
-      read: opt.Some(api_token_scope.MilestonesRead),
-      write: opt.Some(api_token_scope.MilestonesWrite),
-    ),
   ]
 }
 
@@ -664,7 +659,6 @@ fn resource_label(
     api_token_scope.Tasks -> t(config, i18n_text.ResourceTasks)
     api_token_scope.Cards -> t(config, i18n_text.ResourceCards)
     api_token_scope.Notes -> t(config, i18n_text.ResourceNotes)
-    api_token_scope.Milestones -> t(config, i18n_text.ResourceMilestones)
   }
 }
 

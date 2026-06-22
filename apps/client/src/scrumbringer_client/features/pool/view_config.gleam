@@ -6,9 +6,11 @@ import gleam/option as opt
 
 import lustre/element.{type Element}
 
+import domain/capability.{type Capability}
 import domain/card.{type Card}
+import domain/note/entity.{type Note}
 import domain/remote.{unwrap}
-import domain/task.{type Task, type TaskNote, type WorkSession, Task}
+import domain/task.{type Task, type WorkSession, Task}
 import domain/task_state
 import domain/task_status.{Taken}
 import domain/user.{type User}
@@ -22,18 +24,30 @@ import scrumbringer_client/client_state/member/skills as skills_state
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
+import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/utils/card_queries
+
+// Project settings do not expose healthy_pool_limit to the client project model
+// yet. Keep the fallback at the root adapter so the view stays data-driven.
+const fallback_healthy_pool_limit = 20
 
 pub type Callbacks(msg) {
   Callbacks(
     on_drag_moved: fn(Int, Int) -> msg,
     on_drag_ended: msg,
     on_create_opened: msg,
+    on_capability_scope_change: fn(String) -> msg,
+    on_type_filter_change: fn(String) -> msg,
+    on_capability_filter_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
+    on_visibility_change: fn(String) -> msg,
+    on_view_mode_change: fn(pool_prefs.ViewMode) -> msg,
     on_now_working_pause: msg,
     on_now_working_start: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
@@ -59,6 +73,7 @@ pub type Context(msg) {
     active_task_id: opt.Option(Int),
     now_working_sessions: List(WorkSession),
     cards: List(Card),
+    capabilities: List(Capability),
     pool: member_pool_state.Model,
     now_working: now_working_state.Model,
     skills: skills_state.Model,
@@ -106,9 +121,31 @@ fn main_config(context: Context(msg)) -> pool_view.MainConfig(msg) {
     has_active_projects: context.has_active_projects,
     on_create_opened: context.callbacks.on_create_opened,
     available_tasks: available_tasks_config(context),
+    control_bar: control_bar_config(context),
+    healthy_pool_limit: fallback_healthy_pool_limit,
     view_mode: context.pool.member_pool_view_mode,
     task_card_config: fn(task) { pool_task_card_config(context, task) },
     task_row_config: fn(task) { pool_task_row_config(context, task) },
+  )
+}
+
+fn control_bar_config(context: Context(msg)) -> control_bar.Config(msg) {
+  control_bar.Config(
+    locale: context.locale,
+    task_types: unwrap(context.pool.member_task_types, []),
+    capabilities: context.capabilities,
+    capability_scope: context.pool.member_capability_scope,
+    type_filter: context.pool.member_filters_type_id,
+    capability_filter: context.pool.member_filters_capability_id,
+    search_query: context.pool.member_filters_q,
+    visibility: context.pool.member_pool_visibility,
+    view_mode: context.pool.member_pool_view_mode,
+    on_capability_scope_change: context.callbacks.on_capability_scope_change,
+    on_type_filter_change: context.callbacks.on_type_filter_change,
+    on_capability_filter_change: context.callbacks.on_capability_filter_change,
+    on_search_change: context.callbacks.on_search_change,
+    on_visibility_change: context.callbacks.on_visibility_change,
+    on_view_mode_change: context.callbacks.on_view_mode_change,
   )
 }
 
@@ -155,6 +192,7 @@ fn available_tasks_config(context: Context(msg)) -> available_tasks.Config {
     capability_filter: context.pool.member_filters_capability_id,
     search_query: context.pool.member_filters_q,
     capability_scope: context.pool.member_capability_scope,
+    visibility: context.pool.member_pool_visibility,
   )
 }
 
@@ -197,6 +235,7 @@ fn pool_task_card_config(
     x: x,
     y: y,
     age_days: age_in_days(created_at),
+    project_today: client_ffi.date_today(),
     highlight_class: task_highlight_classes(context, id),
     touch_preview: context.pool.member_pool_preview_task_id == opt.Some(id),
     disable_actions: context.pool.member_task_mutation_in_flight,
@@ -293,7 +332,7 @@ fn highlighted_hidden_count_for_source(
   }
 }
 
-fn hover_notes_for_task(context: Context(msg), task_id: Int) -> List(TaskNote) {
+fn hover_notes_for_task(context: Context(msg), task_id: Int) -> List(Note) {
   case dict.get(context.notes.member_hover_notes_cache, task_id) {
     Ok(notes) -> notes
     Error(_) -> []
@@ -310,20 +349,44 @@ fn hidden_blocked_count(context: Context(msg), task_id: Int) -> opt.Option(Int) 
 fn task_position(context: Context(msg), task_id: Int) -> #(Int, Int) {
   case dict.get(context.positions.member_positions_by_task, task_id) {
     Ok(xy) -> xy
-    Error(_) -> initial_task_position(task_id)
+    Error(_) -> initial_task_position(unpositioned_task_index(context, task_id))
   }
 }
 
-fn initial_task_position(task_id: Int) -> #(Int, Int) {
+fn unpositioned_task_index(context: Context(msg), task_id: Int) -> Int {
+  let tasks =
+    context.pool.member_tasks
+    |> unwrap([])
+    |> list.filter(fn(task) {
+      let Task(id: id, ..) = task
+      case dict.get(context.positions.member_positions_by_task, id) {
+        Ok(_) -> False
+        Error(_) -> True
+      }
+    })
+
+  case
+    list.index_map(tasks, fn(task, index) {
+      let Task(id: id, ..) = task
+      #(id, index)
+    })
+    |> list.find(fn(pair) {
+      let #(id, _) = pair
+      id == task_id
+    })
+  {
+    Ok(#(_, index)) -> index
+    Error(_) -> 0
+  }
+}
+
+fn initial_task_position(index: Int) -> #(Int, Int) {
   let card_size = 128
   let gap = 32
   let columns = 5
-  let visible_rows = 4
   let padding = 60
-  let index = task_id - 1
   let initial_x = padding + { { index % columns } * { card_size + gap } }
-  let initial_y =
-    padding + { { { index / columns } % visible_rows } * { card_size + gap } }
+  let initial_y = padding + { { index / columns } * { card_size + gap } }
   #(initial_x, initial_y)
 }
 

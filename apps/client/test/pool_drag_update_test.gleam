@@ -2,11 +2,13 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 
+import lustre/effect
+
 import domain/api_error.{type ApiResult}
+import domain/note/entity.{type Note}
 import domain/remote.{Loaded}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition, Task,
-  TaskDependency,
+  type Task, type TaskDependency, type TaskPosition, Task, TaskDependency,
 }
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
@@ -34,13 +36,12 @@ fn context() -> drag_update.Context(Nil) {
       on_task_claimed: fn(_result: ApiResult(Task)) { Nil },
       on_task_released: fn(_result: ApiResult(Task)) { Nil },
       on_task_completed: fn(_result: ApiResult(Task)) { Nil },
+      on_task_deleted: fn(_task_id: Int, _result: ApiResult(Nil)) { Nil },
     ),
     on_canvas_rect_fetched: fn(_left, _top) { Nil },
     on_drag_offset_resolved: fn(_task_id, _offset_x, _offset_y) { Nil },
     on_my_tasks_rect_fetched: fn(_left, _top, _width, _height) { Nil },
-    on_hover_notes_fetched: fn(_task_id, _result: ApiResult(List(TaskNote))) {
-      Nil
-    },
+    on_hover_notes_fetched: fn(_task_id, _result: ApiResult(List(Note))) { Nil },
     on_long_press_check: fn(_task_id) { Nil },
     on_position_saved: fn(_result: ApiResult(TaskPosition)) { Nil },
   )
@@ -58,12 +59,11 @@ fn task(id: Int, dependencies: List(TaskDependency)) -> Task {
     description: Some("Task description"),
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -212,11 +212,34 @@ pub fn drag_update_try_update_handles_drag_message_test() {
   let assert member_pool.PoolDragPendingRect = next.pool.member_pool_drag
 }
 
+pub fn drag_update_drop_to_claim_blocked_task_does_not_submit_test() {
+  let blocked = task(7, [dependency(2)])
+  let pool =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_tasks: Loaded([blocked]),
+      member_drag: member_pool.DragActive(7, 0, 0),
+      member_pool_drag: member_pool.PoolDragDragging(
+        over_my_tasks: True,
+        rect: member_pool.Rect(left: 0, top: 0, width: 100, height: 100),
+      ),
+    )
+  let model = drag_update.Model(..local_model(), pool: pool)
+
+  let assert Some(#(next, fx)) =
+    drag_update.try_update(model, pool_messages.MemberDragEnded, context())
+
+  let assert False = next.pool.member_task_mutation_in_flight
+  let assert member_pool.DragIdle = next.pool.member_drag
+  let assert member_pool.PoolDragIdle = next.pool.member_pool_drag
+  let assert True = fx == effect.none()
+}
+
 pub fn drag_update_try_update_ignores_non_drag_message_test() {
   let assert None =
     drag_update.try_update(
       local_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(),
     )
 }

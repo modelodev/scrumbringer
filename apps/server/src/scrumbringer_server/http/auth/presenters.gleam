@@ -2,7 +2,7 @@
 
 import domain/org_role
 import gleam/json
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 
 pub fn user(user: StoredUser) -> json.Json {
   json.object([

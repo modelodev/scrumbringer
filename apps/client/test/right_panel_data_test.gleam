@@ -1,10 +1,10 @@
 import gleam/option.{None, Some}
 
-import domain/card.{Blue, Card, EnCurso, Gray}
+import domain/card.{Active, Blue, Card, Gray}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{Task, WorkSession}
 import domain/task_state
-import domain/task_status.{Taken, WorkAvailable}
+import domain/task_status.{Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/right_panel_data
@@ -51,10 +51,7 @@ pub fn my_cards_returns_cards_with_user_claimed_tasks_and_progress_test() {
       ..task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", Taken)),
       card_id: Some(1),
     ),
-    Task(
-      ..task(2, task_state.Completed("2026-06-02T10:00:00Z")),
-      card_id: Some(1),
-    ),
+    Task(..task(2, task_state.Done("2026-06-02T10:00:00Z")), card_id: Some(1)),
     Task(
       ..task(3, task_state.Claimed(8, "2026-06-01T10:00:00Z", Taken)),
       card_id: Some(2),
@@ -108,15 +105,16 @@ fn card(id: Int, title: String, color) {
   Card(
     id: id,
     project_id: 1,
-    milestone_id: None,
+    parent_card_id: None,
     title: title,
     description: "",
     color: color,
-    state: EnCurso,
+    state: Active,
     task_count: 0,
     completed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     has_new_notes: False,
   )
 }
@@ -132,16 +130,11 @@ fn task(id: Int, state: task_state.TaskState) {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: case state {
-      task_state.Available -> WorkAvailable
-      task_state.Claimed(..) -> task_state.to_work_state(state)
-      task_state.Completed(..) -> task_state.to_work_state(state)
-    },
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

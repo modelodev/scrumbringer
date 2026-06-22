@@ -80,6 +80,7 @@ pub fn insert_task_accepts_sql_timestamp_test() {
         card_id: None,
         created_from_rule_id: None,
         pool_lifetime_s: 0,
+        due_date: None,
         created_at: Some("NOW()"),
         claimed_at: None,
         completed_at: None,
@@ -95,4 +96,135 @@ pub fn insert_task_accepts_sql_timestamp_test() {
     )
 
   has_created |> expect.equal(1)
+}
+
+pub fn assign_card_to_parent_card_updates_specific_card_test() {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Parented", None)
+  let assert Ok(user_id) =
+    seed_db.insert_user_simple(db, 1, "parent-card@example.com", org_role.Admin)
+  let assert Ok(parent_id) =
+    seed_db.insert_card_simple(db, project_id, "Parent", None, user_id)
+  let assert Ok(child_id) =
+    seed_db.insert_card_simple(db, project_id, "Child", None, user_id)
+
+  let assert Ok(Nil) =
+    seed_db.assign_card_to_parent_card(db, child_id, parent_id)
+
+  let assert Ok(parent_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from cards where id = $1 and parent_card_id = $2",
+      [pog.int(child_id), pog.int(parent_id)],
+    )
+
+  parent_count |> expect.equal(1)
+}
+
+pub fn assign_card_to_parent_card_rejects_parent_with_tasks_test() {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Task parent", None)
+  let assert Ok(user_id) =
+    seed_db.insert_user_simple(db, 1, "task-parent@example.com", org_role.Admin)
+  let assert Ok(type_id) =
+    seed_db.insert_task_type(db, project_id, "Bug", "bug-ant")
+  let assert Ok(parent_id) =
+    seed_db.insert_card_simple(db, project_id, "Parent", None, user_id)
+  let assert Ok(child_id) =
+    seed_db.insert_card_simple(db, project_id, "Child", None, user_id)
+  let assert Ok(_task_id) =
+    seed_db.insert_task_simple(
+      db,
+      project_id,
+      type_id,
+      "Parent task",
+      user_id,
+      Some(parent_id),
+    )
+
+  let assert Error(message) =
+    seed_db.assign_card_to_parent_card(db, child_id, parent_id)
+
+  message |> expect.equal("parent card already contains tasks")
+}
+
+pub fn assign_pool_tasks_to_parent_card_rejects_parent_with_child_cards_test() {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Card parent", None)
+  let assert Ok(user_id) =
+    seed_db.insert_user_simple(db, 1, "card-parent@example.com", org_role.Admin)
+  let assert Ok(type_id) =
+    seed_db.insert_task_type(db, project_id, "Bug", "bug-ant")
+  let assert Ok(parent_id) =
+    seed_db.insert_card_simple(db, project_id, "Parent", None, user_id)
+  let assert Ok(child_id) =
+    seed_db.insert_card_simple(db, project_id, "Child", None, user_id)
+  let assert Ok(_task_id) =
+    seed_db.insert_task_simple(
+      db,
+      project_id,
+      type_id,
+      "Pool task",
+      user_id,
+      None,
+    )
+  let assert Ok(Nil) =
+    seed_db.assign_card_to_parent_card(db, child_id, parent_id)
+
+  let assert Error(message) =
+    seed_db.assign_available_pool_tasks_to_parent_card(
+      db,
+      project_id,
+      parent_id,
+      1,
+    )
+
+  message |> expect.equal("parent card already contains child cards")
+}
+
+pub fn insert_task_dependency_creates_dependency_test() {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Deps", None)
+  let assert Ok(user_id) =
+    seed_db.insert_user_simple(db, 1, "dep@example.com", org_role.Admin)
+  let assert Ok(type_id) =
+    seed_db.insert_task_type(db, project_id, "Bug", "bug-ant")
+  let assert Ok(blocked_id) =
+    seed_db.insert_task_simple(
+      db,
+      project_id,
+      type_id,
+      "Blocked",
+      user_id,
+      None,
+    )
+  let assert Ok(depends_on_id) =
+    seed_db.insert_task_simple(
+      db,
+      project_id,
+      type_id,
+      "Dependency",
+      user_id,
+      None,
+    )
+
+  let assert Ok(Nil) =
+    seed_db.insert_task_dependency(db, blocked_id, depends_on_id, user_id)
+
+  let assert Ok(dependency_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from task_dependencies where task_id = $1 and depends_on_task_id = $2",
+      [pog.int(blocked_id), pog.int(depends_on_id)],
+    )
+
+  dependency_count |> expect.equal(1)
 }

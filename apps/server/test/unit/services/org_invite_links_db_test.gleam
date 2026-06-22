@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
 
-import scrumbringer_server/services/org_invite_links_db
+import scrumbringer_server/use_case/org_invite_links_db
 
 const created_at = "2026-06-05T10:00:00Z"
 

@@ -3,7 +3,7 @@ import gleam/option.{None, Some}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type TaskDependency, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{Available, Completed, WorkAvailable}
+import domain/task_status.{Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/blocking
 
@@ -11,7 +11,7 @@ pub fn incomplete_dependencies_excludes_completed_dependencies_test() {
   let task =
     sample_task(1, [
       dependency(2, Available),
-      dependency(3, Completed),
+      dependency(3, Done),
     ])
 
   let assert [dep] = blocking.incomplete_dependencies(task)
@@ -20,7 +20,7 @@ pub fn incomplete_dependencies_excludes_completed_dependencies_test() {
   let assert 1 =
     blocking.incomplete_dependency_count([
       dependency(2, Available),
-      dependency(3, Completed),
+      dependency(3, Done),
     ])
 }
 
@@ -59,12 +59,11 @@ fn sample_task(id: Int, dependencies: List(TaskDependency)) {
     description: None,
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,

@@ -11,7 +11,7 @@
 ////
 //// ## Relations
 ////
-//// - **domain/task/codec.gleam**: Provides position decoder
+//// - **domain/task/task_codec.gleam**: Provides position decoder
 //// - **../core.gleam**: Provides HTTP request infrastructure
 
 import gleam/dynamic/decode
@@ -23,7 +23,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/task.{type TaskPosition}
-import domain/task/codec as decoders
+import domain/task/task_codec as decoders
 import scrumbringer_client/api/core
 
 // =============================================================================

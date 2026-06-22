@@ -32,7 +32,7 @@ import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/card.{type Card, all_colors, color_to_string, state_to_string}
-import domain/card/codec as card_codec
+import domain/card/card_codec
 import scrumbringer_client/ui/attribute_value
 
 import scrumbringer_client/api/cards as api_cards
@@ -60,9 +60,8 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     project_id: Option(Int),
-    create_milestone_id: Option(Int),
-    create_milestone_name: Option(String),
     mode: DialogMode,
+    create_parent_card_id: Option(Int),
     // Create dialog fields
     create_title: String,
     create_description: String,
@@ -88,10 +87,7 @@ pub type Msg {
   // Attribute/property changes
   LocaleReceived(Locale)
   ProjectIdReceived(Int)
-  MilestoneIdReceived(Int)
-  MilestoneIdCleared
-  MilestoneNameReceived(String)
-  MilestoneNameCleared
+  ParentCardIdReceived(Option(Int))
   ModeReceived(DialogMode)
   // Create form
   CreateTitleChanged(String)
@@ -132,8 +128,7 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
   [
     component.on_attribute_change("locale", decode_locale),
     component.on_attribute_change("project-id", decode_project_id),
-    component.on_attribute_change("milestone-id", decode_milestone_id),
-    component.on_attribute_change("milestone-name", decode_milestone_name),
+    component.on_attribute_change("parent-card-id", decode_parent_card_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_attribute_change("card-id", decode_card_id),
     component.on_property_change("card", card_property_decoder()),
@@ -149,17 +144,11 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
   crud_dialog_base.decode_int_attribute(value, ProjectIdReceived)
 }
 
-fn decode_milestone_id(value: String) -> Result(Msg, Nil) {
+fn decode_parent_card_id(value: String) -> Result(Msg, Nil) {
   case int.parse(value) {
-    Ok(id) -> Ok(MilestoneIdReceived(id))
-    Error(_) -> Ok(MilestoneIdCleared)
-  }
-}
-
-fn decode_milestone_name(value: String) -> Result(Msg, Nil) {
-  case value {
-    "" -> Ok(MilestoneNameCleared)
-    name -> Ok(MilestoneNameReceived(name))
+    Ok(id) if id > 0 -> Ok(ParentCardIdReceived(option.Some(id)))
+    Ok(_) -> Ok(ParentCardIdReceived(option.None))
+    Error(_) -> Error(Nil)
   }
 }
 
@@ -202,9 +191,8 @@ fn default_model() -> Model {
   Model(
     locale: En,
     project_id: option.None,
-    create_milestone_id: option.None,
-    create_milestone_name: option.None,
     mode: crud_dialog_base.Closed,
+    create_parent_card_id: option.None,
     create_title: "",
     create_description: "",
     create_color: option.None,
@@ -235,23 +223,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    MilestoneIdReceived(id) -> #(
-      Model(..model, create_milestone_id: option.Some(id)),
-      effect.none(),
-    )
-
-    MilestoneIdCleared -> #(
-      Model(..model, create_milestone_id: option.None),
-      effect.none(),
-    )
-
-    MilestoneNameReceived(name) -> #(
-      Model(..model, create_milestone_name: option.Some(name)),
-      effect.none(),
-    )
-
-    MilestoneNameCleared -> #(
-      Model(..model, create_milestone_name: option.None),
+    ParentCardIdReceived(parent_card_id) -> #(
+      Model(..model, create_parent_card_id: parent_card_id),
       effect.none(),
     )
 
@@ -425,7 +398,7 @@ fn submit_create_with_title(
         title,
         model.create_description,
         form_color_to_domain(model.create_color),
-        model.create_milestone_id,
+        model.create_parent_card_id,
         CreateResult,
       ),
     )
@@ -448,6 +421,7 @@ fn handle_create_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
       create_description: "",
       create_color: option.None,
       create_color_open: False,
+      create_parent_card_id: option.None,
       create_in_flight: False,
       create_error: option.None,
     ),
@@ -702,23 +676,20 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
           event.on_submit(fn(_) { CreateSubmitted }),
           attribute.id("card-create-form"),
         ],
-        [
-          view_create_milestone_context(model),
-          ..view_card_fields(
-            model,
-            model.create_title,
-            model.create_description,
-            model.create_color,
-            model.create_color_open,
-            CreateTitleChanged,
-            CreateDescriptionChanged,
-            CreateColorToggle,
-            CreateColorChanged,
-            option.Some("Card title"),
-            option.Some("Card description"),
-            True,
-          )
-        ],
+        view_card_fields(
+          model,
+          model.create_title,
+          model.create_description,
+          model.create_color,
+          model.create_color_open,
+          CreateTitleChanged,
+          CreateDescriptionChanged,
+          CreateColorToggle,
+          CreateColorChanged,
+          option.Some("Card title"),
+          option.Some("Card description"),
+          True,
+        ),
       ),
     ],
     [
@@ -731,34 +702,6 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ),
     ],
   )
-}
-
-fn view_create_milestone_context(model: Model) -> Element(Msg) {
-  case model.create_milestone_id {
-    option.Some(milestone_id) ->
-      form_field.view(
-        t(model.locale, i18n_text.MilestoneTarget),
-        div(
-          [
-            attribute.class("task-create-milestone-target"),
-            attribute.attribute("data-testid", "card-create-milestone-context"),
-            attribute.attribute(
-              "aria-label",
-              t(model.locale, i18n_text.MilestoneTarget),
-            ),
-          ],
-          [text(milestone_target_text(model, milestone_id))],
-        ),
-      )
-    option.None -> element.none()
-  }
-}
-
-fn milestone_target_text(model: Model, milestone_id: Int) -> String {
-  case model.create_milestone_name {
-    option.Some(name) -> name
-    option.None -> "#" <> int.to_string(milestone_id)
-  }
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {
@@ -824,19 +767,9 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
   )
 }
 
-pub fn view_create_dialog_for_test(
-  locale: Locale,
-  milestone_id: Option(Int),
-  milestone_name: Option(String),
-) -> Element(Msg) {
+pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
   let model =
-    Model(
-      ..default_model(),
-      locale: locale,
-      mode: crud_dialog_base.Creating,
-      create_milestone_id: milestone_id,
-      create_milestone_name: milestone_name,
-    )
+    Model(..default_model(), locale: locale, mode: crud_dialog_base.Creating)
   view_create_dialog(model)
 }
 

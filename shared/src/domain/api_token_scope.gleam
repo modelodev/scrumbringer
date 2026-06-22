@@ -12,7 +12,6 @@ pub type Resource {
   Tasks
   Cards
   Notes
-  Milestones
 }
 
 pub type Access {
@@ -28,8 +27,6 @@ pub type Scope {
   CardsWrite
   NotesRead
   NotesWrite
-  MilestonesRead
-  MilestonesWrite
 }
 
 pub type ParseError {
@@ -45,8 +42,6 @@ pub fn parse(value: String) -> Result(Scope, ParseError) {
     "cards:write" -> Ok(CardsWrite)
     "notes:read" -> Ok(NotesRead)
     "notes:write" -> Ok(NotesWrite)
-    "milestones:read" -> Ok(MilestonesRead)
-    "milestones:write" -> Ok(MilestonesWrite)
     _ -> Error(InvalidScope(value))
   }
 }
@@ -68,8 +63,6 @@ pub fn supported() -> List(Scope) {
     CardsWrite,
     NotesRead,
     NotesWrite,
-    MilestonesRead,
-    MilestonesWrite,
   ]
 }
 
@@ -94,8 +87,6 @@ pub fn from_parts(
     Cards, Write -> Ok(CardsWrite)
     Notes, Read -> Ok(NotesRead)
     Notes, Write -> Ok(NotesWrite)
-    Milestones, Read -> Ok(MilestonesRead)
-    Milestones, Write -> Ok(MilestonesWrite)
     _, _ ->
       Error(InvalidScope(
         resource_to_string(resource) <> ":" <> access_to_string(access),
@@ -109,14 +100,13 @@ pub fn resource(scope: Scope) -> Resource {
     TasksRead | TasksWrite -> Tasks
     CardsRead | CardsWrite -> Cards
     NotesRead | NotesWrite -> Notes
-    MilestonesRead | MilestonesWrite -> Milestones
   }
 }
 
 pub fn access(scope: Scope) -> Access {
   case scope {
-    ProjectsRead | TasksRead | CardsRead | NotesRead | MilestonesRead -> Read
-    TasksWrite | CardsWrite | NotesWrite | MilestonesWrite -> Write
+    ProjectsRead | TasksRead | CardsRead | NotesRead -> Read
+    TasksWrite | CardsWrite | NotesWrite -> Write
   }
 }
 
@@ -126,7 +116,6 @@ pub fn resource_to_string(resource: Resource) -> String {
     Tasks -> "tasks"
     Cards -> "cards"
     Notes -> "notes"
-    Milestones -> "milestones"
   }
 }
 

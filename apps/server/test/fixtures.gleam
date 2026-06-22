@@ -22,9 +22,9 @@ import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/seed_db
-import scrumbringer_server/services/rate_limit
-import scrumbringer_server/services/rules_engine
-import scrumbringer_server/services/workflows/validation_core
+import scrumbringer_server/use_case/rate_limit
+import scrumbringer_server/use_case/rules_engine
+import scrumbringer_server/use_case/workflows/validation_core
 import wisp
 import wisp/simulate
 
@@ -312,7 +312,7 @@ pub fn create_rule(
   workflow_id: Int,
   task_type_id: Option(Int),
   name: String,
-  to_state: task_status.TaskStatus,
+  to_state: task_status.TaskPhase,
 ) -> Result(Int, String) {
   let payload =
     build_rule_payload(
@@ -330,7 +330,7 @@ pub fn create_rule_card(
   session: Session,
   workflow_id: Int,
   name: String,
-  to_state: domain_card.CardState,
+  to_state: domain_card.CardPhase,
 ) -> Result(Int, String) {
   let payload =
     build_rule_payload(
@@ -775,8 +775,8 @@ pub fn query_nullable_int(
 pub fn fetch_rule_execution(
   db: pog.Connection,
   rule_id: Int,
-  origin_type: String,
-  origin_id: Int,
+  target_type: String,
+  target_id: Int,
 ) -> Result(RuleExecution, String) {
   let decoder = {
     use outcome <- decode.field(0, decode.string)
@@ -789,11 +789,11 @@ pub fn fetch_rule_execution(
 
   case
     pog.query(
-      "select outcome, coalesce(suppression_reason, '') from rule_executions where rule_id = $1 and origin_type = $2 and origin_id = $3",
+      "select outcome, coalesce(suppression_reason, '') from rule_executions where rule_id = $1 and (($2 = 'task' and task_id = $3) or ($2 = 'card' and card_id = $3))",
     )
     |> pog.parameter(pog.int(rule_id))
-    |> pog.parameter(pog.text(origin_type))
-    |> pog.parameter(pog.int(origin_id))
+    |> pog.parameter(pog.text(target_type))
+    |> pog.parameter(pog.int(target_id))
     |> pog.returning(decoder)
     |> pog.execute(db)
   {
@@ -917,8 +917,8 @@ pub fn task_event_status(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskStatus),
-  to_state: task_status.TaskStatus,
+  from_state: Option(task_status.TaskPhase),
+  to_state: task_status.TaskPhase,
   task_type_id: Int,
 ) -> rules_engine.StateChange {
   task_event_status_with_card(
@@ -939,8 +939,8 @@ pub fn task_event_status_with_card(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskStatus),
-  to_state: task_status.TaskStatus,
+  from_state: Option(task_status.TaskPhase),
+  to_state: task_status.TaskPhase,
   task_type_id: Int,
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
@@ -963,8 +963,8 @@ pub fn task_event_status_full(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskStatus),
-  to_state: task_status.TaskStatus,
+  from_state: Option(task_status.TaskPhase),
+  to_state: task_status.TaskPhase,
   task_type_id: Int,
   user_triggered: Bool,
   card_id: Option(Int),
@@ -993,8 +993,8 @@ pub fn card_event_state(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(domain_card.CardState),
-  to_state: domain_card.CardState,
+  from_state: Option(domain_card.CardPhase),
+  to_state: domain_card.CardPhase,
 ) -> rules_engine.StateChange {
   card_event_state_full(
     card_id,
@@ -1013,8 +1013,8 @@ pub fn card_event_state_full(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(domain_card.CardState),
-  to_state: domain_card.CardState,
+  from_state: Option(domain_card.CardPhase),
+  to_state: domain_card.CardPhase,
   user_triggered: Bool,
 ) -> rules_engine.StateChange {
   rules_engine.CardChange(

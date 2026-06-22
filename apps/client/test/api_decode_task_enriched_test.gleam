@@ -1,4 +1,4 @@
-import domain/task/codec as task_codec
+import domain/task/task_codec
 import gleam/dynamic/decode
 import gleam/json
 

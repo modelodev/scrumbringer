@@ -7,6 +7,8 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/task.{type Task}
+import domain/task_state
+import domain/task_status
 import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -21,6 +23,7 @@ pub type MutationContext(parent_msg) {
     on_task_claimed: fn(ApiResult(Task)) -> parent_msg,
     on_task_released: fn(ApiResult(Task)) -> parent_msg,
     on_task_completed: fn(ApiResult(Task)) -> parent_msg,
+    on_task_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
 
@@ -35,6 +38,7 @@ pub type DispatchContext(parent_msg) {
 pub type Policy {
   NoPolicy
   RefreshMemberAfterSuccess
+  RefreshMemberSilentlyAfterSuccess
   CheckAuthAfter(ApiError)
 }
 
@@ -45,7 +49,8 @@ pub type Update(parent_msg) {
 pub type Success {
   Claimed
   Released
-  Completed
+  Done
+  Deleted
 }
 
 pub type ErrorLabels {
@@ -53,6 +58,7 @@ pub type ErrorLabels {
     task_not_found: String,
     task_already_claimed: String,
     task_blocked_by_dependencies: String,
+    task_has_operational_history: String,
     task_version_conflict: String,
     task_mutation_rolled_back: String,
   )
@@ -63,6 +69,7 @@ pub type Context(parent_msg) {
     task_claimed: String,
     task_released: String,
     task_completed: String,
+    task_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
     on_work_sessions_refetch: fn() -> Effect(parent_msg),
   )
@@ -94,23 +101,41 @@ pub fn try_update(
       handle_complete_clicked(model, task_id, version, context.mutation_context)
       |> without_policy
 
-    pool_messages.MemberTaskClaimed(Ok(_)) ->
-      success(model, handle_task_claimed_ok, Claimed, context.success_context)
+    pool_messages.MemberDeleteTaskClicked(task_id) ->
+      handle_delete_clicked(model, task_id, context.mutation_context)
+      |> without_policy
 
-    pool_messages.MemberTaskReleased(Ok(_)) ->
-      success(model, handle_task_released_ok, Released, context.success_context)
-
-    pool_messages.MemberTaskCompleted(Ok(_)) ->
+    pool_messages.MemberTaskClaimed(Ok(task)) ->
       success(
         model,
-        handle_task_completed_ok,
-        Completed,
+        fn(model) { handle_task_claimed_ok(model, task) },
+        Claimed,
+        context.success_context,
+      )
+
+    pool_messages.MemberTaskReleased(Ok(task)) ->
+      success(
+        model,
+        fn(model) { handle_task_released_ok(model, task) },
+        Released,
+        context.success_context,
+      )
+
+    pool_messages.MemberTaskDone(Ok(_)) ->
+      success(model, handle_task_completed_ok, Done, context.success_context)
+
+    pool_messages.MemberTaskDeleted(task_id, Ok(_)) ->
+      success(
+        model,
+        fn(model) { handle_task_deleted_ok(model, task_id) },
+        Deleted,
         context.success_context,
       )
 
     pool_messages.MemberTaskClaimed(Error(err))
     | pool_messages.MemberTaskReleased(Error(err))
-    | pool_messages.MemberTaskCompleted(Error(err)) ->
+    | pool_messages.MemberTaskDone(Error(err))
+    | pool_messages.MemberTaskDeleted(_, Error(err)) ->
       mutation_error(model, err, context.error_context)
 
     _ -> opt.None
@@ -134,8 +159,15 @@ fn success(
   opt.Some(Update(
     model,
     effect.batch([local_fx, success_effect(success, context)]),
-    RefreshMemberAfterSuccess,
+    success_policy(success),
   ))
+}
+
+fn success_policy(success: Success) -> Policy {
+  case success {
+    Claimed | Released -> RefreshMemberSilentlyAfterSuccess
+    Done | Deleted -> RefreshMemberAfterSuccess
+  }
 }
 
 fn mutation_error(
@@ -254,6 +286,45 @@ fn handle_complete_clicked(
   }
 }
 
+fn handle_delete_clicked(
+  model: member_pool.Model,
+  task_id: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case model.member_task_mutation_in_flight {
+    True -> #(model, effect.none())
+    False ->
+      case helpers_lookup.find_task_by_id(model.member_tasks, task_id) {
+        opt.Some(task) ->
+          case can_delete_without_visible_history(task) {
+            True -> submit_delete(model, task_id, context)
+            False -> #(model, effect.none())
+          }
+        opt.None -> #(model, effect.none())
+      }
+  }
+}
+
+fn submit_delete(
+  model: member_pool.Model,
+  task_id: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(
+    mutation_state.start_delete(model, task_id),
+    task_operations_api.delete_task(task_id, fn(result) {
+      context.on_task_deleted(task_id, result)
+    }),
+  )
+}
+
+fn can_delete_without_visible_history(task: Task) -> Bool {
+  case task_state.to_work_state(task.state), task.blocked_count {
+    task_status.WorkAvailable, 0 -> True
+    _, _ -> False
+  }
+}
+
 /// Clear optimistic state after successful mutation.
 fn clear_optimistic_state(model: member_pool.Model) -> member_pool.Model {
   mutation_state.clear(model)
@@ -263,16 +334,18 @@ fn clear_optimistic_state(model: member_pool.Model) -> member_pool.Model {
 /// Clears snapshot and refreshes from server for authoritative state.
 fn handle_task_claimed_ok(
   model: member_pool.Model,
+  task: Task,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(clear_optimistic_state(model), effect.none())
+  #(mutation_state.confirm_task(model, task), effect.none())
 }
 
 /// Handle successful task release.
 /// Clears snapshot and refreshes from server for authoritative state.
 fn handle_task_released_ok(
   model: member_pool.Model,
+  task: Task,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(clear_optimistic_state(model), effect.none())
+  #(mutation_state.confirm_task(model, task), effect.none())
 }
 
 /// Handle successful task completion.
@@ -281,6 +354,19 @@ fn handle_task_completed_ok(
   model: member_pool.Model,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   #(clear_optimistic_state(model), effect.none())
+}
+
+fn handle_task_deleted_ok(
+  model: member_pool.Model,
+  _task_id: Int,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(
+    member_pool.Model(
+      ..clear_optimistic_state(model),
+      member_task_show_editing: False,
+    ),
+    effect.none(),
+  )
 }
 
 /// Handle mutation error.
@@ -306,7 +392,7 @@ fn success_effect(
 pub fn should_refetch_work_sessions(success: Success) -> Bool {
   case success {
     Claimed -> False
-    Released | Completed -> True
+    Released | Done | Deleted -> True
   }
 }
 
@@ -314,7 +400,8 @@ fn success_message(success: Success, context: Context(parent_msg)) -> String {
   case success {
     Claimed -> context.task_claimed
     Released -> context.task_released
-    Completed -> context.task_completed
+    Done -> context.task_completed
+    Deleted -> context.task_deleted
   }
 }
 
@@ -346,11 +433,13 @@ pub fn error_feedback(
 fn conflict_message(err: ApiError, labels: ErrorLabels) -> String {
   case
     string.contains(err.code, "BLOCKED"),
-    string.contains(err.code, "CLAIMED")
+    string.contains(err.code, "CLAIMED"),
+    string.contains(err.code, "OPERATIONAL_HISTORY")
   {
-    True, _ -> labels.task_blocked_by_dependencies
-    _, True -> labels.task_already_claimed
-    False, False -> labels.task_version_conflict
+    True, _, _ -> labels.task_blocked_by_dependencies
+    _, True, _ -> labels.task_already_claimed
+    _, _, True -> labels.task_has_operational_history
+    False, False, False -> labels.task_version_conflict
   }
 }
 

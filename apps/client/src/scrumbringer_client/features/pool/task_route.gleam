@@ -10,6 +10,7 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
@@ -18,10 +19,11 @@ import scrumbringer_client/features/pool/task_created_feedback
 import scrumbringer_client/features/pool/task_created_update
 import scrumbringer_client/features/tasks/create_update as task_create_update
 import scrumbringer_client/features/tasks/dependency_update as dependency_workflow
-import scrumbringer_client/features/tasks/detail_permissions
-import scrumbringer_client/features/tasks/detail_update as task_detail_update
 import scrumbringer_client/features/tasks/mutation_update as task_mutation_update
 import scrumbringer_client/features/tasks/notes_update as task_notes_update
+import scrumbringer_client/features/tasks/show_permissions
+import scrumbringer_client/features/tasks/show_state
+import scrumbringer_client/features/tasks/show_update as task_show_update
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
@@ -78,7 +80,7 @@ fn update_without_task_mutation(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case try_detail_update(model, inner) {
+  case try_show_update(model, inner) {
     opt.Some(result) -> opt.Some(result)
     opt.None -> opt.None
   }
@@ -221,13 +223,14 @@ fn try_task_mutation_update(
     )
   {
     opt.Some(update) ->
-      opt.Some(apply_task_mutation_update(model, update, member_refresh))
+      opt.Some(apply_task_mutation_update(model, inner, update, member_refresh))
     opt.None -> opt.None
   }
 }
 
 fn apply_task_mutation_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: task_mutation_update.Update(client_state.Msg),
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
@@ -235,8 +238,33 @@ fn apply_task_mutation_update(
   let task_mutation_update.Update(pool, fx, policy) = update
 
   apply_task_mutation_policy(policy, member_refresh, fn() {
-    #(root.set_member_pool(model, pool), fx)
+    let next = root.set_member_pool(model, pool)
+    #(close_deleted_task_show_if_open(next, inner), fx)
   })
+}
+
+fn close_deleted_task_show_if_open(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner, model.member.notes.member_notes_task_id {
+    pool_messages.MemberTaskDeleted(deleted_task_id, Ok(_)),
+      opt.Some(open_task_id)
+      if deleted_task_id == open_task_id
+    -> {
+      let #(pool, notes, dependencies) =
+        show_state.close(model.member.pool, model.member.notes)
+      set_task_show_model(
+        model,
+        task_show_update.Model(
+          pool: pool,
+          notes: notes,
+          dependencies: dependencies,
+        ),
+      )
+    }
+    _, _ -> model
+  }
 }
 
 fn apply_task_mutation_policy(
@@ -252,45 +280,68 @@ fn apply_task_mutation_policy(
       let #(next, refresh_fx) = member_refresh(next)
       #(next, effect.batch([fx, refresh_fx]))
     }
+    task_mutation_update.RefreshMemberSilentlyAfterSuccess -> {
+      let #(next, fx) = apply_update()
+      let #(next, refresh_fx) =
+        member_refresh_preserving_tasks(next, member_refresh)
+      #(next, effect.batch([fx, refresh_fx]))
+    }
     task_mutation_update.CheckAuthAfter(err) ->
       route_support.apply_auth_check_after(opt.Some(err), apply_update)
   }
 }
 
-fn try_detail_update(
+fn member_refresh_preserving_tasks(
+  model: client_state.Model,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  let current_tasks = model.member.pool.member_tasks
+  let #(next, fx) = member_refresh(model)
+  let pool = next.member.pool
+
+  #(
+    root.set_member_pool(
+      next,
+      member_pool.Model(..pool, member_tasks: current_tasks),
+    ),
+    fx,
+  )
+}
+
+fn try_show_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    task_detail_update.try_update(
-      task_detail_model(model),
+    task_show_update.try_update(
+      task_show_model(model),
       inner,
-      task_detail_dispatch_context(model),
+      task_show_dispatch_context(model),
     )
   {
-    opt.Some(update) -> opt.Some(apply_task_detail_update(model, update))
+    opt.Some(update) -> opt.Some(apply_task_show_update(model, update))
     opt.None -> opt.None
   }
 }
 
-fn apply_task_detail_update(
+fn apply_task_show_update(
   model: client_state.Model,
-  update: task_detail_update.Update(client_state.Msg),
+  update: task_show_update.Update(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let task_detail_update.Update(local, fx, auth_policy) = update
+  let task_show_update.Update(local, fx, auth_policy) = update
 
-  route_support.apply_auth_check_after(
-    task_detail_auth_error(auth_policy),
-    fn() { #(set_task_detail_model(model, local), fx) },
-  )
+  route_support.apply_auth_check_after(task_show_auth_error(auth_policy), fn() {
+    #(set_task_show_model(model, local), fx)
+  })
 }
 
-fn task_detail_auth_error(
-  policy: task_detail_update.AuthPolicy,
+fn task_show_auth_error(
+  policy: task_show_update.AuthPolicy,
 ) -> opt.Option(ApiError) {
   case policy {
-    task_detail_update.NoAuthCheck -> opt.None
-    task_detail_update.CheckAuthAfter(err) -> opt.Some(err)
+    task_show_update.NoAuthCheck -> opt.None
+    task_show_update.CheckAuthAfter(err) -> opt.Some(err)
   }
 }
 
@@ -310,7 +361,7 @@ fn task_created_feedback_config(
 ) -> task_created_feedback.Config {
   task_created_feedback.Config(
     locale: model.ui.locale,
-    status_filter: model.member.pool.member_filters_status,
+    visibility: model.member.pool.member_pool_visibility,
     work_filters: available_tasks.Config(
       tasks: model.member.pool.member_tasks,
       task_types: model.member.pool.member_task_types,
@@ -319,6 +370,7 @@ fn task_created_feedback_config(
       capability_filter: model.member.pool.member_filters_capability_id,
       search_query: model.member.pool.member_filters_q,
       capability_scope: model.member.pool.member_capability_scope,
+      visibility: model.member.pool.member_pool_visibility,
     ),
   )
 }
@@ -359,6 +411,14 @@ fn task_create_context(
       model.ui.locale,
       i18n_text.PriorityMustBe1To5,
     ),
+    card_has_child_cards: i18n.t(
+      model.ui.locale,
+      i18n_text.TaskCreateCardHasChildCards,
+    ),
+    parent_card_conflict: i18n.t(
+      model.ui.locale,
+      i18n_text.TaskCreateParentCardConflict,
+    ),
   )
 }
 
@@ -374,6 +434,9 @@ fn note_context(
     on_note_deleted: fn(note_id, result) {
       client_state.pool_msg(pool_messages.MemberNoteDeleted(note_id, result))
     },
+    on_note_pinned: fn(note_id, result) {
+      client_state.pool_msg(pool_messages.MemberNotePinned(note_id, result))
+    },
     on_notes_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberNotesFetched(result))
     },
@@ -386,7 +449,7 @@ fn dependency_context(
 ) -> dependency_workflow.DependencyContext(client_state.Msg) {
   dependency_workflow.DependencyContext(
     selected_task_id: model.member.notes.member_notes_task_id,
-    selected_task: selected_task_detail(model),
+    selected_task: selected_task_show(model),
     on_dependency_candidates_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberDependencyCandidatesFetched(
         result,
@@ -412,41 +475,41 @@ fn dependency_feedback_context() -> dependency_workflow.DependencyFeedbackContex
   )
 }
 
-fn task_detail_dispatch_context(
+fn task_show_dispatch_context(
   model: client_state.Model,
-) -> task_detail_update.DispatchContext(client_state.Msg) {
-  task_detail_update.DispatchContext(
-    open_context: task_detail_context(),
-    edit_context: task_detail_edit_context(model),
-    success_context: task_detail_update_success_context(model),
-    error_context: task_detail_update_error_context(),
+) -> task_show_update.DispatchContext(client_state.Msg) {
+  task_show_update.DispatchContext(
+    open_context: task_show_context(),
+    edit_context: task_show_edit_context(model),
+    success_context: task_show_update_success_context(model),
+    error_context: task_show_update_error_context(),
   )
 }
 
-fn task_detail_context() -> task_detail_update.Context(client_state.Msg) {
-  task_detail_update.Context(
+fn task_show_context() -> task_show_update.Context(client_state.Msg) {
+  task_show_update.Context(
     on_notes_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberNotesFetched(result))
     },
     on_dependencies_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberDependenciesFetched(result))
     },
-    on_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskMetricsFetched(result))
+    on_activity_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.MemberActivityFetched(result))
     },
   )
 }
 
-fn task_detail_edit_context(
+fn task_show_edit_context(
   model: client_state.Model,
-) -> task_detail_update.EditContext(client_state.Msg) {
-  let maybe_task = selected_task_detail(model)
+) -> task_show_update.EditContext(client_state.Msg) {
+  let maybe_task = selected_task_show(model)
   let can_edit = case maybe_task {
     opt.Some(current_task) -> can_edit_selected_task(model, current_task)
     opt.None -> False
   }
 
-  task_detail_update.EditContext(
+  task_show_update.EditContext(
     current_task: maybe_task,
     can_edit: can_edit,
     on_task_updated: fn(result) {
@@ -462,19 +525,19 @@ fn task_detail_edit_context(
   )
 }
 
-fn task_detail_update_success_context(
+fn task_show_update_success_context(
   model: client_state.Model,
-) -> task_detail_update.SuccessContext(client_state.Msg) {
-  task_detail_update.SuccessContext(
+) -> task_show_update.SuccessContext(client_state.Msg) {
+  task_show_update.SuccessContext(
     task_updated: i18n.t(model.ui.locale, i18n_text.TaskUpdated),
     on_success_toast: app_effects.toast_success,
   )
 }
 
-fn task_detail_update_error_context() -> task_detail_update.ErrorContext(
+fn task_show_update_error_context() -> task_show_update.ErrorContext(
   client_state.Msg,
 ) {
-  task_detail_update.ErrorContext(
+  task_show_update.ErrorContext(
     on_warning_toast: app_effects.toast_warning,
     on_error_toast: app_effects.toast_error,
   )
@@ -502,7 +565,10 @@ pub fn mutation_context(
       client_state.pool_msg(pool_messages.MemberTaskReleased(result))
     },
     on_task_completed: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskCompleted(result))
+      client_state.pool_msg(pool_messages.MemberTaskDone(result))
+    },
+    on_task_deleted: fn(task_id, result) {
+      client_state.pool_msg(pool_messages.MemberTaskDeleted(task_id, result))
     },
   )
 }
@@ -513,7 +579,8 @@ fn task_mutation_success_context(
   task_mutation_update.Context(
     task_claimed: i18n.t(model.ui.locale, i18n_text.TaskClaimed),
     task_released: i18n.t(model.ui.locale, i18n_text.TaskReleased),
-    task_completed: i18n.t(model.ui.locale, i18n_text.TaskCompleted),
+    task_completed: i18n.t(model.ui.locale, i18n_text.TaskDone),
+    task_deleted: i18n.t(model.ui.locale, i18n_text.TaskDeleted),
     on_success_toast: app_effects.toast_success,
     on_work_sessions_refetch: refetch_work_sessions_effect,
   )
@@ -532,6 +599,10 @@ fn task_mutation_error_context(
       task_blocked_by_dependencies: i18n.t(
         model.ui.locale,
         i18n_text.TaskBlockedByDependencies,
+      ),
+      task_has_operational_history: i18n.t(
+        model.ui.locale,
+        i18n_text.TaskHasOperationalHistory,
       ),
       task_version_conflict: i18n.t(
         model.ui.locale,
@@ -584,17 +655,17 @@ fn set_member_notes(
   })
 }
 
-fn task_detail_model(model: client_state.Model) -> task_detail_update.Model {
-  task_detail_update.Model(
+fn task_show_model(model: client_state.Model) -> task_show_update.Model {
+  task_show_update.Model(
     pool: model.member.pool,
     notes: model.member.notes,
     dependencies: model.member.dependencies,
   )
 }
 
-fn set_task_detail_model(
+fn set_task_show_model(
   model: client_state.Model,
-  local: task_detail_update.Model,
+  local: task_show_update.Model,
 ) -> client_state.Model {
   client_state.update_member(model, fn(member) {
     member_state.MemberModel(
@@ -606,7 +677,7 @@ fn set_task_detail_model(
   })
 }
 
-fn selected_task_detail(model: client_state.Model) -> opt.Option(task.Task) {
+fn selected_task_show(model: client_state.Model) -> opt.Option(task.Task) {
   case model.member.notes.member_notes_task_id {
     opt.Some(task_id) ->
       helpers_lookup.find_task_by_id_in_cache(
@@ -622,7 +693,7 @@ fn can_edit_selected_task(
   model: client_state.Model,
   current_task: task.Task,
 ) -> Bool {
-  detail_permissions.can_edit(selected_user_id(model), current_task)
+  show_permissions.can_edit(selected_user_id(model), current_task)
 }
 
 fn selected_user_id(model: client_state.Model) -> opt.Option(Int) {

@@ -26,6 +26,10 @@ pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
         [
           attribute.class("task-blocked-badge " <> extra_class),
           attribute.attribute("title", tooltip_text(locale, task.dependencies)),
+          attribute.attribute(
+            "aria-label",
+            tooltip_text(locale, task.dependencies),
+          ),
         ],
         [
           icons.nav_icon(icons.Warning, icons.XSmall),
@@ -38,8 +42,7 @@ pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
 }
 
 fn tooltip_text(locale: Locale, deps: List(TaskDependency)) -> String {
-  let blocking =
-    list.filter(deps, fn(dep) { dep.status != task_status.Completed })
+  let blocking = list.filter(deps, fn(dep) { dep.status != task_status.Done })
   let header = i18n.t(locale, i18n_text.BlockedByTasks(list.length(blocking)))
   let items =
     list.map(blocking, fn(dep) {

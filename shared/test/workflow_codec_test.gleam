@@ -3,7 +3,7 @@ import gleam/option
 
 import domain/task_status
 import domain/workflow.{Rule, TaskRule}
-import domain/workflow/codec
+import domain/workflow/workflow_codec as codec
 
 pub fn rule_decoder_decodes_typed_task_target_test() {
   let body =
@@ -14,7 +14,7 @@ pub fn rule_decoder_decodes_typed_task_target_test() {
     workflow_id: 2,
     name: "Complete task",
     goal: option.None,
-    target: TaskRule(task_status.Completed, option.Some(7)),
+    target: TaskRule(task_status.Done, option.Some(7)),
     active: True,
     created_at: "2026-01-28T12:00:00Z",
     templates: [],

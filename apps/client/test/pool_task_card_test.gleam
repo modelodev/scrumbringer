@@ -4,9 +4,7 @@ import lustre/element
 
 import domain/task.{type Task, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{
-  Available, Claimed, Completed, Taken, WorkAvailable, WorkClaimed,
-}
+import domain/task_status.{Available, Done, Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/i18n/locale
@@ -23,20 +21,25 @@ fn assert_not_contains(text: String, fragment: String) {
 pub fn task_card_renders_blocked_canvas_card_test() {
   let html =
     task_card.view(config(
-      Task(..sample_task(), blocked_count: 1, dependencies: [
-        TaskDependency(
-          depends_on_task_id: 9,
-          title: "API contract",
-          status: Available,
-          claimed_by: None,
-        ),
-        TaskDependency(
-          depends_on_task_id: 10,
-          title: "Done dependency",
-          status: Completed,
-          claimed_by: None,
-        ),
-      ]),
+      Task(
+        ..sample_task(),
+        blocked_count: 1,
+        dependencies: [
+          TaskDependency(
+            depends_on_task_id: 9,
+            title: "API contract",
+            status: Available,
+            claimed_by: None,
+          ),
+          TaskDependency(
+            depends_on_task_id: 10,
+            title: "Done dependency",
+            status: Done,
+            claimed_by: None,
+          ),
+        ],
+        due_date: Some("2026-06-18"),
+      ),
       x: 800,
       age_days: 20,
       touch_preview: True,
@@ -45,15 +48,54 @@ pub fn task_card_renders_blocked_canvas_card_test() {
     |> element.to_document_string
 
   assert_contains(html, "task-card preview-left")
-  assert_contains(html, "decay-shake-medium")
+  assert_contains(html, "decay-shake-high")
   assert_contains(html, "task-blocked")
   assert_contains(html, "highlighted")
   assert_contains(html, "touch-preview")
   assert_contains(html, "Prepare release")
   assert_contains(html, "Blocked by 1 tasks")
+  assert_contains(html, "data-testid=\"task-card-signal-due\"")
+  assert_contains(html, "Overdue since 2026-06-18")
   assert_contains(html, "API contract")
+  assert_contains(html, "task-card-open-action")
+  assert_contains(html, "aria-label=\"Open task: Prepare release\"")
   assert_not_contains(html, "Done dependency")
   assert_not_contains(html, "task-card-primary-action")
+}
+
+pub fn task_card_renders_due_today_signal_without_canvas_text_test() {
+  let html =
+    task_card.view(config(
+      Task(..sample_task(), due_date: Some("2026-06-19")),
+      x: 100,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"task-card-signal-due\"")
+  assert_contains(html, "is-due-today")
+  assert_contains(html, "aria-label=\"Due today\"")
+  assert_not_contains(html, ">Due today<")
+  assert_contains(html, "width:128px; height:128px;")
+}
+
+pub fn task_card_renders_due_soon_signal_without_long_date_text_test() {
+  let html =
+    task_card.view(config(
+      Task(..sample_task(), due_date: Some("2026-06-24")),
+      x: 100,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"task-card-signal-due\"")
+  assert_contains(html, "is-due-soon")
+  assert_contains(html, "Due soon: 2026-06-24")
+  assert_not_contains(html, ">2026-06-24<")
 }
 
 pub fn task_card_renders_claimed_owner_actions_test() {
@@ -66,8 +108,6 @@ pub fn task_card_renders_claimed_owner_actions_test() {
           claimed_at: "2026-06-01T11:00:00Z",
           mode: Taken,
         ),
-        status: Claimed(Taken),
-        work_state: WorkClaimed,
       ),
       x: 100,
       age_days: 1,
@@ -104,6 +144,22 @@ pub fn task_card_renders_available_claim_action_test() {
   assert_not_contains(html, "task-card-primary-label")
 }
 
+pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {
+  let html =
+    task_card.view(config(
+      sample_task(),
+      x: 900,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "left:max(0px,900px)")
+  assert_not_contains(html, "left:clamp")
+  assert_not_contains(html, "calc(100% - 128px)")
+}
+
 pub fn task_card_renders_mobile_context_for_touch_layout_test() {
   let html =
     task_card.view(config(
@@ -138,6 +194,7 @@ fn config(
     x: x,
     y: 40,
     age_days: age_days,
+    project_today: "2026-06-19",
     highlight_class: highlight_class,
     touch_preview: touch_preview,
     disable_actions: False,
@@ -168,12 +225,11 @@ fn sample_task() {
     description: Some("Task description"),
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,

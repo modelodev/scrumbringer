@@ -31,7 +31,13 @@ pub type Project {
     my_role: ProjectRole,
     created_at: String,
     members_count: Int,
+    card_depth_names: List(ProjectDepthName),
   )
+}
+
+/// Display names for cards at a given hierarchy depth.
+pub type ProjectDepthName {
+  ProjectDepthName(depth: Int, singular_name: String, plural_name: String)
 }
 
 /// A member of a project with their role.

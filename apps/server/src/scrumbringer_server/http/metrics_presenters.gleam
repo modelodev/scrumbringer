@@ -192,6 +192,7 @@ fn project_task_json(task: ProjectTask) -> json.Json {
     #("claimed_at", json_helpers.option_string_json(task.claimed_at)),
     #("completed_at", json_helpers.option_string_json(task.completed_at)),
     #("created_at", json.string(task.created_at)),
+    #("due_date", json_helpers.option_string_json(task.due_date)),
     #("version", json.int(task.version)),
     #("claim_count", json.int(task.claim_count)),
     #("release_count", json.int(task.release_count)),

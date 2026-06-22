@@ -1,4 +1,4 @@
-//// Task detail dependencies tab.
+//// domain_task.Task Show dependencies tab.
 
 import gleam/int
 import gleam/list
@@ -11,7 +11,7 @@ import lustre/element/html.{button, div, form, span, text}
 import lustre/event
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task, type TaskDependency, TaskDependency}
+import domain/task as domain_task
 import domain/task_status
 
 import scrumbringer_client/client_state/dialog_mode
@@ -31,11 +31,11 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     task_id: Int,
-    task: opt.Option(Task),
-    dependencies: Remote(List(TaskDependency)),
+    task: opt.Option(domain_task.Task),
+    dependencies: Remote(List(domain_task.TaskDependency)),
     dialog_mode: dialog_mode.DialogMode,
     search_query: String,
-    candidates: Remote(List(Task)),
+    candidates: Remote(List(domain_task.Task)),
     selected_task_id: opt.Option(Int),
     add_in_flight: Bool,
     add_error: opt.Option(String),
@@ -123,8 +123,11 @@ fn empty_state(
   ])
 }
 
-fn dependency_row(config: Config(msg), dep: TaskDependency) -> Element(msg) {
-  let TaskDependency(
+fn dependency_row(
+  config: Config(msg),
+  dep: domain_task.TaskDependency,
+) -> Element(msg) {
+  let domain_task.TaskDependency(
     depends_on_task_id: depends_on_task_id,
     title: title,
     status: status,
@@ -134,7 +137,7 @@ fn dependency_row(config: Config(msg), dep: TaskDependency) -> Element(msg) {
   let status_label = task_state.label(config.locale, status)
 
   let status_note = case status {
-    task_status.Completed -> status_label
+    task_status.Done -> status_label
     task_status.Claimed(_) ->
       case claimed_by {
         opt.Some(email) -> t(config, i18n_text.ClaimedBy) <> " " <> email
@@ -144,7 +147,7 @@ fn dependency_row(config: Config(msg), dep: TaskDependency) -> Element(msg) {
   }
 
   let icon = case status {
-    task_status.Completed -> icons.nav_icon(icons.CheckCircle, icons.Small)
+    task_status.Done -> icons.nav_icon(icons.CheckCircle, icons.Small)
     _ -> icons.nav_icon(icons.Warning, icons.Small)
   }
 
@@ -228,15 +231,16 @@ fn dependency_dialog(config: Config(msg)) -> Element(msg) {
 }
 
 fn filtered_candidates(
-  candidates: Remote(List(Task)),
+  candidates: Remote(List(domain_task.Task)),
   current_task_id: Int,
   query: String,
-) -> Remote(List(Task)) {
+) -> Remote(List(domain_task.Task)) {
   case candidates {
     Loaded(tasks) -> {
       let candidates =
         list.filter(tasks, fn(task) {
-          task.id != current_task_id && task.status != task_status.Completed
+          task.id != current_task_id
+          && domain_task.status(task) != task_status.Done
         })
 
       case string.is_empty(query) {
@@ -258,9 +262,12 @@ fn filtered_candidates(
   }
 }
 
-fn dependency_candidate_item(config: Config(msg), task: Task) -> Element(msg) {
+fn dependency_candidate_item(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> Element(msg) {
   let is_selected = config.selected_task_id == opt.Some(task.id)
-  let status = task_state.label(config.locale, task.status)
+  let status = task_state.label(config.locale, domain_task.status(task))
 
   button(
     [

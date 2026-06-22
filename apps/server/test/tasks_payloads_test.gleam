@@ -18,7 +18,7 @@ pub fn decode_create_task_payload_test() {
     priority: 2,
     type_id: 3,
     card_id: Some(4),
-    milestone_id: None,
+    parent_card_id: None,
   )) = payloads.decode_create_task(dynamic)
 }
 
@@ -36,13 +36,13 @@ pub fn decode_create_task_payload_defaults_description_test() {
 pub fn decode_create_task_payload_normalizes_non_positive_optional_ids_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"title\":\"Task\",\"priority\":1,\"type_id\":2,\"card_id\":0,\"milestone_id\":-1}",
+      "{\"title\":\"Task\",\"priority\":1,\"type_id\":2,\"card_id\":0,\"parent_card_id\":-1}",
       decode.dynamic,
     )
 
   let assert Ok(payloads.CreateTaskPayload(
     card_id: None,
-    milestone_id: None,
+    parent_card_id: None,
     ..,
   )) = payloads.decode_create_task(dynamic)
 }
@@ -54,38 +54,38 @@ pub fn decode_create_task_payload_rejects_missing_priority_test() {
   let assert Error(payloads.InvalidJson) = payloads.decode_create_task(dynamic)
 }
 
-pub fn decode_update_task_payload_sets_milestone_test() {
+pub fn decode_update_task_payload_sets_parent_card_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"version\":3,\"title\":\"New\",\"milestone_id\":7}",
+      "{\"version\":3,\"title\":\"New\",\"parent_card_id\":7}",
       decode.dynamic,
     )
 
   let assert Ok(payloads.UpdateTaskPayload(version: 3, updates: updates)) =
     payloads.decode_update_task(dynamic)
-  let assert field_update.Set(Some(7)) = updates.milestone_id
+  let assert field_update.Set(Some(7)) = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_normalizes_non_positive_milestone_test() {
+pub fn decode_update_task_payload_normalizes_non_positive_parent_card_test() {
   let assert Ok(dynamic) =
-    json.parse("{\"version\":3,\"milestone_id\":0}", decode.dynamic)
+    json.parse("{\"version\":3,\"parent_card_id\":0}", decode.dynamic)
 
   let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
     payloads.decode_update_task(dynamic)
-  let assert field_update.Set(None) = updates.milestone_id
+  let assert field_update.Set(None) = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_leaves_absent_milestone_unchanged_test() {
+pub fn decode_update_task_payload_leaves_absent_parent_card_unchanged_test() {
   let assert Ok(dynamic) = json.parse("{\"version\":3}", decode.dynamic)
 
   let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
     payloads.decode_update_task(dynamic)
-  let assert field_update.Unchanged = updates.milestone_id
+  let assert field_update.Unchanged = updates.parent_card_id
 }
 
-pub fn decode_update_task_payload_rejects_invalid_milestone_test() {
+pub fn decode_update_task_payload_rejects_invalid_parent_card_test() {
   let assert Ok(dynamic) =
-    json.parse("{\"version\":3,\"milestone_id\":\"later\"}", decode.dynamic)
+    json.parse("{\"version\":3,\"parent_card_id\":\"later\"}", decode.dynamic)
 
   let assert Error(payloads.InvalidJson) = payloads.decode_update_task(dynamic)
 }

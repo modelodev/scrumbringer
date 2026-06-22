@@ -12,7 +12,6 @@ pub fn open(model: member_pool.Model) -> member_pool.Model {
     member_create_dialog_mode: dialog_mode.DialogCreate,
     member_create_error: opt.None,
     member_create_card_id: opt.None,
-    member_create_milestone_id: opt.None,
   )
 }
 
@@ -25,7 +24,6 @@ pub fn open_with_card(
     member_create_dialog_mode: dialog_mode.DialogCreate,
     member_create_error: opt.None,
     member_create_card_id: opt.Some(card_id),
-    member_create_milestone_id: opt.None,
   )
 }
 
@@ -35,7 +33,6 @@ pub fn close(model: member_pool.Model) -> member_pool.Model {
     member_create_dialog_mode: dialog_mode.DialogClosed,
     member_create_error: opt.None,
     member_create_card_id: opt.None,
-    member_create_milestone_id: opt.None,
   )
 }
 
@@ -67,14 +64,6 @@ pub fn type_id_changed(
   member_pool.Model(..model, member_create_type_id: value)
 }
 
-pub fn card_id_changed(
-  model: member_pool.Model,
-  value: String,
-) -> member_pool.Model {
-  let card_id = create_form.card_id_from_input(value)
-  member_pool.Model(..model, member_create_card_id: card_id)
-}
-
 pub fn input(
   model: member_pool.Model,
   selected_project_id: opt.Option(Int),
@@ -86,7 +75,6 @@ pub fn input(
     type_id: model.member_create_type_id,
     priority: model.member_create_priority,
     card_id: model.member_create_card_id,
-    milestone_id: model.member_create_milestone_id,
   )
 }
 
@@ -115,7 +103,6 @@ pub fn created(model: member_pool.Model) -> member_pool.Model {
     member_create_priority: "3",
     member_create_type_id: "",
     member_create_card_id: opt.None,
-    member_create_milestone_id: opt.None,
   )
 }
 

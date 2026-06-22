@@ -167,11 +167,11 @@ pub fn try_update(
       handle_assignments_remove_confirmed(model, context)
       |> without_auth_check
 
-    admin_messages.AssignmentsRemoveCompleted(project_id, user_id, Ok(_)) ->
+    admin_messages.AssignmentsRemoveDone(project_id, user_id, Ok(_)) ->
       handle_assignments_remove_completed_ok(model, project_id, user_id)
       |> without_auth_check
 
-    admin_messages.AssignmentsRemoveCompleted(_project_id, _user_id, Error(err)) ->
+    admin_messages.AssignmentsRemoveDone(_project_id, _user_id, Error(err)) ->
       handle_assignments_remove_completed_error(model, err, feedback)
       |> with_auth_check(err)
 
@@ -185,11 +185,7 @@ pub fn try_update(
       )
       |> without_auth_check
 
-    admin_messages.AssignmentsRoleChangeCompleted(
-      project_id,
-      user_id,
-      Ok(result),
-    ) ->
+    admin_messages.AssignmentsRoleChangeDone(project_id, user_id, Ok(result)) ->
       handle_assignments_role_change_completed_ok(
         model,
         project_id,
@@ -198,11 +194,7 @@ pub fn try_update(
       )
       |> without_auth_check_with_root(MemberRoleSuccessFeedback)
 
-    admin_messages.AssignmentsRoleChangeCompleted(
-      project_id,
-      user_id,
-      Error(err),
-    ) ->
+    admin_messages.AssignmentsRoleChangeDone(project_id, user_id, Error(err)) ->
       handle_assignments_role_change_completed_error(
         model,
         project_id,

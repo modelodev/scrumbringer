@@ -2,10 +2,17 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/task.{Task, TaskDependency, TaskNote}
+import domain/note/entity.{Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
+import domain/task.{Task, TaskDependency}
+import domain/task/id as task_id
 import domain/task_state
-import domain/task_status.{Available, Claimed, Completed, Taken, WorkAvailable}
+import domain/task_status.{Available, Claimed, Done, Taken}
 import domain/task_type.{TaskTypeInline}
+import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/i18n/locale
 
@@ -44,7 +51,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
   assert_contains(html, "Blocked by 2 tasks")
   assert_contains(html, "OAuth setup")
   assert_contains(html, "API review")
-  assert_not_contains(html, "Completed blocker")
+  assert_not_contains(html, "Done blocker")
   assert_contains(html, "3 blockers out of view due to filters")
   assert_contains(html, "Recent notes")
   assert_contains(html, "You")
@@ -52,6 +59,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
   assert_contains(html, "I checked the deployment checklist.")
   assert_contains(html, "OAuth setup still blocks this.")
   assert_contains(html, "Open task")
+  assert_not_contains(html, "Claim to My Tasks")
 }
 
 pub fn task_hover_hides_empty_optional_sections_test() {
@@ -94,12 +102,11 @@ fn sample_task() {
     description: Some("Task description"),
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,
@@ -120,20 +127,27 @@ fn sample_task() {
       ),
       TaskDependency(
         depends_on_task_id: 3,
-        title: "Completed blocker",
-        status: Completed,
+        title: "Done blocker",
+        status: Done,
         claimed_by: None,
       ),
     ],
   )
 }
 
-fn sample_note(id: Int, user_id: Int, content: String) {
-  TaskNote(
-    id: id,
-    task_id: 42,
-    user_id: user_id,
+fn sample_note(id: Int, user_id_value: Int, content: String) {
+  Note(
+    id: note_id.new(id),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(user_id_value),
     content: content,
+    url: None,
+    pinned: False,
     created_at: "2026-06-02T12:00:00Z",
+    updated_at: "2026-06-02T12:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }

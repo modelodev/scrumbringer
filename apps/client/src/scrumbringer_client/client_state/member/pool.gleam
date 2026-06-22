@@ -4,19 +4,19 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
-import domain/milestone.{type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
-import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/move_target.{type MoveTarget}
+import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 import scrumbringer_client/features/people/state as people_state
 
@@ -31,19 +31,6 @@ pub type HighlightState {
   )
 }
 
-pub type MilestoneDialog {
-  MilestoneDialogClosed
-  MilestoneDialogCreate(name: String, description: String)
-  MilestoneDialogActivate(id: Int)
-  MilestoneDialogEdit(id: Int, name: String, description: String)
-  MilestoneDialogDelete(id: Int, name: String)
-}
-
-pub type MilestoneDragItem {
-  MilestoneDragCard(card_id: Int, from_milestone_id: Int)
-  MilestoneDragTask(task_id: Int, from_milestone_id: Int)
-}
-
 /// State during drag-and-drop of a task card.
 pub type DragState {
   DragIdle
@@ -56,6 +43,53 @@ pub type PoolDragState {
   PoolDragIdle
   PoolDragPendingRect
   PoolDragDragging(over_my_tasks: Bool, rect: Rect)
+}
+
+/// Scope selector kind for Plan surfaces.
+pub type PlanScopeKind {
+  PlanScopeProject
+  PlanScopeLevel
+  PlanScopeCard
+}
+
+/// Display mode for the Plan surface.
+pub type PlanMode {
+  PlanStructure
+  PlanKanban
+}
+
+/// Inline card movement state for Plan / Structure.
+pub type PlanMoveMode {
+  PlanNotMoving
+  PlanMovingCard(card_id: Int, destination_query: String)
+}
+
+/// Native drag state while the inline Plan movement mode is active.
+pub type PlanMoveDragState {
+  PlanMoveNotDragging
+  PlanMoveDraggingCard(card_id: Int, over_destination: Option(MoveTarget))
+}
+
+/// Display mode for the Capabilities surface.
+pub type PlanCapabilityMode {
+  PlanCapabilityList
+  PlanCapabilityMatrix
+}
+
+/// Card state filter for the Plan structure surface.
+pub type PlanStatusFilter {
+  PlanStatusAll
+  PlanStatusDraft
+  PlanStatusActive
+  PlanStatusClosed
+}
+
+/// Sort order for the Plan structure surface.
+pub type PlanSort {
+  PlanSortPath
+  PlanSortState
+  PlanSortDueDate
+  PlanSortPoolImpact
 }
 
 /// Rectangle geometry for hit testing.
@@ -73,6 +107,20 @@ pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
 pub type Model {
   Model(
     view_mode: view_mode.ViewMode,
+    member_plan_scope_kind: PlanScopeKind,
+    member_plan_mode: PlanMode,
+    member_plan_move_mode: PlanMoveMode,
+    member_plan_move_drag: PlanMoveDragState,
+    member_plan_move_in_flight: Bool,
+    member_plan_move_error: Option(String),
+    member_plan_capability_mode: PlanCapabilityMode,
+    member_plan_scope_card_id: Option(Int),
+    member_plan_scope_card_query: String,
+    member_plan_show_closed: Option(Bool),
+    member_plan_status_filter: PlanStatusFilter,
+    member_plan_sort: PlanSort,
+    member_plan_collapsed_cards: Dict(Int, Bool),
+    member_card_depth_filter: Option(Int),
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
     member_tasks_by_project: Dict(Int, List(Task)),
@@ -81,31 +129,14 @@ pub type Model {
     member_task_types_by_project: Dict(Int, List(TaskType)),
     member_cards_store: normalized_store.NormalizedStore(Int, Card),
     member_cards: Remote(List(Card)),
-    member_milestones_store: normalized_store.NormalizedStore(
-      Int,
-      MilestoneProgress,
-    ),
-    member_milestones: Remote(List(MilestoneProgress)),
-    member_milestones_show_completed: Bool,
-    member_milestones_show_empty: Bool,
-    member_milestones_search_query: String,
-    member_milestone_summary_expanded: Bool,
-    member_milestone_expanded_cards: Dict(Int, Bool),
-    member_selected_milestone_id: Option(Int),
-    member_milestone_activate_in_flight_id: Option(Int),
-    member_milestone_dialog: MilestoneDialog,
-    member_milestone_dialog_in_flight: Bool,
-    member_milestone_dialog_error: Option(String),
-    member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
-    member_filters_status: Option(task_status.TaskStatus),
+    member_pool_visibility: PoolVisibility,
     member_filters_type_id: Option(Int),
     member_filters_capability_id: Option(Int),
     member_filters_q: String,
     member_capability_scope: capability_scope.CapabilityScope,
-    member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
     member_list_hide_completed: Bool,
     member_list_expanded_cards: Dict(Int, Bool),
@@ -116,7 +147,6 @@ pub type Model {
     member_create_priority: String,
     member_create_type_id: String,
     member_create_card_id: Option(Int),
-    member_create_milestone_id: Option(Int),
     member_create_in_flight: Bool,
     member_create_error: Option(String),
     member_drag: DragState,
@@ -126,22 +156,23 @@ pub type Model {
     member_pool_touch_client_x: Int,
     member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
-    card_detail_open: Option(Int),
-    card_detail_metrics: Remote(CardModalMetrics),
-    member_task_detail_tab: task_tabs.Tab,
-    member_task_detail_metrics: Remote(TaskModalMetrics),
-    member_task_detail_editing: Bool,
-    member_task_detail_edit_title: String,
-    member_task_detail_edit_description: String,
-    member_task_detail_edit_priority: String,
-    member_task_detail_edit_type_id: String,
-    member_task_detail_edit_card_id: String,
-    member_task_detail_edit_milestone_id: String,
-    member_task_detail_edit_in_flight: Bool,
-    member_task_detail_edit_error: Option(String),
+    card_show_open: Option(Int),
+    card_show_model: card_show.Model,
+    member_task_show_tab: show_tabs.TaskShowTab,
+    member_task_show_editing: Bool,
+    member_task_show_edit_title: String,
+    member_task_show_edit_description: String,
+    member_task_show_edit_priority: String,
+    member_task_show_edit_type_id: String,
+    member_task_show_edit_card_id: String,
+    member_task_show_edit_in_flight: Bool,
+    member_task_show_edit_error: Option(String),
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
     people_expansions: Dict(Int, people_state.RowExpansion),
+    member_people_search_query: String,
+    member_people_filter: people_state.PeopleVisibilityFilter,
+    member_people_sort: people_state.PeopleSort,
   )
 }
 
@@ -149,6 +180,20 @@ pub type Model {
 pub fn default_model() -> Model {
   Model(
     view_mode: view_mode.Pool,
+    member_plan_scope_kind: PlanScopeProject,
+    member_plan_mode: PlanStructure,
+    member_plan_move_mode: PlanNotMoving,
+    member_plan_move_drag: PlanMoveNotDragging,
+    member_plan_move_in_flight: False,
+    member_plan_move_error: option.None,
+    member_plan_capability_mode: PlanCapabilityList,
+    member_plan_scope_card_id: option.None,
+    member_plan_scope_card_query: "",
+    member_plan_show_closed: option.None,
+    member_plan_status_filter: PlanStatusAll,
+    member_plan_sort: PlanSortPath,
+    member_plan_collapsed_cards: dict.new(),
+    member_card_depth_filter: option.None,
     member_tasks: NotAsked,
     member_tasks_pending: 0,
     member_tasks_by_project: dict.new(),
@@ -157,28 +202,14 @@ pub fn default_model() -> Model {
     member_task_types_by_project: dict.new(),
     member_cards_store: normalized_store.new(),
     member_cards: NotAsked,
-    member_milestones_store: normalized_store.new(),
-    member_milestones: NotAsked,
-    member_milestones_show_completed: False,
-    member_milestones_show_empty: False,
-    member_milestones_search_query: "",
-    member_milestone_summary_expanded: False,
-    member_milestone_expanded_cards: dict.new(),
-    member_selected_milestone_id: option.None,
-    member_milestone_activate_in_flight_id: option.None,
-    member_milestone_dialog: MilestoneDialogClosed,
-    member_milestone_dialog_in_flight: False,
-    member_milestone_dialog_error: option.None,
-    member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
     member_tasks_snapshot: option.None,
-    member_filters_status: option.None,
+    member_pool_visibility: visibility.default(),
     member_filters_type_id: option.None,
     member_filters_capability_id: option.None,
     member_filters_q: "",
     member_capability_scope: capability_scope.default(),
-    member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
     member_list_hide_completed: True,
     member_list_expanded_cards: dict.new(),
@@ -189,7 +220,6 @@ pub fn default_model() -> Model {
     member_create_priority: "3",
     member_create_type_id: "",
     member_create_card_id: option.None,
-    member_create_milestone_id: option.None,
     member_create_in_flight: False,
     member_create_error: option.None,
     member_drag: DragIdle,
@@ -199,21 +229,22 @@ pub fn default_model() -> Model {
     member_pool_touch_client_x: 0,
     member_pool_touch_client_y: 0,
     member_pool_preview_task_id: option.None,
-    card_detail_open: option.None,
-    card_detail_metrics: NotAsked,
-    member_task_detail_tab: task_tabs.TasksTab,
-    member_task_detail_metrics: NotAsked,
-    member_task_detail_editing: False,
-    member_task_detail_edit_title: "",
-    member_task_detail_edit_description: "",
-    member_task_detail_edit_priority: "3",
-    member_task_detail_edit_type_id: "",
-    member_task_detail_edit_card_id: "",
-    member_task_detail_edit_milestone_id: "",
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: option.None,
+    card_show_open: option.None,
+    card_show_model: card_show.init_model(),
+    member_task_show_tab: show_tabs.TaskDetailsTab,
+    member_task_show_editing: False,
+    member_task_show_edit_title: "",
+    member_task_show_edit_description: "",
+    member_task_show_edit_priority: "3",
+    member_task_show_edit_type_id: "",
+    member_task_show_edit_card_id: "",
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: option.None,
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,
     people_expansions: dict.new(),
+    member_people_search_query: "",
+    member_people_filter: people_state.ShowEveryone,
+    member_people_sort: people_state.SortByAttention,
   )
 }

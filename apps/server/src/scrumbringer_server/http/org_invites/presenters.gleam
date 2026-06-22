@@ -1,7 +1,7 @@
 //// JSON presenters for organization invites.
 
 import gleam/json
-import scrumbringer_server/services/org_invites_db
+import scrumbringer_server/use_case/org_invites_db
 
 pub fn invite(invite: org_invites_db.OrgInvite) -> json.Json {
   let org_invites_db.OrgInvite(

@@ -131,6 +131,7 @@ fn children(chip: SignalChip) -> List(Element(msg)) {
   case chip.value {
     Some(value) -> [
       html.span([attribute.class(chip.value_class)], [html.text(value)]),
+      html.text(" "),
       html.span([attribute.class(chip.label_class)], [html.text(chip.label)]),
     ]
     None -> [html.text(chip.label)]

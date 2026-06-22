@@ -26,6 +26,7 @@
 //// - **features/admin/view.gleam**: client_state.Admin section views
 //// - **features/auth/view.gleam**: Auth views (login, register, etc.)
 
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -38,7 +39,9 @@ import lustre/element/html.{a, div, h2, p, style, text}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
-import domain/project.{type Project}
+import domain/project.{type Project, type ProjectDepthName}
+import domain/project/project_codec
+import domain/remote
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import domain/view_mode
@@ -72,15 +75,16 @@ import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
-import scrumbringer_client/features/milestones/access as milestone_access
-import scrumbringer_client/features/milestones/view_config as milestones_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/people/view as people_view
+import scrumbringer_client/features/plan/kanban_view as plan_kanban_view
+import scrumbringer_client/features/plan/structure_view as plan_structure_view
 import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
-import scrumbringer_client/features/pool/task_details_dialog_config
+import scrumbringer_client/features/pool/task_show_config
 import scrumbringer_client/features/pool/view_config as pool_view
 import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
@@ -90,6 +94,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+import scrumbringer_client/url_state
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
@@ -181,16 +186,13 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           client_state.pool_msg(
             pool_messages.MemberCreateTypeOptionsRetryClicked,
           ),
-          fn(value) {
-            client_state.pool_msg(pool_messages.MemberCreateCardIdChanged(value))
-          },
         )
       _ -> element.none()
     },
-    // Global task detail dialog (renders from list/canvas/pool)
+    // Global Task Show dialog (renders from list/canvas/pool)
     case model.member.notes.member_notes_task_id {
       opt.Some(task_id) ->
-        task_details_dialog_config.view(
+        task_show_config.view(
           model.ui.locale,
           model.member.pool,
           model.member.dependencies,
@@ -198,8 +200,9 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           model.core.user |> opt.map(fn(user) { user.id }),
           can_manage_task_notes(model),
           project_cards(model),
+          project_capabilities(model),
           task_id,
-          task_details_callbacks(),
+          task_show_callbacks(),
         )
       opt.None -> element.none()
     },
@@ -227,13 +230,11 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
   ])
 }
 
-fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
-  client_state.Msg,
-) {
-  task_details_dialog_config.Callbacks(
-    on_close: client_state.pool_msg(pool_messages.MemberTaskDetailsClosed),
+fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
+  task_show_config.Callbacks(
+    on_close: client_state.pool_msg(pool_messages.MemberTaskShowClosed),
     on_tab_clicked: fn(tab) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailTabClicked(tab))
+      client_state.pool_msg(pool_messages.MemberTaskShowTabClicked(tab))
     },
     on_dependency_dialog_opened: client_state.pool_msg(
       pool_messages.MemberDependencyDialogOpened,
@@ -258,43 +259,32 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       ))
     },
     on_edit_started: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditStarted,
+      pool_messages.MemberTaskShowEditStarted,
     ),
     on_edit_cancelled: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditCancelled,
+      pool_messages.MemberTaskShowEditCancelled,
     ),
     on_edit_title_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditTitleChanged(
+      client_state.pool_msg(pool_messages.MemberTaskShowEditTitleChanged(value))
+    },
+    on_edit_description_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskShowEditDescriptionChanged(
         value,
       ))
     },
-    on_edit_description_changed: fn(value) {
-      client_state.pool_msg(
-        pool_messages.MemberTaskDetailEditDescriptionChanged(value),
-      )
-    },
     on_edit_priority_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditPriorityChanged(
+      client_state.pool_msg(pool_messages.MemberTaskShowEditPriorityChanged(
         value,
       ))
     },
     on_edit_type_id_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditTypeIdChanged(
-        value,
-      ))
+      client_state.pool_msg(pool_messages.MemberTaskShowEditTypeIdChanged(value))
     },
     on_edit_card_id_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditCardIdChanged(
-        value,
-      ))
-    },
-    on_edit_milestone_id_changed: fn(value) {
-      client_state.pool_msg(
-        pool_messages.MemberTaskDetailEditMilestoneIdChanged(value),
-      )
+      client_state.pool_msg(pool_messages.MemberTaskShowEditCardIdChanged(value))
     },
     on_edit_submitted: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditSubmitted,
+      pool_messages.MemberTaskShowEditSubmitted,
     ),
     on_note_dialog_opened: client_state.pool_msg(
       pool_messages.MemberNoteDialogOpened,
@@ -309,11 +299,23 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
     on_note_delete: fn(note_id) {
       client_state.pool_msg(pool_messages.MemberNoteDeleteClicked(note_id))
     },
+    on_note_pin_toggle: fn(note_id, pinned) {
+      client_state.pool_msg(pool_messages.MemberNotePinClicked(note_id, pinned))
+    },
+    on_activity_more: client_state.pool_msg(
+      pool_messages.MemberActivityMoreClicked,
+    ),
+    on_open_parent_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
+    },
     on_claim: fn(claim_task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(
         claim_task_id,
         version,
       ))
+    },
+    on_start_work: fn(task_id) {
+      client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
     },
     on_release: fn(release_task_id, version) {
       client_state.pool_msg(pool_messages.MemberReleaseClicked(
@@ -325,6 +327,11 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       client_state.pool_msg(pool_messages.MemberCompleteClicked(
         complete_task_id,
         version,
+      ))
+    },
+    on_delete: fn(delete_task_id) {
+      client_state.pool_msg(pool_messages.MemberDeleteTaskClicked(
+        delete_task_id,
       ))
     },
   )
@@ -955,7 +962,15 @@ fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
     opt.Some(user) ->
       case model.ui.is_mobile {
         // Mobile: mini-bar + drawer layout
-        True -> view_mobile_shell(model, user, view_member_app(model, user))
+        True ->
+          view_mobile_shell(
+            model,
+            user,
+            element.fragment([
+              view_member_app(model, user),
+              view_member_card_show(model, user),
+            ]),
+          )
 
         False ->
           div([attribute.class("member")], [
@@ -1023,10 +1038,13 @@ fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
 fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
   case model.member.pool.view_mode {
     view_mode.Pool -> i18n_text.Pool
-    view_mode.Cards -> i18n_text.Kanban
+    view_mode.Cards ->
+      case model.member.pool.member_plan_mode {
+        member_pool.PlanKanban -> i18n_text.Kanban
+        member_pool.PlanStructure -> i18n_text.MemberCards
+      }
     view_mode.Capabilities -> i18n_text.CapabilitiesBoard
     view_mode.People -> i18n_text.People
-    view_mode.Milestones -> i18n_text.Milestones
   }
 }
 
@@ -1106,7 +1124,7 @@ fn view_member_three_panel(
       i18n.t(model.ui.locale, i18n_text.MainNavigation),
       i18n.t(model.ui.locale, i18n_text.MyActivity),
     ),
-    view_member_card_detail_modal(model, user),
+    view_member_card_show(model, user),
   ])
 }
 
@@ -1130,6 +1148,12 @@ fn build_left_panel(
   let member_route_config = left_panel_member_route_config(model)
   let member_route_for = fn(mode: view_mode.ViewMode) {
     left_panel_data.member_route(member_route_config, mode)
+  }
+  let member_plan_route = left_panel_data.member_plan_route(member_route_config)
+  let member_kanban_route =
+    left_panel_data.member_kanban_route(member_route_config)
+  let member_depth_route_for = fn(depth: Int) {
+    left_panel_data.member_depth_route(member_route_config, depth)
   }
 
   let current_route = case model.core.page {
@@ -1161,30 +1185,37 @@ fn build_left_panel(
     pending_invites_count: pending_invites_count,
     projects_count: list.length(projects),
     users_count: users_count,
+    depth_names: configured_depth_names(
+      projects,
+      model.core.selected_project_id,
+    ),
     // Event handlers
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(pool_messages.MemberCreateDialogOpened),
-    on_new_card: client_state.pool_msg(pool_messages.OpenCardDialog(
-      admin_cards.CardDialogCreate,
-    )),
+    on_new_card: client_state.pool_msg(
+      pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(opt.None)),
+    ),
     on_navigate_pool: client_state.NavigateTo(
       member_route_for(view_mode.Pool),
       client_state.Push,
     ),
-    on_navigate_cards: client_state.NavigateTo(
-      member_route_for(view_mode.Cards),
+    on_navigate_kanban: client_state.NavigateTo(
+      member_kanban_route,
       client_state.Push,
     ),
+    on_navigate_cards: client_state.NavigateTo(
+      member_plan_route,
+      client_state.Push,
+    ),
+    on_navigate_depth: fn(depth) {
+      client_state.NavigateTo(member_depth_route_for(depth), client_state.Push)
+    },
     on_navigate_capabilities: client_state.NavigateTo(
       member_route_for(view_mode.Capabilities),
       client_state.Push,
     ),
     on_navigate_people: client_state.NavigateTo(
       member_route_for(view_mode.People),
-      client_state.Push,
-    ),
-    on_navigate_milestones: client_state.NavigateTo(
-      member_route_for(view_mode.Milestones),
       client_state.Push,
     ),
     // Config navigation
@@ -1247,6 +1278,40 @@ fn build_left_panel(
   ))
 }
 
+fn configured_depth_names(
+  projects: List(Project),
+  selected_project_id: opt.Option(Int),
+) -> List(scope_view.DepthName) {
+  case selected_project_id {
+    opt.None -> default_depth_names()
+    opt.Some(project_id) ->
+      case list.find(projects, fn(project) { project.id == project_id }) {
+        Ok(project) -> project_depth_names(project.card_depth_names)
+        Error(_) -> default_depth_names()
+      }
+  }
+}
+
+fn project_depth_names(
+  depth_names: List(ProjectDepthName),
+) -> List(scope_view.DepthName) {
+  case depth_names {
+    [] -> default_depth_names()
+    _ ->
+      list.map(depth_names, fn(depth_name) {
+        scope_view.DepthName(
+          depth_name.depth,
+          depth_name.singular_name,
+          depth_name.plural_name,
+        )
+      })
+  }
+}
+
+fn default_depth_names() -> List(scope_view.DepthName) {
+  project_depth_names(project_codec.default_card_depth_names())
+}
+
 fn left_panel_member_route_config(
   model: client_state.Model,
 ) -> left_panel_data.MemberRouteConfig {
@@ -1257,7 +1322,18 @@ fn left_panel_member_route_config(
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
     search: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+    card_depth: model.member.pool.member_card_depth_filter,
+    plan_mode: current_plan_mode_param(model.member.pool.member_plan_mode),
   )
+}
+
+fn current_plan_mode_param(
+  plan_mode: member_pool.PlanMode,
+) -> url_state.PlanModeParam {
+  case plan_mode {
+    member_pool.PlanStructure -> url_state.PlanStructureParam
+    member_pool.PlanKanban -> url_state.PlanKanbanParam
+  }
 }
 
 /// Builds the center panel with view mode toggle and content
@@ -1278,30 +1354,26 @@ fn build_center_panel(
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(pool_context, user)
-  let milestones_content =
-    milestones_view.view(
-      model.ui.locale,
-      model.ui.theme,
-      model.core.selected_project_id,
-      model.member.pool,
-      model.admin.members.org_users_cache,
-      milestone_access.can_manage(
-        model.core.user,
-        state_selectors.selected_project(model),
-      ),
-      milestone_callbacks(),
-    )
-  let cards_content =
-    kanban_board.view(kanban_config(
-      model,
-      user,
-      cards,
-      data.tasks,
-      data.task_types,
-      data.org_users,
-      data.my_capability_ids,
-    ))
-  let people_content = people_view.view(people_config(model))
+  let cards_content = case model.member.pool.member_plan_mode {
+    member_pool.PlanStructure ->
+      plan_structure_view.view(plan_structure_config(
+        model,
+        user,
+        cards,
+        data.tasks,
+      ))
+    member_pool.PlanKanban ->
+      plan_kanban_view.view(kanban_config(
+        model,
+        user,
+        cards,
+        data.tasks,
+        data.task_types,
+        data.org_users,
+        data.my_capability_ids,
+      ))
+  }
+  let people_content = people_view.view(people_config(model, cards))
   let capabilities_content =
     capability_board_view.view(capability_board_config(
       model,
@@ -1313,153 +1385,15 @@ fn build_center_panel(
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
     view_mode: model.member.pool.view_mode,
-    task_types: data.task_types,
-    capabilities: data.capabilities,
-    capability_scope: model.member.pool.member_capability_scope,
-    type_filter: model.member.pool.member_filters_type_id,
-    capability_filter: model.member.pool.member_filters_capability_id,
-    search_query: model.member.pool.member_filters_q,
-    on_capability_scope_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
-        value,
-      ))
-    },
-    on_type_filter_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
-    },
-    on_capability_filter_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
-    },
-    on_search_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
-    },
     pool_content: pool_content,
     cards_content: cards_content,
     capabilities_content: capabilities_content,
     people_content: people_content,
-    milestones_content: milestones_content,
     on_drag_move: fn(x, y) {
       client_state.pool_msg(pool_messages.MemberDragMoved(x, y))
     },
     on_drag_end: client_state.pool_msg(pool_messages.MemberDragEnded),
   ))
-}
-
-fn milestone_callbacks() -> milestones_view.Callbacks(client_state.Msg) {
-  milestones_view.Callbacks(
-    on_create_milestone: client_state.pool_msg(
-      pool_messages.MemberMilestoneCreateClicked,
-    ),
-    on_dialog_close: client_state.pool_msg(
-      pool_messages.MemberMilestoneDialogClosed,
-    ),
-    on_activate_clicked: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneActivateClicked(id))
-    },
-    on_create_submitted: client_state.pool_msg(
-      pool_messages.MemberMilestoneCreateSubmitted,
-    ),
-    on_edit_submitted: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneEditSubmitted(id))
-    },
-    on_delete_submitted: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDeleteSubmitted(id))
-    },
-    on_name_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneNameChanged(value))
-    },
-    on_description_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDescriptionChanged(
-        value,
-      ))
-    },
-    on_search_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberMilestoneSearchChanged(value))
-    },
-    on_toggle_completed: client_state.pool_msg(
-      pool_messages.MemberMilestonesShowCompletedToggled,
-    ),
-    on_toggle_empty: client_state.pool_msg(
-      pool_messages.MemberMilestonesShowEmptyToggled,
-    ),
-    on_view_kanban: client_state.pool_msg(pool_messages.ViewModeChanged(
-      view_mode.Cards,
-    )),
-    on_select: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDetailsClicked(id))
-    },
-    on_summary_toggle: client_state.pool_msg(
-      pool_messages.MemberMilestoneSummaryToggled,
-    ),
-    on_card_toggle: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardToggled(id))
-    },
-    on_quick_create_card: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(id))
-    },
-    on_quick_create_task: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCreateTaskClicked(id))
-    },
-    on_activate_prompt: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneActivatePromptClicked(
-        id,
-      ))
-    },
-    on_edit: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneEditClicked(id))
-    },
-    on_delete: fn(id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneDeleteClicked(id))
-    },
-    on_task_open: fn(id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(id))
-    },
-    on_task_claim: fn(id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(id, version))
-    },
-    on_card_drag_started: fn(card_id, milestone_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardDragStarted(
-        card_id,
-        milestone_id,
-      ))
-    },
-    on_task_drag_started: fn(task_id, milestone_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneTaskDragStarted(
-        task_id,
-        milestone_id,
-      ))
-    },
-    on_drag_ended: client_state.pool_msg(pool_messages.MemberMilestoneDragEnded),
-    on_card_move: fn(card_id, milestone_id, destination_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneCardMoveClicked(
-        card_id,
-        milestone_id,
-        destination_id,
-      ))
-    },
-    on_task_move: fn(task_id, milestone_id, destination_id) {
-      client_state.pool_msg(pool_messages.MemberMilestoneTaskMoveClicked(
-        task_id,
-        milestone_id,
-        destination_id,
-      ))
-    },
-    on_card_create_task: fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
-        card_id,
-      ))
-    },
-    on_card_edit: fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
-      )
-    },
-    on_card_delete: fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
-      )
-    },
-  )
 }
 
 fn kanban_config(
@@ -1474,6 +1408,9 @@ fn kanban_config(
   kanban_board.KanbanConfig(
     locale: model.ui.locale,
     theme: model.ui.theme,
+    surface_title: i18n.t(model.ui.locale, i18n_text.Kanban),
+    surface_purpose: i18n.t(model.ui.locale, i18n_text.KanbanSurfacePurpose),
+    purpose: kanban_board.ExecutionKanban,
     cards: cards,
     tasks: tasks,
     task_types: task_types,
@@ -1488,7 +1425,7 @@ fn kanban_config(
       state_selectors.selected_project(model),
     ),
     on_card_click: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     on_card_edit: fn(card_id) {
       client_state.pool_msg(
@@ -1501,7 +1438,7 @@ fn kanban_config(
       )
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
@@ -1511,25 +1448,223 @@ fn kanban_config(
         card_id,
       ))
     },
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
+    show_closed: model.member.pool.member_plan_show_closed,
+    plan_mode: model.member.pool.member_plan_mode,
+    on_plan_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanModeChanged(value))
+    },
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
   )
+}
+
+fn plan_structure_config(
+  model: client_state.Model,
+  user: User,
+  cards: List(Card),
+  tasks: List(Task),
+) -> plan_structure_view.Config(client_state.Msg) {
+  plan_structure_view.Config(
+    locale: model.ui.locale,
+    cards: cards,
+    tasks: tasks,
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
+    show_closed: model.member.pool.member_plan_show_closed,
+    status_filter: model.member.pool.member_plan_status_filter,
+    sort_order: model.member.pool.member_plan_sort,
+    collapsed_card_ids: collapsed_plan_card_ids(model.member.pool),
+    search_query: model.member.pool.member_filters_q,
+    is_pm_or_admin: permissions.can_manage_project_content(
+      user.org_role,
+      state_selectors.selected_project(model),
+    ),
+    plan_mode: model.member.pool.member_plan_mode,
+    move_mode: model.member.pool.member_plan_move_mode,
+    move_drag_state: model.member.pool.member_plan_move_drag,
+    move_in_flight: model.member.pool.member_plan_move_in_flight,
+    move_error: model.member.pool.member_plan_move_error,
+    on_plan_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanModeChanged(value))
+    },
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_status_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanStatusChanged(value))
+    },
+    on_sort_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanSortChanged(value))
+    },
+    on_card_toggle: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanCardToggled(card_id))
+    },
+    on_card_click: fn(card_id) {
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
+    },
+    on_card_edit: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogEdit(card_id)),
+      )
+    },
+    on_card_delete: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+      )
+    },
+    on_move_requested: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
+    },
+    on_move_cancelled: client_state.pool_msg(
+      pool_messages.MemberPlanMoveCancelled,
+    ),
+    on_move_destination_search_change: fn(value) {
+      client_state.pool_msg(
+        pool_messages.MemberPlanMoveDestinationSearchChanged(value),
+      )
+    },
+    on_move_destination_selected: fn(target) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDestinationSelected(
+        target,
+      ))
+    },
+    on_move_drag_started: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDragStarted(card_id))
+    },
+    on_move_drag_entered: fn(target) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDragEntered(target))
+    },
+    on_move_dropped: fn(target) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveDroppedOn(target))
+    },
+    on_move_drag_ended: client_state.pool_msg(
+      pool_messages.MemberPlanMoveDragEnded,
+    ),
+    on_create_task_in_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+        card_id,
+      ))
+    },
+    on_create_subcard: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(
+          admin_cards.CardDialogCreate(case card_id {
+            0 -> opt.None
+            _ -> opt.Some(card_id)
+          }),
+        ),
+      )
+    },
+  )
+}
+
+fn collapsed_plan_card_ids(pool: member_pool.Model) -> List(Int) {
+  pool.member_plan_collapsed_cards
+  |> dict.to_list
+  |> list.filter_map(fn(entry) {
+    case entry {
+      #(card_id, True) -> Ok(card_id)
+      #(_, False) -> Error(Nil)
+    }
+  })
 }
 
 fn people_config(
   model: client_state.Model,
+  cards: List(Card),
 ) -> people_view.Config(client_state.Msg) {
   people_view.Config(
     locale: model.ui.locale,
     people_roster: model.member.pool.people_roster,
     member_tasks: model.member.pool.member_tasks,
+    task_types: model.member.pool.member_task_types,
+    capabilities: model.admin.capabilities.capabilities,
+    cards: cards,
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     org_users: model.admin.members.org_users_cache,
     people_expansions: model.member.pool.people_expansions,
-    search_query: model.member.pool.member_filters_q,
+    search_query: model.member.pool.member_people_search_query,
+    visibility_filter: model.member.pool.member_people_filter,
+    sort: model.member.pool.member_people_sort,
     task_card_color: fn(task) { resolved_task_card_color(model, task) },
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleSearchChanged(value))
+    },
+    on_visibility_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleFilterChanged(value))
+    },
+    on_sort_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleSortChanged(value))
+    },
     on_person_toggle: fn(user_id) {
       client_state.pool_msg(pool_messages.MemberPeopleRowToggled(user_id))
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
   )
 }
@@ -1551,12 +1686,57 @@ fn capability_board_config(
     capability_scope: model.member.pool.member_capability_scope,
     my_capability_ids: my_capability_ids,
     type_filter: model.member.pool.member_filters_type_id,
+    capability_filter: model.member.pool.member_filters_capability_id,
     search_query: model.member.pool.member_filters_q,
+    on_capability_scope_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
+        value,
+      ))
+    },
+    on_type_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
+    },
+    on_capability_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
+    },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
+    },
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    capability_mode: model.member.pool.member_plan_capability_mode,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
+    show_closed: model.member.pool.member_plan_show_closed,
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
+    },
+    on_closed_toggled: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_capability_mode_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanCapabilityModeChanged(value))
     },
   )
 }
@@ -1623,10 +1803,10 @@ fn build_right_panel(
       }
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_card_click: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     drag_armed: drag_armed,
     drag_over_my_tasks: drag_over_my_tasks,
@@ -1658,15 +1838,15 @@ fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
 }
 
 // =============================================================================
-// Card Detail Modal for Member Views
+// Card Show for Member Views
 // =============================================================================
 
-/// Renders the card detail modal for Pool/Kanban/Milestones views.
-fn view_member_card_detail_modal(
+/// Renders Card Show for Pool/Kanban/Hierarchies views.
+fn view_member_card_show(
   model: client_state.Model,
   _user: User,
 ) -> Element(client_state.Msg) {
-  cards_view.view_card_detail_modal(member_cards_config(model))
+  cards_view.view_card_show(member_cards_config(model))
 }
 
 fn member_cards_config(
@@ -1676,21 +1856,16 @@ fn member_cards_config(
     model.ui.locale,
     project_cards(model),
     model.member.pool,
-    selected_member_detail_card(model),
+    selected_member_show_card(model),
     model.core.user,
     state_selectors.selected_project(model),
-    fn(id) { client_state.pool_msg(pool_messages.OpenCardDetail(id)) },
-    fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
-        card_id,
-      ))
-    },
-    client_state.pool_msg(pool_messages.CloseCardDetail),
+    fn(id) { client_state.pool_msg(pool_messages.OpenCardShow(id)) },
+    fn(msg) { client_state.pool_msg(pool_messages.CardShowMsg(msg)) },
   )
 }
 
-fn selected_member_detail_card(model: client_state.Model) -> opt.Option(Card) {
-  case model.member.pool.card_detail_open {
+fn selected_member_show_card(model: client_state.Model) -> opt.Option(Card) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) -> find_card(model, card_id)
     opt.None -> opt.None
   }
@@ -1710,6 +1885,10 @@ fn project_cards(model: client_state.Model) -> List(Card) {
     model.admin.cards.cards,
     model.core.selected_project_id,
   )
+}
+
+fn project_capabilities(model: client_state.Model) {
+  remote.unwrap(model.member.skills.member_capabilities, [])
 }
 
 fn can_manage_task_notes(model: client_state.Model) -> Bool {

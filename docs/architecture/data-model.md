@@ -292,7 +292,7 @@ Commands represent user intentions. Validated on server before execution.
 | Command | Fields | Validation |
 |---------|--------|------------|
 | `CreateTask` | title, description?, priority, type_id | User is project member |
-| `ClaimTask` | task_id, version | User is project member, status=available, version match |
+| `ClaimTask` | task_id, version | User is project member, execution state is available, version match |
 | `ReleaseTask` | task_id, version | Claimed by user, version match |
 | `CompleteTask` | task_id, version | Claimed by user, version match |
 | `UpdateTask` | task_id, fields, version | Claimed by user, version match |
@@ -313,7 +313,7 @@ Events represent state changes. Used for UI updates and audit.
 | `TaskCreated` | task | CreateTask |
 | `TaskClaimed` | task_id, user_id, claimed_at | ClaimTask |
 | `TaskReleased` | task_id, user_id | ReleaseTask |
-| `TaskCompleted` | task_id, user_id, completed_at | CompleteTask |
+| `TaskClosed` | task_id, user_id, closed_at | CompleteTask |
 | `TaskUpdated` | task_id, changed_fields | UpdateTask |
 | `TaskNoteAdded` | note | AddTaskNote |
 | `TaskPositionChanged` | task_id, user_id, x, y | MoveTask |

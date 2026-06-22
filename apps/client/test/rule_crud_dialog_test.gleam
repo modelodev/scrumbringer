@@ -405,7 +405,7 @@ pub fn create_dialog_renders_shared_rule_fields_test() {
   assert_contains(html, "Task Type")
   assert_contains(html, "Bug")
   assert_contains(html, "Target State")
-  assert_contains(html, "Completed")
+  assert_contains(html, "Done")
   assert_contains(html, "Active")
 }
 
@@ -424,7 +424,7 @@ pub fn edit_dialog_renders_shared_rule_fields_test() {
   assert_contains(html, "Task Type")
   assert_contains(html, "Bug")
   assert_contains(html, "Target State")
-  assert_contains(html, "Completed")
+  assert_contains(html, "Done")
 }
 
 pub fn task_state_options_use_canonical_values_test() {
@@ -457,7 +457,7 @@ fn make_test_rule() -> Rule {
     workflow_id: 100,
     name: "Test Rule",
     goal: option.None,
-    target: TaskRule(task_status.Completed, option.None),
+    target: TaskRule(task_status.Done, option.None),
     active: True,
     created_at: "2024-01-01T00:00:00Z",
     templates: [],
@@ -470,7 +470,7 @@ fn make_test_rule_with_details() -> Rule {
     workflow_id: 100,
     name: "Detailed Rule",
     goal: option.Some("Automate task transitions"),
-    target: TaskRule(task_status.Completed, option.Some(10)),
+    target: TaskRule(task_status.Done, option.Some(10)),
     active: True,
     created_at: "2024-01-02T00:00:00Z",
     templates: [],

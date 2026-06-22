@@ -38,7 +38,7 @@ La semantica propuesta es:
 - Task sin due date con card due date: mostrar contexto heredado, sin persistir
   copia en la task.
 - Task con due date propia: prevalece en la lectura de la task.
-- Completed, closed o done: la fecha deja de tener severidad visual fuerte y se
+- Done, closed o done: la fecha deja de tener severidad visual fuerte y se
   muestra como informacion historica.
 
 ## Hallazgos De Interfaz
@@ -489,7 +489,7 @@ make test
 - Copiar automaticamente `card.due_date` a `task.due_date`.
 - SLA por tipo de task.
 
-## Decisiones Cerradas
+## Decisiones Closeds
 
 - La columna `VENCE` en administracion de cards entra en el primer slice visual,
   pero el filtro de vencimiento queda fuera del alcance inicial.

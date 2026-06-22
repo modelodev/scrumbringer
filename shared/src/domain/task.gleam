@@ -6,14 +6,14 @@
 ////
 //// ```gleam
 //// import shared/domain/task.{type Task, type TaskFilters}
-//// import shared/domain/task_status.{type TaskStatus}
+//// import shared/domain/task_status.{type TaskPhase}
 ////
 //// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
 //// ```
 
 import domain/card
 import domain/task_state
-import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
+import domain/task_status.{type OngoingBy, type TaskPhase, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
 
@@ -35,13 +35,12 @@ import gleam/option.{type Option}
 ///   title: "Fix login button",
 ///   description: Some("Button doesn't respond on mobile"),
 ///   priority: 3,
-///   status: Available,
-///   work_state: WorkAvailable,
 ///   created_by: 1,
 ///   claimed_by: None,
 ///   claimed_at: None,
 ///   completed_at: None,
 ///   created_at: "2024-01-17T12:00:00Z",
+///   due_date: None,
 ///   version: 1,
 ///   blocked_count: 0,
 ///   dependencies: [],
@@ -58,12 +57,11 @@ pub type Task {
     description: Option(String),
     priority: Int,
     state: task_state.TaskState,
-    status: TaskStatus,
-    work_state: WorkState,
     created_by: Int,
     created_at: String,
+    due_date: Option(String),
     version: Int,
-    milestone_id: Option(Int),
+    parent_card_id: Option(Int),
     // Card (ficha) association
     card_id: Option(Int),
     card_title: Option(String),
@@ -93,31 +91,8 @@ pub type TaskDependency {
   TaskDependency(
     depends_on_task_id: Int,
     title: String,
-    status: TaskStatus,
+    status: TaskPhase,
     claimed_by: Option(String),
-  )
-}
-
-/// A note on a task.
-///
-/// ## Example
-///
-/// ```gleam
-/// TaskNote(
-///   id: 1,
-///   task_id: 1,
-///   user_id: 1,
-///   content: "Added more details",
-///   created_at: "2024-01-17T12:00:00Z",
-/// )
-/// ```
-pub type TaskNote {
-  TaskNote(
-    id: Int,
-    task_id: Int,
-    user_id: Int,
-    content: String,
-    created_at: String,
   )
 }
 
@@ -163,7 +138,7 @@ pub type WorkSessionsPayload {
 /// ```
 pub type TaskFilters {
   TaskFilters(
-    status: Option(TaskStatus),
+    status: Option(TaskPhase),
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),
@@ -176,12 +151,15 @@ pub type TaskFilters {
 // =============================================================================
 
 pub fn with_state(task: Task, state: task_state.TaskState) -> Task {
-  Task(
-    ..task,
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..task, state: state)
+}
+
+pub fn status(task: Task) -> TaskPhase {
+  task_state.to_status(task.state)
+}
+
+pub fn work_state(task: Task) -> WorkState {
+  task_state.to_work_state(task.state)
 }
 
 pub fn claimed_by(task: Task) -> Option(Int) {

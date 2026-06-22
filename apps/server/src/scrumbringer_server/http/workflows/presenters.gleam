@@ -2,7 +2,7 @@
 
 import gleam/json
 import helpers/json as json_helpers
-import scrumbringer_server/services/workflows_db
+import scrumbringer_server/use_case/workflows_db
 
 pub fn workflows_response(
   values: List(workflows_db.WorkflowRecord),

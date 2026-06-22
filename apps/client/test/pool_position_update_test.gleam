@@ -165,7 +165,7 @@ pub fn position_update_try_update_ignores_non_position_messages_test() {
   let assert None =
     position_update.try_update(
       member_positions.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(),
     )
 }

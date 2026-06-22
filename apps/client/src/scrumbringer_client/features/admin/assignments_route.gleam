@@ -138,14 +138,14 @@ fn context(
       ))
     },
     on_remove_completed: fn(project_id, user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsRemoveCompleted(
+      client_state.admin_msg(admin_messages.AssignmentsRemoveDone(
         project_id,
         user_id,
         result,
       ))
     },
     on_role_change_completed: fn(project_id, user_id, result) {
-      client_state.admin_msg(admin_messages.AssignmentsRoleChangeCompleted(
+      client_state.admin_msg(admin_messages.AssignmentsRoleChangeDone(
         project_id,
         user_id,
         result,

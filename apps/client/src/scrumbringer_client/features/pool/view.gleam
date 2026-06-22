@@ -12,8 +12,7 @@
 //// ## Non-responsibilities
 ////
 //// - Root `client_state.Model` adaptation (see `features/pool/view_config.gleam`)
-//// - Filter panel (see `features/layout/center_panel.gleam`)
-//// - Dialogs (see `features/pool/dialogs.gleam`)
+//// - Task Show (see `features/pool/task_show.gleam`)
 
 import gleam/int
 import gleam/list
@@ -31,9 +30,13 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/chrome as pool_chrome
+import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
+import scrumbringer_client/features/pool/visibility.{
+  AllOpen, Blocked, ReadyToClaim,
+}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -48,6 +51,8 @@ pub type MainConfig(msg) {
     has_active_projects: Bool,
     on_create_opened: msg,
     available_tasks: available_tasks.Config,
+    control_bar: control_bar.Config(msg),
+    healthy_pool_limit: Int,
     view_mode: pool_prefs.ViewMode,
     task_card_config: fn(Task) -> task_card.Config(msg),
     task_row_config: fn(Task) -> task_row.Config(msg),
@@ -80,12 +85,14 @@ pub fn view_pool_main(config: MainConfig(msg)) -> Element(msg) {
     False -> pool_chrome.no_projects(config.locale)
     True -> {
       let task_state = available_tasks.state(config.available_tasks)
+      let counts = available_tasks.counts(config.available_tasks)
       div([attribute.class("section pool-view")], [
         pool_chrome.header(
           config.locale,
           config.on_create_opened,
-          pool_summary(config, task_state),
+          pool_summary(config, counts),
         ),
+        control_bar.view(config.control_bar),
         view_tasks(config, task_state),
       ])
     }
@@ -150,43 +157,85 @@ fn view_tasks(
   config: MainConfig(msg),
   task_state: available_tasks.State,
 ) -> Element(msg) {
+  let counts = available_tasks.counts(config.available_tasks)
   case task_state {
     available_tasks.Loading -> pool_chrome.tasks_loading(config.locale)
     available_tasks.Error(message) -> error_notice.view(message)
     available_tasks.Empty(has_filters: True) ->
-      pool_chrome.tasks_no_matches(config.locale)
+      view_empty_with_filters(config, counts)
     available_tasks.Empty(has_filters: False) ->
-      pool_chrome.tasks_onboarding(config.locale, config.on_create_opened)
+      view_empty_without_filters(config, counts)
     available_tasks.Ready(tasks) -> view_tasks_collection(config, tasks)
+  }
+}
+
+fn view_empty_with_filters(
+  config: MainConfig(msg),
+  counts: available_tasks.Counts,
+) -> Element(msg) {
+  let available_tasks.Counts(blocked: blocked, ready: ready, ..) = counts
+  case config.available_tasks.visibility {
+    ReadyToClaim if ready == 0 && blocked > 0 ->
+      pool_chrome.tasks_no_claimable_with_blocked(
+        config.locale,
+        blocked,
+        config.control_bar.on_visibility_change(visibility.to_string(Blocked)),
+      )
+    ReadyToClaim -> pool_chrome.tasks_no_claimable(config.locale)
+    Blocked ->
+      pool_chrome.tasks_no_blocked(
+        config.locale,
+        config.control_bar.on_visibility_change(visibility.to_string(AllOpen)),
+      )
+    AllOpen -> pool_chrome.tasks_no_matches(config.locale)
+  }
+}
+
+fn view_empty_without_filters(
+  config: MainConfig(msg),
+  counts: available_tasks.Counts,
+) -> Element(msg) {
+  let available_tasks.Counts(open: open, ..) = counts
+  case config.available_tasks.visibility, open {
+    AllOpen, 0 ->
+      pool_chrome.tasks_no_open(config.locale, config.on_create_opened)
+    _, _ -> view_empty_with_filters(config, counts)
   }
 }
 
 fn pool_summary(
   config: MainConfig(msg),
-  task_state: available_tasks.State,
+  counts: available_tasks.Counts,
 ) -> List(work_surface.SummaryChip) {
-  let view_label = case config.view_mode {
-    pool_prefs.Canvas -> i18n.t(config.locale, i18n_text.Canvas)
-    pool_prefs.List -> i18n.t(config.locale, i18n_text.List)
+  let available_tasks.Counts(open: open, ready: ready, blocked: blocked) =
+    counts
+  let healthy_tone = case open > config.healthy_pool_limit {
+    True -> tone.Warning
+    False -> tone.Neutral
   }
-  let view_chip =
-    work_surface.summary_chip(
-      i18n.t(config.locale, i18n_text.WorkSurfaceView),
-      view_label,
-      tone.Neutral,
-    )
 
-  case task_state {
-    available_tasks.Ready(tasks) -> [
-      view_chip,
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.AvailableCount),
-        int.to_string(list.length(tasks)),
-        tone.Available,
-      ),
-    ]
-    _ -> [view_chip]
-  }
+  [
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolOpenCount),
+      int.to_string(open),
+      tone.Available,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolReadyCount),
+      int.to_string(ready),
+      tone.Success,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolBlockedCount),
+      int.to_string(blocked),
+      tone.Blocked,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolHealthyLimit),
+      int.to_string(config.healthy_pool_limit),
+      healthy_tone,
+    ),
+  ]
 }
 
 fn view_tasks_collection(
@@ -200,19 +249,31 @@ fn view_tasks_collection(
 }
 
 fn view_tasks_canvas(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {
+  let card_configs = list.map(tasks, config.task_card_config)
+
   keyed.div(
     [
       attribute.attribute("id", "member-canvas"),
-      attribute.attribute(
-        "style",
-        "position: relative; min-height: 600px; touch-action: none;",
-      ),
+      attribute.attribute("style", canvas_style(card_configs)),
     ],
-    list.map(tasks, fn(task) {
+    list.map(card_configs, fn(card_config) {
+      let task = card_config.task
       let Task(id: id, ..) = task
-      #(int.to_string(id), view_task_card(config.task_card_config(task)))
+      #(int.to_string(id), view_task_card(card_config))
     }),
   )
+}
+
+fn canvas_style(card_configs: List(task_card.Config(msg))) -> String {
+  "position: relative; min-height: 600px; min-width:"
+  <> int.to_string(canvas_min_width(card_configs))
+  <> "px; touch-action: none;"
+}
+
+fn canvas_min_width(card_configs: List(task_card.Config(msg))) -> Int {
+  list.fold(card_configs, 0, fn(width, card_config) {
+    int.max(width, card_config.x + 188)
+  })
 }
 
 fn view_tasks_list(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {

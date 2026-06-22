@@ -18,6 +18,7 @@ fn mutation_context() -> mutation_update.MutationContext(Nil) {
     on_task_claimed: fn(_result) { Nil },
     on_task_released: fn(_result) { Nil },
     on_task_completed: fn(_result) { Nil },
+    on_task_deleted: fn(_task_id, _result) { Nil },
   )
 }
 
@@ -25,7 +26,8 @@ fn success_context() -> mutation_update.Context(Nil) {
   mutation_update.Context(
     task_claimed: "Claimed",
     task_released: "Released",
-    task_completed: "Completed",
+    task_completed: "Done",
+    task_deleted: "Deleted",
     on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_work_sessions_refetch: fn() { effect.from(fn(_dispatch) { Nil }) },
   )
@@ -58,12 +60,11 @@ fn sample_task(id: Int, state: task_state.TaskState) -> Task {
     description: Some("Review checklist."),
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
+    due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -93,12 +94,12 @@ pub fn try_update_claim_clicked_sets_local_policy_test() {
   let assert mutation_update.NoPolicy = policy
   let assert True = next.member_task_mutation_in_flight
   let assert Some(42) = next.member_task_mutation_task_id
-  let assert Some([task]) = next.member_tasks_snapshot
+  let assert Some([_task]) = next.member_tasks_snapshot
   let assert True = next.member_tasks == remote.Loaded([claimed_task(task, 7)])
   let assert True = fx != effect.none()
 }
 
-pub fn try_update_success_requests_member_refresh_test() {
+pub fn try_update_release_success_requests_silent_member_refresh_test() {
   let model =
     member_pool.Model(
       ..pool_with_tasks([sample_task(42, task_state.Available)]),
@@ -116,10 +117,12 @@ pub fn try_update_success_requests_member_refresh_test() {
       dispatch_context(),
     )
 
-  let assert mutation_update.RefreshMemberAfterSuccess = policy
+  let assert mutation_update.RefreshMemberSilentlyAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
+  let assert True =
+    next.member_tasks == remote.Loaded([sample_task(42, task_state.Available)])
   let assert True = fx != effect.none()
 }
 
@@ -137,7 +140,7 @@ pub fn try_update_error_checks_auth_after_rollback_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskCompleted(Error(err)),
+      pool_messages.MemberTaskDone(Error(err)),
       dispatch_context(),
     )
   let assert mutation_update.CheckAuthAfter(auth_err) = policy
@@ -154,7 +157,7 @@ pub fn try_update_ignores_non_mutation_messages_test() {
   let assert None =
     mutation_update.try_update(
       pool_with_tasks([]),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       dispatch_context(),
     )
 }
@@ -189,7 +192,8 @@ pub fn local_claim_clicked_applies_optimistic_claim_test() {
   let assert mutation_update.NoPolicy = policy
   let assert True = next.member_task_mutation_in_flight
   let assert Some(42) = next.member_task_mutation_task_id
-  let assert Some([task]) = next.member_tasks_snapshot
+  let assert Some([snapshot_task]) = next.member_tasks_snapshot
+  let assert True = snapshot_task == task
   let assert True = next.member_tasks == remote.Loaded([claimed_task(task, 7)])
   let assert True = fx != effect.none()
 }
@@ -271,16 +275,81 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
     )
 
   let assert mutation_update.NoPolicy = policy
-  let expected = sample_task(42, task_state.Completed(completed_at: ""))
+  let expected = sample_task(42, task_state.Done(completed_at: ""))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
   let assert True = fx != effect.none()
 }
 
-pub fn local_task_claimed_ok_clears_optimistic_state_test() {
+pub fn local_delete_clicked_available_task_applies_optimistic_delete_test() {
+  let task = sample_task(42, task_state.Available)
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([task]),
+      pool_messages.MemberDeleteTaskClicked(42),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let assert True = next.member_tasks == remote.Loaded([])
+  let assert True = next.member_task_mutation_in_flight
+  let assert Some(42) = next.member_task_mutation_task_id
+  let assert Some([snapshot_task]) = next.member_tasks_snapshot
+  let assert True = snapshot_task == task
+  let assert True = fx != effect.none()
+}
+
+pub fn local_delete_clicked_claimed_task_does_not_submit_test() {
+  let task =
+    sample_task(
+      42,
+      task_state.Claimed(
+        claimed_by: 7,
+        claimed_at: "2026-03-20T15:00:00Z",
+        mode: task_status.Taken,
+      ),
+    )
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([task]),
+      pool_messages.MemberDeleteTaskClicked(42),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let assert True = next.member_tasks == remote.Loaded([task])
+  let assert False = next.member_task_mutation_in_flight
+  let assert None = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
+  let assert True = fx == effect.none()
+}
+
+pub fn local_delete_clicked_blocked_task_does_not_submit_test() {
+  let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([task]),
+      pool_messages.MemberDeleteTaskClicked(42),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let assert True = next.member_tasks == remote.Loaded([task])
+  let assert False = next.member_task_mutation_in_flight
+  let assert None = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
+  let assert True = fx == effect.none()
+}
+
+pub fn local_task_claimed_ok_reconciles_payload_and_clears_optimistic_state_test() {
+  let task = sample_task(42, task_state.Available)
+  let claimed = claimed_task(task, 7)
   let model =
     member_pool.Model(
-      ..pool_with_tasks([sample_task(42, task_state.Available)]),
+      ..pool_with_tasks([task]),
       member_task_mutation_in_flight: True,
       member_task_mutation_task_id: Some(42),
       member_tasks_snapshot: Some([]),
@@ -289,14 +358,15 @@ pub fn local_task_claimed_ok_clears_optimistic_state_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskClaimed(Ok(sample_task(42, task_state.Available))),
+      pool_messages.MemberTaskClaimed(Ok(claimed)),
       dispatch_context(),
     )
 
-  let assert mutation_update.RefreshMemberAfterSuccess = policy
+  let assert mutation_update.RefreshMemberSilentlyAfterSuccess = policy
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
+  let assert True = next.member_tasks == remote.Loaded([claimed])
   let assert True = fx != effect.none()
 }
 
@@ -312,7 +382,7 @@ pub fn mutation_success_release_refetches_work_sessions_test() {
 
 pub fn mutation_success_complete_refetches_work_sessions_test() {
   let assert True =
-    mutation_update.should_refetch_work_sessions(mutation_update.Completed)
+    mutation_update.should_refetch_work_sessions(mutation_update.Done)
 }
 
 pub fn mutation_error_404_uses_not_found_warning_test() {
@@ -425,6 +495,7 @@ fn labels() -> mutation_update.ErrorLabels {
     task_not_found: "Task not found",
     task_already_claimed: "Task already claimed",
     task_blocked_by_dependencies: "Blocked by dependencies",
+    task_has_operational_history: "Has operational history",
     task_version_conflict: "Task version conflict",
     task_mutation_rolled_back: "Rolled back",
   )

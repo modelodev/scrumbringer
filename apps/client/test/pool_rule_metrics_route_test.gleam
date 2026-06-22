@@ -38,6 +38,6 @@ pub fn try_update_ignores_non_rule_metrics_messages_test() {
   let assert opt.None =
     rule_metrics_route.try_update(
       client_state.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
     )
 }

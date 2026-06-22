@@ -174,7 +174,7 @@ task detail tiene requisitos distintos a CRUD dialogs.
 #### DRY
 
 Conservar `task_meta` como helper privado y no duplicar chips en otra parte.
-Si los chips se hacen reutilizables, extraer solo cuando card/milestone detail
+Si los chips se hacen reutilizables, extraer solo cuando card/hierarchy detail
 necesiten el mismo patron.
 
 #### Tests
@@ -306,7 +306,7 @@ Cambios concretos:
 - Anadir helpers privados:
   - `view_edit_section(title, children)`
   - `priority_option`
-  - `milestone_hint`
+  - `hierarchy_hint`
 - Reutilizar `form_field.view`/`with_hint`.
 - Si se necesita un segmented control reutilizable en mas pantallas, crearlo en
   `ui/segmented_control.gleam`; si solo se usa aqui, dejarlo local en
@@ -458,7 +458,7 @@ Al terminar los slices, hacer una pasada de refactor con este orden:
    - Borrar clases o tests que sigan esperando `Tasks` como label visible si el
      producto ya usa `Details`.
    - Buscar restos con:
-     - `rg "task-detail-edit-actions|TabTasks|Tasks|Tareas|Milestones|Hitos" apps/client/src apps/client/test`
+     - `rg "task-detail-edit-actions|TabTasks|Tasks|Tareas|Hierarchies|Hitos" apps/client/src apps/client/test`
      - Revisar resultados para distinguir otros contextos legitimos.
 5. **Mantener arquitectura.**
    - `dialogs.gleam` compone; no debe convertirse en modulo de logica.

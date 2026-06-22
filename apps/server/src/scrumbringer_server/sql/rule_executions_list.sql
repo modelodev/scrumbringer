@@ -2,8 +2,8 @@
 -- Get paginated list of executions for a rule (drill-down).
 select
     re.id,
-    re.origin_type,
-    re.origin_id,
+    coalesce(re.task_id, 0) as task_id,
+    coalesce(re.card_id, 0) as card_id,
     re.outcome,
     coalesce(re.suppression_reason, '') as suppression_reason,
     coalesce(re.user_id, 0) as user_id,

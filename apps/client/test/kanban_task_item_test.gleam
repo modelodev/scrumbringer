@@ -1,4 +1,4 @@
-import domain/card.{Card, EnCurso, Pendiente}
+import domain/card.{Active, Card, Closed}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
@@ -11,6 +11,8 @@ import gleam/string
 import lustre/element
 
 import scrumbringer_client/capability_scope
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
@@ -28,21 +30,25 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     Card(
       id: 1,
       project_id: 1,
-      milestone_id: None,
+      parent_card_id: None,
       title: "Sprint",
       description: "",
       color: Some(card.Blue),
-      state: Pendiente,
+      state: Active,
       task_count: list.length(tasks),
       completed_count: 0,
       created_by: 1,
       created_at: "2026-01-01T00:00:00Z",
+      due_date: None,
       has_new_notes: False,
     )
 
   kanban_board.KanbanConfig(
     locale: i18n_locale.En,
     theme: theme.Default,
+    surface_title: "Kanban",
+    surface_purpose: "Card flow by state",
+    purpose: kanban_board.ExecutionKanban,
     cards: [card],
     tasks: tasks,
     task_types: [
@@ -74,6 +80,19 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     on_task_click: fn(id) { id },
     on_task_claim: fn(a, b) { a + b },
     on_create_task_in_card: fn(id) { id },
+    depth_names: [scope_view.DepthName(1, "Epic", "Epics")],
+    scope_kind: member_pool.PlanScopeLevel,
+    selected_depth: None,
+    selected_card_id: None,
+    card_query: "",
+    show_closed: None,
+    plan_mode: member_pool.PlanKanban,
+    on_plan_mode_change: fn(_value) { 0 },
+    on_scope_kind_change: fn(_value) { 0 },
+    on_scope_depth_change: fn(_value) { 0 },
+    on_scope_card_change: fn(_value) { 0 },
+    on_scope_card_search_change: fn(_value) { 0 },
+    on_closed_toggled: fn(_value) { 0 },
   )
 }
 
@@ -95,12 +114,11 @@ fn claimed_task() -> Task {
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -123,12 +141,11 @@ fn available_task() -> Task {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 2,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -151,8 +168,6 @@ fn claimed_taken_task() -> Task {
     id: 3,
     title: "Prepare rollout",
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     priority: 4,
   )
 }
@@ -168,16 +183,9 @@ fn blocked_task() -> Task {
 }
 
 fn completed_task() -> Task {
-  let state = task_state.Completed(completed_at: "2026-01-03T00:00:00Z")
+  let state = task_state.Done(completed_at: "2026-01-03T00:00:00Z")
 
-  Task(
-    ..available_task(),
-    id: 5,
-    title: "Done task",
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..available_task(), id: 5, title: "Done task", state: state)
 }
 
 pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
@@ -219,7 +227,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
 pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
   let config = base_config([available_task()])
   let card = case config.cards {
-    [first, ..] -> card.Card(..first, state: EnCurso)
+    [first, ..] -> card.Card(..first, state: Active)
     [] -> panic
   }
 
@@ -261,12 +269,86 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
 
   assert_contains(html, "kanban-surface-header")
   assert_contains(html, "Card flow by state")
+  assert_contains(html, "data-testid=\"plan-scope-bar\"")
+  assert_contains(html, "data-testid=\"plan-scope-kind\"")
+  assert_contains(html, "data-testid=\"plan-scope-depth\"")
+  assert_contains(html, "data-testid=\"plan-closed-toggle\"")
+  assert_not_contains(html, ">Lens<")
   assert_contains(html, "work-surface-chip")
   assert_contains(html, "Cards")
   assert_contains(html, "Available")
   assert_contains(html, "Claimed")
   assert_contains(html, "Ongoing")
   assert_contains(html, "Blocked")
+}
+
+pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
+  let child_card =
+    Card(
+      id: 2,
+      project_id: 1,
+      parent_card_id: Some(1),
+      title: "Child",
+      description: "",
+      color: Some(card.Green),
+      state: Active,
+      task_count: 1,
+      completed_count: 0,
+      created_by: 1,
+      created_at: "2026-01-01T00:00:00Z",
+      due_date: None,
+      has_new_notes: False,
+    )
+  let child_task = Task(..claimed_task(), id: 7, card_id: Some(2))
+
+  let html =
+    kanban_board.KanbanConfig(..base_config([child_task]), cards: [
+      child_card,
+      ..base_config([]).cards
+    ])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "en-curso")
+  assert_contains(html, "Sprint")
+  assert_contains(html, "Child")
+}
+
+pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
+  let closed_card = case base_config([]).cards {
+    [first, ..] -> Card(..first, id: 9, title: "Closed card", state: Closed)
+    [] -> panic
+  }
+
+  let html =
+    kanban_board.KanbanConfig(..base_config([]), cards: [closed_card])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_not_contains(html, "Closed card")
+  assert_not_contains(html, "cerrada")
+}
+
+pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
+  let closed_card = case base_config([available_task()]).cards {
+    [first, ..] -> Card(..first, state: Closed)
+    [] -> panic
+  }
+
+  let html =
+    kanban_board.KanbanConfig(
+      ..base_config([available_task()]),
+      cards: [closed_card],
+      scope_kind: member_pool.PlanScopeCard,
+      selected_card_id: Some(closed_card.id),
+    )
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Closed")
+  assert_contains(html, "Sprint")
+  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
+  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
 }
 
 pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
@@ -298,4 +380,14 @@ pub fn kanban_completed_only_card_still_shows_task_context_test() {
 
   assert_contains(html, "Done task")
   assert_not_contains(html, "No tasks yet")
+}
+
+pub fn kanban_shows_empty_draft_cards_for_decomposition_test() {
+  let html =
+    base_config([])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Sprint")
+  assert_contains(html, "No tasks yet")
 }

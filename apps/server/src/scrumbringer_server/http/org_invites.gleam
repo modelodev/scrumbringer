@@ -8,16 +8,16 @@
 ////
 //// - Validate admin access and CSRF tokens
 //// - Parse invite expiration input
-//// - Create invite codes via the persistence layer
+//// - Create invite codes via the repository layer
 ////
 //// ## Non-responsibilities
 ////
-//// - Invite persistence (see `services/org_invites_db.gleam`)
+//// - Invite repository (see `use_case/org_invites_db.gleam`)
 //// - Authentication (see `http/auth.gleam`)
 ////
 //// ## Relations
 ////
-//// - Uses `services/org_invites_db` for persistence
+//// - Uses `use_case/org_invites_db` for repository
 //// - Uses `http/auth` and `http/csrf` for auth and CSRF validation
 
 import domain/org_role
@@ -29,8 +29,8 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/org_invites/payloads as invite_payloads
 import scrumbringer_server/http/org_invites/presenters as invite_presenters
-import scrumbringer_server/services/org_invites_db
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/org_invites_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 /// Handles POST /api/org-invites to create a new invite code.

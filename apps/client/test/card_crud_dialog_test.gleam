@@ -7,7 +7,7 @@ import lustre/element
 
 import domain/api_error.{ApiError}
 import domain/card.{
-  type Card, type CardColor, Blue, Card, Gray, Green, Orange, Pendiente, Pink,
+  type Card, type CardColor, Blue, Card, Draft, Gray, Green, Orange, Pink,
   Purple, Red, Yellow,
 }
 import gleam/option
@@ -15,8 +15,7 @@ import gleam/string
 import scrumbringer_client/components/card_crud_dialog.{
   CreateColorChanged, CreateColorToggle, CreateDescriptionChanged, CreateResult,
   CreateSubmitted, CreateTitleChanged, DeleteCancelled, DeleteConfirmed,
-  EditCancelled, EditTitleChanged, LocaleReceived, MilestoneIdReceived,
-  MilestoneNameCleared, MilestoneNameReceived, ModeReceived, Model,
+  EditCancelled, EditTitleChanged, LocaleReceived, ModeReceived, Model,
   ProjectIdReceived, update_for_test, view_create_dialog_for_test,
   view_edit_dialog_for_test,
 }
@@ -42,9 +41,8 @@ pub fn model_default_values_test() {
     Model(
       locale: En,
       project_id: option.None,
-      create_milestone_id: option.None,
-      create_milestone_name: option.None,
       mode: Closed,
+      create_parent_card_id: option.None,
       create_title: "",
       create_description: "",
       create_color: option.None,
@@ -73,9 +71,8 @@ pub fn model_with_spanish_locale_test() {
     Model(
       locale: Es,
       project_id: option.Some(42),
-      create_milestone_id: option.Some(7),
-      create_milestone_name: option.Some("Milestone 7"),
       mode: Creating,
+      create_parent_card_id: option.Some(9),
       create_title: "Mi Ficha",
       create_description: "Descripción",
       create_color: option.Some("blue"),
@@ -139,21 +136,6 @@ pub fn msg_mode_received_test() {
   assert_equal(msg, ModeReceived(Creating))
 }
 
-pub fn msg_milestone_id_received_test() {
-  let msg = MilestoneIdReceived(77)
-  assert_equal(msg, MilestoneIdReceived(77))
-}
-
-pub fn msg_milestone_name_received_test() {
-  let msg = MilestoneNameReceived("Milestone 77")
-  assert_equal(msg, MilestoneNameReceived("Milestone 77"))
-}
-
-pub fn msg_milestone_name_cleared_test() {
-  let msg = MilestoneNameCleared
-  assert_equal(msg, MilestoneNameCleared)
-}
-
 pub fn msg_create_title_changed_test() {
   let msg = CreateTitleChanged("New Title")
   assert_equal(msg, CreateTitleChanged("New Title"))
@@ -199,14 +181,13 @@ pub fn msg_delete_cancelled_test() {
   assert_equal(msg, DeleteCancelled)
 }
 
-pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() {
+pub fn create_error_keeps_dialog_open_for_retry_test() {
   let model =
     Model(
       locale: En,
       project_id: option.Some(10),
-      create_milestone_id: option.Some(89),
-      create_milestone_name: option.Some("Milestone 89"),
       mode: Creating,
+      create_parent_card_id: option.Some(7),
       create_title: "Card with context",
       create_description: "desc",
       create_color: option.None,
@@ -236,8 +217,6 @@ pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() 
     )
 
   let assert Creating = next.mode
-  let assert option.Some(89) = next.create_milestone_id
-  let assert option.Some("Milestone 89") = next.create_milestone_name
   let assert False = next.create_in_flight
   let assert option.Some("validation failed") = next.create_error
   let assert True = fx == effect.none()
@@ -249,17 +228,11 @@ pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() 
 
 pub fn create_dialog_renders_shared_card_fields_test() {
   let html =
-    view_create_dialog_for_test(
-      En,
-      option.Some(89),
-      option.Some("Milestone 89"),
-    )
+    view_create_dialog_for_test(En)
     |> element.to_document_string
 
   assert_contains(html, "card-create-form")
   assert_contains(html, "Create Card")
-  assert_contains(html, "Destination milestone")
-  assert_contains(html, "Milestone 89")
   assert_contains(html, "Card title")
   assert_contains(html, "Card description")
   assert_contains(html, "Color")
@@ -311,15 +284,16 @@ fn make_test_card() -> Card {
   Card(
     id: 1,
     project_id: 10,
-    milestone_id: option.None,
+    parent_card_id: option.None,
     title: "Test Card",
     description: "Test Description",
     color: option.Some(card.Blue),
-    state: Pendiente,
+    state: Draft,
     task_count: 5,
     completed_count: 2,
     created_by: 1,
     created_at: "2026-01-20T00:00:00Z",
+    due_date: option.None,
     has_new_notes: False,
   )
 }

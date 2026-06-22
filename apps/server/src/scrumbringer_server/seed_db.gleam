@@ -20,7 +20,6 @@
 //// - CLI or output (see seed.gleam)
 
 import domain/card
-import domain/milestone
 import domain/org_role
 import domain/project_role
 import domain/task_status
@@ -31,7 +30,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
-import scrumbringer_server/services/task_events_db
+import scrumbringer_server/use_case/audit_events_db
 
 // =============================================================================
 // Types
@@ -56,12 +55,13 @@ pub type TaskInsertOptions {
     title: String,
     description: String,
     priority: Int,
-    status: task_status.TaskStatus,
+    status: task_status.TaskPhase,
     created_by: Int,
     claimed_by: Option(Int),
     card_id: Option(Int),
     created_from_rule_id: Option(Int),
     pool_lifetime_s: Int,
+    due_date: Option(String),
     created_at: Option(String),
     claimed_at: Option(String),
     completed_at: Option(String),
@@ -81,14 +81,13 @@ pub type CardInsertOptions {
   )
 }
 
-/// Options for inserting a milestone.
-pub type MilestoneInsertOptions {
-  MilestoneInsertOptions(
+/// Options for inserting a root hierarchy card.
+pub type RootCardInsertOptions {
+  RootCardInsertOptions(
     project_id: Int,
     name: String,
     description: Option(String),
-    state: milestone.MilestoneState,
-    position: Int,
+    state: card.CardPhase,
     created_by: Int,
     created_at: Option(String),
     activated_at: Option(String),
@@ -144,7 +143,7 @@ pub type TaskEventInsertOptions {
     project_id: Int,
     task_id: Int,
     actor_user_id: Int,
-    event_type: task_events_db.TaskEventType,
+    event_type: audit_events_db.EventType,
     created_at: Option(String),
   )
 }
@@ -204,6 +203,44 @@ fn append_optional_timestamp(
     None -> #(cols, vals, param_idx, params)
     Some(ts) -> {
       let #(val_expr, param, next_idx) = timestamp_value(ts, param_idx)
+      let next_cols = cols <> ", " <> column
+      let next_vals = vals <> ", " <> val_expr
+      let next_params = case param {
+        Some(p) -> list.append(params, [p])
+        None -> params
+      }
+      #(next_cols, next_vals, next_idx, next_params)
+    }
+  }
+}
+
+fn is_sql_date(value: String) -> Bool {
+  string.starts_with(value, "CURRENT_DATE")
+}
+
+fn date_value(value: String, param_idx: Int) -> #(String, Option(String), Int) {
+  case is_sql_date(value) {
+    True -> #(value, None, param_idx)
+    False -> #(
+      "$" <> int.to_string(param_idx) <> "::date",
+      Some(value),
+      param_idx + 1,
+    )
+  }
+}
+
+fn append_optional_date(
+  cols: String,
+  vals: String,
+  param_idx: Int,
+  column: String,
+  value: Option(String),
+  params: List(String),
+) -> #(String, String, Int, List(String)) {
+  case value {
+    None -> #(cols, vals, param_idx, params)
+    Some(date) -> {
+      let #(val_expr, param, next_idx) = date_value(date, param_idx)
       let next_cols = cols <> ", " <> column
       let next_vals = vals <> ", " <> val_expr
       let next_params = case param {
@@ -481,18 +518,26 @@ pub fn insert_task(
   db: pog.Connection,
   opts: TaskInsertOptions,
 ) -> Result(Int, String) {
+  let execution_state = task_execution_state(opts.status)
+  let claimed_mode = task_claimed_mode(opts.status)
+  let claimed_by = task_claimed_by(opts.status, opts.claimed_by)
+  let claimed_at = task_claimed_at(opts.status, opts.claimed_at)
+  let closed_at = task_closed_at(opts.status, opts.completed_at)
+  let closed_by = task_closed_by(opts.status, opts.claimed_by, opts.created_by)
+  let closed_reason = task_closed_reason(opts.status)
+
   let base_cols =
-    "project_id, type_id, title, description, priority, status, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s"
-  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
-  let base_idx = 12
+    "project_id, type_id, title, description, priority, execution_state, claimed_mode, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s, closed_by, closed_reason"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14"
+  let base_idx = 15
 
   let #(cols, vals, idx, params) =
-    append_optional_timestamp(
+    append_optional_date(
       base_cols,
       base_vals,
       base_idx,
-      "created_at",
-      opts.created_at,
+      "due_date",
+      opts.due_date,
       [],
     )
 
@@ -501,20 +546,16 @@ pub fn insert_task(
       cols,
       vals,
       idx,
-      "claimed_at",
-      opts.claimed_at,
+      "created_at",
+      opts.created_at,
       params,
     )
 
   let #(cols, vals, idx, params) =
-    append_optional_timestamp(
-      cols,
-      vals,
-      idx,
-      "completed_at",
-      opts.completed_at,
-      params,
-    )
+    append_optional_timestamp(cols, vals, idx, "claimed_at", claimed_at, params)
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(cols, vals, idx, "closed_at", closed_at, params)
 
   let #(cols, vals, _, params) =
     append_optional_timestamp(
@@ -536,12 +577,15 @@ pub fn insert_task(
     |> pog.parameter(pog.text(opts.title))
     |> pog.parameter(pog.text(opts.description))
     |> pog.parameter(pog.int(opts.priority))
-    |> pog.parameter(pog.text(task_status.task_status_to_string(opts.status)))
+    |> pog.parameter(pog.text(execution_state))
+    |> pog.parameter(pog.nullable(pog.text, claimed_mode))
     |> pog.parameter(pog.int(opts.created_by))
-    |> pog.parameter(pog.nullable(pog.int, opts.claimed_by))
+    |> pog.parameter(pog.nullable(pog.int, claimed_by))
     |> pog.parameter(pog.nullable(pog.int, opts.card_id))
     |> pog.parameter(pog.nullable(pog.int, opts.created_from_rule_id))
     |> pog.parameter(pog.int(opts.pool_lifetime_s))
+    |> pog.parameter(pog.nullable(pog.int, closed_by))
+    |> pog.parameter(pog.nullable(pog.text, closed_reason))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
@@ -578,6 +622,7 @@ pub fn insert_task_simple(
       card_id: card_id,
       created_from_rule_id: None,
       pool_lifetime_s: 0,
+      due_date: None,
       created_at: None,
       claimed_at: None,
       completed_at: None,
@@ -590,32 +635,142 @@ pub fn insert_task_simple(
 pub fn update_task_status(
   db: pog.Connection,
   task_id: Int,
-  status: task_status.TaskStatus,
+  status: task_status.TaskPhase,
   claimed_by: Option(Int),
 ) -> Result(Nil, String) {
-  let status = task_status.task_status_to_string(status)
-  case claimed_by {
-    Some(claimed_user_id) -> {
+  let execution_state = task_execution_state(status)
+  case status {
+    task_status.Claimed(mode) -> {
+      case claimed_by {
+        Some(claimed_user_id) ->
+          pog.query(
+            "UPDATE tasks SET execution_state = $1, claimed_mode = $2, claimed_by = $3, claimed_at = NOW(), closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $4",
+          )
+          |> pog.parameter(pog.text(execution_state))
+          |> pog.parameter(pog.text(claim_mode_to_string(mode)))
+          |> pog.parameter(pog.int(claimed_user_id))
+          |> pog.parameter(pog.int(task_id))
+          |> pog.execute(db)
+          |> result.map(fn(_) { Nil })
+          |> result.map_error(fn(e) {
+            "update_task_status: " <> string.inspect(e)
+          })
+        None -> Error("update_task_status: claimed_by is required")
+      }
+    }
+    task_status.Done -> {
       pog.query(
-        "UPDATE tasks SET status = $1, claimed_by = $2, claimed_at = NOW() WHERE id = $3",
+        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, closed_at = NOW(), closed_by = $2, closed_reason = 'done' WHERE id = $3",
       )
-      |> pog.parameter(pog.text(status))
-      |> pog.parameter(pog.int(claimed_user_id))
+      |> pog.parameter(pog.text(execution_state))
+      |> pog.parameter(pog.nullable(pog.int, claimed_by))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
       |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
     }
-    None -> {
+    task_status.Available -> {
       pog.query(
-        "UPDATE tasks SET status = $1, completed_at = NOW() WHERE id = $2",
+        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, claimed_at = NULL, closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $2",
       )
-      |> pog.parameter(pog.text(status))
+      |> pog.parameter(pog.text(execution_state))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
       |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
     }
+  }
+}
+
+fn task_execution_state(status: task_status.TaskPhase) -> String {
+  case status {
+    task_status.Available -> "available"
+    task_status.Claimed(_) -> "claimed"
+    task_status.Done -> "closed"
+  }
+}
+
+fn task_claimed_mode(status: task_status.TaskPhase) -> Option(String) {
+  case status {
+    task_status.Claimed(mode) -> Some(claim_mode_to_string(mode))
+    _ -> None
+  }
+}
+
+fn task_claimed_by(
+  status: task_status.TaskPhase,
+  claimed_by: Option(Int),
+) -> Option(Int) {
+  case status {
+    task_status.Claimed(_) -> claimed_by
+    _ -> None
+  }
+}
+
+fn task_claimed_at(
+  status: task_status.TaskPhase,
+  claimed_at: Option(String),
+) -> Option(String) {
+  case status {
+    task_status.Claimed(_) -> default_timestamp(claimed_at)
+    _ -> None
+  }
+}
+
+fn task_closed_at(
+  status: task_status.TaskPhase,
+  completed_at: Option(String),
+) -> Option(String) {
+  case status {
+    task_status.Done -> default_timestamp(completed_at)
+    _ -> None
+  }
+}
+
+fn task_closed_by(
+  status: task_status.TaskPhase,
+  claimed_by: Option(Int),
+  created_by: Int,
+) -> Option(Int) {
+  case status {
+    task_status.Done -> Some(option_to_int(claimed_by, created_by))
+    _ -> None
+  }
+}
+
+fn task_closed_reason(status: task_status.TaskPhase) -> Option(String) {
+  case status {
+    task_status.Done -> Some("done")
+    _ -> None
+  }
+}
+
+fn root_card_execution_state(state: card.CardPhase) -> String {
+  case state {
+    card.Draft -> "draft"
+    card.Active -> "active"
+    card.Closed -> "closed"
+  }
+}
+
+fn claim_mode_to_string(mode: task_status.ClaimedState) -> String {
+  case mode {
+    task_status.Taken -> "taken"
+    task_status.Ongoing -> "ongoing"
+  }
+}
+
+fn default_timestamp(value: Option(String)) -> Option(String) {
+  case value {
+    Some(_) -> value
+    None -> Some("NOW()")
+  }
+}
+
+fn option_to_int(value: Option(Int), default: Int) -> Int {
+  case value {
+    Some(inner) -> inner
+    None -> default
   }
 }
 
@@ -690,17 +845,18 @@ pub fn insert_card_simple(
 }
 
 // =============================================================================
-// Milestone Operations
+// Root hierarchy card operations
 // =============================================================================
 
-/// Insert a milestone with full control over fields.
-pub fn insert_milestone(
+/// Insert a root hierarchy card with full control over execution fields.
+pub fn insert_root_card(
   db: pog.Connection,
-  opts: MilestoneInsertOptions,
+  opts: RootCardInsertOptions,
 ) -> Result(Int, String) {
-  let base_cols = "project_id, name, description, state, position, created_by"
-  let base_vals = "$1, $2, $3, $4, $5, $6"
-  let base_idx = 7
+  let base_cols =
+    "project_id, parent_card_id, title, description, color, created_by, execution_state"
+  let base_vals = "$1, NULL, $2, $3, NULL, $4, $5"
+  let base_idx = 6
 
   let #(cols, vals, idx, params) =
     append_optional_timestamp(
@@ -727,31 +883,42 @@ pub fn insert_milestone(
       cols,
       vals,
       idx,
-      "completed_at",
+      "closed_at",
       opts.completed_at,
       params,
     )
 
+  let state = root_card_execution_state(opts.state)
+  let closed_fields = case opts.state {
+    card.Closed -> ", closed_by_kind, closed_reason"
+    _ -> ""
+  }
+  let closed_values = case opts.state {
+    card.Closed -> ", 'system', 'rollup'"
+    _ -> ""
+  }
+
   let sql =
-    "INSERT INTO milestones ("
+    "INSERT INTO cards ("
     <> cols
+    <> closed_fields
     <> ") VALUES ("
     <> vals
+    <> closed_values
     <> ") RETURNING id"
 
   let base_query =
     pog.query(sql)
     |> pog.parameter(pog.int(opts.project_id))
     |> pog.parameter(pog.text(opts.name))
-    |> pog.parameter(pog.nullable(pog.text, opts.description))
-    |> pog.parameter(pog.text(milestone.state_to_string(opts.state)))
-    |> pog.parameter(pog.int(opts.position))
+    |> pog.parameter(pog.text(option.unwrap(opts.description, "")))
     |> pog.parameter(pog.int(opts.created_by))
+    |> pog.parameter(pog.text(state))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
   |> pog.execute(db)
-  |> result.map_error(fn(e) { "insert_milestone: " <> string.inspect(e) })
+  |> result.map_error(fn(e) { "insert_root_card: " <> string.inspect(e) })
   |> result.try(fn(r) {
     case r.rows {
       [id] -> Ok(id)
@@ -760,114 +927,162 @@ pub fn insert_milestone(
   })
 }
 
-/// Assign the first available cards of a project to a milestone.
-pub fn assign_cards_to_milestone(
+/// Assign the first available root cards of a project to a parent card.
+pub fn assign_cards_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Int,
+  parent_card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
+  use _ <- result.try(require_parent_card_accepts_cards(db, parent_card_id))
+
   pog.query(
     "UPDATE cards
-     SET milestone_id = $2
+     SET parent_card_id = $2
      WHERE id IN (
        SELECT id
        FROM cards
        WHERE project_id = $1
-         AND milestone_id IS NULL
+         AND parent_card_id IS NULL
        ORDER BY id
        LIMIT $3
      )",
   )
   |> pog.parameter(pog.int(project_id))
-  |> pog.parameter(pog.int(milestone_id))
+  |> pog.parameter(pog.int(parent_card_id))
   |> pog.parameter(pog.int(limit))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) {
-    "assign_cards_to_milestone: " <> string.inspect(e)
+    "assign_cards_to_parent_card: " <> string.inspect(e)
   })
 }
 
-/// Assign available pool tasks (card_id is null) to a milestone.
-pub fn assign_available_pool_tasks_to_milestone(
+/// Assign a specific card to a parent card.
+pub fn assign_card_to_parent_card(
+  db: pog.Connection,
+  card_id: Int,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  use _ <- result.try(require_parent_card_accepts_cards(db, parent_card_id))
+
+  pog.query(
+    "UPDATE cards
+     SET parent_card_id = $2
+     WHERE id = $1",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.int(parent_card_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "assign_card_to_parent_card: " <> string.inspect(e)
+  })
+}
+
+/// Assign available root-pool tasks (card_id is null) to a card.
+pub fn assign_available_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_milestone_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    milestone_id,
+    card_id,
     task_status.Available,
     limit,
   )
 }
 
-/// Assign claimed pool tasks (card_id is null) to a milestone.
-pub fn assign_claimed_pool_tasks_to_milestone(
+/// Assign claimed root-pool tasks (card_id is null) to a card.
+pub fn assign_claimed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_milestone_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    milestone_id,
+    card_id,
     task_status.Claimed(task_status.Taken),
     limit,
   )
 }
 
-/// Assign completed pool tasks (card_id is null) to a milestone.
-pub fn assign_completed_pool_tasks_to_milestone(
+/// Assign completed root-pool tasks (card_id is null) to a card.
+pub fn assign_completed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Int,
+  card_id: Int,
   limit: Int,
 ) -> Result(Nil, String) {
-  assign_pool_tasks_to_milestone_by_status(
+  assign_pool_tasks_to_parent_card_by_status(
     db,
     project_id,
-    milestone_id,
-    task_status.Completed,
+    card_id,
+    task_status.Done,
     limit,
   )
 }
 
-fn assign_pool_tasks_to_milestone_by_status(
+fn assign_pool_tasks_to_parent_card_by_status(
   db: pog.Connection,
   project_id: Int,
-  milestone_id: Int,
-  status: task_status.TaskStatus,
+  card_id: Int,
+  status: task_status.TaskPhase,
   limit: Int,
 ) -> Result(Nil, String) {
-  let status = task_status.task_status_to_string(status)
+  use _ <- result.try(require_parent_card_accepts_tasks(db, card_id))
+
+  let execution_state = task_execution_state(status)
+  let claimed_mode = task_claimed_mode(status)
   pog.query(
     "UPDATE tasks
-     SET milestone_id = $2
+     SET card_id = $2
      WHERE id IN (
        SELECT id
        FROM tasks
        WHERE project_id = $1
          AND card_id IS NULL
-         AND milestone_id IS NULL
-         AND status = $3
+         AND execution_state = $3
+         AND coalesce(claimed_mode, '') = coalesce($4, '')
        ORDER BY id
-       LIMIT $4
+       LIMIT $5
      )",
   )
   |> pog.parameter(pog.int(project_id))
-  |> pog.parameter(pog.int(milestone_id))
-  |> pog.parameter(pog.text(status))
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.text(execution_state))
+  |> pog.parameter(pog.nullable(pog.text, claimed_mode))
   |> pog.parameter(pog.int(limit))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) {
-    "assign_pool_tasks_to_milestone_by_status: " <> string.inspect(e)
+    "assign_pool_tasks_to_parent_card_by_status: " <> string.inspect(e)
   })
+}
+
+/// Insert a task dependency.
+pub fn insert_task_dependency(
+  db: pog.Connection,
+  task_id: Int,
+  depends_on_task_id: Int,
+  created_by: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "INSERT INTO task_dependencies (task_id, depends_on_task_id, created_by)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING",
+  )
+  |> pog.parameter(pog.int(task_id))
+  |> pog.parameter(pog.int(depends_on_task_id))
+  |> pog.parameter(pog.int(created_by))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "insert_task_dependency: " <> string.inspect(e) })
 }
 
 // =============================================================================
@@ -1126,7 +1341,7 @@ pub fn insert_task_event(
     opts.project_id,
     opts.task_id,
     opts.actor_user_id,
-    task_events_db.event_type_to_string(opts.event_type),
+    audit_events_db.event_type_to_string(opts.event_type),
     opts.created_at,
   )
 }
@@ -1154,7 +1369,7 @@ fn insert_task_event_raw(
       [],
     )
 
-  let sql = "INSERT INTO task_events (" <> cols <> ") VALUES (" <> vals <> ")"
+  let sql = "INSERT INTO audit_events (" <> cols <> ") VALUES (" <> vals <> ")"
 
   let base_query =
     pog.query(sql)
@@ -1202,34 +1417,35 @@ pub fn insert_task_note(
   content: String,
   created_at: Option(String),
 ) -> Result(Int, String) {
-  let base_cols = "task_id, user_id, content"
-  let base_vals = "$1, $2, $3"
-  let base_idx = 4
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp("", "", 4, "created_at", created_at, [])
+  let #(timestamp_cols, timestamp_vals, _, timestamp_params) =
+    append_optional_timestamp(cols, vals, idx, "updated_at", created_at, params)
 
-  let #(cols, vals, _, params) =
-    append_optional_timestamp(
-      base_cols,
-      base_vals,
-      base_idx,
-      "created_at",
-      created_at,
-      [],
-    )
+  let sql = "WITH task_scope AS (
+       SELECT id, project_id
+       FROM tasks
+       WHERE id = $1
+     ), inserted_note AS (
+       INSERT INTO notes (project_id, user_id, content" <> timestamp_cols <> ")
+       SELECT project_id, $2, $3" <> timestamp_vals <> "
+       FROM task_scope
+       RETURNING id
+     ), inserted_relation AS (
+       INSERT INTO task_notes (note_id, task_id)
+       SELECT inserted_note.id, task_scope.id
+       FROM inserted_note, task_scope
+       RETURNING note_id
+     )
+     SELECT note_id FROM inserted_relation"
 
-  let sql =
-    "INSERT INTO task_notes ("
-    <> cols
-    <> ") VALUES ("
-    <> vals
-    <> ") RETURNING id"
-
-  let base_query =
+  let query =
     pog.query(sql)
     |> pog.parameter(pog.int(task_id))
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.text(content))
 
-  apply_timestamp_params(base_query, params)
+  apply_timestamp_params(query, timestamp_params)
   |> pog.returning(int_decoder())
   |> pog.execute(db)
   |> result.map_error(fn(e) { "insert_task_note: " <> string.inspect(e) })
@@ -1410,7 +1626,7 @@ pub fn query_int(db: pog.Connection, sql: String) -> Result(Int, String) {
 pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
   use _ <- result.try(
     pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, task_events, tasks, task_types, cards, task_positions, task_notes, user_task_work_session, user_task_work_total, project_member_capabilities, capabilities, project_members, projects CASCADE",
+      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, audit_events, tasks, task_types, cards, task_positions, task_notes, card_notes, notes, user_task_work_session, user_task_work_total, project_member_capabilities, capabilities, project_members, projects CASCADE",
     )
     |> pog.execute(db)
     |> result.map(fn(_) { Nil })
@@ -1434,4 +1650,60 @@ pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
 fn int_decoder() {
   use value <- decode.field(0, decode.int)
   decode.success(value)
+}
+
+fn bool_decoder() {
+  use value <- decode.field(0, decode.bool)
+  decode.success(value)
+}
+
+fn require_parent_card_accepts_cards(
+  db: pog.Connection,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  require_parent_child_kind(
+    db,
+    parent_card_id,
+    "SELECT NOT EXISTS (
+       SELECT 1 FROM tasks WHERE card_id = $1
+     )",
+    "require_parent_card_accepts_cards",
+    "parent card already contains tasks",
+  )
+}
+
+fn require_parent_card_accepts_tasks(
+  db: pog.Connection,
+  parent_card_id: Int,
+) -> Result(Nil, String) {
+  require_parent_child_kind(
+    db,
+    parent_card_id,
+    "SELECT NOT EXISTS (
+       SELECT 1 FROM cards WHERE parent_card_id = $1
+     )",
+    "require_parent_card_accepts_tasks",
+    "parent card already contains child cards",
+  )
+}
+
+fn require_parent_child_kind(
+  db: pog.Connection,
+  parent_card_id: Int,
+  query: String,
+  operation: String,
+  rejection_message: String,
+) -> Result(Nil, String) {
+  pog.query(query)
+  |> pog.parameter(pog.int(parent_card_id))
+  |> pog.returning(bool_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { operation <> ": " <> string.inspect(e) })
+  |> result.try(fn(result) {
+    case result.rows {
+      [True] -> Ok(Nil)
+      [False] -> Error(rejection_message)
+      _ -> Error(operation <> " returned no row")
+    }
+  })
 }

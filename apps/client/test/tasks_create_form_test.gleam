@@ -20,18 +20,7 @@ fn input() -> create_form.Input {
     type_id: "8",
     priority: "5",
     card_id: Some(7),
-    milestone_id: Some(9),
   )
-}
-
-pub fn create_form_card_id_from_input_accepts_positive_ids_test() {
-  let assert Some(42) = create_form.card_id_from_input("42")
-}
-
-pub fn create_form_card_id_from_input_rejects_empty_zero_and_invalid_test() {
-  let assert None = create_form.card_id_from_input("")
-  let assert None = create_form.card_id_from_input("0")
-  let assert None = create_form.card_id_from_input("abc")
 }
 
 pub fn create_form_validate_returns_normalized_submission_test() {
@@ -43,7 +32,6 @@ pub fn create_form_validate_returns_normalized_submission_test() {
   let assert 5 = submission.priority
   let assert 8 = submission.type_id
   let assert Some(7) = submission.card_id
-  let assert Some(9) = submission.milestone_id
 }
 
 pub fn create_form_validate_treats_blank_description_as_none_test() {

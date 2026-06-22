@@ -5,6 +5,7 @@ import gleam/string
 import lustre/element
 
 import domain/api_error.{ApiError}
+import domain/capability.{type Capability, Capability}
 import domain/card
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
@@ -14,13 +15,15 @@ import domain/remote
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/people/state as people_state
 import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/i18n/locale
@@ -60,12 +63,11 @@ fn make_task(
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-02-01T09:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -73,6 +75,18 @@ fn make_task(
     blocked_count: 0,
     dependencies: [],
   )
+}
+
+fn task_with_type(task: Task, type_id: Int, type_name: String) -> Task {
+  Task(
+    ..task,
+    type_id: type_id,
+    task_type: TaskTypeInline(id: type_id, name: type_name, icon: "bug-ant"),
+  )
+}
+
+fn blocked(task: Task) -> Task {
+  Task(..task, blocked_count: 1)
 }
 
 fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task {
@@ -94,23 +108,98 @@ fn task_on_card(
   )
 }
 
+fn make_card(
+  id: Int,
+  parent_card_id: option.Option(Int),
+  title: String,
+) -> card.Card {
+  card.Card(
+    id: id,
+    project_id: 1,
+    parent_card_id: parent_card_id,
+    title: title,
+    description: "",
+    color: Some(card.Blue),
+    state: card.Active,
+    task_count: 0,
+    completed_count: 0,
+    created_by: 1,
+    created_at: "2026-02-01T09:00:00Z",
+    due_date: None,
+    has_new_notes: False,
+  )
+}
+
+fn project_member(user_id: Int, claimed_count: Int) -> ProjectMember {
+  ProjectMember(
+    user_id: user_id,
+    role: project_role.Member,
+    created_at: "",
+    claimed_count: claimed_count,
+  )
+}
+
+fn org_user(user_id: Int, email: String) -> OrgUser {
+  OrgUser(id: user_id, email: email, org_role: org_role.Member, created_at: "")
+}
+
 fn base_model() -> client_state.Model {
   client_state.default_model()
   |> client_state.update_ui(fn(ui) { ui_state.UiModel(..ui, locale: locale.En) })
 }
 
 fn people_config(model: client_state.Model) -> people_view.Config(Int) {
+  people_config_with_cards(model, [])
+}
+
+fn people_config_with_cards(
+  model: client_state.Model,
+  cards: List(card.Card),
+) -> people_view.Config(Int) {
   people_view.Config(
     locale: model.ui.locale,
     people_roster: model.member.pool.people_roster,
     member_tasks: model.member.pool.member_tasks,
+    task_types: model.member.pool.member_task_types,
+    capabilities: model.admin.capabilities.capabilities,
+    cards: cards,
+    depth_names: [
+      scope_view.DepthName(1, "Initiative", "Initiatives"),
+      scope_view.DepthName(2, "Feature", "Features"),
+      scope_view.DepthName(3, "Story", "Stories"),
+    ],
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     org_users: model.admin.members.org_users_cache,
     people_expansions: model.member.pool.people_expansions,
-    search_query: model.member.pool.member_filters_q,
+    search_query: model.member.pool.member_people_search_query,
+    visibility_filter: model.member.pool.member_people_filter,
+    sort: model.member.pool.member_people_sort,
     task_card_color: fn(task) { task.card_color },
+    on_scope_kind_change: fn(_value) { 0 },
+    on_scope_depth_change: fn(_value) { 0 },
+    on_scope_card_change: fn(_value) { 0 },
+    on_scope_card_search_change: fn(_value) { 0 },
+    on_search_change: fn(_value) { 0 },
+    on_visibility_filter_change: fn(_value) { 0 },
+    on_sort_change: fn(_value) { 0 },
     on_person_toggle: fn(user_id) { user_id },
     on_task_click: fn(task_id) { task_id },
   )
+}
+
+fn render_people(model: client_state.Model) -> String {
+  people_view.view(people_config(model)) |> element.to_document_string
+}
+
+fn render_people_with_cards(
+  model: client_state.Model,
+  cards: List(card.Card),
+) -> String {
+  people_view.view(people_config_with_cards(model, cards))
+  |> element.to_document_string
 }
 
 fn with_people_roster(
@@ -146,6 +235,52 @@ fn with_people_expanded(
   })
 }
 
+fn with_people_search(
+  model: client_state.Model,
+  search: String,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(..pool, member_people_search_query: search),
+    )
+  })
+}
+
+fn with_people_filter(
+  model: client_state.Model,
+  filter: people_state.PeopleVisibilityFilter,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(..pool, member_people_filter: filter),
+    )
+  })
+}
+
+fn with_scope(
+  model: client_state.Model,
+  scope_kind: member_pool.PlanScopeKind,
+  selected_depth: option.Option(Int),
+  selected_card_id: option.Option(Int),
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(
+        ..pool,
+        member_plan_scope_kind: scope_kind,
+        member_card_depth_filter: selected_depth,
+        member_plan_scope_card_id: selected_card_id,
+      ),
+    )
+  })
+}
+
 fn with_tasks(
   model: client_state.Model,
   tasks: List(Task),
@@ -155,6 +290,35 @@ fn with_tasks(
     member_state.MemberModel(
       ..member,
       pool: member_pool.Model(..pool, member_tasks: remote.Loaded(tasks)),
+    )
+  })
+}
+
+fn with_work_catalog(
+  model: client_state.Model,
+  task_types: List(TaskType),
+  capabilities: List(Capability),
+) -> client_state.Model {
+  let with_task_types =
+    client_state.update_member(model, fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_task_types: remote.Loaded(task_types),
+        ),
+      )
+    })
+
+  client_state.update_admin(with_task_types, fn(admin) {
+    let capabilities_model = admin.capabilities
+    admin_state.AdminModel(
+      ..admin,
+      capabilities: admin_capabilities.Model(
+        ..capabilities_model,
+        capabilities: remote.Loaded(capabilities),
+      ),
     )
   })
 }
@@ -238,7 +402,7 @@ pub fn people_view_no_results_state_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(..pool, member_filters_q: "zzz"),
+        pool: member_pool.Model(..pool, member_people_search_query: "zzz"),
       )
     })
 
@@ -631,4 +795,235 @@ pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
   assert_equal(count_occurrences(html, "Ongoing one"), 1)
   assert_equal(count_occurrences(html, "Ongoing via session"), 1)
   assert_equal(count_occurrences(html, "Claimed parked"), 1)
+}
+
+pub fn people_view_renders_header_scope_controls_and_body_test() {
+  let model =
+    base_model()
+    |> with_people_roster(remote.Loaded([project_member(10, 0)]))
+    |> with_org_users([org_user(10, "ana@example.com")])
+    |> with_tasks([])
+
+  let html = render_people(model)
+
+  assert_contains(html, "data-testid=\"people-surface-header\"")
+  assert_contains(html, "data-testid=\"plan-scope-bar\"")
+  assert_contains(html, "data-testid=\"people-search\"")
+  assert_contains(html, "data-testid=\"people-filter\"")
+  assert_contains(html, "data-testid=\"people-sort\"")
+  assert_contains(html, "data-testid=\"people-view\"")
+  assert_not_contains(html, "data-testid=\"plan-closed-toggle\"")
+}
+
+pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
+  let cards = [
+    make_card(1, None, "Root Initiative"),
+    make_card(2, Some(1), "Child Feature"),
+    make_card(3, None, "Other Initiative"),
+    make_card(4, Some(2), "Grand Story"),
+  ]
+  let tasks = [
+    make_task(1, "Root task", 10, task_status.Taken)
+      |> task_on_card(1, "Root Initiative", card.Blue),
+    make_task(2, "Child task", 10, task_status.Taken)
+      |> task_on_card(2, "Child Feature", card.Green),
+    make_task(3, "Other task", 10, task_status.Taken)
+      |> task_on_card(3, "Other Initiative", card.Purple),
+    make_task(4, "Grand task", 10, task_status.Taken)
+      |> task_on_card(4, "Grand Story", card.Yellow),
+  ]
+  let base =
+    base_model()
+    |> with_people_roster(remote.Loaded([project_member(10, 4)]))
+    |> with_org_users([org_user(10, "ana@example.com")])
+    |> with_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let project_html =
+    base
+    |> with_scope(member_pool.PlanScopeProject, None, None)
+    |> render_people_with_cards(cards)
+  assert_contains(project_html, "Root task")
+  assert_contains(project_html, "Child task")
+  assert_contains(project_html, "Grand task")
+  assert_contains(project_html, "Other task")
+
+  let level_html =
+    base
+    |> with_scope(member_pool.PlanScopeLevel, Some(2), None)
+    |> render_people_with_cards(cards)
+  assert_not_contains(level_html, "Root task")
+  assert_contains(level_html, "Child task")
+  assert_contains(level_html, "Grand task")
+  assert_not_contains(level_html, "Other task")
+
+  let card_html =
+    base
+    |> with_scope(member_pool.PlanScopeCard, None, Some(1))
+    |> render_people_with_cards(cards)
+  assert_contains(card_html, "Root task")
+  assert_contains(card_html, "Child task")
+  assert_contains(card_html, "Grand task")
+  assert_not_contains(card_html, "Other task")
+}
+
+pub fn people_view_search_matches_person_task_card_and_capability_test() {
+  let cards = [make_card(1, None, "Payments")]
+  let task =
+    make_task(1, "Retry queue", 10, task_status.Taken)
+    |> task_on_card(1, "Payments", card.Blue)
+    |> task_with_type(5, "Bug")
+  let base =
+    base_model()
+    |> with_people_roster(remote.Loaded([project_member(10, 1)]))
+    |> with_org_users([org_user(10, "ana@example.com")])
+    |> with_tasks([task])
+    |> with_people_expanded(10)
+    |> with_work_catalog(
+      [
+        TaskType(
+          id: 5,
+          name: "Bug",
+          icon: "bug-ant",
+          capability_id: Some(7),
+          tasks_count: 1,
+        ),
+      ],
+      [Capability(id: 7, name: "Backend")],
+    )
+
+  assert_contains(
+    base |> with_people_search("ana") |> render_people_with_cards(cards),
+    "ana@example.com",
+  )
+  assert_contains(
+    base |> with_people_search("retry") |> render_people_with_cards(cards),
+    "Retry queue",
+  )
+  assert_contains(
+    base |> with_people_search("payments") |> render_people_with_cards(cards),
+    "Payments",
+  )
+  assert_contains(
+    base |> with_people_search("backend") |> render_people_with_cards(cards),
+    "Retry queue",
+  )
+}
+
+pub fn people_view_visibility_filters_work_attention_and_free_test() {
+  let tasks = [
+    make_task(1, "Active task", 10, task_status.Ongoing),
+    make_task(2, "Blocked task", 11, task_status.Taken) |> blocked,
+  ]
+  let base =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        project_member(10, 1),
+        project_member(11, 1),
+        project_member(12, 0),
+      ]),
+    )
+    |> with_org_users([
+      org_user(10, "ana@example.com"),
+      org_user(11, "bob@example.com"),
+      org_user(12, "cora@example.com"),
+    ])
+    |> with_tasks(tasks)
+
+  let work_html =
+    base
+    |> with_people_filter(people_state.ShowWithWork)
+    |> render_people
+  assert_contains(work_html, "ana@example.com")
+  assert_contains(work_html, "bob@example.com")
+  assert_not_contains(work_html, "cora@example.com")
+
+  let attention_html =
+    base
+    |> with_people_filter(people_state.ShowAttention)
+    |> render_people
+  assert_not_contains(attention_html, "ana@example.com")
+  assert_contains(attention_html, "bob@example.com")
+  assert_not_contains(attention_html, "cora@example.com")
+  assert_contains(attention_html, "Blocked")
+
+  let free_html =
+    base
+    |> with_people_filter(people_state.ShowFree)
+    |> render_people
+  assert_not_contains(free_html, "ana@example.com")
+  assert_not_contains(free_html, "bob@example.com")
+  assert_contains(free_html, "cora@example.com")
+}
+
+pub fn people_sort_orders_by_attention_name_and_claimed_test() {
+  let tasks = [
+    make_task(1, "Blocked task", 20, task_status.Taken) |> blocked,
+    make_task(2, "Ongoing task", 30, task_status.Ongoing),
+    make_task(3, "Extra task", 30, task_status.Taken),
+  ]
+  let assert [blocked_task, ongoing_task, extra_task] = tasks
+  let people = [
+    people_state.derive_status(10, "ana@example.com", []),
+    people_state.derive_status(20, "bob@example.com", [blocked_task]),
+    people_state.derive_status(30, "cora@example.com", [
+      ongoing_task,
+      extra_task,
+    ]),
+  ]
+
+  let assert [
+    people_state.PersonStatus(label: "bob@example.com", ..),
+    people_state.PersonStatus(label: "cora@example.com", ..),
+    people_state.PersonStatus(label: "ana@example.com", ..),
+  ] = people_state.sort_people(people, people_state.SortByAttention)
+
+  let assert [
+    people_state.PersonStatus(label: "ana@example.com", ..),
+    people_state.PersonStatus(label: "bob@example.com", ..),
+    people_state.PersonStatus(label: "cora@example.com", ..),
+  ] = people_state.sort_people(people, people_state.SortByName)
+
+  let assert [
+    people_state.PersonStatus(label: "cora@example.com", ..),
+    people_state.PersonStatus(label: "bob@example.com", ..),
+    people_state.PersonStatus(label: "ana@example.com", ..),
+  ] = people_state.sort_people(people, people_state.SortByClaimedCount)
+}
+
+pub fn people_view_does_not_render_command_actions_test() {
+  let model =
+    base_model()
+    |> with_people_roster(remote.Loaded([project_member(10, 2)]))
+    |> with_org_users([org_user(10, "ana@example.com")])
+    |> with_tasks([
+      make_task(1, "Ongoing task", 10, task_status.Ongoing),
+      make_task(2, "Claimed task", 10, task_status.Taken),
+    ])
+    |> with_people_expanded(10)
+
+  let html = render_people(model)
+
+  assert_not_contains(html, "btn-claim-mini")
+  assert_not_contains(html, "btn-complete")
+  assert_not_contains(html, "task-actions")
+  assert_not_contains(html, "kanban-card-delete-action")
+  assert_not_contains(html, "plan-move")
+}
+
+pub fn people_view_card_scope_without_work_uses_empty_state_test() {
+  let cards = [make_card(1, None, "Empty Initiative")]
+  let model =
+    base_model()
+    |> with_people_roster(remote.Loaded([project_member(10, 0)]))
+    |> with_org_users([org_user(10, "ana@example.com")])
+    |> with_tasks([])
+    |> with_scope(member_pool.PlanScopeCard, None, Some(1))
+
+  let html = render_people_with_cards(model, cards)
+
+  assert_contains(html, "No claimed work in this card scope")
+  assert_contains(html, "people-card-scope-no-work")
+  assert_not_contains(html, "data-testid=\"people-view\"")
 }

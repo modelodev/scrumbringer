@@ -62,12 +62,11 @@ fn sample_task(state: task_state.TaskState) -> Task {
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
@@ -140,7 +139,7 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
   assert_contains(html, "my-card-item card-border-blue")
   assert_contains(html, "1/3")
   assert_contains(html, "type=\"button\"")
-  assert_contains(html, "aria-label=\"My Cards: Sprint\"")
+  assert_contains(html, "aria-label=\"Context: Sprint\"")
   assert_contains(html, "title=\"Sprint\"")
 }
 

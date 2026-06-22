@@ -217,30 +217,12 @@ pub type WorkflowBreakdown {
   WorkflowBreakdown(name: String, count: Int)
 }
 
-/// Shared execution health metrics for card/milestone modal tabs.
+/// Shared execution health metrics for card and task modal tabs.
 pub type ModalExecutionHealth {
   ModalExecutionHealth(
     avg_rebotes: Int,
     avg_pool_lifetime_s: Int,
     avg_executors: Int,
-  )
-}
-
-/// Milestone metrics payload used in milestone detail modal tab.
-pub type MilestoneModalMetrics {
-  MilestoneModalMetrics(
-    cards_total: Int,
-    cards_completed: Int,
-    cards_percent: Int,
-    tasks_total: Int,
-    tasks_completed: Int,
-    tasks_percent: Int,
-    tasks_available: Int,
-    tasks_claimed: Int,
-    tasks_ongoing: Int,
-    health: ModalExecutionHealth,
-    workflows: List(WorkflowBreakdown),
-    most_activated: Option(String),
   )
 }
 

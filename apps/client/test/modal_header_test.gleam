@@ -88,7 +88,7 @@ pub fn renders_icon_when_provided_test() {
 
 pub fn renders_badges_when_provided_test() {
   // Given: Config with badges
-  let badge = span([], [text("Pendiente")])
+  let badge = span([], [text("Draft")])
   let config = Config(..default_config(), badges: [badge])
 
   // When: Render
@@ -96,7 +96,7 @@ pub fn renders_badges_when_provided_test() {
 
   // Then: Badges container is present
   assert_contains(html, "modal-header-badges")
-  assert_contains(html, "Pendiente")
+  assert_contains(html, "Draft")
 }
 
 pub fn hides_badges_when_empty_test() {
@@ -191,7 +191,20 @@ fn default_extended_config() -> ExtendedConfig(Nil) {
     title_class: "custom-title",
     title_id: "custom-modal-title",
     close_button_class: "custom-close-btn",
+    close_button_testid: None,
   )
+}
+
+pub fn view_extended_can_render_stable_close_target_test() {
+  let config =
+    ExtendedConfig(
+      ..default_extended_config(),
+      close_button_testid: Some("entity-show-close"),
+    )
+
+  let html = modal_header.view_extended(config) |> element.to_string()
+
+  assert_contains(html, "data-testid=\"entity-show-close\"")
 }
 
 pub fn view_extended_uses_custom_header_class_test() {
@@ -338,7 +351,7 @@ pub fn view_detail_renders_span_title_test() {
       meta: None,
       progress: None,
       on_close: Nil,
-      class_prefix: "task-detail",
+      class_prefix: "task-show",
     )
 
   // When: Render
@@ -358,15 +371,15 @@ pub fn view_detail_uses_class_prefix_test() {
       meta: None,
       progress: None,
       on_close: Nil,
-      class_prefix: "card-detail",
+      class_prefix: "card-show",
     )
 
   // When: Render
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Uses prefix for all classes
-  assert_contains(html, "card-detail-header")
-  assert_contains(html, "card-detail-title")
+  assert_contains(html, "card-show-header")
+  assert_contains(html, "card-show-title")
 }
 
 pub fn view_detail_with_meta_and_progress_test() {
@@ -378,7 +391,7 @@ pub fn view_detail_with_meta_and_progress_test() {
       meta: Some(text("2/5 completadas")),
       progress: Some(span([], [text("40%")])),
       on_close: Nil,
-      class_prefix: "task-detail",
+      class_prefix: "task-show",
     )
 
   // When: Render

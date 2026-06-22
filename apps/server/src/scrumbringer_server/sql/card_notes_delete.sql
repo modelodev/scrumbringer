@@ -1,5 +1,7 @@
 -- name: card_notes_delete
-delete from card_notes
-where card_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using card_notes cn
+where cn.note_id = n.id
+  and cn.card_id = $1
+  and n.id = $2
+returning n.id;

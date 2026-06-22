@@ -20,6 +20,8 @@ fn local_context(selected_project_id) -> create_update.Context(Nil) {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1 to 5",
+    card_has_child_cards: "Choose a task group or empty card",
+    parent_card_conflict: "Choose one task location only",
   )
 }
 
@@ -35,12 +37,11 @@ fn sample_task() -> Task {
     description: Some("Useful detail"),
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 7,
     created_at: "2026-03-20T14:00:00Z",
+    due_date: None,
     version: 1,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -115,7 +116,7 @@ pub fn try_task_create_update_ignores_non_create_messages_test() {
   let assert None =
     create_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       local_context(None),
     )
 }
@@ -131,7 +132,6 @@ pub fn local_create_dialog_opened_with_card_sets_card_context_test() {
   let assert create_update.NoPolicy = policy
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert Some(42) = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert None = next.member_create_error
   let assert True = fx == effect.none()
 }
@@ -143,7 +143,6 @@ pub fn local_create_dialog_closed_clears_create_context_test() {
       member_create_dialog_mode: dialog_mode.DialogCreate,
       member_create_error: Some("boom"),
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let assert Some(create_update.Update(next, fx, policy)) =
@@ -157,7 +156,6 @@ pub fn local_create_dialog_closed_clears_create_context_test() {
   let assert dialog_mode.DialogClosed = next.member_create_dialog_mode
   let assert None = next.member_create_error
   let assert None = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert True = fx == effect.none()
 }
 
@@ -194,7 +192,6 @@ pub fn local_task_created_ok_resets_create_dialog_test() {
       member_create_priority: "5",
       member_create_type_id: "8",
       member_create_card_id: Some(7),
-      member_create_milestone_id: Some(9),
     )
 
   let assert Some(create_update.Update(next, fx, policy)) =
@@ -212,7 +209,6 @@ pub fn local_task_created_ok_resets_create_dialog_test() {
   let assert "3" = next.member_create_priority
   let assert "" = next.member_create_type_id
   let assert None = next.member_create_card_id
-  let assert None = next.member_create_milestone_id
   let assert True = fx == effect.none()
 }
 
@@ -236,5 +232,58 @@ pub fn local_task_created_error_sets_error_message_test() {
   let assert create_update.CheckAuthBefore(_) = policy
   let assert False = next.member_create_in_flight
   let assert Some("boom") = next.member_create_error
+  let assert True = fx == effect.none()
+}
+
+pub fn local_task_created_card_has_child_cards_uses_contextual_message_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_in_flight: True,
+      member_create_error: None,
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(
+        Error(ApiError(
+          status: 422,
+          code: "CARD_HAS_CHILD_CARDS",
+          message: "Card already contains child cards",
+        )),
+      ),
+      local_context(None),
+    )
+
+  let assert create_update.CheckAuthBefore(_) = policy
+  let assert Some("Choose a task group or empty card") =
+    next.member_create_error
+  let assert True = fx == effect.none()
+}
+
+pub fn local_task_created_parent_card_conflict_uses_contextual_message_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_in_flight: True,
+      member_create_error: None,
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberTaskCreated(
+        Error(ApiError(
+          status: 422,
+          code: "TASK_PARENT_CARD_CONFLICT",
+          message: "Task cannot specify both card_id and parent_card_id",
+        )),
+      ),
+      local_context(None),
+    )
+
+  let assert create_update.CheckAuthBefore(_) = policy
+  let assert Some("Choose one task location only") = next.member_create_error
   let assert True = fx == effect.none()
 }

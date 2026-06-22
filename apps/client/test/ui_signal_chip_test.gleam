@@ -25,6 +25,7 @@ pub fn metric_chip_renders_value_label_and_tone_test() {
   assert_contains(html, "signal-chip-value")
   assert_contains(html, "signal-chip-label")
   assert_contains(html, ">4<")
+  assert_contains(html, "</span> <span")
   assert_contains(html, ">Available<")
 }
 

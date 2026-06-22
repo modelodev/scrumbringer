@@ -30,7 +30,7 @@ import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
   type OrgMetricsUserOverview,
 }
-import domain/metrics/codec as metrics_codec
+import domain/metrics/metrics_codec
 
 // =============================================================================
 // Decoders

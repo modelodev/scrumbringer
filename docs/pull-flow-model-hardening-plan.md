@@ -6,7 +6,7 @@ ScrumBringer is a pull-flow project management product. The core product
 contract is that work is visible in a shared pool, selected by the person doing
 it, and then owned by that person until it is released or completed. Team
 communication should stay outside the product; ScrumBringer keeps operational
-context through notes, dependencies, cards, milestones, and flow signals.
+context through notes, dependencies, cards, hierarchies, and flow signals.
 
 This plan documents the intended model fit for three product decisions:
 
@@ -42,7 +42,7 @@ whose status is not `completed`.
 pub type TaskState {
   Available
   Claimed(claimed_by: Int, claimed_at: String, mode: status.ClaimedState)
-  Completed(completed_at: String)
+  Done(completed_at: String)
 }
 ```
 
@@ -58,7 +58,7 @@ This makes invalid combinations unrepresentable after mapping from the database:
 - `Available`
 - `Claimed(Taken)`
 - `Claimed(Ongoing)`
-- `Completed`
+- `Done`
 
 `shared/src/domain/task.gleam` carries `blocked_count` and `dependencies` on
 `Task`. That is enough for UI rendering and client-side affordances, while the
@@ -110,7 +110,7 @@ The target edit rule is:
 
 - Available task: any project member may edit task fields.
 - Claimed task: only the claiming user may edit task fields.
-- Completed task: no normal task-field edits.
+- Done task: no normal task-field edits.
 - Notes: any project member may add notes; task notes can be deleted by their
   author or by a manager/admin when a correction is needed.
 - Dependencies: manager/admin controlled, unchanged by this plan.
@@ -161,7 +161,7 @@ fn authorize_task_edit(task: task_mappers.Task, user_id: Int) ->
     task_state.Available -> Ok(Nil)
     task_state.Claimed(claimed_by: owner_id, ..) if owner_id == user_id ->
       Ok(Nil)
-    task_state.Claimed(..) | task_state.Completed(..) ->
+    task_state.Claimed(..) | task_state.Done(..) ->
       Error(NotAuthorized)
   }
 }
@@ -194,7 +194,7 @@ Claim handling should reject blocked tasks before calling the transition query:
 fn claim_task_for_current(...) {
   case current.status, current.blocked_count {
     Claimed(_), _ -> Error(AlreadyClaimed)
-    Completed, _ -> Error(InvalidTransition)
+    Done, _ -> Error(InvalidTransition)
     Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
     Available, _ -> claim_available_task(...)
   }
@@ -262,7 +262,7 @@ Router behavior:
 The implementation should keep the existing model and make invalid behavior
 unrepresentable at the closest practical boundary:
 
-- Keep lifecycle as `TaskState`/`TaskStatus`; do not add `Blocked` as a status.
+- Keep lifecycle as `TaskState`/`TaskPhase`; do not add `Blocked` as a status.
 - Keep blocked as derived data from dependencies and enforce claimability in the
   workflow plus the atomic SQL update.
 - Use small pure helpers for rules that are currently spread across handlers,
@@ -282,7 +282,7 @@ Tests are part of the design, not a cleanup pass:
   `/org/assignments` remains compatible.
 - Gleam tests should use `let assert`, not the deprecated `should` style.
 - Fixtures should reuse existing domain constructors so test data stays aligned
-  with `Task`, `TaskState`, and `TaskStatus`.
+  with `Task`, `TaskState`, and `TaskPhase`.
 
 Run the narrow package tests while developing and the repository gate before
 completion:
@@ -330,7 +330,7 @@ Update the API contract to say:
 
 - Available tasks can be edited by project members.
 - Claimed tasks can be edited only by the claimer.
-- Completed tasks are not editable through normal task PATCH.
+- Done tasks are not editable through normal task PATCH.
 - Blocked tasks cannot be claimed until incomplete dependencies are completed or
   removed.
 
@@ -388,7 +388,7 @@ Server:
 - Available task can be patched by another project member.
 - Claimed task can be patched by claimer.
 - Claimed task cannot be patched by another member.
-- Completed task cannot be patched.
+- Done task cannot be patched.
 - Blocked available task cannot be claimed.
 - Previously blocked task can be claimed after dependency completion.
 - Previously blocked task can be claimed after dependency removal.

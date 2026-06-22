@@ -41,7 +41,6 @@ import scrumbringer_client/assignments_view_mode
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
@@ -59,7 +58,6 @@ import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
-import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
 import scrumbringer_client/token_flow
 import scrumbringer_client/ui/toast
@@ -80,6 +78,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
+import scrumbringer_client/features/plan/url as plan_url
 
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/admin/cards as admin_cards_workflow
@@ -91,10 +90,10 @@ import scrumbringer_client/features/auth/root_context as auth_context
 import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
-import scrumbringer_client/features/milestones/refresh as milestone_refresh
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
+import scrumbringer_client/features/tasks/show_state as task_show_state
 import scrumbringer_client/helpers/options as helpers_options
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
@@ -303,6 +302,14 @@ fn current_route(model: client_state.Model) -> router.Route {
         opt.None -> url_state.empty()
       }
       let state = url_state.with_view(state, model.member.pool.view_mode)
+      let state = case model.member.pool.view_mode {
+        view_mode.Cards ->
+          url_state.with_plan_mode(
+            state,
+            plan_url.mode_to_url(model.member.pool.member_plan_mode),
+          )
+        _ -> state
+      }
       let state =
         url_state.with_capability_scope(
           state,
@@ -323,6 +330,27 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           helpers_options.empty_to_opt(model.member.pool.member_filters_q),
         )
+      let state =
+        url_state.with_card_depth(
+          state,
+          model.member.pool.member_card_depth_filter,
+        )
+      let state = case
+        model.member.pool.member_plan_scope_kind,
+        model.member.pool.member_plan_scope_card_id
+      {
+        member_pool.PlanScopeCard, opt.Some(card_id) ->
+          url_state.with_card_work_scope(state, card_id)
+        _, _ -> state
+      }
+      let state = case model.member.pool.card_show_open {
+        opt.Some(card_id) -> url_state.with_card_show(state, card_id)
+        opt.None ->
+          case model.member.notes.member_notes_task_id {
+            opt.Some(task_id) -> url_state.with_task_show(state, task_id)
+            opt.None -> state
+          }
+      }
       router.Member(state)
     }
   }
@@ -333,12 +361,58 @@ pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
     toast.ClearPoolFilters ->
       client_state.pool_msg(pool_messages.MemberClearFilters)
     toast.ViewTask(task_id) ->
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
   }
 }
 
 fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
+}
+
+fn replace_url_and_title(model: client_state.Model) -> Effect(client_state.Msg) {
+  let route = current_route(model)
+  effect.batch([
+    router.replace(route),
+    router.update_page_title(route, model.ui.locale),
+  ])
+}
+
+fn current_browser_uri() -> opt.Option(Uri) {
+  let raw =
+    client_ffi.location_pathname()
+    <> client_ffi.location_search()
+    <> client_ffi.location_hash()
+
+  raw
+  |> uri.parse
+  |> opt.from_result
+}
+
+fn apply_authenticated_browser_route(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case current_browser_uri() {
+    opt.None -> #(model, effect.none())
+    opt.Some(uri) ->
+      case router.parse_uri(uri) {
+        router.Parsed(router.Member(_) as route)
+        | router.Parsed(router.Config(_, _) as route)
+        | router.Parsed(router.Org(_) as route) ->
+          apply_route_fields(model, route)
+
+        router.Redirect(router.Member(_) as route)
+        | router.Redirect(router.Config(_, _) as route)
+        | router.Redirect(router.Org(_) as route) -> {
+          let #(model, route_fx) = apply_route_fields(model, route)
+          #(
+            model,
+            effect.batch([write_url(client_state.Replace, route), route_fx]),
+          )
+        }
+
+        _ -> #(model, effect.none())
+      }
+  }
 }
 
 /// Registers keydown effect.
@@ -566,6 +640,15 @@ fn apply_route_fields(
               pool: member_pool.Model(
                 ..pool,
                 view_mode: new_view,
+                member_plan_mode: plan_url.mode_from_url(url_state.plan_mode(
+                  state,
+                )),
+                member_card_depth_filter: url_state.card_depth(state),
+                member_plan_scope_kind: case url_state.card_work_scope(state) {
+                  opt.Some(_) -> member_pool.PlanScopeCard
+                  opt.None -> pool.member_plan_scope_kind
+                },
+                member_plan_scope_card_id: url_state.card_work_scope(state),
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),
@@ -574,9 +657,54 @@ fn apply_route_fields(
             )
           },
         )
-      #(next_model, capabilities_fx)
+      let show_fx = route_show_effect(next_model, url_state.show(state))
+      #(next_model, effect.batch([capabilities_fx, show_fx]))
     }
   }
+}
+
+fn route_show_effect(
+  model: client_state.Model,
+  show: opt.Option(url_state.ShowParam),
+) -> Effect(client_state.Msg) {
+  case show {
+    opt.Some(url_state.CardShowParam(card_id)) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.OpenCardShow(card_id)))
+        Nil
+      })
+    opt.Some(url_state.TaskShowParam(task_id)) ->
+      effect.from(fn(dispatch) {
+        dispatch(
+          client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id)),
+        )
+        Nil
+      })
+    opt.None -> close_current_show_effect(model)
+  }
+}
+
+fn close_current_show_effect(
+  model: client_state.Model,
+) -> Effect(client_state.Msg) {
+  let card_fx = case model.member.pool.card_show_open {
+    opt.Some(_) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.CloseCardShow))
+        Nil
+      })
+    opt.None -> effect.none()
+  }
+  let task_fx = case model.member.notes.member_notes_task_id {
+    opt.Some(_) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.MemberTaskShowClosed))
+        Nil
+      })
+    opt.None -> effect.none()
+  }
+
+  effect.batch([card_fx, task_fx])
 }
 
 fn hydrate_model(
@@ -748,7 +876,7 @@ fn handle_auth_action(
         replace_url_fn,
       )
 
-    auth_workflow.PasswordResetCompleted -> {
+    auth_workflow.PasswordResetDone -> {
       let model =
         client_state.update_core(model, fn(core) {
           client_state.CoreModel(..core, page: client_state.Login)
@@ -1608,9 +1736,6 @@ fn reset_member_tasks(
           member_task_types: NotAsked,
           member_task_types_pending: 0,
           member_task_types_by_project: dict.new(),
-          member_milestones_store: normalized_store.new(),
-          member_milestones: NotAsked,
-          member_milestone_activate_in_flight_id: opt.None,
           people_roster: NotAsked,
           people_expansions: dict.new(),
         ),
@@ -1664,16 +1789,6 @@ fn refresh_member_data(
       })
     })
 
-  let member_milestone_effects =
-    list.map(project_ids, fn(project_id) {
-      api_milestones.list_milestones(project_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberProjectMilestonesFetched(
-          project_id,
-          result,
-        ))
-      })
-    })
-
   let roster_project_id = case model.core.selected_project_id, project_ids {
     opt.Some(project_id), _ -> opt.Some(project_id)
     opt.None, [project_id, ..] -> opt.Some(project_id)
@@ -1705,7 +1820,7 @@ fn refresh_member_data(
         task_type_effects,
         list.append(
           [positions_effect, roster_effect, org_users_effect],
-          list.append(member_card_effects, member_milestone_effects),
+          member_card_effects,
         ),
       ),
     )
@@ -1736,14 +1851,6 @@ fn refresh_member_data(
             list.length(project_ids),
           ),
           member_cards: card_refresh.loading_unless_loaded(pool.member_cards),
-          member_milestones_store: milestone_refresh.mark_pending(
-            pool.member_milestones_store,
-            list.length(project_ids),
-          ),
-          member_milestones: milestone_refresh.loading_unless_loaded(
-            pool.member_milestones,
-          ),
-          member_milestone_activate_in_flight_id: opt.None,
         ),
       )
     })
@@ -1852,12 +1959,14 @@ pub fn update(
             auth_checked: True,
           )
         })
+      let #(model, route_fx) = apply_authenticated_browser_route(model)
       let #(model, boot) = bootstrap_admin(model)
       let #(model, hyd_fx) = hydrate_model(model)
 
       #(
         model,
         effect.batch([
+          route_fx,
           boot,
           hyd_fx,
           replace_url(model),
@@ -1869,7 +1978,7 @@ pub fn update(
       case err.status == 401 {
         True -> {
           let model = show_login_without_user(model, True)
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
 
         False -> {
@@ -1881,7 +1990,7 @@ pub fn update(
               },
             )
 
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
       }
     }
@@ -2058,12 +2167,65 @@ pub fn update(
           )
       }
 
-    client_state.PoolMsg(inner) ->
-      pool_workflow.update(
-        model,
-        inner,
-        pool_workflow.Context(member_refresh: member_refresh),
-      )
+    client_state.PoolMsg(inner) -> handle_pool_msg(model, inner)
+  }
+}
+
+fn handle_pool_msg(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(next, fx) =
+    pool_workflow.update(
+      model,
+      inner,
+      pool_workflow.Context(member_refresh: member_refresh),
+    )
+  let next = normalize_show_stack(next, inner)
+  let route_fx = case should_sync_show_route(inner) {
+    True -> replace_url(next)
+    False -> effect.none()
+  }
+
+  #(next, effect.batch([fx, route_fx]))
+}
+
+fn normalize_show_stack(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner {
+    pool_messages.OpenCardShow(_) ->
+      case model.member.notes.member_notes_task_id {
+        opt.Some(_) -> close_task_show_in_model(model)
+        opt.None -> model
+      }
+    _ -> model
+  }
+}
+
+fn close_task_show_in_model(model: client_state.Model) -> client_state.Model {
+  let #(pool, notes, dependencies) =
+    task_show_state.close(model.member.pool, model.member.notes)
+
+  client_state.update_member(model, fn(member) {
+    member_state.MemberModel(
+      ..member,
+      pool: pool,
+      notes: notes,
+      dependencies: dependencies,
+    )
+  })
+}
+
+fn should_sync_show_route(inner: client_state.PoolMsg) -> Bool {
+  case inner {
+    pool_messages.OpenCardShow(_)
+    | pool_messages.CloseCardShow
+    | pool_messages.GlobalKeyDown(_)
+    | pool_messages.MemberTaskShowOpened(_)
+    | pool_messages.MemberTaskShowClosed -> True
+    _ -> False
   }
 }
 

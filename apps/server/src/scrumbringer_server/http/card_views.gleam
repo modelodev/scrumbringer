@@ -4,8 +4,8 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/resource_views
-import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/user_card_views_db
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/user_card_views_db
 import wisp
 
 /// Routes PUT /api/v1/views/cards/:id requests.
@@ -37,11 +37,23 @@ fn fetch_card_project_id(
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> not_found_response()
-    cards_db.CardHasTasks(_) -> database_error_response()
-    cards_db.InvalidMilestone -> database_error_response()
-    cards_db.InvalidMilestoneState(_) -> database_error_response()
-    cards_db.InvalidColor(_) -> database_error_response()
-    cards_db.InvalidMovePoolToMilestone -> database_error_response()
+    cards_db.CardHasTasks(_)
+    | cards_db.CardHasChildCards(_)
+    | cards_db.CardHasOperationalHistory
+    | cards_db.InvalidParentCard
+    | cards_db.InvalidParentExecutionPhase(_)
+    | cards_db.ParentCardClosed
+    | cards_db.ParentDoesNotAcceptCards
+    | cards_db.InvalidColor(_)
+    | cards_db.InvalidMovePoolToParentCard
+    | cards_db.CardHasClaimedDescendant(_)
+    | cards_db.CannotActivateClosedCard
+    | cards_db.CardAlreadyClosed
+    | cards_db.CannotMoveClosedCard
+    | cards_db.CannotMoveIntoClosedCard
+    | cards_db.DestinationDoesNotAcceptCards
+    | cards_db.DestinationNotFound
+    | cards_db.MoveWouldCreateCycle -> unexpected_error_response()
     cards_db.DbError(_) -> database_error_response()
   }
 }
@@ -52,4 +64,8 @@ fn not_found_response() -> wisp.Response {
 
 fn database_error_response() -> wisp.Response {
   api.error(500, "INTERNAL", "Database error")
+}
+
+fn unexpected_error_response() -> wisp.Response {
+  api.error(500, "INTERNAL", "Unexpected error")
 }

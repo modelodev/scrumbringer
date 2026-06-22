@@ -6,19 +6,19 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
-  milestone_id = case
-    when $8 > 0 then null
-    when $7 = -1 then milestone_id
-    else nullif($7, 0)
+  due_date = case when $7 = '__unset__' then due_date else nullif($7, '')::date end,
+  card_id = case
+    when $8 = -999999 then card_id
+    when $9 = -1 then card_id
+    else nullif($9, 0)
   end,
-  card_id = case when $8 = -1 then card_id else nullif($8, 0) end,
   version = version + 1
 where id = $1
   and (
-    status = 'available'
-    or (status = 'claimed' and claimed_by = $2)
+    execution_state = 'available'
+    or (execution_state = 'claimed' and claimed_by = $2)
   )
-  and version = $9
+  and version = $10
   returning
     id,
     project_id,
@@ -26,15 +26,19 @@ where id = $1
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    case
+      when execution_state = 'closed' then 'completed'
+      else execution_state
+    end as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -47,7 +51,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
@@ -59,14 +63,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by

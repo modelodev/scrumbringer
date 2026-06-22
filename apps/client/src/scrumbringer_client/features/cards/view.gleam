@@ -7,18 +7,17 @@
 //// ## Responsibilities
 ////
 //// - Display cards list with state badges and color indicators
-//// - Handle card selection for detail modal
+//// - Handle card selection for Card Show
 //// - Show empty state when no cards
-//// - Render card detail modal component when card is selected
+//// - Render Card Show when a card is selected
 ////
 //// ## Relations
 ////
 //// - **client_view.gleam**: Imports and renders this component
 //// - **features/cards/view_config.gleam**: Builds configs from root state
 //// - **api/cards.gleam**: Handles card data fetching
-//// - **components/card_detail_modal.gleam**: Card detail component
+//// - **components/card_show.gleam**: Card Show component
 
-import gleam/dynamic/decode
 import gleam/option.{type Option}
 
 import lustre/attribute
@@ -27,12 +26,12 @@ import lustre/element/html.{div}
 
 import domain/card.{type Card}
 import domain/task.{type Task}
-import scrumbringer_client/features/cards/detail_modal_entry
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/list_view
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 
@@ -41,13 +40,15 @@ pub type Config(msg) {
     locale: Locale,
     cards: List(Card),
     pending_count: Int,
-    detail_card: Option(Card),
-    detail_tasks: List(Task),
+    show_model: card_show.Model,
+    show_card: Option(Card),
+    show_tasks: List(Task),
     current_user_id: Option(Int),
     can_manage_notes: Bool,
+    can_manage_structure: Bool,
+    can_execute_work: Bool,
     on_card_opened: fn(Int) -> msg,
-    on_create_task_in_card: fn(Int) -> msg,
-    on_detail_closed: msg,
+    on_card_show_msg: fn(card_show.Msg) -> msg,
   )
 }
 
@@ -62,7 +63,7 @@ pub fn view_cards(config: Config(msg)) -> Element(msg) {
       view_cards_header(config),
       view_cards_content(config),
     ]),
-    view_card_detail_modal(config),
+    view_card_show(config),
   ])
 }
 
@@ -81,33 +82,22 @@ fn view_cards_content(config: Config(msg)) -> Element(msg) {
 }
 
 // =============================================================================
-// Card Detail Modal Component Integration
+// Card Show Component Integration
 // =============================================================================
 
-/// Render the card-detail-modal custom element when a card is open.
-/// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
-pub fn view_card_detail_modal(config: Config(msg)) -> Element(msg) {
-  detail_modal_entry.view(detail_modal_entry.Config(
-    card: config.detail_card,
-    tasks: config.detail_tasks,
+/// Render Card Show when a card is open.
+/// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban Card Show)
+pub fn view_card_show(config: Config(msg)) -> Element(msg) {
+  show_entry.view(show_entry.Config(
+    model: config.show_model,
+    card: config.show_card,
+    cards: config.cards,
+    tasks: config.show_tasks,
     locale: config.locale,
     current_user_id: config.current_user_id,
     can_manage_notes: config.can_manage_notes,
-    on_create_task: decode_create_task_event(config),
-    on_close: decode_close_detail_event(config),
+    can_manage_structure: config.can_manage_structure,
+    can_execute_work: config.can_execute_work,
+    on_card_show_msg: config.on_card_show_msg,
   ))
-}
-
-/// Decoder for create-task-requested event.
-/// Opens the main task creation dialog with card_id pre-filled.
-fn decode_create_task_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) { decode.success(config.on_create_task_in_card(card_id)) },
-  )
-}
-
-/// Decoder for close-requested event.
-fn decode_close_detail_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.message(config.on_detail_closed)
 }

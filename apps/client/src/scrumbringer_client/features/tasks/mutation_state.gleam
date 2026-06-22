@@ -3,6 +3,7 @@
 import gleam/option as opt
 
 import domain/remote.{Loaded}
+import domain/task.{type Task}
 import domain/task_state
 import domain/task_status.{Taken}
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -44,7 +45,19 @@ pub fn start_complete(
   model: member_pool.Model,
   task_id: Int,
 ) -> member_pool.Model {
-  start_with_state(model, task_id, task_state.Completed(completed_at: ""))
+  start_with_state(model, task_id, task_state.Done(completed_at: ""))
+}
+
+pub fn start_delete(model: member_pool.Model, task_id: Int) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_tasks: task_list.remove(model.member_tasks, task_id),
+    member_task_mutation_in_flight: True,
+    member_task_mutation_task_id: opt.Some(task_id),
+    member_tasks_snapshot: task_list.snapshot(model.member_tasks),
+    member_task_show_editing: False,
+    member_task_show_edit_error: opt.None,
+  )
 }
 
 pub fn start_dropped_claim(model: member_pool.Model) -> member_pool.Model {
@@ -57,6 +70,13 @@ pub fn clear(model: member_pool.Model) -> member_pool.Model {
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: opt.None,
     member_tasks_snapshot: opt.None,
+  )
+}
+
+pub fn confirm_task(model: member_pool.Model, task: Task) -> member_pool.Model {
+  member_pool.Model(
+    ..clear(model),
+    member_tasks: task_list.replace(model.member_tasks, task),
   )
 }
 

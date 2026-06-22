@@ -1,44 +1,64 @@
 //// Pool feature messages.
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
-  type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
-  type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
-  type TaskModalMetrics,
+  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview,
 }
-import domain/milestone.{type Milestone, type MilestoneProgress}
+import domain/note/entity as note_entity
 import domain/project.{type ProjectMember}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition,
-  type WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskPosition, type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
+import scrumbringer_client/api/activity as api_activity
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/pool_prefs
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 /// Represents PoolMsg.
 pub type Msg {
   MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
   MemberPoolDragToClaimArmed(Bool)
-  MemberPoolStatusChanged(String)
+  MemberPoolVisibilityChanged(String)
   MemberPoolTypeChanged(String)
   MemberPoolCapabilityChanged(String)
   MemberPoolCapabilityScopeChanged(String)
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
-  MemberPoolFiltersToggled
+  MemberPlanScopeKindChanged(String)
+  MemberPlanModeChanged(String)
+  MemberPlanCapabilityModeChanged(String)
+  MemberPlanScopeDepthChanged(String)
+  MemberPlanScopeCardChanged(String)
+  MemberPlanScopeCardSearchChanged(String)
+  MemberPlanClosedToggled(Bool)
+  MemberPlanStatusChanged(String)
+  MemberPlanSortChanged(String)
+  MemberPlanCardToggled(Int)
+  MemberPlanMoveRequested(Int)
+  MemberPlanMoveCancelled
+  MemberPlanMoveDestinationSearchChanged(String)
+  MemberPlanMoveDestinationSelected(MoveTarget)
+  MemberPlanMoveDragStarted(Int)
+  MemberPlanMoveDragEntered(MoveTarget)
+  MemberPlanMoveDroppedOn(MoveTarget)
+  MemberPlanMoveDragEnded
+  MemberPlanCardMoved(ApiResult(card_contracts.CardActionResponse))
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
   MemberPoolTouchStarted(Int, Int, Int)
@@ -48,14 +68,17 @@ pub type Msg {
   MemberTaskHoverClosed
   MemberTaskFocused(Int)
   MemberTaskBlurred
-  MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
-  MemberListHideCompletedToggled
+  MemberTaskHoverNotesFetched(Int, ApiResult(List(note_entity.Note)))
+  MemberListHideDoneToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)
   MemberProjectTasksFetched(Int, ApiResult(List(Task)))
   MemberPeopleRosterFetched(ApiResult(List(ProjectMember)))
   MemberPeopleRowToggled(Int)
+  MemberPeopleSearchChanged(String)
+  MemberPeopleFilterChanged(String)
+  MemberPeopleSortChanged(String)
   MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
   MemberCanvasRectFetched(Int, Int)
   MemberDragStarted(Int, Int, Int)
@@ -69,7 +92,6 @@ pub type Msg {
   MemberCreateDescriptionChanged(String)
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
-  MemberCreateCardIdChanged(String)
   MemberCreateTypeOptionsRetryClicked
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
@@ -78,9 +100,11 @@ pub type Msg {
   MemberClaimClicked(Int, Int)
   MemberReleaseClicked(Int, Int)
   MemberCompleteClicked(Int, Int)
+  MemberDeleteTaskClicked(Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))
-  MemberTaskCompleted(ApiResult(Task))
+  MemberTaskDone(ApiResult(Task))
+  MemberTaskDeleted(Int, ApiResult(Nil))
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
   MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
@@ -95,38 +119,6 @@ pub type Msg {
   MemberSaveCapabilitiesClicked
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
   MemberProjectCardsFetched(Int, ApiResult(List(Card)))
-  MemberProjectMilestonesFetched(Int, ApiResult(List(MilestoneProgress)))
-  MemberMilestonesShowCompletedToggled
-  MemberMilestonesShowEmptyToggled
-  MemberMilestoneSearchChanged(String)
-  MemberMilestoneSummaryToggled
-  MemberMilestoneCardToggled(Int)
-  MemberMilestoneDetailsClicked(Int)
-  MemberMilestoneCreateTaskClicked(Int)
-  MemberMilestoneCreateCardClicked(Int)
-  MemberMilestoneCardDragStarted(Int, Int)
-  MemberMilestoneTaskDragStarted(Int, Int)
-  MemberMilestoneDroppedOn(Int)
-  MemberMilestoneDragEnded
-  MemberMilestoneCardMoveClicked(Int, Int, Int)
-  MemberMilestoneTaskMoveClicked(Int, Int, Int)
-  MemberMilestoneCardMoved(ApiResult(Card))
-  MemberMilestoneTaskMoved(ApiResult(Task))
-  MemberMilestoneCreateClicked
-  MemberMilestoneActivatePromptClicked(Int)
-  MemberMilestoneActivateClicked(Int)
-  MemberMilestoneActivated(Int, ApiResult(Nil))
-  MemberMilestoneEditClicked(Int)
-  MemberMilestoneDeleteClicked(Int)
-  MemberMilestoneDialogClosed
-  MemberMilestoneNameChanged(String)
-  MemberMilestoneDescriptionChanged(String)
-  MemberMilestoneCreateSubmitted
-  MemberMilestoneCreated(ApiResult(Milestone))
-  MemberMilestoneEditSubmitted(Int)
-  MemberMilestoneDeleteSubmitted(Int)
-  MemberMilestoneUpdated(ApiResult(Milestone))
-  MemberMilestoneDeleted(Int, ApiResult(Nil))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed
@@ -134,20 +126,18 @@ pub type Msg {
   MemberPositionEditYChanged(String)
   MemberPositionEditSubmitted
   MemberPositionSaved(ApiResult(TaskPosition))
-  MemberTaskDetailsOpened(Int)
-  MemberTaskDetailsClosed
-  MemberTaskDetailTabClicked(task_tabs.Tab)
-  MemberTaskDetailEditStarted
-  MemberTaskDetailEditCancelled
-  MemberTaskDetailEditTitleChanged(String)
-  MemberTaskDetailEditDescriptionChanged(String)
-  MemberTaskDetailEditPriorityChanged(String)
-  MemberTaskDetailEditTypeIdChanged(String)
-  MemberTaskDetailEditCardIdChanged(String)
-  MemberTaskDetailEditMilestoneIdChanged(String)
-  MemberTaskDetailEditSubmitted
+  MemberTaskShowOpened(Int)
+  MemberTaskShowClosed
+  MemberTaskShowTabClicked(show_tabs.TaskShowTab)
+  MemberTaskShowEditStarted
+  MemberTaskShowEditCancelled
+  MemberTaskShowEditTitleChanged(String)
+  MemberTaskShowEditDescriptionChanged(String)
+  MemberTaskShowEditPriorityChanged(String)
+  MemberTaskShowEditTypeIdChanged(String)
+  MemberTaskShowEditCardIdChanged(String)
+  MemberTaskShowEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
-  MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened
   MemberDependencyDialogClosed
@@ -158,14 +148,18 @@ pub type Msg {
   MemberDependencyAdded(ApiResult(TaskDependency))
   MemberDependencyRemoveClicked(Int)
   MemberDependencyRemoved(Int, ApiResult(Nil))
-  MemberNotesFetched(ApiResult(List(TaskNote)))
+  MemberNotesFetched(ApiResult(List(note_entity.Note)))
   MemberNoteContentChanged(String)
   MemberNoteDialogOpened
   MemberNoteDialogClosed
   MemberNoteSubmitted
-  MemberNoteAdded(ApiResult(TaskNote))
+  MemberNoteAdded(ApiResult(note_entity.Note))
   MemberNoteDeleteClicked(Int)
   MemberNoteDeleted(Int, ApiResult(Nil))
+  MemberNotePinClicked(Int, Bool)
+  MemberNotePinned(Int, ApiResult(note_entity.Note))
+  MemberActivityMoreClicked
+  MemberActivityFetched(ApiResult(api_activity.ActivityPage))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))
@@ -198,12 +192,14 @@ pub type Msg {
   CardCrudUpdated(Card)
   CardCrudDeleted(Int)
   CardsShowEmptyToggled
-  CardsShowCompletedToggled
+  CardsShowDoneToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
-  OpenCardDetail(Int)
-  CloseCardDetail
-  CardMetricsFetched(ApiResult(CardModalMetrics))
+  OpenCardShow(Int)
+  CloseCardShow
+  CardShowMsg(card_show.Msg)
+  CardActivateRequested(Int)
+  CardActivated(ApiResult(card_contracts.CardActionResponse))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
   OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
   CloseWorkflowDialog

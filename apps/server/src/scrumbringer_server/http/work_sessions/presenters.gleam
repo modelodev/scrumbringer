@@ -1,7 +1,7 @@
 //// JSON presenters for work session endpoints.
 
 import gleam/json
-import scrumbringer_server/services/work_sessions_db
+import scrumbringer_server/use_case/work_sessions_db
 
 pub fn state(state: work_sessions_db.WorkSessionsState) -> json.Json {
   let work_sessions_db.WorkSessionsState(

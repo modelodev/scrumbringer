@@ -84,3 +84,22 @@ pub fn left_sidebar_reserves_scrollbar_space_and_truncates_nav_labels_test() {
   assert_contains(css, "text-overflow: ellipsis")
   assert_contains(css, ".nav-link .nav-icon, .nav-link .badge")
 }
+
+pub fn pool_canvas_can_scroll_horizontally_without_collapsing_cards_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, ".content.pool-main { overflow-x: auto")
+  assert_contains(css, ".pool-main { flex: 1 1 auto")
+  assert_contains(css, "overflow-x: auto; overflow-y: hidden")
+  assert_contains(css, "width: 100% !important; min-width: 0 !important")
+}
+
+pub fn card_show_uses_wide_panel_and_mobile_fullscreen_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, ".card-show { position: fixed")
+  assert_contains(css, "justify-content: flex-end")
+  assert_contains(css, "width: min(920px, calc(100vw - 48px))")
+  assert_contains(css, ".card-show { padding: 0; align-items: stretch")
+  assert_contains(css, "height: 100dvh; max-height: 100dvh")
+}

@@ -39,7 +39,7 @@ pub type Action {
   LogoutUnauthorized
   LogoutFailed
   AcceptInviteAuthed(User)
-  PasswordResetCompleted
+  PasswordResetDone
 }
 
 pub type Context(parent_msg) {
@@ -419,7 +419,7 @@ fn handle_accept_invite_msg(
     accept_invite.Register(token: token, password: password) -> #(
       model,
       api_auth.register_with_invite_link(token, password, fn(result) {
-        context.on_accept_invite(token_flow.Completed(result))
+        context.on_accept_invite(token_flow.Finished(result))
       }),
       NoAction,
     )
@@ -450,14 +450,14 @@ fn handle_reset_password_msg(
     reset_password.Consume(token: token, password: password) -> #(
       model,
       api_auth.consume_password_reset_token(token, password, fn(result) {
-        context.on_reset_password(token_flow.Completed(result))
+        context.on_reset_password(token_flow.Finished(result))
       }),
       NoAction,
     )
     reset_password.GoToLogin -> #(
       auth_state.AuthModel(..model, login_password: "", login_error: opt.None),
       effect.none(),
-      PasswordResetCompleted,
+      PasswordResetDone,
     )
   }
 }

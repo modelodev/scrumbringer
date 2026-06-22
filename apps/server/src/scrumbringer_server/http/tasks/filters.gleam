@@ -17,14 +17,14 @@
 //// }
 //// ```
 
-import domain/task_status.{type TaskStatus}
+import domain/task_status.{type TaskPhase}
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import scrumbringer_server/http/api
 import scrumbringer_server/http/query as query_params
-import scrumbringer_server/services/workflows/types as workflow_types
+import scrumbringer_server/use_case/workflows/types as workflow_types
 import wisp
 
 // =============================================================================
@@ -65,11 +65,11 @@ pub fn parse_task_filters(
 
 /// Parse status filter: must be available, claimed, or completed.
 ///
-/// Returns None for empty/missing, Some(TaskStatus) for valid values,
+/// Returns None for empty/missing, Some(TaskPhase) for valid values,
 /// Error for invalid values.
 fn parse_status_filter(
   query: List(#(String, String)),
-) -> Result(Option(TaskStatus), wisp.Response) {
+) -> Result(Option(TaskPhase), wisp.Response) {
   case single_query_value(query, "status") {
     Ok(None) -> Ok(None)
 

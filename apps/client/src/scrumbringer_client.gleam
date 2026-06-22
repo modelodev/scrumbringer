@@ -66,7 +66,6 @@ import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
 import scrumbringer_client/permissions
-import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/storage
@@ -93,7 +92,6 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
-import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_template_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
@@ -124,13 +122,9 @@ pub fn app() -> lustre.App(Flags, Model, Msg) {
 /// Application entry point - starts the Lustre SPA.
 ///
 /// Mounts the application to the `#app` DOM element.
-/// Also registers custom element components.
+/// Also registers dialog custom element components.
 pub fn main() {
-  // Register custom element components
-  case card_detail_modal.register() {
-    Ok(_) -> Nil
-    Error(_) -> Nil
-  }
+  // Register dialog custom element components
   case card_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
@@ -265,17 +259,16 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     _ -> view_mode.Pool
   }
 
+  let initial_card_depth = case route {
+    router.Member(state) -> url_state.card_depth(state)
+    _ -> opt.None
+  }
+
   let #(accept_model, accept_action) = accept_invite.init(accept_token)
   let #(reset_model, reset_action) = reset_password.init(reset_token)
 
   let active_theme = flags.theme
   let active_locale = flags.locale
-
-  let pool_filters_default_visible = theme.filters_default_visible(active_theme)
-
-  let pool_filters_visible =
-    storage.load_pool_filters_visibility(pool_filters_default_visible)
-    |> pool_prefs.visibility_to_bool
 
   let pool_view_mode = storage.load_pool_view_mode()
 
@@ -307,7 +300,7 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
         pool: member_pool.Model(
           ..pool,
           view_mode: initial_view_mode,
-          member_pool_filters_visible: pool_filters_visible,
+          member_card_depth_filter: initial_card_depth,
           member_pool_view_mode: pool_view_mode,
         ),
       )

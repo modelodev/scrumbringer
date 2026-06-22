@@ -17,9 +17,12 @@ pub fn required_scope(
     http.Get, ["api", "v1", "projects", _, "tasks"] ->
       read(api_token_scope.Tasks)
     http.Get, ["api", "v1", "tasks", _] -> read(api_token_scope.Tasks)
+    http.Get, ["api", "v1", "tasks", _, "activity"] ->
+      read(api_token_scope.Tasks)
     http.Post, ["api", "v1", "projects", _, "tasks"] ->
       write(api_token_scope.Tasks)
     http.Patch, ["api", "v1", "tasks", _] -> write(api_token_scope.Tasks)
+    http.Delete, ["api", "v1", "tasks", _] -> write(api_token_scope.Tasks)
     http.Post, ["api", "v1", "tasks", _, "claim"] ->
       write(api_token_scope.Tasks)
     http.Post, ["api", "v1", "tasks", _, "release"] ->
@@ -30,6 +33,8 @@ pub fn required_scope(
     http.Get, ["api", "v1", "projects", _, "cards"] ->
       read(api_token_scope.Cards)
     http.Get, ["api", "v1", "cards", _] -> read(api_token_scope.Cards)
+    http.Get, ["api", "v1", "cards", _, "activity"] ->
+      read(api_token_scope.Cards)
     http.Post, ["api", "v1", "projects", _, "cards"] ->
       write(api_token_scope.Cards)
     http.Patch, ["api", "v1", "cards", _] -> write(api_token_scope.Cards)
@@ -38,21 +43,19 @@ pub fn required_scope(
     http.Get, ["api", "v1", "tasks", _, "notes"] -> read(api_token_scope.Notes)
     http.Post, ["api", "v1", "tasks", _, "notes"] ->
       write(api_token_scope.Notes)
+    http.Post, ["api", "v1", "tasks", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
+    http.Delete, ["api", "v1", "tasks", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
     http.Get, ["api", "v1", "cards", _, "notes"] -> read(api_token_scope.Notes)
     http.Post, ["api", "v1", "cards", _, "notes"] ->
       write(api_token_scope.Notes)
+    http.Post, ["api", "v1", "cards", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
+    http.Delete, ["api", "v1", "cards", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
     http.Delete, ["api", "v1", "cards", _, "notes", _] ->
       write(api_token_scope.Notes)
-
-    http.Get, ["api", "v1", "projects", _, "milestones"] ->
-      read(api_token_scope.Milestones)
-    http.Get, ["api", "v1", "milestones", _] -> read(api_token_scope.Milestones)
-    http.Post, ["api", "v1", "projects", _, "milestones"] ->
-      write(api_token_scope.Milestones)
-    http.Patch, ["api", "v1", "milestones", _] ->
-      write(api_token_scope.Milestones)
-    http.Delete, ["api", "v1", "milestones", _] ->
-      write(api_token_scope.Milestones)
 
     _, _ -> Error(RouteNotAllowed)
   }

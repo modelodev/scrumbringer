@@ -7,17 +7,27 @@ import gleam/option.{type Option, None, Some, from_result}
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, li, p, section, span, text, ul}
+import lustre/element/html.{
+  button, div, input, label, li, option as html_option, p, select, span, text,
+}
+import lustre/element/keyed
 import lustre/event
 
-import domain/card.{type CardColor}
+import domain/capability.{type Capability}
+import domain/card.{type Card, type CardColor}
 import domain/org.{type OrgUser}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_state
+import domain/task_type.{type TaskType}
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/people/state as people_state
+import scrumbringer_client/features/plan/scope_bar
+import scrumbringer_client/features/work_filters
+import scrumbringer_client/features/work_scope/queries as work_scope_queries
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -29,8 +39,6 @@ import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/tone
 
-const load_warning_claimed_threshold = 4
-
 type PeopleSummary {
   PeopleSummary(
     free_count: Int,
@@ -41,18 +49,39 @@ type PeopleSummary {
 }
 
 type TaskGroup {
-  TaskGroup(card_id: Option(Int), card_title: Option(String), tasks: List(Task))
+  TaskGroup(
+    card_id: Option(Int),
+    card_title: Option(String),
+    tasks: List(domain_task.Task),
+  )
 }
 
 pub type Config(msg) {
   Config(
     locale: Locale,
     people_roster: Remote(List(ProjectMember)),
-    member_tasks: Remote(List(Task)),
+    member_tasks: Remote(List(domain_task.Task)),
+    task_types: Remote(List(TaskType)),
+    capabilities: Remote(List(Capability)),
+    cards: List(Card),
+    depth_names: List(scope_view.DepthName),
+    scope_kind: member_pool.PlanScopeKind,
+    selected_depth: Option(Int),
+    selected_card_id: Option(Int),
+    card_query: String,
     org_users: Remote(List(OrgUser)),
     people_expansions: dict.Dict(Int, people_state.RowExpansion),
     search_query: String,
-    task_card_color: fn(Task) -> Option(CardColor),
+    visibility_filter: people_state.PeopleVisibilityFilter,
+    sort: people_state.PeopleSort,
+    task_card_color: fn(domain_task.Task) -> Option(CardColor),
+    on_scope_kind_change: fn(String) -> msg,
+    on_scope_depth_change: fn(String) -> msg,
+    on_scope_card_change: fn(String) -> msg,
+    on_scope_card_search_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
+    on_visibility_filter_change: fn(String) -> msg,
+    on_sort_change: fn(String) -> msg,
     on_person_toggle: fn(Int) -> msg,
     on_task_click: fn(Int) -> msg,
   )
@@ -94,45 +123,210 @@ fn view_loaded(
       )
 
     _ -> {
+      let scoped_tasks = scoped_member_tasks(config)
       let people =
         list.map(members, fn(member) {
           people_state.derive_status(
             member.user_id,
             resolve_user_label(config, member.user_id),
-            tasks_for_member(config, member.user_id),
+            tasks_for_member(scoped_tasks, member.user_id),
           )
         })
 
-      let filtered = filter_people(people, config.search_query)
+      let searched = filter_people(config, people, config.search_query)
+      let filtered =
+        people_state.apply_visibility_filter(searched, config.visibility_filter)
+        |> people_state.sort_people(config.sort)
 
-      case filtered {
-        [] ->
-          empty_state.notice_with_class(
-            "magnifying-glass",
-            i18n.t(config.locale, i18n_text.PeopleNoResults),
-            empty_state.NoResults,
-            "people-state people-no-results",
-          )
+      let header = view_surface_header(config, people)
+      let controls = view_people_controls(config)
+      let surface =
+        work_surface.new_surface(header)
+        |> work_surface.with_filters(controls)
+        |> work_surface.surface_with_class("people-work-surface")
+        |> work_surface.surface_with_testid("people-surface")
 
-        _ ->
-          section(
-            [
-              attribute.class("people-view people-list"),
-              attribute.attribute("data-testid", "people-view"),
-            ],
-            [
-              view_surface_header(config, filtered),
-              ul(
-                [attribute.class("people-items")],
-                list.map(filtered, fn(person) {
-                  view_person_row(config, person)
-                }),
-              ),
-            ],
-          )
+      case
+        config.scope_kind,
+        config.selected_card_id,
+        selected_card_scope_has_no_work(config, scoped_tasks),
+        filtered
+      {
+        member_pool.PlanScopeCard, None, _, _ ->
+          work_surface.surface(work_surface.with_state(
+            surface,
+            empty_state.notice_with_class(
+              "rectangle-stack",
+              i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+              empty_state.NoResults,
+              "people-state people-card-scope-empty",
+            ),
+          ))
+
+        member_pool.PlanScopeCard, Some(_), True, _ ->
+          work_surface.surface(work_surface.with_state(
+            surface,
+            empty_state.notice_with_class(
+              "rectangle-stack",
+              i18n.t(config.locale, i18n_text.PeopleCardScopeNoWork),
+              empty_state.NoResults,
+              "people-state people-card-scope-no-work",
+            ),
+          ))
+
+        _, _, _, [] ->
+          work_surface.surface(work_surface.with_state(
+            surface,
+            empty_state.notice_with_class(
+              "magnifying-glass",
+              i18n.t(config.locale, i18n_text.PeopleNoResults),
+              empty_state.NoResults,
+              "people-state people-no-results",
+            ),
+          ))
+
+        _, _, _, _ ->
+          work_surface.surface(work_surface.with_content(
+            surface,
+            div(
+              [
+                attribute.class("people-view people-list"),
+                attribute.attribute("data-testid", "people-view"),
+              ],
+              [
+                keyed.ul(
+                  [attribute.class("people-items")],
+                  list.map(filtered, fn(person) {
+                    #(
+                      int.to_string(person.user_id),
+                      view_person_row(config, person),
+                    )
+                  }),
+                ),
+              ],
+            ),
+          ))
       }
     }
   }
+}
+
+fn selected_card_scope_has_no_work(
+  config: Config(msg),
+  scoped_tasks: List(domain_task.Task),
+) -> Bool {
+  case config.scope_kind, config.selected_card_id, config.member_tasks {
+    member_pool.PlanScopeCard, Some(_), Loaded(_) -> scoped_tasks == []
+    _, _, _ -> False
+  }
+}
+
+fn view_people_controls(config: Config(msg)) -> Element(msg) {
+  scope_bar.view(
+    scope_bar.Config(
+      locale: config.locale,
+      cards: config.cards,
+      depth_names: config.depth_names,
+      scope_kind: config.scope_kind,
+      selected_depth: config.selected_depth,
+      selected_card_id: config.selected_card_id,
+      card_query: config.card_query,
+      show_closed: False,
+      id_prefix: "people-scope",
+      mode_controls: [],
+      refinement_controls: [
+        view_search_control(config),
+        view_filter_control(config),
+        view_sort_control(config),
+      ],
+      show_closed_control: False,
+      on_scope_kind_change: config.on_scope_kind_change,
+      on_scope_depth_change: config.on_scope_depth_change,
+      on_scope_card_change: config.on_scope_card_change,
+      on_scope_card_search_change: config.on_scope_card_search_change,
+      on_closed_toggled: fn(_value) {
+        config.on_visibility_filter_change(people_state.filter_to_string(
+          config.visibility_filter,
+        ))
+      },
+    ),
+  )
+}
+
+fn view_search_control(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("people-control people-search-control")], [
+    label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
+    input([
+      attribute.type_("search"),
+      attribute.attribute("data-testid", "people-search"),
+      attribute.placeholder(i18n.t(
+        config.locale,
+        i18n_text.PeopleSearchPlaceholder,
+      )),
+      attribute.value(config.search_query),
+      event.on_input(config.on_search_change),
+    ]),
+  ])
+}
+
+fn view_filter_control(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("people-control")], [
+    label([], [text(i18n.t(config.locale, i18n_text.PeopleShowLabel))]),
+    select(
+      [
+        attribute.attribute("data-testid", "people-filter"),
+        attribute.value(people_state.filter_to_string(config.visibility_filter)),
+        event.on_input(config.on_visibility_filter_change),
+        event.on_change(config.on_visibility_filter_change),
+      ],
+      [
+        html_option(
+          [attribute.value("everyone")],
+          i18n.t(config.locale, i18n_text.PeopleFilterEveryone),
+        ),
+        html_option(
+          [attribute.value("with-work")],
+          i18n.t(config.locale, i18n_text.PeopleFilterWithWork),
+        ),
+        html_option(
+          [attribute.value("attention")],
+          i18n.t(config.locale, i18n_text.PeopleFilterAttention),
+        ),
+        html_option(
+          [attribute.value("free")],
+          i18n.t(config.locale, i18n_text.PeopleFilterFree),
+        ),
+      ],
+    ),
+  ])
+}
+
+fn view_sort_control(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("people-control")], [
+    label([], [text(i18n.t(config.locale, i18n_text.PeopleSortLabel))]),
+    select(
+      [
+        attribute.attribute("data-testid", "people-sort"),
+        attribute.value(people_state.sort_to_string(config.sort)),
+        event.on_input(config.on_sort_change),
+        event.on_change(config.on_sort_change),
+      ],
+      [
+        html_option(
+          [attribute.value("attention")],
+          i18n.t(config.locale, i18n_text.PeopleSortAttention),
+        ),
+        html_option(
+          [attribute.value("name")],
+          i18n.t(config.locale, i18n_text.PeopleSortName),
+        ),
+        html_option(
+          [attribute.value("claimed")],
+          i18n.t(config.locale, i18n_text.PeopleSortClaimed),
+        ),
+      ],
+    ),
+  ])
 }
 
 fn view_person_row(
@@ -142,9 +336,10 @@ fn view_person_row(
   let people_state.PersonStatus(
     user_id: user_id,
     label: label,
-    availability: availability,
+    work_state: work_state,
     active_tasks: active_tasks,
     claimed_tasks: claimed_tasks,
+    signals: signals,
   ) = person
 
   let expanded = is_expanded(config.people_expansions, user_id)
@@ -154,8 +349,8 @@ fn view_person_row(
     False -> i18n.t(config.locale, i18n_text.ExpandPerson(name: label))
   }
 
-  let badge_text = availability_label(config, availability)
-  let badge_variant = people_state.badge_variant(availability)
+  let badge_text = work_state_label(config, work_state)
+  let badge_variant = people_state.badge_variant(work_state)
   let availability_chip =
     badge.new_unchecked(badge_text, badge_variant)
     |> badge.view_with_class("people-status-chip")
@@ -203,7 +398,7 @@ fn view_person_row(
           badge.Neutral,
         ),
         view_person_cards(config, person_tasks),
-        view_load_warning(config, claimed_tasks),
+        view_attention_signals(config, signals),
       ]),
     ]),
     case expanded {
@@ -277,16 +472,18 @@ fn summarize_people(people: List(people_state.PersonStatus)) -> PeopleSummary {
             + list.length(person.claimed_tasks),
         )
 
-      case person.availability {
-        people_state.Free ->
+      case person.work_state {
+        people_state.FreeInScope ->
           PeopleSummary(..with_claimed, free_count: with_claimed.free_count + 1)
-        people_state.Busy ->
+        people_state.HasClaimedWork ->
           PeopleSummary(..with_claimed, busy_count: with_claimed.busy_count + 1)
-        people_state.Working ->
+        people_state.WorkingNow ->
           PeopleSummary(
             ..with_claimed,
             working_count: with_claimed.working_count + 1,
           )
+        people_state.BlockedWork ->
+          PeopleSummary(..with_claimed, busy_count: with_claimed.busy_count + 1)
       }
     },
   )
@@ -297,7 +494,10 @@ fn view_row_metric(label: String, variant: badge.BadgeVariant) -> Element(msg) {
   |> badge.view_with_class("people-metric-chip")
 }
 
-fn view_person_cards(config: Config(msg), tasks: List(Task)) -> Element(msg) {
+fn view_person_cards(
+  config: Config(msg),
+  tasks: List(domain_task.Task),
+) -> Element(msg) {
   let titles = task_groups(tasks) |> card_titles_from_groups
 
   case titles {
@@ -318,24 +518,34 @@ fn view_person_cards(config: Config(msg), tasks: List(Task)) -> Element(msg) {
   }
 }
 
-fn view_load_warning(
+fn view_attention_signals(
   config: Config(msg),
-  claimed_tasks: List(Task),
+  signals: List(people_state.PersonAttentionSignal),
 ) -> Element(msg) {
-  case list.length(claimed_tasks) >= load_warning_claimed_threshold {
-    True ->
-      badge.new_unchecked(
-        i18n.t(config.locale, i18n_text.PeopleLoadWarning),
-        badge.Warning,
-      )
-      |> badge.view_with_class("people-load-chip")
-    False -> element.none()
-  }
+  div(
+    [attribute.class("people-signal-set")],
+    list.map(signals, fn(signal) {
+      case signal {
+        people_state.BlockedTask(_) ->
+          badge.new_unchecked(
+            i18n.t(config.locale, i18n_text.Blocked),
+            badge.Danger,
+          )
+          |> badge.view_with_class("people-load-chip")
+        people_state.HighClaimedLoad(_) ->
+          badge.new_unchecked(
+            i18n.t(config.locale, i18n_text.PeopleLoadWarning),
+            badge.Warning,
+          )
+          |> badge.view_with_class("people-load-chip")
+      }
+    }),
+  )
 }
 
 fn view_active_section(
   config: Config(msg),
-  active_tasks: List(Task),
+  active_tasks: List(domain_task.Task),
 ) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
@@ -353,7 +563,7 @@ fn view_active_section(
 
 fn view_claimed_section(
   config: Config(msg),
-  claimed_tasks: List(Task),
+  claimed_tasks: List(domain_task.Task),
 ) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
@@ -369,18 +579,24 @@ fn view_claimed_section(
   ])
 }
 
-fn view_task_list(config: Config(msg), tasks: List(Task)) -> Element(msg) {
-  ul(
+fn view_task_list(
+  config: Config(msg),
+  tasks: List(domain_task.Task),
+) -> Element(msg) {
+  keyed.ul(
     [attribute.class("people-claimed-list")],
     list.map(tasks, fn(task) {
-      li([attribute.class("people-task-item")], [
-        view_task_item(config, task),
-      ])
+      #(
+        int.to_string(task.id),
+        li([attribute.class("people-task-item")], [
+          view_task_item(config, task),
+        ]),
+      )
     }),
   )
 }
 
-fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task_item(config: Config(msg), task: domain_task.Task) -> Element(msg) {
   let resolved_color = config.task_card_color(task)
   let border_class = task_color.card_border_class(resolved_color)
 
@@ -400,6 +616,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
       actions: task_item.no_actions(),
       reserve_actions_slot: True,
       action_slot_class: None,
+      content_testid: None,
       testid: None,
     ),
     task_item.Div,
@@ -408,7 +625,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
 
 fn view_task_leading_swatch(
   config: Config(msg),
-  task: Task,
+  task: domain_task.Task,
   card_color: Option(CardColor),
 ) -> Option(Element(msg)) {
   case card_color {
@@ -440,36 +657,45 @@ fn view_card_identity_swatch(
   }
 }
 
-fn view_task_secondary(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task_secondary(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> Element(msg) {
   div([attribute.class("task-item-meta people-task-meta")], [
     span(
       [
         attribute.class("task-status-muted"),
         attribute.attribute(
           "title",
-          task_state_ui.hint(config.locale, task.status),
+          task_state_ui.hint(config.locale, domain_task.status(task)),
         ),
       ],
-      [text(task_state_ui.label(config.locale, task.status))],
+      [text(task_state_ui.label(config.locale, domain_task.status(task)))],
     ),
   ])
 }
 
-fn task_card_accessibility_label(config: Config(msg), task: Task) -> String {
+fn task_card_accessibility_label(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> String {
   case task.card_title {
     Some(title) -> title
     None -> i18n.t(config.locale, i18n_text.PeopleNoCardContext)
   }
 }
 
-fn task_groups(tasks: List(Task)) -> List(TaskGroup) {
+fn task_groups(tasks: List(domain_task.Task)) -> List(TaskGroup) {
   tasks
   |> list.fold([], fn(groups, task) { upsert_task_group(groups, task) })
   |> list.reverse
   |> list.map(fn(group) { TaskGroup(..group, tasks: list.reverse(group.tasks)) })
 }
 
-fn upsert_task_group(groups: List(TaskGroup), task: Task) -> List(TaskGroup) {
+fn upsert_task_group(
+  groups: List(TaskGroup),
+  task: domain_task.Task,
+) -> List(TaskGroup) {
   case groups {
     [] -> [new_task_group(task)]
     [group, ..rest] -> {
@@ -481,11 +707,11 @@ fn upsert_task_group(groups: List(TaskGroup), task: Task) -> List(TaskGroup) {
   }
 }
 
-fn new_task_group(task: Task) -> TaskGroup {
+fn new_task_group(task: domain_task.Task) -> TaskGroup {
   TaskGroup(card_id: task.card_id, card_title: task.card_title, tasks: [task])
 }
 
-fn same_task_card(group: TaskGroup, task: Task) -> Bool {
+fn same_task_card(group: TaskGroup, task: domain_task.Task) -> Bool {
   group.card_id == task.card_id && group.card_title == task.card_title
 }
 
@@ -500,18 +726,38 @@ fn card_titles_from_groups(groups: List(TaskGroup)) -> List(String) {
   |> list.reverse
 }
 
-fn tasks_for_member(config: Config(msg), user_id: Int) -> List(Task) {
+fn scoped_member_tasks(config: Config(msg)) -> List(domain_task.Task) {
   case config.member_tasks {
     Loaded(tasks) ->
-      list.filter(tasks, fn(task) {
-        case task.state {
-          task_state.Claimed(claimed_by: claimed_by, ..) ->
-            claimed_by == user_id
-          _ -> False
-        }
-      })
+      tasks
+      |> list.filter(fn(task) { task_is_claimed(task) })
+      |> work_scope_queries.tasks_in_scope(
+        config.cards,
+        config.scope_kind,
+        config.selected_depth,
+        config.selected_card_id,
+      )
     _ -> []
   }
+}
+
+fn task_is_claimed(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_state.Claimed(..) -> True
+    _ -> False
+  }
+}
+
+fn tasks_for_member(
+  tasks: List(domain_task.Task),
+  user_id: Int,
+) -> List(domain_task.Task) {
+  list.filter(tasks, fn(task) {
+    case task.state {
+      task_state.Claimed(claimed_by: claimed_by, ..) -> claimed_by == user_id
+      _ -> False
+    }
+  })
 }
 
 fn resolve_user_label(config: Config(msg), user_id: Int) -> String {
@@ -530,6 +776,7 @@ fn find_org_user(config: Config(msg), user_id: Int) -> Option(OrgUser) {
 }
 
 fn filter_people(
+  config: Config(msg),
   people: List(people_state.PersonStatus),
   search_query: String,
 ) -> List(people_state.PersonStatus) {
@@ -538,8 +785,63 @@ fn filter_people(
     "" -> people
     _ ->
       list.filter(people, fn(person) {
-        string.contains(string.lowercase(person.label), query)
+        person_matches_query(config, person, query)
       })
+  }
+}
+
+fn person_matches_query(
+  config: Config(msg),
+  person: people_state.PersonStatus,
+  query: String,
+) -> Bool {
+  string.contains(string.lowercase(person.label), query)
+  || list.any(person_tasks(person), fn(task) {
+    task_matches_query(config, task, query)
+  })
+}
+
+fn person_tasks(person: people_state.PersonStatus) -> List(domain_task.Task) {
+  list.append(person.active_tasks, person.claimed_tasks)
+}
+
+fn task_matches_query(
+  config: Config(msg),
+  task: domain_task.Task,
+  query: String,
+) -> Bool {
+  string.contains(string.lowercase(task.title), query)
+  || string.contains(string.lowercase(option_string(task.card_title)), query)
+  || string.contains(string.lowercase(task.task_type.name), query)
+  || string.contains(
+    string.lowercase(task_capability_name(config, task)),
+    query,
+  )
+}
+
+fn task_capability_name(config: Config(msg), task: domain_task.Task) -> String {
+  case config.task_types, config.capabilities {
+    Loaded(task_types), Loaded(capabilities) ->
+      case work_filters.task_capability_id(task, task_types) {
+        Some(capability_id) ->
+          case
+            list.find(capabilities, fn(capability) {
+              capability.id == capability_id
+            })
+          {
+            Ok(capability) -> capability.name
+            Error(_) -> ""
+          }
+        None -> ""
+      }
+    _, _ -> ""
+  }
+}
+
+fn option_string(value: Option(String)) -> String {
+  case value {
+    Some(text) -> text
+    None -> ""
   }
 }
 
@@ -553,13 +855,14 @@ fn is_expanded(
   }
 }
 
-fn availability_label(
+fn work_state_label(
   config: Config(msg),
-  availability: people_state.Availability,
+  work_state: people_state.PersonWorkState,
 ) -> String {
-  case availability {
-    people_state.Working -> i18n.t(config.locale, i18n_text.Working)
-    people_state.Busy -> i18n.t(config.locale, i18n_text.Busy)
-    people_state.Free -> i18n.t(config.locale, i18n_text.Free)
+  case work_state {
+    people_state.WorkingNow -> i18n.t(config.locale, i18n_text.Working)
+    people_state.HasClaimedWork -> i18n.t(config.locale, i18n_text.Busy)
+    people_state.BlockedWork -> i18n.t(config.locale, i18n_text.Blocked)
+    people_state.FreeInScope -> i18n.t(config.locale, i18n_text.Free)
   }
 }

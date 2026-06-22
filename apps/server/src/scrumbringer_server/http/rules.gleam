@@ -8,16 +8,16 @@
 ////
 //// - Authorize project managers for rule operations
 //// - Parse and validate rule payloads
-//// - Delegate persistence to rule services
+//// - Delegate repository to rule use_case
 ////
 //// ## Non-responsibilities
 ////
-//// - Rule persistence (see `services/rules_db.gleam`)
-//// - Workflow persistence (see `services/workflows_db.gleam`)
+//// - Rule repository (see `use_case/rules_db.gleam`)
+//// - Workflow repository (see `use_case/workflows_db.gleam`)
 ////
 //// ## Relations
 ////
-//// - Uses `services/rules_db` and `services/workflows_db` for persistence
+//// - Uses `use_case/rules_db` and `use_case/workflows_db` for repository
 //// - Uses `http/authorization` for access control
 
 import domain/workflow
@@ -35,11 +35,11 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/rules/payloads as rule_payloads
 import scrumbringer_server/http/rules/presenters as rule_presenters
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/services/rules_db
-import scrumbringer_server/services/service_error
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/task_templates_db
-import scrumbringer_server/services/workflows_db
+import scrumbringer_server/use_case/rules_db
+import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/task_templates_db
+import scrumbringer_server/use_case/workflows_db
 import wisp
 
 /// Handle /api/workflows/:workflow_id/rules requests.

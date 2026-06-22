@@ -44,7 +44,7 @@ import lustre_http as http_client
 import scrumbringer_client/client_ffi
 
 import domain/api_error.{type ApiError, type ApiResult, ApiError}
-import domain/api_error/codec as api_error_codec
+import domain/api_error/api_error_codec
 
 pub type Method {
   Get

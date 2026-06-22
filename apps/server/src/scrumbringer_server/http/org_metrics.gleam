@@ -28,7 +28,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/metrics_presenters
 import scrumbringer_server/http/metrics_query
 import scrumbringer_server/http/metrics_service
-import scrumbringer_server/services/store_state.{type StoredUser}
+import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
 
 const max_window_days = 90
@@ -127,7 +127,7 @@ fn verify_project_org(
   case metrics_service.verify_project_org(db, project_id, org_id) {
     Error(metrics_service.NotFound) -> Error(not_found_response())
     Error(metrics_service.DbError(_)) -> Error(database_error_response())
-    Error(metrics_service.InvalidTaskStatus(_)) ->
+    Error(metrics_service.InvalidTaskPhase(_)) ->
       Error(database_error_response())
     Ok(False) -> Error(not_found_response())
     Ok(True) -> Ok(Nil)

@@ -118,7 +118,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       workflow_id,
       None,
       "Test Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   // Verify rule is initially active
@@ -160,7 +160,7 @@ pub fn set_active_cascade_activates_children_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      task_status.Completed,
+      task_status.Done,
     )
 
   // Deactivate both using cascade API
@@ -236,7 +236,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       workflow_id,
       None,
       "Rule To Delete",
-      task_status.Completed,
+      task_status.Done,
     )
 
   // Verify rule exists

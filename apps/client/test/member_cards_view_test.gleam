@@ -24,8 +24,7 @@ fn cards_config(model: client_state.Model) {
     model.core.user,
     opt.None,
     fn(_) { "open" },
-    fn(_) { "create" },
-    "close",
+    fn(_) { "card-show-msg" },
   )
 }
 

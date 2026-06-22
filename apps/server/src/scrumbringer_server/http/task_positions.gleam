@@ -12,13 +12,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task membership rules (see `services/projects_db.gleam`)
-//// - Persistence of positions (see `services/task_positions_db.gleam`)
+//// - Task membership rules (see `use_case/projects_db.gleam`)
+//// - Persistence of positions (see `use_case/task_positions_db.gleam`)
 ////
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for session identity
-//// - Uses `persistence/tasks/queries.gleam` for access checks
+//// - Uses `repository/tasks/queries.gleam` for access checks
 
 import gleam/http
 import gleam/result
@@ -29,10 +29,10 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/task_positions/payloads as position_payloads
 import scrumbringer_server/http/task_positions/presenters as position_presenters
-import scrumbringer_server/persistence/tasks/queries as tasks_queries
-import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/task_positions_db
+import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/projects_db
+import scrumbringer_server/use_case/store_state.{type StoredUser}
+import scrumbringer_server/use_case/task_positions_db
 import wisp
 
 /// Returns task positions for the current user.

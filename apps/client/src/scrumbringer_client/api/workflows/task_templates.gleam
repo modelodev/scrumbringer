@@ -9,7 +9,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
 import domain/workflow.{type TaskTemplate}
-import domain/workflow/codec as workflow_codec
+import domain/workflow/workflow_codec
 import scrumbringer_client/api/core
 
 /// Decoder for task template wrapped in envelope.

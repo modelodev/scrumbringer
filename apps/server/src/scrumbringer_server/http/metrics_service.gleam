@@ -101,13 +101,14 @@ pub type ProjectTask {
     title: String,
     description: String,
     priority: Int,
-    status: task_status.TaskStatus,
+    status: task_status.TaskPhase,
     work_state: WorkState,
     created_by: Int,
     claimed_by: Option(Int),
     claimed_at: Option(String),
     completed_at: Option(String),
     created_at: String,
+    due_date: Option(String),
     version: Int,
     claim_count: Int,
     release_count: Int,
@@ -123,7 +124,7 @@ pub type WorkState =
 /// Error type for metrics operations.
 pub type MetricsError {
   DbError(pog.QueryError)
-  InvalidTaskStatus(String)
+  InvalidTaskPhase(String)
   NotFound
 }
 
@@ -409,11 +410,12 @@ fn project_task_from_row(
 
   let claimed_at = empty_string_to_option(row.claimed_at)
   let completed_at = empty_string_to_option(row.completed_at)
+  let due_date = empty_string_to_option(row.due_date)
   let first_claim_at = empty_string_to_option(row.first_claim_at)
 
   use status <- result.try(
     task_status.parse_task_status(row.status)
-    |> result.map_error(fn(_) { InvalidTaskStatus(row.status) }),
+    |> result.map_error(fn(_) { InvalidTaskPhase(row.status) }),
   )
   let work_state = work_state_from_status(status, row.is_ongoing)
 
@@ -434,6 +436,7 @@ fn project_task_from_row(
     claimed_at: claimed_at,
     completed_at: completed_at,
     created_at: row.created_at,
+    due_date: due_date,
     version: row.version,
     claim_count: row.claim_count,
     release_count: row.release_count,
@@ -481,19 +484,19 @@ pub fn work_state_from(
 ) -> Result(WorkState, MetricsError) {
   use parsed <- result.try(
     task_status.parse_task_status(status)
-    |> result.map_error(fn(_) { InvalidTaskStatus(status) }),
+    |> result.map_error(fn(_) { InvalidTaskPhase(status) }),
   )
 
   Ok(work_state_from_status(parsed, is_ongoing))
 }
 
 fn work_state_from_status(
-  status: task_status.TaskStatus,
+  status: task_status.TaskPhase,
   is_ongoing: Bool,
 ) -> WorkState {
   case status {
     task_status.Available -> task_status.WorkAvailable
-    task_status.Completed -> task_status.WorkCompleted
+    task_status.Done -> task_status.WorkDone
     task_status.Claimed(task_status.Ongoing) -> task_status.WorkOngoing
     task_status.Claimed(task_status.Taken) ->
       // Justification: nested case disambiguates claimed vs ongoing states.

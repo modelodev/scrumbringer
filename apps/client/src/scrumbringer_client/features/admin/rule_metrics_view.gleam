@@ -518,9 +518,9 @@ fn view_drilldown_executions_loaded(
   response: api_rule_metrics.RuleExecutionsResponse,
 ) -> Element(msg) {
   let origin_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_rule_metrics.RuleExecution(_, origin_type, origin_id, _, _, _, _, _) =
+    let api_rule_metrics.RuleExecution(_, task_id, card_id, _, _, _, _, _) =
       exec
-    text(origin_type <> " #" <> int.to_string(origin_id))
+    text(execution_target_label(task_id, card_id))
   }
   let outcome_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
     exec,
@@ -571,6 +571,17 @@ fn view_drilldown_executions_loaded(
         ])
     },
   ])
+}
+
+fn execution_target_label(
+  task_id: opt.Option(Int),
+  card_id: opt.Option(Int),
+) -> String {
+  case task_id, card_id {
+    opt.Some(id), _ -> "task #" <> int.to_string(id)
+    _, opt.Some(id) -> "card #" <> int.to_string(id)
+    _, _ -> "-"
+  }
 }
 
 fn outcome_class_for(outcome: String) -> String {

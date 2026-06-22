@@ -14,25 +14,32 @@ pub fn try_update_changes_view_mode_and_preserves_project_route_test() {
   let assert opt.Some(view_mode_update.Update(next, route_policy)) =
     view_mode_update.try_update(
       member_pool.default_model(),
-      pool_messages.ViewModeChanged(view_mode.Milestones),
+      pool_messages.ViewModeChanged(view_mode.People),
       context(opt.Some(7)),
     )
 
-  let assert view_mode.Milestones = next.view_mode
+  let assert view_mode.People = next.view_mode
+  let assert opt.None = next.member_card_depth_filter
   let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
   let assert opt.Some(7) = url_state.project(state)
-  let assert view_mode.Milestones = url_state.view(state)
+  let assert view_mode.People = url_state.view(state)
 }
 
 pub fn try_update_changes_view_mode_without_project_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_card_depth_filter: opt.Some(2),
+    )
   let assert opt.Some(view_mode_update.Update(next, route_policy)) =
     view_mode_update.try_update(
-      member_pool.default_model(),
+      model,
       pool_messages.ViewModeChanged(view_mode.Cards),
       context(opt.None),
     )
 
   let assert view_mode.Cards = next.view_mode
+  let assert opt.None = next.member_card_depth_filter
   let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
   let assert opt.None = url_state.project(state)
   let assert view_mode.Cards = url_state.view(state)
@@ -42,7 +49,29 @@ pub fn try_update_ignores_non_view_mode_messages_test() {
   let assert opt.None =
     view_mode_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(opt.Some(7)),
     )
+}
+
+pub fn plan_mode_change_to_kanban_cancels_move_mode_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_plan_move_mode: member_pool.PlanMovingCard(3, "New"),
+      member_plan_move_error: opt.Some("error"),
+      member_plan_move_in_flight: True,
+    )
+
+  let assert opt.Some(view_mode_update.Update(next, _)) =
+    view_mode_update.try_update(
+      model,
+      pool_messages.MemberPlanModeChanged("kanban"),
+      context(opt.Some(7)),
+    )
+
+  let assert member_pool.PlanKanban = next.member_plan_mode
+  let assert member_pool.PlanNotMoving = next.member_plan_move_mode
+  let assert opt.None = next.member_plan_move_error
+  let assert False = next.member_plan_move_in_flight
 }

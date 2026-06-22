@@ -10,39 +10,6 @@ fn default_pool() -> member_pool.Model {
   member_pool.default_model()
 }
 
-pub fn filters_toggled_flips_visibility_and_returns_value_to_persist_test() {
-  let #(visible_pool, visible) =
-    preferences.handle_filters_toggled(default_pool())
-  let #(hidden_pool, hidden) = preferences.handle_filters_toggled(visible_pool)
-
-  let assert True = visible_pool.member_pool_filters_visible
-  let assert True = visible
-  let assert False = hidden_pool.member_pool_filters_visible
-  let assert False = hidden
-}
-
-pub fn try_update_handles_filters_toggled_with_persistence_test() {
-  let assert Some(#(pool, preferences.SaveFiltersVisible(True))) =
-    preferences.try_update(
-      default_pool(),
-      pool_messages.MemberPoolFiltersToggled,
-    )
-
-  let assert True = pool.member_pool_filters_visible
-}
-
-pub fn filters_shown_only_requests_persistence_when_visibility_changes_test() {
-  let #(shown_pool, should_save) =
-    preferences.handle_filters_shown(default_pool())
-  let #(same_pool, should_not_save) =
-    preferences.handle_filters_shown(shown_pool)
-
-  let assert True = shown_pool.member_pool_filters_visible
-  let assert True = should_save
-  let assert True = same_pool.member_pool_filters_visible
-  let assert False = should_not_save
-}
-
 pub fn view_mode_set_updates_pool_preference_test() {
   let pool = preferences.handle_view_mode_set(default_pool(), pool_prefs.List)
 
@@ -76,7 +43,7 @@ pub fn try_update_handles_hide_completed_without_persistence_test() {
   let assert Some(#(pool, preferences.NoPersistence)) =
     preferences.try_update(
       visible_completed,
-      pool_messages.MemberListHideCompletedToggled,
+      pool_messages.MemberListHideDoneToggled,
     )
 
   let assert True = pool.member_list_hide_completed
@@ -102,7 +69,7 @@ pub fn try_update_ignores_non_preference_messages_test() {
   let assert None =
     preferences.try_update(
       default_pool(),
-      pool_messages.MemberPoolStatusChanged("available"),
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
     )
 }
 

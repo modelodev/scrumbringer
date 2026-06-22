@@ -45,6 +45,7 @@ fn project(id: Int, role) -> Project {
     my_role: role,
     created_at: "2026-01-01T00:00:00Z",
     members_count: 1,
+    card_depth_names: [],
   )
 }
 
@@ -271,7 +272,7 @@ pub fn try_update_remove_completed_ok_updates_loaded_caches_test() {
   )) =
     assignments_update.try_update(
       initial,
-      admin_messages.AssignmentsRemoveCompleted(7, 9, Ok(Nil)),
+      admin_messages.AssignmentsRemoveDone(7, 9, Ok(Nil)),
       context(),
       feedback_context(),
     )
@@ -296,7 +297,7 @@ pub fn try_update_remove_completed_error_returns_auth_policy_test() {
   )) =
     assignments_update.try_update(
       model(),
-      admin_messages.AssignmentsRemoveCompleted(7, 9, Error(err)),
+      admin_messages.AssignmentsRemoveDone(7, 9, Error(err)),
       context(),
       feedback_context(),
     )
@@ -336,7 +337,7 @@ pub fn try_update_role_change_completed_ok_returns_feedback_policy_test() {
   )) =
     assignments_update.try_update(
       initial,
-      admin_messages.AssignmentsRoleChangeCompleted(7, 9, Ok(result)),
+      admin_messages.AssignmentsRoleChangeDone(7, 9, Ok(result)),
       context(),
       feedback_context(),
     )
@@ -380,7 +381,7 @@ pub fn try_update_role_change_completed_error_rolls_back_then_checks_auth_test()
   )) =
     assignments_update.try_update(
       initial,
-      admin_messages.AssignmentsRoleChangeCompleted(7, 9, Error(err)),
+      admin_messages.AssignmentsRoleChangeDone(7, 9, Error(err)),
       context(),
       feedback_context(),
     )
@@ -441,7 +442,7 @@ pub fn role_change_error_restores_previous_role_test() {
   let assignments_update.Update(next, fx, _, _) =
     update(
       changed,
-      admin_messages.AssignmentsRoleChangeCompleted(
+      admin_messages.AssignmentsRoleChangeDone(
         7,
         9,
         Error(ApiError(
@@ -497,7 +498,7 @@ pub fn remove_completed_error_preserves_model_and_emits_feedback_test() {
   let assignments_update.Update(next, fx, _, _) =
     update(
       initial,
-      admin_messages.AssignmentsRemoveCompleted(
+      admin_messages.AssignmentsRemoveDone(
         7,
         9,
         Error(ApiError(status: 500, code: "ERR", message: "boom")),

@@ -8,6 +8,106 @@ import gleam/dynamic/decode
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
+/// A row you get from running the `audit_events_insert_card` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_card.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AuditEventsInsertCardRow {
+  AuditEventsInsertCardRow(id: Int)
+}
+
+/// name: audit_events_insert_card
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn audit_events_insert_card(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(AuditEventsInsertCardRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AuditEventsInsertCardRow(id:))
+  }
+
+  "-- name: audit_events_insert_card
+insert into audit_events (
+  org_id,
+  project_id,
+  card_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `audit_events_insert_task` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_task.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AuditEventsInsertTaskRow {
+  AuditEventsInsertTaskRow(id: Int)
+}
+
+/// name: audit_events_insert_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn audit_events_insert_task(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(AuditEventsInsertTaskRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AuditEventsInsertTaskRow(id:))
+  }
+
+  "-- name: audit_events_insert_task
+insert into audit_events (
+  org_id,
+  project_id,
+  task_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `capabilities_create` query
 /// defined in `./src/scrumbringer_server/sql/capabilities_create.sql`.
 ///
@@ -320,9 +420,13 @@ pub type CardNotesCreateRow {
   CardNotesCreateRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -340,22 +444,31 @@ pub fn card_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(CardNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesCreateRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -364,29 +477,45 @@ pub fn card_notes_create(
 
   "-- name: card_notes_create
 -- AC20: Include author email and role for tooltip
-with inserted as (
-  insert into card_notes (card_id, user_id, content)
-  values ($1, $2, $3)
-  returning id, card_id, user_id, content, created_at
+with card_scope as (
+  select id, project_id
+  from cards
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
+  from card_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
+  insert into card_notes (note_id, card_id)
+  select inserted_note.id, card_scope.id
+  from inserted_note, card_scope
+  returning note_id, card_id
 )
 select
-  i.id,
-  i.card_id,
-  i.user_id,
-  i.content,
-  to_char(i.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  n.id,
+  r.card_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from inserted i
-join users u on u.id = i.user_id
-left join cards c on c.id = i.card_id
-left join project_members pm on pm.user_id = i.user_id and pm.project_id = c.project_id;
+from inserted_note n
+join inserted_relation r on r.note_id = n.id
+join users u on u.id = n.user_id
+left join cards c on c.id = r.card_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -417,10 +546,12 @@ pub fn card_notes_delete(
   }
 
   "-- name: card_notes_delete
-delete from card_notes
-where card_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using card_notes cn
+where cn.note_id = n.id
+  and cn.card_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -439,9 +570,13 @@ pub type CardNotesGetRow {
   CardNotesGetRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -462,18 +597,26 @@ pub fn card_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesGetRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -484,18 +627,23 @@ pub fn card_notes_get(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
   and n.id = $2;
 "
   |> pog.query
@@ -515,9 +663,13 @@ pub type CardNotesListRow {
   CardNotesListRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -537,18 +689,26 @@ pub fn card_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesListRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -559,22 +719,126 @@ pub fn card_notes_list(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesSetPinnedRow {
+  CardNotesSetPinnedRow(
+    id: Int,
+    card_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: card_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(CardNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(CardNotesSetPinnedRow(
+      id:,
+      card_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: card_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from card_notes cn
+  where cn.note_id = n.id
+    and cn.card_id = $1
+    and n.id = $2
+  returning n.id, cn.card_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.card_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -592,9 +856,10 @@ pub type CardsCreateRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
   )
 }
 
@@ -611,6 +876,7 @@ pub fn cards_create(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
+  arg_7: String,
 ) -> Result(pog.Returned(CardsCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -618,40 +884,68 @@ pub fn cards_create(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
+    use due_date <- decode.field(8, decode.string)
     decode.success(CardsCreateRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
     ))
   }
 
   "-- name: create_card
-INSERT INTO cards (project_id, title, description, color, created_by, milestone_id)
-VALUES (
-  $1,
-  $2,
-  $3,
-  NULLIF($4, ''),
-  $5,
-  case when $6 <= 0 then null else $6 end
+WITH input AS (
+  SELECT
+    $1::int AS project_id,
+    $2::text AS title,
+    $3::text AS description,
+    NULLIF($4, '')::text AS color,
+    $5::int AS created_by,
+    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id,
+    NULLIF($7, '')::date AS due_date
 )
+INSERT INTO cards (
+  project_id,
+  title,
+  description,
+  color,
+  created_by,
+  parent_card_id,
+  due_date
+)
+SELECT
+  project_id,
+  title,
+  description,
+  color,
+  created_by,
+  parent_card_id,
+  due_date
+FROM input
+WHERE parent_card_id IS NULL
+   OR NOT EXISTS (
+     SELECT 1
+     FROM tasks
+     WHERE card_id = parent_card_id
+   )
 RETURNING
     id,
     project_id,
     title,
     coalesce(description, '') as description,
     coalesce(color, '') as color,
-    coalesce(milestone_id, 0) as milestone_id,
+    coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
-    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -660,6 +954,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -697,9 +992,11 @@ pub type CardsGetRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    execution_state: String,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
     task_count: Int,
     completed_count: Int,
     available_count: Int,
@@ -723,22 +1020,26 @@ pub fn cards_get(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use task_count <- decode.field(8, decode.int)
-    use completed_count <- decode.field(9, decode.int)
-    use available_count <- decode.field(10, decode.int)
-    use has_new_notes <- decode.field(11, decode.bool)
+    use execution_state <- decode.field(5, decode.string)
+    use parent_card_id <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use due_date <- decode.field(9, decode.string)
+    use task_count <- decode.field(10, decode.int)
+    use completed_count <- decode.field(11, decode.int)
+    use available_count <- decode.field(12, decode.int)
+    use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsGetRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
-      milestone_id:,
+      execution_state:,
+      parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
       task_count:,
       completed_count:,
       available_count:,
@@ -753,12 +1054,14 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
-    coalesce(c.milestone_id, 0) as milestone_id,
+    c.execution_state,
+    coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
       when v.last_viewed_at is null then true
@@ -767,7 +1070,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.id = $1
 GROUP BY c.id, v.last_viewed_at;
@@ -792,9 +1096,11 @@ pub type CardsListRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    execution_state: String,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
     task_count: Int,
     completed_count: Int,
     available_count: Int,
@@ -818,22 +1124,26 @@ pub fn cards_list(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use task_count <- decode.field(8, decode.int)
-    use completed_count <- decode.field(9, decode.int)
-    use available_count <- decode.field(10, decode.int)
-    use has_new_notes <- decode.field(11, decode.bool)
+    use execution_state <- decode.field(5, decode.string)
+    use parent_card_id <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use due_date <- decode.field(9, decode.string)
+    use task_count <- decode.field(10, decode.int)
+    use completed_count <- decode.field(11, decode.int)
+    use available_count <- decode.field(12, decode.int)
+    use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsListRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
-      milestone_id:,
+      execution_state:,
+      parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
       task_count:,
       completed_count:,
       available_count:,
@@ -848,12 +1158,14 @@ SELECT
     c.title,
     coalesce(c.description, '') as description,
     coalesce(c.color, '') as color,
-    coalesce(c.milestone_id, 0) as milestone_id,
+    c.execution_state,
+    coalesce(c.parent_card_id, 0) as parent_card_id,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
       when v.last_viewed_at is null then true
@@ -862,7 +1174,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
 GROUP BY c.id, v.last_viewed_at
@@ -923,9 +1236,10 @@ pub type CardsUpdateRow {
     title: String,
     description: String,
     color: String,
-    milestone_id: Int,
+    parent_card_id: Int,
     created_by: Int,
     created_at: String,
+    due_date: String,
   )
 }
 
@@ -941,6 +1255,7 @@ pub fn cards_update(
   arg_3: String,
   arg_4: String,
   arg_5: Int,
+  arg_6: String,
 ) -> Result(pog.Returned(CardsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -948,18 +1263,20 @@ pub fn cards_update(
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
     use color <- decode.field(4, decode.string)
-    use milestone_id <- decode.field(5, decode.int)
+    use parent_card_id <- decode.field(5, decode.int)
     use created_by <- decode.field(6, decode.int)
     use created_at <- decode.field(7, decode.string)
+    use due_date <- decode.field(8, decode.string)
     decode.success(CardsUpdateRow(
       id:,
       project_id:,
       title:,
       description:,
       color:,
-      milestone_id:,
+      parent_card_id:,
       created_by:,
       created_at:,
+      due_date:,
     ))
   }
 
@@ -969,11 +1286,12 @@ SET
   title = $2,
   description = $3,
   color = NULLIF($4, ''),
-  milestone_id = case
-    when $5 < 0 then milestone_id
+  parent_card_id = case
+    when $5 < 0 then parent_card_id
     when $5 = 0 then null
     else $5
-  end
+  end,
+  due_date = NULLIF($6, '')::date
 WHERE id = $1
 RETURNING
     id,
@@ -981,9 +1299,10 @@ RETURNING
     title,
     coalesce(description, '') as description,
     coalesce(color, '') as color,
-    coalesce(milestone_id, 0) as milestone_id,
+    coalesce(parent_card_id, 0) as parent_card_id,
     created_by,
-    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -991,6 +1310,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_3))
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -1100,8 +1420,8 @@ pub fn metrics_my(
 select
   coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
   coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-  coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-from task_events
+  coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+from audit_events
 where actor_user_id = $1
   and created_at >= now() - ($2 || ' days')::interval;
 "
@@ -1170,16 +1490,16 @@ with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-  from task_events
+    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+  from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
 ), task_counts as (
   select
-    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
-    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case when t.execution_state = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.execution_state = 'claimed' then 1 else 0 end), 0) as wip_count,
     coalesce(sum(case
-      when t.status = 'claimed'
+      when t.execution_state = 'claimed'
         and exists(
           select 1 from user_task_work_session ws
           where ws.task_id = t.id and ws.ended_at is null
@@ -1191,7 +1511,7 @@ with event_counts as (
 ), time_stats as (
   select
     coalesce(
-      avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint,
+      avg(extract(epoch from (t.closed_at - t.claimed_at)) * 1000)::bigint,
       0
     ) as avg_claim_to_complete_ms,
     coalesce(
@@ -1199,7 +1519,7 @@ with event_counts as (
       0
     ) as avg_time_in_claimed_ms,
     coalesce(sum(case
-      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      when t.execution_state = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count
   from tasks t
   join projects p on p.id = t.project_id
@@ -1289,18 +1609,18 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-  from task_events e
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.project_id
 ), task_counts as (
   select
     t.project_id,
-    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
-    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case when t.execution_state = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.execution_state = 'claimed' then 1 else 0 end), 0) as wip_count,
     coalesce(sum(case
-      when t.status = 'claimed'
+      when t.execution_state = 'claimed'
         and exists(
           select 1 from user_task_work_session ws
           where ws.task_id = t.id and ws.ended_at is null
@@ -1313,12 +1633,12 @@ with event_counts as (
 ), time_stats as (
   select
     t.project_id,
-    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
+    avg(extract(epoch from (t.closed_at - t.claimed_at)) * 1000)::bigint
       as avg_claim_to_complete_ms,
     avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
       as avg_time_in_claimed_ms,
     coalesce(sum(case
-      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      when t.execution_state = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count
   from tasks t
   join projects p on p.id = t.project_id
@@ -1375,6 +1695,7 @@ pub type MetricsProjectTasksRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     claim_count: Int,
     release_count: Int,
@@ -1410,11 +1731,12 @@ pub fn metrics_project_tasks(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use claim_count <- decode.field(17, decode.int)
-    use release_count <- decode.field(18, decode.int)
-    use complete_count <- decode.field(19, decode.int)
-    use first_claim_at <- decode.field(20, decode.string)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use claim_count <- decode.field(18, decode.int)
+    use release_count <- decode.field(19, decode.int)
+    use complete_count <- decode.field(20, decode.int)
+    use first_claim_at <- decode.field(21, decode.string)
     decode.success(MetricsProjectTasksRow(
       id:,
       project_id:,
@@ -1432,6 +1754,7 @@ pub fn metrics_project_tasks(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       claim_count:,
       release_count:,
@@ -1451,9 +1774,12 @@ with task_scope as (
     t.title,
     coalesce(t.description, '') as description,
     t.priority,
-     t.status,
+     case
+       when t.execution_state = 'closed' then 'completed'
+       else t.execution_state
+     end as status,
      (
-       t.status = 'claimed'
+       t.execution_state = 'claimed'
        and exists(
          select 1
          from user_task_work_session ws
@@ -1471,8 +1797,9 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
   from tasks t
   join task_types tt on tt.id = t.type_id
@@ -1482,9 +1809,9 @@ with task_scope as (
     e.task_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as complete_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as complete_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
-  from task_events e
+  from audit_events e
   where e.project_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.task_id
@@ -1506,6 +1833,7 @@ select
   ts.claimed_at,
   ts.completed_at,
   ts.created_at,
+  ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,
@@ -1554,7 +1882,7 @@ with per_user as (
     actor_user_id,
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claims,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as releases
-  from task_events
+  from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
   group by actor_user_id
@@ -1628,7 +1956,7 @@ with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
-  from task_events
+  from audit_events
   where org_id = $1
     and event_type = 'task_claimed'
     and created_at >= now() - ($2 || ' days')::interval
@@ -1701,7 +2029,7 @@ with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
-  from task_events
+  from audit_events
   where org_id = $1
     and event_type = 'task_claimed'
     and created_at >= now() - ($2 || ' days')::interval
@@ -1782,9 +2110,9 @@ with event_counts as (
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
-  from task_events e
+  from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
   group by e.actor_user_id
@@ -1816,719 +2144,6 @@ order by u.email asc;
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.text(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_activate` query
-/// defined in `./src/scrumbringer_server/sql/milestones_activate.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesActivateRow {
-  MilestonesActivateRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-    cards_released: Int,
-    tasks_released: Int,
-  )
-}
-
-/// name: activate_milestone
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_activate(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(MilestonesActivateRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    use cards_released <- decode.field(10, decode.int)
-    use tasks_released <- decode.field(11, decode.int)
-    decode.success(MilestonesActivateRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-      cards_released:,
-      tasks_released:,
-    ))
-  }
-
-  "-- name: activate_milestone
-with project_lock as (
-  select id
-  from projects
-  where id = $2
-  for update
-), has_active as (
-  select exists(
-    select 1
-    from milestones
-    where project_id = $2
-      and state = 'active'
-      and id != $1
-  ) as blocked
-), updated as (
-  update milestones m
-  set
-    state = 'active',
-    activated_at = now()
-  where m.id = $1
-    and m.project_id = $2
-    and m.state = 'ready'
-    and exists(select 1 from project_lock)
-    and (select blocked from has_active) = false
-  returning
-    m.id,
-    m.project_id,
-    m.name,
-    coalesce(m.description, '') as description,
-    m.state,
-    m.position,
-    m.created_by,
-    to_char(m.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-    to_char(m.activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as activated_at,
-    coalesce(to_char(m.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at
-)
-select
-  u.*,
-  coalesce(c.cards_released, 0) as cards_released,
-  coalesce(t.tasks_released, 0) as tasks_released
-from updated u
-left join lateral (
-  select count(*) as cards_released
-  from cards c
-  where c.project_id = u.project_id
-    and c.milestone_id = u.id
-) c on true
-left join lateral (
-  select count(*) as tasks_released
-  from tasks t
-  left join cards c on c.id = t.card_id
-  where t.project_id = u.project_id
-    and coalesce(t.milestone_id, c.milestone_id) = u.id
-) t on true;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_create` query
-/// defined in `./src/scrumbringer_server/sql/milestones_create.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesCreateRow {
-  MilestonesCreateRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-  )
-}
-
-/// name: create_milestone
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_create(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: String,
-  arg_3: String,
-  arg_4: Int,
-) -> Result(pog.Returned(MilestonesCreateRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesCreateRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-    ))
-  }
-
-  "-- name: create_milestone
-insert into milestones (project_id, name, description, position, created_by)
-values (
-  $1,
-  $2,
-  nullif($3, ''),
-  coalesce((select max(position) + 1 from milestones where project_id = $1), 0),
-  $4
-)
-returning
-  id,
-  project_id,
-  name,
-  coalesce(description, '') as description,
-  state,
-  position,
-  created_by,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(to_char(activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
-  |> pog.parameter(pog.text(arg_3))
-  |> pog.parameter(pog.int(arg_4))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_delete` query
-/// defined in `./src/scrumbringer_server/sql/milestones_delete.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesDeleteRow {
-  MilestonesDeleteRow(id: Int)
-}
-
-/// name: milestones_delete
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_delete(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(MilestonesDeleteRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(MilestonesDeleteRow(id:))
-  }
-
-  "-- name: milestones_delete
-with deleted as (
-  delete from milestones m
-  where m.id = $1
-    and m.state = 'ready'
-    and not exists (
-      select 1 from cards c where c.milestone_id = m.id
-    )
-    and not exists (
-      select 1 from tasks t where t.milestone_id = m.id
-    )
-  returning id
-)
-select id from deleted;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_get` query
-/// defined in `./src/scrumbringer_server/sql/milestones_get.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesGetRow {
-  MilestonesGetRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-  )
-}
-
-/// name: get_milestone
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_get(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(MilestonesGetRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesGetRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-    ))
-  }
-
-  "-- name: get_milestone
-select
-  m.id,
-  m.project_id,
-  m.name,
-  coalesce(m.description, '') as description,
-  m.state,
-  m.position,
-  m.created_by,
-  to_char(m.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(to_char(m.activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
-  coalesce(to_char(m.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at
-from milestones m
-where m.id = $1;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_get_effective_for_task` query
-/// defined in `./src/scrumbringer_server/sql/milestones_get_effective_for_task.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesGetEffectiveForTaskRow {
-  MilestonesGetEffectiveForTaskRow(milestone_id: Int)
-}
-
-/// name: get_effective_milestone_for_task
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_get_effective_for_task(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(MilestonesGetEffectiveForTaskRow), pog.QueryError) {
-  let decoder = {
-    use milestone_id <- decode.field(0, decode.int)
-    decode.success(MilestonesGetEffectiveForTaskRow(milestone_id:))
-  }
-
-  "-- name: get_effective_milestone_for_task
-select
-  coalesce(t.milestone_id, c.milestone_id, 0) as milestone_id
-from tasks t
-left join cards c on c.id = t.card_id
-where t.id = $1;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_list` query
-/// defined in `./src/scrumbringer_server/sql/milestones_list.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesListRow {
-  MilestonesListRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-    cards_total: Int,
-    cards_completed: Int,
-    tasks_total: Int,
-    tasks_completed: Int,
-  )
-}
-
-/// name: list_milestones_for_project
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_list(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(MilestonesListRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    use cards_total <- decode.field(10, decode.int)
-    use cards_completed <- decode.field(11, decode.int)
-    use tasks_total <- decode.field(12, decode.int)
-    use tasks_completed <- decode.field(13, decode.int)
-    decode.success(MilestonesListRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-      cards_total:,
-      cards_completed:,
-      tasks_total:,
-      tasks_completed:,
-    ))
-  }
-
-  "-- name: list_milestones_for_project
-select
-  m.id,
-  m.project_id,
-  m.name,
-  coalesce(m.description, '') as description,
-  m.state,
-  m.position,
-  m.created_by,
-  to_char(m.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(to_char(m.activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
-  coalesce(to_char(m.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  coalesce(c.cards_total, 0) as cards_total,
-  coalesce(c.cards_completed, 0) as cards_completed,
-  coalesce(t.tasks_total, 0) as tasks_total,
-  coalesce(t.tasks_completed, 0) as tasks_completed
-from milestones m
-left join lateral (
-  select
-    count(*) as cards_total,
-    count(*) filter (where cd.completed_count = cd.task_count and cd.task_count > 0) as cards_completed
-  from (
-    select
-      c.id,
-      count(t.id) as task_count,
-      count(*) filter (where t.status = 'completed') as completed_count
-    from cards c
-    left join tasks t on t.card_id = c.id
-    where c.project_id = m.project_id
-      and c.milestone_id = m.id
-    group by c.id
-  ) cd
-) c on true
-left join lateral (
-  select
-    count(*) as tasks_total,
-    count(*) filter (where t.status = 'completed') as tasks_completed
-  from tasks t
-  where t.project_id = m.project_id
-    and t.card_id is null
-    and t.milestone_id = m.id
-) t on true
-where m.project_id = $1
-order by m.position asc, m.created_at asc;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_recompute_completion` query
-/// defined in `./src/scrumbringer_server/sql/milestones_recompute_completion.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesRecomputeCompletionRow {
-  MilestonesRecomputeCompletionRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-  )
-}
-
-/// name: recompute_milestone_completion
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_recompute_completion(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(MilestonesRecomputeCompletionRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesRecomputeCompletionRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-    ))
-  }
-
-  "-- name: recompute_milestone_completion
-with stats as (
-  select
-    m.id,
-    m.project_id,
-    coalesce((
-      select count(*)
-      from cards c
-      where c.project_id = m.project_id
-        and c.milestone_id = m.id
-    ), 0) as cards_total,
-    coalesce((
-      select count(*)
-      from (
-        select
-          c.id,
-          count(t.id) as task_count,
-          count(*) filter (where t.status = 'completed') as completed_count
-        from cards c
-        left join tasks t on t.card_id = c.id
-        where c.project_id = m.project_id
-          and c.milestone_id = m.id
-        group by c.id
-      ) x
-      where x.task_count > 0
-        and x.task_count = x.completed_count
-    ), 0) as cards_completed,
-    coalesce((
-      select count(*)
-      from tasks t
-      where t.project_id = m.project_id
-        and t.card_id is null
-        and t.milestone_id = m.id
-    ), 0) as tasks_total,
-    coalesce((
-      select count(*)
-      from tasks t
-      where t.project_id = m.project_id
-        and t.card_id is null
-        and t.milestone_id = m.id
-        and t.status = 'completed'
-    ), 0) as tasks_completed
-  from milestones m
-  where m.id = $1
-), updated as (
-  update milestones m
-  set
-    state = case
-      when (s.cards_total = 0 and s.tasks_total = 0) then m.state
-      when (s.cards_completed = s.cards_total and s.tasks_completed = s.tasks_total) then 'completed'
-      when m.state = 'completed' then 'active'
-      else m.state
-    end,
-    completed_at = case
-      when (s.cards_total = 0 and s.tasks_total = 0) then m.completed_at
-      when (s.cards_completed = s.cards_total and s.tasks_completed = s.tasks_total)
-        then coalesce(m.completed_at, now())
-      when m.state = 'completed' then null
-      else m.completed_at
-    end
-  from stats s
-  where m.id = s.id
-    and m.state in ('active', 'completed')
-  returning
-    m.id,
-    m.project_id,
-    m.name,
-    coalesce(m.description, '') as description,
-    m.state,
-    m.position,
-    m.created_by,
-    to_char(m.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-    coalesce(to_char(m.activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
-    coalesce(to_char(m.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at
-)
-select *
-from updated;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `milestones_update` query
-/// defined in `./src/scrumbringer_server/sql/milestones_update.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type MilestonesUpdateRow {
-  MilestonesUpdateRow(
-    id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    state: String,
-    position: Int,
-    created_by: Int,
-    created_at: String,
-    activated_at: String,
-    completed_at: String,
-  )
-}
-
-/// name: milestones_update
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn milestones_update(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: String,
-  arg_3: String,
-) -> Result(pog.Returned(MilestonesUpdateRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use project_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use description <- decode.field(3, decode.string)
-    use state <- decode.field(4, decode.string)
-    use position <- decode.field(5, decode.int)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use activated_at <- decode.field(8, decode.string)
-    use completed_at <- decode.field(9, decode.string)
-    decode.success(MilestonesUpdateRow(
-      id:,
-      project_id:,
-      name:,
-      description:,
-      state:,
-      position:,
-      created_by:,
-      created_at:,
-      activated_at:,
-      completed_at:,
-    ))
-  }
-
-  "-- name: milestones_update
-update milestones
-set
-  name = case when $2 = '__unset__' then name else $2 end,
-  description = case
-    when $3 = '__unset__' then description
-    else nullif($3, '')
-  end
-where id = $1
-returning
-  id,
-  project_id,
-  name,
-  coalesce(description, '') as description,
-  state,
-  position,
-  created_by,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(to_char(activated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as activated_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
-  |> pog.parameter(pog.text(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -3359,7 +2974,7 @@ from project_members
 left join tasks
   on tasks.project_id = project_members.project_id
   and tasks.claimed_by = project_members.user_id
-  and tasks.status = 'claimed'
+  and tasks.execution_state = 'claimed'
 where project_members.project_id = $1
 group by
   project_members.project_id,
@@ -3643,6 +3258,34 @@ with new_project as (
   insert into project_members (project_id, user_id, role)
   select new_project.id, $3, 'manager'
   from new_project
+), depth_names as (
+  insert into project_card_depth_names
+    (project_id, depth, singular_name, plural_name)
+  select
+    new_project.id,
+    names.depth,
+    names.singular_name,
+    names.plural_name
+  from new_project
+  cross join (
+    values
+      (1, 'Initiative', 'Initiatives'),
+      (2, 'Feature', 'Features'),
+      (3, 'Task group', 'Task groups')
+  ) as names(depth, singular_name, plural_name)
+  on conflict (project_id, depth) do nothing
+), default_task_types as (
+  insert into task_types (project_id, name, icon)
+  select
+    new_project.id,
+    task_type.name,
+    task_type.icon
+  from new_project
+  cross join (
+    values
+      ('General', 'check-square')
+  ) as task_type(name, icon)
+  on conflict (name, project_id) do nothing
 )
 select
   new_project.id,
@@ -3768,7 +3411,7 @@ pub type RuleExecutionsCheckRow {
 }
 
 /// name: rule_executions_check
-/// Check if a rule has already been executed for a given origin (idempotency).
+/// Check if a rule has already been executed for a given target (idempotency).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3776,7 +3419,7 @@ pub type RuleExecutionsCheckRow {
 pub fn rule_executions_check(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: String,
+  arg_2: Int,
   arg_3: Int,
 ) -> Result(pog.Returned(RuleExecutionsCheckRow), pog.QueryError) {
   let decoder = {
@@ -3787,20 +3430,22 @@ pub fn rule_executions_check(
   }
 
   "-- name: rule_executions_check
--- Check if a rule has already been executed for a given origin (idempotency).
+-- Check if a rule has already been executed for a given target (idempotency).
 select
   id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason
 from rule_executions
 where rule_id = $1
-  and origin_type = $2
-  and origin_id = $3
+  and (
+    (task_id is not null and task_id = nullif($2, 0))
+    or (card_id is not null and card_id = nullif($3, 0))
+  )
 limit 1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
@@ -3858,8 +3503,8 @@ where rule_id = $1
 pub type RuleExecutionsListRow {
   RuleExecutionsListRow(
     id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Int,
+    card_id: Int,
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -3884,8 +3529,8 @@ pub fn rule_executions_list(
 ) -> Result(pog.Returned(RuleExecutionsListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use origin_type <- decode.field(1, decode.string)
-    use origin_id <- decode.field(2, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use card_id <- decode.field(2, decode.int)
     use outcome <- decode.field(3, decode.string)
     use suppression_reason <- decode.field(4, decode.string)
     use user_id <- decode.field(5, decode.int)
@@ -3893,8 +3538,8 @@ pub fn rule_executions_list(
     use created_at <- decode.field(7, decode.string)
     decode.success(RuleExecutionsListRow(
       id:,
-      origin_type:,
-      origin_id:,
+      task_id:,
+      card_id:,
       outcome:,
       suppression_reason:,
       user_id:,
@@ -3907,8 +3552,8 @@ pub fn rule_executions_list(
 -- Get paginated list of executions for a rule (drill-down).
 select
     re.id,
-    re.origin_type,
-    re.origin_id,
+    coalesce(re.task_id, 0) as task_id,
+    coalesce(re.card_id, 0) as card_id,
     re.outcome,
     coalesce(re.suppression_reason, '') as suppression_reason,
     coalesce(re.user_id, 0) as user_id,
@@ -3942,8 +3587,8 @@ pub type RuleExecutionsLogRow {
   RuleExecutionsLogRow(
     id: Int,
     rule_id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Int,
+    card_id: Int,
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -3960,7 +3605,7 @@ pub type RuleExecutionsLogRow {
 pub fn rule_executions_log(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: String,
+  arg_2: Int,
   arg_3: Int,
   arg_4: String,
   arg_5: String,
@@ -3969,8 +3614,8 @@ pub fn rule_executions_log(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use rule_id <- decode.field(1, decode.int)
-    use origin_type <- decode.field(2, decode.string)
-    use origin_id <- decode.field(3, decode.int)
+    use task_id <- decode.field(2, decode.int)
+    use card_id <- decode.field(3, decode.int)
     use outcome <- decode.field(4, decode.string)
     use suppression_reason <- decode.field(5, decode.string)
     use user_id <- decode.field(6, decode.int)
@@ -3978,8 +3623,8 @@ pub fn rule_executions_log(
     decode.success(RuleExecutionsLogRow(
       id:,
       rule_id:,
-      origin_type:,
-      origin_id:,
+      task_id:,
+      card_id:,
       outcome:,
       suppression_reason:,
       user_id:,
@@ -3989,14 +3634,28 @@ pub fn rule_executions_log(
 
   "-- name: rule_executions_log
 -- Log a rule execution for idempotency tracking and metrics.
-insert into rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id)
-values ($1, $2, $3, $4, nullif($5, ''), $6)
-on conflict (rule_id, origin_type, origin_id) do nothing
+insert into rule_executions (
+  rule_id,
+  task_id,
+  card_id,
+  outcome,
+  suppression_reason,
+  user_id
+)
+values (
+  $1,
+  nullif($2, 0),
+  nullif($3, 0),
+  $4,
+  nullif($5, ''),
+  $6
+)
+on conflict do nothing
 returning
   id,
   rule_id,
-  origin_type,
-  origin_id,
+  coalesce(task_id, 0) as task_id,
+  coalesce(card_id, 0) as card_id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason,
   coalesce(user_id, 0) as user_id,
@@ -4004,7 +3663,7 @@ returning
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.text(arg_5))
@@ -5129,7 +4788,10 @@ with inserted as (
 select
   i.depends_on_task_id as task_id,
   t.title,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id
@@ -5225,7 +4887,10 @@ pub fn task_dependencies_list(
 select
   td.depends_on_task_id as task_id,
   t.title,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   coalesce(u.email, '') as claimed_by
 from task_dependencies td
 join tasks t on t.id = td.depends_on_task_id
@@ -5235,56 +4900,6 @@ order by t.created_at desc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `task_events_insert` query
-/// defined in `./src/scrumbringer_server/sql/task_events_insert.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type TaskEventsInsertRow {
-  TaskEventsInsertRow(id: Int)
-}
-
-/// name: task_events_insert
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn task_events_insert(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-  arg_3: Int,
-  arg_4: Int,
-  arg_5: String,
-) -> Result(pog.Returned(TaskEventsInsertRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(TaskEventsInsertRow(id:))
-  }
-
-  "-- name: task_events_insert
-insert into task_events (
-  org_id,
-  project_id,
-  task_id,
-  actor_user_id,
-  event_type,
-  created_at
-)
-values ($1, $2, $3, $4, $5, now())
-returning id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.int(arg_4))
-  |> pog.parameter(pog.text(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5299,9 +4914,16 @@ pub type TaskNotesCreateRow {
   TaskNotesCreateRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -5315,36 +4937,77 @@ pub fn task_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(TaskNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesCreateRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_create
-insert into task_notes (task_id, user_id, content)
-values ($1, $2, $3)
-returning
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+with task_scope as (
+  select id, project_id
+  from tasks
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
+  from task_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
+  insert into task_notes (note_id, task_id)
+  select inserted_note.id, task_scope.id
+  from inserted_note, task_scope
+  returning note_id, task_id
+)
+select
+  n.id,
+  r.task_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from inserted_note n
+join inserted_relation r on r.note_id = n.id
+join users u on u.id = n.user_id
+left join tasks t on t.id = r.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5375,10 +5038,12 @@ pub fn task_notes_delete(
   }
 
   "-- name: task_notes_delete
-delete from task_notes
-where task_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using task_notes tn
+where tn.note_id = n.id
+  and tn.task_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5397,9 +5062,16 @@ pub type TaskNotesGetRow {
   TaskNotesGetRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -5416,28 +5088,53 @@ pub fn task_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesGetRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_get
 select
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes
-where task_id = $1
-  and id = $2;
+  n.id,
+  tn.task_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from task_notes tn
+join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
+where tn.task_id = $1
+  and n.id = $2;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5456,9 +5153,16 @@ pub type TaskNotesListRow {
   TaskNotesListRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -5474,31 +5178,155 @@ pub fn task_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesListRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_list
 select
   n.id,
-  n.task_id,
+  tn.task_id,
+  n.project_id,
   n.user_id,
   n.content,
-  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes n
-where n.task_id = $1
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from task_notes tn
+join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
+where tn.task_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesSetPinnedRow {
+  TaskNotesSetPinnedRow(
+    id: Int,
+    task_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: task_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(TaskNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(TaskNotesSetPinnedRow(
+      id:,
+      task_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: task_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from task_notes tn
+  where tn.note_id = n.id
+    and tn.task_id = $1
+    and n.id = $2
+  returning n.id, tn.task_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.task_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -6468,9 +6296,10 @@ pub type TasksClaimRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6509,20 +6338,21 @@ pub fn tasks_claim(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -6536,9 +6366,10 @@ pub fn tasks_claim(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -6554,12 +6385,25 @@ pub fn tasks_claim(
   }
 
   "-- name: claim_task
-with updated as (
+with recursive claim_target as (
+  select id, card_id
+  from tasks
+  where id = $1
+), ancestors as (
+  select c.id, c.parent_card_id, c.execution_state
+  from cards c
+  join claim_target target on target.card_id = c.id
+  union all
+  select parent.id, parent.parent_card_id, parent.execution_state
+  from cards parent
+  join ancestors child on child.parent_card_id = parent.id
+), updated as (
   update tasks
   set
     claimed_by = $2,
     claimed_at = now(),
-    status = 'claimed',
+    claimed_mode = 'taken',
+    execution_state = 'claimed',
     pool_lifetime_s = pool_lifetime_s + case
       when last_entered_pool_at is null then 0
       else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)
@@ -6567,14 +6411,30 @@ with updated as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
-    and status = 'available'
+    and execution_state = 'available'
     and version = $3
+    and (
+      tasks.card_id is null
+      or (
+        exists (
+          select 1
+          from ancestors target
+          where target.id = tasks.card_id
+            and target.execution_state = 'active'
+        )
+        and not exists (
+          select 1
+          from ancestors
+          where execution_state = 'closed'
+        )
+      )
+    )
     and not exists (
       select 1
       from task_dependencies d
       join tasks blocker on blocker.id = d.depends_on_task_id
       where d.task_id = tasks.id
-        and blocker.status != 'completed'
+        and blocker.execution_state != 'closed'
     )
   returning
     id,
@@ -6583,15 +6443,16 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6604,7 +6465,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
@@ -6616,14 +6477,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -6658,9 +6522,10 @@ pub type TasksCompleteRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6699,20 +6564,21 @@ pub fn tasks_complete(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -6726,9 +6592,10 @@ pub fn tasks_complete(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -6748,8 +6615,11 @@ with updated as (
   update tasks
   set
     claimed_by = null,
-    status = 'completed',
-    completed_at = now(),
+    execution_state = 'closed',
+    claimed_mode = null,
+    closed_at = now(),
+    closed_by = $2,
+    closed_reason = 'done',
     pool_lifetime_s = pool_lifetime_s + case
       when last_entered_pool_at is null then 0
       else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)
@@ -6757,7 +6627,7 @@ with updated as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
-    and status = 'claimed'
+    and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
   returning
@@ -6767,15 +6637,16 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    'completed' as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -6788,7 +6659,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
@@ -6800,14 +6671,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -6842,9 +6716,10 @@ pub type TasksCreateRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -6891,20 +6766,21 @@ pub fn tasks_create(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -6918,9 +6794,10 @@ pub fn tasks_create(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -6944,31 +6821,17 @@ with type_ok as (
   where id = $1
     and project_id = $2
 ), card_ok as (
-  -- If card_id <= 0, allow creation.
-  -- If card_id is provided, require it to belong to the same project.
-  select
-    case
-      when $7 <= 0 then null
-      else c.id
-    end as id,
-    case
-      when $7 <= 0 then null
-      else c.milestone_id
-    end as milestone_id
+  select c.id, c.execution_state
   from (select 1) seed
   left join cards c
     on c.id = $7 and c.project_id = $2
-), milestone_ok as (
-  select case
-    when $8 <= 0 then null
-    else (
-      select m.id
-      from milestones m
-      where m.id = $8
-        and m.project_id = $2
-        and m.state = 'ready'
+    and c.execution_state <> 'closed'
+    and not exists (
+      select 1
+      from cards child
+      where child.parent_card_id = c.id
     )
-  end as id
+  where $7 <= 0 or c.id is not null
 ), inserted as (
   insert into tasks (
     project_id,
@@ -6978,8 +6841,9 @@ with type_ok as (
     priority,
     created_by,
     card_id,
-    milestone_id,
-    created_from_rule_id
+    created_from_rule_id,
+    execution_state,
+    last_entered_pool_at
   )
   select
     $2,
@@ -6988,17 +6852,18 @@ with type_ok as (
     nullif($4, ''),
     $5,
     $6,
-    card_ok.id,
-    case when card_ok.id is not null then null else milestone_ok.id end,
-    case when $9 <= 0 then null else $9 end
-  from type_ok, card_ok, milestone_ok
+    case when $7 <= 0 then null else card_ok.id end,
+    case when $9 <= 0 then null else $9 end,
+    'available',
+    case
+      when $7 <= 0 then now()
+      when card_ok.execution_state = 'active' then now()
+      else null
+    end
+  from type_ok, card_ok
   where type_ok.id is not null
-    -- Block if card_id is provided but card_ok.id is null (invalid card)
     and ($7 <= 0 or card_ok.id is not null)
-    -- Task milestone only valid when task has no card
-    and (card_ok.id is null or $8 <= 0)
-    -- If milestone_id is provided, it must exist and be ready
-    and ($8 <= 0 or milestone_ok.id is not null)
+    and ($8 <= 0 or $8 > 0)
   returning
     id,
     project_id,
@@ -7006,15 +6871,16 @@ with type_ok as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7023,11 +6889,11 @@ select
   inserted.*,
   tt.name as type_name,
   tt.icon as type_icon,
-  (false) as is_ongoing,
+  false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  '[]'::json as dependencies,
+  '[]'::text as dependencies,
   0 as blocked_count
 from inserted
 join task_types tt on tt.id = inserted.type_id
@@ -7043,6 +6909,86 @@ left join cards c on c.id = inserted.card_id;
   |> pog.parameter(pog.int(arg_7))
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_delete` query
+/// defined in `./src/scrumbringer_server/sql/tasks_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksDeleteRow {
+  TasksDeleteRow(id: Int)
+}
+
+/// name: delete_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_delete(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TasksDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TasksDeleteRow(id:))
+  }
+
+  "-- name: delete_task
+with eligible as (
+  select t.id
+  from tasks t
+  where t.id = $1
+    and t.execution_state = 'available'
+    and t.claimed_by is null
+    and t.claimed_at is null
+    and t.closed_at is null
+    and t.closed_by is null
+    and t.closed_reason is null
+    and not exists (
+      select 1
+      from audit_events e
+      where e.task_id = t.id
+        and e.event_type <> 'task_created'
+    )
+    and not exists (
+      select 1
+      from task_notes n
+      where n.task_id = t.id
+    )
+    and not exists (
+      select 1
+      from task_dependencies d
+      where d.task_id = t.id
+        or d.depends_on_task_id = t.id
+    )
+    and not exists (
+      select 1
+      from user_task_work_session s
+      where s.task_id = t.id
+    )
+    and not exists (
+      select 1
+      from user_task_work_total total
+      where total.task_id = t.id
+    )
+), deleted_positions as (
+  delete from task_positions
+  where task_id in (select id from eligible)
+), deleted_creation_events as (
+  delete from audit_events
+  where task_id in (select id from eligible)
+    and event_type = 'task_created'
+)
+delete from tasks
+where id in (select id from eligible)
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -7071,9 +7017,10 @@ pub type TasksGetForUserRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     card_title: String,
     card_color: String,
     pool_lifetime_s: Int,
@@ -7111,16 +7058,17 @@ pub fn tasks_get_for_user(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
-    use milestone_id <- decode.field(18, decode.int)
-    use card_title <- decode.field(19, decode.string)
-    use card_color <- decode.field(20, decode.string)
-    use pool_lifetime_s <- decode.field(21, decode.int)
-    use last_entered_pool_at <- decode.field(22, decode.string)
-    use created_from_rule_id <- decode.field(23, decode.int)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
+    use parent_card_id <- decode.field(19, decode.int)
+    use card_title <- decode.field(20, decode.string)
+    use card_color <- decode.field(21, decode.string)
+    use pool_lifetime_s <- decode.field(22, decode.int)
+    use last_entered_pool_at <- decode.field(23, decode.string)
+    use created_from_rule_id <- decode.field(24, decode.int)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
@@ -7138,9 +7086,10 @@ pub fn tasks_get_for_user(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       card_title:,
       card_color:,
       pool_lifetime_s:,
@@ -7161,9 +7110,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7180,17 +7132,18 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  coalesce(t.milestone_id, 0) as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
@@ -7202,14 +7155,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -7254,9 +7210,10 @@ pub type TasksListRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     card_title: String,
     card_color: String,
     pool_lifetime_s: Int,
@@ -7300,17 +7257,18 @@ pub fn tasks_list(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
-    use milestone_id <- decode.field(18, decode.int)
-    use card_title <- decode.field(19, decode.string)
-    use card_color <- decode.field(20, decode.string)
-    use pool_lifetime_s <- decode.field(21, decode.int)
-    use last_entered_pool_at <- decode.field(22, decode.string)
-    use created_from_rule_id <- decode.field(23, decode.int)
-    use has_new_notes <- decode.field(24, decode.bool)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
+    use parent_card_id <- decode.field(19, decode.int)
+    use card_title <- decode.field(20, decode.string)
+    use card_color <- decode.field(21, decode.string)
+    use pool_lifetime_s <- decode.field(22, decode.int)
+    use last_entered_pool_at <- decode.field(23, decode.string)
+    use created_from_rule_id <- decode.field(24, decode.int)
+    use has_new_notes <- decode.field(25, decode.bool)
+    use dependencies <- decode.field(26, decode.string)
+    use blocked_count <- decode.field(27, decode.int)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -7328,9 +7286,10 @@ pub fn tasks_list(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       card_title:,
       card_color:,
       pool_lifetime_s:,
@@ -7343,14 +7302,6 @@ pub fn tasks_list(
   }
 
   "-- name: list_tasks_for_project
-with active_milestone as (
-  select id
-  from milestones
-  where project_id = $1
-    and state = 'active'
-  order by activated_at desc
-  limit 1
-)
 select
   t.id,
   t.project_id,
@@ -7360,9 +7311,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7379,11 +7333,12 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id,
-  coalesce(t.milestone_id, 0) as milestone_id,
+  0 as parent_card_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
   t.pool_lifetime_s,
@@ -7391,12 +7346,22 @@ select
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) is null then false
     when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
     else false
   end as has_new_notes,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
@@ -7408,33 +7373,50 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
+  and (t.card_id is null or c.execution_state = 'active')
   and (
-    -- Task belongs to active milestone (direct or inherited from card)
-    coalesce(t.milestone_id, c.milestone_id) = (
-      select id from active_milestone
-    )
-    -- Orphan task (no card and no milestone)
-    or (t.card_id is null and t.milestone_id is null)
-    -- Task under orphan card
-    or (t.card_id is not null and c.milestone_id is null)
+    $2 = ''
+    or case
+      when t.execution_state = 'closed' then 'completed'
+      else t.execution_state
+    end = $2
   )
-  and ($2 = '' or t.status = $2)
   and ($3 <= 0 or t.type_id = $3)
   and ($4 <= 0 or tt.capability_id = $4)
+  and (
+    exists(
+      select 1
+      from project_members pm
+      where pm.project_id = t.project_id
+        and pm.user_id = $6
+        and pm.role = 'manager'
+    )
+    or tt.capability_id is null
+    or exists(
+      select 1
+      from project_member_capabilities pmc
+      where pmc.project_id = t.project_id
+        and pmc.user_id = $6
+        and pmc.capability_id = tt.capability_id
+    )
+  )
   and (
     $5 = ''
     or t.title ilike ('%' || $5 || '%')
@@ -7483,6 +7465,7 @@ pub type TasksListByCardRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
   )
@@ -7514,8 +7497,9 @@ pub fn tasks_list_by_card(
     use claimed_at <- decode.field(13, decode.string)
     use completed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
-    use version <- decode.field(16, decode.int)
-    use card_id <- decode.field(17, decode.int)
+    use due_date <- decode.field(16, decode.string)
+    use version <- decode.field(17, decode.int)
+    use card_id <- decode.field(18, decode.int)
     decode.success(TasksListByCardRow(
       id:,
       project_id:,
@@ -7533,6 +7517,7 @@ pub fn tasks_list_by_card(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
     ))
@@ -7548,9 +7533,12 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  t.status,
+  case
+    when t.execution_state = 'closed' then 'completed'
+    else t.execution_state
+  end as status,
   (
-    t.status = 'claimed'
+    t.execution_state = 'claimed'
     and exists(
       select 1
       from user_task_work_session ws
@@ -7567,8 +7555,9 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
   coalesce(t.card_id, 0) as card_id
 from tasks t
@@ -7602,9 +7591,10 @@ pub type TasksReleaseRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -7643,20 +7633,21 @@ pub fn tasks_release(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -7670,9 +7661,10 @@ pub fn tasks_release(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -7693,11 +7685,12 @@ with updated as (
   set
     claimed_by = null,
     claimed_at = null,
-    status = 'available',
+    claimed_mode = null,
+    execution_state = 'available',
     last_entered_pool_at = now(),
     version = version + 1
   where id = $1
-    and status = 'claimed'
+    and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
   returning
@@ -7707,15 +7700,16 @@ with updated as (
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7728,7 +7722,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
@@ -7740,14 +7734,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -7793,11 +7790,12 @@ with updated as (
   set
     claimed_by = null,
     claimed_at = null,
-    status = 'available',
+    claimed_mode = null,
+    execution_state = 'available',
     version = version + 1
   where project_id = $1
     and claimed_by = $2
-    and status = 'claimed'
+    and execution_state = 'claimed'
   returning id
 )
 select id
@@ -7830,9 +7828,10 @@ pub type TasksUpdateRow {
     claimed_at: String,
     completed_at: String,
     created_at: String,
+    due_date: String,
     version: Int,
     card_id: Int,
-    milestone_id: Int,
+    parent_card_id: Int,
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
@@ -7860,9 +7859,10 @@ pub fn tasks_update(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
-  arg_7: Int,
+  arg_7: String,
   arg_8: Int,
   arg_9: Int,
+  arg_10: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -7877,20 +7877,21 @@ pub fn tasks_update(
     use claimed_at <- decode.field(9, decode.string)
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use card_id <- decode.field(13, decode.int)
-    use milestone_id <- decode.field(14, decode.int)
-    use pool_lifetime_s <- decode.field(15, decode.int)
-    use last_entered_pool_at <- decode.field(16, decode.string)
-    use created_from_rule_id <- decode.field(17, decode.int)
-    use type_name <- decode.field(18, decode.string)
-    use type_icon <- decode.field(19, decode.string)
-    use is_ongoing <- decode.field(20, decode.bool)
-    use ongoing_by_user_id <- decode.field(21, decode.int)
-    use card_title <- decode.field(22, decode.string)
-    use card_color <- decode.field(23, decode.string)
-    use dependencies <- decode.field(24, decode.string)
-    use blocked_count <- decode.field(25, decode.int)
+    use due_date <- decode.field(12, decode.string)
+    use version <- decode.field(13, decode.int)
+    use card_id <- decode.field(14, decode.int)
+    use parent_card_id <- decode.field(15, decode.int)
+    use pool_lifetime_s <- decode.field(16, decode.int)
+    use last_entered_pool_at <- decode.field(17, decode.string)
+    use created_from_rule_id <- decode.field(18, decode.int)
+    use type_name <- decode.field(19, decode.string)
+    use type_icon <- decode.field(20, decode.string)
+    use is_ongoing <- decode.field(21, decode.bool)
+    use ongoing_by_user_id <- decode.field(22, decode.int)
+    use card_title <- decode.field(23, decode.string)
+    use card_color <- decode.field(24, decode.string)
+    use dependencies <- decode.field(25, decode.string)
+    use blocked_count <- decode.field(26, decode.int)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -7904,9 +7905,10 @@ pub fn tasks_update(
       claimed_at:,
       completed_at:,
       created_at:,
+      due_date:,
       version:,
       card_id:,
-      milestone_id:,
+      parent_card_id:,
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
@@ -7929,19 +7931,19 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
-  milestone_id = case
-    when $8 > 0 then null
-    when $7 = -1 then milestone_id
-    else nullif($7, 0)
+  due_date = case when $7 = '__unset__' then due_date else nullif($7, '')::date end,
+  card_id = case
+    when $8 = -999999 then card_id
+    when $9 = -1 then card_id
+    else nullif($9, 0)
   end,
-  card_id = case when $8 = -1 then card_id else nullif($8, 0) end,
   version = version + 1
 where id = $1
   and (
-    status = 'available'
-    or (status = 'claimed' and claimed_by = $2)
+    execution_state = 'available'
+    or (execution_state = 'claimed' and claimed_by = $2)
   )
-  and version = $9
+  and version = $10
   returning
     id,
     project_id,
@@ -7949,15 +7951,19 @@ where id = $1
     title,
     coalesce(description, '') as description,
     priority,
-    status,
+    case
+      when execution_state = 'closed' then 'completed'
+      else execution_state
+    end as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
     coalesce(card_id, 0) as card_id,
-    coalesce(milestone_id, 0) as milestone_id,
+    0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
     coalesce(created_from_rule_id, 0) as created_from_rule_id
@@ -7970,7 +7976,7 @@ select
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
-  deps.dependencies as dependencies,
+  deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
@@ -7982,14 +7988,17 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', dt.status,
+          'status', case
+            when dt.execution_state = 'closed' then 'completed'
+            else dt.execution_state
+          end,
           'claimed_by', u.email
         )
         order by dt.created_at desc
       ) filter (where dt.id is not null),
       '[]'
     ) as dependencies,
-    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+    coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
   join tasks dt on dt.id = d.depends_on_task_id
   left join users u on u.id = dt.claimed_by
@@ -8003,9 +8012,10 @@ left join lateral (
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
+  |> pog.parameter(pog.int(arg_10))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

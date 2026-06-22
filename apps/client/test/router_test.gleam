@@ -174,17 +174,43 @@ pub fn format_member_pool_with_project_test() {
   )
 }
 
-pub fn format_member_milestones_with_project_test() {
-  assert_equal(
-    router.format(member_route(Some(2), Some(view_mode.Milestones))),
-    "/app/pool?project=2&view=milestones",
-  )
-}
-
 pub fn format_member_people_with_project_test() {
   assert_equal(
     router.format(member_route(Some(2), Some(view_mode.People))),
     "/app/pool?project=2&view=people",
+  )
+}
+
+pub fn format_member_cards_with_project_test() {
+  assert_equal(
+    router.format(member_route(Some(2), Some(view_mode.Cards))),
+    "/app/pool?project=2&view=cards",
+  )
+}
+
+pub fn format_member_cards_kanban_with_project_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&view=cards&plan_mode=kanban",
+  )
+}
+
+pub fn format_member_people_card_work_scope_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.People)
+    |> url_state.with_card_work_scope(42)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&view=people&work_scope=card&card=42",
   )
 }
 
@@ -251,9 +277,16 @@ pub fn parse_unknown_member_route_redirects_to_pool_test() {
   )
 }
 
-pub fn roundtrip_member_milestones_with_project_test() {
-  let route = member_route(Some(2), Some(view_mode.Milestones))
+pub fn roundtrip_member_cards_with_project_test() {
+  let route = member_route(Some(2), Some(view_mode.Cards))
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn parse_legacy_tracking_view_redirects_to_pool_test() {
+  assert_equal(
+    router.parse_uri(build_uri("/app/pool", "?project=2&view=hierarchies")),
+    router.Redirect(member_route(Some(2), None)),
+  )
 }
 
 pub fn roundtrip_member_people_with_project_test() {
@@ -272,6 +305,17 @@ pub fn roundtrip_member_cards_with_scope_test() {
     |> url_state.with_project(2)
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+
+  let route = router.Member(state)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_member_cards_kanban_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
 
   let route = router.Member(state)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))

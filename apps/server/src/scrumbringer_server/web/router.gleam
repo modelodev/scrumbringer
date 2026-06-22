@@ -22,6 +22,7 @@
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import pog
+import scrumbringer_server/http/activity
 import scrumbringer_server/http/api
 import scrumbringer_server/http/api_tokens
 import scrumbringer_server/http/auth
@@ -31,7 +32,6 @@ import scrumbringer_server/http/card_views
 import scrumbringer_server/http/cards
 import scrumbringer_server/http/integration_users
 import scrumbringer_server/http/me_metrics
-import scrumbringer_server/http/milestones
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/org_metrics
@@ -232,12 +232,6 @@ fn route_projects(
       Some(tasks.handle_task_type(req, auth_ctx, type_id))
     ["api", "v1", "projects", project_id, "tasks"] ->
       Some(tasks.handle_project_tasks(req, auth_ctx, project_id))
-    ["api", "v1", "projects", project_id, "milestones"] ->
-      case parse_int_segment(project_id) {
-        Some(pid) ->
-          Some(milestones.handle_project_milestones(req, auth_ctx, pid))
-        None -> Some(wisp.not_found())
-      }
     ["api", "v1", "projects", project_id, "task-templates"] ->
       Some(task_templates.handle_project_templates(req, auth_ctx, project_id))
     ["api", "v1", "projects", project_id, "workflows"] ->
@@ -319,14 +313,38 @@ fn route_cards(
         None -> Some(wisp.not_found())
       }
 
+    ["api", "v1", "cards", card_id, "notes", note_id, "pin"] ->
+      Some(card_notes.handle_card_note_pin(req, auth_ctx(ctx), card_id, note_id))
+
     ["api", "v1", "cards", card_id, "notes", note_id] ->
       Some(card_notes.handle_card_note(req, auth_ctx(ctx), card_id, note_id))
 
     ["api", "v1", "cards", card_id, "notes"] ->
       Some(card_notes.handle_card_notes(req, auth_ctx(ctx), card_id))
 
+    ["api", "v1", "cards", card_id, "activity"] ->
+      Some(activity.handle_card_activity(req, auth_ctx(ctx), card_id))
+
     ["api", "v1", "views", "cards", card_id] ->
       Some(card_views.handle_card_view(req, auth_ctx(ctx), card_id))
+
+    ["api", "v1", "cards", card_id, "activate"] ->
+      case parse_int_segment(card_id) {
+        Some(cid) -> Some(cards.handle_activate(req, auth_ctx(ctx), cid))
+        None -> Some(wisp.not_found())
+      }
+
+    ["api", "v1", "cards", card_id, "close"] ->
+      case parse_int_segment(card_id) {
+        Some(cid) -> Some(cards.handle_close(req, auth_ctx(ctx), cid))
+        None -> Some(wisp.not_found())
+      }
+
+    ["api", "v1", "cards", card_id, "move"] ->
+      case parse_int_segment(card_id) {
+        Some(cid) -> Some(cards.handle_move(req, auth_ctx(ctx), cid))
+        None -> Some(wisp.not_found())
+      }
 
     ["api", "v1", "cards", card_id] ->
       case parse_int_segment(card_id) {
@@ -356,24 +374,18 @@ fn route_tasks(
       Some(tasks.handle_task_dependencies(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "dependencies", dep_task_id] ->
       Some(tasks.handle_task_dependency(req, auth_ctx, task_id, dep_task_id))
+    ["api", "v1", "tasks", task_id, "notes", note_id, "pin"] ->
+      Some(task_notes.handle_task_note_pin(req, auth_ctx, task_id, note_id))
     ["api", "v1", "tasks", task_id, "notes", note_id] ->
       Some(task_notes.handle_task_note(req, auth_ctx, task_id, note_id))
     ["api", "v1", "tasks", task_id, "notes"] ->
       Some(task_notes.handle_task_notes(req, auth_ctx, task_id))
+    ["api", "v1", "tasks", task_id, "activity"] ->
+      Some(activity.handle_task_activity(req, auth_ctx, task_id))
     ["api", "v1", "views", "tasks", task_id] ->
       Some(task_views.handle_task_view(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id] ->
       Some(tasks.handle_task(req, auth_ctx, task_id))
-    ["api", "v1", "milestones", milestone_id] ->
-      case parse_int_segment(milestone_id) {
-        Some(mid) -> Some(milestones.handle_milestone(req, auth_ctx, mid))
-        None -> Some(wisp.not_found())
-      }
-    ["api", "v1", "milestones", milestone_id, "activate"] ->
-      case parse_int_segment(milestone_id) {
-        Some(mid) -> Some(milestones.handle_activate(req, auth_ctx, mid))
-        None -> Some(wisp.not_found())
-      }
     _ -> None
   }
 }

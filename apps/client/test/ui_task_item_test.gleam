@@ -27,6 +27,7 @@ pub fn clickable_task_item_preserves_accessible_button_metadata_test() {
         actions: task_item.no_actions(),
         reserve_actions_slot: False,
         action_slot_class: opt.None,
+        content_testid: opt.Some("shared-task-item-open"),
         testid: opt.Some("shared-task-item"),
       ),
       task_item.Div,
@@ -34,6 +35,7 @@ pub fn clickable_task_item_preserves_accessible_button_metadata_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"shared-task-item\"")
+  assert_contains(html, "data-testid=\"shared-task-item-open\"")
   assert_contains(html, "title=\"Fix login\"")
   assert_contains(html, "aria-label=\"Open task: Fix login\"")
   assert_contains(html, "type=\"button\"")

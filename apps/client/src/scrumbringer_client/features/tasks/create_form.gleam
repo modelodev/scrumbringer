@@ -12,7 +12,6 @@ pub type Input {
     type_id: String,
     priority: String,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
   )
 }
 
@@ -34,15 +33,7 @@ pub type Submission {
     priority: Int,
     type_id: Int,
     card_id: opt.Option(Int),
-    milestone_id: opt.Option(Int),
   )
-}
-
-pub fn card_id_from_input(value: String) -> opt.Option(Int) {
-  case int.parse(value) {
-    Ok(id) if id > 0 -> opt.Some(id)
-    _ -> opt.None
-  }
 }
 
 pub fn validate(input: Input, labels: Labels) -> Result(Submission, String) {
@@ -105,7 +96,6 @@ fn validate_priority(
         priority: priority,
         type_id: type_id,
         card_id: input.card_id,
-        milestone_id: input.milestone_id,
       ))
 
     _ -> Error(labels.priority_must_be_1_to_5)

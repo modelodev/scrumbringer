@@ -19,8 +19,12 @@
 //// - GET  /api/v1/cards/:card_id
 //// - PATCH /api/v1/cards/:card_id
 //// - DELETE /api/v1/cards/:card_id
+//// - POST /api/v1/cards/:card_id/activate
+//// - POST /api/v1/cards/:card_id/close
+//// - POST /api/v1/cards/:card_id/move
 //// - GET  /api/v1/cards/:card_id/tasks
 
+import api/cards/contracts as card_contracts
 import domain/card.{type Card}
 import gleam/http
 import gleam/int
@@ -31,9 +35,9 @@ import scrumbringer_server/http/cards/payloads as card_payloads
 import scrumbringer_server/http/cards/presenters as card_presenters
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/query
-import scrumbringer_server/services/authorization
-import scrumbringer_server/services/cards_db
-import scrumbringer_server/services/metrics_db
+import scrumbringer_server/use_case/authorization
+import scrumbringer_server/use_case/cards_db
+import scrumbringer_server/use_case/metrics_db
 import wisp
 
 fn card_not_found_response(include_metrics: Bool) -> wisp.Response {
@@ -53,18 +57,62 @@ fn forbidden_project_member_response(include_metrics: Bool) -> wisp.Response {
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> api.error(404, "NOT_FOUND", "Card not found")
-    cards_db.InvalidMilestone ->
-      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
-    cards_db.InvalidMovePoolToMilestone ->
+    cards_db.InvalidParentCard ->
+      api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
+    cards_db.ParentCardClosed ->
+      api.error(
+        409,
+        "PARENT_CARD_CLOSED",
+        "Cannot create card under a closed card",
+      )
+    cards_db.ParentDoesNotAcceptCards ->
       api.error(
         422,
-        "INVALID_MOVE_POOL_TO_MILESTONE",
-        "Cannot move pool content into a milestone",
+        "PARENT_DOES_NOT_ACCEPT_CARDS",
+        "Parent card already contains tasks",
       )
-    cards_db.InvalidMilestoneState(_) ->
-      api.error(500, "INTERNAL", "Invalid milestone state in database")
+    cards_db.InvalidMovePoolToParentCard ->
+      api.error(
+        422,
+        "INVALID_MOVE_POOL_TO_PARENT_CARD",
+        "Cannot move pool content into a parent card",
+      )
+    cards_db.InvalidParentExecutionPhase(_) ->
+      api.error(500, "INTERNAL", "Invalid parent card state in database")
     cards_db.InvalidColor(_) -> api.error(500, "INTERNAL", "Invalid card color")
+    cards_db.CardHasClaimedDescendant(_) ->
+      api.error(
+        409,
+        "CARD_HAS_CLAIMED_DESCENDANT",
+        "Cannot close card with claimed descendant tasks",
+      )
+    cards_db.CannotActivateClosedCard ->
+      api.error(409, "CARD_CLOSED", "Cannot activate a closed card")
+    cards_db.CardAlreadyClosed ->
+      api.error(409, "CARD_CLOSED", "Card is already closed")
+    cards_db.CannotMoveClosedCard ->
+      api.error(409, "CARD_CLOSED", "Cannot move a closed card")
+    cards_db.CannotMoveIntoClosedCard ->
+      api.error(409, "DESTINATION_CLOSED", "Cannot move into a closed card")
+    cards_db.DestinationDoesNotAcceptCards ->
+      api.error(
+        422,
+        "DESTINATION_DOES_NOT_ACCEPT_CARDS",
+        "Destination card already contains tasks",
+      )
+    cards_db.DestinationNotFound ->
+      api.error(422, "VALIDATION_ERROR", "Invalid parent_card_id")
+    cards_db.MoveWouldCreateCycle ->
+      api.error(
+        422,
+        "MOVE_WOULD_CREATE_CYCLE",
+        "Cannot move card into its own subtree",
+      )
     cards_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
+    cards_db.CardHasChildCards(_) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    cards_db.CardHasOperationalHistory ->
+      api.error(500, "INTERNAL", "Unexpected error")
     cards_db.CardHasTasks(_) -> api.error(500, "INTERNAL", "Unexpected error")
   }
 }
@@ -216,10 +264,11 @@ fn create_card_in_project(
     cards_db.create_card(
       db,
       project_id,
-      payload.milestone_id,
+      payload.parent_card_id,
       payload.title,
       payload.description,
       payload.color,
+      payload.due_date,
       user_id,
     )
   {
@@ -240,6 +289,147 @@ pub fn handle_card(
     http.Delete -> handle_delete(req, ctx, card_id)
     _ -> wisp.method_not_allowed([http.Get, http.Patch, http.Delete])
   }
+}
+
+pub fn handle_activate(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_card_action(req, ctx, card_id, activate_card_in_db)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+pub fn handle_close(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_close_request(req, ctx, card_id)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+pub fn handle_move(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_move_request(req, ctx, card_id)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+fn handle_card_action(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+) -> wisp.Response {
+  case auth.require_current_user_response(req, ctx) {
+    Error(resp) -> resp
+    Ok(user) ->
+      case csrf.require_csrf(req) {
+        Error(resp) -> resp
+        Ok(Nil) -> action_card_with_auth(ctx, card_id, user.id, action)
+      }
+  }
+}
+
+fn action_card_with_auth(
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.get_card(db, card_id, user_id) {
+    Error(error) -> card_error_response(error)
+    Ok(card) ->
+      case require_project_admin(db, user_id, card.project_id) {
+        Error(resp) -> resp
+        Ok(Nil) -> action(ctx, card_id, user_id)
+      }
+  }
+}
+
+fn activate_card_in_db(
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.activate_card(db, card_id, user_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn handle_close_request(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+  case card_contracts.decode_card_close(data) {
+    Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid close request")
+    Ok(_) -> handle_card_action(req, ctx, card_id, close_card_in_db)
+  }
+}
+
+fn close_card_in_db(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.close_card(db, card_id, user_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn handle_move_request(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+  case card_contracts.decode_card_move(data) {
+    Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid move request")
+    Ok(card_contracts.CardMoveRequest(parent_card_id: parent_card_id)) ->
+      handle_card_action(req, ctx, card_id, fn(ctx, card_id, _user_id) {
+        move_card_in_db(ctx, card_id, parent_card_id)
+      })
+  }
+}
+
+fn move_card_in_db(ctx: auth.Ctx, card_id: Int, parent_card_id) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+  case cards_db.move_card(db, card_id, parent_card_id) {
+    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+    Error(error) -> card_error_response(error)
+  }
+}
+
+fn card_action_response(
+  card_id: Int,
+  impact: cards_db.CardActionImpact,
+) -> wisp.Response {
+  let pool_health = case impact.pool_open_after > impact.healthy_pool_limit {
+    True -> card_contracts.PoolExceedsHealthyLimit
+    False -> card_contracts.PoolWithinHealthyLimit
+  }
+
+  card_contracts.CardActionResponse(
+    card_id: card_id,
+    pool_impact: impact.changed_tasks,
+    pool_open_after: impact.pool_open_after,
+    healthy_pool_limit: impact.healthy_pool_limit,
+    pool_health: pool_health,
+  )
+  |> card_contracts.action_response_to_json
+  |> api.ok
 }
 
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
@@ -306,7 +496,7 @@ fn handle_update(
 ) -> wisp.Response {
   case auth.require_current_user_response(req, ctx) {
     Error(resp) -> resp
-    Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id)
+    Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id, user.org_id)
   }
 }
 
@@ -315,10 +505,11 @@ fn update_card_with_csrf(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   case csrf.require_csrf(req) {
     Error(resp) -> resp
-    Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id)
+    Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id, org_id)
   }
 }
 
@@ -327,12 +518,13 @@ fn update_card_with_auth(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
     Error(error) -> card_error_response(error)
-    Ok(card) -> update_card_in_project(req, ctx, card, user_id)
+    Ok(card) -> update_card_in_project(req, ctx, card, user_id, org_id)
   }
 }
 
@@ -341,12 +533,13 @@ fn update_card_in_project(
   ctx: auth.Ctx,
   card: Card,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case require_project_admin(db, user_id, card.project_id) {
     Error(resp) -> resp
-    Ok(Nil) -> update_card_with_payload(req, ctx, card.id, user_id)
+    Ok(Nil) -> update_card_with_payload(req, ctx, card.id, user_id, org_id)
   }
 }
 
@@ -355,9 +548,10 @@ fn update_card_with_payload(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   with_card_payload(req, fn(payload) {
-    update_card_in_db(ctx, card_id, payload, user_id)
+    update_card_in_db(ctx, card_id, payload, user_id, org_id)
   })
 }
 
@@ -366,6 +560,7 @@ fn update_card_in_db(
   card_id: Int,
   payload: card_payloads.CardPayload,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
@@ -373,10 +568,12 @@ fn update_card_in_db(
     cards_db.update_card(
       db,
       card_id,
-      payload.milestone_id,
+      payload.parent_card_id,
       payload.title,
       payload.description,
       payload.color,
+      payload.due_date,
+      org_id,
       user_id,
     )
   {
@@ -442,6 +639,18 @@ fn delete_card_in_db(db: pog.Connection, card_id: Int) -> wisp.Response {
         409,
         "CONFLICT_HAS_TASKS",
         "Cannot delete card with " <> int.to_string(count) <> " tasks",
+      )
+    Error(cards_db.CardHasChildCards(count)) ->
+      api.error(
+        409,
+        "CONFLICT_HAS_CHILD_CARDS",
+        "Cannot delete card with " <> int.to_string(count) <> " child cards",
+      )
+    Error(cards_db.CardHasOperationalHistory) ->
+      api.error(
+        409,
+        "CARD_HAS_OPERATIONAL_HISTORY",
+        "Card has operational history and must be closed instead of deleted",
       )
     Error(error) -> card_error_response(error)
   }

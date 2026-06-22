@@ -2,7 +2,7 @@
 
 import gleam/json
 import helpers/json as json_helpers
-import scrumbringer_server/services/task_templates_db
+import scrumbringer_server/use_case/task_templates_db
 
 pub fn templates_response(
   values: List(task_templates_db.TaskTemplate),

@@ -33,12 +33,11 @@ fn sample_task() -> Task {
     description: Some("Review checklist."),
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
+    due_date: None,
     version: 3,
-    milestone_id: None,
+    parent_card_id: None,
     card_id: None,
     card_title: None,
     card_color: None,
@@ -267,7 +266,7 @@ pub fn dependency_update_try_update_ignores_non_dependency_messages_test() {
   let assert None =
     dependency_update.try_update(
       local_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       local_context(Some(42), Some(sample_task())),
       feedback_context(),
     )

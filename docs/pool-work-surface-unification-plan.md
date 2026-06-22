@@ -1,0 +1,945 @@
+# Pool Work Surface Unification Plan
+
+## Estado
+
+Plan registrado tras revisar la vista Pool actual, sus componentes frontend, su
+cobertura de tests y la filosofia de ScrumBringer.
+
+Fecha de revision: 2026-06-22.
+
+## Prerequisitos Y Frontera
+
+Este plan puede ejecutarse despues de `docs/card-task-show-redesign-plan.md`.
+Debe respetar el nuevo lenguaje visual de Card/Task Show, pero no debe
+redisenar esos shows.
+
+Este plan prepara a Pool para `docs/fin_refactor.md`: las automatizaciones
+crearan tasks en Pool, pero este plan no implementa automatizaciones.
+
+No reabrir decisiones ya cerradas de Card/Task Show, Plan, Capacidades,
+Personas o automatizaciones salvo contradiccion real documentada.
+
+## Objetivo
+
+Unificar Pool con la anatomia visual de Plan, Capacidades y Personas sin
+convertirlo en otra vista de estructura.
+
+Pool debe seguir siendo la superficie de ejecucion:
+
+```text
+que trabajo abierto hay ahora en el pool,
+que puedo reclamar,
+que esta bloqueado,
+y que accion inmediata puedo tomar.
+```
+
+Pool no debe competir con Plan, Kanban, Capacidades o Personas. Su mision no es
+explorar el arbol, analizar capacidades o coordinar personas. Su mision es
+facilitar pull-flow.
+
+## Diagnostico Actual
+
+### Lo Que Ya Esta Bien
+
+- Pool ya usa `work_surface.header` a traves de
+  `features/pool/chrome.gleam`.
+- `features/pool/task_card.gleam` ya cubre bien el objeto operativo principal:
+  claim, release, complete, bloqueo, hover, due date/urgency, drag, touch y
+  preview.
+- `features/pool/task_row.gleam` reutiliza `ui/task_item`.
+- `features/pool/available_tasks.gleam` ya concentra parte importante de la
+  derivacion de tareas visibles.
+- El sidebar derecho ya separa correctamente:
+  - tareas en curso;
+  - mis tareas reclamadas;
+  - contexto.
+- Hay buena cobertura atomica:
+  - `pool_available_tasks_test`;
+  - `pool_filters_test`;
+  - `pool_chrome_test`;
+  - `pool_task_card_test`;
+  - `pool_task_row_test`;
+  - `pool_my_tasks_dropzone_test`;
+  - tests de drag, touch, highlights, create dialog y preferencias.
+
+### Problemas
+
+- Los filtros de Pool siguen siendo propiedad de `features/layout/center_panel.gleam`.
+  Esto rompe la direccion que ya seguimos en Plan, Capacidades y Personas:
+  cada vista debe ser dueña de su header, controles y cuerpo.
+- `center_panel` todavia conoce detalles de filtros de Pool:
+  tipo, capacidad, busqueda y scope de capacidades.
+- Existe `member_filters_status` y `MemberPoolStatusChanged`, pero la barra
+  visible actual no expone claramente un selector de estado.
+- Usar `TaskPhase` como filtro de Pool es ambiguo. Pool no deberia filtrar por
+  `claimed` o `done` como si fuese una vista historica o de trabajo propio.
+- `available_tasks.state` filtra siempre `Available`, por lo que un filtro de
+  estado general sobre `TaskPhase` choca con la mision real de Pool.
+- Falta un test de composicion de Pool como superficie completa:
+  header + control bar propia + body.
+
+### Estado Actual Observado Antes De Ejecutar
+
+Al preparar este plan se ha detectado que algunas piezas ya existen
+parcialmente en codigo. El goal debe tratarlas como trabajo a consolidar, no
+como trabajo terminado.
+
+Ya existe:
+
+- `features/pool/visibility.gleam` con `PoolVisibility`.
+- `features/pool/control_bar.gleam`.
+- `features/pool/available_tasks.gleam` recibe `visibility`.
+- `features/pool/view.gleam` ya compone `header`, `control_bar` y `body`.
+- `features/pool/view_config.gleam` ya adapta parte del estado global.
+
+Problemas concretos a corregir:
+
+- `visibility.label` no debe hardcodear castellano. Las labels visibles deben
+  pasar por i18n o vivir exclusivamente en la vista.
+- `available_tasks.order_for_visibility(AllOpen)` reordena poniendo primero
+  reclamables y despues bloqueadas. Esto contradice la decision fuerte: cambiar
+  `Ver` no debe reordenar el Pool manual.
+- `pool_summary` usa `healthy_limit = 20` hardcodeado. Debe usar el
+  `healthy_pool_limit` del proyecto cuando este disponible; solo puede caer a
+  `20` como fallback temporal documentado si el dato no llega todavia al
+  frontend.
+- El goal debe verificar que `center_panel` ya no conserva ownership real de
+  filtros de Pool. Si quedan handlers o estilos antiguos, deben eliminarse o
+  renombrarse.
+
+## Decision De Producto
+
+Pool debe mostrar trabajo abierto en el pool, separando claramente:
+
+- tareas reclamables ahora;
+- tareas abiertas pero bloqueadas;
+- el total abierto visible.
+
+Las bloqueadas deben estar en Pool. No deben ocultarse por defecto.
+ScrumBringer busca fomentar comunicacion, y los bloqueos son una senal operativa
+importante.
+
+`Blocked` no es un estado persistido de task. Es una condicion derivada de
+dependencias incompletas. Pool debe mostrarla sin convertirla en `TaskPhase`.
+
+Por tanto, el filtro principal no debe ser `TaskPhase`. Debe ser un filtro
+propio de visibilidad de Pool.
+
+## Tipo Recomendado
+
+Crear un ADT especifico, con nombres de producto:
+
+```gleam
+pub type PoolVisibility {
+  AllOpen
+  ReadyToClaim
+  Blocked
+}
+```
+
+Semantica:
+
+- `AllOpen`: muestra tareas abiertas del pool, reclamables y bloqueadas. Es el
+  default recomendado.
+- `ReadyToClaim`: muestra solo tareas que el usuario puede reclamar ahora.
+- `Blocked`: muestra solo tareas abiertas bloqueadas.
+
+No usar:
+
+```gleam
+TaskPhase
+```
+
+como filtro visual primario de Pool.
+
+`TaskPhase` puede seguir existiendo como derivacion de estado de task donde sea
+necesario, pero no debe modelar la intencion de visibilidad de Pool.
+
+### Ubicacion Del Tipo
+
+`PoolVisibility` debe vivir en frontend, dentro del feature de Pool:
+
+```text
+apps/client/src/scrumbringer_client/features/pool/visibility.gleam
+```
+
+No debe moverse a `shared`.
+
+Razon:
+
+- no es una entidad de dominio global;
+- no forma parte del contrato de persistencia;
+- no representa el ciclo de vida real de una task;
+- expresa una intencion de vista: que subconjunto del trabajo abierto quiere ver
+  el usuario en Pool.
+
+Esto mantiene limpia la frontera:
+
+```text
+dominio task -> execution_state / TaskPhase derivado
+vista Pool   -> PoolVisibility
+```
+
+## Default
+
+El default debe ser:
+
+```gleam
+AllOpen
+```
+
+manteniendo el orden actual/manual del Pool.
+
+No introducir reordenacion inteligente nueva. Cada usuario puede ordenar su Pool
+con drag and drop y ese orden debe seguir siendo la fuente de verdad visual.
+`PoolVisibility` filtra que tareas se ven, pero no reordena automaticamente.
+
+Razon:
+
+- `ReadyToClaim` como default ayuda a elegir rapido, pero esconde friccion.
+- `AllOpen` mantiene visibles los bloqueos sin confundirlos con acciones
+  disponibles.
+- La UI puede hacer que las bloqueadas tengan menor peso visual y una accion
+  clara de inspeccion, no de claim.
+- Mantener el orden manual simplifica el modelo y respeta como el usuario ya
+  organiza su trabajo.
+
+## Tratamiento Visual De Tareas Bloqueadas
+
+Las tareas bloqueadas deben verse en Pool por defecto cuando la visibilidad sea
+`AllOpen`. No deben esconderse, porque ScrumBringer quiere hacer visible la
+friccion operativa y fomentar conversacion.
+
+Tampoco deben competir visualmente con las tareas reclamables ni parecer
+reclamables por error.
+
+Tratamiento recomendado:
+
+- indicador compacto de bloqueo con el icono existente de warning/dependencia y
+  contador de dependencias si cabe;
+- tono de atencion basado en `danger` o `warning`, pero sutil;
+- borde completo o fondo muy leve, nunca una franja lateral nueva;
+- sin accion de claim;
+- accion secundaria de inspeccion mediante icono o abrir detalle;
+- hover/focus puede reutilizar el sistema actual de highlight de dependencias
+  bloqueantes.
+
+Evitar:
+
+- fondo rojo fuerte en toda la card;
+- patron de alarma permanente;
+- ocultar la card bloqueada de `AllOpen`;
+- mostrar un boton de claim deshabilitado como accion principal.
+- badges largos de texto dentro de la task card pequena;
+- aumentar altura o ancho de card para hacer sitio a estados;
+- depender solo de color sin icono, tooltip o texto accesible.
+
+Wireframe:
+
+```text
+128 x 128 desktop
+
+┌──────────────────┐
+│ [!]2 [cal]   [≡] │  top rail: estado compacto + drag/action
+│                  │
+│       ◇          │
+│   Task title     │  titulo sigue centrado, max 2 lineas
+│                  │
+└──────────────────┘
+```
+
+La intencion es que el usuario vea que existe trabajo bloqueado, entienda que no
+puede reclamarlo todavia y tenga una entrada clara para investigar o hablar con
+el equipo.
+
+### Senales Compactas En Task Cards
+
+La task card de Pool mide `128 x 128` en desktop. Bloqueo y vencimiento deben
+encajar en la franja superior actual, sin cambiar dimensiones, sin reducir el
+area central del titulo y sin aumentar densidad textual.
+
+Modelo recomendado: `task-card-status-rail`.
+
+```text
+top-left:  señales compactas + claim/release si aplica
+top-right: drag/complete/acciones existentes
+center:    tipo + titulo, sin cambios de layout
+```
+
+Medidas:
+
+- token de senal: `18-20px` de alto/ancho minimo;
+- gap entre tokens: `2-4px`;
+- maximo dos senales visibles en canvas;
+- si hay mas senales, mostrar la mas importante y un indicador compacto `+`;
+- nunca usar texto largo en canvas.
+
+Prioridad de senales en canvas:
+
+1. `Blocked`
+2. `Overdue`
+3. `DueToday`
+4. `DueSoon`
+
+Senales:
+
+- **Bloqueada:** icono existente de warning/dependencia + contador. Tooltip y
+  `aria-label`: `Bloqueada por N dependencias`.
+- **Vencida:** icono de calendario con tono `danger`; no mostrar fecha en
+  canvas. Tooltip y `aria-label`: `Vencida el DD MMM`.
+- **Vence hoy:** icono de calendario con tono `warning` fuerte. Tooltip:
+  `Vence hoy`.
+- **Vence pronto:** icono de calendario con tono `warning` discreto, solo si no
+  desplaza una accion principal.
+- **Bloqueada y vencida:** mostrar dos tokens compactos: bloqueo y calendario
+  danger. La accion principal sigue siendo inspeccionar el bloqueo, nunca claim.
+
+No usar texto largo permanente como `Bloqueada`, `Vencida`, `2 dependencias` en
+la card compacta si eso provoca crecimiento, overflow o perdida de densidad.
+Ese texto debe aparecer en tooltip, accesibilidad, hover preview, detalle o modo
+lista.
+
+El modo lista si puede mostrar texto mas explicito porque tiene mas ancho:
+
+```text
+[Bloqueada] [Vencida 24 Jun]
+```
+
+Regla visual:
+
+```text
+icono + color semantico + tooltip/aria-label
+```
+
+Color no es suficiente por si solo. La card debe seguir comunicando estado con
+forma/icono y texto accesible.
+
+Reglas de implementacion:
+
+- Reutilizar `task_blocked_badge` solo si puede renderizar variante compacta
+  para canvas; si no, crear una variante especifica pequena.
+- El token de due date debe vivir junto al sistema de urgencia existente, no
+  duplicar calculos de severidad.
+- La animacion de urgencia por due date sigue siendo la senal primaria de
+  vencimiento en canvas; el token de calendario solo confirma el motivo.
+- En `prefers-reduced-motion`, el token debe seguir comunicando vencimiento
+  aunque la animacion desaparezca.
+
+## Anatomia Visual Final
+
+Pool debe tener la misma anatomia general que las demas vistas:
+
+```text
+Header
+Control bar
+Body
+```
+
+Wireframe:
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│ Pool                                                       │
+│ Tareas activas disponibles para que el equipo las reclame. │
+│                                                            │
+│ 12 abiertas  9 reclamables  3 bloqueadas  limite sano 20   │
+├────────────────────────────────────────────────────────────┤
+│ Buscar...  Tipo [Todos]  Capacidad [Todas]  [Todas/Mias]  │
+│ Ver [Abiertas ▼]                            Vista [▦ ≡]    │
+├────────────────────────────────────────────────────────────┤
+│ Canvas/List de tasks                                       │
+└────────────────────────────────────────────────────────────┘
+```
+
+Labels recomendadas para `PoolVisibility`:
+
+```text
+AllOpen      -> Abiertas
+ReadyToClaim -> Reclamables
+Blocked      -> Bloqueadas
+```
+
+## Header
+
+Titulo:
+
+```text
+Pool
+```
+
+Proposito:
+
+```text
+Tareas activas disponibles para que el equipo las reclame.
+```
+
+Summary chips:
+
+- abiertas;
+- reclamables;
+- bloqueadas;
+- limite saludable del pool.
+
+Si el limite saludable se supera, el chip debe usar tono de atencion:
+
+```text
+Pool saturado 24/20
+```
+
+Ese limite es blando: advierte, no bloquea.
+
+## Control Bar
+
+Crear una control bar propiedad de Pool, por ejemplo:
+
+```text
+features/pool/control_bar.gleam
+```
+
+Controles:
+
+- busqueda;
+- tipo;
+- capacidad;
+- selector de capacidades:
+  - todas;
+  - mis capacidades;
+- visibilidad de Pool:
+  - abiertas;
+  - reclamables;
+  - bloqueadas;
+- vista:
+  - canvas;
+  - lista.
+
+### Detalle Cerrado De La Control Bar
+
+Desktop:
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│ Buscar...        Tipo [Todos]   Capacidad [Todas]          │
+│ [Todas] [Mias]   Ver [Abiertas ▼]          Vista [▦] [≡]   │
+└────────────────────────────────────────────────────────────┘
+```
+
+La barra puede ocupar una o dos lineas segun ancho disponible, pero debe
+mantener jerarquia estable:
+
+1. busqueda;
+2. refinamiento por tipo/capacidad;
+3. scope de capacidades;
+4. visibilidad del Pool;
+5. modo visual.
+
+No debe haber filtros globales de `center_panel` por encima o por fuera de esta
+barra.
+
+Test ids recomendados:
+
+```text
+pool-control-bar
+pool-filter-search
+pool-filter-type
+pool-filter-capability
+pool-filter-capability-scope
+pool-filter-visibility
+pool-view-mode-toggle
+pool-view-mode-canvas
+pool-view-mode-list
+```
+
+Mobile:
+
+```text
+┌────────────────────────────┐
+│ Buscar...                  │
+│ Tipo [Todos]               │
+│ Capacidad [Todas]          │
+│ [Todas] [Mias]             │
+│ Ver [Abiertas ▼]  [▦] [≡]  │
+└────────────────────────────┘
+```
+
+Reglas:
+
+- controles tactiles minimo `44px` de alto;
+- ningun label debe solaparse;
+- el search puede ocupar fila completa;
+- los toggles pueden compactarse, pero no desaparecer;
+- no crear drawer de filtros en esta iteracion salvo que la UI sea inutilizable
+  en mobile tras probarla con agent-browser.
+
+No incluir scope estructural `Nivel/Card` como control principal.
+
+Opcionalmente, en una iteracion posterior, podria existir un filtro contextual
+secundario:
+
+```text
+Contexto: Todo el pool | Card activa... | Nivel...
+```
+
+Pero no forma parte de esta mejora. Meterlo ahora mezclaria Pool con Plan.
+
+## Body
+
+Mantener los dos modos existentes:
+
+- `Canvas`;
+- `List`.
+
+La diferencia es legitima:
+
+- Canvas: cockpit visual, prioridad, decay, due date, drag y lectura rapida.
+- Lista: densidad, busqueda y escaneo operativo.
+
+No redisenar `task_card`, `task_row`, `my_tasks_dropzone` ni `now_working`
+salvo para adaptarlos a la nueva composicion.
+
+### Detalle Cerrado Del Body
+
+#### Canvas
+
+El canvas sigue siendo el modo principal de lectura rapida. Debe conservar:
+
+- posiciones manuales del usuario;
+- cards de `128 x 128` en desktop;
+- titulo centrado;
+- tipo visual de la task;
+- accion de claim solo si la task es reclamable;
+- apertura de Task Show desde el cuerpo de la card;
+- hover preview con contexto completo.
+
+`PoolVisibility` filtra el conjunto visible, pero no puede:
+
+- reordenar;
+- agrupar automaticamente;
+- cambiar posiciones;
+- crear columnas;
+- cambiar el tamano de las task cards.
+
+#### Lista
+
+La lista puede ser mas explicita que el canvas. En lista si se permiten badges
+textuales cortos:
+
+```text
+[Bloqueada] [Vencida 24 Jun]
+```
+
+La lista debe reutilizar `task_row` / `ui/task_item` y no crear un segundo
+modelo visual de task.
+
+#### Estados Vacios
+
+Estados esperados:
+
+```text
+AllOpen sin tasks abiertas:
+  titulo: No hay tasks abiertas en el Pool
+  accion: Nueva tarea
+
+ReadyToClaim sin reclamables y con bloqueadas:
+  titulo: No hay tasks reclamables ahora
+  cuerpo: Hay N tasks bloqueadas que necesitan conversacion o dependencias.
+  accion: Ver bloqueadas
+
+ReadyToClaim sin reclamables y sin bloqueadas:
+  titulo: No hay tasks reclamables ahora
+  cuerpo: El Pool esta despejado para tus filtros actuales.
+
+Blocked sin bloqueadas:
+  titulo: No hay tasks bloqueadas
+  cuerpo: Los bloqueos apareceran aqui cuando una dependencia impida reclamar.
+  accion: Ver abiertas
+
+Filtros sin resultados:
+  titulo: No hay tasks que coincidan con los filtros
+  accion: limpiar filtros si ya existe patron; si no, dejar solo el mensaje.
+```
+
+El empty state de `Blocked` no debe sugerir crear una task nueva. Bloqueo es una
+vista de friccion operativa, no una invitacion a crear trabajo.
+
+### Detalle Cerrado De Task Cards
+
+La task card compacta no debe crecer ni saturarse. Bloqueo y vencimiento viven
+en una franja superior compacta:
+
+```text
+┌──────────────────┐
+│ [!]2 [cal]   [≡] │
+│                  │
+│       ◇          │
+│   Task title     │
+│                  │
+└──────────────────┘
+```
+
+Reglas:
+
+- maximo dos senales compactas visibles en canvas;
+- prioridad de senales:
+  1. bloqueada;
+  2. vencida;
+  3. vence hoy;
+  4. vence pronto;
+- una task bloqueada no muestra accion de claim;
+- una task bloqueada se puede abrir para inspeccionar dependencias;
+- hover preview y Task Show muestran el detalle completo;
+- `title` y `aria-label` contienen el texto accesible completo;
+- color nunca es la unica senal.
+
+Test ids recomendados para senales:
+
+```text
+task-card-signal-blocked
+task-card-signal-due
+task-card-signal-more
+```
+
+Copy accesible:
+
+```text
+Bloqueada por N dependencias
+Vencida el DD MMM
+Vence hoy
+Vence pronto
+```
+
+No usar dentro del canvas:
+
+```text
+Bloqueada
+Vencida
+2 dependencias
+24 Jun 2026
+```
+
+Ese texto largo pertenece al tooltip, hover preview, lista o show.
+
+### Interacciones Cerradas
+
+Claim:
+
+- aparece solo en `ReadyToClaim` real: `Available` y sin dependencias
+  incompletas;
+- no aparece en bloqueadas;
+- si una task queda bloqueada por cambios de datos mientras esta visible, el
+  siguiente render debe retirarle la accion de claim.
+
+Drag:
+
+- el cambio de `PoolVisibility` no modifica posiciones manuales;
+- drag para organizar visualmente el Pool debe seguir funcionando si ya existe;
+- drag-to-claim no debe poder reclamar una task bloqueada;
+- en mobile, si drag no es fiable, debe existir apertura + accion explicita
+  donde aplique.
+
+Vencimiento:
+
+- vencimiento no bloquea claim por si mismo;
+- una task vencida reclamable sigue pudiendo reclamarse;
+- una task vencida y bloqueada se trata como bloqueada para accion primaria.
+
+Right sidebar:
+
+- `Mis tareas` permanece solo en sidebar derecho;
+- el body central no debe duplicar claimed tasks;
+- al reclamar una task, desaparece del Pool central y aparece en el sidebar
+  derecho.
+
+## Reutilizacion
+
+Reutilizar:
+
+- `features/layout/work_surface.gleam`;
+- `features/work_filters.gleam`;
+- `features/pool/available_tasks.gleam`;
+- `features/pool/task_card.gleam`;
+- `features/pool/task_row.gleam`;
+- `features/pool/my_tasks_dropzone.gleam`;
+- `ui/task_item.gleam`;
+- `ui/badge.gleam` / `ui/signal_chip.gleam`;
+- `ui/empty_state.gleam`;
+- estilos existentes de `center-filters-work` solo como vocabulario visual,
+  migrandolos o renombrando lo necesario para que Pool sea dueña de su control
+  bar.
+
+Evitar:
+
+- crear una abstraccion generica `work_surface_control_bar` antes de que todas
+  las vistas tengan APIs estables;
+- redisenar las task cards;
+- duplicar logica de filtros ya existente en `work_filters`.
+- mover `PoolVisibility` a `shared`;
+- usar `TaskPhase` como proxy de visibilidad de Pool.
+
+## Cambios De Codigo Esperados
+
+### 1. Nuevo Modelo De Visibilidad
+
+Crear un modulo estrecho, por ejemplo:
+
+```text
+apps/client/src/scrumbringer_client/features/pool/visibility.gleam
+```
+
+Debe contener:
+
+- `PoolVisibility`;
+- `default`;
+- `parse`;
+- `to_string`;
+- `label`;
+- predicados de filtrado si encajan.
+
+### 2. Estado
+
+Sustituir o retirar el uso de:
+
+```gleam
+member_filters_status: Option(task_status.TaskPhase)
+MemberPoolStatusChanged
+```
+
+para la vista Pool, si ya no tiene consumidor legitimo.
+
+Preferencia:
+
+```gleam
+member_pool_visibility: PoolVisibility
+MemberPoolVisibilityChanged(String)
+```
+
+Si `member_filters_status` todavia se usa para otro flujo real, renombrar o
+aislar su uso para que no modele la visibilidad de Pool.
+
+Decision fuerte:
+
+- `member_filters_status` no debe seguir siendo el estado principal de
+  visibilidad de Pool.
+- `MemberPoolStatusChanged` no debe ser el mensaje de UI para el selector `Ver`
+  de Pool.
+- Si tras el refactor no queda consumidor real de esos elementos, deben
+  eliminarse junto con sus tests.
+- Si algun contrato externo todavia habla de `status`, debe permanecer en la
+  frontera correspondiente como valor derivado, no como estado de UI de Pool.
+
+### 3. available_tasks
+
+Extender `available_tasks.Config` con:
+
+```gleam
+visibility: PoolVisibility
+```
+
+Derivar:
+
+- `AllOpen`: tareas `Available`, bloqueadas y no bloqueadas;
+- `ReadyToClaim`: tareas `Available` y `blocked_count == 0`;
+- `Blocked`: tareas `Available` y `blocked_count > 0`.
+
+Preservar orden:
+
+- `PoolVisibility` no debe reordenar.
+- `AllOpen` no debe agrupar reclamables antes y bloqueadas despues.
+- Si existe una funcion tipo `order_for_visibility`, debe eliminarse o
+  convertirse en identidad.
+- El orden final debe ser el orden manual/preferido que ya recibe la vista tras
+  aplicar filtros.
+
+Mantener `work_filters.matches` para tipo, capacidad, mis capacidades y busqueda.
+
+Separacion esperada:
+
+```text
+PoolVisibility decide estado operativo visible:
+  AllOpen | ReadyToClaim | Blocked
+
+work_filters decide refinamiento transversal:
+  busqueda | tipo | capacidad | mis capacidades
+```
+
+No mezclar ambos conceptos en un unico tipo generico.
+
+### 4. Control Bar
+
+Mover la toolbar de Pool desde `center_panel` a Pool:
+
+```text
+features/pool/control_bar.gleam
+```
+
+`center_panel` debe dejar de renderizar filtros de Pool. Debe limitarse a:
+
+- recibir contenido;
+- enrutar por vista;
+- conservar handlers de drag si siguen perteneciendo a la region central.
+
+### 5. View Config
+
+Actualizar:
+
+```text
+features/pool/view_config.gleam
+features/pool/view.gleam
+features/pool/chrome.gleam
+client_view.gleam
+```
+
+para pasar:
+
+- task types;
+- capabilities;
+- filtros;
+- callbacks;
+- visibility;
+- view mode.
+
+### 6. Limpieza
+
+Eliminar:
+
+- filtros Pool obsoletos de `center_panel`;
+- mensajes no usados;
+- estado no usado;
+- estilos `.center-filters-work` si quedan sin consumidor, o renombrarlos a una
+  clase propiedad de Pool;
+- tests que congelen el ownership antiguo de `center_panel`.
+
+No eliminar:
+
+- `work_filters`, si sigue compartido por Pool y Capacidades;
+- `task_card`, `task_row`, `my_tasks_dropzone`;
+- `pool_prefs.ViewMode`.
+
+## Seeds Necesarias Para Validacion
+
+El goal debe asegurar que las seeds permiten validar Pool sin fabricar datos a
+mano durante agent-browser.
+
+Casos minimos:
+
+- task reclamable normal;
+- task bloqueada por una dependencia incompleta;
+- task vencida;
+- task que vence hoy;
+- task bloqueada y vencida;
+- pool saturado respecto al limite blando del proyecto;
+- orden manual no trivial, con una bloqueada entre tareas reclamables para
+  comprobar que `PoolVisibility` no reordena;
+- datos suficientes para probar tipo, capacidad, mis capacidades, busqueda,
+  Canvas y List.
+
+Si las seeds actuales no cubren estos casos, deben actualizarse dentro del goal
+y validarse con tests o agent-browser.
+
+## Tests Requeridos
+
+### Unitarios
+
+- `pool_visibility_default_is_all_open_test`.
+- `pool_visibility_parse_roundtrip_test`.
+- `pool_visibility_rejects_unknown_test`.
+- `available_tasks_all_open_includes_blocked_and_unblocked_test`.
+- `available_tasks_ready_to_claim_excludes_blocked_test`.
+- `available_tasks_blocked_only_includes_only_blocked_test`.
+- `available_tasks_never_includes_claimed_or_closed_test`.
+- `available_tasks_filters_type_capability_search_and_my_capabilities_test`.
+- `available_tasks_visibility_preserves_manual_order_test`.
+
+### Vista
+
+- Pool renderiza `work-surface-header`.
+- Pool renderiza su propia control bar.
+- Pool renderiza selector `Ver` con `Abiertas`, `Reclamables`, `Bloqueadas`.
+- Pool renderiza toggle `Canvas/List`.
+- Pool muestra summary chips de abiertas, reclamables, bloqueadas y limite.
+- Pool saturado usa tono de atencion y no bloquea.
+- Empty state sin reclamables explica que puede haber bloqueadas.
+- Empty state de `Blocked` sin bloqueadas no sugiere crear una task nueva.
+- Pool no duplica `Mis tareas` en el body central.
+- Task card bloqueada usa senal compacta, no badge largo que agrande la card.
+- Task card vencida usa senal compacta y accesible.
+- Task card bloqueada y vencida muestra ambas senales sin overflow.
+- Task card desktop conserva `128 x 128`.
+- Task card canvas no renderiza texto permanente `Bloqueada`, `Vencida` ni
+  fechas largas dentro de la card.
+- Task card canvas expone estado por `title`/`aria-label` y hover preview.
+
+### Center Panel
+
+- `center_panel` no renderiza filtros de Pool.
+- `center_panel` no renderiza `filter-type`, `filter-capability` ni
+  `filter-capability-scope` por si mismo para Pool.
+- Plan, Capacidades y Personas siguen sin recibir filtros globales.
+
+### Regresion
+
+- Canvas sigue renderizando task cards.
+- Lista sigue renderizando task rows.
+- Claim action aparece solo en tareas reclamables.
+- Bloqueadas aparecen en `AllOpen` pero sin accion de claim.
+- Bloqueadas en `AllOpen` tienen tratamiento visual de atencion sutil:
+  icono/estado claro, indicador compacto de dependencias y accion de inspeccion.
+- Cambiar `Ver` no reordena las tasks respecto al orden manual existente.
+- Drag-to-claim sigue funcionando.
+- Drag-to-claim no se dispara en bloqueadas.
+- Sidebar derecho sigue mostrando mis tareas reclamadas.
+- Shortcuts existentes no se rompen:
+  - crear task;
+  - foco de busqueda;
+  - cerrar dialogos;
+  - cambio canvas/list si aplica.
+
+## Validacion Con Agent Browser
+
+Casos minimos:
+
+1. Entrar en Pool.
+2. Confirmar que la cabecera y control bar se ven integradas con Plan,
+   Capacidades y Personas.
+3. Cambiar `Ver`:
+   - Abiertas;
+   - Reclamables;
+   - Bloqueadas.
+4. Comprobar que bloqueadas son visibles en Abiertas pero no reclamables.
+5. Comprobar que cambiar `Ver` no reordena el Pool manualmente organizado.
+6. Comprobar que bloqueo y vencimiento se muestran con senales compactas sin
+   hacer crecer ni desbordar la task card.
+   - desktop: task card sigue midiendo `128 x 128`;
+   - no hay labels largas dentro de canvas;
+   - tooltip/aria-label contiene el texto completo;
+   - hover preview/detalle muestra la informacion completa.
+7. Buscar una task.
+8. Filtrar por tipo.
+9. Filtrar por capacidad.
+10. Cambiar entre todas/mis capacidades.
+11. Cambiar Canvas/List.
+12. Reclamar una task y confirmar que sale del body central y aparece en el
+    sidebar derecho.
+13. Probar responsive/mobile:
+    - control bar no se desborda;
+    - botones tactiles mantienen tamano util;
+    - no se duplican acciones.
+
+Repetir la validacion tras corregir cualquier problema visual o funcional.
+
+## Criterios De Aceptacion
+
+- Pool es dueña de header, control bar y body.
+- `center_panel` deja de renderizar filtros de Pool.
+- La visibilidad de Pool se modela con `PoolVisibility`, no con `TaskPhase`.
+- `AllOpen` es el default.
+- Las tareas bloqueadas son visibles por defecto, pero no reclamables.
+- `PoolVisibility` no introduce orden inteligente ni reagrupacion automatica.
+- El orden manual actual del Pool se conserva al filtrar.
+- Bloqueo y vencimiento se muestran con senales compactas, accesibles y sin
+  aumentar el tamano de la task card.
+- El sidebar derecho sigue siendo el unico lugar para `Mis tareas`.
+- No hay codigo obsoleto de filtros antiguos.
+- Tests relevantes pasan.
+- La vista queda validada con `agent-browser`.
+- Al final se ejecuta `gleam-refactor` y se aplican mejoras razonables de
+  simplicidad, tipado y limpieza.

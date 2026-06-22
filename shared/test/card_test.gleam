@@ -2,59 +2,31 @@ import domain/card
 import gleam/option.{None, Some}
 
 // =============================================================================
-// State Derivation Tests
-// =============================================================================
-
-pub fn derive_state_pendiente_when_no_tasks_test() {
-  let assert card.Pendiente = card.derive_state(0, 0, 0)
-}
-
-pub fn derive_state_pendiente_when_all_tasks_available_test() {
-  let assert card.Pendiente = card.derive_state(3, 0, 3)
-}
-
-pub fn derive_state_en_curso_when_task_in_progress_test() {
-  let assert card.EnCurso = card.derive_state(3, 1, 1)
-}
-
-pub fn derive_state_en_curso_when_some_completed_and_some_available_test() {
-  let assert card.EnCurso = card.derive_state(4, 2, 2)
-}
-
-pub fn derive_state_cerrada_when_all_completed_test() {
-  let assert card.Cerrada = card.derive_state(3, 3, 0)
-}
-
-pub fn derive_state_cerrada_when_single_task_completed_test() {
-  let assert card.Cerrada = card.derive_state(1, 1, 0)
-}
-
-// =============================================================================
 // State String Conversion Tests
 // =============================================================================
 
 pub fn state_to_string_test() {
-  let assert "pendiente" = card.state_to_string(card.Pendiente)
-  let assert "en_curso" = card.state_to_string(card.EnCurso)
-  let assert "cerrada" = card.state_to_string(card.Cerrada)
+  let assert "pendiente" = card.state_to_string(card.Draft)
+  let assert "en_curso" = card.state_to_string(card.Active)
+  let assert "cerrada" = card.state_to_string(card.Closed)
 }
 
 pub fn parse_state_test() {
-  let assert Ok(card.Pendiente) = card.parse_state("pendiente")
-  let assert Ok(card.EnCurso) = card.parse_state("en_curso")
-  let assert Ok(card.Cerrada) = card.parse_state("cerrada")
+  let assert Ok(card.Draft) = card.parse_state("pendiente")
+  let assert Ok(card.Active) = card.parse_state("en_curso")
+  let assert Ok(card.Closed) = card.parse_state("cerrada")
 }
 
 pub fn parse_state_rejects_unknown_values_test() {
-  let assert Error(card.UnknownCardState("invalid")) =
+  let assert Error(card.UnknownCardPhase("invalid")) =
     card.parse_state("invalid")
-  let assert Error(card.UnknownCardState("")) = card.parse_state("")
+  let assert Error(card.UnknownCardPhase("")) = card.parse_state("")
 }
 
 pub fn state_from_string_rejects_unknown_values_test() {
-  let assert Error(card.UnknownCardState("invalid")) =
+  let assert Error(card.UnknownCardPhase("invalid")) =
     card.state_from_string("invalid")
-  let assert Error(card.UnknownCardState("")) = card.state_from_string("")
+  let assert Error(card.UnknownCardPhase("")) = card.state_from_string("")
 }
 
 // =============================================================================

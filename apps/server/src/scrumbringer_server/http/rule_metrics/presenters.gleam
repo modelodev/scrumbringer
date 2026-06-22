@@ -5,7 +5,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
-import scrumbringer_server/services/rule_metrics_db
+import scrumbringer_server/use_case/rule_metrics_db
 
 type Totals {
   Totals(evaluated_count: Int, applied_count: Int, suppressed_count: Int)
@@ -139,11 +139,19 @@ fn workflow_summary_json(
 fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
   let fields = [
     #("id", json.int(exec.id)),
-    #("origin_type", json.string(exec.origin_type)),
-    #("origin_id", json.int(exec.origin_id)),
     #("outcome", json.string(exec.outcome)),
     #("created_at", json.string(exec.created_at)),
   ]
+
+  let fields = case exec.task_id {
+    None -> fields
+    Some(id) -> [#("task_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.card_id {
+    None -> fields
+    Some(id) -> [#("card_id", json.int(id)), ..fields]
+  }
 
   let fields = case exec.suppression_reason {
     "" -> fields

@@ -83,7 +83,7 @@ fn rule() -> Rule {
     workflow_id: 3,
     name: "Complete bug workflow",
     goal: opt.Some("Create a follow-up when work completes"),
-    target: TaskRule(task_status.Completed, opt.Some(5)),
+    target: TaskRule(task_status.Done, opt.Some(5)),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     templates: [rule_template()],
