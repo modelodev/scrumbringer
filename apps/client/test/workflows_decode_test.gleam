@@ -168,7 +168,7 @@ pub fn rule_payload_decoder_rejects_card_task_type_test() {
 
 pub fn template_payload_decoder_decodes_enveloped_template_test() {
   let body =
-    "{\"data\":{\"template\":{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{father}}\",\"description\":\"Auto-created review task\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"}}}"
+    "{\"data\":{\"template\":{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto-created review task\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"}}}"
 
   let decoder =
     decode.field(
@@ -179,7 +179,7 @@ pub fn template_payload_decoder_decodes_enveloped_template_test() {
 
   let assert Ok(template) = json.parse(from: body, using: decoder)
   let assert 1 = template.id
-  let assert "Review {{father}}" = template.name
+  let assert "Review {{origin}}" = template.name
   let assert 2 = template.type_id
   let assert 3 = template.priority
 }
@@ -221,7 +221,7 @@ pub fn templates_payload_decoder_decodes_list_test() {
 
 pub fn rule_templates_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{father}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1},{\"id\":2,\"org_id\":1,\"project_id\":null,\"name\":\"QA Check\",\"description\":null,\"type_id\":3,\"type_name\":\"QA\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\",\"execution_order\":2}]}}"
+    "{\"data\":{\"templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1},{\"id\":2,\"org_id\":1,\"project_id\":null,\"name\":\"QA Check\",\"description\":null,\"type_id\":3,\"type_name\":\"QA\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\",\"execution_order\":2}]}}"
 
   let decoder =
     decode.field(
@@ -232,7 +232,7 @@ pub fn rule_templates_payload_decoder_decodes_list_test() {
 
   let assert Ok(templates) = json.parse(from: body, using: decoder)
   let assert [template_a, template_b] = templates
-  let assert "Review {{father}}" = template_a.name
+  let assert "Review {{origin}}" = template_a.name
   let assert 1 = template_a.execution_order
   let assert "QA Check" = template_b.name
   let assert 2 = template_b.execution_order

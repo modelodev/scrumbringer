@@ -23,27 +23,17 @@ pub fn format_origin_link(resource_type: String, resource_id: Int) -> String {
   }
 }
 
-/// Deprecated compatibility helper for persisted templates saved before the
-/// product variable was renamed to `{{origin}}`.
-pub fn format_father_link(resource_type: String, resource_id: Int) -> String {
-  format_origin_link(resource_type, resource_id)
-}
-
 /// Substitute workflow template variables with event context values.
 pub fn substitute(
   text: String,
   origin: String,
-  from_state: String,
-  to_state: String,
+  trigger: String,
   project_name: String,
   user_name: String,
 ) -> String {
   text
   |> string.replace("{{origin}}", origin)
-  |> string.replace("{{father}}", origin)
-  |> string.replace("{{trigger}}", to_state)
-  |> string.replace("{{from_state}}", from_state)
-  |> string.replace("{{to_state}}", to_state)
+  |> string.replace("{{trigger}}", trigger)
   |> string.replace("{{project}}", project_name)
   |> string.replace("{{user}}", user_name)
 }

@@ -74,7 +74,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       session,
       project_id,
       review_type_id,
-      "Review {{father}}",
+      "Review {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -158,7 +158,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
     )
   task_count_after |> expect.equal(1)
 
-  // And: The created task title contains the father link
+  // And: The created task title contains the origin link
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
@@ -517,7 +517,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       session,
       project_id,
       review_type_id,
-      "Review {{father}}",
+      "Review {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -628,7 +628,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       session,
       project_id,
       review_type_id,
-      "Review {{father}}",
+      "Review {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(

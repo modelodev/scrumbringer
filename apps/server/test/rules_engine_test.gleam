@@ -47,7 +47,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       session,
       project_id,
       review_type_id,
-      "Review {{father}}",
+      "Review {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -240,12 +240,12 @@ pub fn evaluate_rules_card_resource_type_test() {
 // Variable Substitution Tests
 // =============================================================================
 
-pub fn variable_father_task_resolves_to_link_test() {
+pub fn variable_origin_task_resolves_to_link_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
   let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "FatherTask")
+    fixtures.create_project(handler, session, "OriginTask")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -257,15 +257,15 @@ pub fn variable_father_task_resolves_to_link_test() {
       "magnifier",
     )
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(handler, session, project_id, "Father Task Test")
+    fixtures.create_workflow(handler, session, project_id, "Origin Task Test")
   let assert Ok(template_id) =
     fixtures.create_template_with_desc(
       handler,
       session,
       project_id,
       review_type_id,
-      "Review {{father}}",
-      "Desc for {{father}}",
+      "Review {{origin}}",
+      "Desc for {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -298,7 +298,7 @@ pub fn variable_father_task_resolves_to_link_test() {
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
 
-  // Verify the created task title contains the father link
+  // Verify the created task title contains the origin link
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
@@ -327,7 +327,7 @@ pub fn variable_father_task_resolves_to_link_test() {
   |> expect.is_true
 }
 
-pub fn variable_father_card_resolves_to_link_test() {
+pub fn variable_origin_card_resolves_to_link_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -336,15 +336,15 @@ pub fn variable_father_card_resolves_to_link_test() {
   let assert Ok(task_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(handler, session, project_id, "Card Father Test")
+    fixtures.create_workflow(handler, session, project_id, "Card Origin Test")
   let assert Ok(template_id) =
     fixtures.create_template_with_desc(
       handler,
       session,
       project_id,
       task_type_id,
-      "Followup for {{father}}",
-      "Card {{father}} was closed",
+      "Followup for {{origin}}",
+      "Card {{origin}} was closed",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule_card(
@@ -391,24 +391,24 @@ pub fn variable_father_card_resolves_to_link_test() {
   |> expect.is_true
 }
 
-pub fn variable_from_state_resolves_test() {
+pub fn variable_trigger_resolves_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
   let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "FromState")
+    fixtures.create_project(handler, session, "TriggerVariable")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(handler, session, project_id, "From State Test")
+    fixtures.create_workflow(handler, session, project_id, "Trigger Var Test")
   let assert Ok(template_id) =
     fixtures.create_template_with_desc(
       handler,
       session,
       project_id,
       type_id,
-      "{{from_state}} -> {{to_state}}",
-      "Changed from {{from_state}}",
+      "Trigger: {{trigger}}",
+      "Changed to {{trigger}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -444,19 +444,19 @@ pub fn variable_from_state_resolves_test() {
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
-      "select title from tasks where title = 'claimed -> completed'",
+      "select title from tasks where title = 'Trigger: completed'",
       [],
     )
 
-  created_title |> expect.equal("claimed -> completed")
+  created_title |> expect.equal("Trigger: completed")
 }
 
-pub fn variable_from_state_null_shows_created_test() {
+pub fn variable_trigger_on_created_task_uses_available_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
   let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "NullFromState")
+    fixtures.create_project(handler, session, "CreatedTrigger")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -464,7 +464,7 @@ pub fn variable_from_state_null_shows_created_test() {
       handler,
       session,
       project_id,
-      "Null From State Test",
+      "Created Trigger Test",
     )
   let assert Ok(template_id) =
     fixtures.create_template_with_desc(
@@ -472,8 +472,8 @@ pub fn variable_from_state_null_shows_created_test() {
       session,
       project_id,
       type_id,
-      "From: {{from_state}}",
-      "Was {{from_state}}",
+      "Trigger: {{trigger}}",
+      "Was {{trigger}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -492,7 +492,7 @@ pub fn variable_from_state_null_shows_created_test() {
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  // Task creation event (from_state is None)
+  // Task creation event (None -> available)
   let event =
     fixtures.task_event_status(
       task_id,
@@ -510,20 +510,20 @@ pub fn variable_from_state_null_shows_created_test() {
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
-      "select title from tasks where title = 'From: (created)'",
+      "select title from tasks where title = 'Trigger: available'",
       [],
     )
 
-  created_title |> expect.equal("From: (created)")
+  created_title |> expect.equal("Trigger: available")
 
   let assert Ok(created_desc) =
     fixtures.query_string(
       db,
-      "select description from tasks where title = 'From: (created)'",
+      "select description from tasks where title = 'Trigger: available'",
       [],
     )
 
-  created_desc |> expect.equal("Was (created)")
+  created_desc |> expect.equal("Was available")
 }
 
 pub fn variable_project_resolves_to_name_test() {
@@ -676,8 +676,8 @@ pub fn all_five_variables_combined_test() {
       session,
       project_id,
       review_type_id,
-      "{{father}} ({{project}})",
-      "{{user}}: {{from_state}}->{{to_state}}",
+      "{{origin}} ({{project}})",
+      "{{user}}: {{trigger}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -730,7 +730,7 @@ pub fn all_five_variables_combined_test() {
     )
   count |> expect.equal(1)
 
-  // Verify title has {{father}}, {{project}} (query by type_id)
+  // Verify title has {{origin}}, {{project}} (query by type_id)
   let assert Ok(created_title) =
     fixtures.query_string(db, "select title from tasks where type_id = $1", [
       pog.int(review_type_id),
@@ -741,7 +741,7 @@ pub fn all_five_variables_combined_test() {
   |> expect.is_true
   created_title |> string.contains("CombinedVars") |> expect.is_true
 
-  // Verify description has {{user}}, {{from_state}}, {{to_state}} (query by type_id)
+  // Verify description has {{user}}, {{trigger}} (query by type_id)
   let assert Ok(created_desc) =
     fixtures.query_string(
       db,
@@ -749,11 +749,6 @@ pub fn all_five_variables_combined_test() {
       [pog.int(review_type_id)],
     )
   created_desc |> string.contains("admin@example.com") |> expect.is_true
-  created_desc
-  |> string.contains(
-    task_status.task_status_to_string(task_status.Claimed(task_status.Taken)),
-  )
-  |> expect.is_true
   created_desc
   |> string.contains(task_status.task_status_to_string(task_status.Done))
   |> expect.is_true

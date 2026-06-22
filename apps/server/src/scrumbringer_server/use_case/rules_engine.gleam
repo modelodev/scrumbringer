@@ -500,14 +500,12 @@ fn create_task_from_template(
       event_resource_type(event),
       event_resource_id(event),
     )
-  let from_state = event_from_state_label(event)
-  let to_state = event_to_state_string(event)
+  let trigger = event_to_state_string(event)
   let title =
     rules_templates.substitute(
       template.name,
       origin,
-      from_state,
-      to_state,
+      trigger,
       project_name,
       user_name,
     )
@@ -515,8 +513,7 @@ fn create_task_from_template(
     rules_templates.substitute(
       template_description_text(template),
       origin,
-      from_state,
-      to_state,
+      trigger,
       project_name,
       user_name,
     )
@@ -747,22 +744,6 @@ fn event_to_state_string(event: StateChange) -> String {
     TaskChange(to_state: to_state, ..) ->
       task_status.task_status_to_string(to_state)
     CardChange(to_state: to_state, ..) -> domain_card.state_to_string(to_state)
-  }
-}
-
-fn event_from_state_string(event: StateChange) -> option.Option(String) {
-  case event {
-    TaskChange(from_state: from_state, ..) ->
-      option.map(from_state, task_status.task_status_to_string)
-    CardChange(from_state: from_state, ..) ->
-      option.map(from_state, domain_card.state_to_string)
-  }
-}
-
-fn event_from_state_label(event: StateChange) -> String {
-  case event_from_state_string(event) {
-    option.Some(from_state) -> from_state
-    option.None -> "(created)"
   }
 }
 
