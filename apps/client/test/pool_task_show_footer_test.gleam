@@ -6,7 +6,7 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status.{Taken}
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_detail_footer
+import scrumbringer_client/features/pool/task_show_footer
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -17,9 +17,9 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-pub fn task_detail_footer_renders_close_only_without_task_test() {
+pub fn task_show_footer_renders_close_only_without_task_test() {
   let html =
-    task_detail_footer.view(config(None, current_user_id: Some(7)))
+    task_show_footer.view(config(None, current_user_id: Some(7)))
     |> element.to_document_string
 
   assert_contains(html, "task-detail-footer")
@@ -30,9 +30,9 @@ pub fn task_detail_footer_renders_close_only_without_task_test() {
   assert_not_contains(html, "Complete")
 }
 
-pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
+pub fn task_show_footer_disables_claim_for_blocked_task_test() {
   let html =
-    task_detail_footer.view(config(
+    task_show_footer.view(config(
       Some(Task(..available_task(), blocked_count: 1)),
       current_user_id: Some(7),
     ))
@@ -47,9 +47,9 @@ pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
   assert_not_contains(html, "Complete")
 }
 
-pub fn task_detail_footer_renders_owner_claimed_actions_test() {
+pub fn task_show_footer_renders_owner_claimed_actions_test() {
   let html =
-    task_detail_footer.view(config(
+    task_show_footer.view(config(
       Some(claimed_task(claimed_by: 7)),
       current_user_id: Some(7),
     ))
@@ -66,9 +66,9 @@ pub fn task_detail_footer_renders_owner_claimed_actions_test() {
   assert_not_contains(html, "Claim task")
 }
 
-pub fn task_detail_footer_hides_claimed_actions_for_other_owner_test() {
+pub fn task_show_footer_hides_claimed_actions_for_other_owner_test() {
   let html =
-    task_detail_footer.view(config(
+    task_show_footer.view(config(
       Some(claimed_task(claimed_by: 9)),
       current_user_id: Some(7),
     ))
@@ -80,10 +80,10 @@ pub fn task_detail_footer_hides_claimed_actions_for_other_owner_test() {
   assert_not_contains(html, "Complete")
 }
 
-pub fn task_detail_footer_renders_edit_actions_in_edit_mode_test() {
+pub fn task_show_footer_renders_edit_actions_in_edit_mode_test() {
   let html =
-    task_detail_footer.view(
-      task_detail_footer.Config(
+    task_show_footer.view(
+      task_show_footer.Config(
         ..config(Some(claimed_task(claimed_by: 7)), current_user_id: Some(7)),
         editing: True,
         edit_dirty: True,
@@ -97,10 +97,10 @@ pub fn task_detail_footer_renders_edit_actions_in_edit_mode_test() {
   assert_not_contains(html, "Complete")
 }
 
-pub fn task_detail_footer_disables_save_without_edit_changes_test() {
+pub fn task_show_footer_disables_save_without_edit_changes_test() {
   let html =
-    task_detail_footer.view(
-      task_detail_footer.Config(
+    task_show_footer.view(
+      task_show_footer.Config(
         ..config(Some(claimed_task(claimed_by: 7)), current_user_id: Some(7)),
         editing: True,
         edit_dirty: False,
@@ -115,8 +115,8 @@ pub fn task_detail_footer_disables_save_without_edit_changes_test() {
 fn config(
   task_value: Option(Task),
   current_user_id current_user_id_value: Option(Int),
-) -> task_detail_footer.Config(String) {
-  task_detail_footer.Config(
+) -> task_show_footer.Config(String) {
+  task_show_footer.Config(
     locale: locale.En,
     task: task_value,
     current_user_id: current_user_id_value,

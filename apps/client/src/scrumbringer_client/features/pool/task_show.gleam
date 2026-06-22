@@ -36,10 +36,10 @@ import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
-import scrumbringer_client/features/pool/task_detail_details
-import scrumbringer_client/features/pool/task_detail_footer
-import scrumbringer_client/features/pool/task_detail_header
 import scrumbringer_client/features/pool/task_notes
+import scrumbringer_client/features/pool/task_show_details
+import scrumbringer_client/features/pool/task_show_footer
+import scrumbringer_client/features/pool/task_show_header
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -172,7 +172,7 @@ pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
 }
 
 fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
-  task_detail_header.view(task_detail_header.Config(
+  task_show_header.view(task_show_header.Config(
     locale: config.locale,
     task: config.task,
     parent_card_title: config.editor.parent_card_title,
@@ -284,13 +284,11 @@ fn view_dependencies(config: TaskShowConfig(msg)) -> Element(msg) {
 }
 
 fn view_task_details_tab(config: TaskShowConfig(msg)) -> Element(msg) {
-  task_detail_details.view(details_config(config))
+  task_show_details.view(details_config(config))
 }
 
-fn details_config(
-  config: TaskShowConfig(msg),
-) -> task_detail_details.Config(msg) {
-  task_detail_details.Config(
+fn details_config(config: TaskShowConfig(msg)) -> task_show_details.Config(msg) {
+  task_show_details.Config(
     locale: config.locale,
     task: config.task,
     dependencies: config.dependencies.items,
@@ -368,7 +366,7 @@ fn view_notes(config: TaskShowConfig(msg)) -> Element(msg) {
 }
 
 fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
-  task_detail_footer.view(task_detail_footer.Config(
+  task_show_footer.view(task_show_footer.Config(
     locale: config.locale,
     task: config.task,
     current_user_id: config.current_user_id,
@@ -388,7 +386,7 @@ fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
 
 fn edit_dirty(config: TaskShowConfig(msg)) -> Bool {
   case config.task {
-    opt.Some(task) -> task_detail_details.is_dirty(details_config(config), task)
+    opt.Some(task) -> task_show_details.is_dirty(details_config(config), task)
     opt.None -> False
   }
 }

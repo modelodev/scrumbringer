@@ -11,7 +11,7 @@ import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency}
 
 import scrumbringer_client/features/cards/scoped_navigation
-import scrumbringer_client/features/pool/task_detail_summary
+import scrumbringer_client/features/pool/task_show_summary
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -42,7 +42,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           case config.editor.editing {
             True -> element.none()
             False ->
-              task_detail_summary.view(task_detail_summary.Config(
+              task_show_summary.view(task_show_summary.Config(
                 locale: config.locale,
                 task: task,
                 dependencies: config.dependencies,

@@ -7,16 +7,16 @@ import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
 import domain/task_status.{type TaskPhase, Available, Done, Taken}
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_detail_header
+import scrumbringer_client/features/pool/task_show_header
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
-pub fn task_detail_header_renders_loaded_task_test() {
+pub fn task_show_header_renders_loaded_task_test() {
   let html =
-    task_detail_header.view(task_detail_header.Config(
+    task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
@@ -38,9 +38,9 @@ pub fn task_detail_header_renders_loaded_task_test() {
   assert_contains(html, "task-detail-title")
 }
 
-pub fn task_detail_header_renders_assigned_task_test() {
+pub fn task_show_header_renders_assigned_task_test() {
   let html =
-    task_detail_header.view(task_detail_header.Config(
+    task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: Some(claimed_task()),
       parent_card_title: Some("Release card"),
@@ -55,9 +55,9 @@ pub fn task_detail_header_renders_assigned_task_test() {
   assert_contains(html, "task-meta-assignee")
 }
 
-pub fn task_detail_header_renders_loading_title_test() {
+pub fn task_show_header_renders_loading_title_test() {
   let html =
-    task_detail_header.view(task_detail_header.Config(
+    task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: None,
       parent_card_title: None,
@@ -71,9 +71,9 @@ pub fn task_detail_header_renders_loading_title_test() {
   assert_contains(html, "task-detail-title")
 }
 
-pub fn task_detail_header_localizes_close_label_test() {
+pub fn task_show_header_localizes_close_label_test() {
   let html =
-    task_detail_header.view(task_detail_header.Config(
+    task_show_header.view(task_show_header.Config(
       locale: locale.Es,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
@@ -86,9 +86,9 @@ pub fn task_detail_header_localizes_close_label_test() {
   assert_contains(html, "aria-label=\"Cerrar\"")
 }
 
-pub fn task_detail_header_renders_due_date_and_loaded_blockers_test() {
+pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
   let html =
-    task_detail_header.view(task_detail_header.Config(
+    task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: Some(Task(..available_task(), due_date: Some("2026-06-24"))),
       parent_card_title: Some("Release card"),

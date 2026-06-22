@@ -9,7 +9,7 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_detail_details
+import scrumbringer_client/features/pool/task_show_details
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/pinned_context
@@ -22,9 +22,9 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-pub fn task_detail_details_renders_loaded_task_without_root_model_test() {
+pub fn task_show_details_renders_loaded_task_without_root_model_test() {
   let html =
-    task_detail_details.view(config(Some(claimed_task()), Some(7)))
+    task_show_details.view(config(Some(claimed_task()), Some(7)))
     |> element.to_document_string
 
   assert_contains(html, "Details")
@@ -39,9 +39,9 @@ pub fn task_detail_details_renders_loaded_task_without_root_model_test() {
   assert_contains(html, "Review release checklist.")
 }
 
-pub fn task_detail_details_renders_loading_state_test() {
+pub fn task_show_details_renders_loading_state_test() {
   let html =
-    task_detail_details.view(config(None, None))
+    task_show_details.view(config(None, None))
     |> element.to_document_string
 
   assert_contains(html, "Loading")
@@ -49,9 +49,9 @@ pub fn task_detail_details_renders_loading_state_test() {
   assert_not_contains(html, "Edit task")
 }
 
-pub fn task_detail_details_renders_pinned_context_test() {
+pub fn task_show_details_renders_pinned_context_test() {
   let html =
-    task_detail_details.view(
+    task_show_details.view(
       config_with_pins(Some(claimed_task()), Some(7), [
         pinned_note(1, "Spec"),
         pinned_note(2, "Decision"),
@@ -73,8 +73,8 @@ fn config_with_pins(
   task: Option(Task),
   current_user_id: Option(Int),
   pinned_notes: List(pinned_context.PinnedNote),
-) -> task_detail_details.Config(String) {
-  task_detail_details.Config(
+) -> task_show_details.Config(String) {
+  task_show_details.Config(
     locale: locale.En,
     task: task,
     dependencies: NotAsked,
@@ -90,7 +90,7 @@ fn config_with_pins(
 fn config(
   task: Option(Task),
   current_user_id: Option(Int),
-) -> task_detail_details.Config(String) {
+) -> task_show_details.Config(String) {
   config_with_pins(task, current_user_id, [])
 }
 

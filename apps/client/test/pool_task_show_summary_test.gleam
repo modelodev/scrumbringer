@@ -7,16 +7,16 @@ import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
 import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_detail_summary
+import scrumbringer_client/features/pool/task_show_summary
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
-pub fn task_detail_summary_renders_operational_context_test() {
+pub fn task_show_summary_renders_operational_context_test() {
   let html =
-    task_detail_summary.view(task_detail_summary.Config(
+    task_show_summary.view(task_show_summary.Config(
       locale: locale.En,
       task: task(),
       dependencies: Loaded([]),
@@ -33,9 +33,9 @@ pub fn task_detail_summary_renders_operational_context_test() {
   assert_contains(html, "No active blockers")
 }
 
-pub fn task_detail_summary_uses_loaded_dependency_blockers_test() {
+pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
   let html =
-    task_detail_summary.view(task_detail_summary.Config(
+    task_show_summary.view(task_show_summary.Config(
       locale: locale.En,
       task: Task(..task(), blocked_count: 0),
       dependencies: Loaded([
