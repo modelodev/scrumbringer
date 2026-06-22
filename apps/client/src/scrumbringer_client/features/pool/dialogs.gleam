@@ -2,11 +2,11 @@
 ////
 //// ## Mission
 ////
-//// Render modal dialogs for the pool view: task details.
+//// Render Task Show and its secondary dialogs for the pool view.
 ////
 //// ## Responsibilities
 ////
-//// - Task details modal with notes list
+//// - Task Show panel with notes, dependencies, activity, and action bar
 ////
 //// ## Non-responsibilities
 ////
@@ -25,7 +25,6 @@ import gleam/option as opt
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div}
-import lustre/event
 
 import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
@@ -146,32 +145,24 @@ pub type TaskActionsConfig(msg) {
 }
 
 pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  div([attribute.class("task-detail-modal task-show-panel")], [
+  div([attribute.class("task-show task-show-panel")], [
     div(
       [
-        attribute.class("modal-backdrop"),
-        event.on_click(config.on_close),
-      ],
-      [],
-    ),
-    div(
-      [
-        attribute.class("modal-content task-detail-content task-show-content"),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
+        attribute.class("task-show-content task-detail-content"),
+        attribute.attribute("role", "complementary"),
         attribute.attribute("aria-labelledby", "task-detail-title"),
       ],
       [
         div(
           [
-            attribute.class("modal-header-block detail-header-block"),
+            attribute.class("task-show-header-block detail-header-block"),
           ],
           [
             view_task_header(config),
             view_task_show_tabs(config),
           ],
         ),
-        div([attribute.class("modal-body task-detail-body")], [
+        div([attribute.class("task-show-body task-detail-body")], [
           view_task_tab_content(config),
         ]),
         view_task_footer(config),
@@ -195,8 +186,8 @@ fn view_task_show_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
   detail_tabs.view(detail_tabs.Config(
     active_tab: config.active_tab,
     tabs: task_tab_items(config),
-    container_class: "task-tabs modal-tabs detail-tabs",
-    tab_class: "task-tab modal-tab detail-tab",
+    container_class: "task-tabs task-show-tabs detail-tabs",
+    tab_class: "task-tab task-show-tab detail-tab",
     on_tab_click: config.on_tab_clicked,
   ))
 }

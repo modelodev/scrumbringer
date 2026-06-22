@@ -1,4 +1,4 @@
-//// Task detail modal details tab presenter.
+//// Task Show details tab presenter.
 
 import gleam/option as opt
 

@@ -269,7 +269,7 @@ pub fn get_task(task_id: Int, to_msg: fn(ApiResult(Task)) -> msg) -> Effect(msg)
   )
 }
 
-/// Update editable task fields from the task detail modal.
+/// Update editable task fields from Task Show.
 pub type TaskUpdatePayload {
   TaskUpdatePayload(
     version: Int,

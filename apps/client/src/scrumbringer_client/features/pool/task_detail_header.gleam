@@ -1,4 +1,4 @@
-//// domain_task.Task detail modal header.
+//// Task Show header.
 
 import gleam/int
 import gleam/option as opt
