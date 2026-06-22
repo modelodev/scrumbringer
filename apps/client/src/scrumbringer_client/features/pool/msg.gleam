@@ -126,17 +126,17 @@ pub type Msg {
   MemberPositionEditYChanged(String)
   MemberPositionEditSubmitted
   MemberPositionSaved(ApiResult(TaskPosition))
-  MemberTaskDetailsOpened(Int)
-  MemberTaskDetailsClosed
-  MemberTaskDetailTabClicked(show_tabs.TaskShowTab)
-  MemberTaskDetailEditStarted
-  MemberTaskDetailEditCancelled
-  MemberTaskDetailEditTitleChanged(String)
-  MemberTaskDetailEditDescriptionChanged(String)
-  MemberTaskDetailEditPriorityChanged(String)
-  MemberTaskDetailEditTypeIdChanged(String)
-  MemberTaskDetailEditCardIdChanged(String)
-  MemberTaskDetailEditSubmitted
+  MemberTaskShowOpened(Int)
+  MemberTaskShowClosed
+  MemberTaskShowTabClicked(show_tabs.TaskShowTab)
+  MemberTaskShowEditStarted
+  MemberTaskShowEditCancelled
+  MemberTaskShowEditTitleChanged(String)
+  MemberTaskShowEditDescriptionChanged(String)
+  MemberTaskShowEditPriorityChanged(String)
+  MemberTaskShowEditTypeIdChanged(String)
+  MemberTaskShowEditCardIdChanged(String)
+  MemberTaskShowEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened

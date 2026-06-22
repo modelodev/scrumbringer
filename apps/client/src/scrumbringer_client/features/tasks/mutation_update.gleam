@@ -363,7 +363,7 @@ fn handle_task_deleted_ok(
   #(
     member_pool.Model(
       ..clear_optimistic_state(model),
-      member_task_detail_editing: False,
+      member_task_show_editing: False,
     ),
     effect.none(),
   )

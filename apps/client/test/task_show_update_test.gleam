@@ -69,7 +69,7 @@ fn task_show_callbacks() -> task_show_config.Callbacks(String) {
   )
 }
 
-fn task_detail_view(model: client_state.Model, task_id: Int) {
+fn task_show_view(model: client_state.Model, task_id: Int) {
   task_show_config.view(
     model.ui.locale,
     model.member.pool,
@@ -178,24 +178,24 @@ fn model_with_task() -> client_state.Model {
   })
 }
 
-pub fn task_details_open_sets_default_tasks_tab_test() {
+pub fn task_show_open_sets_default_tasks_tab_test() {
   let model = model_with_task()
 
   let #(next, _fx) =
     pool_update.update(
       model,
-      pool_messages.MemberTaskDetailsOpened(42),
+      pool_messages.MemberTaskShowOpened(42),
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_detail_tab
-  let assert False = next.member.pool.member_task_detail_editing
-  let assert "Prepare release" = next.member.pool.member_task_detail_edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_show_tab
+  let assert False = next.member.pool.member_task_show_editing
+  let assert "Prepare release" = next.member.pool.member_task_show_edit_title
   let assert "Review release checklist." =
-    next.member.pool.member_task_detail_edit_description
+    next.member.pool.member_task_show_edit_description
 }
 
-pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test() {
+pub fn task_show_config_uses_project_cache_when_active_list_misses_task_test() {
   let model =
     model_with_task()
     |> client_state.update_member(fn(member) {
@@ -238,7 +238,7 @@ pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test(
   let assert opt.Some("Backend") = config.capability_name
 }
 
-pub fn task_details_close_resets_default_tasks_tab_test() {
+pub fn task_show_close_resets_default_tasks_tab_test() {
   let model =
     client_state.default_model()
     |> client_state.update_member(fn(member) {
@@ -247,7 +247,7 @@ pub fn task_details_close_resets_default_tasks_tab_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_task_detail_tab: show_tabs.TaskActivityTab,
+          member_task_show_tab: show_tabs.TaskActivityTab,
         ),
       )
     })
@@ -255,23 +255,23 @@ pub fn task_details_close_resets_default_tasks_tab_test() {
   let #(next, _fx) =
     pool_update.update(
       model,
-      pool_messages.MemberTaskDetailsClosed,
+      pool_messages.MemberTaskShowClosed,
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_detail_tab
-  let assert False = next.member.pool.member_task_detail_editing
-  let assert "" = next.member.pool.member_task_detail_edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_show_tab
+  let assert False = next.member.pool.member_task_show_editing
+  let assert "" = next.member.pool.member_task_show_edit_title
 }
 
-pub fn task_detail_edit_submit_blank_title_sets_error_test() {
+pub fn task_show_edit_submit_blank_title_sets_error_test() {
   let model =
     model_with_task()
     |> fn(model) {
       let #(opened, _fx) =
         pool_update.update(
           model,
-          pool_messages.MemberTaskDetailsOpened(42),
+          pool_messages.MemberTaskShowOpened(42),
           test_context(),
         )
       opened
@@ -280,7 +280,7 @@ pub fn task_detail_edit_submit_blank_title_sets_error_test() {
       let #(editing, _fx) =
         pool_update.update(
           model,
-          pool_messages.MemberTaskDetailEditStarted,
+          pool_messages.MemberTaskShowEditStarted,
           test_context(),
         )
       editing
@@ -289,7 +289,7 @@ pub fn task_detail_edit_submit_blank_title_sets_error_test() {
       let #(changed, _fx) =
         pool_update.update(
           model,
-          pool_messages.MemberTaskDetailEditTitleChanged("   "),
+          pool_messages.MemberTaskShowEditTitleChanged("   "),
           test_context(),
         )
       changed
@@ -298,20 +298,20 @@ pub fn task_detail_edit_submit_blank_title_sets_error_test() {
   let #(next, _fx) =
     pool_update.update(
       model,
-      pool_messages.MemberTaskDetailEditSubmitted,
+      pool_messages.MemberTaskShowEditSubmitted,
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_detail_editing
+  let assert True = next.member.pool.member_task_show_editing
   let assert opt.Some("Title is required") =
-    next.member.pool.member_task_detail_edit_error
+    next.member.pool.member_task_show_edit_error
 }
 
-pub fn task_detail_modal_renders_edit_controls_for_owner_test() {
+pub fn task_show_surface_renders_edit_controls_for_owner_test() {
   let html =
     model_with_task()
     |> model_with_notes_task_id(42)
-    |> task_detail_view(42)
+    |> task_show_view(42)
     |> element.to_document_string
 
   assert_contains(html, "task-detail-edit-toggle")
@@ -331,7 +331,7 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_task_detail_tab: show_tabs.TaskActivityTab,
+          member_task_show_tab: show_tabs.TaskActivityTab,
         ),
         notes: member_notes.Model(
           ..notes,
@@ -340,14 +340,14 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
         ),
       )
     })
-    |> task_detail_view(42)
+    |> task_show_view(42)
     |> element.to_document_string
 
   assert_contains(html, "activity-feed-more")
   assert_contains(html, "Load more (1)")
 }
 
-pub fn task_detail_modal_renders_edit_controls_for_unclaimed_task_test() {
+pub fn task_show_surface_renders_edit_controls_for_unclaimed_task_test() {
   let html =
     model_with_task()
     |> model_with_notes_task_id(42)
@@ -361,14 +361,14 @@ pub fn task_detail_modal_renders_edit_controls_for_unclaimed_task_test() {
         ),
       )
     })
-    |> task_detail_view(42)
+    |> task_show_view(42)
     |> element.to_document_string
 
   assert_contains(html, "task-detail-edit-toggle")
   assert_contains(html, "Edit task")
 }
 
-pub fn task_detail_edit_started_allows_unclaimed_task_test() {
+pub fn task_show_edit_started_allows_unclaimed_task_test() {
   let model =
     model_with_task()
     |> client_state.update_member(fn(member) {
@@ -385,7 +385,7 @@ pub fn task_detail_edit_started_allows_unclaimed_task_test() {
       let #(opened, _fx) =
         pool_update.update(
           model,
-          pool_messages.MemberTaskDetailsOpened(42),
+          pool_messages.MemberTaskShowOpened(42),
           test_context(),
         )
       opened
@@ -394,14 +394,14 @@ pub fn task_detail_edit_started_allows_unclaimed_task_test() {
   let #(next, _fx) =
     pool_update.update(
       model,
-      pool_messages.MemberTaskDetailEditStarted,
+      pool_messages.MemberTaskShowEditStarted,
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_detail_editing
+  let assert True = next.member.pool.member_task_show_editing
 }
 
-pub fn task_detail_edit_started_uses_project_cache_when_active_list_misses_task_test() {
+pub fn task_show_edit_started_uses_project_cache_when_active_list_misses_task_test() {
   let model =
     model_with_task()
     |> model_with_notes_task_id(42)
@@ -420,10 +420,10 @@ pub fn task_detail_edit_started_uses_project_cache_when_active_list_misses_task_
   let #(next, _fx) =
     pool_update.update(
       model,
-      pool_messages.MemberTaskDetailEditStarted,
+      pool_messages.MemberTaskShowEditStarted,
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_detail_editing
-  let assert "1" = next.member.pool.member_task_detail_edit_type_id
+  let assert True = next.member.pool.member_task_show_editing
+  let assert "1" = next.member.pool.member_task_show_edit_type_id
 }

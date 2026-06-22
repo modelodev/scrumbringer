@@ -55,8 +55,8 @@ pub fn start_delete(model: member_pool.Model, task_id: Int) -> member_pool.Model
     member_task_mutation_in_flight: True,
     member_task_mutation_task_id: opt.Some(task_id),
     member_tasks_snapshot: task_list.snapshot(model.member_tasks),
-    member_task_detail_editing: False,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_editing: False,
+    member_task_show_edit_error: opt.None,
   )
 }
 

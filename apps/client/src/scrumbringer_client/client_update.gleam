@@ -352,7 +352,7 @@ pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
     toast.ClearPoolFilters ->
       client_state.pool_msg(pool_messages.MemberClearFilters)
     toast.ViewTask(task_id) ->
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
   }
 }
 

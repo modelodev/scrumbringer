@@ -98,7 +98,7 @@ pub fn from_state(
     parent_card: parent_card(cards, task),
     capability_name: capability_name(pool.member_task_types, capabilities, task),
     current_user_id: current_user_id,
-    active_tab: pool.member_task_detail_tab,
+    active_tab: pool.member_task_show_tab,
     dependencies: dependencies_config(dependencies, callbacks),
     editor: editor_config(pool, cards, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),
@@ -176,14 +176,14 @@ fn editor_config(
   callbacks: Callbacks(msg),
 ) -> task_show.TaskEditorConfig(msg) {
   task_show.TaskEditorConfig(
-    editing: pool.member_task_detail_editing,
-    edit_title: pool.member_task_detail_edit_title,
-    edit_description: pool.member_task_detail_edit_description,
-    edit_priority: pool.member_task_detail_edit_priority,
-    edit_type_id: pool.member_task_detail_edit_type_id,
-    edit_card_id: pool.member_task_detail_edit_card_id,
-    edit_error: pool.member_task_detail_edit_error,
-    edit_in_flight: pool.member_task_detail_edit_in_flight,
+    editing: pool.member_task_show_editing,
+    edit_title: pool.member_task_show_edit_title,
+    edit_description: pool.member_task_show_edit_description,
+    edit_priority: pool.member_task_show_edit_priority,
+    edit_type_id: pool.member_task_show_edit_type_id,
+    edit_card_id: pool.member_task_show_edit_card_id,
+    edit_error: pool.member_task_show_edit_error,
+    edit_in_flight: pool.member_task_show_edit_in_flight,
     task_types: pool.member_task_types,
     cards: cards,
     parent_card_title: parent_card_title(cards, task),
@@ -227,8 +227,8 @@ fn actions_config(
 ) -> task_show.TaskActionsConfig(msg) {
   task_show.TaskActionsConfig(
     disable_actions: pool.member_task_mutation_in_flight
-      || pool.member_task_detail_editing
-      || pool.member_task_detail_edit_in_flight,
+      || pool.member_task_show_editing
+      || pool.member_task_show_edit_in_flight,
     on_claim: callbacks.on_claim,
     on_release: callbacks.on_release,
     on_complete: callbacks.on_complete,

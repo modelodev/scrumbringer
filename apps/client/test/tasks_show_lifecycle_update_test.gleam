@@ -11,7 +11,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/tasks/detail_update
+import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/show_tabs
 
 fn sample_task() -> Task {
@@ -40,16 +40,16 @@ fn sample_task() -> Task {
   )
 }
 
-fn detail_context() -> detail_update.Context(Nil) {
-  detail_update.Context(
+fn detail_context() -> show_update.Context(Nil) {
+  show_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
     on_activity_fetched: fn(_result) { Nil },
   )
 }
 
-fn edit_context() -> detail_update.EditContext(Nil) {
-  detail_update.EditContext(
+fn edit_context() -> show_update.EditContext(Nil) {
+  show_update.EditContext(
     current_task: Some(sample_task()),
     can_edit: True,
     on_task_updated: fn(_result) { Nil },
@@ -60,22 +60,22 @@ fn edit_context() -> detail_update.EditContext(Nil) {
   )
 }
 
-fn success_context() -> detail_update.SuccessContext(Nil) {
-  detail_update.SuccessContext(
+fn success_context() -> show_update.SuccessContext(Nil) {
+  show_update.SuccessContext(
     task_updated: "Task updated",
     on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
-fn error_context() -> detail_update.ErrorContext(Nil) {
-  detail_update.ErrorContext(
+fn error_context() -> show_update.ErrorContext(Nil) {
+  show_update.ErrorContext(
     on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
-fn dispatch_context() -> detail_update.DispatchContext(Nil) {
-  detail_update.DispatchContext(
+fn dispatch_context() -> show_update.DispatchContext(Nil) {
+  show_update.DispatchContext(
     open_context: detail_context(),
     edit_context: edit_context(),
     success_context: success_context(),
@@ -83,8 +83,8 @@ fn dispatch_context() -> detail_update.DispatchContext(Nil) {
   )
 }
 
-fn local_model() -> detail_update.Model {
-  detail_update.Model(
+fn local_model() -> show_update.Model {
+  show_update.Model(
     pool: member_pool.Model(
       ..member_pool.default_model(),
       member_tasks: remote.Loaded([sample_task()]),
@@ -94,29 +94,29 @@ fn local_model() -> detail_update.Model {
   )
 }
 
-pub fn local_task_details_opened_sets_detail_state_and_fetches_test() {
-  let assert Some(detail_update.Update(next, fx, policy)) =
-    detail_update.try_update(
+pub fn local_task_show_opened_sets_show_state_and_fetches_test() {
+  let assert Some(show_update.Update(next, fx, policy)) =
+    show_update.try_update(
       local_model(),
-      pool_messages.MemberTaskDetailsOpened(42),
+      pool_messages.MemberTaskShowOpened(42),
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.pool.member_task_detail_tab
-  let assert False = next.pool.member_task_detail_editing
-  let assert "Prepare release" = next.pool.member_task_detail_edit_title
-  let assert "Review checklist." = next.pool.member_task_detail_edit_description
+  let assert show_tabs.TaskDetailsTab = next.pool.member_task_show_tab
+  let assert False = next.pool.member_task_show_editing
+  let assert "Prepare release" = next.pool.member_task_show_edit_title
+  let assert "Review checklist." = next.pool.member_task_show_edit_description
   let assert Some(42) = next.notes.member_notes_task_id
   let assert True = next.notes.member_notes == remote.Loading
   let assert True = next.dependencies.member_dependencies == remote.Loading
-  let assert detail_update.NoAuthCheck = policy
+  let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
 
-pub fn local_task_details_opened_uses_project_cache_when_active_list_misses_task_test() {
+pub fn local_task_show_opened_uses_project_cache_when_active_list_misses_task_test() {
   let task = sample_task()
   let model =
-    detail_update.Model(
+    show_update.Model(
       pool: member_pool.Model(
         ..member_pool.default_model(),
         member_tasks: remote.Loaded([]),
@@ -126,30 +126,30 @@ pub fn local_task_details_opened_uses_project_cache_when_active_list_misses_task
       dependencies: member_dependencies.default_model(),
     )
 
-  let assert Some(detail_update.Update(next, _, detail_update.NoAuthCheck)) =
-    detail_update.try_update(
+  let assert Some(show_update.Update(next, _, show_update.NoAuthCheck)) =
+    show_update.try_update(
       model,
-      pool_messages.MemberTaskDetailsOpened(task.id),
+      pool_messages.MemberTaskShowOpened(task.id),
       dispatch_context(),
     )
 
-  let assert "Prepare release" = next.pool.member_task_detail_edit_title
-  let assert "Review checklist." = next.pool.member_task_detail_edit_description
-  let assert "2" = next.pool.member_task_detail_edit_priority
-  let assert "1" = next.pool.member_task_detail_edit_type_id
+  let assert "Prepare release" = next.pool.member_task_show_edit_title
+  let assert "Review checklist." = next.pool.member_task_show_edit_description
+  let assert "2" = next.pool.member_task_show_edit_priority
+  let assert "1" = next.pool.member_task_show_edit_type_id
 }
 
-pub fn local_task_details_closed_resets_detail_state_test() {
+pub fn local_task_show_closed_resets_show_state_test() {
   let open_model =
-    detail_update.Model(
+    show_update.Model(
       pool: member_pool.Model(
         ..member_pool.default_model(),
-        member_task_detail_tab: show_tabs.TaskActivityTab,
-        member_task_detail_editing: True,
-        member_task_detail_edit_title: "Changed",
-        member_task_detail_edit_description: "Changed description",
-        member_task_detail_edit_in_flight: True,
-        member_task_detail_edit_error: Some("old"),
+        member_task_show_tab: show_tabs.TaskActivityTab,
+        member_task_show_editing: True,
+        member_task_show_edit_title: "Changed",
+        member_task_show_edit_description: "Changed description",
+        member_task_show_edit_in_flight: True,
+        member_task_show_edit_error: Some("old"),
       ),
       notes: member_notes.Model(
         ..member_notes.default_model(),
@@ -171,22 +171,22 @@ pub fn local_task_details_closed_resets_detail_state_test() {
       ),
     )
 
-  let assert Some(detail_update.Update(next, fx, policy)) =
-    detail_update.try_update(
+  let assert Some(show_update.Update(next, fx, policy)) =
+    show_update.try_update(
       open_model,
-      pool_messages.MemberTaskDetailsClosed,
+      pool_messages.MemberTaskShowClosed,
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.pool.member_task_detail_tab
-  let assert False = next.pool.member_task_detail_editing
-  let assert "" = next.pool.member_task_detail_edit_title
-  let assert "" = next.pool.member_task_detail_edit_description
+  let assert show_tabs.TaskDetailsTab = next.pool.member_task_show_tab
+  let assert False = next.pool.member_task_show_editing
+  let assert "" = next.pool.member_task_show_edit_title
+  let assert "" = next.pool.member_task_show_edit_description
   let assert None = next.notes.member_notes_task_id
   let assert True = next.notes.member_notes == remote.NotAsked
   let assert "" = next.notes.member_note_content
   let assert dialog_mode.DialogClosed = next.notes.member_note_dialog_mode
   let assert True = next.dependencies == member_dependencies.default_model()
-  let assert detail_update.NoAuthCheck = policy
+  let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }

@@ -41,16 +41,16 @@ fn model_with_pool(pool: member_pool.Model) -> client_state.Model {
   })
 }
 
-fn model_with_open_task_detail(task_id: Int) -> client_state.Model {
+fn model_with_open_task_show(task_id: Int) -> client_state.Model {
   client_state.update_member(client_state.default_model(), fn(member) {
     member_state.MemberModel(
       ..member,
       pool: member_pool.Model(
         ..member.pool,
-        member_task_detail_edit_title: "Open task",
-        member_task_detail_edit_description: "Details",
-        member_task_detail_edit_priority: "2",
-        member_task_detail_edit_type_id: "5",
+        member_task_show_edit_title: "Open task",
+        member_task_show_edit_description: "Details",
+        member_task_show_edit_priority: "2",
+        member_task_show_edit_type_id: "5",
       ),
       notes: member_notes.Model(
         ..member.notes,
@@ -107,30 +107,30 @@ pub fn try_update_ignores_non_task_messages_test() {
     )
 }
 
-pub fn task_delete_success_closes_deleted_task_detail_test() {
+pub fn task_delete_success_closes_deleted_task_show_test() {
   let assert opt.Some(#(next, _fx)) =
     task_route.try_update(
-      model_with_open_task_detail(42),
+      model_with_open_task_show(42),
       pool_messages.MemberTaskDeleted(42, Ok(Nil)),
       no_refresh,
     )
 
   let assert opt.None = next.member.notes.member_notes_task_id
-  let assert "" = next.member.pool.member_task_detail_edit_title
-  let assert "3" = next.member.pool.member_task_detail_edit_priority
+  let assert "" = next.member.pool.member_task_show_edit_title
+  let assert "3" = next.member.pool.member_task_show_edit_priority
 }
 
-pub fn task_delete_success_keeps_other_task_detail_open_test() {
+pub fn task_delete_success_keeps_other_task_show_open_test() {
   let assert opt.Some(#(next, _fx)) =
     task_route.try_update(
-      model_with_open_task_detail(99),
+      model_with_open_task_show(99),
       pool_messages.MemberTaskDeleted(42, Ok(Nil)),
       no_refresh,
     )
 
   let assert opt.Some(99) = next.member.notes.member_notes_task_id
-  let assert "Open task" = next.member.pool.member_task_detail_edit_title
-  let assert "2" = next.member.pool.member_task_detail_edit_priority
+  let assert "Open task" = next.member.pool.member_task_show_edit_title
+  let assert "2" = next.member.pool.member_task_show_edit_priority
 }
 
 pub fn task_release_success_refresh_preserves_loaded_tasks_test() {

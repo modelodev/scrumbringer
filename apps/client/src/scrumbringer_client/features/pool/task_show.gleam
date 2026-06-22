@@ -12,7 +12,7 @@
 ////
 //// - Task creation dialog wiring (see features/pool/create_dialog_config.gleam)
 //// - Position edit dialog wiring (see features/pool/position_edit_dialog_config.gleam)
-//// - Task Show state management (see features/pool/update.gleam, features/tasks/detail_update.gleam)
+//// - Task Show state management (see features/pool/update.gleam, features/tasks/show_update.gleam)
 //// - Form validation (handled by update handlers)
 ////
 //// ## Relations

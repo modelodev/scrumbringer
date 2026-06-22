@@ -10,33 +10,33 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/tasks/detail_update
+import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/toast
 
-fn success_context() -> detail_update.SuccessContext(Nil) {
-  detail_update.SuccessContext(
+fn success_context() -> show_update.SuccessContext(Nil) {
+  show_update.SuccessContext(
     task_updated: "Task updated",
     on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
-fn error_context() -> detail_update.ErrorContext(Nil) {
-  detail_update.ErrorContext(
+fn error_context() -> show_update.ErrorContext(Nil) {
+  show_update.ErrorContext(
     on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
   )
 }
 
-fn open_context() -> detail_update.Context(Nil) {
-  detail_update.Context(
+fn open_context() -> show_update.Context(Nil) {
+  show_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
     on_activity_fetched: fn(_result) { Nil },
   )
 }
 
-fn edit_context() -> detail_update.EditContext(Nil) {
-  detail_update.EditContext(
+fn edit_context() -> show_update.EditContext(Nil) {
+  show_update.EditContext(
     current_task: Some(sample_task()),
     can_edit: True,
     on_task_updated: fn(_result) { Nil },
@@ -47,8 +47,8 @@ fn edit_context() -> detail_update.EditContext(Nil) {
   )
 }
 
-fn dispatch_context() -> detail_update.DispatchContext(Nil) {
-  detail_update.DispatchContext(
+fn dispatch_context() -> show_update.DispatchContext(Nil) {
+  show_update.DispatchContext(
     open_context: open_context(),
     edit_context: edit_context(),
     success_context: success_context(),
@@ -56,8 +56,8 @@ fn dispatch_context() -> detail_update.DispatchContext(Nil) {
   )
 }
 
-fn detail_model(pool: member_pool.Model) -> detail_update.Model {
-  detail_update.Model(
+fn detail_model(pool: member_pool.Model) -> show_update.Model {
+  show_update.Model(
     pool: pool,
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
@@ -90,58 +90,58 @@ fn sample_task() -> Task {
   )
 }
 
-pub fn detail_update_ok_replaces_task_and_emits_success_toast_test() {
+pub fn show_update_ok_replaces_task_and_emits_success_toast_test() {
   let updated = Task(..sample_task(), title: "Updated", version: 4)
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
       member_tasks: remote.Loaded([sample_task()]),
-      member_task_detail_editing: True,
-      member_task_detail_edit_in_flight: True,
-      member_task_detail_edit_error: Some("old"),
+      member_task_show_editing: True,
+      member_task_show_edit_in_flight: True,
+      member_task_show_edit_error: Some("old"),
     )
 
-  let assert Some(detail_update.Update(next, fx, policy)) =
-    detail_update.try_update(
+  let assert Some(show_update.Update(next, fx, policy)) =
+    show_update.try_update(
       detail_model(model),
       pool_messages.MemberTaskUpdated(Ok(updated)),
       dispatch_context(),
     )
 
   let assert True = next.pool.member_tasks == remote.Loaded([updated])
-  let assert False = next.pool.member_task_detail_editing
-  let assert False = next.pool.member_task_detail_edit_in_flight
-  let assert None = next.pool.member_task_detail_edit_error
-  let assert detail_update.NoAuthCheck = policy
+  let assert False = next.pool.member_task_show_editing
+  let assert False = next.pool.member_task_show_edit_in_flight
+  let assert None = next.pool.member_task_show_edit_error
+  let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
 
-pub fn detail_update_error_sets_local_error_and_emits_feedback_test() {
+pub fn show_update_error_sets_local_error_and_emits_feedback_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_detail_edit_in_flight: True,
-      member_task_detail_edit_error: None,
+      member_task_show_edit_in_flight: True,
+      member_task_show_edit_error: None,
     )
 
-  let assert Some(detail_update.Update(next, fx, policy)) =
-    detail_update.try_update(
+  let assert Some(show_update.Update(next, fx, policy)) =
+    show_update.try_update(
       detail_model(model),
       pool_messages.MemberTaskUpdated(Error(err)),
       dispatch_context(),
     )
 
-  let assert False = next.pool.member_task_detail_edit_in_flight
-  let assert Some("boom") = next.pool.member_task_detail_edit_error
-  let assert detail_update.CheckAuthAfter(auth_err) = policy
+  let assert False = next.pool.member_task_show_edit_in_flight
+  let assert Some("boom") = next.pool.member_task_show_edit_error
+  let assert show_update.CheckAuthAfter(auth_err) = policy
   let assert True = auth_err == err
   let assert True = fx != effect.none()
 }
 
-pub fn detail_update_error_409_is_warning_test() {
+pub fn show_update_error_409_is_warning_test() {
   let #(message, variant) =
-    detail_update.error_feedback(ApiError(
+    show_update.error_feedback(ApiError(
       status: 409,
       code: "VERSION_CONFLICT",
       message: "stale",
@@ -151,9 +151,9 @@ pub fn detail_update_error_409_is_warning_test() {
   let assert toast.Warning = variant
 }
 
-pub fn detail_update_error_500_is_error_test() {
+pub fn show_update_error_500_is_error_test() {
   let #(message, variant) =
-    detail_update.error_feedback(ApiError(
+    show_update.error_feedback(ApiError(
       status: 500,
       code: "SERVER_ERROR",
       message: "boom",

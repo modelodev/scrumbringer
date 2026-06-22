@@ -863,17 +863,17 @@ fn update_without_view_mode(
     | pool_messages.MemberPositionSaved(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.
-    pool_messages.MemberTaskDetailsOpened(_)
-    | pool_messages.MemberTaskDetailsClosed
-    | pool_messages.MemberTaskDetailTabClicked(_)
-    | pool_messages.MemberTaskDetailEditStarted
-    | pool_messages.MemberTaskDetailEditCancelled
-    | pool_messages.MemberTaskDetailEditTitleChanged(_)
-    | pool_messages.MemberTaskDetailEditDescriptionChanged(_)
-    | pool_messages.MemberTaskDetailEditPriorityChanged(_)
-    | pool_messages.MemberTaskDetailEditTypeIdChanged(_)
-    | pool_messages.MemberTaskDetailEditCardIdChanged(_)
-    | pool_messages.MemberTaskDetailEditSubmitted
+    pool_messages.MemberTaskShowOpened(_)
+    | pool_messages.MemberTaskShowClosed
+    | pool_messages.MemberTaskShowTabClicked(_)
+    | pool_messages.MemberTaskShowEditStarted
+    | pool_messages.MemberTaskShowEditCancelled
+    | pool_messages.MemberTaskShowEditTitleChanged(_)
+    | pool_messages.MemberTaskShowEditDescriptionChanged(_)
+    | pool_messages.MemberTaskShowEditPriorityChanged(_)
+    | pool_messages.MemberTaskShowEditTypeIdChanged(_)
+    | pool_messages.MemberTaskShowEditCardIdChanged(_)
+    | pool_messages.MemberTaskShowEditSubmitted
     | pool_messages.MemberTaskUpdated(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.

@@ -231,9 +231,9 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
 
 fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
   task_show_config.Callbacks(
-    on_close: client_state.pool_msg(pool_messages.MemberTaskDetailsClosed),
+    on_close: client_state.pool_msg(pool_messages.MemberTaskShowClosed),
     on_tab_clicked: fn(tab) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailTabClicked(tab))
+      client_state.pool_msg(pool_messages.MemberTaskShowTabClicked(tab))
     },
     on_dependency_dialog_opened: client_state.pool_msg(
       pool_messages.MemberDependencyDialogOpened,
@@ -258,38 +258,32 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
       ))
     },
     on_edit_started: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditStarted,
+      pool_messages.MemberTaskShowEditStarted,
     ),
     on_edit_cancelled: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditCancelled,
+      pool_messages.MemberTaskShowEditCancelled,
     ),
     on_edit_title_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditTitleChanged(
+      client_state.pool_msg(pool_messages.MemberTaskShowEditTitleChanged(value))
+    },
+    on_edit_description_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskShowEditDescriptionChanged(
         value,
       ))
     },
-    on_edit_description_changed: fn(value) {
-      client_state.pool_msg(
-        pool_messages.MemberTaskDetailEditDescriptionChanged(value),
-      )
-    },
     on_edit_priority_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditPriorityChanged(
+      client_state.pool_msg(pool_messages.MemberTaskShowEditPriorityChanged(
         value,
       ))
     },
     on_edit_type_id_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditTypeIdChanged(
-        value,
-      ))
+      client_state.pool_msg(pool_messages.MemberTaskShowEditTypeIdChanged(value))
     },
     on_edit_card_id_changed: fn(value) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailEditCardIdChanged(
-        value,
-      ))
+      client_state.pool_msg(pool_messages.MemberTaskShowEditCardIdChanged(value))
     },
     on_edit_submitted: client_state.pool_msg(
-      pool_messages.MemberTaskDetailEditSubmitted,
+      pool_messages.MemberTaskShowEditSubmitted,
     ),
     on_note_dialog_opened: client_state.pool_msg(
       pool_messages.MemberNoteDialogOpened,
@@ -1411,7 +1405,7 @@ fn kanban_config(
       )
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
@@ -1637,7 +1631,7 @@ fn people_config(
       client_state.pool_msg(pool_messages.MemberPeopleRowToggled(user_id))
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
   )
 }
@@ -1676,7 +1670,7 @@ fn capability_board_config(
       client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
@@ -1776,7 +1770,7 @@ fn build_right_panel(
       }
     },
     on_task_click: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_card_click: fn(card_id) {
       client_state.pool_msg(pool_messages.OpenCardShow(card_id))

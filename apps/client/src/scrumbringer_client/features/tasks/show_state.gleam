@@ -25,15 +25,15 @@ pub fn open(
   #(
     member_pool.Model(
       ..pool,
-      member_task_detail_tab: show_tabs.TaskDetailsTab,
-      member_task_detail_editing: False,
-      member_task_detail_edit_title: fields.title,
-      member_task_detail_edit_description: fields.description,
-      member_task_detail_edit_priority: fields.priority,
-      member_task_detail_edit_type_id: fields.type_id,
-      member_task_detail_edit_card_id: fields.card_id,
-      member_task_detail_edit_in_flight: False,
-      member_task_detail_edit_error: opt.None,
+      member_task_show_tab: show_tabs.TaskDetailsTab,
+      member_task_show_editing: False,
+      member_task_show_edit_title: fields.title,
+      member_task_show_edit_description: fields.description,
+      member_task_show_edit_priority: fields.priority,
+      member_task_show_edit_type_id: fields.type_id,
+      member_task_show_edit_card_id: fields.card_id,
+      member_task_show_edit_in_flight: False,
+      member_task_show_edit_error: opt.None,
     ),
     member_notes.Model(
       ..notes,
@@ -93,15 +93,15 @@ pub fn close(
   #(
     member_pool.Model(
       ..pool,
-      member_task_detail_tab: show_tabs.TaskDetailsTab,
-      member_task_detail_editing: False,
-      member_task_detail_edit_title: "",
-      member_task_detail_edit_description: "",
-      member_task_detail_edit_priority: "3",
-      member_task_detail_edit_type_id: "",
-      member_task_detail_edit_card_id: "",
-      member_task_detail_edit_in_flight: False,
-      member_task_detail_edit_error: opt.None,
+      member_task_show_tab: show_tabs.TaskDetailsTab,
+      member_task_show_editing: False,
+      member_task_show_edit_title: "",
+      member_task_show_edit_description: "",
+      member_task_show_edit_priority: "3",
+      member_task_show_edit_type_id: "",
+      member_task_show_edit_card_id: "",
+      member_task_show_edit_in_flight: False,
+      member_task_show_edit_error: opt.None,
     ),
     member_notes.Model(
       ..notes,
@@ -124,7 +124,7 @@ pub fn select_tab(
   pool: member_pool.Model,
   tab: show_tabs.TaskShowTab,
 ) -> member_pool.Model {
-  member_pool.Model(..pool, member_task_detail_tab: tab)
+  member_pool.Model(..pool, member_task_show_tab: tab)
 }
 
 pub fn start_edit(
@@ -155,14 +155,14 @@ fn apply_edit_fields(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_editing: editing,
-    member_task_detail_edit_title: fields.title,
-    member_task_detail_edit_description: fields.description,
-    member_task_detail_edit_priority: fields.priority,
-    member_task_detail_edit_type_id: fields.type_id,
-    member_task_detail_edit_card_id: fields.card_id,
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_editing: editing,
+    member_task_show_edit_title: fields.title,
+    member_task_show_edit_description: fields.description,
+    member_task_show_edit_priority: fields.priority,
+    member_task_show_edit_type_id: fields.type_id,
+    member_task_show_edit_card_id: fields.card_id,
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -172,8 +172,8 @@ pub fn change_edit_title(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_title: value,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_title: value,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -183,8 +183,8 @@ pub fn change_edit_description(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_description: value,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_description: value,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -194,8 +194,8 @@ pub fn change_edit_priority(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_priority: value,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_priority: value,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -205,8 +205,8 @@ pub fn change_edit_type_id(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_type_id: value,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_type_id: value,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -216,8 +216,8 @@ pub fn change_edit_card_id(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_card_id: value,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_card_id: value,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -225,7 +225,7 @@ pub fn edit_invalid(
   pool: member_pool.Model,
   message: String,
 ) -> member_pool.Model {
-  member_pool.Model(..pool, member_task_detail_edit_error: opt.Some(message))
+  member_pool.Model(..pool, member_task_show_edit_error: opt.Some(message))
 }
 
 pub fn edit_unchanged(
@@ -234,14 +234,14 @@ pub fn edit_unchanged(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_editing: False,
-    member_task_detail_edit_title: submission.title,
-    member_task_detail_edit_description: submission.description,
-    member_task_detail_edit_priority: int.to_string(submission.priority),
-    member_task_detail_edit_type_id: int.to_string(submission.type_id),
-    member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_editing: False,
+    member_task_show_edit_title: submission.title,
+    member_task_show_edit_description: submission.description,
+    member_task_show_edit_priority: int.to_string(submission.priority),
+    member_task_show_edit_type_id: int.to_string(submission.type_id),
+    member_task_show_edit_card_id: id_to_form_value(submission.card_id),
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -251,13 +251,13 @@ pub fn edit_started_submit(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_title: submission.title,
-    member_task_detail_edit_description: submission.description,
-    member_task_detail_edit_priority: int.to_string(submission.priority),
-    member_task_detail_edit_type_id: int.to_string(submission.type_id),
-    member_task_detail_edit_card_id: id_to_form_value(submission.card_id),
-    member_task_detail_edit_in_flight: True,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_title: submission.title,
+    member_task_show_edit_description: submission.description,
+    member_task_show_edit_priority: int.to_string(submission.priority),
+    member_task_show_edit_type_id: int.to_string(submission.type_id),
+    member_task_show_edit_card_id: id_to_form_value(submission.card_id),
+    member_task_show_edit_in_flight: True,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -268,18 +268,18 @@ pub fn task_updated(
   member_pool.Model(
     ..pool,
     member_tasks: task_list.replace(pool.member_tasks, updated_task),
-    member_task_detail_editing: False,
-    member_task_detail_edit_title: updated_task.title,
-    member_task_detail_edit_description: detail_edit_form.task_description_text(
+    member_task_show_editing: False,
+    member_task_show_edit_title: updated_task.title,
+    member_task_show_edit_description: detail_edit_form.task_description_text(
       updated_task,
     ),
-    member_task_detail_edit_priority: int.to_string(updated_task.priority),
-    member_task_detail_edit_type_id: int.to_string(
-      detail_edit_form.task_type_id(updated_task),
-    ),
-    member_task_detail_edit_card_id: id_to_form_value(updated_task.card_id),
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: opt.None,
+    member_task_show_edit_priority: int.to_string(updated_task.priority),
+    member_task_show_edit_type_id: int.to_string(detail_edit_form.task_type_id(
+      updated_task,
+    )),
+    member_task_show_edit_card_id: id_to_form_value(updated_task.card_id),
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: opt.None,
   )
 }
 
@@ -296,7 +296,7 @@ pub fn task_update_failed(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: opt.Some(message),
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: opt.Some(message),
   )
 }
