@@ -59,6 +59,10 @@ pub type Config(msg) {
     on_create_dialog_closed: msg,
     on_create_submitted: msg,
     on_create_name_changed: fn(String) -> msg,
+    on_create_max_depth_changed: fn(String) -> msg,
+    on_create_healthy_pool_limit_changed: fn(String) -> msg,
+    on_create_depth_singular_changed: fn(Int, String) -> msg,
+    on_create_depth_plural_changed: fn(Int, String) -> msg,
     on_edit_dialog_opened: fn(Int, String, Int, List(ProjectDepthName)) -> msg,
     on_edit_dialog_closed: msg,
     on_edit_submitted: msg,
@@ -114,17 +118,20 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
     config.project_dialog.projects_dialog
   {
     DialogOpen(
-      form: projects_state.ProjectDialogCreate(name: name),
+      form: projects_state.ProjectDialogCreate(name: name, ..),
       operation: op,
     ) -> #(True, name, operation_in_flight(op), operation_error(op))
     _ -> #(False, "", False, opt.None)
   }
 
+  let #(max_depth, healthy_pool_limit, depth_names) =
+    create_project_structure(config)
+
   dialog.view(
     dialog.DialogConfig(
       title: t(config, i18n_text.CreateProject),
       icon: opt.None,
-      size: dialog.DialogSm,
+      size: dialog.DialogMd,
       on_close: config.on_create_dialog_closed,
     ),
     is_open,
@@ -147,6 +154,12 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
               attribute.autofocus(True),
             ]),
           ),
+          view_project_create_structure_settings(
+            depth_names,
+            max_depth,
+            healthy_pool_limit,
+            config,
+          ),
         ],
       ),
     ],
@@ -164,6 +177,90 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
         i18n_text.Create,
         i18n_text.Creating,
       ),
+    ],
+  )
+}
+
+fn create_project_structure(
+  config: Config(msg),
+) -> #(String, String, List(ProjectDepthName)) {
+  case config.project_dialog.projects_dialog {
+    DialogOpen(
+      form: projects_state.ProjectDialogCreate(
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        ..,
+      ),
+      ..,
+    ) -> #(
+      max_depth,
+      healthy_pool_limit,
+      normalize_depth_names(card_depth_names),
+    )
+    _ -> #(
+      int.to_string(list.length(project_codec.default_card_depth_names())),
+      "20",
+      project_codec.default_card_depth_names(),
+    )
+  }
+}
+
+fn view_project_create_structure_settings(
+  depth_names: List(ProjectDepthName),
+  max_depth: String,
+  healthy_pool_limit: String,
+  config: Config(msg),
+) -> element.Element(msg) {
+  let depth_names = normalize_depth_names(depth_names)
+
+  div(
+    [
+      attribute.class("project-structure-settings"),
+      attribute.attribute("data-testid", "project-structure-settings"),
+    ],
+    [
+      p([attribute.class("project-structure-settings__title")], [
+        text("Structure and Pool"),
+      ]),
+      p([attribute.class("project-structure-settings__hint")], [
+        text("Choose how deep cards can nest before work reaches the Pool."),
+      ]),
+      form_field.view(
+        "Maximum depth",
+        input([
+          attribute.type_("number"),
+          attribute.min("1"),
+          attribute.value(max_depth),
+          event.on_input(config.on_create_max_depth_changed),
+          attribute.required(True),
+        ]),
+      ),
+      div([attribute.class("project-structure-settings__levels")], {
+        depth_names
+        |> list.map(fn(depth_name) {
+          view_depth_name(
+            depth_name,
+            config.on_create_depth_singular_changed,
+            config.on_create_depth_plural_changed,
+          )
+        })
+      }),
+      form_field.view(
+        "Pool soft limit",
+        input([
+          attribute.type_("number"),
+          attribute.min("1"),
+          attribute.value(healthy_pool_limit),
+          event.on_input(config.on_create_healthy_pool_limit_changed),
+          attribute.required(True),
+        ]),
+      ),
+      p([attribute.class("project-structure-settings__hint")], [
+        text(
+          "Examples: Card to Task for small teams, Initiative to Feature to Task group for product work.",
+        ),
+      ]),
     ],
   )
 }
@@ -236,7 +333,13 @@ fn view_project_structure_settings(
       ),
       div([attribute.class("project-structure-settings__levels")], {
         depth_names
-        |> list.map(fn(depth_name) { view_depth_name(depth_name, config) })
+        |> list.map(fn(depth_name) {
+          view_depth_name(
+            depth_name,
+            config.on_edit_depth_singular_changed,
+            config.on_edit_depth_plural_changed,
+          )
+        })
       }),
       form_field.view(
         "Pool soft limit",
@@ -375,7 +478,8 @@ fn normalize_depth_names(
 
 fn view_depth_name(
   depth_name: ProjectDepthName,
-  config: Config(msg),
+  on_singular_changed: fn(Int, String) -> msg,
+  on_plural_changed: fn(Int, String) -> msg,
 ) -> element.Element(msg) {
   let ProjectDepthName(depth:, singular_name:, plural_name:) = depth_name
   div([attribute.class("project-structure-settings__level")], [
@@ -389,9 +493,7 @@ fn view_depth_name(
         "aria-label",
         "Level " <> int.to_string(depth) <> " singular name",
       ),
-      event.on_input(fn(value) {
-        config.on_edit_depth_singular_changed(depth, value)
-      }),
+      event.on_input(fn(value) { on_singular_changed(depth, value) }),
       attribute.required(True),
     ]),
     input([
@@ -401,9 +503,7 @@ fn view_depth_name(
         "aria-label",
         "Level " <> int.to_string(depth) <> " plural name",
       ),
-      event.on_input(fn(value) {
-        config.on_edit_depth_plural_changed(depth, value)
-      }),
+      event.on_input(fn(value) { on_plural_changed(depth, value) }),
       attribute.required(True),
     ]),
   ])

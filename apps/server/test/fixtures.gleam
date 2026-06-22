@@ -214,7 +214,7 @@ pub fn create_project(
     handler(
       simulate.request(http.Post, "/api/v1/projects")
       |> with_auth(session)
-      |> simulate.json_body(json.object([#("name", json.string(name))])),
+      |> simulate.json_body(project_create_json(name)),
     )
 
   case res.status {
@@ -229,6 +229,36 @@ pub fn create_project(
         <> simulate.read_body(res),
       )
   }
+}
+
+fn project_create_json(name: String) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("healthy_pool_limit", json.int(20)),
+    #(
+      "card_depth_names",
+      json.array(
+        [
+          project_depth_name_json(1, "Initiative", "Initiatives"),
+          project_depth_name_json(2, "Feature", "Features"),
+          project_depth_name_json(3, "Task group", "Task groups"),
+        ],
+        of: fn(value) { value },
+      ),
+    ),
+  ])
+}
+
+fn project_depth_name_json(
+  depth: Int,
+  singular_name: String,
+  plural_name: String,
+) -> json.Json {
+  json.object([
+    #("depth", json.int(depth)),
+    #("singular_name", json.string(singular_name)),
+    #("plural_name", json.string(plural_name)),
+  ])
 }
 
 /// Create a task type and return its ID.

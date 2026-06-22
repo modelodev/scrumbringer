@@ -1,20 +1,41 @@
 import gleam/dynamic/decode
 import gleam/json
 
+import domain/project as domain_project
 import domain/project_role
 import scrumbringer_server/http/projects/payloads
 
-pub fn decode_project_name_payload_test() {
-  let assert Ok(dynamic) = json.parse("{\"name\":\"Alpha\"}", decode.dynamic)
+pub fn decode_project_create_payload_test() {
+  let assert Ok(dynamic) =
+    json.parse(
+      "{\"name\":\"Alpha\",\"healthy_pool_limit\":12,\"card_depth_names\":[{\"depth\":1,\"singular_name\":\"Card\",\"plural_name\":\"Cards\"}]}",
+      decode.dynamic,
+    )
 
-  let assert Ok(payloads.ProjectNamePayload(name: "Alpha")) =
-    payloads.decode_project_name(dynamic)
+  let assert Ok(payloads.ProjectCreatePayload(
+    name: "Alpha",
+    healthy_pool_limit: 12,
+    card_depth_names: depth_names,
+  )) = payloads.decode_project_create(dynamic)
+  let assert [
+    domain_project.ProjectDepthName(
+      depth: 1,
+      singular_name: "Card",
+      plural_name: "Cards",
+    ),
+  ] = depth_names
 }
 
-pub fn decode_project_name_payload_rejects_missing_name_test() {
+pub fn decode_project_create_payload_rejects_missing_settings_test() {
+  let assert Ok(dynamic) = json.parse("{\"name\":\"Alpha\"}", decode.dynamic)
+
+  let assert Error(Nil) = payloads.decode_project_create(dynamic)
+}
+
+pub fn decode_project_create_payload_rejects_missing_name_test() {
   let assert Ok(dynamic) = json.parse("{\"title\":\"Alpha\"}", decode.dynamic)
 
-  let assert Error(Nil) = payloads.decode_project_name(dynamic)
+  let assert Error(Nil) = payloads.decode_project_create(dynamic)
 }
 
 pub fn decode_member_payload_test() {

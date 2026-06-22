@@ -17,7 +17,12 @@ pub type DepthReductionState {
 
 /// Represents the form payload for the projects dialog.
 pub type ProjectDialogForm {
-  ProjectDialogCreate(name: String)
+  ProjectDialogCreate(
+    name: String,
+    max_depth: String,
+    healthy_pool_limit: String,
+    card_depth_names: List(ProjectDepthName),
+  )
   ProjectDialogEdit(
     id: Int,
     name: String,

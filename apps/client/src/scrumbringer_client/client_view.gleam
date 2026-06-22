@@ -655,6 +655,26 @@ fn admin_projects_config(
     on_create_name_changed: fn(value) {
       client_state.admin_msg(admin_messages.ProjectCreateNameChanged(value))
     },
+    on_create_max_depth_changed: fn(value) {
+      client_state.admin_msg(admin_messages.ProjectCreateMaxDepthChanged(value))
+    },
+    on_create_healthy_pool_limit_changed: fn(value) {
+      client_state.admin_msg(
+        admin_messages.ProjectCreateHealthyPoolLimitChanged(value),
+      )
+    },
+    on_create_depth_singular_changed: fn(depth, value) {
+      client_state.admin_msg(admin_messages.ProjectCreateDepthSingularChanged(
+        depth,
+        value,
+      ))
+    },
+    on_create_depth_plural_changed: fn(depth, value) {
+      client_state.admin_msg(admin_messages.ProjectCreateDepthPluralChanged(
+        depth,
+        value,
+      ))
+    },
     on_edit_dialog_opened: fn(project_id, name, healthy_pool_limit, depth_names) {
       client_state.admin_msg(admin_messages.ProjectEditDialogOpened(
         project_id,

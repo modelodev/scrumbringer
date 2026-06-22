@@ -112,6 +112,22 @@ pub fn try_update(
       handle_project_create_name_changed(model, name)
       |> without_policies
 
+    admin_messages.ProjectCreateHealthyPoolLimitChanged(value) ->
+      handle_project_create_healthy_pool_limit_changed(model, value)
+      |> without_policies
+
+    admin_messages.ProjectCreateMaxDepthChanged(value) ->
+      handle_project_create_max_depth_changed(model, value)
+      |> without_policies
+
+    admin_messages.ProjectCreateDepthSingularChanged(depth, value) ->
+      handle_project_create_depth_singular_changed(model, depth, value)
+      |> without_policies
+
+    admin_messages.ProjectCreateDepthPluralChanged(depth, value) ->
+      handle_project_create_depth_plural_changed(model, depth, value)
+      |> without_policies
+
     admin_messages.ProjectCreateSubmitted ->
       handle_project_create_submitted(model, context)
       |> without_policies
@@ -253,10 +269,7 @@ fn handle_project_create_dialog_opened(
   #(
     set_projects_dialog(
       model,
-      DialogOpen(
-        form: admin_projects.ProjectDialogCreate(name: ""),
-        operation: Idle,
-      ),
+      DialogOpen(form: create_form(""), operation: Idle),
     ),
     effect.none(),
   )
@@ -275,9 +288,134 @@ fn handle_project_create_name_changed(
   name: String,
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let next_state = case model.projects_dialog {
-    DialogOpen(form: admin_projects.ProjectDialogCreate(name: _), operation: op) ->
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        ..,
+      ),
+      operation: op,
+    ) ->
       DialogOpen(
-        form: admin_projects.ProjectDialogCreate(name: name),
+        form: admin_projects.ProjectDialogCreate(
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: card_depth_names,
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_create_healthy_pool_limit_changed(
+  model: admin_projects.Model,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(
+        name: name,
+        max_depth: max_depth,
+        card_depth_names: card_depth_names,
+        ..,
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogCreate(
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: value,
+          card_depth_names: card_depth_names,
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_create_max_depth_changed(
+  model: admin_projects.Model,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(
+        name: name,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        ..,
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogCreate(
+          name: name,
+          max_depth: value,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: resize_depth_names(value, card_depth_names),
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_create_depth_singular_changed(
+  model: admin_projects.Model,
+  depth: Int,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  update_project_create_depth_name(model, depth, fn(depth_name) {
+    ProjectDepthName(..depth_name, singular_name: value)
+  })
+}
+
+fn handle_project_create_depth_plural_changed(
+  model: admin_projects.Model,
+  depth: Int,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  update_project_create_depth_name(model, depth, fn(depth_name) {
+    ProjectDepthName(..depth_name, plural_name: value)
+  })
+}
+
+fn update_project_create_depth_name(
+  model: admin_projects.Model,
+  depth: Int,
+  update_depth_name: fn(ProjectDepthName) -> ProjectDepthName,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogCreate(
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: update_depth_names(
+            card_depth_names,
+            depth,
+            update_depth_name,
+          ),
+        ),
         operation: op,
       )
     other -> other
@@ -293,9 +431,23 @@ fn handle_project_create_submitted(
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
     DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: name),
+      form: admin_projects.ProjectDialogCreate(
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+      ),
       operation: op,
-    ) -> submit_project_create(model, name, operation_in_flight(op), context)
+    ) ->
+      submit_project_create(
+        model,
+        name,
+        max_depth,
+        healthy_pool_limit,
+        card_depth_names,
+        operation_in_flight(op),
+        context,
+      )
     _ -> #(model, effect.none())
   }
 }
@@ -303,6 +455,9 @@ fn handle_project_create_submitted(
 fn submit_project_create(
   model: admin_projects.Model,
   name: String,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
   in_flight: Bool,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
@@ -321,15 +476,53 @@ fn submit_project_create(
           ),
           effect.none(),
         )
-        False -> submit_project_create_valid(model, trimmed, context)
+        False ->
+          submit_project_create_settings(
+            model,
+            trimmed,
+            max_depth,
+            healthy_pool_limit,
+            card_depth_names,
+            context,
+          )
       }
     }
+  }
+}
+
+fn submit_project_create_settings(
+  model: admin_projects.Model,
+  name: String,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case
+    validate_project_settings(
+      max_depth,
+      healthy_pool_limit,
+      card_depth_names,
+      admin_projects.NoDepthReduction,
+    )
+  {
+    Error(message) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(model.projects_dialog, message),
+      ),
+      effect.none(),
+    )
+    Ok(#(limit, depth_names)) ->
+      submit_project_create_valid(model, name, limit, depth_names, context)
   }
 }
 
 fn submit_project_create_valid(
   model: admin_projects.Model,
   name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let model =
@@ -337,7 +530,15 @@ fn submit_project_create_valid(
       model,
       update_project_dialog_in_flight(model.projects_dialog),
     )
-  #(model, api_projects.create_project(name, context.on_project_created))
+  #(
+    model,
+    api_projects.create_project(
+      name,
+      healthy_pool_limit,
+      card_depth_names,
+      context.on_project_created,
+    ),
+  )
 }
 
 /// Handle project created success.
@@ -360,7 +561,7 @@ fn handle_project_created_error(
   let message = error_message(err, feedback)
 
   case model.projects_dialog {
-    DialogOpen(form: admin_projects.ProjectDialogCreate(name: _), ..) -> #(
+    DialogOpen(form: admin_projects.ProjectDialogCreate(..), ..) -> #(
       set_projects_dialog(
         model,
         update_project_dialog_error(model.projects_dialog, message),
@@ -916,6 +1117,61 @@ fn normalize_depth_names(
   case card_depth_names {
     [] -> project_codec.default_card_depth_names()
     _ -> card_depth_names
+  }
+}
+
+fn create_form(name: String) -> admin_projects.ProjectDialogForm {
+  let depth_names = project_codec.default_card_depth_names()
+  admin_projects.ProjectDialogCreate(
+    name: name,
+    max_depth: int.to_string(list.length(depth_names)),
+    healthy_pool_limit: "20",
+    card_depth_names: depth_names,
+  )
+}
+
+fn resize_depth_names(
+  max_depth: String,
+  card_depth_names: List(ProjectDepthName),
+) -> List(ProjectDepthName) {
+  case int.parse(string.trim(max_depth)) {
+    Ok(value) if value > 0 ->
+      depth_names_for_count(normalize_depth_names(card_depth_names), value)
+    _ -> normalize_depth_names(card_depth_names)
+  }
+}
+
+fn depth_names_for_count(
+  card_depth_names: List(ProjectDepthName),
+  count: Int,
+) -> List(ProjectDepthName) {
+  case count <= list.length(card_depth_names) {
+    True -> list.take(card_depth_names, count)
+    False ->
+      depth_names_for_count(
+        list.append(card_depth_names, [
+          default_depth_name(list.length(card_depth_names) + 1),
+        ]),
+        count,
+      )
+  }
+}
+
+fn default_depth_name(depth: Int) -> ProjectDepthName {
+  case
+    project_codec.default_card_depth_names()
+    |> list.find(fn(depth_name) {
+      let ProjectDepthName(depth: candidate_depth, ..) = depth_name
+      candidate_depth == depth
+    })
+  {
+    Ok(depth_name) -> depth_name
+    Error(Nil) ->
+      ProjectDepthName(
+        depth: depth,
+        singular_name: "Level " <> int.to_string(depth),
+        plural_name: "Level " <> int.to_string(depth) <> "s",
+      )
   }
 }
 

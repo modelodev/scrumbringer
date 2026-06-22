@@ -177,10 +177,40 @@ fn create_project(
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(json.object([#("name", json.string(name))]))
+    |> simulate.json_body(project_create_json(name))
 
   let res = handler(req)
   expect.expect_status(res, 200)
+}
+
+fn project_create_json(name: String) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("healthy_pool_limit", json.int(20)),
+    #(
+      "card_depth_names",
+      json.array(
+        [
+          project_depth_name_json(1, "Initiative", "Initiatives"),
+          project_depth_name_json(2, "Feature", "Features"),
+          project_depth_name_json(3, "Task group", "Task groups"),
+        ],
+        of: fn(value) { value },
+      ),
+    ),
+  ])
+}
+
+fn project_depth_name_json(
+  depth: Int,
+  singular_name: String,
+  plural_name: String,
+) -> json.Json {
+  json.object([
+    #("depth", json.int(depth)),
+    #("singular_name", json.string(singular_name)),
+    #("plural_name", json.string(plural_name)),
+  ])
 }
 
 fn create_task_type(

@@ -81,6 +81,11 @@ pub type AddMemberError {
   DbError(pog.QueryError)
 }
 
+pub type CreateProjectError {
+  InvalidCreateProjectSettings
+  CreateProjectDbError(pog.QueryError)
+}
+
 fn project_from_fields(
   id: Int,
   org_id: Int,
@@ -162,18 +167,68 @@ pub fn create_project(
   org_id: Int,
   created_by: Int,
   name: String,
-) -> Result(ProjectRecord, pog.QueryError) {
-  use returned <- result.try(sql.projects_create(db, org_id, name, created_by))
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(ProjectRecord, CreateProjectError) {
+  case valid_project_settings(healthy_pool_limit, card_depth_names) {
+    False -> Error(InvalidCreateProjectSettings)
+    True ->
+      do_create_project(
+        db,
+        org_id,
+        created_by,
+        name,
+        healthy_pool_limit,
+        card_depth_names,
+      )
+  }
+}
 
-  use row <- result.try(persisted_field.query_row(returned.rows))
-  project_from_db_fields(
-    row.id,
-    row.org_id,
-    row.name,
-    row.created_at,
-    row.my_role,
-    1,
-  )
+fn do_create_project(
+  db: pog.Connection,
+  org_id: Int,
+  created_by: Int,
+  name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(ProjectRecord, CreateProjectError) {
+  pog.transaction(db, fn(tx) {
+    use returned <- result.try(
+      sql.projects_create(tx, org_id, name, created_by)
+      |> result.map_error(CreateProjectDbError),
+    )
+    use row <- result.try(
+      persisted_field.query_row(returned.rows)
+      |> result.map_error(CreateProjectDbError),
+    )
+    use _ <- result.try(
+      upsert_healthy_pool_limit(tx, row.id, healthy_pool_limit)
+      |> result.map_error(CreateProjectDbError),
+    )
+    use _ <- result.try(
+      replace_card_depth_names(tx, row.id, card_depth_names)
+      |> result.map_error(CreateProjectDbError),
+    )
+    use project <- result.try(
+      project_from_db_fields(
+        row.id,
+        row.org_id,
+        row.name,
+        row.created_at,
+        row.my_role,
+        1,
+      )
+      |> result.map_error(CreateProjectDbError),
+    )
+    Ok(
+      ProjectRecord(
+        ..project,
+        card_depth_names: card_depth_names,
+        healthy_pool_limit: healthy_pool_limit,
+      ),
+    )
+  })
+  |> result.map_error(transaction_error_to_create_project_error)
 }
 
 /// Lists projects that the user can access.
@@ -850,6 +905,15 @@ fn transaction_error_to_update_project_error(
   case error {
     pog.TransactionRolledBack(err) -> err
     pog.TransactionQueryError(err) -> UpdateProjectDbError(err)
+  }
+}
+
+fn transaction_error_to_create_project_error(
+  error: pog.TransactionError(CreateProjectError),
+) -> CreateProjectError {
+  case error {
+    pog.TransactionRolledBack(err) -> err
+    pog.TransactionQueryError(err) -> CreateProjectDbError(err)
   }
 }
 

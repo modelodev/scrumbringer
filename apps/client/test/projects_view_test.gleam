@@ -44,6 +44,14 @@ fn config(
     on_create_dialog_closed: "create-close",
     on_create_submitted: "create-submit",
     on_create_name_changed: fn(value) { "create-name:" <> value },
+    on_create_max_depth_changed: fn(value) { "create-depth:" <> value },
+    on_create_healthy_pool_limit_changed: fn(value) { "create-limit:" <> value },
+    on_create_depth_singular_changed: fn(depth, value) {
+      "create-depth-singular:" <> int.to_string(depth) <> ":" <> value
+    },
+    on_create_depth_plural_changed: fn(depth, value) {
+      "create-depth-plural:" <> int.to_string(depth) <> ":" <> value
+    },
     on_edit_dialog_opened: fn(id, name, _healthy_pool_limit, _depth_names) {
       "edit-open:" <> int.to_string(id) <> ":" <> name
     },

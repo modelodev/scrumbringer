@@ -62,14 +62,14 @@ pub fn non_org_admin_cannot_create_project_test() {
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(json.object([#("name", json.string("Nope"))]))
+    |> simulate.json_body(project_create_json("Nope"))
 
   let res = handler(req)
   expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
 
-pub fn project_create_returns_and_persists_default_card_depth_names_test() {
+pub fn project_create_returns_and_persists_card_depth_names_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -84,7 +84,7 @@ pub fn project_create_returns_and_persists_default_card_depth_names_test() {
     |> request.set_cookie("sb_session", admin_session)
     |> request.set_cookie("sb_csrf", admin_csrf)
     |> request.set_header("X-CSRF", admin_csrf)
-    |> simulate.json_body(json.object([#("name", json.string("Depths"))]))
+    |> simulate.json_body(project_create_json("Depths"))
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -141,7 +141,7 @@ pub fn project_create_returns_and_persists_default_card_depth_names_test() {
   task_group_depth |> expect.equal(3)
 }
 
-pub fn project_create_persists_default_task_types_test() {
+pub fn project_create_persists_default_task_type_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -156,7 +156,7 @@ pub fn project_create_persists_default_task_types_test() {
     |> request.set_cookie("sb_session", admin_session)
     |> request.set_cookie("sb_csrf", admin_csrf)
     |> request.set_header("X-CSRF", admin_csrf)
-    |> simulate.json_body(json.object([#("name", json.string("Defaults"))]))
+    |> simulate.json_body(project_create_json("Defaults"))
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1032,10 +1032,40 @@ fn create_project(
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(json.object([#("name", json.string(name))]))
+    |> simulate.json_body(project_create_json(name))
 
   let res = handler(req)
   expect.expect_status(res, 200)
+}
+
+fn project_create_json(name: String) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("healthy_pool_limit", json.int(20)),
+    #(
+      "card_depth_names",
+      json.array(
+        [
+          project_depth_name_json(1, "Initiative", "Initiatives"),
+          project_depth_name_json(2, "Feature", "Features"),
+          project_depth_name_json(3, "Task group", "Task groups"),
+        ],
+        of: fn(value) { value },
+      ),
+    ),
+  ])
+}
+
+fn project_depth_name_json(
+  depth: Int,
+  singular_name: String,
+  plural_name: String,
+) -> json.Json {
+  json.object([
+    #("depth", json.int(depth)),
+    #("singular_name", json.string(singular_name)),
+    #("plural_name", json.string(plural_name)),
+  ])
 }
 
 fn add_member(

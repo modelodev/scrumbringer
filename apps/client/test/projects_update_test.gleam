@@ -29,6 +29,19 @@ fn edit_form(id: Int, name: String) -> admin_projects.ProjectDialogForm {
   edit_form_with_limit(id, name, "20")
 }
 
+fn create_form(name: String) -> admin_projects.ProjectDialogForm {
+  admin_projects.ProjectDialogCreate(
+    name: name,
+    max_depth: "3",
+    healthy_pool_limit: "20",
+    card_depth_names: [
+      ProjectDepthName(1, "Initiative", "Initiatives"),
+      ProjectDepthName(2, "Feature", "Features"),
+      ProjectDepthName(3, "Task group", "Task groups"),
+    ],
+  )
+}
+
 fn edit_form_with_limit(
   id: Int,
   name: String,
@@ -107,10 +120,8 @@ pub fn create_dialog_opened_sets_empty_create_form_test() {
       admin_messages.ProjectCreateDialogOpened,
     )
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogCreate(name: ""),
-    operation: Idle,
-  ) = next.projects_dialog
+  let assert DialogOpen(form: form, operation: Idle) = next.projects_dialog
+  let assert True = form == create_form("")
   let assert True = fx == effect.none()
   let assert projects_update.NoAuthCheck = auth_policy
   let assert projects_update.NoCoreChange = core_policy
@@ -119,17 +130,16 @@ pub fn create_dialog_opened_sets_empty_create_form_test() {
 pub fn create_submit_requires_name_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: "  "),
+      form: create_form("  "),
       operation: Idle,
     ))
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateSubmitted)
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogCreate(name: "  "),
-    operation: OpError("Name required"),
-  ) = next.projects_dialog
+  let assert DialogOpen(form: form, operation: OpError("Name required")) =
+    next.projects_dialog
+  let assert True = form == create_form("  ")
   let assert True = fx == effect.none()
   let assert projects_update.NoAuthCheck = auth_policy
   let assert projects_update.NoCoreChange = core_policy
@@ -138,17 +148,15 @@ pub fn create_submit_requires_name_test() {
 pub fn create_submit_sets_in_flight_for_valid_name_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: " New project "),
+      form: create_form(" New project "),
       operation: Idle,
     ))
 
   let #(next, _fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateSubmitted)
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogCreate(name: " New project "),
-    operation: InFlight,
-  ) = next.projects_dialog
+  let assert DialogOpen(form: form, operation: InFlight) = next.projects_dialog
+  let assert True = form == create_form(" New project ")
   let assert projects_update.NoAuthCheck = auth_policy
   let assert projects_update.NoCoreChange = core_policy
 }
@@ -371,7 +379,7 @@ pub fn edit_submit_allows_confirmed_lower_depth_test() {
 pub fn created_ok_closes_dialog_and_emits_feedback_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: "Project"),
+      form: create_form("Project"),
       operation: InFlight,
     ))
 
@@ -428,7 +436,7 @@ pub fn update_error_sets_edit_dialog_error_test() {
 pub fn create_forbidden_error_sets_dialog_error_and_emits_feedback_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: "Project"),
+      form: create_form("Project"),
       operation: InFlight,
     ))
 
@@ -436,10 +444,9 @@ pub fn create_forbidden_error_sets_dialog_error_and_emits_feedback_test() {
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreated(Error(err)))
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogCreate(name: "Project"),
-    operation: OpError("Not permitted"),
-  ) = next.projects_dialog
+  let assert DialogOpen(form: form, operation: OpError("Not permitted")) =
+    next.projects_dialog
+  let assert True = form == create_form("Project")
   let assert True = fx != effect.none()
   let assert projects_update.CheckAuth(auth_err) = auth_policy
   let assert True = auth_err == err
@@ -467,7 +474,7 @@ pub fn delete_submit_sets_in_flight_test() {
 pub fn deleted_ok_without_delete_dialog_has_no_core_delete_id_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: "Project"),
+      form: create_form("Project"),
       operation: Idle,
     ))
 
@@ -539,7 +546,7 @@ pub fn try_update_created_ok_returns_core_policy_test() {
   let created = project(7, "Project")
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogCreate(name: "Project"),
+      form: create_form("Project"),
       operation: InFlight,
     ))
 

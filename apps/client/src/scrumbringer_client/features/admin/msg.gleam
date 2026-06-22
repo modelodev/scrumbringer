@@ -21,6 +21,10 @@ pub type Msg {
   ProjectCreateDialogOpened
   ProjectCreateDialogClosed
   ProjectCreateNameChanged(String)
+  ProjectCreateMaxDepthChanged(String)
+  ProjectCreateHealthyPoolLimitChanged(String)
+  ProjectCreateDepthSingularChanged(Int, String)
+  ProjectCreateDepthPluralChanged(Int, String)
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
   ProjectEditDialogOpened(Int, String, Int, List(ProjectDepthName))

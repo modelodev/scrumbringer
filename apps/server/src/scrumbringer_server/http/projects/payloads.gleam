@@ -8,8 +8,12 @@ import domain/project.{type ProjectDepthName, ProjectDepthName}
 import domain/project_role.{type ProjectRole}
 import domain/project_role/project_role_codec
 
-pub type ProjectNamePayload {
-  ProjectNamePayload(name: String)
+pub type ProjectCreatePayload {
+  ProjectCreatePayload(
+    name: String,
+    healthy_pool_limit: Int,
+    card_depth_names: List(ProjectDepthName),
+  )
 }
 
 pub type ProjectUpdatePayload {
@@ -32,10 +36,19 @@ pub type RolePayload {
   RolePayload(role: ProjectRole)
 }
 
-pub fn decode_project_name(data: Dynamic) -> Result(ProjectNamePayload, Nil) {
+pub fn decode_project_create(data: Dynamic) -> Result(ProjectCreatePayload, Nil) {
   let decoder = {
     use name <- decode.field("name", decode.string)
-    decode.success(ProjectNamePayload(name: name))
+    use healthy_pool_limit <- decode.field("healthy_pool_limit", decode.int)
+    use card_depth_names <- decode.field(
+      "card_depth_names",
+      decode.list(project_depth_name_decoder()),
+    )
+    decode.success(ProjectCreatePayload(
+      name: name,
+      healthy_pool_limit: healthy_pool_limit,
+      card_depth_names: card_depth_names,
+    ))
   }
 
   decode.run(data, decoder)

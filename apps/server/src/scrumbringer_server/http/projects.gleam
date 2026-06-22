@@ -231,7 +231,7 @@ fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case require_org_admin_write(req, ctx) {
     Error(resp) -> resp
     Ok(user) ->
-      json_payload.with_response(req, decode_project_name, fn(payload) {
+      json_payload.with_response(req, decode_project_create, fn(payload) {
         case create_project(ctx, user, payload) {
           Ok(project) -> api.ok(project_presenters.project_response(project))
           Error(resp) -> resp
@@ -243,12 +243,24 @@ fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 fn create_project(
   ctx: auth.Ctx,
   user: StoredUser,
-  payload: project_payloads.ProjectNamePayload,
+  payload: project_payloads.ProjectCreatePayload,
 ) -> Result(projects_db.ProjectRecord, wisp.Response) {
   let auth.Ctx(db: db, ..) = ctx
-  case projects_db.create_project(db, user.org_id, user.id, payload.name) {
+  case
+    projects_db.create_project(
+      db,
+      user.org_id,
+      user.id,
+      payload.name,
+      payload.healthy_pool_limit,
+      payload.card_depth_names,
+    )
+  {
     Ok(project) -> Ok(project)
-    Error(_) -> Error(database_error_response())
+    Error(projects_db.InvalidCreateProjectSettings) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid project settings"))
+    Error(projects_db.CreateProjectDbError(_)) ->
+      Error(database_error_response())
   }
 }
 
@@ -646,10 +658,10 @@ fn database_error_response() -> wisp.Response {
   api.error(500, "INTERNAL", "Database error")
 }
 
-fn decode_project_name(
+fn decode_project_create(
   data,
-) -> Result(project_payloads.ProjectNamePayload, wisp.Response) {
-  case project_payloads.decode_project_name(data) {
+) -> Result(project_payloads.ProjectCreatePayload, wisp.Response) {
+  case project_payloads.decode_project_create(data) {
     Ok(payload) -> Ok(payload)
     Error(_) -> Error(api.error(400, "INVALID_BODY", "Invalid request body"))
   }

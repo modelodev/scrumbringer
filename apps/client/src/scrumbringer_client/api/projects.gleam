@@ -48,9 +48,19 @@ pub fn list_projects(to_msg: fn(ApiResult(List(Project))) -> msg) -> Effect(msg)
 /// Create a new project.
 pub fn create_project(
   name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("name", json.string(name))])
+  let body =
+    json.object([
+      #("name", json.string(name)),
+      #("healthy_pool_limit", json.int(healthy_pool_limit)),
+      #(
+        "card_depth_names",
+        json.array(card_depth_names, of: project_depth_name_json),
+      ),
+    ])
   let decoder =
     decode.field("project", project_codec.project_decoder(), decode.success)
   core.request(
