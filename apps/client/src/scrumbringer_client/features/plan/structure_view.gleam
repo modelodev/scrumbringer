@@ -99,21 +99,28 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let rows = structure_rows(config, include_closed)
   let summary = summary_for_rows(rows, config)
   let detail = structure_detail(config, include_closed)
+  let content = case rows {
+    [] -> view_empty_state(config)
+    _ -> view_body(config, rows, detail)
+  }
 
-  div(
-    [
-      attribute.class("plan-structure-view"),
-      attribute.attribute("data-testid", "plan-structure-view"),
-    ],
-    [
-      view_surface_header(config, summary, include_closed),
-      view_move_feedback(config),
-      case rows {
-        [] -> view_empty_state(config)
-        _ -> view_body(config, rows, detail)
-      },
-    ],
-  )
+  let surface =
+    work_surface.new_surface(view_surface_header(
+      config,
+      summary,
+      include_closed,
+    ))
+    |> work_surface.with_filters(view_scope_bar(config, include_closed))
+    |> work_surface.with_content(content)
+    |> work_surface.surface_with_class("plan-structure-view")
+    |> work_surface.surface_with_testid("plan-structure-view")
+
+  let surface = case config.move_error {
+    Some(_) -> work_surface.with_state(surface, view_move_feedback(config))
+    None -> surface
+  }
+
+  work_surface.surface(surface)
 }
 
 fn view_surface_header(
@@ -155,7 +162,6 @@ fn view_surface_header(
     extra_class: Some("plan-structure-header"),
     testid: Some("plan-structure-header"),
   ))
-  |> with_scope_bar(config, include_closed)
 }
 
 fn move_header_actions(config: Config(msg)) -> List(Element(msg)) {
@@ -201,33 +207,26 @@ fn view_move_feedback(config: Config(msg)) -> Element(msg) {
   }
 }
 
-fn with_scope_bar(
-  header: Element(msg),
-  config: Config(msg),
-  include_closed: Bool,
-) -> Element(msg) {
-  div([attribute.class("plan-scope-shell")], [
-    header,
-    scope_bar.view(scope_bar.Config(
-      locale: config.locale,
-      cards: config.cards,
-      depth_names: config.depth_names,
-      scope_kind: config.scope_kind,
-      selected_depth: config.selected_depth,
-      selected_card_id: config.selected_card_id,
-      card_query: config.card_query,
-      show_closed: include_closed,
-      id_prefix: "plan-structure",
-      mode_controls: plan_mode_controls(config),
-      refinement_controls: plan_refinement_controls(config),
-      show_closed_control: True,
-      on_scope_kind_change: config.on_scope_kind_change,
-      on_scope_depth_change: config.on_scope_depth_change,
-      on_scope_card_change: config.on_scope_card_change,
-      on_scope_card_search_change: config.on_scope_card_search_change,
-      on_closed_toggled: config.on_closed_toggled,
-    )),
-  ])
+fn view_scope_bar(config: Config(msg), include_closed: Bool) -> Element(msg) {
+  scope_bar.view(scope_bar.Config(
+    locale: config.locale,
+    cards: config.cards,
+    depth_names: config.depth_names,
+    scope_kind: config.scope_kind,
+    selected_depth: config.selected_depth,
+    selected_card_id: config.selected_card_id,
+    card_query: config.card_query,
+    show_closed: include_closed,
+    id_prefix: "plan-structure",
+    mode_controls: plan_mode_controls(config),
+    refinement_controls: plan_refinement_controls(config),
+    show_closed_control: True,
+    on_scope_kind_change: config.on_scope_kind_change,
+    on_scope_depth_change: config.on_scope_depth_change,
+    on_scope_card_change: config.on_scope_card_change,
+    on_scope_card_search_change: config.on_scope_card_search_change,
+    on_closed_toggled: config.on_closed_toggled,
+  ))
 }
 
 fn plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {

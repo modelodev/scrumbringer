@@ -123,6 +123,8 @@ fn print_summary(stats: seed_builder.SeedResult) {
   io.println("  pm@example.com       - Org Member")
   io.println("  member@example.com   - Org Member")
   io.println("  beta@example.com     - Org Member")
+  io.println("  dev@example.com      - Org Member")
+  io.println("  qa@example.com       - Org Member")
   io.println("  empty-admin@example.com - Org Admin (Empty Org)")
   io.println("")
 }

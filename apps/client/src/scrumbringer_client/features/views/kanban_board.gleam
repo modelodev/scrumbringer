@@ -170,8 +170,7 @@ pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
     })
   let cerrada = list.filter(visible_cards, fn(cwp) { cwp.card.state == Closed })
 
-  div([attribute.class("kanban-view")], [
-    view_surface_header(config, board_summary(visible_cards), include_closed),
+  let board =
     div([attribute.class("kanban-board")], [
       view_column(
         config,
@@ -198,14 +197,21 @@ pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
           )
         False -> element.none()
       },
-    ]),
-  ])
+    ])
+
+  work_surface.new_surface(view_surface_header(
+    config,
+    board_summary(visible_cards),
+  ))
+  |> work_surface.with_filters(view_scope_bar(config, include_closed))
+  |> work_surface.with_content(board)
+  |> work_surface.surface_with_class("kanban-view")
+  |> work_surface.surface
 }
 
 fn view_surface_header(
   config: KanbanConfig(msg),
   summary: BoardSummary,
-  include_closed: Bool,
 ) -> element.Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
     title: config.surface_title,
@@ -241,36 +247,31 @@ fn view_surface_header(
     extra_class: option.Some("kanban-surface-header"),
     testid: option.Some("kanban-surface-header"),
   ))
-  |> with_scope_bar(config, include_closed)
 }
 
-fn with_scope_bar(
-  header: element.Element(msg),
+fn view_scope_bar(
   config: KanbanConfig(msg),
   include_closed: Bool,
 ) -> element.Element(msg) {
-  div([attribute.class("plan-scope-shell")], [
-    header,
-    scope_bar.view(scope_bar.Config(
-      locale: config.locale,
-      cards: config.cards,
-      depth_names: config.depth_names,
-      scope_kind: config.scope_kind,
-      selected_depth: config.selected_depth,
-      selected_card_id: config.selected_card_id,
-      card_query: config.card_query,
-      show_closed: include_closed,
-      id_prefix: "kanban-plan",
-      mode_controls: plan_mode_controls(config),
-      refinement_controls: [],
-      show_closed_control: True,
-      on_scope_kind_change: config.on_scope_kind_change,
-      on_scope_depth_change: config.on_scope_depth_change,
-      on_scope_card_change: config.on_scope_card_change,
-      on_scope_card_search_change: config.on_scope_card_search_change,
-      on_closed_toggled: config.on_closed_toggled,
-    )),
-  ])
+  scope_bar.view(scope_bar.Config(
+    locale: config.locale,
+    cards: config.cards,
+    depth_names: config.depth_names,
+    scope_kind: config.scope_kind,
+    selected_depth: config.selected_depth,
+    selected_card_id: config.selected_card_id,
+    card_query: config.card_query,
+    show_closed: include_closed,
+    id_prefix: "kanban-plan",
+    mode_controls: plan_mode_controls(config),
+    refinement_controls: [],
+    show_closed_control: True,
+    on_scope_kind_change: config.on_scope_kind_change,
+    on_scope_depth_change: config.on_scope_depth_change,
+    on_scope_card_change: config.on_scope_card_change,
+    on_scope_card_search_change: config.on_scope_card_search_change,
+    on_closed_toggled: config.on_closed_toggled,
+  ))
 }
 
 fn plan_mode_controls(

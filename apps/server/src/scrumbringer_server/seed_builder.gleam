@@ -266,6 +266,7 @@ pub fn build_seed(
   use state <- result.try(build_rules(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
   use state <- result.try(build_plan_qa_scenarios(db, state, config))
+  use state <- result.try(build_people_qa_scenarios(db, state, config))
   use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
@@ -330,10 +331,18 @@ fn build_projects(
   let names = list.take(project_names, config.project_count)
   let empty_start = int.max(0, list.length(names) - config.empty_project_count)
   let other_users = list.drop(state.user_ids, 1)
-  let assignable_users = case list.reverse(other_users) {
-    [] -> []
-    [_unassigned, ..rest] -> list.reverse(rest)
-  }
+  let assignable_users = other_users
+  let default_project_members = [state.admin_id, ..assignable_users]
+
+  use _ <- result.try(
+    list.try_map(default_project_members, fn(user_id) {
+      let role = case user_id == state.admin_id {
+        True -> project_role.Manager
+        False -> project_role.Member
+      }
+      seed_db.insert_member(db, default_project_id, user_id, role)
+    }),
+  )
 
   use project_results <- result.try(
     list.index_map(names, fn(name, idx) {
@@ -397,7 +406,7 @@ fn build_projects(
   let project_members =
     list.map(project_ids, fn(project_id) {
       case project_id == default_project_id {
-        True -> #(project_id, [])
+        True -> #(project_id, default_project_members)
         False ->
           case list.contains(empty_project_ids, project_id) {
             True -> #(project_id, [])
@@ -1148,6 +1157,223 @@ fn build_plan_qa_scenarios(
             ui_ongoing,
             docs_no_capability,
             closed_done,
+          ]
+          let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
+
+          Ok(
+            BuildState(
+              ..state,
+              card_ids: list.append(state.card_ids, new_card_ids),
+              card_ids_by_project: append_cards_for_project(
+                state.card_ids_by_project,
+                project_id,
+                new_card_ids,
+              ),
+              task_ids: list.append(state.task_ids, new_task_ids),
+              task_seeds: list.append(state.task_seeds, new_task_seeds),
+            ),
+          )
+        }
+      }
+    }
+  }
+}
+
+fn build_people_qa_scenarios(
+  db: pog.Connection,
+  state: BuildState,
+  _config: SeedConfig,
+) -> Result(BuildState, String) {
+  case active_project_ids(state) {
+    [] -> Ok(state)
+    [project_id, ..] -> {
+      case task_types_for_project(state.task_type_ids, project_id) {
+        None -> Ok(state)
+        Some(#(bug_id, feature_id, task_id)) -> {
+          let members =
+            members_for_project(state.project_member_ids, project_id)
+          let non_admins =
+            list.filter(members, fn(user_id) { user_id != state.admin_id })
+          let api_owner = list_at_int(non_admins, 0, state.admin_id)
+          let blocked_owner = list_at_int(non_admins, 1, state.admin_id)
+          let loaded_owner = list_at_int(non_admins, 2, state.admin_id)
+
+          use coordination_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "People QA - Coordination stream",
+            Some(
+              "Active people-coordination fixture with distributed claimed, ongoing, blocked and free-person states.",
+            ),
+            card.Active,
+            3,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use api_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - API handoff",
+            Some("Task leaf for API handoff coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use ui_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - UI polish",
+            Some("Task leaf for UI polish coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use release_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - Release readiness",
+            Some("Task leaf for release readiness coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+
+          use admin_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            task_id,
+            "People QA - Facilitate rollout sync",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(state.admin_id),
+            4,
+            2,
+          ))
+          use api_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            api_id,
+            bug_id,
+            "People QA - API handoff ongoing",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(api_owner),
+            5,
+            2,
+          ))
+          use api_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            api_id,
+            task_id,
+            "People QA - API cleanup claimed",
+            Claimed(Taken),
+            state.admin_id,
+            Some(api_owner),
+            3,
+            1,
+          ))
+          use release_blocker <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            task_id,
+            "People QA - Release checklist blocker",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            1,
+          ))
+          use blocked_claim <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            release_id,
+            feature_id,
+            "People QA - Blocked deploy approval",
+            Claimed(Taken),
+            state.admin_id,
+            Some(blocked_owner),
+            5,
+            1,
+          ))
+          use _ <- result.try(seed_db.insert_task_dependency(
+            db,
+            blocked_claim.task_id,
+            release_blocker.task_id,
+            state.admin_id,
+          ))
+          use loaded_one <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            feature_id,
+            "People QA - Polish empty state copy",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            3,
+            2,
+          ))
+          use loaded_two <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            feature_id,
+            "People QA - Polish mobile wrapping",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            3,
+            2,
+          ))
+          use loaded_three <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            bug_id,
+            "People QA - Verify filter contrast",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            2,
+            1,
+          ))
+          use loaded_four <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            ui_id,
+            task_id,
+            "People QA - Review scope labels",
+            Claimed(Taken),
+            state.admin_id,
+            Some(loaded_owner),
+            2,
+            1,
+          ))
+
+          let new_card_ids = [coordination_id, api_id, ui_id, release_id]
+          let new_task_seeds = [
+            admin_ongoing,
+            api_ongoing,
+            api_claimed,
+            release_blocker,
+            blocked_claim,
+            loaded_one,
+            loaded_two,
+            loaded_three,
+            loaded_four,
           ]
           let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
 

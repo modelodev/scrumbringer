@@ -168,16 +168,12 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
       }
   }
 
-  div(
-    [
-      attribute.class("capability-board"),
-      attribute.attribute("data-testid", "capability-board"),
-    ],
-    [
-      view_surface_header(config, state, include_closed),
-      content,
-    ],
-  )
+  work_surface.new_surface(view_surface_header(config, state))
+  |> work_surface.with_filters(view_scope_bar(config, include_closed))
+  |> work_surface.with_content(content)
+  |> work_surface.surface_with_class("capability-board")
+  |> work_surface.surface_with_testid("capability-board")
+  |> work_surface.surface
 }
 
 fn empty_notice(_icon: String, message: String, class_name: String) {
@@ -198,7 +194,6 @@ fn empty_notice(_icon: String, message: String, class_name: String) {
 fn view_surface_header(
   config: Config(msg),
   state: ViewState,
-  include_closed: Bool,
 ) -> element.Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
     title: i18n.t(config.locale, i18n_text.CapabilitiesBoard),
@@ -208,7 +203,6 @@ fn view_surface_header(
     extra_class: Some("capability-board-header"),
     testid: Some("capability-board-header"),
   ))
-  |> with_scope_bar(config, include_closed)
 }
 
 fn view_my_capabilities_action(config: Config(msg)) -> element.Element(msg) {
@@ -264,33 +258,29 @@ fn capability_summary(
   }
 }
 
-fn with_scope_bar(
-  header: element.Element(msg),
+fn view_scope_bar(
   config: Config(msg),
   include_closed: Bool,
 ) -> element.Element(msg) {
-  div([attribute.class("plan-scope-shell")], [
-    header,
-    scope_bar.view(scope_bar.Config(
-      locale: config.locale,
-      cards: config.cards,
-      depth_names: config.depth_names,
-      scope_kind: config.scope_kind,
-      selected_depth: config.selected_depth,
-      selected_card_id: config.selected_card_id,
-      card_query: config.card_query,
-      show_closed: include_closed,
-      id_prefix: "capability-plan",
-      mode_controls: capability_mode_controls(config),
-      refinement_controls: capability_refinement_controls(config),
-      show_closed_control: True,
-      on_scope_kind_change: config.on_scope_kind_change,
-      on_scope_depth_change: config.on_scope_depth_change,
-      on_scope_card_change: config.on_scope_card_change,
-      on_scope_card_search_change: config.on_scope_card_search_change,
-      on_closed_toggled: config.on_closed_toggled,
-    )),
-  ])
+  scope_bar.view(scope_bar.Config(
+    locale: config.locale,
+    cards: config.cards,
+    depth_names: config.depth_names,
+    scope_kind: config.scope_kind,
+    selected_depth: config.selected_depth,
+    selected_card_id: config.selected_card_id,
+    card_query: config.card_query,
+    show_closed: include_closed,
+    id_prefix: "capability-plan",
+    mode_controls: capability_mode_controls(config),
+    refinement_controls: capability_refinement_controls(config),
+    show_closed_control: True,
+    on_scope_kind_change: config.on_scope_kind_change,
+    on_scope_depth_change: config.on_scope_depth_change,
+    on_scope_card_change: config.on_scope_card_change,
+    on_scope_card_search_change: config.on_scope_card_search_change,
+    on_closed_toggled: config.on_closed_toggled,
+  ))
 }
 
 fn capability_refinement_controls(
