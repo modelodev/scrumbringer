@@ -193,8 +193,7 @@ fn handle_from_changed_and_refresh(
       #(
         model,
         api_rule_metrics.get_org_rule_metrics(
-          from,
-          to,
+          date_range(from, to),
           context.on_rule_metrics_fetched,
         ),
       )
@@ -225,8 +224,7 @@ fn handle_to_changed_and_refresh(
       #(
         model,
         api_rule_metrics.get_org_rule_metrics(
-          from,
-          to,
+          date_range(from, to),
           context.on_rule_metrics_fetched,
         ),
       )
@@ -251,8 +249,7 @@ fn handle_refresh_clicked(
       #(
         model,
         api_rule_metrics.get_org_rule_metrics(
-          from,
-          to,
+          date_range(from, to),
           context.on_rule_metrics_fetched,
         ),
       )
@@ -277,8 +274,7 @@ fn handle_quick_range_clicked(
   #(
     model,
     api_rule_metrics.get_org_rule_metrics(
-      from,
-      to,
+      date_range(from, to),
       context.on_rule_metrics_fetched,
     ),
   )
@@ -332,8 +328,7 @@ pub fn init_tab(
       #(
         model,
         api_rule_metrics.get_org_rule_metrics(
-          from,
-          to,
+          date_range(from, to),
           context.on_rule_metrics_fetched,
         ),
       )
@@ -345,8 +340,10 @@ pub fn init_tab(
           #(
             model,
             api_rule_metrics.get_org_rule_metrics(
-              model.admin_rule_metrics_from,
-              model.admin_rule_metrics_to,
+              date_range(
+                model.admin_rule_metrics_from,
+                model.admin_rule_metrics_to,
+              ),
               context.on_rule_metrics_fetched,
             ),
           )
@@ -445,16 +442,14 @@ fn handle_drilldown_clicked(
   let details_effect =
     api_rule_metrics.get_rule_metrics_detailed(
       rule_id,
-      from,
-      to,
+      date_range(from, to),
       context.on_rule_details_fetched,
     )
 
   let executions_effect =
     api_rule_metrics.get_rule_executions(
       rule_id,
-      from,
-      to,
+      date_range(from, to),
       20,
       0,
       context.on_executions_fetched,
@@ -550,8 +545,7 @@ fn handle_exec_page_changed(
         model,
         api_rule_metrics.get_rule_executions(
           rule_id,
-          from,
-          to,
+          date_range(from, to),
           20,
           offset,
           context.on_executions_fetched,
@@ -559,4 +553,8 @@ fn handle_exec_page_changed(
       )
     }
   }
+}
+
+fn date_range(from: String, to: String) -> api_rule_metrics.CalendarDateRange {
+  api_rule_metrics.calendar_date_range(from, to)
 }

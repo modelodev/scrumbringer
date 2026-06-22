@@ -452,12 +452,22 @@ fn parse_optional_timestamp(
 ) -> Result(Timestamp, wisp.Response) {
   case query_params.single_value(query, key) {
     Ok(None) -> Ok(default)
-    Ok(Some(value)) ->
-      case timestamp.parse_rfc3339(value) {
+    Ok(Some(value)) -> parse_calendar_or_timestamp(value, key)
+    Error(_) -> Error(invalid_query_response(key))
+  }
+}
+
+fn parse_calendar_or_timestamp(
+  value: String,
+  key: String,
+) -> Result(Timestamp, wisp.Response) {
+  case timestamp.parse_rfc3339(value) {
+    Ok(ts) -> Ok(ts)
+    Error(_) ->
+      case timestamp.parse_rfc3339(value <> "T00:00:00Z") {
         Ok(ts) -> Ok(ts)
         Error(_) -> Error(invalid_query_response(key))
       }
-    Error(_) -> Error(invalid_query_response(key))
   }
 }
 

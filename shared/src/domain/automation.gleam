@@ -40,7 +40,7 @@ pub type AutomationTrigger {
   TaskCreated(task_type_id: Option(Int))
   TaskClaimed(task_type_id: Option(Int))
   TaskReleased(task_type_id: Option(Int))
-  TaskDone(task_type_id: Option(Int))
+  TaskCompleted(task_type_id: Option(Int))
   CardActivated(scope: CardAutomationScope)
   CardClosed(scope: CardAutomationScope)
 }
@@ -231,7 +231,7 @@ pub fn task_transition_trigger(
     _, task_status.Claimed(_) -> Ok(TaskClaimed(task_type_id))
     Some(task_status.Claimed(_)), task_status.Available ->
       Ok(TaskReleased(task_type_id))
-    _, task_status.Done -> Ok(TaskDone(task_type_id))
+    _, task_status.Done -> Ok(TaskCompleted(task_type_id))
     _, _ -> Error(UnsupportedTransition)
   }
 }
@@ -259,7 +259,7 @@ pub fn trigger_kind(trigger: AutomationTrigger) -> String {
     TaskCreated(_) -> "task_created"
     TaskClaimed(_) -> "task_claimed"
     TaskReleased(_) -> "task_released"
-    TaskDone(_) -> "task_done"
+    TaskCompleted(_) -> "task_completed"
     CardActivated(_) -> "card_activated"
     CardClosed(_) -> "card_closed"
   }
@@ -267,7 +267,8 @@ pub fn trigger_kind(trigger: AutomationTrigger) -> String {
 
 pub fn trigger_resource_type(trigger: AutomationTrigger) -> String {
   case trigger {
-    TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskDone(_) -> "task"
+    TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskCompleted(_) ->
+      "task"
     CardActivated(_) | CardClosed(_) -> "card"
   }
 }
@@ -276,7 +277,7 @@ pub fn trigger_to_state_string(trigger: AutomationTrigger) -> String {
   case trigger {
     TaskCreated(_) | TaskReleased(_) -> "available"
     TaskClaimed(_) -> "claimed"
-    TaskDone(_) -> task_status.task_status_to_string(task_status.Done)
+    TaskCompleted(_) -> task_status.task_status_to_string(task_status.Done)
     CardActivated(_) -> "en_curso"
     CardClosed(_) -> "cerrada"
   }
@@ -287,7 +288,7 @@ pub fn trigger_task_type_id(trigger: AutomationTrigger) -> Option(Int) {
     TaskCreated(task_type_id)
     | TaskClaimed(task_type_id)
     | TaskReleased(task_type_id)
-    | TaskDone(task_type_id) -> task_type_id
+    | TaskCompleted(task_type_id) -> task_type_id
     CardActivated(_) | CardClosed(_) -> None
   }
 }
@@ -295,7 +296,7 @@ pub fn trigger_task_type_id(trigger: AutomationTrigger) -> Option(Int) {
 pub fn available_template_variables(trigger: AutomationTrigger) -> List(String) {
   let common = ["origin", "trigger", "project", "user"]
   let specific = case trigger {
-    TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskDone(_) -> [
+    TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskCompleted(_) -> [
       "task_title",
       "task_type",
     ]

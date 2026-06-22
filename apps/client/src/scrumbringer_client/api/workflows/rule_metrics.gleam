@@ -9,6 +9,16 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
 
+/// Calendar date range used by HTML date inputs (`YYYY-MM-DD`).
+pub type CalendarDateRange {
+  CalendarDateRange(from: String, to: String)
+}
+
+/// Builds a calendar date range for rule metrics queries.
+pub fn calendar_date_range(from: String, to: String) -> CalendarDateRange {
+  CalendarDateRange(from: from, to: to)
+}
+
 /// Rule metrics summary for a single rule.
 pub type RuleMetricsSummary {
   RuleMetricsSummary(
@@ -118,13 +128,12 @@ fn org_rule_metrics_decoder() -> decode.Decoder(List(OrgWorkflowMetricsSummary))
 
 /// Fetch org-wide rule metrics.
 pub fn get_org_rule_metrics(
-  from: String,
-  to: String,
+  range: CalendarDateRange,
   to_msg: fn(ApiResult(List(OrgWorkflowMetricsSummary))) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Get,
-    "/api/v1/org/rule-metrics?from=" <> from <> "&to=" <> to,
+    "/api/v1/org/rule-metrics" <> calendar_range_query(range),
     None,
     org_rule_metrics_decoder(),
     to_msg,
@@ -134,18 +143,15 @@ pub fn get_org_rule_metrics(
 /// Fetch project-scoped rule metrics.
 pub fn get_project_rule_metrics(
   project_id: Int,
-  from: String,
-  to: String,
+  range: CalendarDateRange,
   to_msg: fn(ApiResult(List(OrgWorkflowMetricsSummary))) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Get,
     "/api/v1/projects/"
       <> int.to_string(project_id)
-      <> "/rule-metrics?from="
-      <> from
-      <> "&to="
-      <> to,
+      <> "/rule-metrics"
+      <> calendar_range_query(range),
     None,
     org_rule_metrics_decoder(),
     to_msg,
@@ -211,18 +217,15 @@ pub fn rule_metrics_detailed_decoder() -> decode.Decoder(RuleMetricsDetailed) {
 /// Fetch detailed metrics for a single rule.
 pub fn get_rule_metrics_detailed(
   rule_id: Int,
-  from: String,
-  to: String,
+  range: CalendarDateRange,
   to_msg: fn(ApiResult(RuleMetricsDetailed)) -> msg,
 ) -> Effect(msg) {
   core.request(
     core.Get,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
-      <> "/metrics?from="
-      <> from
-      <> "&to="
-      <> to,
+      <> "/metrics"
+      <> calendar_range_query(range),
     None,
     rule_metrics_detailed_decoder(),
     to_msg,
@@ -338,8 +341,7 @@ pub fn rule_executions_response_decoder() -> decode.Decoder(
 /// Fetch paginated executions for a rule.
 pub fn get_rule_executions(
   rule_id: Int,
-  from: String,
-  to: String,
+  range: CalendarDateRange,
   limit: Int,
   offset: Int,
   to_msg: fn(ApiResult(RuleExecutionsResponse)) -> msg,
@@ -348,10 +350,8 @@ pub fn get_rule_executions(
     core.Get,
     "/api/v1/rules/"
       <> int.to_string(rule_id)
-      <> "/executions?from="
-      <> from
-      <> "&to="
-      <> to
+      <> "/executions"
+      <> calendar_range_query(range)
       <> "&limit="
       <> int.to_string(limit)
       <> "&offset="
@@ -360,4 +360,8 @@ pub fn get_rule_executions(
     rule_executions_response_decoder(),
     to_msg,
   )
+}
+
+fn calendar_range_query(range: CalendarDateRange) -> String {
+  "?from=" <> range.from <> "&to=" <> range.to
 }

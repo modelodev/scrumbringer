@@ -15,7 +15,7 @@ select
 from rule_executions re
 left join users u on u.id = re.user_id
 where re.rule_id = $1
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 order by re.created_at desc
 limit $4 offset $5;
