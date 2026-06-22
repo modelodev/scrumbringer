@@ -239,6 +239,7 @@ pub type NavIcon {
   Logout
   // Informational icons
   Info
+  Calendar
   // Link icons (Story 5.4)
   GitHub
   ExternalLink
@@ -327,6 +328,7 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
+    Calendar -> outline.calendar()
     // Link icons (Story 5.4)
     GitHub -> outline.code_bracket()
     ExternalLink -> outline.arrow_top_right_on_square()
@@ -409,6 +411,7 @@ pub fn nav_icon_with_class(
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
+    Calendar -> outline.calendar()
     // Link icons (Story 5.4)
     GitHub -> outline.code_bracket()
     ExternalLink -> outline.arrow_top_right_on_square()

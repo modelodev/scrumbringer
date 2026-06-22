@@ -29,7 +29,7 @@ pub fn task_detail_footer_renders_close_only_without_task_test() {
   assert_not_contains(html, "Complete")
 }
 
-pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
+pub fn task_detail_footer_hides_claim_for_blocked_task_test() {
   let html =
     task_detail_footer.view(config(
       Some(Task(..available_task(), blocked_count: 1)),
@@ -37,10 +37,10 @@ pub fn task_detail_footer_disables_claim_for_blocked_task_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Claim task")
   assert_contains(html, "Delete")
   assert_contains(html, "data-tooltip=\"Task has incomplete dependencies\"")
   assert_contains(html, "aria-disabled=\"true\"")
+  assert_not_contains(html, "Claim task")
   assert_not_contains(html, " disabled")
   assert_not_contains(html, "Release")
   assert_not_contains(html, "Complete")

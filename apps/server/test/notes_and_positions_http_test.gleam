@@ -1262,14 +1262,18 @@ fn insert_note_with_created_at(
   created_at: String,
 ) {
   let assert Ok(ts) = timestamp.parse_rfc3339(created_at)
-  let assert Ok(_) =
-    pog.query(
-      "insert into card_notes (card_id, user_id, content, created_at) values ($1, $2, $3, $4)",
+  let note_id =
+    single_int(
+      db,
+      "insert into notes (project_id, user_id, content, created_at, updated_at)
+       select project_id, $1, $2, $3, $3 from cards where id = $4 returning id",
+      [pog.int(user_id), pog.text(content), pog.timestamp(ts), pog.int(card_id)],
     )
+
+  let assert Ok(_) =
+    pog.query("insert into card_notes (note_id, card_id) values ($1, $2)")
+    |> pog.parameter(pog.int(note_id))
     |> pog.parameter(pog.int(card_id))
-    |> pog.parameter(pog.int(user_id))
-    |> pog.parameter(pog.text(content))
-    |> pog.parameter(pog.timestamp(ts))
     |> pog.execute(db)
 
   Nil

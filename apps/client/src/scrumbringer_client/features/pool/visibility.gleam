@@ -1,5 +1,9 @@
 import gleam/string
 
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
+
 /// Pool-specific visibility selector for open work.
 pub type PoolVisibility {
   AllOpen
@@ -29,11 +33,15 @@ pub fn to_string(visibility: PoolVisibility) -> String {
   }
 }
 
-pub fn label(visibility: PoolVisibility) -> String {
+pub fn label(locale: Locale, visibility: PoolVisibility) -> String {
+  i18n.t(locale, label_key(visibility))
+}
+
+pub fn label_key(visibility: PoolVisibility) -> i18n_text.Text {
   case visibility {
-    AllOpen -> "Abiertas"
-    ReadyToClaim -> "Reclamables"
-    Blocked -> "Bloqueadas"
+    AllOpen -> i18n_text.PoolVisibilityAllOpen
+    ReadyToClaim -> i18n_text.PoolVisibilityReadyToClaim
+    Blocked -> i18n_text.PoolVisibilityBlocked
   }
 }
 

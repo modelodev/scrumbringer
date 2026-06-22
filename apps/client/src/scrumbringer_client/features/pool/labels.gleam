@@ -50,6 +50,18 @@ pub fn hidden_blocked_by_filters(locale: Locale, count: Int) -> String {
   i18n.t(locale, i18n_text.HiddenBlockedByFilters(count))
 }
 
+pub fn task_overdue(locale: Locale, due_date: String) -> String {
+  i18n.t(locale, i18n_text.TaskOverdue(due_date))
+}
+
+pub fn task_due_today(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskDueToday)
+}
+
+pub fn task_due_soon(locale: Locale, due_date: String) -> String {
+  i18n.t(locale, i18n_text.TaskDueSoon(due_date))
+}
+
 pub fn recent_notes(locale: Locale) -> String {
   i18n.t(locale, i18n_text.RecentNotes)
 }

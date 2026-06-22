@@ -13,7 +13,9 @@ import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/features/pool/view as pool_view
-import scrumbringer_client/features/pool/visibility.{AllOpen}
+import scrumbringer_client/features/pool/visibility.{
+  type PoolVisibility, AllOpen, Blocked, ReadyToClaim,
+}
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme
@@ -35,6 +37,7 @@ pub fn pool_renders_header_control_bar_and_body_test() {
   assert_contains(html, "data-testid=\"pool-control-bar\"")
   assert_contains(html, "id=\"member-canvas\"")
   assert_contains(html, "Task 1")
+  assert_contains(html, ">7<")
   assert_not_contains(html, "My tasks")
 }
 
@@ -48,20 +51,58 @@ pub fn pool_list_mode_renders_task_rows_test() {
   assert_contains(html, "Task 1")
 }
 
+pub fn pool_ready_to_claim_empty_mentions_blocked_tasks_test() {
+  let blocked = Task(..sample_task(), blocked_count: 2)
+  let html =
+    pool_view.view_pool_main(main_config_with(
+      pool_prefs.Canvas,
+      Loaded([blocked]),
+      ReadyToClaim,
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "No claimable tasks right now")
+  assert_contains(html, "There are 1 blocked tasks")
+  assert_contains(html, "View blocked")
+  assert_not_contains(html, "Create your first task")
+}
+
+pub fn pool_blocked_empty_does_not_suggest_new_task_test() {
+  let html =
+    pool_view.view_pool_main(main_config_with(
+      pool_prefs.Canvas,
+      Loaded([sample_task()]),
+      Blocked,
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "No blocked tasks")
+  assert_contains(html, "View open")
+  assert_not_contains(html, "Create your first task")
+}
+
 fn main_config(view_mode: pool_prefs.ViewMode) -> pool_view.MainConfig(String) {
+  main_config_with(view_mode, Loaded([sample_task()]), AllOpen)
+}
+
+fn main_config_with(
+  view_mode: pool_prefs.ViewMode,
+  tasks,
+  visibility: PoolVisibility,
+) -> pool_view.MainConfig(String) {
   pool_view.MainConfig(
     locale: locale.En,
     has_active_projects: True,
     on_create_opened: "create",
     available_tasks: available_tasks.Config(
-      tasks: Loaded([sample_task()]),
+      tasks: tasks,
       task_types: Loaded([]),
       my_capability_ids: Loaded([]),
       type_filter: None,
       capability_filter: None,
       search_query: "",
       capability_scope: AllCapabilities,
-      visibility: AllOpen,
+      visibility: visibility,
     ),
     control_bar: control_bar.Config(
       locale: locale.En,
@@ -71,7 +112,7 @@ fn main_config(view_mode: pool_prefs.ViewMode) -> pool_view.MainConfig(String) {
       type_filter: None,
       capability_filter: None,
       search_query: "",
-      visibility: AllOpen,
+      visibility: visibility,
       view_mode: view_mode,
       on_capability_scope_change: fn(_) { "scope" },
       on_type_filter_change: fn(_) { "type" },
@@ -80,6 +121,7 @@ fn main_config(view_mode: pool_prefs.ViewMode) -> pool_view.MainConfig(String) {
       on_visibility_change: fn(_) { "visibility" },
       on_view_mode_change: fn(_) { "view-mode" },
     ),
+    healthy_pool_limit: 7,
     view_mode: view_mode,
     task_card_config: fn(task) { task_card_config(task) },
     task_row_config: fn(task) { task_row_config(task) },

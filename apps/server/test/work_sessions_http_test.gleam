@@ -90,6 +90,7 @@ pub fn start_rejects_completed_task_test() {
         card_id: opt.None,
         created_from_rule_id: opt.None,
         pool_lifetime_s: 0,
+        due_date: opt.None,
         created_at: opt.None,
         claimed_at: opt.None,
         completed_at: opt.None,

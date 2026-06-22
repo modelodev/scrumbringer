@@ -162,6 +162,9 @@ pub type Text {
   Blocked
   BlockedByTasks(count: Int)
   HiddenBlockedByFilters(count: Int)
+  TaskOverdue(due_date: String)
+  TaskDueToday
+  TaskDueSoon(due_date: String)
   EditPosition
   XLabel
   YLabel
@@ -226,6 +229,15 @@ pub type Text {
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
+  NoOpenPoolTasks
+  NoOpenPoolTasksBody
+  NoClaimablePoolTasks
+  NoClaimablePoolTasksBlockedBody(count: Int)
+  NoClaimablePoolTasksBody
+  NoBlockedPoolTasks
+  NoBlockedPoolTasksBody
+  ViewBlockedTasks
+  ViewOpenTasks
   HideDoneTasks
   TypeNumber(type_id: Int)
   MetaType

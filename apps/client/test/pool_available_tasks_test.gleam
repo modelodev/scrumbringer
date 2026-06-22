@@ -101,8 +101,8 @@ pub fn available_tasks_all_open_includes_blocked_and_unblocked_test() {
   let assert available_tasks.Ready(tasks) =
     available_tasks.state(config(Loaded([blocked, ready])))
   let assert [first, second] = tasks
-  let assert 1 = first.id
-  let assert 2 = second.id
+  let assert 2 = first.id
+  let assert 1 = second.id
 }
 
 pub fn available_tasks_ready_to_claim_excludes_blocked_test() {
@@ -225,6 +225,30 @@ pub fn available_tasks_filters_type_capability_search_and_my_capabilities_test()
   let assert available_tasks.Ready(tasks) = state
   let assert [only] = tasks
   let assert 1 = only.id
+}
+
+pub fn available_tasks_visibility_preserves_manual_order_test() {
+  let blocked_first =
+    Task(..task(3, "Blocked first", 1, task_state.Available), blocked_count: 2)
+  let ready_second = task(1, "Ready second", 1, task_state.Available)
+  let blocked_third =
+    Task(..task(2, "Blocked third", 1, task_state.Available), blocked_count: 1)
+
+  let assert available_tasks.Ready(tasks) =
+    available_tasks.state(
+      config(
+        Loaded([
+          blocked_first,
+          ready_second,
+          blocked_third,
+        ]),
+      ),
+    )
+
+  let assert [first, second, third] = tasks
+  let assert 3 = first.id
+  let assert 1 = second.id
+  let assert 2 = third.id
 }
 
 pub fn pool_available_tasks_matches_work_filters_without_root_model_test() {

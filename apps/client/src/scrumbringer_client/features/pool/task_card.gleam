@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/option.{type Option}
+import gleam/order
 import gleam/string
 
 import domain/card.{type CardColor}
@@ -90,6 +91,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         "aria-describedby",
         "task-preview-" <> int.to_string(id),
       ),
+      attribute.attribute("aria-label", task_accessible_label(config)),
+      attribute.attribute("title", task_accessible_label(config)),
       attribute.attribute("tabindex", "0"),
       event.on("mouseenter", event_decoders.message(config.on_hover_opened)),
       event.on("mouseleave", event_decoders.message(config.on_hover_closed)),
@@ -110,6 +113,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
             config.task,
             "task-blocked-card",
           ),
+          due_signal(config),
           claim_action,
           top_left_action,
         ]),
@@ -179,6 +183,66 @@ fn mobile_context(config: Config(msg)) -> Element(msg) {
     ]),
     description_context(config.task.description),
   ])
+}
+
+fn task_accessible_label(config: Config(msg)) -> String {
+  let base = config.task.title
+  let with_blocked = case config.task.blocked_count > 0 {
+    True ->
+      base
+      <> ". "
+      <> pool_labels.blocked_by_tasks(config.locale, config.task.blocked_count)
+    False -> base
+  }
+
+  case due_label(config) {
+    option.Some(label) -> with_blocked <> ". " <> label
+    option.None -> with_blocked
+  }
+}
+
+fn due_signal(config: Config(msg)) -> Element(msg) {
+  case due_label(config) {
+    option.Some(label) ->
+      span(
+        [
+          attribute.class(
+            "task-card-signal task-card-signal-due " <> due_class(config),
+          ),
+          attribute.attribute("data-testid", "task-card-signal-due"),
+          attribute.attribute("title", label),
+          attribute.attribute("aria-label", label),
+        ],
+        [icons.nav_icon(icons.Calendar, icons.XSmall)],
+      )
+    option.None -> element.none()
+  }
+}
+
+fn due_label(config: Config(msg)) -> Option(String) {
+  case config.task.due_date {
+    option.Some(due_date) ->
+      case string.compare(due_date, config.project_today) {
+        order.Lt ->
+          option.Some(pool_labels.task_overdue(config.locale, due_date))
+        order.Eq -> option.Some(pool_labels.task_due_today(config.locale))
+        order.Gt ->
+          option.Some(pool_labels.task_due_soon(config.locale, due_date))
+      }
+    option.None -> option.None
+  }
+}
+
+fn due_class(config: Config(msg)) -> String {
+  case config.task.due_date {
+    option.Some(due_date) ->
+      case string.compare(due_date, config.project_today) {
+        order.Lt -> "is-overdue"
+        order.Eq -> "is-due-today"
+        order.Gt -> "is-due-soon"
+      }
+    option.None -> ""
+  }
 }
 
 fn card_context(card_title: Option(String)) -> Element(msg) {

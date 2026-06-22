@@ -34,6 +34,9 @@ import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
+import scrumbringer_client/features/pool/visibility.{
+  AllOpen, Blocked, ReadyToClaim,
+}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -49,6 +52,7 @@ pub type MainConfig(msg) {
     on_create_opened: msg,
     available_tasks: available_tasks.Config,
     control_bar: control_bar.Config(msg),
+    healthy_pool_limit: Int,
     view_mode: pool_prefs.ViewMode,
     task_card_config: fn(Task) -> task_card.Config(msg),
     task_row_config: fn(Task) -> task_row.Config(msg),
@@ -153,14 +157,49 @@ fn view_tasks(
   config: MainConfig(msg),
   task_state: available_tasks.State,
 ) -> Element(msg) {
+  let counts = available_tasks.counts(config.available_tasks)
   case task_state {
     available_tasks.Loading -> pool_chrome.tasks_loading(config.locale)
     available_tasks.Error(message) -> error_notice.view(message)
     available_tasks.Empty(has_filters: True) ->
-      pool_chrome.tasks_no_matches(config.locale)
+      view_empty_with_filters(config, counts)
     available_tasks.Empty(has_filters: False) ->
-      pool_chrome.tasks_onboarding(config.locale, config.on_create_opened)
+      view_empty_without_filters(config, counts)
     available_tasks.Ready(tasks) -> view_tasks_collection(config, tasks)
+  }
+}
+
+fn view_empty_with_filters(
+  config: MainConfig(msg),
+  counts: available_tasks.Counts,
+) -> Element(msg) {
+  let available_tasks.Counts(blocked: blocked, ready: ready, ..) = counts
+  case config.available_tasks.visibility {
+    ReadyToClaim if ready == 0 && blocked > 0 ->
+      pool_chrome.tasks_no_claimable_with_blocked(
+        config.locale,
+        blocked,
+        config.control_bar.on_visibility_change(visibility.to_string(Blocked)),
+      )
+    ReadyToClaim -> pool_chrome.tasks_no_claimable(config.locale)
+    Blocked ->
+      pool_chrome.tasks_no_blocked(
+        config.locale,
+        config.control_bar.on_visibility_change(visibility.to_string(AllOpen)),
+      )
+    AllOpen -> pool_chrome.tasks_no_matches(config.locale)
+  }
+}
+
+fn view_empty_without_filters(
+  config: MainConfig(msg),
+  counts: available_tasks.Counts,
+) -> Element(msg) {
+  let available_tasks.Counts(open: open, ..) = counts
+  case config.available_tasks.visibility, open {
+    AllOpen, 0 ->
+      pool_chrome.tasks_no_open(config.locale, config.on_create_opened)
+    _, _ -> view_empty_with_filters(config, counts)
   }
 }
 
@@ -170,8 +209,7 @@ fn pool_summary(
 ) -> List(work_surface.SummaryChip) {
   let available_tasks.Counts(open: open, ready: ready, blocked: blocked) =
     counts
-  let healthy_limit = 20
-  let healthy_tone = case open > healthy_limit {
+  let healthy_tone = case open > config.healthy_pool_limit {
     True -> tone.Warning
     False -> tone.Neutral
   }
@@ -194,7 +232,7 @@ fn pool_summary(
     ),
     work_surface.summary_chip(
       i18n.t(config.locale, i18n_text.PoolHealthyLimit),
-      int.to_string(healthy_limit),
+      int.to_string(config.healthy_pool_limit),
       healthy_tone,
     ),
   ]

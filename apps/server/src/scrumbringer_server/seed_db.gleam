@@ -61,6 +61,7 @@ pub type TaskInsertOptions {
     card_id: Option(Int),
     created_from_rule_id: Option(Int),
     pool_lifetime_s: Int,
+    due_date: Option(String),
     created_at: Option(String),
     claimed_at: Option(String),
     completed_at: Option(String),
@@ -202,6 +203,44 @@ fn append_optional_timestamp(
     None -> #(cols, vals, param_idx, params)
     Some(ts) -> {
       let #(val_expr, param, next_idx) = timestamp_value(ts, param_idx)
+      let next_cols = cols <> ", " <> column
+      let next_vals = vals <> ", " <> val_expr
+      let next_params = case param {
+        Some(p) -> list.append(params, [p])
+        None -> params
+      }
+      #(next_cols, next_vals, next_idx, next_params)
+    }
+  }
+}
+
+fn is_sql_date(value: String) -> Bool {
+  string.starts_with(value, "CURRENT_DATE")
+}
+
+fn date_value(value: String, param_idx: Int) -> #(String, Option(String), Int) {
+  case is_sql_date(value) {
+    True -> #(value, None, param_idx)
+    False -> #(
+      "$" <> int.to_string(param_idx) <> "::date",
+      Some(value),
+      param_idx + 1,
+    )
+  }
+}
+
+fn append_optional_date(
+  cols: String,
+  vals: String,
+  param_idx: Int,
+  column: String,
+  value: Option(String),
+  params: List(String),
+) -> #(String, String, Int, List(String)) {
+  case value {
+    None -> #(cols, vals, param_idx, params)
+    Some(date) -> {
+      let #(val_expr, param, next_idx) = date_value(date, param_idx)
       let next_cols = cols <> ", " <> column
       let next_vals = vals <> ", " <> val_expr
       let next_params = case param {
@@ -493,13 +532,23 @@ pub fn insert_task(
   let base_idx = 15
 
   let #(cols, vals, idx, params) =
-    append_optional_timestamp(
+    append_optional_date(
       base_cols,
       base_vals,
       base_idx,
+      "due_date",
+      opts.due_date,
+      [],
+    )
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
       "created_at",
       opts.created_at,
-      [],
+      params,
     )
 
   let #(cols, vals, idx, params) =
@@ -573,6 +622,7 @@ pub fn insert_task_simple(
       card_id: card_id,
       created_from_rule_id: None,
       pool_lifetime_s: 0,
+      due_date: None,
       created_at: None,
       claimed_at: None,
       completed_at: None,

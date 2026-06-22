@@ -910,6 +910,7 @@ fn build_tasks(
             card_id: card_id,
             created_from_rule_id: created_from_rule_id,
             pool_lifetime_s: pool_lifetime_s,
+            due_date: None,
             created_at: Some(created_at),
             claimed_at: claimed_at,
             completed_at: completed_at,
@@ -1024,7 +1025,7 @@ fn build_plan_qa_scenarios(
             card.Purple,
           ))
 
-          use direct_available <- result.try(insert_plan_qa_task(
+          use direct_available <- result.try(insert_plan_qa_task_with_due(
             db,
             project_id,
             direct_id,
@@ -1035,6 +1036,7 @@ fn build_plan_qa_scenarios(
             None,
             4,
             4,
+            Some("CURRENT_DATE"),
           ))
           use direct_claimed <- result.try(insert_plan_qa_task(
             db,
@@ -1072,7 +1074,7 @@ fn build_plan_qa_scenarios(
             3,
             3,
           ))
-          use api_dependency <- result.try(insert_plan_qa_task(
+          use api_dependency <- result.try(insert_plan_qa_task_with_due(
             db,
             project_id,
             api_id,
@@ -1083,8 +1085,9 @@ fn build_plan_qa_scenarios(
             None,
             5,
             2,
+            Some("CURRENT_DATE + 3"),
           ))
-          use api_blocked <- result.try(insert_plan_qa_task(
+          use api_blocked <- result.try(insert_plan_qa_task_with_due(
             db,
             project_id,
             api_id,
@@ -1095,6 +1098,7 @@ fn build_plan_qa_scenarios(
             None,
             5,
             1,
+            Some("CURRENT_DATE - 4"),
           ))
           use _ <- result.try(seed_db.insert_task_dependency(
             db,
@@ -1114,7 +1118,7 @@ fn build_plan_qa_scenarios(
             4,
             2,
           ))
-          use docs_no_capability <- result.try(insert_plan_qa_task(
+          use docs_no_capability <- result.try(insert_plan_qa_task_with_due(
             db,
             project_id,
             docs_id,
@@ -1125,6 +1129,49 @@ fn build_plan_qa_scenarios(
             None,
             2,
             1,
+            Some("CURRENT_DATE + 5"),
+          ))
+          use pool_ready_due_today <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            bug_id,
+            "Pool QA - Ready due today",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            1,
+            Some("CURRENT_DATE"),
+          ))
+          use pool_dependency <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            task_id,
+            "Pool QA - Blocking dependency",
+            Available,
+            state.admin_id,
+            None,
+            3,
+            2,
+            Some("CURRENT_DATE + 2"),
+          ))
+          use pool_blocked_overdue <- result.try(insert_pool_qa_task_with_due(
+            db,
+            project_id,
+            feature_id,
+            "Pool QA - Blocked overdue",
+            Available,
+            state.admin_id,
+            None,
+            5,
+            1,
+            Some("CURRENT_DATE - 2"),
+          ))
+          use _ <- result.try(seed_db.insert_task_dependency(
+            db,
+            pool_blocked_overdue.task_id,
+            pool_dependency.task_id,
+            state.admin_id,
           ))
           use closed_done <- result.try(insert_plan_qa_task(
             db,
@@ -1156,6 +1203,9 @@ fn build_plan_qa_scenarios(
             api_blocked,
             ui_ongoing,
             docs_no_capability,
+            pool_ready_due_today,
+            pool_dependency,
+            pool_blocked_overdue,
             closed_done,
           ]
           let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
@@ -1435,6 +1485,34 @@ fn insert_plan_qa_task(
   priority: Int,
   created_days_ago: Int,
 ) -> Result(TaskSeedInfo, String) {
+  insert_plan_qa_task_with_due(
+    db,
+    project_id,
+    card_id,
+    type_id,
+    title,
+    status,
+    created_by,
+    claimed_by,
+    priority,
+    created_days_ago,
+    None,
+  )
+}
+
+fn insert_plan_qa_task_with_due(
+  db: pog.Connection,
+  project_id: Int,
+  card_id: Int,
+  type_id: Int,
+  title: String,
+  status: TaskPhase,
+  created_by: Int,
+  claimed_by: Option(Int),
+  priority: Int,
+  created_days_ago: Int,
+  due_date: Option(String),
+) -> Result(TaskSeedInfo, String) {
   let created_at = days_ago_timestamp(created_days_ago)
   let #(claimed_by, claimed_at, completed_at) = case status {
     Claimed(_) -> #(
@@ -1464,6 +1542,66 @@ fn insert_plan_qa_task(
       card_id: Some(card_id),
       created_from_rule_id: None,
       pool_lifetime_s: 3600 * created_days_ago,
+      due_date: due_date,
+      created_at: Some(created_at),
+      claimed_at: claimed_at,
+      completed_at: completed_at,
+      last_entered_pool_at: Some(created_at),
+    ),
+  ))
+
+  Ok(TaskSeedInfo(
+    task_id: task_id,
+    project_id: project_id,
+    status: status,
+    created_at: created_at,
+    created_by: created_by,
+    claimed_by: claimed_by,
+  ))
+}
+
+fn insert_pool_qa_task_with_due(
+  db: pog.Connection,
+  project_id: Int,
+  type_id: Int,
+  title: String,
+  status: TaskPhase,
+  created_by: Int,
+  claimed_by: Option(Int),
+  priority: Int,
+  created_days_ago: Int,
+  due_date: Option(String),
+) -> Result(TaskSeedInfo, String) {
+  let created_at = days_ago_timestamp(created_days_ago)
+  let #(claimed_by, claimed_at, completed_at) = case status {
+    Claimed(_) -> #(
+      claimed_by,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+      None,
+    )
+    Done -> #(
+      None,
+      None,
+      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
+    )
+    Available -> #(None, None, None)
+  }
+
+  use task_id <- result.try(seed_db.insert_task(
+    db,
+    seed_db.TaskInsertOptions(
+      project_id: project_id,
+      type_id: type_id,
+      title: title,
+      description: "Pool QA fixture task",
+      priority: priority,
+      status: status,
+      created_by: created_by,
+      claimed_by: claimed_by,
+      card_id: None,
+      created_from_rule_id: None,
+      pool_lifetime_s: 3600 * created_days_ago,
+      due_date: due_date,
       created_at: Some(created_at),
       claimed_at: claimed_at,
       completed_at: completed_at,
@@ -2092,7 +2230,10 @@ fn build_task_positions(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let tasks = list.take(state.task_ids, 9)
+  let tasks =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.status == Available })
+    |> list.map(fn(seed) { seed.task_id })
   let users = list.take(state.user_ids, 3)
 
   case tasks, users {
@@ -2101,13 +2242,15 @@ fn build_task_positions(
     _, _ -> {
       use _ <- result.try(
         list.index_map(tasks, fn(task_id, idx) {
-          let user_id =
-            list_at_int(users, idx % list.length(users), state.admin_id)
-          let x = { idx % 3 } * 120
-          let y = { idx / 3 } * 80
-          seed_db.insert_task_position(db, task_id, user_id, x, y)
+          let x = { idx % 4 } * 156
+          let y = { idx / 4 } * 152
+
+          list.try_map(users, fn(user_id) {
+            seed_db.insert_task_position(db, task_id, user_id, x, y)
+          })
         })
-        |> result.all,
+        |> result.all
+        |> result.map(list.flatten),
       )
       Ok(state)
     }

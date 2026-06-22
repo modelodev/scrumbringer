@@ -63,6 +63,59 @@ pub fn tasks_no_matches(locale: Locale) -> Element(msg) {
   )
 }
 
+pub fn tasks_no_open(locale: Locale, on_new_task: msg) -> Element(msg) {
+  empty_state.new(
+    "inbox",
+    i18n.t(locale, i18n_text.NoOpenPoolTasks),
+    i18n.t(locale, i18n_text.NoOpenPoolTasksBody),
+  )
+  |> empty_state.with_meaning(empty_state.HealthyEmpty)
+  |> empty_state.with_action(i18n.t(locale, i18n_text.NewTask), on_new_task)
+  |> empty_state.view
+}
+
+pub fn tasks_no_claimable(locale: Locale) -> Element(msg) {
+  empty_state.new(
+    "hand-raised",
+    i18n.t(locale, i18n_text.NoClaimablePoolTasks),
+    i18n.t(locale, i18n_text.NoClaimablePoolTasksBody),
+  )
+  |> empty_state.with_meaning(empty_state.HealthyEmpty)
+  |> empty_state.view
+}
+
+pub fn tasks_no_claimable_with_blocked(
+  locale: Locale,
+  blocked_count: Int,
+  on_view_blocked: msg,
+) -> Element(msg) {
+  empty_state.new(
+    "hand-raised",
+    i18n.t(locale, i18n_text.NoClaimablePoolTasks),
+    i18n.t(locale, i18n_text.NoClaimablePoolTasksBlockedBody(blocked_count)),
+  )
+  |> empty_state.with_meaning(empty_state.NoResults)
+  |> empty_state.with_action(
+    i18n.t(locale, i18n_text.ViewBlockedTasks),
+    on_view_blocked,
+  )
+  |> empty_state.view
+}
+
+pub fn tasks_no_blocked(locale: Locale, on_view_open: msg) -> Element(msg) {
+  empty_state.new(
+    "check-circle",
+    i18n.t(locale, i18n_text.NoBlockedPoolTasks),
+    i18n.t(locale, i18n_text.NoBlockedPoolTasksBody),
+  )
+  |> empty_state.with_meaning(empty_state.HealthyEmpty)
+  |> empty_state.with_action(
+    i18n.t(locale, i18n_text.ViewOpenTasks),
+    on_view_open,
+  )
+  |> empty_state.view
+}
+
 pub fn tasks_onboarding(locale: Locale, on_new_task: msg) -> Element(msg) {
   empty_state.new(
     "star",

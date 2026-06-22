@@ -86,7 +86,7 @@ fn view_type_filter(config: Config(msg)) -> Element(msg) {
         attribute.id("pool-filter-type"),
         attribute.attribute("data-testid", "pool-filter-type"),
         attribute.value(option_int_to_string(config.type_filter)),
-        event.on_input(config.on_type_filter_change),
+        event.on_change(config.on_type_filter_change),
       ],
       list.append(
         [
@@ -119,7 +119,7 @@ fn view_capability_filter(config: Config(msg)) -> Element(msg) {
         attribute.id("pool-filter-capability"),
         attribute.attribute("data-testid", "pool-filter-capability"),
         attribute.value(option_int_to_string(config.capability_filter)),
-        event.on_input(config.on_capability_filter_change),
+        event.on_change(config.on_capability_filter_change),
       ],
       list.append(
         [
@@ -198,32 +198,24 @@ fn view_visibility_filter(config: Config(msg)) -> Element(msg) {
         attribute.id("pool-filter-visibility"),
         attribute.attribute("data-testid", "pool-filter-visibility"),
         attribute.value(visibility.to_string(config.visibility)),
-        event.on_input(config.on_visibility_change),
+        event.on_change(config.on_visibility_change),
       ],
       [
-        visibility_option(config, AllOpen, i18n_text.PoolVisibilityAllOpen),
-        visibility_option(
-          config,
-          ReadyToClaim,
-          i18n_text.PoolVisibilityReadyToClaim,
-        ),
-        visibility_option(config, Blocked, i18n_text.PoolVisibilityBlocked),
+        visibility_option(config, AllOpen),
+        visibility_option(config, ReadyToClaim),
+        visibility_option(config, Blocked),
       ],
     ),
   ])
 }
 
-fn visibility_option(
-  config: Config(msg),
-  item: PoolVisibility,
-  label_key: i18n_text.Text,
-) -> Element(msg) {
+fn visibility_option(config: Config(msg), item: PoolVisibility) -> Element(msg) {
   option(
     [
       attribute.value(visibility.to_string(item)),
       attribute.selected(config.visibility == item),
     ],
-    i18n.t(config.locale, label_key),
+    visibility.label(config.locale, item),
   )
 }
 

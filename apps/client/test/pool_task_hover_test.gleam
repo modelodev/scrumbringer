@@ -52,6 +52,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
   assert_contains(html, "I checked the deployment checklist.")
   assert_contains(html, "OAuth setup still blocks this.")
   assert_contains(html, "Open task")
+  assert_not_contains(html, "Claim to My Tasks")
 }
 
 pub fn task_hover_hides_empty_optional_sections_test() {

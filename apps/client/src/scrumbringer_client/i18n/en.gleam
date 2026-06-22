@@ -191,6 +191,9 @@ pub fn translate(text: Text) -> String {
       "Blocked by " <> int.to_string(count) <> " tasks"
     text.HiddenBlockedByFilters(count) ->
       int.to_string(count) <> " blockers out of view due to filters"
+    text.TaskOverdue(due_date) -> "Overdue since " <> due_date
+    text.TaskDueToday -> "Due today"
+    text.TaskDueSoon(due_date) -> "Due soon: " <> due_date
     text.EditPosition -> "Edit position"
     text.XLabel -> "x"
     text.YLabel -> "y"
@@ -264,6 +267,21 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Create your first task to start using the Pool."
     text.NoTasksMatchYourFilters -> "No tasks match your filters"
+    text.NoOpenPoolTasks -> "No open tasks in the Pool"
+    text.NoOpenPoolTasksBody ->
+      "Open work will appear here when it is ready for the team to pull."
+    text.NoClaimablePoolTasks -> "No claimable tasks right now"
+    text.NoClaimablePoolTasksBlockedBody(count) ->
+      "There are "
+      <> int.to_string(count)
+      <> " blocked tasks that need dependencies or a team conversation."
+    text.NoClaimablePoolTasksBody ->
+      "The Pool is clear for your current filters."
+    text.NoBlockedPoolTasks -> "No blocked tasks"
+    text.NoBlockedPoolTasksBody ->
+      "Blockers will appear here when an unfinished dependency prevents claiming."
+    text.ViewBlockedTasks -> "View blocked"
+    text.ViewOpenTasks -> "View open"
     text.HideDoneTasks -> "Hide completed tasks"
     text.TypeNumber(type_id) -> "Type #" <> int.to_string(type_id)
     text.MetaType -> "type: "

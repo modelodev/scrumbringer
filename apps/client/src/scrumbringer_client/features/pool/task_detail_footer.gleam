@@ -96,15 +96,23 @@ fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
 fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
   let is_mine = claimed_by(task) == config.current_user_id
   case task_state.to_work_state(task.state) {
-    task_status.WorkAvailable -> [
-      delete_button(config, task, task.blocked_count > 0),
-      claim_button(config, task),
-    ]
+    task_status.WorkAvailable ->
+      [
+        delete_button(config, task, case task.blocked_count > 0 {
+          True -> opt.Some(i18n_text.TaskBlockedByDependencies)
+          False -> opt.None
+        }),
+      ]
+      |> list.append(claim_actions(config, task))
 
     task_status.WorkClaimed | task_status.WorkOngoing ->
       case is_mine {
         True -> [
-          delete_button(config, task, True),
+          delete_button(
+            config,
+            task,
+            opt.Some(i18n_text.TaskHasOperationalHistory),
+          ),
           text_button(
             t(config, i18n_text.Release),
             config.on_release(task.id, task.version),
@@ -120,17 +128,25 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
           )
             |> button.view,
         ]
-        False -> [delete_button(config, task, True)]
+        False -> [
+          delete_button(
+            config,
+            task,
+            opt.Some(i18n_text.TaskHasOperationalHistory),
+          ),
+        ]
       }
 
-    task_status.WorkDone -> [delete_button(config, task, True)]
+    task_status.WorkDone -> [
+      delete_button(config, task, opt.Some(i18n_text.TaskHasOperationalHistory)),
+    ]
   }
 }
 
 fn delete_button(
   config: Config(msg),
   task: Task,
-  blocked_by_history: Bool,
+  blocked_reason: opt.Option(i18n_text.Text),
 ) -> Element(msg) {
   let base_button =
     button.text(
@@ -140,20 +156,23 @@ fn delete_button(
       button.EntityAction,
     )
 
-  case config.disable_actions, blocked_by_history {
+  case config.disable_actions, blocked_reason {
     True, _ -> button.with_disabled(base_button, True)
-    False, True ->
-      button.with_blocked_reason(
-        base_button,
-        t(config, i18n_text.TaskHasOperationalHistory),
-      )
-    False, False -> base_button
+    False, opt.Some(reason) ->
+      button.with_blocked_reason(base_button, t(config, reason))
+    False, opt.None -> base_button
   }
   |> button.view
 }
 
+fn claim_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
+  case claimability.can_claim(task) {
+    True -> [claim_button(config, task)]
+    False -> []
+  }
+}
+
 fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
-  let blocked_by_dependencies = task.blocked_count > 0
   let base_button =
     button.text(
       t(config, i18n_text.ClaimTask),
@@ -162,15 +181,9 @@ fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
       button.EntityAction,
     )
 
-  case config.disable_actions, blocked_by_dependencies {
-    True, _ -> button.with_disabled(base_button, True)
-    False, True ->
-      button.with_blocked_reason(
-        base_button,
-        t(config, i18n_text.TaskBlockedByDependencies),
-      )
-    False, False ->
-      button.with_disabled(base_button, !claimability.can_claim(task))
+  case config.disable_actions {
+    True -> button.with_disabled(base_button, True)
+    False -> base_button
   }
   |> button.view
 }

@@ -2,6 +2,8 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 
+import lustre/effect
+
 import domain/api_error.{type ApiResult}
 import domain/remote.{Loaded}
 import domain/task.{
@@ -210,6 +212,29 @@ pub fn drag_update_try_update_handles_drag_message_test() {
     )
 
   let assert member_pool.PoolDragPendingRect = next.pool.member_pool_drag
+}
+
+pub fn drag_update_drop_to_claim_blocked_task_does_not_submit_test() {
+  let blocked = task(7, [dependency(2)])
+  let pool =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_tasks: Loaded([blocked]),
+      member_drag: member_pool.DragActive(7, 0, 0),
+      member_pool_drag: member_pool.PoolDragDragging(
+        over_my_tasks: True,
+        rect: member_pool.Rect(left: 0, top: 0, width: 100, height: 100),
+      ),
+    )
+  let model = drag_update.Model(..local_model(), pool: pool)
+
+  let assert Some(#(next, fx)) =
+    drag_update.try_update(model, pool_messages.MemberDragEnded, context())
+
+  let assert False = next.pool.member_task_mutation_in_flight
+  let assert member_pool.DragIdle = next.pool.member_drag
+  let assert member_pool.PoolDragIdle = next.pool.member_pool_drag
+  let assert True = fx == effect.none()
 }
 
 pub fn drag_update_try_update_ignores_non_drag_message_test() {

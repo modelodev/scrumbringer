@@ -193,6 +193,9 @@ pub fn translate(text: Text) -> String {
       "Bloqueada por " <> int.to_string(count) <> " tareas"
     text.HiddenBlockedByFilters(count) ->
       int.to_string(count) <> " bloqueadoras fuera de vista por filtros"
+    text.TaskOverdue(due_date) -> "Vencida desde " <> due_date
+    text.TaskDueToday -> "Vence hoy"
+    text.TaskDueSoon(due_date) -> "Vence pronto: " <> due_date
     text.EditPosition -> "Editar posición"
     text.XLabel -> "x"
     text.YLabel -> "y"
@@ -268,6 +271,21 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
     text.NoTasksMatchYourFilters -> "Ninguna tarea coincide con tus filtros"
+    text.NoOpenPoolTasks -> "No hay tasks abiertas en el Pool"
+    text.NoOpenPoolTasksBody ->
+      "El trabajo abierto aparecerá aquí cuando esté listo para que el equipo lo reclame."
+    text.NoClaimablePoolTasks -> "No hay tasks reclamables ahora"
+    text.NoClaimablePoolTasksBlockedBody(count) ->
+      "Hay "
+      <> int.to_string(count)
+      <> " tasks bloqueadas que necesitan dependencias o conversación del equipo."
+    text.NoClaimablePoolTasksBody ->
+      "El Pool está despejado para tus filtros actuales."
+    text.NoBlockedPoolTasks -> "No hay tasks bloqueadas"
+    text.NoBlockedPoolTasksBody ->
+      "Los bloqueos aparecerán aquí cuando una dependencia impida reclamar."
+    text.ViewBlockedTasks -> "Ver bloqueadas"
+    text.ViewOpenTasks -> "Ver abiertas"
     text.HideDoneTasks -> "Ocultar tareas completadas"
     text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
     text.MetaType -> "tipo: "

@@ -32,6 +32,10 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/utils/card_queries
 
+// Project settings do not expose healthy_pool_limit to the client project model
+// yet. Keep the fallback at the root adapter so the view stays data-driven.
+const fallback_healthy_pool_limit = 20
+
 pub type Callbacks(msg) {
   Callbacks(
     on_drag_moved: fn(Int, Int) -> msg,
@@ -117,6 +121,7 @@ fn main_config(context: Context(msg)) -> pool_view.MainConfig(msg) {
     on_create_opened: context.callbacks.on_create_opened,
     available_tasks: available_tasks_config(context),
     control_bar: control_bar_config(context),
+    healthy_pool_limit: fallback_healthy_pool_limit,
     view_mode: context.pool.member_pool_view_mode,
     task_card_config: fn(task) { pool_task_card_config(context, task) },
     task_row_config: fn(task) { pool_task_row_config(context, task) },

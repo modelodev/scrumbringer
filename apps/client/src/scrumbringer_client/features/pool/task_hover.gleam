@@ -6,6 +6,7 @@ import lustre/element.{type Element}
 
 import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/features/pool/labels as pool_labels
+import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -40,10 +41,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       domain_task.status(config.task),
     ),
     next_action_label: i18n.t(config.locale, i18n_text.TaskNextActionLabel),
-    next_action_value: task_state_ui.next_action(
-      config.locale,
-      domain_task.status(config.task),
-    ),
+    next_action_value: next_action_value(config),
     age_label: pool_labels.age(config.locale),
     age_value: pool_labels.created_ago_days(config.locale, config.age_days),
     description_label: pool_labels.description(config.locale),
@@ -59,6 +57,17 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     open_label: pool_labels.open_task(config.locale),
     on_open: config.on_open,
   ))
+}
+
+fn next_action_value(config: Config(msg)) -> String {
+  case
+    claimability.can_claim(config.task),
+    blocked_label(config.locale, config.task)
+  {
+    False, Some(_) -> pool_labels.open_task(config.locale)
+    _, _ ->
+      task_state_ui.next_action(config.locale, domain_task.status(config.task))
+  }
 }
 
 fn task_description(task: domain_task.Task) -> String {

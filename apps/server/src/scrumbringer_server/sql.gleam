@@ -414,24 +414,36 @@ pub fn card_notes_create(
 
   "-- name: card_notes_create
 -- AC20: Include author email and role for tooltip
-with inserted as (
-  insert into card_notes (card_id, user_id, content)
-  values ($1, $2, $3)
-  returning id, card_id, user_id, content, created_at
+with card_ref as (
+  select id, project_id
+  from cards
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content)
+  select project_id, $2, $3
+  from card_ref
+  returning id, user_id, content, created_at
+), inserted_link as (
+  insert into card_notes (note_id, card_id)
+  select inserted_note.id, card_ref.id
+  from inserted_note
+  cross join card_ref
+  returning note_id, card_id
 )
 select
-  i.id,
-  i.card_id,
-  i.user_id,
-  i.content,
-  to_char(i.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  n.id,
+  l.card_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from inserted i
-join users u on u.id = i.user_id
-left join cards c on c.id = i.card_id
-left join project_members pm on pm.user_id = i.user_id and pm.project_id = c.project_id;
+from inserted_note n
+join inserted_link l on l.note_id = n.id
+join users u on u.id = n.user_id
+left join cards c on c.id = l.card_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -467,10 +479,12 @@ pub fn card_notes_delete(
   }
 
   "-- name: card_notes_delete
-delete from card_notes
-where card_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using card_notes cn
+where cn.note_id = n.id
+  and cn.card_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -534,18 +548,19 @@ pub fn card_notes_get(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
   n.user_id,
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
   and n.id = $2;
 "
   |> pog.query
@@ -609,18 +624,19 @@ pub fn card_notes_list(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
   n.user_id,
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
@@ -851,7 +867,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.id = $1
 GROUP BY c.id, v.last_viewed_at;
@@ -954,7 +971,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
 GROUP BY c.id, v.last_viewed_at
@@ -4723,14 +4741,30 @@ pub fn task_notes_create(
   }
 
   "-- name: task_notes_create
-insert into task_notes (task_id, user_id, content)
-values ($1, $2, $3)
-returning
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+with task_ref as (
+  select id, project_id
+  from tasks
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content)
+  select project_id, $2, $3
+  from task_ref
+  returning id, user_id, content, created_at
+), inserted_link as (
+  insert into task_notes (note_id, task_id)
+  select inserted_note.id, task_ref.id
+  from inserted_note
+  cross join task_ref
+  returning note_id, task_id
+)
+select
+  n.id,
+  l.task_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from inserted_note n
+join inserted_link l on l.note_id = n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4766,10 +4800,12 @@ pub fn task_notes_delete(
   }
 
   "-- name: task_notes_delete
-delete from task_notes
-where task_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using task_notes tn
+where tn.note_id = n.id
+  and tn.task_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4821,14 +4857,15 @@ pub fn task_notes_get(
 
   "-- name: task_notes_get
 select
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes
-where task_id = $1
-  and id = $2;
+  n.id,
+  tn.task_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from task_notes tn
+join notes n on n.id = tn.note_id
+where tn.task_id = $1
+  and n.id = $2;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4880,12 +4917,13 @@ pub fn task_notes_list(
   "-- name: task_notes_list
 select
   n.id,
-  n.task_id,
+  tn.task_id,
   n.user_id,
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes n
-where n.task_id = $1
+from task_notes tn
+join notes n on n.id = tn.note_id
+where tn.task_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
@@ -6909,9 +6947,19 @@ select
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) is null then false
     when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
     else false
   end as has_new_notes,
   deps.dependencies::text as dependencies,
