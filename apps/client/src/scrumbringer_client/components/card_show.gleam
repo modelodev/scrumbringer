@@ -770,7 +770,6 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       "" -> element.none()
       desc -> div([attribute.class("card-show-description")], [text(desc)])
     },
-    view_scoped_navigation(model, card),
     view_card_action_bar(model, card),
   ])
 }
@@ -929,10 +928,23 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
   let policy = action_policy(model, card)
 
   div([attribute.class("card-show-actions")], [
-    view_create_card_action(model, policy),
-    view_create_task_action(model, policy),
+    div([attribute.class("card-show-primary-action")], [
+      view_quick_create_action(model, policy),
+    ]),
+    view_scoped_navigation(model, card),
     view_secondary_action_menu(model, card, policy),
   ])
+}
+
+fn view_quick_create_action(
+  model: Model,
+  policy: card_policy.Policy,
+) -> Element(Msg) {
+  case policy.structure {
+    card_policy.CardGroup -> view_create_card_action(model, policy)
+    card_policy.TaskGroup -> view_create_task_action(model, policy)
+    card_policy.EmptyCard -> element.none()
+  }
 }
 
 fn view_create_card_action(
@@ -942,7 +954,7 @@ fn view_create_card_action(
   case policy.can_create_card, policy.create_disabled_reason {
     True, _ ->
       ui_button.icon_text(
-        t(model.locale, i18n_text.NewCard),
+        t(model.locale, i18n_text.CardAddSubcard),
         CreateCardClicked,
         icons.Plus,
         ui_button.Secondary,
@@ -952,7 +964,7 @@ fn view_create_card_action(
       |> ui_button.view
     False, option.Some(reason) ->
       blocked_action(
-        t(model.locale, i18n_text.NewCard),
+        t(model.locale, i18n_text.CardAddSubcard),
         CreateCardClicked,
         icons.Plus,
         "card-create-card-action",
@@ -995,7 +1007,7 @@ fn view_secondary_action_menu(
   policy: card_policy.Policy,
 ) -> Element(Msg) {
   action_menu.view(
-    "...",
+    "⋯",
     "card-secondary-actions-trigger",
     "card-secondary-actions-" <> int.to_string(card.id),
     option.Some(t(model.locale, i18n_text.HierarchyMoreActions)),
@@ -1122,6 +1134,8 @@ fn card_tab_items(
 }
 
 fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
+  let policy = action_policy(model, card)
+
   div([attribute.class("card-summary-section detail-section")], [
     div([attribute.class("detail-summary-grid")], [
       summary_item(
@@ -1149,6 +1163,7 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
           ]),
         ])
     },
+    view_empty_card_work_decision(model, policy),
     pinned_context.view(pinned_context.Config(
       title: t(model.locale, i18n_text.PinnedContext),
       notes: card_pinned_notes(model),
@@ -1159,6 +1174,34 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
       on_open_notes: TabClicked(show_tabs.CardNotesTab),
     )),
   ])
+}
+
+fn view_empty_card_work_decision(
+  model: Model,
+  policy: card_policy.Policy,
+) -> Element(Msg) {
+  case policy.structure {
+    card_policy.EmptyCard ->
+      div(
+        [
+          attribute.class("card-empty-work-decision"),
+          attribute.attribute("data-testid", "card-empty-work-decision"),
+        ],
+        [
+          span([attribute.class("card-empty-work-title")], [
+            text(t(model.locale, i18n_text.CardEmptyWorkTitle)),
+          ]),
+          span([attribute.class("card-empty-work-body")], [
+            text(t(model.locale, i18n_text.CardEmptyWorkBody)),
+          ]),
+          div([attribute.class("card-empty-work-actions")], [
+            view_create_task_action(model, policy),
+            view_create_card_action(model, policy),
+          ]),
+        ],
+      )
+    _ -> element.none()
+  }
 }
 
 fn card_pinned_notes(model: Model) -> List(pinned_context.PinnedNote) {

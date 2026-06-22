@@ -29,7 +29,6 @@ import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
@@ -218,7 +217,7 @@ fn view_scope_bar(config: Config(msg), include_closed: Bool) -> Element(msg) {
     card_query: config.card_query,
     show_closed: include_closed,
     id_prefix: "plan-structure",
-    mode_controls: plan_mode_controls(config),
+    mode_controls: [],
     refinement_controls: plan_refinement_controls(config),
     show_closed_control: True,
     on_scope_kind_change: config.on_scope_kind_change,
@@ -432,27 +431,6 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
         False -> []
       },
     ),
-  )
-}
-
-fn plan_mode_controls(config: Config(msg)) -> List(scope_bar.ModeControl(msg)) {
-  [
-    plan_mode_control(config, i18n_text.PlanModeStructure, "structure"),
-    plan_mode_control(config, i18n_text.PlanModeKanban, "kanban"),
-  ]
-}
-
-fn plan_mode_control(
-  config: Config(msg),
-  label_key: i18n_text.Text,
-  value: String,
-) -> scope_bar.ModeControl(msg) {
-  scope_bar.ModeControl(
-    label: i18n.t(config.locale, label_key),
-    value: value,
-    active: plan_mode_value(config.plan_mode) == value,
-    testid: "plan-mode-" <> value,
-    on_select: config.on_plan_mode_change(value),
   )
 }
 
@@ -670,7 +648,11 @@ fn view_task_count_cell(row: types.StructureRow) -> Element(msg) {
 fn view_pool_impact_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, rollup:, ..) = row
   let label = case card.state {
-    Draft -> "+" <> int.to_string(rollup.pool_impact) <> " tasks"
+    Draft ->
+      case rollup.pool_impact {
+        0 -> "0"
+        impact -> "+" <> int.to_string(impact) <> " tasks"
+      }
     Active -> "ya activo"
     Closed -> "-"
   }
@@ -708,29 +690,14 @@ fn view_actions_cell(
 fn view_normal_actions_cell(
   config: Config(msg),
   row: types.StructureRow,
-  render_context: String,
+  _render_context: String,
 ) -> Element(msg) {
   let types.CardRow(card:, actions:, ..) = row
   let primary_create = primary_create_action(actions)
 
   div([attribute.class("plan-row-actions")], [
-    button(
-      [
-        attribute.type_("button"),
-        attribute.class("plan-action-btn"),
-        attribute.attribute("data-testid", "plan-card-show-action"),
-        event.on_click(config.on_card_click(card.id)),
-      ],
-      [text("Ver")],
-    ),
     view_contextual_create_action(config, card, primary_create),
-    view_secondary_action_menu(
-      config,
-      card,
-      actions,
-      primary_create,
-      render_context,
-    ),
+    view_row_move_action(config, card, actions),
   ])
 }
 
@@ -876,26 +843,36 @@ fn view_contextual_create_action(
   }
 }
 
-fn view_secondary_action_menu(
+fn view_row_move_action(
   config: Config(msg),
   card: Card,
   actions: List(types.PlannedAction),
-  primary_create: Option(types.PlannedAction),
-  render_context: String,
 ) -> Element(msg) {
-  action_menu.view(
-    "...",
-    "plan-action-menu-toggle",
-    "plan-action-menu-" <> render_context <> "-" <> int.to_string(card.id),
-    Some("Mas acciones"),
-    "plan-action-menu",
-    "plan-action-btn plan-action-menu-toggle",
-    "plan-action-menu-panel",
-    "plan-action-menu-item",
-    actions
-      |> list.filter(fn(action) { !same_planned_action(action, primary_create) })
-      |> list.map(fn(action) { planned_action_menu_item(config, card, action) }),
-  )
+  case config.is_pm_or_admin {
+    False -> element.none()
+    True ->
+      case find_planned_action(actions, types.MoveCard) {
+        Some(planned) -> {
+          let types.PlannedAction(availability:, ..) = planned
+          let #(disabled, title) = availability_attrs(availability)
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("plan-action-btn plan-action-move-btn"),
+              attribute.attribute("data-testid", "plan-action-move-card"),
+              attribute.attribute("title", case title {
+                "" -> "Mover a..."
+                _ -> title
+              }),
+              attribute.disabled(disabled),
+              event.on_click(config.on_move_requested(card.id)),
+            ],
+            [text("Mover")],
+          )
+        }
+        None -> element.none()
+      }
+  }
 }
 
 fn primary_create_action(
@@ -922,31 +899,18 @@ fn find_available_action(
   }
 }
 
-fn same_planned_action(
-  planned: types.PlannedAction,
-  maybe_other: Option(types.PlannedAction),
-) -> Bool {
-  case maybe_other {
-    Some(other) -> {
-      let types.PlannedAction(action: action_a, ..) = planned
-      let types.PlannedAction(action: action_b, ..) = other
-      action_a == action_b
-    }
-    None -> False
-  }
-}
-
-fn planned_action_menu_item(
-  config: Config(msg),
-  card: Card,
-  planned: types.PlannedAction,
-) -> action_menu.Item(msg) {
-  let types.PlannedAction(action:, availability:) = planned
-  let #(label, msg) = action_event(config, card, action)
-  case availability {
-    types.Available -> action_menu.item(label, action_testid(action), msg)
-    types.Disabled(reason) ->
-      action_menu.disabled_item(label, action_testid(action), reason, msg)
+fn find_planned_action(
+  actions: List(types.PlannedAction),
+  target: types.CardAction,
+) -> Option(types.PlannedAction) {
+  case
+    list.find(actions, fn(planned) {
+      let types.PlannedAction(action:, ..) = planned
+      action == target
+    })
+  {
+    Ok(action) -> Some(action)
+    Error(_) -> None
   }
 }
 
@@ -1827,15 +1791,12 @@ fn task_status_label(task: domain_task.Task) -> String {
 
 fn pool_impact_label(card: Card, rollup: types.CardRollup) -> String {
   case card.state {
-    Draft -> "+" <> int.to_string(rollup.pool_impact) <> " tasks"
+    Draft ->
+      case rollup.pool_impact {
+        0 -> "0"
+        impact -> "+" <> int.to_string(impact) <> " tasks"
+      }
     Active -> "ya activo"
     Closed -> "-"
-  }
-}
-
-fn plan_mode_value(mode: member_pool.PlanMode) -> String {
-  case mode {
-    member_pool.PlanStructure -> "structure"
-    member_pool.PlanKanban -> "kanban"
   }
 }

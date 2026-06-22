@@ -25,7 +25,7 @@ fn render(config: structure_view.Config(Int)) -> String {
   structure_view.view(config) |> element.to_document_string
 }
 
-pub fn project_scope_shows_tree_and_mode_without_lens_test() {
+pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   let html = render(base_config())
 
   assert_contains(html, "data-testid=\"plan-structure-view\"")
@@ -40,8 +40,8 @@ pub fn project_scope_shows_tree_and_mode_without_lens_test() {
   assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
   assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
   assert_contains(html, "data-card-id=\"1\"")
-  assert_contains(html, "plan-mode-structure")
-  assert_contains(html, "plan-mode-kanban")
+  assert_not_contains(html, "plan-mode-structure")
+  assert_not_contains(html, "plan-mode-kanban")
   assert_not_contains(html, "data-testid=\"plan-move-drag-handle\"")
   assert_not_contains(html, "Lens")
   assert_not_contains(html, "Lente")
@@ -204,18 +204,20 @@ pub fn incompatible_actions_are_disabled_with_reason_test() {
   assert_contains(html, "Tiene historial operativo")
 }
 
-pub fn row_actions_are_show_contextual_create_and_secondary_menu_test() {
+pub fn row_actions_are_title_contextual_create_and_move_test() {
   let html = render(base_config())
 
-  assert_contains(html, "data-testid=\"plan-card-show-action\"")
+  assert_contains(html, "data-testid=\"card-show-open\"")
   assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
-  assert_contains(html, "data-testid=\"plan-action-menu\"")
-  assert_contains(html, "data-testid=\"plan-action-menu-toggle\"")
-  assert_contains(html, "aria-haspopup=\"menu\"")
-  assert_contains(html, "role=\"menuitem\"")
+  assert_contains(html, "data-testid=\"plan-action-move-card\"")
+  assert_not_contains(html, "data-testid=\"plan-card-show-action\"")
+  assert_not_contains(html, "data-testid=\"plan-action-menu\"")
+  assert_not_contains(html, "data-testid=\"plan-action-menu-toggle\"")
+  assert_not_contains(html, "aria-haspopup=\"menu\"")
+  assert_not_contains(html, "role=\"menuitem\"")
 }
 
-pub fn secondary_action_menu_keeps_close_and_delete_disabled_reasons_test() {
+pub fn detail_actions_keep_close_and_delete_disabled_reasons_test() {
   let html =
     render(
       structure_view.Config(
@@ -225,7 +227,6 @@ pub fn secondary_action_menu_keeps_close_and_delete_disabled_reasons_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-action-menu\"")
   assert_contains(html, "data-testid=\"plan-action-close-card\"")
   assert_contains(html, "Hay tasks reclamadas o en curso debajo")
   assert_contains(html, "data-testid=\"plan-action-delete-card\"")

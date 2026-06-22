@@ -224,6 +224,7 @@ pub fn translate(text: Text) -> String {
     text.PlanMode -> "Modo"
     text.PlanModeStructure -> "Estructura"
     text.PlanModeKanban -> "Kanban"
+    text.KanbanColumnPending -> "Por iniciar"
     text.PlanEmptyCardScopeBody ->
       "Busca una card para ver su subarbol, capacidades, tasks y riesgo."
     text.PlanEmptyScopeTitle -> "No hay cards en este scope."
@@ -1036,6 +1037,9 @@ pub fn translate(text: Text) -> String {
 
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"
+    text.CardAddSubcard -> "Añadir subcard"
+    text.CardEmptyWorkTitle -> "Esta card todavía no tiene trabajo"
+    text.CardEmptyWorkBody -> "Elige si esta card contendrá tareas o subcards."
     text.CardTasksEmpty -> "No hay tareas"
     text.CardTasksDone -> "completadas"
     text.TaskType -> "Tipo de tarea"

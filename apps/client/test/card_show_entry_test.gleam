@@ -115,6 +115,19 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
   assert_not_contains(html, "data-testid=\"card-delete-action\"")
 }
 
+pub fn card_show_task_group_uses_single_header_create_action_test() {
+  let card = Card(..sample_card(), task_count: 2, state: Active)
+
+  let html =
+    show_entry.view(config(Some(card)))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"card-create-task-action\"")
+  assert_contains(html, "Add task")
+  assert_not_contains(html, "Add subcard")
+  assert_not_contains(html, "New Card")
+}
+
 pub fn card_show_header_renders_path_due_date_and_health_test() {
   let parent = Card(..sample_card(), id: 2, title: "Release", state: Active)
   let card =
@@ -178,7 +191,9 @@ pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
 
   assert_contains(html, "data-testid=\"card-create-card-action\"")
   assert_contains(html, "data-testid=\"card-create-task-action\"")
-  assert_contains(html, "New Card")
+  assert_contains(html, "data-testid=\"card-empty-work-decision\"")
+  assert_contains(html, "This card has no work yet")
+  assert_contains(html, "Add subcard")
   assert_contains(html, "Add task")
 }
 

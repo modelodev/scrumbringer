@@ -24,19 +24,44 @@ fn assert_not_contains(text: String, fragment: String) {
   let assert False = string.contains(text, fragment)
 }
 
-pub fn plan_kanban_keeps_plan_title_and_hides_claimable_task_ui_test() {
+pub fn plan_kanban_has_kanban_title_and_hides_claimable_task_ui_test() {
   let html =
     config([available_task()])
     |> kanban_view.view
     |> element.to_document_string
 
-  assert_contains(html, "work-surface-title\">Plan")
-  assert_contains(html, "data-testid=\"plan-mode-kanban\"")
-  assert_contains(html, "aria-pressed=\"true\"")
-  assert_not_contains(html, "work-surface-title\">Kanban")
+  assert_contains(html, "work-surface-title\">Kanban")
+  assert_not_contains(html, "work-surface-title\">Plan")
+  assert_not_contains(html, "data-testid=\"plan-mode-kanban\"")
+  assert_not_contains(html, "data-testid=\"plan-mode-structure\"")
   assert_not_contains(html, "kanban-task-item")
   assert_not_contains(html, "btn-claim-mini")
   assert_not_contains(html, "draggable=\"true\"")
+}
+
+pub fn plan_kanban_card_scope_without_selection_shows_empty_state_test() {
+  let html =
+    kanban_board.KanbanConfig(
+      ..config([]),
+      scope_kind: member_pool.PlanScopeCard,
+      selected_card_id: None,
+    )
+    |> kanban_view.view
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"kanban-empty-card-scope\"")
+  assert_contains(html, "Select an active card")
+  assert_not_contains(html, "Release 1.5")
+}
+
+pub fn plan_kanban_hides_management_actions_even_for_managers_test() {
+  let html =
+    kanban_board.KanbanConfig(..config([]), is_pm_or_admin: True)
+    |> kanban_view.view
+    |> element.to_document_string
+
+  assert_not_contains(html, "kanban-card-edit-action")
+  assert_not_contains(html, "kanban-card-delete-action")
 }
 
 pub fn plan_kanban_uses_active_universe_and_closed_toggle_test() {

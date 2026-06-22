@@ -193,6 +193,7 @@ pub type Text {
   PlanMode
   PlanModeStructure
   PlanModeKanban
+  KanbanColumnPending
   PlanEmptyCardScopeBody
   PlanEmptyScopeTitle
   PlanEmptyScopeBody
@@ -871,6 +872,9 @@ pub type Text {
 
   // Card detail (member)
   CardAddTask
+  CardAddSubcard
+  CardEmptyWorkTitle
+  CardEmptyWorkBody
   CardTasksEmpty
   CardTasksDone
   TaskType

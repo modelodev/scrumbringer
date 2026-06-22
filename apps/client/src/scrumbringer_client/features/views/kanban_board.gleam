@@ -134,6 +134,14 @@ type KanbanColumn {
 
 /// Renders the kanban board with 3 columns
 pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
+  case config.purpose, config.scope_kind, config.selected_card_id {
+    PlanKanban, member_pool.PlanScopeCard, option.None ->
+      view_empty_card_scope_surface(config)
+    _, _, _ -> view_scoped_board(config)
+  }
+}
+
+fn view_scoped_board(config: KanbanConfig(msg)) -> element.Element(msg) {
   let filtered_tasks =
     list.filter(config.tasks, fn(task) {
       work_filters.matches(
@@ -174,7 +182,7 @@ pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
     div([attribute.class("kanban-board")], [
       view_column(
         config,
-        i18n.t(config.locale, i18n_text.CardPhaseDraft),
+        pending_column_title(config),
         "pendiente",
         PendingColumn,
         pendiente,
@@ -205,6 +213,30 @@ pub fn view(config: KanbanConfig(msg)) -> element.Element(msg) {
   ))
   |> work_surface.with_filters(view_scope_bar(config, include_closed))
   |> work_surface.with_content(board)
+  |> work_surface.surface_with_class("kanban-view")
+  |> work_surface.surface
+}
+
+fn view_empty_card_scope_surface(
+  config: KanbanConfig(msg),
+) -> element.Element(msg) {
+  work_surface.new_surface(view_surface_header(
+    config,
+    BoardSummary(cards: 0, available: 0, claimed: 0, ongoing: 0, blocked: 0),
+  ))
+  |> work_surface.with_filters(view_scope_bar(config, False))
+  |> work_surface.with_content(
+    div(
+      [
+        attribute.class("plan-structure-empty"),
+        attribute.attribute("data-testid", "kanban-empty-card-scope"),
+      ],
+      [
+        h4([], [text(i18n.t(config.locale, i18n_text.PlanScopeSelectCard))]),
+        span([], [text(i18n.t(config.locale, i18n_text.PlanEmptyCardScopeBody))]),
+      ],
+    ),
+  )
   |> work_surface.surface_with_class("kanban-view")
   |> work_surface.surface
 }
@@ -263,7 +295,7 @@ fn view_scope_bar(
     card_query: config.card_query,
     show_closed: include_closed,
     id_prefix: "kanban-plan",
-    mode_controls: plan_mode_controls(config),
+    mode_controls: [],
     refinement_controls: [],
     show_closed_control: True,
     on_scope_kind_change: config.on_scope_kind_change,
@@ -274,27 +306,11 @@ fn view_scope_bar(
   ))
 }
 
-fn plan_mode_controls(
-  config: KanbanConfig(msg),
-) -> List(scope_bar.ModeControl(msg)) {
-  [
-    plan_mode_control(config, i18n_text.PlanModeStructure, "structure"),
-    plan_mode_control(config, i18n_text.PlanModeKanban, "kanban"),
-  ]
-}
-
-fn plan_mode_control(
-  config: KanbanConfig(msg),
-  label_key: i18n_text.Text,
-  value: String,
-) -> scope_bar.ModeControl(msg) {
-  scope_bar.ModeControl(
-    label: i18n.t(config.locale, label_key),
-    value: value,
-    active: plan_mode_value(config.plan_mode) == value,
-    testid: "plan-mode-" <> value,
-    on_select: config.on_plan_mode_change(value),
-  )
+fn pending_column_title(config: KanbanConfig(msg)) -> String {
+  case config.purpose {
+    PlanKanban -> i18n.t(config.locale, i18n_text.KanbanColumnPending)
+    ExecutionKanban -> i18n.t(config.locale, i18n_text.CardPhaseDraft)
+  }
 }
 
 fn view_column(
@@ -467,24 +483,33 @@ fn header_actions(
   config: KanbanConfig(msg),
   card: Card,
 ) -> List(element.Element(msg)) {
-  let create_task_action =
-    action_buttons.create_task_in_card_button(
-      i18n.t(config.locale, i18n_text.NewTaskInCard(card.title)),
-      config.on_create_task_in_card(card.id),
-    )
-
-  case config.is_pm_or_admin {
+  let create_task_actions = case can_create_task_in_card(config, card) {
     True -> [
-      create_task_action,
-      action_buttons.edit_button_with_size(
-        i18n.t(config.locale, i18n_text.EditCardTooltip),
-        config.on_card_edit(card.id),
-        action_buttons.SizeXs,
+      action_buttons.create_task_in_card_button(
+        i18n.t(config.locale, i18n_text.NewTaskInCard(card.title)),
+        config.on_create_task_in_card(card.id),
       ),
-      delete_card_action(config, card),
     ]
-    False -> [create_task_action]
+    False -> []
   }
+
+  case config.purpose, config.is_pm_or_admin {
+    PlanKanban, _ -> create_task_actions
+    ExecutionKanban, True ->
+      list.append(create_task_actions, [
+        action_buttons.edit_button_with_size(
+          i18n.t(config.locale, i18n_text.EditCardTooltip),
+          config.on_card_edit(card.id),
+          action_buttons.SizeXs,
+        ),
+        delete_card_action(config, card),
+      ])
+    ExecutionKanban, False -> create_task_actions
+  }
+}
+
+fn can_create_task_in_card(config: KanbanConfig(msg), card: Card) -> Bool {
+  card_queries.direct_child_cards(card.id, config.cards) == []
 }
 
 fn delete_card_action(
@@ -650,12 +675,5 @@ fn task_rank(task: domain_task.Task) -> Int {
     False, Claimed(Ongoing) -> 2
     False, Claimed(Taken) -> 3
     False, Done -> 4
-  }
-}
-
-fn plan_mode_value(mode: member_pool.PlanMode) -> String {
-  case mode {
-    member_pool.PlanStructure -> "structure"
-    member_pool.PlanKanban -> "kanban"
   }
 }

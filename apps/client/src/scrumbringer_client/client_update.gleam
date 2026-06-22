@@ -369,6 +369,14 @@ fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
 }
 
+fn replace_url_and_title(model: client_state.Model) -> Effect(client_state.Msg) {
+  let route = current_route(model)
+  effect.batch([
+    router.replace(route),
+    router.update_page_title(route, model.ui.locale),
+  ])
+}
+
 fn current_browser_uri() -> opt.Option(Uri) {
   let raw =
     client_ffi.location_pathname()
@@ -1970,7 +1978,7 @@ pub fn update(
       case err.status == 401 {
         True -> {
           let model = show_login_without_user(model, True)
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
 
         False -> {
@@ -1982,7 +1990,7 @@ pub fn update(
               },
             )
 
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
       }
     }

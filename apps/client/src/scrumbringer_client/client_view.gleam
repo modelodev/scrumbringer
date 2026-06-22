@@ -94,6 +94,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+import scrumbringer_client/url_state
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
@@ -1037,7 +1038,11 @@ fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
 fn member_mobile_pool_title(model: client_state.Model) -> i18n_text.Text {
   case model.member.pool.view_mode {
     view_mode.Pool -> i18n_text.Pool
-    view_mode.Cards -> i18n_text.MemberCards
+    view_mode.Cards ->
+      case model.member.pool.member_plan_mode {
+        member_pool.PlanKanban -> i18n_text.Kanban
+        member_pool.PlanStructure -> i18n_text.MemberCards
+      }
     view_mode.Capabilities -> i18n_text.CapabilitiesBoard
     view_mode.People -> i18n_text.People
   }
@@ -1144,6 +1149,9 @@ fn build_left_panel(
   let member_route_for = fn(mode: view_mode.ViewMode) {
     left_panel_data.member_route(member_route_config, mode)
   }
+  let member_plan_route = left_panel_data.member_plan_route(member_route_config)
+  let member_kanban_route =
+    left_panel_data.member_kanban_route(member_route_config)
   let member_depth_route_for = fn(depth: Int) {
     left_panel_data.member_depth_route(member_route_config, depth)
   }
@@ -1191,8 +1199,12 @@ fn build_left_panel(
       member_route_for(view_mode.Pool),
       client_state.Push,
     ),
+    on_navigate_kanban: client_state.NavigateTo(
+      member_kanban_route,
+      client_state.Push,
+    ),
     on_navigate_cards: client_state.NavigateTo(
-      member_route_for(view_mode.Cards),
+      member_plan_route,
       client_state.Push,
     ),
     on_navigate_depth: fn(depth) {
@@ -1311,7 +1323,17 @@ fn left_panel_member_route_config(
     capability_filter: model.member.pool.member_filters_capability_id,
     search: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
     card_depth: model.member.pool.member_card_depth_filter,
+    plan_mode: current_plan_mode_param(model.member.pool.member_plan_mode),
   )
+}
+
+fn current_plan_mode_param(
+  plan_mode: member_pool.PlanMode,
+) -> url_state.PlanModeParam {
+  case plan_mode {
+    member_pool.PlanStructure -> url_state.PlanStructureParam
+    member_pool.PlanKanban -> url_state.PlanKanbanParam
+  }
 }
 
 /// Builds the center panel with view mode toggle and content
