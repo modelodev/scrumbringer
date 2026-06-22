@@ -12,6 +12,7 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
@@ -157,6 +158,7 @@ pub type Model {
     member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
     card_detail_open: Option(Int),
+    card_detail_model: card_detail_modal.Model,
     card_detail_metrics: Remote(CardModalMetrics),
     member_task_detail_tab: show_tabs.TaskShowTab,
     member_task_detail_editing: Bool,
@@ -230,6 +232,7 @@ pub fn default_model() -> Model {
     member_pool_touch_client_y: 0,
     member_pool_preview_task_id: option.None,
     card_detail_open: option.None,
+    card_detail_model: card_detail_modal.init_model(),
     card_detail_metrics: NotAsked,
     member_task_detail_tab: show_tabs.TaskDetailsTab,
     member_task_detail_editing: False,

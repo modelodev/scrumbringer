@@ -1,4 +1,3 @@
-import gleam/dynamic/decode
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -8,6 +7,7 @@ import domain/remote.{Loaded, Loading}
 import domain/task.{Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
+import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/features/cards/detail_modal_entry
 import scrumbringer_client/i18n/locale
 
@@ -66,6 +66,7 @@ fn sample_task(id: Int, card_id) {
 
 fn config(card) -> detail_modal_entry.Config(String) {
   detail_modal_entry.Config(
+    model: card_detail_modal.init_model(),
     card: card,
     cards: [],
     tasks: [],
@@ -74,12 +75,7 @@ fn config(card) -> detail_modal_entry.Config(String) {
     can_manage_notes: True,
     can_manage_structure: True,
     can_execute_work: True,
-    on_create_task: decode.success("create"),
-    on_create_card: decode.success("create-card"),
-    on_activate_card: decode.success("activate-card"),
-    on_move_card: decode.success("move-card"),
-    on_delete_card: decode.success("delete-card"),
-    on_close: decode.success("close"),
+    on_card_detail_msg: fn(_msg) { "card-detail-msg" },
   )
 }
 
@@ -88,14 +84,12 @@ pub fn card_detail_modal_entry_renders_without_root_model_test() {
     detail_modal_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
-  assert_contains(html, "card-detail-modal")
-  assert_contains(html, "card-id=\"4\"")
-  assert_contains(html, "locale=\"en\"")
-  assert_contains(html, "current-user-id=\"8\"")
-  assert_contains(html, "can-manage-notes=\"true\"")
+  assert_contains(html, "card-show")
+  assert_contains(html, "Customer Card")
+  assert_contains(html, "Customer-facing card")
 }
 
-pub fn card_detail_modal_entry_omits_current_user_attribute_when_absent_test() {
+pub fn card_detail_modal_entry_renders_without_current_user_test() {
   let html =
     detail_modal_entry.view(
       detail_modal_entry.Config(
@@ -105,8 +99,8 @@ pub fn card_detail_modal_entry_omits_current_user_attribute_when_absent_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "card-detail-modal")
-  assert_not_contains(html, "current-user-id=")
+  assert_contains(html, "card-show")
+  assert_contains(html, "Customer Card")
 }
 
 pub fn card_detail_modal_entry_omits_missing_card_test() {
@@ -114,7 +108,7 @@ pub fn card_detail_modal_entry_omits_missing_card_test() {
     detail_modal_entry.view(config(None))
     |> element.to_document_string
 
-  assert_not_contains(html, "card-detail-modal")
+  assert_not_contains(html, "card-show")
 }
 
 pub fn card_detail_modal_entry_filters_loaded_tasks_by_card_test() {

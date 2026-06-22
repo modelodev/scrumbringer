@@ -8,6 +8,7 @@ import domain/task.{type Task}
 import domain/user.{type User}
 
 import scrumbringer_client/client_state/member/pool as pool_state
+import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/features/cards/detail_modal_entry
 import scrumbringer_client/features/cards/view
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -22,17 +23,13 @@ pub fn from_state(
   current_user: option.Option(User),
   selected_project: option.Option(Project),
   on_card_opened: fn(Int) -> msg,
-  on_create_task_in_card: fn(Int) -> msg,
-  on_create_card_in_card: fn(Int) -> msg,
-  on_activate_card: fn(Int) -> msg,
-  on_move_card: fn(Int) -> msg,
-  on_delete_card: fn(Int) -> msg,
-  on_detail_closed: msg,
+  on_card_detail_msg: fn(card_detail_modal.Msg) -> msg,
 ) -> view.Config(msg) {
   view.Config(
     locale: locale,
     cards: cards,
     pending_count: normalized_store.pending(pool.member_cards_store),
+    detail_model: pool.card_detail_model,
     detail_card: detail_card,
     detail_tasks: selected_detail_card_tasks(pool),
     current_user_id: current_user |> option.map(fn(user) { user.id }),
@@ -40,12 +37,7 @@ pub fn from_state(
     can_manage_structure: can_manage_notes(current_user, selected_project),
     can_execute_work: can_execute_work(current_user, selected_project),
     on_card_opened: on_card_opened,
-    on_create_task_in_card: on_create_task_in_card,
-    on_create_card_in_card: on_create_card_in_card,
-    on_activate_card: on_activate_card,
-    on_move_card: on_move_card,
-    on_delete_card: on_delete_card,
-    on_detail_closed: on_detail_closed,
+    on_card_detail_msg: on_card_detail_msg,
   )
 }
 

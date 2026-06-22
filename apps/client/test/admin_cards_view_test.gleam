@@ -169,7 +169,7 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "card-detail-modal")
+  assert_contains(html, "card-show")
 }
 
 pub fn cards_view_does_not_render_local_crud_dialog_test() {

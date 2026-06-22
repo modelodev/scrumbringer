@@ -92,7 +92,6 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
-import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_template_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
@@ -123,13 +122,9 @@ pub fn app() -> lustre.App(Flags, Model, Msg) {
 /// Application entry point - starts the Lustre SPA.
 ///
 /// Mounts the application to the `#app` DOM element.
-/// Also registers custom element components.
+/// Also registers dialog custom element components.
 pub fn main() {
-  // Register custom element components
-  case card_detail_modal.register() {
-    Ok(_) -> Nil
-    Error(_) -> Nil
-  }
+  // Register dialog custom element components
   case card_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil

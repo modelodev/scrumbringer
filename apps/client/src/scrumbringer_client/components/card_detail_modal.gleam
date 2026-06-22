@@ -1,43 +1,36 @@
-//// Card Detail Modal Component.
+//// Card Detail Show Component.
 ////
 //// ## Mission
 ////
-//// Encapsulated Lustre Component for displaying card details with tabs
-//// for Tasks, Notes, and Activity.
+//// Lustre component model/update/view for displaying card details with tabs
+//// for Summary, Work, Notes, and Activity.
 ////
 //// ## Responsibilities
 ////
 //// - Display card header with title, state, progress, description
 //// - Tab navigation (Tasks/Notes/Activity)
-//// - Display task list and emit event to open main task dialog
+//// - Display task list and expose typed messages to open main task dialog
 //// - Manage notes: view, add, delete
-//// - Emit events to parent for actions (close, create-task)
+//// - Expose typed messages to parent for actions (close, create-task)
 ////
 //// ## Relations
 ////
 //// - Parent: features/cards/view.gleam renders this component
 //// - API: api/cards.gleam for getting card notes
 
-import gleam/dynamic/decode.{type Decoder}
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option.{type Option}
-import gleam/result
 import gleam/string
 
-import lustre
 import lustre/attribute
-import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{a, div, span, text}
 import lustre/event
 
 import domain/card.{type Card, type CardNote, CardNote, Closed, Draft}
-import domain/card/card_codec
 import domain/task.{type Task, claimed_by}
-import domain/task/task_codec
 import domain/task_state
 import domain/task_status.{Available, Done}
 
@@ -140,223 +133,68 @@ pub type Msg {
 }
 
 // =============================================================================
-// Component Registration
-// =============================================================================
-
-/// Register the card-detail-modal as a custom element.
-/// Call this once at app init. Returns Result to handle registration errors.
-pub fn register() -> Result(Nil, lustre.Error) {
-  lustre.component(init, update, view, on_attribute_change())
-  |> lustre.register("card-detail-modal")
-}
-
-/// Build attribute/property change handlers.
-fn on_attribute_change() -> List(component.Option(Msg)) {
-  [
-    component.on_attribute_change("card-id", decode_card_id),
-    component.on_attribute_change("locale", decode_locale),
-    component.on_attribute_change("current-user-id", decode_current_user_id),
-    component.on_attribute_change("project-id", decode_project_id),
-    component.on_attribute_change("can-manage-notes", decode_can_manage_notes),
-    component.on_attribute_change(
-      "can-manage-structure",
-      decode_can_manage_structure,
-    ),
-    component.on_attribute_change("can-execute-work", decode_can_execute_work),
-    component.on_property_change("card", card_property_decoder()),
-    component.on_property_change("cards", cards_property_decoder()),
-    component.on_property_change("tasks", tasks_property_decoder()),
-    component.adopt_styles(True),
-  ]
-}
-
-fn decode_card_id(value: String) -> Result(Msg, Nil) {
-  int.parse(value)
-  |> result.map(CardIdReceived)
-  |> result.replace_error(Nil)
-}
-
-fn decode_locale(value: String) -> Result(Msg, Nil) {
-  locale.parse(value)
-  |> result.map(LocaleReceived)
-  |> result.replace_error(Nil)
-}
-
-fn decode_project_id(value: String) -> Result(Msg, Nil) {
-  int.parse(value)
-  |> result.map(ProjectIdReceived)
-  |> result.replace_error(Nil)
-}
-
-fn decode_current_user_id(value: String) -> Result(Msg, Nil) {
-  int.parse(value)
-  |> result.map(CurrentUserIdReceived)
-  |> result.replace_error(Nil)
-}
-
-fn decode_can_manage_notes(value: String) -> Result(Msg, Nil) {
-  let enabled = value == "true"
-  Ok(CanManageNotesReceived(enabled))
-}
-
-fn decode_can_manage_structure(value: String) -> Result(Msg, Nil) {
-  let enabled = value == "true"
-  Ok(CanManageStructureReceived(enabled))
-}
-
-fn decode_can_execute_work(value: String) -> Result(Msg, Nil) {
-  let enabled = value == "true"
-  Ok(CanExecuteWorkReceived(enabled))
-}
-
-fn card_property_decoder() -> Decoder(Msg) {
-  card_codec.card_decoder()
-  |> decode.map(CardReceived)
-}
-
-fn cards_property_decoder() -> Decoder(Msg) {
-  decode.list(card_codec.card_decoder())
-  |> decode.map(CardsReceived)
-}
-
-fn tasks_property_decoder() -> Decoder(Msg) {
-  decode.list(task_decoder())
-  |> decode.map(TasksReceived)
-}
-
-fn task_decoder() -> Decoder(Task) {
-  use id <- decode.field("id", decode.int)
-  use project_id <- decode.field("project_id", decode.int)
-  use type_id <- decode.field("type_id", decode.int)
-  use task_type <- decode.field(
-    "task_type",
-    task_codec.task_type_inline_decoder(),
-  )
-  use ongoing_by <- decode.optional_field(
-    "ongoing_by",
-    option.None,
-    decode.optional(task_codec.ongoing_by_decoder()),
-  )
-  use title <- decode.field("title", decode.string)
-  use description <- decode.optional_field(
-    "description",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use priority <- decode.field("priority", decode.int)
-  use status_raw <- decode.field("status", decode.string)
-  use created_by <- decode.field("created_by", decode.int)
-  use claimed_by <- decode.optional_field(
-    "claimed_by",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use claimed_at <- decode.optional_field(
-    "claimed_at",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use completed_at <- decode.optional_field(
-    "completed_at",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use created_at <- decode.field("created_at", decode.string)
-  use due_date <- decode.optional_field(
-    "due_date",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use version <- decode.field("version", decode.int)
-  use parent_card_id <- decode.optional_field(
-    "parent_card_id",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use card_id <- decode.optional_field(
-    "card_id",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use card_title <- decode.optional_field(
-    "card_title",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use card_color <- decode.optional_field(
-    "card_color",
-    option.None,
-    card_codec.optional_color_decoder(),
-  )
-  use blocked_count <- decode.optional_field("blocked_count", 0, decode.int)
-  use dependencies <- decode.optional_field(
-    "dependencies",
-    [],
-    decode.list(task_codec.task_dependency_decoder()),
-  )
-
-  let is_ongoing = status_raw == "ongoing"
-  use state <- decode.then(task_codec.task_state_decoder_from_fields(
-    status_raw,
-    is_ongoing,
-    claimed_by,
-    claimed_at,
-    completed_at,
-  ))
-
-  decode.success(task.Task(
-    id: id,
-    project_id: project_id,
-    type_id: type_id,
-    task_type: task_type,
-    ongoing_by: ongoing_by,
-    title: title,
-    description: description,
-    priority: priority,
-    state: state,
-    created_by: created_by,
-    created_at: created_at,
-    due_date: due_date,
-    version: version,
-    parent_card_id: parent_card_id,
-    card_id: card_id,
-    card_title: card_title,
-    card_color: card_color,
-    // Story 5.4: Task notes indicator not used in card detail context
-    has_new_notes: False,
-    blocked_count: blocked_count,
-    dependencies: dependencies,
-  ))
-}
-
-// =============================================================================
 // Init
 // =============================================================================
 
-fn init(_: Nil) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      card_id: option.None,
-      card: option.None,
-      cards: [],
-      locale: En,
-      current_user_id: option.None,
-      project_id: option.None,
-      can_manage_notes: False,
-      can_manage_structure: False,
-      can_execute_work: False,
-      active_tab: show_tabs.CardSummaryTab,
-      notes: NotAsked,
-      note_dialog_open: False,
-      note_content: "",
-      note_in_flight: False,
-      note_error: option.None,
-      note_pin_in_flight: option.None,
-      activity: NotAsked,
-      tasks: NotAsked,
-      activation_confirm_open: False,
-    ),
-    effect.none(),
+pub fn init_model() -> Model {
+  Model(
+    card_id: option.None,
+    card: option.None,
+    cards: [],
+    locale: En,
+    current_user_id: option.None,
+    project_id: option.None,
+    can_manage_notes: False,
+    can_manage_structure: False,
+    can_execute_work: False,
+    active_tab: show_tabs.CardSummaryTab,
+    notes: NotAsked,
+    note_dialog_open: False,
+    note_content: "",
+    note_in_flight: False,
+    note_error: option.None,
+    note_pin_in_flight: option.None,
+    activity: NotAsked,
+    tasks: NotAsked,
+    activation_confirm_open: False,
+  )
+}
+
+pub fn init(_: Nil) -> #(Model, Effect(Msg)) {
+  #(init_model(), effect.none())
+}
+
+pub fn open(card_id: Int) -> #(Model, Effect(Msg)) {
+  update(init_model(), CardIdReceived(card_id))
+}
+
+pub fn reset() -> Model {
+  init_model()
+}
+
+pub fn hydrate(
+  model: Model,
+  card: Card,
+  cards: List(Card),
+  tasks: List(Task),
+  locale: Locale,
+  current_user_id: Option(Int),
+  project_id: Option(Int),
+  can_manage_notes: Bool,
+  can_manage_structure: Bool,
+  can_execute_work: Bool,
+) -> Model {
+  Model(
+    ..model,
+    card: option.Some(card),
+    cards: cards,
+    locale: locale,
+    current_user_id: current_user_id,
+    project_id: project_id,
+    can_manage_notes: can_manage_notes,
+    can_manage_structure: can_manage_structure,
+    can_execute_work: can_execute_work,
+    tasks: Loaded(tasks),
   )
 }
 
@@ -364,7 +202,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
 // Update
 // =============================================================================
 
-fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     CardIdReceived(id) -> #(
       Model(
@@ -519,7 +357,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    CreateCardClicked -> #(model, emit_create_card_requested(model.card_id))
+    CreateCardClicked -> #(model, effect.none())
 
     ActivateCardClicked -> #(
       Model(..model, activation_confirm_open: True),
@@ -533,17 +371,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ActivateCardConfirmed -> #(
       Model(..model, activation_confirm_open: False),
-      emit_activate_requested(model.card_id),
+      effect.none(),
     )
 
-    MoveRequested -> #(model, emit_move_requested(model.card_id))
+    MoveRequested -> #(model, effect.none())
 
-    DeleteCardClicked -> #(model, emit_delete_card_requested(model.card_id))
+    DeleteCardClicked -> #(model, effect.none())
 
     // Actions that emit events to parent
-    CreateTaskClicked -> #(model, emit_create_task_requested(model.card_id))
+    CreateTaskClicked -> #(model, effect.none())
 
-    CloseClicked -> #(model, emit_close_requested())
+    CloseClicked -> #(model, effect.none())
   }
 }
 
@@ -651,71 +489,10 @@ fn replace_note(
 }
 
 // =============================================================================
-// Effects
-// =============================================================================
-
-/// Emit create-task-requested custom event to parent.
-/// The parent will open the main task creation dialog pre-filled with card_id.
-fn emit_create_task_requested(card_id: option.Option(Int)) -> Effect(Msg) {
-  let detail = case card_id {
-    option.Some(id) -> json.object([#("card_id", json.int(id))])
-    option.None -> json.null()
-  }
-
-  effect.from(fn(_dispatch) {
-    emit_custom_event("create-task-requested", detail)
-  })
-}
-
-/// Emit create-card-requested custom event to parent.
-/// The parent will open the card creation dialog with this card as parent.
-fn emit_create_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
-  emit_card_id_event("create-card-requested", card_id)
-}
-
-/// Emit activate-requested custom event to parent.
-/// The parent activates this card subtree and refreshes Pool data.
-fn emit_activate_requested(card_id: option.Option(Int)) -> Effect(Msg) {
-  emit_card_id_event("activate-requested", card_id)
-}
-
-/// Emit delete-card-requested custom event to parent.
-/// The parent will open the existing card deletion confirmation.
-fn emit_delete_card_requested(card_id: option.Option(Int)) -> Effect(Msg) {
-  emit_card_id_event("delete-card-requested", card_id)
-}
-
-/// Emit move-card-requested custom event to parent.
-fn emit_move_requested(card_id: option.Option(Int)) -> Effect(Msg) {
-  emit_card_id_event("move-card-requested", card_id)
-}
-
-fn emit_card_id_event(name: String, card_id: option.Option(Int)) -> Effect(Msg) {
-  let detail = case card_id {
-    option.Some(id) -> json.object([#("card_id", json.int(id))])
-    option.None -> json.null()
-  }
-
-  effect.from(fn(_dispatch) { emit_custom_event(name, detail) })
-}
-
-/// Emit close-requested custom event to parent.
-fn emit_close_requested() -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    emit_custom_event("close-requested", json.null())
-  })
-}
-
-@external(javascript, "../component.ffi.mjs", "emit_custom_event")
-fn emit_custom_event(_name: String, _detail: json.Json) -> Nil {
-  Nil
-}
-
-// =============================================================================
 // View
 // =============================================================================
 
-fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model) -> Element(Msg) {
   case model.card {
     option.None -> element.none()
     option.Some(card) -> view_modal(model, card)
@@ -732,7 +509,7 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
   }
   let tabs = card_tab_items(model, notes_count, card.has_new_notes)
 
-  div([attribute.class("card-detail-modal")], [
+  div([attribute.class("card-show")], [
     // Backdrop (clicking closes modal)
     div(
       [

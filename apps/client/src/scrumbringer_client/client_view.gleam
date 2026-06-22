@@ -1808,7 +1808,7 @@ fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
 // Card Detail Modal for Member Views
 // =============================================================================
 
-/// Renders the card detail modal for Pool/Kanban/Hierarchies views.
+/// Renders Card Show for Pool/Kanban/Hierarchies views.
 fn view_member_card_detail_modal(
   model: client_state.Model,
   _user: User,
@@ -1827,30 +1827,7 @@ fn member_cards_config(
     model.core.user,
     state_selectors.selected_project(model),
     fn(id) { client_state.pool_msg(pool_messages.OpenCardDetail(id)) },
-    fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
-        card_id,
-      ))
-    },
-    fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(
-          admin_cards.CardDialogCreate(opt.Some(card_id)),
-        ),
-      )
-    },
-    fn(card_id) {
-      client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
-    },
-    fn(card_id) {
-      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
-    },
-    fn(card_id) {
-      client_state.pool_msg(
-        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
-      )
-    },
-    client_state.pool_msg(pool_messages.CloseCardDetail),
+    fn(msg) { client_state.pool_msg(pool_messages.CardDetailMsg(msg)) },
   )
 }
 

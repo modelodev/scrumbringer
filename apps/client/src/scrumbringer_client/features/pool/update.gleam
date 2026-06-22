@@ -33,6 +33,7 @@ import domain/task.{type Task}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
@@ -197,12 +198,39 @@ fn card_detail_context(
 ) -> card_detail_update.Context(client_state.Msg) {
   card_detail_update.Context(
     on_card_marked: fn(_result) { client_state.NoOp },
+    on_card_detail_msg: fn(msg) {
+      client_state.pool_msg(pool_messages.CardDetailMsg(msg))
+    },
     on_card_metrics_fetched: fn(result) {
       client_state.pool_msg(pool_messages.CardMetricsFetched(result))
     },
     on_card_activated: fn(result) {
       client_state.pool_msg(pool_messages.CardActivated(result))
     },
+    on_create_task: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+        card_id,
+      ))
+    },
+    on_create_card: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(
+          admin_cards.CardDialogCreate(opt.Some(card_id)),
+        ),
+      )
+    },
+    on_activate_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
+    },
+    on_move_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
+    },
+    on_delete_card: fn(card_id) {
+      client_state.pool_msg(
+        pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
+      )
+    },
+    on_close: client_state.pool_msg(pool_messages.CloseCardDetail),
     on_success_toast: app_effects.toast_success,
     on_error_toast: app_effects.toast_error,
     hierarchy_activated: i18n.t(model.ui.locale, i18n_text.HierarchyActivated),
@@ -913,6 +941,7 @@ fn update_without_view_mode(
     // Handled by card_detail_update.try_update before this dispatch.
     pool_messages.OpenCardDetail(_)
     | pool_messages.CloseCardDetail
+    | pool_messages.CardDetailMsg(_)
     | pool_messages.CardMetricsFetched(_)
     | pool_messages.CardActivateRequested(_)
     | pool_messages.CardActivated(_) -> #(model, effect.none())

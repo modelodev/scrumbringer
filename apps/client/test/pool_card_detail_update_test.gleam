@@ -26,10 +26,17 @@ fn local_model() -> card_detail_update.Model {
 fn context() -> card_detail_update.Context(Nil) {
   card_detail_update.Context(
     on_card_marked: fn(_result: ApiResult(Nil)) { Nil },
+    on_card_detail_msg: fn(_msg) { Nil },
     on_card_metrics_fetched: fn(_result: ApiResult(CardModalMetrics)) { Nil },
     on_card_activated: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
       Nil
     },
+    on_create_task: fn(_card_id) { Nil },
+    on_create_card: fn(_card_id) { Nil },
+    on_activate_card: fn(_card_id) { Nil },
+    on_move_card: fn(_card_id) { Nil },
+    on_delete_card: fn(_card_id) { Nil },
+    on_close: Nil,
     on_success_toast: fn(_message) { effect.none() },
     on_error_toast: fn(_message) { effect.none() },
     hierarchy_activated: "Hierarchy activated",

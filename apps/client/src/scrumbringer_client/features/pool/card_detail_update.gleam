@@ -10,6 +10,7 @@ import domain/metrics.{type CardModalMetrics}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/pool/card_detail
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -21,9 +22,16 @@ pub type Model {
 pub type Context(parent_msg) {
   Context(
     on_card_marked: fn(ApiResult(Nil)) -> parent_msg,
+    on_card_detail_msg: fn(card_detail_modal.Msg) -> parent_msg,
     on_card_metrics_fetched: fn(ApiResult(CardModalMetrics)) -> parent_msg,
     on_card_activated: fn(ApiResult(card_contracts.CardActionResponse)) ->
       parent_msg,
+    on_create_task: fn(Int) -> parent_msg,
+    on_create_card: fn(Int) -> parent_msg,
+    on_activate_card: fn(Int) -> parent_msg,
+    on_move_card: fn(Int) -> parent_msg,
+    on_delete_card: fn(Int) -> parent_msg,
+    on_close: parent_msg,
     on_success_toast: fn(String) -> Effect(parent_msg),
     on_error_toast: fn(String) -> Effect(parent_msg),
     hierarchy_activated: String,
@@ -42,6 +50,8 @@ pub fn try_update(
     pool_messages.OpenCardDetail(card_id) ->
       option.Some(opened(model, card_id, context))
     pool_messages.CloseCardDetail -> option.Some(closed(model))
+    pool_messages.CardDetailMsg(msg) ->
+      option.Some(child_updated(model, msg, context))
     pool_messages.CardMetricsFetched(Ok(metrics)) ->
       option.Some(metrics_fetched_ok(model, metrics))
     pool_messages.CardMetricsFetched(Error(err)) ->
@@ -61,20 +71,88 @@ fn opened(
   card_id: Int,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
+  let #(detail_model, detail_fx) = card_detail_modal.open(card_id)
+  let pool =
+    card_detail.handle_opened(model.pool, card_id)
+    |> card_detail.set_model(detail_model)
+
   #(
     Model(
-      pool: card_detail.handle_opened(model.pool, card_id),
+      pool: pool,
       cards: cards_workflow.handle_card_viewed(model.cards, card_id),
     ),
     effect.batch([
       api_cards.mark_card_view(card_id, context.on_card_marked),
       api_cards.get_card_metrics(card_id, context.on_card_metrics_fetched),
+      detail_fx |> effect.map(context.on_card_detail_msg),
     ]),
   )
 }
 
 fn closed(model: Model) -> #(Model, Effect(parent_msg)) {
   #(Model(..model, pool: card_detail.handle_closed(model.pool)), effect.none())
+}
+
+fn child_updated(
+  model: Model,
+  msg: card_detail_modal.Msg,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  case msg {
+    card_detail_modal.CreateTaskClicked -> #(
+      model,
+      dispatch_card_action(model.pool.card_detail_open, context.on_create_task),
+    )
+    card_detail_modal.CreateCardClicked -> #(
+      model,
+      dispatch_card_action(model.pool.card_detail_open, context.on_create_card),
+    )
+    card_detail_modal.MoveRequested -> #(
+      model,
+      dispatch_card_action(model.pool.card_detail_open, context.on_move_card),
+    )
+    card_detail_modal.DeleteCardClicked -> #(
+      model,
+      dispatch_card_action(model.pool.card_detail_open, context.on_delete_card),
+    )
+    card_detail_modal.CloseClicked -> #(
+      model,
+      effect.from(fn(dispatch) { dispatch(context.on_close) }),
+    )
+    card_detail_modal.ActivateCardConfirmed -> {
+      let #(detail_model, detail_fx) =
+        card_detail_modal.update(model.pool.card_detail_model, msg)
+      let pool = card_detail.set_model(model.pool, detail_model)
+      #(
+        Model(..model, pool: pool),
+        effect.batch([
+          detail_fx |> effect.map(context.on_card_detail_msg),
+          dispatch_card_action(
+            model.pool.card_detail_open,
+            context.on_activate_card,
+          ),
+        ]),
+      )
+    }
+    _ -> {
+      let #(detail_model, detail_fx) =
+        card_detail_modal.update(model.pool.card_detail_model, msg)
+      #(
+        Model(..model, pool: card_detail.set_model(model.pool, detail_model)),
+        detail_fx |> effect.map(context.on_card_detail_msg),
+      )
+    }
+  }
+}
+
+fn dispatch_card_action(
+  card_id: option.Option(Int),
+  to_msg: fn(Int) -> parent_msg,
+) -> Effect(parent_msg) {
+  case card_id {
+    option.Some(id) -> effect.from(fn(dispatch) { dispatch(to_msg(id)) })
+    option.None -> effect.none()
+  }
 }
 
 fn metrics_fetched_ok(

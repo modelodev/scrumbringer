@@ -51,12 +51,7 @@ fn cards_config(model: client_state.Model) {
     model.core.user,
     state_selectors.selected_project(model),
     fn(_) { "open" },
-    fn(_) { "create" },
-    fn(_) { "create-card" },
-    fn(_) { "activate-card" },
-    fn(_) { "move-card" },
-    fn(_) { "delete-card" },
-    "close",
+    fn(_) { "card-detail-msg" },
   )
 }
 
