@@ -965,7 +965,7 @@ fn view_detail(
       "Contenido: tasks",
       view_detail_tasks(tasks, rollup),
     )
-    types.EmptyCardDetail(card, rollup) -> #(
+    types.EmptyCardContent(card, rollup) -> #(
       card,
       "Contenido",
       view_detail_empty(rollup),
@@ -1286,7 +1286,7 @@ fn detail_for_card(config: Config(msg), card: Card) -> types.StructureDetail {
   case subcards, tasks {
     [_, ..], _ -> types.SubcardsDetail(card, subcards, rollup)
     [], [_, ..] -> types.TasksDetail(card, tasks, rollup)
-    [], [] -> types.EmptyCardDetail(card, rollup)
+    [], [] -> types.EmptyCardContent(card, rollup)
   }
 }
 
@@ -1754,7 +1754,7 @@ fn detail_rollup(detail: types.StructureDetail) -> types.CardRollup {
   case detail {
     types.SubcardsDetail(rollup: rollup, ..) -> rollup
     types.TasksDetail(rollup: rollup, ..) -> rollup
-    types.EmptyCardDetail(rollup: rollup, ..) -> rollup
+    types.EmptyCardContent(rollup: rollup, ..) -> rollup
   }
 }
 
