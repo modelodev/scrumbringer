@@ -142,13 +142,14 @@ pub fn card_detail_header_renders_path_due_date_and_health_test() {
       ),
     )
   let blocked = Task(..sample_task(3, Some(4)), blocked_count: 2)
+  let blocked_again = Task(..sample_task(4, Some(4)), blocked_count: 1)
 
   let html =
     detail_modal_entry.view(
       detail_modal_entry.Config(
         ..config(Some(card)),
         cards: [parent, card],
-        tasks: [ready, claimed, blocked],
+        tasks: [ready, claimed, blocked, blocked_again],
       ),
     )
     |> element.to_document_string

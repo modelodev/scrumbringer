@@ -830,7 +830,9 @@ fn card_health_chip(
 fn blocked_count(model: Model) -> Int {
   case model.tasks {
     Loaded(tasks) ->
-      list.fold(tasks, 0, fn(total, task) { total + task.blocked_count })
+      tasks
+      |> list.filter(fn(task) { task.blocked_count > 0 })
+      |> list.length
     _ -> 0
   }
 }
