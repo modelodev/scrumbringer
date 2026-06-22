@@ -59,7 +59,7 @@ pub fn parse_date_range_query_accepts_calendar_dates_test() {
   let default_from = timestamp("2026-01-01T00:00:00Z")
   let default_to = timestamp("2026-01-31T00:00:00Z")
   let from = timestamp("2026-01-10T00:00:00Z")
-  let to = timestamp("2026-01-20T00:00:00Z")
+  let to = timestamp("2026-01-20T23:59:59.999999999Z")
 
   let assert Ok(#(parsed_from, parsed_to)) =
     rule_metrics.parse_date_range_query(
@@ -69,6 +69,46 @@ pub fn parse_date_range_query_accepts_calendar_dates_test() {
     )
   let assert True = parsed_from == from
   let assert True = parsed_to == to
+}
+
+pub fn parse_date_range_query_preserves_timestamp_boundaries_test() {
+  let default_from = timestamp("2026-01-01T00:00:00Z")
+  let default_to = timestamp("2026-01-31T00:00:00Z")
+  let from = timestamp("2026-01-10T08:15:30Z")
+  let to = timestamp("2026-01-20T16:45:00Z")
+
+  let assert Ok(#(parsed_from, parsed_to)) =
+    rule_metrics.parse_date_range_query(
+      [#("from", "2026-01-10T08:15:30Z"), #("to", "2026-01-20T16:45:00Z")],
+      default_from,
+      default_to,
+    )
+  let assert True = parsed_from == from
+  let assert True = parsed_to == to
+}
+
+pub fn parse_date_range_query_allows_ninety_calendar_days_test() {
+  let default_from = timestamp("2026-01-01T00:00:00Z")
+  let default_to = timestamp("2026-01-31T00:00:00Z")
+
+  let assert Ok(_) =
+    rule_metrics.parse_date_range_query(
+      [#("from", "2026-01-01"), #("to", "2026-03-31")],
+      default_from,
+      default_to,
+    )
+}
+
+pub fn parse_date_range_query_rejects_over_ninety_calendar_days_test() {
+  let default_from = timestamp("2026-01-01T00:00:00Z")
+  let default_to = timestamp("2026-01-31T00:00:00Z")
+
+  let assert Error(_) =
+    rule_metrics.parse_date_range_query(
+      [#("from", "2026-01-01"), #("to", "2026-04-01")],
+      default_from,
+      default_to,
+    )
 }
 
 pub fn parse_date_range_query_rejects_invalid_dates_test() {

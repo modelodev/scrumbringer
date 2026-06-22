@@ -670,6 +670,34 @@ pub fn member_cannot_access_workflow_metrics_test() {
   Nil
 }
 
+pub fn project_manager_can_access_project_rule_metrics_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "ProjectMetricsAuthzTest")
+  let assert Ok(_workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Project Metrics")
+
+  let assert Ok(manager_id) =
+    fixtures.create_member_user(
+      handler,
+      db,
+      "manager@example.com",
+      "manager_invite_token",
+    )
+  let assert Ok(manager_session) =
+    fixtures.login(handler, "manager@example.com", "passwordpassword")
+
+  let assert Ok(_) =
+    fixtures.add_member(handler, session, project_id, manager_id, "manager")
+
+  let res = get_project_metrics(handler, manager_session, project_id)
+  expect.expect_status(res, 200)
+
+  Nil
+}
+
 pub fn org_admin_can_access_org_metrics_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
@@ -783,6 +811,16 @@ fn get_rule_executions_with_dates(
   }
   handler(
     simulate.request(http.Get, path)
+    |> fixtures.with_auth(session),
+  )
+}
+
+fn get_project_metrics(handler, session, project_id: Int) {
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/rule-metrics",
+    )
     |> fixtures.with_auth(session),
   )
 }

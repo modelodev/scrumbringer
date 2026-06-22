@@ -55,6 +55,11 @@ const default_limit = 50
 
 const max_limit = 100
 
+type RangeBoundary {
+  RangeStart
+  RangeEnd
+}
+
 // =============================================================================
 // Routing
 // =============================================================================
@@ -297,7 +302,7 @@ fn authorize_project_metrics(
   user: StoredUser,
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case projects_db.is_project_manager(db, user.id, project_id) {
+  case projects_db.is_project_manager(db, project_id, user.id) {
     Ok(True) -> Ok(Nil)
     Ok(False) -> require_admin_role(user)
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
@@ -436,8 +441,14 @@ pub fn parse_date_range_query(
     query,
     "from",
     default_from_ts,
+    RangeStart,
   ))
-  use to <- result.try(parse_optional_timestamp(query, "to", default_to_ts))
+  use to <- result.try(parse_optional_timestamp(
+    query,
+    "to",
+    default_to_ts,
+    RangeEnd,
+  ))
 
   // Validate from <= to
   let range = timestamp.difference(to, from)
@@ -449,10 +460,11 @@ fn parse_optional_timestamp(
   query: List(#(String, String)),
   key: String,
   default: Timestamp,
+  boundary: RangeBoundary,
 ) -> Result(Timestamp, wisp.Response) {
   case query_params.single_value(query, key) {
     Ok(None) -> Ok(default)
-    Ok(Some(value)) -> parse_calendar_or_timestamp(value, key)
+    Ok(Some(value)) -> parse_calendar_or_timestamp(value, key, boundary)
     Error(_) -> Error(invalid_query_response(key))
   }
 }
@@ -460,14 +472,22 @@ fn parse_optional_timestamp(
 fn parse_calendar_or_timestamp(
   value: String,
   key: String,
+  boundary: RangeBoundary,
 ) -> Result(Timestamp, wisp.Response) {
   case timestamp.parse_rfc3339(value) {
     Ok(ts) -> Ok(ts)
     Error(_) ->
-      case timestamp.parse_rfc3339(value <> "T00:00:00Z") {
+      case timestamp.parse_rfc3339(calendar_boundary(value, boundary)) {
         Ok(ts) -> Ok(ts)
         Error(_) -> Error(invalid_query_response(key))
       }
+  }
+}
+
+fn calendar_boundary(value: String, boundary: RangeBoundary) -> String {
+  case boundary {
+    RangeStart -> value <> "T00:00:00Z"
+    RangeEnd -> value <> "T23:59:59.999999999Z"
   }
 }
 
