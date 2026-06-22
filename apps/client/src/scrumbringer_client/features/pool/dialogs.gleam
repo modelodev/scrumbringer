@@ -40,13 +40,13 @@ import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/features/pool/task_detail_details
 import scrumbringer_client/features/pool/task_detail_footer
 import scrumbringer_client/features/pool/task_detail_header
-import scrumbringer_client/features/pool/task_detail_tabs
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/activity_feed
+import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
@@ -192,11 +192,12 @@ fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
 }
 
 fn view_task_show_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  task_detail_tabs.view(task_detail_tabs.Config(
-    locale: config.locale,
+  detail_tabs.view(detail_tabs.Config(
     active_tab: config.active_tab,
-    notes: config.notes.items,
-    on_tab_clicked: config.on_tab_clicked,
+    tabs: task_tab_items(config),
+    container_class: "task-tabs modal-tabs detail-tabs",
+    tab_class: "task-tab modal-tab detail-tab",
+    on_tab_click: config.on_tab_clicked,
   ))
 }
 
@@ -208,16 +209,29 @@ fn view_task_tab_content(config: TaskDetailsConfig(msg)) -> Element(msg) {
     show_tabs.TaskActivityTab -> view_task_activity(config)
   }
 
-  task_detail_tabs.panel(
-    config.active_tab,
-    task_detail_tabs.task_items(task_detail_tabs.Config(
-      locale: config.locale,
-      active_tab: config.active_tab,
-      notes: config.notes.items,
-      on_tab_clicked: config.on_tab_clicked,
-    )),
-    panel,
+  detail_tabs.panel(config.active_tab, task_tab_items(config), panel)
+}
+
+fn task_tab_items(
+  config: TaskDetailsConfig(msg),
+) -> List(detail_tabs.TabItem(show_tabs.TaskShowTab)) {
+  show_tabs.task_items(
+    show_tabs.TaskLabels(
+      details: i18n.t(config.locale, i18n_text.TabDetails),
+      dependencies: i18n.t(config.locale, i18n_text.TabDependencies),
+      notes: i18n.t(config.locale, i18n_text.TabNotes),
+      activity: i18n.t(config.locale, i18n_text.TabActivity),
+    ),
+    notes_count(config.notes.items),
+    False,
   )
+}
+
+fn notes_count(notes: Remote(List(note_entity.Note))) -> Int {
+  case notes {
+    Loaded(notes) -> list.length(notes)
+    _ -> 0
+  }
 }
 
 fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
