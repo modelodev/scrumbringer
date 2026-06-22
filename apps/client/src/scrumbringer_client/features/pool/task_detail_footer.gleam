@@ -46,7 +46,10 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     False -> reading_actions(config)
   }
 
-  div([attribute.class("modal-footer task-detail-footer")], actions)
+  div(
+    [attribute.class("modal-footer task-detail-footer task-action-bar")],
+    actions,
+  )
 }
 
 fn reading_actions(config: Config(msg)) -> List(Element(msg)) {

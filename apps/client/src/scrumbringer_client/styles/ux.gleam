@@ -581,8 +581,8 @@ pub fn css() -> List(String) {
     ".task-blocked-inline { margin-left: 6px; }",
     ".task-blocked-card { font-size: var(--sb-font-xs); }",
     ".task-item-meta { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }",
-    // Modal footer
-    ".task-detail-modal .modal-footer { padding: 12px 20px; border-top: 1px solid var(--sb-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--sb-surface); flex: 0 0 auto; }",
+    // Task Show action bar
+    ".task-detail-modal .task-action-bar { position: sticky; bottom: 0; z-index: 2; padding: 12px 20px; border-top: 1px solid var(--sb-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--sb-surface); flex: 0 0 auto; box-shadow: 0 -8px 18px color-mix(in oklab, var(--sb-bg) 12%, transparent); }",
     ".task-detail-footer { align-items: center; }",
     ".task-section-hint { font-size: var(--sb-font-base); color: var(--sb-muted); margin-bottom: 12px; padding-inline: 2px; line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
     ".card-section-header .btn.btn-sm { padding: 8px 14px; border-radius: 10px; }",

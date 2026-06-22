@@ -23,6 +23,7 @@ pub fn task_detail_footer_renders_close_only_without_task_test() {
     |> element.to_document_string
 
   assert_contains(html, "task-detail-footer")
+  assert_contains(html, "task-action-bar")
   assert_contains(html, "Close")
   assert_not_contains(html, "Claim task")
   assert_not_contains(html, "Release")
