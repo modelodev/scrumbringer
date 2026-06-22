@@ -21,6 +21,7 @@ fn base_config() -> left_panel_data.MemberRouteConfig {
     capability_filter: Some(9),
     search: Some("sync"),
     card_depth: None,
+    plan_mode: url_state.PlanStructureParam,
   )
 }
 
@@ -73,6 +74,21 @@ pub fn current_member_route_uses_member_state_test() {
   state |> url_state.view |> assert_equal(view_mode.Capabilities)
 }
 
+pub fn current_member_route_preserves_plan_mode_for_cards_test() {
+  let config =
+    left_panel_data.MemberRouteConfig(
+      ..base_config(),
+      view_mode: view_mode.Cards,
+      plan_mode: url_state.PlanKanbanParam,
+    )
+
+  let route = left_panel_data.current_member_route(config)
+  let assert router.Member(state) = route
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanKanbanParam)
+}
+
 pub fn member_state_omits_optional_values_when_absent_test() {
   let config =
     left_panel_data.MemberRouteConfig(
@@ -82,6 +98,7 @@ pub fn member_state_omits_optional_values_when_absent_test() {
       capability_filter: None,
       search: None,
       card_depth: None,
+      plan_mode: url_state.PlanStructureParam,
     )
 
   let state = left_panel_data.member_state(config, view_mode.People)

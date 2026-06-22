@@ -3,7 +3,7 @@
 //// ## Mission
 ////
 //// Provides a unified, accessible note creation dialog for use within modals
-//// (card detail, task detail). Follows the Config(msg) pattern for flexibility.
+//// (Card Show, Task Show). Follows the Config(msg) pattern for flexibility.
 ////
 //// ## Usage
 ////
@@ -28,8 +28,8 @@
 //// ## Relations
 ////
 //// - **ui/notes_composer.gleam**: Reused for textarea with Ctrl+Enter support
-//// - **components/card_detail_modal.gleam**: Uses this for card note creation
-//// - **features/pool/dialogs.gleam**: Uses this for task note creation
+//// - **components/card_show.gleam**: Uses this for card note creation
+//// - **features/pool/task_show.gleam**: Uses this for task note creation
 
 import gleam/option.{type Option}
 

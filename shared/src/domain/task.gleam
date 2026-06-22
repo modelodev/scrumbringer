@@ -96,29 +96,6 @@ pub type TaskDependency {
   )
 }
 
-/// A note on a task.
-///
-/// ## Example
-///
-/// ```gleam
-/// TaskNote(
-///   id: 1,
-///   task_id: 1,
-///   user_id: 1,
-///   content: "Added more details",
-///   created_at: "2024-01-17T12:00:00Z",
-/// )
-/// ```
-pub type TaskNote {
-  TaskNote(
-    id: Int,
-    task_id: Int,
-    user_id: Int,
-    content: String,
-    created_at: String,
-  )
-}
-
 /// Position of a task in the user's pool view.
 ///
 /// ## Example

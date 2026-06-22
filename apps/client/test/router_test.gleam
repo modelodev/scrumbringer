@@ -201,6 +201,19 @@ pub fn format_member_cards_kanban_with_project_test() {
   )
 }
 
+pub fn format_member_people_card_work_scope_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.People)
+    |> url_state.with_card_work_scope(42)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&view=people&work_scope=card&card=42",
+  )
+}
+
 pub fn format_member_capabilities_with_project_test() {
   assert_equal(
     router.format(member_route(Some(2), Some(view_mode.Capabilities))),

@@ -5,10 +5,10 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{type ApiResult}
+import domain/note/entity.{type Note}
 import domain/remote.{Loaded}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition, Task,
-  TaskDependency,
+  type Task, type TaskDependency, type TaskPosition, Task, TaskDependency,
 }
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
@@ -41,9 +41,7 @@ fn context() -> drag_update.Context(Nil) {
     on_canvas_rect_fetched: fn(_left, _top) { Nil },
     on_drag_offset_resolved: fn(_task_id, _offset_x, _offset_y) { Nil },
     on_my_tasks_rect_fetched: fn(_left, _top, _width, _height) { Nil },
-    on_hover_notes_fetched: fn(_task_id, _result: ApiResult(List(TaskNote))) {
-      Nil
-    },
+    on_hover_notes_fetched: fn(_task_id, _result: ApiResult(List(Note))) { Nil },
     on_long_press_check: fn(_task_id) { Nil },
     on_position_saved: fn(_result: ApiResult(TaskPosition)) { Nil },
   )

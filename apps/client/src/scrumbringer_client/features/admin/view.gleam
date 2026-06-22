@@ -28,8 +28,6 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
-import gleam/dynamic/decode
-
 import domain/card as domain_card
 import domain/project.{type Project}
 import domain/remote.{Loaded}
@@ -57,7 +55,7 @@ import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/features/admin/views/workflows_config
 import scrumbringer_client/features/admin/workflow_rules_view_config
-import scrumbringer_client/features/cards/detail_modal_entry
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/utils/card_queries
 
@@ -70,7 +68,6 @@ import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
-import scrumbringer_client/ui/event_decoders
 
 // =============================================================================
 // =============================================================================
@@ -352,7 +349,7 @@ pub fn view_cards(
         model,
         project.id,
         project.name,
-        view_card_detail_modal(model, project),
+        view_card_show(model, project),
       ))
   }
 }
@@ -391,7 +388,7 @@ fn cards_config(
     },
     on_show_empty_toggled: pool_msg(pool_messages.CardsShowEmptyToggled),
     on_show_completed_toggled: pool_msg(pool_messages.CardsShowDoneToggled),
-    on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardDetail(id)) },
+    on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardShow(id)) },
     on_task_create_opened: fn(id) {
       pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id))
     },
@@ -409,32 +406,30 @@ fn cards_config(
 }
 
 // =============================================================================
-// Card Detail Modal (Config Cards)
+// Card Show (Config Cards)
 // =============================================================================
 
-fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
+fn view_card_show(model: Model, project: Project) -> Element(Msg) {
   let is_org_admin = case model.core.user {
     opt.Some(user) -> permissions.is_org_admin(user.org_role)
     opt.None -> False
   }
 
-  detail_modal_entry.view(detail_modal_entry.Config(
-    card: selected_detail_card(model),
-    cards: admin_cards_list(model),
-    tasks: selected_detail_card_tasks(model),
-    locale: model.ui.locale,
-    current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
-    can_manage_notes: is_org_admin || permissions.is_project_manager(project),
-    can_manage_structure: is_org_admin
-      || permissions.is_project_manager(project),
-    can_execute_work: True,
-    on_create_task: decode_create_task_event(),
-    on_create_card: decode_create_card_event(),
-    on_activate_card: decode_activate_card_event(),
-    on_move_card: decode_move_card_event(),
-    on_delete_card: decode_delete_card_event(),
-    on_close: decode_card_detail_close_event(),
-  ))
+  show_entry.view(
+    show_entry.Config(
+      model: model.member.pool.card_show_model,
+      card: selected_show_card(model),
+      cards: admin_cards_list(model),
+      tasks: selected_show_card_tasks(model),
+      locale: model.ui.locale,
+      current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
+      can_manage_notes: is_org_admin || permissions.is_project_manager(project),
+      can_manage_structure: is_org_admin
+        || permissions.is_project_manager(project),
+      can_execute_work: True,
+      on_card_show_msg: fn(msg) { pool_msg(pool_messages.CardShowMsg(msg)) },
+    ),
+  )
 }
 
 fn admin_cards_list(model: Model) -> List(domain_card.Card) {
@@ -444,8 +439,8 @@ fn admin_cards_list(model: Model) -> List(domain_card.Card) {
   }
 }
 
-fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
-  case model.member.pool.card_detail_open {
+fn selected_show_card(model: Model) -> opt.Option(domain_card.Card) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) ->
       card_queries.find_card(
         model.member.pool.member_cards_store,
@@ -456,79 +451,12 @@ fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
   }
 }
 
-fn selected_detail_card_tasks(model: Model) -> List(domain_task.Task) {
-  case model.member.pool.card_detail_open {
+fn selected_show_card_tasks(model: Model) -> List(domain_task.Task) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) ->
-      detail_modal_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
+      show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
     opt.None -> []
   }
-}
-
-/// Decoder for create-task-requested event.
-fn decode_create_task_event() -> decode.Decoder(Msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
-      decode.success(
-        pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
-      )
-    },
-  )
-}
-
-/// Decoder for create-card-requested event.
-fn decode_create_card_event() -> decode.Decoder(Msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
-      decode.success(
-        pool_msg(
-          pool_messages.OpenCardDialog(
-            admin_cards.CardDialogCreate(opt.Some(card_id)),
-          ),
-        ),
-      )
-    },
-  )
-}
-
-/// Decoder for activate-requested event.
-fn decode_activate_card_event() -> decode.Decoder(Msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
-      decode.success(pool_msg(pool_messages.CardActivateRequested(card_id)))
-    },
-  )
-}
-
-/// Decoder for move-card-requested event.
-fn decode_move_card_event() -> decode.Decoder(Msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
-      decode.success(pool_msg(pool_messages.MemberPlanMoveRequested(card_id)))
-    },
-  )
-}
-
-/// Decoder for delete-card-requested event.
-fn decode_delete_card_event() -> decode.Decoder(Msg) {
-  event_decoders.custom_detail(
-    decode.field("card_id", decode.int, decode.success),
-    fn(card_id) {
-      decode.success(
-        pool_msg(
-          pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
-        ),
-      )
-    },
-  )
-}
-
-/// Decoder for close-requested event.
-fn decode_card_detail_close_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(pool_messages.CloseCardDetail))
 }
 
 // =============================================================================

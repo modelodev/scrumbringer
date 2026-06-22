@@ -104,6 +104,7 @@ pub fn decode_update_task(
   )
   use parent_card_update <- result.try(decode_parent_card_update(data))
   use card_update <- result.try(decode_card_update(data))
+  use due_date_update <- result.try(decode_due_date_update(data))
 
   let #(version, title, description, priority, type_id) = payload
   Ok(UpdateTaskPayload(
@@ -115,6 +116,7 @@ pub fn decode_update_task(
       type_id: field_update.from_option(type_id),
       parent_card_id: parent_card_update,
       card_id: card_update,
+      due_date: due_date_update,
     ),
   ))
 }
@@ -179,6 +181,15 @@ fn decode_card_update(
   |> result.map(fn(update) { field_update.map(update, normalize_optional_id) })
 }
 
+fn decode_due_date_update(
+  data: Dynamic,
+) -> Result(field_update.FieldUpdate(Option(String)), DecodeError) {
+  decode_optional_string_update(data, "due_date")
+  |> result.map(fn(update) {
+    field_update.map(update, normalize_optional_string)
+  })
+}
+
 fn decode_optional_id_update(
   data: Dynamic,
   field_name: String,
@@ -195,6 +206,21 @@ fn decode_optional_id_update(
   }
 }
 
+fn decode_optional_string_update(
+  data: Dynamic,
+  field_name: String,
+) -> Result(field_update.FieldUpdate(Option(String)), DecodeError) {
+  case
+    decode.run(data, decode.field(field_name, decode.dynamic, decode.success))
+  {
+    Error(_) -> Ok(field_update.unchanged())
+    Ok(raw) ->
+      decode.run(raw, decode.optional(decode.string))
+      |> result.map(field_update.set)
+      |> result.map_error(fn(_) { InvalidJson })
+  }
+}
+
 fn normalize_parent_card_id(value: Option(Int)) -> Option(Int) {
   normalize_optional_id(value)
 }
@@ -202,6 +228,13 @@ fn normalize_parent_card_id(value: Option(Int)) -> Option(Int) {
 fn normalize_optional_id(value: Option(Int)) -> Option(Int) {
   case value {
     Some(id) if id <= 0 -> None
+    _ -> value
+  }
+}
+
+fn normalize_optional_string(value: Option(String)) -> Option(String) {
+  case value {
+    Some("") -> None
     _ -> value
   }
 }

@@ -138,6 +138,9 @@ pub fn translate(text: Text) -> String {
     text.Removing -> "Removing…"
     text.Delete -> "Delete"
     text.DeleteAsAdmin -> "Delete (as admin)"
+    text.PinNote -> "Pin note"
+    text.UnpinNote -> "Unpin note"
+    text.CannotPinNote -> "Only the author or a manager can pin this note"
     text.Deleting -> "Deleting…"
     text.Deleted -> "Deleted"
     text.NoneOption -> "None"
@@ -172,6 +175,9 @@ pub fn translate(text: Text) -> String {
     text.AddNote -> "Add note"
     text.NotePlaceholder -> "Write a note..."
     text.RecentNotes -> "Recent notes"
+    text.PinnedContext -> "Pinned context"
+    text.OpenNotes -> "Open notes"
+    text.MorePinnedNotes(count) -> "+" <> int.to_string(count) <> " in notes"
     text.Dependencies -> "Dependencies"
     text.AddDependency -> "Add dependency"
     text.NoDependencies -> "No dependencies"
@@ -219,6 +225,7 @@ pub fn translate(text: Text) -> String {
     text.PlanMode -> "Mode"
     text.PlanModeStructure -> "Structure"
     text.PlanModeKanban -> "Kanban"
+    text.KanbanColumnPending -> "Pending"
     text.PlanEmptyCardScopeBody ->
       "Search for a card to review its subtree, capabilities, tasks, and risk."
     text.PlanEmptyScopeTitle -> "No cards in this scope."
@@ -444,7 +451,11 @@ pub fn translate(text: Text) -> String {
     text.HierarchyCardNoProgress -> "No progress"
     text.HierarchyCardBlocked -> "Blocked"
     text.HierarchyCardComplete -> "Complete"
+    text.OpenIn -> "Open in"
+    text.ViewInPlan -> "View in Plan"
     text.ViewInKanban -> "View in Kanban"
+    text.ViewInCapabilities -> "View in Capabilities"
+    text.ViewInPeople -> "View in People"
     text.HierarchyTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " total tasks"
     text.HierarchyTaskPhaseAvailable -> "available"
@@ -973,6 +984,7 @@ pub fn translate(text: Text) -> String {
     text.RuleMetricsNoRules -> "No rules in this workflow"
     text.ViewDetails -> "View Details"
     text.OpenTask -> "Open task"
+    text.OpenCard -> "Open card"
     text.AgeLabel -> "Age"
     text.ParentCardLabel -> "Card"
     text.RuleMetricsDrilldown -> "Rule Metrics Details"
@@ -1017,6 +1029,10 @@ pub fn translate(text: Text) -> String {
 
     // Card detail (member)
     text.CardAddTask -> "Add task"
+    text.CardAddSubcard -> "Add subcard"
+    text.CardEmptyWorkTitle -> "This card has no work yet"
+    text.CardEmptyWorkBody ->
+      "Choose whether this card will contain tasks or subcards."
     text.CardTasksEmpty -> "No tasks"
     text.CardTasksDone -> "completed"
     text.TaskType -> "Task type"
@@ -1089,10 +1105,18 @@ pub fn translate(text: Text) -> String {
     // AC21: Tab labels
     text.TabTasks -> "Tasks"
     text.TabNotes -> "Notes"
-    // 5.4.1: Task detail modal
+    text.TabSummary -> "Summary"
+    text.TabWork -> "Work"
+    text.TabActivity -> "Activity"
+    text.ActivityLoading -> "Loading activity..."
+    text.ActivityEmpty -> "No activity yet."
+    text.ActivityLoadFailed -> "Could not load activity."
+    text.ActivityLoadMore(remaining) ->
+      "Load more (" <> int.to_string(remaining) <> ")"
+    // 5.4.1: Task Show
     text.TabDetails -> "Details"
     text.TabDependencies -> "Dependencies"
-    text.TabMetrics -> "Metrics"
+    text.TabBlockers -> "Blockers"
     text.EditTask -> "Edit task"
     text.TaskUpdated -> "Task updated"
     text.TaskEditPlanning -> "Planning"
@@ -1108,6 +1132,8 @@ pub fn translate(text: Text) -> String {
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"
+    text.TaskDueDateLabel -> "Due"
+    text.NoDueDate -> "No due date"
     text.TaskBlockingClear -> "No active blockers"
     text.MetricsTasksTotal -> "Tasks total"
     text.MetricsTasksDone -> "Tasks completed"

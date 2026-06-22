@@ -117,6 +117,9 @@ pub type Text {
   Removing
   Delete
   DeleteAsAdmin
+  PinNote
+  UnpinNote
+  CannotPinNote
   Deleting
   Deleted
   NoneOption
@@ -149,6 +152,9 @@ pub type Text {
   AddNote
   NotePlaceholder
   RecentNotes
+  PinnedContext
+  OpenNotes
+  MorePinnedNotes(count: Int)
   Dependencies
   AddDependency
   NoDependencies
@@ -190,6 +196,7 @@ pub type Text {
   PlanMode
   PlanModeStructure
   PlanModeKanban
+  KanbanColumnPending
   PlanEmptyCardScopeBody
   PlanEmptyScopeTitle
   PlanEmptyScopeBody
@@ -374,7 +381,11 @@ pub type Text {
   HierarchyCardNoProgress
   HierarchyCardBlocked
   HierarchyCardComplete
+  OpenIn
+  ViewInPlan
   ViewInKanban
+  ViewInCapabilities
+  ViewInPeople
   HierarchyTotalTasksCount(tasks_count: Int)
   HierarchyTaskPhaseAvailable
   HierarchyTaskPhaseClaimed
@@ -828,6 +839,7 @@ pub type Text {
   RuleMetricsNoRules
   ViewDetails
   OpenTask
+  OpenCard
   AgeLabel
   ParentCardLabel
   RuleMetricsDrilldown
@@ -872,6 +884,9 @@ pub type Text {
 
   // Card detail (member)
   CardAddTask
+  CardAddSubcard
+  CardEmptyWorkTitle
+  CardEmptyWorkBody
   CardTasksEmpty
   CardTasksDone
   TaskType
@@ -937,10 +952,17 @@ pub type Text {
   // AC21: Tab labels
   TabTasks
   TabNotes
-  // 5.4.1: Task detail modal
+  TabSummary
+  TabWork
+  TabActivity
+  ActivityLoading
+  ActivityEmpty
+  ActivityLoadFailed
+  ActivityLoadMore(remaining: Int)
+  // 5.4.1: Task Show
   TabDetails
   TabDependencies
-  TabMetrics
+  TabBlockers
   EditTask
   TaskUpdated
   TaskEditPlanning
@@ -954,6 +976,8 @@ pub type Text {
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
+  TaskDueDateLabel
+  NoDueDate
   TaskBlockingClear
   MetricsTasksTotal
   MetricsTasksDone

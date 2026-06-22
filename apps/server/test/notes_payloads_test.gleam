@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/json
+import gleam/option
 import gleam/string
 
 import scrumbringer_server/http/api
@@ -14,7 +15,28 @@ pub fn decode_note_payload_test() {
   let assert Ok(dynamic) =
     json.parse("{\"content\":\"plain note\"}", decode.dynamic)
 
-  let assert Ok(payloads.NotePayload(content: "plain note")) =
+  let assert Ok(payloads.NotePayload(content: "plain note", url: option.None)) =
+    payloads.decode_note(dynamic)
+}
+
+pub fn decode_note_payload_allows_optional_url_test() {
+  let assert Ok(dynamic) =
+    json.parse(
+      "{\"content\":\"plain note\",\"url\":\"https://example.com/spec\"}",
+      decode.dynamic,
+    )
+
+  let assert Ok(payloads.NotePayload(
+    content: "plain note",
+    url: option.Some("https://example.com/spec"),
+  )) = payloads.decode_note(dynamic)
+}
+
+pub fn decode_note_payload_allows_null_url_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"content\":\"plain note\",\"url\":null}", decode.dynamic)
+
+  let assert Ok(payloads.NotePayload(content: "plain note", url: option.None)) =
     payloads.decode_note(dynamic)
 }
 
@@ -28,8 +50,10 @@ pub fn decode_note_payload_keeps_content_unchanged_test() {
   let assert Ok(dynamic) =
     json.parse("{\"content\":\"  surrounding spaces  \"}", decode.dynamic)
 
-  let assert Ok(payloads.NotePayload(content: "  surrounding spaces  ")) =
-    payloads.decode_note(dynamic)
+  let assert Ok(payloads.NotePayload(
+    content: "  surrounding spaces  ",
+    url: option.None,
+  )) = payloads.decode_note(dynamic)
 }
 
 pub fn with_note_payload_valid_request_calls_handler_test() {

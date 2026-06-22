@@ -57,11 +57,12 @@
 ////   meta: Some(meta_row),
 ////   progress: None,
 ////   on_close: CloseClicked,
-////   header_class: "task-detail-header",
-////   title_row_class: "task-detail-title-row",
-////   title_class: "task-detail-title",
-////   title_id: "task-detail-title",
+////   header_class: "task-show-header",
+////   title_row_class: "task-show-title-row",
+////   title_class: "task-show-title",
+////   title_id: "task-show-title",
 ////   close_button_class: "modal-close btn-icon",
+////   close_button_testid: None,
 //// ))
 //// ```
 
@@ -82,7 +83,7 @@ pub type TitleElement {
   TitleH2
   /// Use h3 for dialog headers (CRUD modals, smaller dialogs)
   TitleH3
-  /// Use span for detail modals where title is part of a larger heading
+  /// Use span for detail views where title is part of a larger heading
   TitleSpan
 }
 
@@ -142,6 +143,8 @@ pub type ExtendedConfig(msg) {
     title_id: String,
     /// CSS class for the close button (default: "btn-icon modal-close")
     close_button_class: String,
+    /// Optional stable selector for high-level entity shows
+    close_button_testid: Option(String),
   )
 }
 
@@ -191,10 +194,11 @@ pub fn view_extended_with_close_label(
   close_label: String,
 ) -> Element(msg) {
   let close_button =
-    modal_close_button.view_with_label_and_class(
+    modal_close_button.view_with_label_class_and_testid(
       close_label,
       config.close_button_class,
       config.on_close,
+      config.close_button_testid,
     )
 
   let title_content = [
@@ -248,6 +252,7 @@ pub fn extend(config: Config(msg)) -> ExtendedConfig(msg) {
     title_class: "modal-header-title",
     title_id: "modal-title",
     close_button_class: "btn-icon modal-close",
+    close_button_testid: None,
   )
 }
 
@@ -326,7 +331,7 @@ pub fn view_dialog_with_icon_and_close_label(
   )
 }
 
-/// Configuration for detail modal headers.
+/// Configuration for detail headers.
 pub type DetailConfig(msg) {
   DetailConfig(
     /// The main title text
@@ -339,18 +344,18 @@ pub type DetailConfig(msg) {
     progress: Option(Element(msg)),
     /// Message to emit when close button is clicked
     on_close: msg,
-    /// CSS class prefix for all elements (e.g., "task-detail" or "card-detail")
+    /// CSS class prefix for all elements (e.g., "task-show" or "card-show")
     class_prefix: String,
   )
 }
 
-/// Render a detail modal header with meta row and optional progress.
-/// Use this for card_detail_modal and task detail views.
+/// Render a detail header with meta row and optional progress.
+/// Use this for Card Show and Task Show.
 pub fn view_detail(config: DetailConfig(msg)) -> Element(msg) {
   view_detail_with_close_label(config, "Close")
 }
 
-/// Render a detail modal header with a localized close button label.
+/// Render a detail header with a localized close button label.
 pub fn view_detail_with_close_label(
   config: DetailConfig(msg),
   close_label: String,
@@ -370,6 +375,7 @@ pub fn view_detail_with_close_label(
       title_class: config.class_prefix <> "-title",
       title_id: config.class_prefix <> "-title",
       close_button_class: "modal-close btn-icon",
+      close_button_testid: None,
     ),
     close_label,
   )

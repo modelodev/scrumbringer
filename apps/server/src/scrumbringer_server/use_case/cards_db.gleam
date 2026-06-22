@@ -23,6 +23,7 @@ import gleam/result
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
+import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/persisted_field
 
 // =============================================================================
@@ -214,6 +215,7 @@ pub fn create_card(
   title: String,
   description: Option(String),
   color: Option(CardColor),
+  due_date: Option(String),
   created_by: Int,
 ) -> Result(Card, CardError) {
   case validate_parent_for_create(db, project_id, parent_card_id) {
@@ -226,6 +228,7 @@ pub fn create_card(
         title,
         description,
         color,
+        due_date,
         created_by,
       )
   }
@@ -238,10 +241,12 @@ fn create_card_row(
   title: String,
   description: Option(String),
   color: Option(CardColor),
+  due_date: Option(String),
   created_by: Int,
 ) -> Result(Card, CardError) {
   let desc = description_text(description)
   let col = shared_optional_color_to_string(color)
+  let due = due_date_text(due_date)
 
   case
     sql.cards_create(
@@ -252,6 +257,7 @@ fn create_card_row(
       col,
       created_by,
       parent_card_id_create_value(parent_card_id),
+      due,
     )
   {
     Error(e) -> Error(DbError(e))
@@ -287,6 +293,8 @@ pub fn update_card(
   title: String,
   description: Option(String),
   color: Option(CardColor),
+  due_date: Option(String),
+  org_id: Int,
   user_id: Int,
 ) -> Result(Card, CardError) {
   use current <- result.try(get_card(db, card_id, user_id))
@@ -299,6 +307,7 @@ pub fn update_card(
 
   let desc = description_text(description)
   let col = shared_optional_color_to_string(color)
+  let due = due_date_text(due_date)
 
   case
     sql.cards_update(
@@ -308,6 +317,7 @@ pub fn update_card(
       desc,
       col,
       parent_card_id_update_value(parent_card_id),
+      due,
     )
   {
     Error(e) -> Error(DbError(e))
@@ -321,7 +331,7 @@ pub fn update_card(
           use state <- result.try(card_phase_from_execution_state(
             full_row.execution_state,
           ))
-          card_from_fields(
+          use updated <- result.try(card_from_fields(
             row.id,
             row.project_id,
             row.parent_card_id,
@@ -335,10 +345,44 @@ pub fn update_card(
             row.created_at,
             row.due_date,
             full_row.has_new_notes,
-          )
+          ))
+          use _ <- result.try(record_card_due_date_change(
+            db,
+            org_id,
+            updated.project_id,
+            updated.id,
+            user_id,
+            current.due_date,
+            updated.due_date,
+          ))
+          Ok(updated)
         }
       }
     }
+  }
+}
+
+fn record_card_due_date_change(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  card_id: Int,
+  user_id: Int,
+  previous_due_date: Option(String),
+  next_due_date: Option(String),
+) -> Result(Nil, CardError) {
+  case previous_due_date == next_due_date {
+    True -> Ok(Nil)
+    False ->
+      audit_events_db.insert_for_card(
+        db,
+        org_id,
+        project_id,
+        card_id,
+        user_id,
+        audit_events_db.DueDateChanged,
+      )
+      |> result.map_error(DbError)
   }
 }
 
@@ -1027,6 +1071,10 @@ fn parse_optional_color(color: String) -> Result(Option(CardColor), CardError) {
 
 fn description_text(description: Option(String)) -> String {
   option_helpers.option_to_value(description, "")
+}
+
+fn due_date_text(due_date: Option(String)) -> String {
+  option_helpers.option_to_value(due_date, "")
 }
 
 fn parent_card_id_create_value(parent_card_id: Option(Int)) -> Int {

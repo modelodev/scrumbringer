@@ -5,29 +5,30 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
-  type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
-  type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
-  type TaskModalMetrics,
+  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview,
 }
+import domain/note/entity as note_entity
 import domain/project.{type ProjectMember}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition,
-  type WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskPosition, type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
+import scrumbringer_client/api/activity as api_activity
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/pool_prefs
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 /// Represents PoolMsg.
 pub type Msg {
@@ -67,7 +68,7 @@ pub type Msg {
   MemberTaskHoverClosed
   MemberTaskFocused(Int)
   MemberTaskBlurred
-  MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
+  MemberTaskHoverNotesFetched(Int, ApiResult(List(note_entity.Note)))
   MemberListHideDoneToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
@@ -125,19 +126,18 @@ pub type Msg {
   MemberPositionEditYChanged(String)
   MemberPositionEditSubmitted
   MemberPositionSaved(ApiResult(TaskPosition))
-  MemberTaskDetailsOpened(Int)
-  MemberTaskDetailsClosed
-  MemberTaskDetailTabClicked(task_tabs.Tab)
-  MemberTaskDetailEditStarted
-  MemberTaskDetailEditCancelled
-  MemberTaskDetailEditTitleChanged(String)
-  MemberTaskDetailEditDescriptionChanged(String)
-  MemberTaskDetailEditPriorityChanged(String)
-  MemberTaskDetailEditTypeIdChanged(String)
-  MemberTaskDetailEditCardIdChanged(String)
-  MemberTaskDetailEditSubmitted
+  MemberTaskShowOpened(Int)
+  MemberTaskShowClosed
+  MemberTaskShowTabClicked(show_tabs.TaskShowTab)
+  MemberTaskShowEditStarted
+  MemberTaskShowEditCancelled
+  MemberTaskShowEditTitleChanged(String)
+  MemberTaskShowEditDescriptionChanged(String)
+  MemberTaskShowEditPriorityChanged(String)
+  MemberTaskShowEditTypeIdChanged(String)
+  MemberTaskShowEditCardIdChanged(String)
+  MemberTaskShowEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
-  MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened
   MemberDependencyDialogClosed
@@ -148,14 +148,18 @@ pub type Msg {
   MemberDependencyAdded(ApiResult(TaskDependency))
   MemberDependencyRemoveClicked(Int)
   MemberDependencyRemoved(Int, ApiResult(Nil))
-  MemberNotesFetched(ApiResult(List(TaskNote)))
+  MemberNotesFetched(ApiResult(List(note_entity.Note)))
   MemberNoteContentChanged(String)
   MemberNoteDialogOpened
   MemberNoteDialogClosed
   MemberNoteSubmitted
-  MemberNoteAdded(ApiResult(TaskNote))
+  MemberNoteAdded(ApiResult(note_entity.Note))
   MemberNoteDeleteClicked(Int)
   MemberNoteDeleted(Int, ApiResult(Nil))
+  MemberNotePinClicked(Int, Bool)
+  MemberNotePinned(Int, ApiResult(note_entity.Note))
+  MemberActivityMoreClicked
+  MemberActivityFetched(ApiResult(api_activity.ActivityPage))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))
@@ -191,9 +195,9 @@ pub type Msg {
   CardsShowDoneToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
-  OpenCardDetail(Int)
-  CloseCardDetail
-  CardMetricsFetched(ApiResult(CardModalMetrics))
+  OpenCardShow(Int)
+  CloseCardShow
+  CardShowMsg(card_show.Msg)
   CardActivateRequested(Int)
   CardActivated(ApiResult(card_contracts.CardActionResponse))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))

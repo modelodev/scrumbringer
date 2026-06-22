@@ -47,7 +47,6 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/uri.{type Uri}
-import modem
 
 import lustre/effect.{type Effect}
 
@@ -312,19 +311,13 @@ pub fn format_team(
 pub fn replace_team_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let state = url_state.with_assignments_view(url_state.empty(), view)
-  let query =
-    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
-  modem.replace("/org/team", query, None)
+  replace_url(format_team(Some(view)))
 }
 
 pub fn push_team_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let state = url_state.with_assignments_view(url_state.empty(), view)
-  let query =
-    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
-  modem.push("/org/team", query, None)
+  push_url(format_team(Some(view)))
 }
 
 pub fn format_assignments(
@@ -466,8 +459,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
 /// // Navigates to "/config/projects?project=5" with history entry
 /// ```
 pub fn push(route: Route) -> Effect(msg) {
-  let #(path, query, fragment) = format_parts(route)
-  modem.push(path, query, fragment)
+  push_url(format(route))
 }
 
 /// Replace the current URL in browser history (no back button entry).
@@ -479,8 +471,39 @@ pub fn push(route: Route) -> Effect(msg) {
 /// // Replaces current URL with "/" without history entry
 /// ```
 pub fn replace(route: Route) -> Effect(msg) {
-  let #(path, query, fragment) = format_parts(route)
-  modem.replace(path, query, fragment)
+  replace_url(format(route))
+}
+
+fn push_url(target: String) -> Effect(msg) {
+  write_browser_url(target, PushHistory)
+}
+
+fn replace_url(target: String) -> Effect(msg) {
+  write_browser_url(target, ReplaceHistory)
+}
+
+type HistoryWrite {
+  PushHistory
+  ReplaceHistory
+}
+
+fn write_browser_url(target: String, mode: HistoryWrite) -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    case current_browser_url() == target {
+      True -> Nil
+      False ->
+        case mode {
+          PushHistory -> client_ffi.history_push_state(target)
+          ReplaceHistory -> client_ffi.history_replace_state(target)
+        }
+    }
+  })
+}
+
+fn current_browser_url() -> String {
+  client_ffi.location_pathname()
+  <> client_ffi.location_search()
+  <> client_ffi.location_hash()
 }
 
 /// Update the browser document title based on the current route.

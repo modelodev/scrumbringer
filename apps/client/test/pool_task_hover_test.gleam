@@ -2,10 +2,17 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/task.{Task, TaskDependency, TaskNote}
+import domain/note/entity.{Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
+import domain/task.{Task, TaskDependency}
+import domain/task/id as task_id
 import domain/task_state
 import domain/task_status.{Available, Claimed, Done, Taken}
 import domain/task_type.{TaskTypeInline}
+import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/i18n/locale
 
@@ -128,12 +135,19 @@ fn sample_task() {
   )
 }
 
-fn sample_note(id: Int, user_id: Int, content: String) {
-  TaskNote(
-    id: id,
-    task_id: 42,
-    user_id: user_id,
+fn sample_note(id: Int, user_id_value: Int, content: String) {
+  Note(
+    id: note_id.new(id),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(user_id_value),
     content: content,
+    url: None,
+    pinned: False,
     created_at: "2026-06-02T12:00:00Z",
+    updated_at: "2026-06-02T12:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }

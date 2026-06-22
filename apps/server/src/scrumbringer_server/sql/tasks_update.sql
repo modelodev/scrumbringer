@@ -6,10 +6,11 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
+  due_date = case when $7 = '__unset__' then due_date else nullif($7, '')::date end,
   card_id = case
-    when $7 = -999999 then card_id
-    when $8 = -1 then card_id
-    else nullif($8, 0)
+    when $8 = -999999 then card_id
+    when $9 = -1 then card_id
+    else nullif($9, 0)
   end,
   version = version + 1
 where id = $1
@@ -17,7 +18,7 @@ where id = $1
     execution_state = 'available'
     or (execution_state = 'claimed' and claimed_by = $2)
   )
-  and version = $9
+  and version = $10
   returning
     id,
     project_id,

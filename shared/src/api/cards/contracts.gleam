@@ -23,6 +23,7 @@ pub type CardCreateRequest {
     description: Option(String),
     color: Option(card.CardColor),
     parent_card_id: Option(Int),
+    due_date: Option(String),
   )
 }
 
@@ -84,6 +85,7 @@ pub fn card_create_request_codec() -> decode.Decoder(CardCreateRequest) {
           description: None,
           color: None,
           parent_card_id: None,
+          due_date: None,
         ),
         "CardCreateRequest",
       )
@@ -99,13 +101,14 @@ fn card_create_raw_codec() {
     None,
     decode.optional(decode.int),
   )
-  decode.success(#(title, description, color, parent_card_id))
+  use due_date <- decode.optional_field("due_date", "", decode.string)
+  decode.success(#(title, description, color, parent_card_id, due_date))
 }
 
 fn raw_to_create_request(
-  raw: #(String, String, String, Option(Int)),
+  raw: #(String, String, String, Option(Int), String),
 ) -> Result(CardCreateRequest, DecodeError) {
-  let #(title, description, color, parent_card_id) = raw
+  let #(title, description, color, parent_card_id, due_date) = raw
   case parse_color(color) {
     Ok(parsed_color) ->
       Ok(CardCreateRequest(
@@ -113,6 +116,7 @@ fn raw_to_create_request(
         description: optional_string(description),
         color: parsed_color,
         parent_card_id: parent_card_id,
+        due_date: optional_string(due_date),
       ))
     Error(error) -> Error(error)
   }

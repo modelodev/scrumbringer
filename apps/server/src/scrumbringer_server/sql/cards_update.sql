@@ -8,7 +8,8 @@ SET
     when $5 < 0 then parent_card_id
     when $5 = 0 then null
     else $5
-  end
+  end,
+  due_date = NULLIF($6, '')::date
 WHERE id = $1
 RETURNING
     id,

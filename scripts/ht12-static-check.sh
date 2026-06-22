@@ -183,13 +183,13 @@ else
   failures=1
 fi
 
-if grep -Eq "pub type DisabledReason" apps/client/src/scrumbringer_client/features/cards/detail_policy.gleam \
-  && grep -Eq "ClosedCardCannotReceiveChildren" apps/client/src/scrumbringer_client/features/cards/detail_policy.gleam \
-  && grep -Eq "CardHasOperationalHistory" apps/client/src/scrumbringer_client/features/cards/detail_policy.gleam \
-  && grep -Eq "disabled_reason_label" apps/client/src/scrumbringer_client/components/card_detail_modal.gleam \
-  && grep -Eq "CardClosedCannotReceiveChildren" apps/client/src/scrumbringer_client/components/card_detail_modal.gleam \
-  && grep -Eq "ActivateHierarchyManagerOnly" apps/client/src/scrumbringer_client/components/card_detail_modal.gleam \
-  && ! grep -Eq "Only project managers can activate a card hierarchy|Closed cards cannot receive new children|Cannot delete: has operational history|Mover a" apps/client/src/scrumbringer_client/components/card_detail_modal.gleam apps/client/src/scrumbringer_client/features/cards/detail_policy.gleam; then
+if grep -Eq "pub type DisabledReason" apps/client/src/scrumbringer_client/features/cards/policy.gleam \
+  && grep -Eq "ClosedCardCannotReceiveChildren" apps/client/src/scrumbringer_client/features/cards/policy.gleam \
+  && grep -Eq "CardHasOperationalHistory" apps/client/src/scrumbringer_client/features/cards/policy.gleam \
+  && grep -Eq "disabled_reason_label" apps/client/src/scrumbringer_client/components/card_show.gleam \
+  && grep -Eq "CardClosedCannotReceiveChildren" apps/client/src/scrumbringer_client/components/card_show.gleam \
+  && grep -Eq "ActivateHierarchyManagerOnly" apps/client/src/scrumbringer_client/components/card_show.gleam \
+  && ! grep -Eq "Only project managers can activate a card hierarchy|Closed cards cannot receive new children|Cannot delete: has operational history|Mover a" apps/client/src/scrumbringer_client/components/card_show.gleam apps/client/src/scrumbringer_client/features/cards/policy.gleam; then
   echo "ht12-static:card_actions:i18n_typed_blockers=ok"
 else
   echo "ht12-static:card_actions:i18n_typed_blockers=missing"

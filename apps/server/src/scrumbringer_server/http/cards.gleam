@@ -268,6 +268,7 @@ fn create_card_in_project(
       payload.title,
       payload.description,
       payload.color,
+      payload.due_date,
       user_id,
     )
   {
@@ -495,7 +496,7 @@ fn handle_update(
 ) -> wisp.Response {
   case auth.require_current_user_response(req, ctx) {
     Error(resp) -> resp
-    Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id)
+    Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id, user.org_id)
   }
 }
 
@@ -504,10 +505,11 @@ fn update_card_with_csrf(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   case csrf.require_csrf(req) {
     Error(resp) -> resp
-    Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id)
+    Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id, org_id)
   }
 }
 
@@ -516,12 +518,13 @@ fn update_card_with_auth(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
     Error(error) -> card_error_response(error)
-    Ok(card) -> update_card_in_project(req, ctx, card, user_id)
+    Ok(card) -> update_card_in_project(req, ctx, card, user_id, org_id)
   }
 }
 
@@ -530,12 +533,13 @@ fn update_card_in_project(
   ctx: auth.Ctx,
   card: Card,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case require_project_admin(db, user_id, card.project_id) {
     Error(resp) -> resp
-    Ok(Nil) -> update_card_with_payload(req, ctx, card.id, user_id)
+    Ok(Nil) -> update_card_with_payload(req, ctx, card.id, user_id, org_id)
   }
 }
 
@@ -544,9 +548,10 @@ fn update_card_with_payload(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   with_card_payload(req, fn(payload) {
-    update_card_in_db(ctx, card_id, payload, user_id)
+    update_card_in_db(ctx, card_id, payload, user_id, org_id)
   })
 }
 
@@ -555,6 +560,7 @@ fn update_card_in_db(
   card_id: Int,
   payload: card_payloads.CardPayload,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
@@ -566,6 +572,8 @@ fn update_card_in_db(
       payload.title,
       payload.description,
       payload.color,
+      payload.due_date,
+      org_id,
       user_id,
     )
   {

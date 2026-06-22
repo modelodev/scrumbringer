@@ -80,7 +80,7 @@ fn callbacks() -> pool_view.Callbacks(client_state.Msg) {
       ))
     },
     on_open: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_hover_opened: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskHoverOpened(task_id))

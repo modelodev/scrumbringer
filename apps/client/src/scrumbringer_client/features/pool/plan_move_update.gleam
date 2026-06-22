@@ -11,8 +11,8 @@ import domain/card.{type Card}
 import domain/task.{type Task}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/cards/move_target
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/pool/msg as pool_messages
 
 pub type Context(parent_msg) {
@@ -73,14 +73,14 @@ fn move_requested(
   let Context(cards:, tasks:, ..) = context
   case list.find(cards, fn(card) { card.id == card_id }) {
     Ok(card) ->
-      case detail_policy.move_unavailable_reason(card, cards, tasks) {
+      case card_policy.move_unavailable_reason(card, cards, tasks) {
         opt.Some(reason) -> #(
           member_pool.Model(
             ..model,
             member_plan_move_mode: member_pool.PlanNotMoving,
             member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.Some(
-              detail_policy.move_blocked_reason_label(reason),
+              card_policy.move_blocked_reason_label(reason),
             ),
             member_plan_move_in_flight: False,
           ),
@@ -93,7 +93,7 @@ fn move_requested(
             member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.None,
             member_plan_move_in_flight: False,
-            card_detail_open: opt.None,
+            card_show_open: opt.None,
           ),
           effect.none(),
         )
@@ -207,12 +207,12 @@ fn select_found_card(
   on_card_moved: fn(ApiResult(contracts.CardActionResponse)) -> parent_msg,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   let blocked = case target {
-    move_target.ProjectRoot -> detail_policy.move_to_root_blocked_reason(card)
+    move_target.ProjectRoot -> card_policy.move_to_root_blocked_reason(card)
     move_target.InsideCard(destination_id) ->
       case list.find(cards, fn(candidate) { candidate.id == destination_id }) {
         Ok(destination) ->
-          detail_policy.move_blocked_reason(card, destination, cards, tasks)
-        Error(_) -> opt.Some(detail_policy.DestinationNotFound)
+          card_policy.move_blocked_reason(card, destination, cards, tasks)
+        Error(_) -> opt.Some(card_policy.DestinationNotFound)
       }
   }
 
@@ -237,9 +237,9 @@ fn select_found_card(
       member_pool.Model(
         ..model,
         member_plan_move_drag: member_pool.PlanMoveNotDragging,
-        member_plan_move_error: opt.Some(
-          detail_policy.move_blocked_reason_label(reason),
-        ),
+        member_plan_move_error: opt.Some(card_policy.move_blocked_reason_label(
+          reason,
+        )),
       ),
       effect.none(),
     )

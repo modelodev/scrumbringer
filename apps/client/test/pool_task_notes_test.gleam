@@ -1,9 +1,16 @@
+import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
 import domain/remote
-import domain/task.{type TaskNote, TaskNote}
+import domain/task/id as task_id
+import domain/user/id as user_id
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/i18n/locale
@@ -89,20 +96,29 @@ fn config(
     note_error: None,
     note_in_flight: note_in_flight,
     delete_in_flight: None,
+    pin_in_flight: None,
     on_dialog_opened: "open",
     on_dialog_closed: "close",
     on_content_changed: fn(value) { "content-" <> value },
     on_submitted: "submit",
     on_delete: fn(_id) { "delete" },
+    on_pin_toggle: fn(_id, _pinned) { "pin" },
   )
 }
 
-fn note(id: Int, user_id user_id: Int, content content: String) -> TaskNote {
-  TaskNote(
-    id: id,
-    task_id: 10,
-    user_id: user_id,
+fn note(id: Int, user_id user_id_value: Int, content content: String) -> Note {
+  Note(
+    id: note_id.new(id),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(10)),
+    user_id: user_id.new(user_id_value),
     content: content,
+    url: None,
+    pinned: False,
     created_at: "2026-06-08T09:00:00Z",
+    updated_at: "2026-06-08T09:00:00Z",
+    author_email: "user" <> int.to_string(user_id_value) <> "@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }

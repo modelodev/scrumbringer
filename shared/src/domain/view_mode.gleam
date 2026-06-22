@@ -16,7 +16,7 @@
 pub type ViewMode {
   /// Canvas de tareas disponibles (drag & drop)
   Pool
-  /// Kanban de fichas (Draft -> En Curso -> Closed)
+  /// Plan de cards y jerarquía
   Cards
   /// Tareas activas agrupadas por capacidad
   Capabilities

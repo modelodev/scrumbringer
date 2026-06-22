@@ -130,7 +130,7 @@ type BuildState {
 /// Realistic configuration with edge cases and variability.
 pub fn realistic_config() -> SeedConfig {
   SeedConfig(
-    user_count: 6,
+    user_count: 9,
     inactive_user_count: 2,
     project_count: 4,
     empty_project_count: 1,
@@ -199,7 +199,8 @@ fn user_email_pool() -> List(String) {
   [
     "member@example.com", "pm@example.com", "beta@example.com",
     "dev@example.com", "qa@example.com", "lead@example.com",
-    "intern@example.com", "contractor@example.com",
+    "intern@example.com", "contractor@example.com", "ops@example.com",
+    "design@example.com", "data@example.com",
   ]
 }
 
@@ -999,6 +1000,19 @@ fn build_plan_qa_scenarios(
             Some(days_ago_timestamp(16)),
             Some(days_ago_timestamp(2)),
           ))
+          use activation_impact_id <- result.try(insert_seed_root_card(
+            db,
+            state,
+            project_id,
+            "Plan QA - Draft activation impact",
+            Some(
+              "Draft fixture with four prepared tasks so Plan can show a meaningful +4 activation impact.",
+            ),
+            card.Draft,
+            8,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
 
           use api_id <- result.try(insert_plan_qa_child_card(
             db,
@@ -1185,11 +1199,60 @@ fn build_plan_qa_scenarios(
             1,
             2,
           ))
+          use impact_backend <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            bug_id,
+            "Plan QA - Draft impact backend",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            2,
+          ))
+          use impact_frontend <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            feature_id,
+            "Plan QA - Draft impact frontend",
+            Available,
+            state.admin_id,
+            None,
+            4,
+            2,
+          ))
+          use impact_qa <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            task_id,
+            "Plan QA - Draft impact QA",
+            Available,
+            state.admin_id,
+            None,
+            3,
+            2,
+          ))
+          use impact_docs <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            activation_impact_id,
+            no_capability_type_id,
+            "Plan QA - Draft impact docs",
+            Available,
+            state.admin_id,
+            None,
+            2,
+            2,
+          ))
 
           let new_card_ids = [
             direct_id,
             matrix_id,
             closed_id,
+            activation_impact_id,
             api_id,
             ui_id,
             docs_id,
@@ -1207,6 +1270,10 @@ fn build_plan_qa_scenarios(
             pool_dependency,
             pool_blocked_overdue,
             closed_done,
+            impact_backend,
+            impact_frontend,
+            impact_qa,
+            impact_docs,
           ]
           let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
 
@@ -1247,6 +1314,8 @@ fn build_people_qa_scenarios(
           let api_owner = list_at_int(non_admins, 0, state.admin_id)
           let blocked_owner = list_at_int(non_admins, 1, state.admin_id)
           let loaded_owner = list_at_int(non_admins, 2, state.admin_id)
+          let review_owner = list_at_int(non_admins, 3, state.admin_id)
+          let support_owner = list_at_int(non_admins, 4, state.admin_id)
 
           use coordination_id <- result.try(insert_seed_root_card(
             db,
@@ -1292,6 +1361,18 @@ fn build_people_qa_scenarios(
             coordination_id,
             "People QA - Release readiness",
             Some("Task leaf for release readiness coordination."),
+            card.Active,
+            2,
+            Some(days_ago_timestamp(2)),
+            None,
+          ))
+          use support_id <- result.try(insert_seed_child_card(
+            db,
+            state,
+            project_id,
+            coordination_id,
+            "People QA - Review support",
+            Some("Task leaf for review and support load distribution."),
             card.Active,
             2,
             Some(days_ago_timestamp(2)),
@@ -1412,8 +1493,62 @@ fn build_people_qa_scenarios(
             2,
             1,
           ))
+          use review_ongoing <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            feature_id,
+            "People QA - Review dependency notes",
+            Claimed(Ongoing),
+            state.admin_id,
+            Some(review_owner),
+            4,
+            2,
+          ))
+          use review_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            bug_id,
+            "People QA - Review blocked owner summary",
+            Claimed(Taken),
+            state.admin_id,
+            Some(review_owner),
+            3,
+            1,
+          ))
+          use support_claimed <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            task_id,
+            "People QA - Support async handoff",
+            Claimed(Taken),
+            state.admin_id,
+            Some(support_owner),
+            2,
+            1,
+          ))
+          use support_available <- result.try(insert_plan_qa_task(
+            db,
+            project_id,
+            support_id,
+            task_id,
+            "People QA - Support intake available",
+            Available,
+            state.admin_id,
+            None,
+            2,
+            1,
+          ))
 
-          let new_card_ids = [coordination_id, api_id, ui_id, release_id]
+          let new_card_ids = [
+            coordination_id,
+            api_id,
+            ui_id,
+            release_id,
+            support_id,
+          ]
           let new_task_seeds = [
             admin_ongoing,
             api_ongoing,
@@ -1424,6 +1559,10 @@ fn build_people_qa_scenarios(
             loaded_two,
             loaded_three,
             loaded_four,
+            review_ongoing,
+            review_claimed,
+            support_claimed,
+            support_available,
           ]
           let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
 

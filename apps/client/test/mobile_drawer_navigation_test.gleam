@@ -1,6 +1,7 @@
 import domain/view_mode
 import gleam/option as opt
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
 import scrumbringer_client/permissions
@@ -77,4 +78,26 @@ pub fn navigate_from_depth_to_cards_route_clears_depth_test() {
 
   next_model.member.pool.view_mode |> assert_equal(view_mode.Cards)
   next_model.member.pool.member_card_depth_filter |> assert_equal(opt.None)
+}
+
+pub fn navigate_to_card_work_scope_sets_plan_scope_card_test() {
+  let route =
+    url_state.empty()
+    |> url_state.with_project(7)
+    |> url_state.with_view(view_mode.People)
+    |> url_state.with_card_work_scope(42)
+    |> router.Member
+
+  let #(next_model, _) =
+    client_update.update(
+      client_state.default_model(),
+      client_state.NavigateTo(route, client_state.Push),
+    )
+
+  next_model.core.page |> assert_equal(client_state.Member)
+  next_model.core.selected_project_id |> assert_equal(opt.Some(7))
+  next_model.member.pool.view_mode |> assert_equal(view_mode.People)
+  next_model.member.pool.member_plan_scope_kind
+  |> assert_equal(member_pool.PlanScopeCard)
+  next_model.member.pool.member_plan_scope_card_id |> assert_equal(opt.Some(42))
 }

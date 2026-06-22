@@ -8,7 +8,7 @@
 //// - Work section (visible for ALL roles - AC1, AC7-9)
 ////   - New Task button: ALL members
 ////   - New Card button: PM/Admin only
-////   - Navigation links: Pool, Cards, Capabilities, People (ALL members)
+////   - Navigation links: Pool, Kanban, Plan, Capabilities, People (ALL members)
 //// - Configuration section (PM/Admin only)
 //// - Organization section (Org Admin only)
 //// - Unified active state indication across all nav items
@@ -67,6 +67,7 @@ pub type LeftPanelConfig(msg) {
     on_new_card: msg,
     // Navigation to work views (AC2)
     on_navigate_pool: msg,
+    on_navigate_kanban: msg,
     on_navigate_cards: msg,
     on_navigate_depth: fn(Int) -> msg,
     on_navigate_capabilities: msg,
@@ -129,6 +130,28 @@ fn member_view_active(
   case check_view_mode, url_state.view_param(state) {
     Some(expected), Some(actual) -> expected == actual
     _, _ -> False
+  }
+}
+
+fn plan_nav_active(current_route: Option(router.Route)) -> Bool {
+  case current_route {
+    Some(router.Member(state)) ->
+      case url_state.view_param(state), url_state.plan_mode(state) {
+        Some(Cards), url_state.PlanStructureParam -> True
+        _, _ -> False
+      }
+    _ -> False
+  }
+}
+
+fn kanban_nav_active(current_route: Option(router.Route)) -> Bool {
+  case current_route {
+    Some(router.Member(state)) ->
+      case url_state.view_param(state), url_state.plan_mode(state) {
+        Some(Cards), url_state.PlanKanbanParam -> True
+        _, _ -> False
+      }
+    _ -> False
   }
 }
 
@@ -334,13 +357,25 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
               i18n_text.Pool,
               config.on_navigate_pool,
             ),
-            view_work_nav_link(
-              config,
-              Cards,
+            view_nav_item(
+              config.locale,
+              kanban_nav_active(config.current_route),
+              "nav-kanban",
+              icons.List,
+              i18n_text.Kanban,
+              config.selected_project_id == None,
+              config.on_navigate_kanban,
+              None,
+            ),
+            view_nav_item(
+              config.locale,
+              plan_nav_active(config.current_route),
               "nav-cards",
               icons.Cards,
               i18n_text.MemberCards,
+              config.selected_project_id == None,
               config.on_navigate_cards,
+              None,
             ),
           ],
           [

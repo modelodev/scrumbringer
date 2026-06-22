@@ -143,7 +143,7 @@ pub type TaskEventInsertOptions {
     project_id: Int,
     task_id: Int,
     actor_user_id: Int,
-    event_type: audit_events_db.TaskEventType,
+    event_type: audit_events_db.EventType,
     created_at: Option(String),
   )
 }
@@ -1417,34 +1417,35 @@ pub fn insert_task_note(
   content: String,
   created_at: Option(String),
 ) -> Result(Int, String) {
-  let base_cols = "task_id, user_id, content"
-  let base_vals = "$1, $2, $3"
-  let base_idx = 4
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp("", "", 4, "created_at", created_at, [])
+  let #(timestamp_cols, timestamp_vals, _, timestamp_params) =
+    append_optional_timestamp(cols, vals, idx, "updated_at", created_at, params)
 
-  let #(cols, vals, _, params) =
-    append_optional_timestamp(
-      base_cols,
-      base_vals,
-      base_idx,
-      "created_at",
-      created_at,
-      [],
-    )
+  let sql = "WITH task_scope AS (
+       SELECT id, project_id
+       FROM tasks
+       WHERE id = $1
+     ), inserted_note AS (
+       INSERT INTO notes (project_id, user_id, content" <> timestamp_cols <> ")
+       SELECT project_id, $2, $3" <> timestamp_vals <> "
+       FROM task_scope
+       RETURNING id
+     ), inserted_relation AS (
+       INSERT INTO task_notes (note_id, task_id)
+       SELECT inserted_note.id, task_scope.id
+       FROM inserted_note, task_scope
+       RETURNING note_id
+     )
+     SELECT note_id FROM inserted_relation"
 
-  let sql =
-    "INSERT INTO task_notes ("
-    <> cols
-    <> ") VALUES ("
-    <> vals
-    <> ") RETURNING id"
-
-  let base_query =
+  let query =
     pog.query(sql)
     |> pog.parameter(pog.int(task_id))
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.text(content))
 
-  apply_timestamp_params(base_query, params)
+  apply_timestamp_params(query, timestamp_params)
   |> pog.returning(int_decoder())
   |> pog.execute(db)
   |> result.map_error(fn(e) { "insert_task_note: " <> string.inspect(e) })
@@ -1625,7 +1626,7 @@ pub fn query_int(db: pog.Connection, sql: String) -> Result(Int, String) {
 pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
   use _ <- result.try(
     pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, audit_events, tasks, task_types, cards, task_positions, task_notes, user_task_work_session, user_task_work_total, project_member_capabilities, capabilities, project_members, projects CASCADE",
+      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, audit_events, tasks, task_types, cards, task_positions, task_notes, card_notes, notes, user_task_work_session, user_task_work_total, project_member_capabilities, capabilities, project_members, projects CASCADE",
     )
     |> pog.execute(db)
     |> result.map(fn(_) { Nil })

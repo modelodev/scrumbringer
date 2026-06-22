@@ -4,7 +4,7 @@ import gleam/dict
 import gleam/list
 
 import domain/api_error.{type ApiResult}
-import domain/task.{type TaskNote}
+import domain/note/entity.{type Note}
 import scrumbringer_client/client_state/member/notes as member_notes
 
 pub fn ensure_fetch(
@@ -34,7 +34,7 @@ pub fn ensure_fetch(
 pub fn fetched(
   model: member_notes.Model,
   task_id: Int,
-  result: ApiResult(List(TaskNote)),
+  result: ApiResult(List(Note)),
 ) -> member_notes.Model {
   let model =
     member_notes.Model(
@@ -59,7 +59,7 @@ pub fn fetched(
   }
 }
 
-fn take_last(notes: List(TaskNote), count: Int) -> List(TaskNote) {
+fn take_last(notes: List(Note), count: Int) -> List(Note) {
   let total = list.length(notes)
   case total <= count {
     True -> notes

@@ -1,4 +1,4 @@
-//// Pure task dependency transformations for local task detail state.
+//// Pure task dependency transformations for local Task Show state.
 
 import gleam/list
 import gleam/option as opt

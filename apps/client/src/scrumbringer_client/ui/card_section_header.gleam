@@ -1,7 +1,7 @@
-//// Reusable section header component for card/modal detail tabs.
+//// Reusable section header component for Card Show and Task Show tabs.
 ////
 //// Provides consistent layout: [Title] ................ [Action Button]
-//// Used by card detail modal and task detail modal for visual consistency.
+//// Used by Card Show and Task Show for visual consistency.
 ////
 //// ## Usage
 ////

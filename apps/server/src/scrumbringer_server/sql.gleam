@@ -8,35 +8,85 @@ import gleam/dynamic/decode
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
-/// A row you get from running the `audit_events_insert` query
-/// defined in `./src/scrumbringer_server/sql/audit_events_insert.sql`.
+/// A row you get from running the `audit_events_insert_card` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_card.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type AuditEventsInsertRow {
-  AuditEventsInsertRow(id: Int)
+pub type AuditEventsInsertCardRow {
+  AuditEventsInsertCardRow(id: Int)
 }
 
-/// name: audit_events_insert
+/// name: audit_events_insert_card
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn audit_events_insert(
+pub fn audit_events_insert_card(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
   arg_4: Int,
   arg_5: String,
-) -> Result(pog.Returned(AuditEventsInsertRow), pog.QueryError) {
+) -> Result(pog.Returned(AuditEventsInsertCardRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    decode.success(AuditEventsInsertRow(id:))
+    decode.success(AuditEventsInsertCardRow(id:))
   }
 
-  "-- name: audit_events_insert
+  "-- name: audit_events_insert_card
+insert into audit_events (
+  org_id,
+  project_id,
+  card_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `audit_events_insert_task` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_task.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AuditEventsInsertTaskRow {
+  AuditEventsInsertTaskRow(id: Int)
+}
+
+/// name: audit_events_insert_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn audit_events_insert_task(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(AuditEventsInsertTaskRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AuditEventsInsertTaskRow(id:))
+  }
+
+  "-- name: audit_events_insert_task
 insert into audit_events (
   org_id,
   project_id,
@@ -370,9 +420,13 @@ pub type CardNotesCreateRow {
   CardNotesCreateRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -390,22 +444,31 @@ pub fn card_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(CardNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesCreateRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -414,41 +477,45 @@ pub fn card_notes_create(
 
   "-- name: card_notes_create
 -- AC20: Include author email and role for tooltip
-with card_ref as (
+with card_scope as (
   select id, project_id
   from cards
   where id = $1
 ), inserted_note as (
-  insert into notes (project_id, user_id, content)
-  select project_id, $2, $3
-  from card_ref
-  returning id, user_id, content, created_at
-), inserted_link as (
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
+  from card_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
   insert into card_notes (note_id, card_id)
-  select inserted_note.id, card_ref.id
-  from inserted_note
-  cross join card_ref
+  select inserted_note.id, card_scope.id
+  from inserted_note, card_scope
   returning note_id, card_id
 )
 select
   n.id,
-  l.card_id,
+  r.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
 from inserted_note n
-join inserted_link l on l.note_id = n.id
+join inserted_relation r on r.note_id = n.id
 join users u on u.id = n.user_id
-left join cards c on c.id = l.card_id
+left join cards c on c.id = r.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -503,9 +570,13 @@ pub type CardNotesGetRow {
   CardNotesGetRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -526,18 +597,26 @@ pub fn card_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesGetRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -549,9 +628,13 @@ pub fn card_notes_get(
 select
   n.id,
   cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
@@ -580,9 +663,13 @@ pub type CardNotesListRow {
   CardNotesListRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -602,18 +689,26 @@ pub fn card_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesListRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -625,9 +720,13 @@ pub fn card_notes_list(
 select
   n.id,
   cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
@@ -641,6 +740,105 @@ order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesSetPinnedRow {
+  CardNotesSetPinnedRow(
+    id: Int,
+    card_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: card_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(CardNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(CardNotesSetPinnedRow(
+      id:,
+      card_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: card_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from card_notes cn
+  where cn.note_id = n.id
+    and cn.card_id = $1
+    and n.id = $2
+  returning n.id, cn.card_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.card_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -678,6 +876,7 @@ pub fn cards_create(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
+  arg_7: String,
 ) -> Result(pog.Returned(CardsCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -710,7 +909,8 @@ WITH input AS (
     $3::text AS description,
     NULLIF($4, '')::text AS color,
     $5::int AS created_by,
-    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id
+    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id,
+    NULLIF($7, '')::date AS due_date
 )
 INSERT INTO cards (
   project_id,
@@ -718,7 +918,8 @@ INSERT INTO cards (
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 )
 SELECT
   project_id,
@@ -726,7 +927,8 @@ SELECT
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 FROM input
 WHERE parent_card_id IS NULL
    OR NOT EXISTS (
@@ -752,6 +954,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -1052,6 +1255,7 @@ pub fn cards_update(
   arg_3: String,
   arg_4: String,
   arg_5: Int,
+  arg_6: String,
 ) -> Result(pog.Returned(CardsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -1086,7 +1290,8 @@ SET
     when $5 < 0 then parent_card_id
     when $5 = 0 then null
     else $5
-  end
+  end,
+  due_date = NULLIF($6, '')::date
 WHERE id = $1
 RETURNING
     id,
@@ -1105,6 +1310,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_3))
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4708,9 +4914,16 @@ pub type TaskNotesCreateRow {
   TaskNotesCreateRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4724,52 +4937,77 @@ pub fn task_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(TaskNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesCreateRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_create
-with task_ref as (
+with task_scope as (
   select id, project_id
   from tasks
   where id = $1
 ), inserted_note as (
-  insert into notes (project_id, user_id, content)
-  select project_id, $2, $3
-  from task_ref
-  returning id, user_id, content, created_at
-), inserted_link as (
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
+  from task_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
   insert into task_notes (note_id, task_id)
-  select inserted_note.id, task_ref.id
-  from inserted_note
-  cross join task_ref
+  select inserted_note.id, task_scope.id
+  from inserted_note, task_scope
   returning note_id, task_id
 )
 select
   n.id,
-  l.task_id,
+  r.task_id,
+  n.project_id,
   n.user_id,
   n.content,
-  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from inserted_note n
-join inserted_link l on l.note_id = n.id;
+join inserted_relation r on r.note_id = n.id
+join users u on u.id = n.user_id
+left join tasks t on t.id = r.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4824,9 +5062,16 @@ pub type TaskNotesGetRow {
   TaskNotesGetRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4843,15 +5088,29 @@ pub fn task_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesGetRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
@@ -4859,11 +5118,21 @@ pub fn task_notes_get(
 select
   n.id,
   tn.task_id,
+  n.project_id,
   n.user_id,
   n.content,
-  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from task_notes tn
 join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
 where tn.task_id = $1
   and n.id = $2;
 "
@@ -4884,9 +5153,16 @@ pub type TaskNotesListRow {
   TaskNotesListRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4902,15 +5178,29 @@ pub fn task_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesListRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
@@ -4918,16 +5208,125 @@ pub fn task_notes_list(
 select
   n.id,
   tn.task_id,
+  n.project_id,
   n.user_id,
   n.content,
-  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from task_notes tn
 join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
 where tn.task_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesSetPinnedRow {
+  TaskNotesSetPinnedRow(
+    id: Int,
+    task_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: task_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(TaskNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(TaskNotesSetPinnedRow(
+      id:,
+      task_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: task_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from task_notes tn
+  where tn.note_id = n.id
+    and tn.task_id = $1
+    and n.id = $2
+  returning n.id, tn.task_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.task_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -7460,9 +7859,10 @@ pub fn tasks_update(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
-  arg_7: Int,
+  arg_7: String,
   arg_8: Int,
   arg_9: Int,
+  arg_10: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -7531,10 +7931,11 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
+  due_date = case when $7 = '__unset__' then due_date else nullif($7, '')::date end,
   card_id = case
-    when $7 = -999999 then card_id
-    when $8 = -1 then card_id
-    else nullif($8, 0)
+    when $8 = -999999 then card_id
+    when $9 = -1 then card_id
+    else nullif($9, 0)
   end,
   version = version + 1
 where id = $1
@@ -7542,7 +7943,7 @@ where id = $1
     execution_state = 'available'
     or (execution_state = 'claimed' and claimed_by = $2)
   )
-  and version = $9
+  and version = $10
   returning
     id,
     project_id,
@@ -7611,9 +8012,10 @@ left join lateral (
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
+  |> pog.parameter(pog.int(arg_10))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

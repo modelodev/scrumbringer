@@ -57,5 +57,5 @@ pub type StructureRow {
 pub type StructureDetail {
   SubcardsDetail(card: Card, subcards: List(Card), rollup: CardRollup)
   TasksDetail(card: Card, tasks: List(Task), rollup: CardRollup)
-  EmptyCardDetail(card: Card, rollup: CardRollup)
+  EmptyCardContent(card: Card, rollup: CardRollup)
 }

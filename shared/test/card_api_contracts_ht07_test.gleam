@@ -82,6 +82,7 @@ pub fn card_create_request_codec_accepts_parent_card_test() {
     description: option.Some("Desc"),
     color: option.Some(card.Blue),
     parent_card_id: option.Some(5),
+    due_date: option.None,
   ) = request
 }
 

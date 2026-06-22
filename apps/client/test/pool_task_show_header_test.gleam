@@ -1,0 +1,152 @@
+import gleam/option.{None, Some}
+import gleam/string
+import lustre/element
+
+import domain/remote.{Loaded}
+import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
+import domain/task_state
+import domain/task_status.{type TaskPhase, Available, Done, Taken}
+import domain/task_type.{TaskTypeInline}
+import scrumbringer_client/features/pool/task_show_header
+import scrumbringer_client/i18n/locale
+
+fn assert_contains(html: String, fragment: String) {
+  let assert True = string.contains(html, fragment)
+}
+
+pub fn task_show_header_renders_loaded_task_test() {
+  let html =
+    task_show_header.view(task_show_header.Config(
+      locale: locale.En,
+      task: Some(available_task()),
+      parent_card_title: Some("Release card"),
+      capability_name: Some("Backend"),
+      dependencies: Loaded([]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Prepare release")
+  assert_contains(html, "Release card")
+  assert_contains(html, "Feature")
+  assert_contains(html, "Backend")
+  assert_contains(html, "task-meta-capability")
+  assert_contains(html, "P2")
+  assert_contains(html, "Available")
+  assert_contains(html, "Unassigned")
+  assert_contains(html, "No due date")
+  assert_contains(html, "task-show-title")
+}
+
+pub fn task_show_header_renders_assigned_task_test() {
+  let html =
+    task_show_header.view(task_show_header.Config(
+      locale: locale.En,
+      task: Some(claimed_task()),
+      parent_card_title: Some("Release card"),
+      capability_name: None,
+      dependencies: Loaded([]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Claimed")
+  assert_contains(html, "Assigned")
+  assert_contains(html, "task-meta-assignee")
+}
+
+pub fn task_show_header_renders_loading_title_test() {
+  let html =
+    task_show_header.view(task_show_header.Config(
+      locale: locale.En,
+      task: None,
+      parent_card_title: None,
+      capability_name: None,
+      dependencies: Loaded([]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Loading")
+  assert_contains(html, "task-show-title")
+}
+
+pub fn task_show_header_localizes_close_label_test() {
+  let html =
+    task_show_header.view(task_show_header.Config(
+      locale: locale.Es,
+      task: Some(available_task()),
+      parent_card_title: Some("Release card"),
+      capability_name: None,
+      dependencies: Loaded([]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "aria-label=\"Cerrar\"")
+}
+
+pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
+  let html =
+    task_show_header.view(task_show_header.Config(
+      locale: locale.En,
+      task: Some(Task(..available_task(), due_date: Some("2026-06-24"))),
+      parent_card_title: Some("Release card"),
+      capability_name: None,
+      dependencies: Loaded([
+        dependency(11, Available),
+        dependency(12, Done),
+      ]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Due 2026-06-24")
+  assert_contains(html, "Blocked by 1 tasks")
+  assert_contains(html, "task-meta-blocking blocking")
+}
+
+fn available_task() -> Task {
+  Task(
+    id: 42,
+    project_id: 1,
+    type_id: 1,
+    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
+    ongoing_by: None,
+    title: "Prepare release",
+    description: Some("Task description"),
+    priority: 2,
+    state: task_state.Available,
+    created_by: 7,
+    created_at: "2026-06-01T10:00:00Z",
+    due_date: None,
+    version: 3,
+    parent_card_id: None,
+    card_id: Some(10),
+    card_title: Some("Release card"),
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
+  )
+}
+
+fn claimed_task() -> Task {
+  let state =
+    task_state.Claimed(
+      claimed_by: 7,
+      claimed_at: "2026-06-01T11:00:00Z",
+      mode: Taken,
+    )
+
+  Task(..available_task(), state: state)
+}
+
+fn dependency(id: Int, status: TaskPhase) -> TaskDependency {
+  TaskDependency(
+    depends_on_task_id: id,
+    title: "Dependency",
+    status: status,
+    claimed_by: None,
+  )
+}

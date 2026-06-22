@@ -4,14 +4,15 @@ import gleam/list
 import gleam/option as opt
 
 import domain/api_error.{type ApiError}
+import domain/note/entity.{type Note}
+import domain/note/id as note_ids
 import domain/remote.{Failed, Loaded}
-import domain/task.{type TaskNote}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 
 pub fn loaded(
   notes_model: member_notes.Model,
-  notes: List(TaskNote),
+  notes: List(Note),
 ) -> member_notes.Model {
   member_notes.Model(..notes_model, member_notes: Loaded(notes))
 }
@@ -62,10 +63,7 @@ pub fn submit_ready(notes_model: member_notes.Model) -> member_notes.Model {
   )
 }
 
-pub fn added(
-  notes_model: member_notes.Model,
-  note: TaskNote,
-) -> member_notes.Model {
+pub fn added(notes_model: member_notes.Model, note: Note) -> member_notes.Model {
   let updated = case notes_model.member_notes {
     Loaded(notes) -> [note, ..notes]
     _ -> [note]
@@ -109,7 +107,7 @@ pub fn deleted(
   let notes = case notes_model.member_notes {
     Loaded(items) ->
       items
-      |> list.filter(fn(note) { note.id != note_id })
+      |> list.filter(fn(note) { note_ids.to_int(note.id) != note_id })
       |> Loaded
     other -> other
   }
@@ -128,6 +126,52 @@ pub fn delete_failed(
   member_notes.Model(
     ..notes_model,
     member_note_delete_in_flight: opt.None,
+    member_note_error: opt.Some(err.message),
+  )
+}
+
+pub fn pin_started(
+  notes_model: member_notes.Model,
+  note_id: Int,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_pin_in_flight: opt.Some(note_id),
+    member_note_error: opt.None,
+  )
+}
+
+pub fn pinned(
+  notes_model: member_notes.Model,
+  updated_note: Note,
+) -> member_notes.Model {
+  let notes = case notes_model.member_notes {
+    Loaded(items) ->
+      items
+      |> list.map(fn(note) {
+        case note_ids.to_int(note.id) == note_ids.to_int(updated_note.id) {
+          True -> updated_note
+          False -> note
+        }
+      })
+      |> Loaded
+    other -> other
+  }
+
+  member_notes.Model(
+    ..notes_model,
+    member_notes: notes,
+    member_note_pin_in_flight: opt.None,
+  )
+}
+
+pub fn pin_failed(
+  notes_model: member_notes.Model,
+  err: ApiError,
+) -> member_notes.Model {
+  member_notes.Model(
+    ..notes_model,
+    member_note_pin_in_flight: opt.None,
     member_note_error: opt.Some(err.message),
   )
 }

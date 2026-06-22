@@ -22,6 +22,7 @@
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import pog
+import scrumbringer_server/http/activity
 import scrumbringer_server/http/api
 import scrumbringer_server/http/api_tokens
 import scrumbringer_server/http/auth
@@ -312,11 +313,17 @@ fn route_cards(
         None -> Some(wisp.not_found())
       }
 
+    ["api", "v1", "cards", card_id, "notes", note_id, "pin"] ->
+      Some(card_notes.handle_card_note_pin(req, auth_ctx(ctx), card_id, note_id))
+
     ["api", "v1", "cards", card_id, "notes", note_id] ->
       Some(card_notes.handle_card_note(req, auth_ctx(ctx), card_id, note_id))
 
     ["api", "v1", "cards", card_id, "notes"] ->
       Some(card_notes.handle_card_notes(req, auth_ctx(ctx), card_id))
+
+    ["api", "v1", "cards", card_id, "activity"] ->
+      Some(activity.handle_card_activity(req, auth_ctx(ctx), card_id))
 
     ["api", "v1", "views", "cards", card_id] ->
       Some(card_views.handle_card_view(req, auth_ctx(ctx), card_id))
@@ -367,10 +374,14 @@ fn route_tasks(
       Some(tasks.handle_task_dependencies(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "dependencies", dep_task_id] ->
       Some(tasks.handle_task_dependency(req, auth_ctx, task_id, dep_task_id))
+    ["api", "v1", "tasks", task_id, "notes", note_id, "pin"] ->
+      Some(task_notes.handle_task_note_pin(req, auth_ctx, task_id, note_id))
     ["api", "v1", "tasks", task_id, "notes", note_id] ->
       Some(task_notes.handle_task_note(req, auth_ctx, task_id, note_id))
     ["api", "v1", "tasks", task_id, "notes"] ->
       Some(task_notes.handle_task_notes(req, auth_ctx, task_id))
+    ["api", "v1", "tasks", task_id, "activity"] ->
+      Some(activity.handle_task_activity(req, auth_ctx, task_id))
     ["api", "v1", "views", "tasks", task_id] ->
       Some(task_views.handle_task_view(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id] ->

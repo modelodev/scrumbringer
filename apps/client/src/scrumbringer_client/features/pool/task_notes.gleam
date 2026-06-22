@@ -1,4 +1,4 @@
-//// Task detail notes tab.
+//// Task Show notes tab.
 
 import gleam/list
 import gleam/option as opt
@@ -7,9 +7,10 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
-import domain/org_role
+import domain/note/entity.{type Note}
+import domain/note/id as note_ids
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type TaskNote, TaskNote}
+import domain/user/id as user_ids
 
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/i18n/i18n
@@ -26,17 +27,19 @@ pub type Config(msg) {
     locale: Locale,
     current_user_id: opt.Option(Int),
     can_manage_notes: Bool,
-    notes: Remote(List(TaskNote)),
+    notes: Remote(List(Note)),
     dialog_mode: dialog_mode.DialogMode,
     note_content: String,
     note_error: opt.Option(String),
     note_in_flight: Bool,
     delete_in_flight: opt.Option(Int),
+    pin_in_flight: opt.Option(Int),
     on_dialog_opened: msg,
     on_dialog_closed: msg,
     on_content_changed: fn(String) -> msg,
     on_submitted: msg,
     on_delete: fn(Int) -> msg,
+    on_pin_toggle: fn(Int, Bool) -> msg,
   )
 }
 
@@ -86,7 +89,10 @@ fn notes_content(config: Config(msg)) -> Element(msg) {
             list.map(notes, fn(note) { task_note_to_view(config, note) }),
             t(config, i18n_text.Delete),
             t(config, i18n_text.DeleteAsAdmin),
+            t(config, i18n_text.PinNote),
+            t(config, i18n_text.UnpinNote),
             config.on_delete,
+            config.on_pin_toggle,
           )
       }
   }
@@ -119,14 +125,9 @@ fn note_dialog(config: Config(msg)) -> Element(msg) {
   ))
 }
 
-fn task_note_to_view(config: Config(msg), note: TaskNote) -> notes_list.NoteView {
-  let TaskNote(
-    id: id,
-    user_id: user_id,
-    content: content,
-    created_at: created_at,
-    ..,
-  ) = note
+fn task_note_to_view(config: Config(msg), note: Note) -> notes_list.NoteView {
+  let id = note_ids.to_int(note.id)
+  let user_id = user_ids.to_int(note.user_id)
 
   let author = case config.current_user_id == opt.Some(user_id) {
     True -> t(config, i18n_text.You)
@@ -142,12 +143,20 @@ fn task_note_to_view(config: Config(msg), note: TaskNote) -> notes_list.NoteView
   notes_list.NoteView(
     id: id,
     author: author,
-    created_at: created_at,
-    content: content,
+    created_at: note.created_at,
+    content: note.content,
+    url: note.url,
+    pinned: note.pinned,
+    can_pin: can_delete,
+    pin_in_flight: config.pin_in_flight == opt.Some(id),
+    pin_disabled_reason: case can_delete {
+      True -> opt.None
+      False -> opt.Some(t(config, i18n_text.CannotPinNote))
+    },
     can_delete: can_delete && config.delete_in_flight != opt.Some(id),
     delete_context: delete_context,
-    author_email: "",
-    author_project_role: opt.None,
-    author_org_role: org_role.Member,
+    author_email: note.author_email,
+    author_project_role: note.author_project_role,
+    author_org_role: note.author_org_role,
   )
 }

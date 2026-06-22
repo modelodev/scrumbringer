@@ -310,7 +310,11 @@ ALTER TABLE public.audit_events
       'card_closed',
       'card_moved',
       'task_dependency_added',
-      'task_dependency_removed'
+      'task_dependency_removed',
+      'note_created',
+      'note_pinned',
+      'note_unpinned',
+      'due_date_changed'
     )
   ),
   ADD CONSTRAINT audit_events_target_check CHECK (
@@ -321,13 +325,25 @@ ALTER TABLE public.audit_events
         'task_released',
         'task_closed',
         'task_dependency_added',
-        'task_dependency_removed'
+        'task_dependency_removed',
+        'note_created',
+        'note_pinned',
+        'note_unpinned',
+        'due_date_changed'
       )
       AND task_id IS NOT NULL
       AND card_id IS NULL
     )
     OR (
-      event_type IN ('card_activated', 'card_closed', 'card_moved')
+      event_type IN (
+        'card_activated',
+        'card_closed',
+        'card_moved',
+        'note_created',
+        'note_pinned',
+        'note_unpinned',
+        'due_date_changed'
+      )
       AND card_id IS NOT NULL
       AND task_id IS NULL
     )

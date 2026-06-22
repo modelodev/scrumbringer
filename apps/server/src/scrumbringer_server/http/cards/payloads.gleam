@@ -12,6 +12,7 @@ pub type CardPayload {
     description: Option(String),
     color: Option(card.CardColor),
     parent_card_id: Option(Int),
+    due_date: Option(String),
   )
 }
 
@@ -30,6 +31,7 @@ pub fn decode_card(data: Dynamic) -> Result(CardPayload, DecodeError) {
         description: request.description,
         color: request.color,
         parent_card_id: request.parent_card_id,
+        due_date: request.due_date,
       ))
   }
 }

@@ -192,6 +192,7 @@ pub type NavIcon {
   Automation
   Metrics
   Workflows
+  Capabilities
   TaskTypes
   TaskTemplates
   // ORGANIZACION section
@@ -226,6 +227,7 @@ pub type NavIcon {
   Play
   Return
   Cog
+  Calendar
   EmptyMailbox
   Close
   Menu
@@ -239,7 +241,6 @@ pub type NavIcon {
   Logout
   // Informational icons
   Info
-  Calendar
   // Link icons (Story 5.4)
   GitHub
   ExternalLink
@@ -283,6 +284,7 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Automation -> outline.bolt()
     Metrics -> outline.chart_bar()
     Workflows -> outline.cog_6_tooth()
+    Capabilities -> outline.puzzle_piece()
     TaskTypes -> outline.tag()
     TaskTemplates -> outline.document_duplicate()
     Invites -> outline.envelope()
@@ -315,6 +317,7 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Play -> outline.play()
     Return -> outline.arrow_uturn_left()
     Cog -> outline.cog_6_tooth()
+    Calendar -> outline.calendar()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()
@@ -328,7 +331,6 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
-    Calendar -> outline.calendar()
     // Link icons (Story 5.4)
     GitHub -> outline.code_bracket()
     ExternalLink -> outline.arrow_top_right_on_square()
@@ -366,6 +368,7 @@ pub fn nav_icon_with_class(
     Automation -> outline.bolt()
     Metrics -> outline.chart_bar()
     Workflows -> outline.cog_6_tooth()
+    Capabilities -> outline.puzzle_piece()
     TaskTypes -> outline.tag()
     TaskTemplates -> outline.document_duplicate()
     Invites -> outline.envelope()
@@ -398,6 +401,7 @@ pub fn nav_icon_with_class(
     Play -> outline.play()
     Return -> outline.arrow_uturn_left()
     Cog -> outline.cog_6_tooth()
+    Calendar -> outline.calendar()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()
@@ -411,7 +415,6 @@ pub fn nav_icon_with_class(
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
-    Calendar -> outline.calendar()
     // Link icons (Story 5.4)
     GitHub -> outline.code_bracket()
     ExternalLink -> outline.arrow_top_right_on_square()

@@ -4,7 +4,6 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
@@ -12,11 +11,12 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 import scrumbringer_client/features/people/state as people_state
 
@@ -156,18 +156,17 @@ pub type Model {
     member_pool_touch_client_x: Int,
     member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
-    card_detail_open: Option(Int),
-    card_detail_metrics: Remote(CardModalMetrics),
-    member_task_detail_tab: task_tabs.Tab,
-    member_task_detail_metrics: Remote(TaskModalMetrics),
-    member_task_detail_editing: Bool,
-    member_task_detail_edit_title: String,
-    member_task_detail_edit_description: String,
-    member_task_detail_edit_priority: String,
-    member_task_detail_edit_type_id: String,
-    member_task_detail_edit_card_id: String,
-    member_task_detail_edit_in_flight: Bool,
-    member_task_detail_edit_error: Option(String),
+    card_show_open: Option(Int),
+    card_show_model: card_show.Model,
+    member_task_show_tab: show_tabs.TaskShowTab,
+    member_task_show_editing: Bool,
+    member_task_show_edit_title: String,
+    member_task_show_edit_description: String,
+    member_task_show_edit_priority: String,
+    member_task_show_edit_type_id: String,
+    member_task_show_edit_card_id: String,
+    member_task_show_edit_in_flight: Bool,
+    member_task_show_edit_error: Option(String),
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
     people_expansions: Dict(Int, people_state.RowExpansion),
@@ -230,18 +229,17 @@ pub fn default_model() -> Model {
     member_pool_touch_client_x: 0,
     member_pool_touch_client_y: 0,
     member_pool_preview_task_id: option.None,
-    card_detail_open: option.None,
-    card_detail_metrics: NotAsked,
-    member_task_detail_tab: task_tabs.TasksTab,
-    member_task_detail_metrics: NotAsked,
-    member_task_detail_editing: False,
-    member_task_detail_edit_title: "",
-    member_task_detail_edit_description: "",
-    member_task_detail_edit_priority: "3",
-    member_task_detail_edit_type_id: "",
-    member_task_detail_edit_card_id: "",
-    member_task_detail_edit_in_flight: False,
-    member_task_detail_edit_error: option.None,
+    card_show_open: option.None,
+    card_show_model: card_show.init_model(),
+    member_task_show_tab: show_tabs.TaskDetailsTab,
+    member_task_show_editing: False,
+    member_task_show_edit_title: "",
+    member_task_show_edit_description: "",
+    member_task_show_edit_priority: "3",
+    member_task_show_edit_type_id: "",
+    member_task_show_edit_card_id: "",
+    member_task_show_edit_in_flight: False,
+    member_task_show_edit_error: option.None,
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,
     people_expansions: dict.new(),

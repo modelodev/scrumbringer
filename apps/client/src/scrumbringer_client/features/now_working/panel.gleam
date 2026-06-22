@@ -176,6 +176,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
       actions: [div([attribute.class("now-working-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,
+      content_testid: opt.None,
       testid: opt.None,
     ),
     task_item.Div,

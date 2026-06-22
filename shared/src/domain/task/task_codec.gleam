@@ -5,9 +5,9 @@ import gleam/option
 
 import domain/card/card_codec
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition,
-  type WorkSession, type WorkSessionsPayload, Task, TaskDependency, TaskNote,
-  TaskPosition, WorkSession, WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskPosition, type WorkSession,
+  type WorkSessionsPayload, Task, TaskDependency, TaskPosition, WorkSession,
+  WorkSessionsPayload,
 }
 import domain/task_state
 import domain/task_status.{
@@ -250,27 +250,6 @@ pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
         "TaskDependency.status",
       )
   }
-}
-
-// =============================================================================
-// Task Note Decoder
-// =============================================================================
-
-/// Decoder for TaskNote.
-pub fn note_decoder() -> decode.Decoder(TaskNote) {
-  use id <- decode.field("id", decode.int)
-  use task_id <- decode.field("task_id", decode.int)
-  use user_id <- decode.field("user_id", decode.int)
-  use content <- decode.field("content", decode.string)
-  use created_at <- decode.field("created_at", decode.string)
-
-  decode.success(TaskNote(
-    id: id,
-    task_id: task_id,
-    user_id: user_id,
-    content: content,
-    created_at: created_at,
-  ))
 }
 
 // =============================================================================

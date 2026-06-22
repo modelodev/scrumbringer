@@ -58,6 +58,7 @@ fn base_config(
     on_new_task: "msg",
     on_new_card: "msg",
     on_navigate_pool: "msg",
+    on_navigate_kanban: "msg",
     on_navigate_cards: "msg",
     on_navigate_depth: fn(depth) { "depth:" <> int.to_string(depth) },
     on_navigate_capabilities: "msg",
@@ -86,6 +87,15 @@ fn member_route(mode: view_mode_module.ViewMode) -> router.Route {
     url_state.empty()
     |> url_state.with_project(1)
     |> url_state.with_view(mode)
+  router.Member(state)
+}
+
+fn member_kanban_route() -> router.Route {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(1)
+    |> url_state.with_view(view_mode_module.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
   router.Member(state)
 }
 
@@ -135,6 +145,19 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
     let html = element.to_document_string(rendered)
     assert_contains(html, "nav-link active")
   })
+}
+
+pub fn left_panel_kanban_route_can_be_active_test() {
+  let rendered = left_panel.view(base_config(opt.Some(member_kanban_route())))
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-kanban\"")
+  assert_not_contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-cards\"",
+  )
+  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
 }
 
 pub fn left_panel_does_not_render_legacy_hierarchy_nav_test() {
@@ -215,12 +238,18 @@ pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
   assert_not_contains(html, "data-testid=\"nav-projects\"")
 }
 
-pub fn left_panel_work_nav_order_is_pool_plan_capabilities_people_en_test() {
+pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
     |> element.to_document_string
 
-  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
+  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-kanban\"")
+  |> assert_true
+  appears_before(
+    html,
+    "data-testid=\"nav-kanban\"",
+    "data-testid=\"nav-cards\"",
+  )
   |> assert_true
   appears_before(
     html,
@@ -235,6 +264,7 @@ pub fn left_panel_work_nav_order_is_pool_plan_capabilities_people_en_test() {
   )
   |> assert_true
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
+  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
   assert_contains(html, "<span class=\"nav-label\">Plan</span>")
   assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
   assert_contains(html, "<span class=\"nav-label\">People</span>")
@@ -271,6 +301,20 @@ pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
   )
 }
 
+pub fn left_sidebar_kanban_route_does_not_activate_plan_test() {
+  let html =
+    left_panel.view(base_config(opt.Some(member_kanban_route())))
+    |> element.to_document_string
+
+  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-kanban\"")
+  assert_not_contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-cards\"",
+  )
+  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
+}
+
 pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_depth_route(2))))
@@ -282,7 +326,7 @@ pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
   count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
 }
 
-pub fn left_panel_work_nav_order_is_pool_plan_capacidades_personas_es_test() {
+pub fn left_panel_work_nav_order_is_pool_kanban_plan_capacidades_personas_es_test() {
   let config =
     left_panel.LeftPanelConfig(
       ..base_config(opt.Some(member_route(view_mode_module.Pool))),
@@ -291,7 +335,13 @@ pub fn left_panel_work_nav_order_is_pool_plan_capacidades_personas_es_test() {
 
   let html = left_panel.view(config) |> element.to_document_string
 
-  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
+  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-kanban\"")
+  |> assert_true
+  appears_before(
+    html,
+    "data-testid=\"nav-kanban\"",
+    "data-testid=\"nav-cards\"",
+  )
   |> assert_true
   appears_before(
     html,
@@ -306,6 +356,7 @@ pub fn left_panel_work_nav_order_is_pool_plan_capacidades_personas_es_test() {
   )
   |> assert_true
   assert_contains(html, "<span class=\"nav-label\">Pool</span>")
+  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
   assert_contains(html, "<span class=\"nav-label\">Plan</span>")
   assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
   assert_contains(html, "<span class=\"nav-label\">Personas</span>")

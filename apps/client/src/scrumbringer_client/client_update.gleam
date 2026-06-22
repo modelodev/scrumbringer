@@ -93,6 +93,7 @@ import scrumbringer_client/features/layout/update as layout_workflow
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
+import scrumbringer_client/features/tasks/show_state as task_show_state
 import scrumbringer_client/helpers/options as helpers_options
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
@@ -334,6 +335,22 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           model.member.pool.member_card_depth_filter,
         )
+      let state = case
+        model.member.pool.member_plan_scope_kind,
+        model.member.pool.member_plan_scope_card_id
+      {
+        member_pool.PlanScopeCard, opt.Some(card_id) ->
+          url_state.with_card_work_scope(state, card_id)
+        _, _ -> state
+      }
+      let state = case model.member.pool.card_show_open {
+        opt.Some(card_id) -> url_state.with_card_show(state, card_id)
+        opt.None ->
+          case model.member.notes.member_notes_task_id {
+            opt.Some(task_id) -> url_state.with_task_show(state, task_id)
+            opt.None -> state
+          }
+      }
       router.Member(state)
     }
   }
@@ -344,12 +361,20 @@ pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
     toast.ClearPoolFilters ->
       client_state.pool_msg(pool_messages.MemberClearFilters)
     toast.ViewTask(task_id) ->
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
   }
 }
 
 fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
+}
+
+fn replace_url_and_title(model: client_state.Model) -> Effect(client_state.Msg) {
+  let route = current_route(model)
+  effect.batch([
+    router.replace(route),
+    router.update_page_title(route, model.ui.locale),
+  ])
 }
 
 fn current_browser_uri() -> opt.Option(Uri) {
@@ -619,6 +644,11 @@ fn apply_route_fields(
                   state,
                 )),
                 member_card_depth_filter: url_state.card_depth(state),
+                member_plan_scope_kind: case url_state.card_work_scope(state) {
+                  opt.Some(_) -> member_pool.PlanScopeCard
+                  opt.None -> pool.member_plan_scope_kind
+                },
+                member_plan_scope_card_id: url_state.card_work_scope(state),
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),
@@ -627,9 +657,54 @@ fn apply_route_fields(
             )
           },
         )
-      #(next_model, capabilities_fx)
+      let show_fx = route_show_effect(next_model, url_state.show(state))
+      #(next_model, effect.batch([capabilities_fx, show_fx]))
     }
   }
+}
+
+fn route_show_effect(
+  model: client_state.Model,
+  show: opt.Option(url_state.ShowParam),
+) -> Effect(client_state.Msg) {
+  case show {
+    opt.Some(url_state.CardShowParam(card_id)) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.OpenCardShow(card_id)))
+        Nil
+      })
+    opt.Some(url_state.TaskShowParam(task_id)) ->
+      effect.from(fn(dispatch) {
+        dispatch(
+          client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id)),
+        )
+        Nil
+      })
+    opt.None -> close_current_show_effect(model)
+  }
+}
+
+fn close_current_show_effect(
+  model: client_state.Model,
+) -> Effect(client_state.Msg) {
+  let card_fx = case model.member.pool.card_show_open {
+    opt.Some(_) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.CloseCardShow))
+        Nil
+      })
+    opt.None -> effect.none()
+  }
+  let task_fx = case model.member.notes.member_notes_task_id {
+    opt.Some(_) ->
+      effect.from(fn(dispatch) {
+        dispatch(client_state.pool_msg(pool_messages.MemberTaskShowClosed))
+        Nil
+      })
+    opt.None -> effect.none()
+  }
+
+  effect.batch([card_fx, task_fx])
 }
 
 fn hydrate_model(
@@ -1903,7 +1978,7 @@ pub fn update(
       case err.status == 401 {
         True -> {
           let model = show_login_without_user(model, True)
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
 
         False -> {
@@ -1915,7 +1990,7 @@ pub fn update(
               },
             )
 
-          #(model, replace_url(model))
+          #(model, replace_url_and_title(model))
         }
       }
     }
@@ -2092,12 +2167,65 @@ pub fn update(
           )
       }
 
-    client_state.PoolMsg(inner) ->
-      pool_workflow.update(
-        model,
-        inner,
-        pool_workflow.Context(member_refresh: member_refresh),
-      )
+    client_state.PoolMsg(inner) -> handle_pool_msg(model, inner)
+  }
+}
+
+fn handle_pool_msg(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(next, fx) =
+    pool_workflow.update(
+      model,
+      inner,
+      pool_workflow.Context(member_refresh: member_refresh),
+    )
+  let next = normalize_show_stack(next, inner)
+  let route_fx = case should_sync_show_route(inner) {
+    True -> replace_url(next)
+    False -> effect.none()
+  }
+
+  #(next, effect.batch([fx, route_fx]))
+}
+
+fn normalize_show_stack(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner {
+    pool_messages.OpenCardShow(_) ->
+      case model.member.notes.member_notes_task_id {
+        opt.Some(_) -> close_task_show_in_model(model)
+        opt.None -> model
+      }
+    _ -> model
+  }
+}
+
+fn close_task_show_in_model(model: client_state.Model) -> client_state.Model {
+  let #(pool, notes, dependencies) =
+    task_show_state.close(model.member.pool, model.member.notes)
+
+  client_state.update_member(model, fn(member) {
+    member_state.MemberModel(
+      ..member,
+      pool: pool,
+      notes: notes,
+      dependencies: dependencies,
+    )
+  })
+}
+
+fn should_sync_show_route(inner: client_state.PoolMsg) -> Bool {
+  case inner {
+    pool_messages.OpenCardShow(_)
+    | pool_messages.CloseCardShow
+    | pool_messages.GlobalKeyDown(_)
+    | pool_messages.MemberTaskShowOpened(_)
+    | pool_messages.MemberTaskShowClosed -> True
+    _ -> False
   }
 }
 

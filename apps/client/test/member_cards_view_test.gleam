@@ -24,12 +24,7 @@ fn cards_config(model: client_state.Model) {
     model.core.user,
     opt.None,
     fn(_) { "open" },
-    fn(_) { "create" },
-    fn(_) { "create-card" },
-    fn(_) { "activate-card" },
-    fn(_) { "move-card" },
-    fn(_) { "delete-card" },
-    "close",
+    fn(_) { "card-show-msg" },
   )
 }
 

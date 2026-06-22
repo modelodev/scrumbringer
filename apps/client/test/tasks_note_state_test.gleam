@@ -1,19 +1,32 @@
 import gleam/option.{None, Some}
 
 import domain/api_error.{type ApiError, ApiError}
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
 import domain/remote
-import domain/task.{type TaskNote, TaskNote}
+import domain/task/id as task_id
+import domain/user/id as user_id
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/features/tasks/note_state
 
-fn sample_note() -> TaskNote {
-  TaskNote(
-    id: 10,
-    task_id: 42,
-    user_id: 7,
+fn sample_note() -> Note {
+  Note(
+    id: note_id.new(10),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(7),
     content: "Reviewed",
+    url: None,
+    pinned: False,
     created_at: "2026-03-20T14:00:00Z",
+    updated_at: "2026-03-20T14:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }
 
@@ -70,7 +83,7 @@ pub fn note_state_submit_transitions_test() {
 }
 
 pub fn note_state_added_prepends_note_and_closes_dialog_test() {
-  let previous = TaskNote(..sample_note(), id: 9, content: "Previous")
+  let previous = Note(..sample_note(), id: note_id.new(9), content: "Previous")
   let model =
     member_notes.Model(
       ..member_notes.default_model(),
@@ -99,5 +112,37 @@ pub fn note_state_add_failed_stops_in_flight_and_sets_error_test() {
   let next = note_state.add_failed(model, sample_error())
 
   let assert False = next.member_note_in_flight
+  let assert Some("boom") = next.member_note_error
+}
+
+pub fn note_state_pin_transitions_replace_note_test() {
+  let previous = sample_note()
+  let updated =
+    Note(..previous, pinned: True, updated_at: "2026-03-20T15:00:00Z")
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_notes: remote.Loaded([previous]),
+    )
+
+  let started = note_state.pin_started(model, note_id.to_int(previous.id))
+  let next = note_state.pinned(started, updated)
+
+  let assert True =
+    started.member_note_pin_in_flight == Some(note_id.to_int(previous.id))
+  let assert True = next.member_notes == remote.Loaded([updated])
+  let assert None = next.member_note_pin_in_flight
+}
+
+pub fn note_state_pin_failed_clears_in_flight_and_sets_error_test() {
+  let model =
+    member_notes.Model(
+      ..member_notes.default_model(),
+      member_note_pin_in_flight: Some(10),
+    )
+
+  let next = note_state.pin_failed(model, sample_error())
+
+  let assert None = next.member_note_pin_in_flight
   let assert Some("boom") = next.member_note_error
 }

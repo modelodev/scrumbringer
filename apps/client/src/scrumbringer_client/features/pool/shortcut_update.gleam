@@ -9,6 +9,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/pool_prefs
 
@@ -82,11 +83,12 @@ fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {
 fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
   case
     model.pool.member_plan_move_drag,
+    opt.is_some(model.pool.card_show_open),
     model.pool.member_create_dialog_mode,
     opt.is_some(model.notes.member_notes_task_id),
     opt.is_some(model.positions.member_position_edit_task)
   {
-    member_pool.PlanMoveDraggingCard(_, _), _, _, _ -> #(
+    member_pool.PlanMoveDraggingCard(_, _), _, _, _, _ -> #(
       Model(
         ..model,
         pool: member_pool.Model(
@@ -96,7 +98,18 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, dialog_mode.DialogCreate, _, _ -> #(
+    _, True, _, _, _ -> #(
+      Model(
+        ..model,
+        pool: member_pool.Model(
+          ..model.pool,
+          card_show_open: opt.None,
+          card_show_model: card_show.reset(),
+        ),
+      ),
+      effect.none(),
+    )
+    _, _, dialog_mode.DialogCreate, _, _ -> #(
       Model(
         ..model,
         pool: member_pool.Model(
@@ -106,14 +119,14 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, _, True, _ -> #(
+    _, _, _, True, _ -> #(
       Model(
         ..model,
         notes: member_notes.Model(..model.notes, member_notes_task_id: opt.None),
       ),
       effect.none(),
     )
-    _, _, _, True -> #(
+    _, _, _, _, True -> #(
       Model(
         ..model,
         positions: member_positions.Model(
@@ -124,6 +137,6 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
       ),
       effect.none(),
     )
-    _, _, _, _ -> #(model, effect.none())
+    _, _, _, _, _ -> #(model, effect.none())
   }
 }

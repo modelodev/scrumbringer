@@ -17,6 +17,7 @@ pub fn decode_card_payload_test() {
     description: Some("Plan"),
     color: Some(card.Blue),
     parent_card_id: Some(42),
+    due_date: None,
   )) = payloads.decode_card(dynamic)
 }
 
@@ -28,6 +29,7 @@ pub fn decode_card_payload_defaults_optional_fields_test() {
     description: None,
     color: None,
     parent_card_id: None,
+    due_date: None,
   )) = payloads.decode_card(dynamic)
 }
 

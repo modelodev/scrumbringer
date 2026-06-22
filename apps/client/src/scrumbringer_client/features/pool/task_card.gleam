@@ -4,6 +4,7 @@ import gleam/order
 import gleam/string
 
 import domain/card.{type CardColor}
+import domain/note/entity.{type Note}
 import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{Claimed}
@@ -43,7 +44,7 @@ pub type Config(msg) {
     touch_preview: Bool,
     disable_actions: Bool,
     hidden_blocked_count: Option(Int),
-    notes: List(domain_task.TaskNote),
+    notes: List(Note),
     on_claim: msg,
     on_release: msg,
     on_complete: msg,

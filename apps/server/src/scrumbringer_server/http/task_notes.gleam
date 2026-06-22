@@ -20,8 +20,11 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `use_case/task_notes_db.gleam` for repository
 
-import domain/task.{type Task, type TaskNote, TaskNote}
+import domain/note/entity.{type Note}
+import domain/task.{type Task}
+import domain/user/id as user_id
 import gleam/http
+import gleam/option
 import gleam/result
 import pog
 import scrumbringer_server/http/api
@@ -65,6 +68,20 @@ pub fn handle_task_note(
   }
 }
 
+/// Routes /api/tasks/:id/notes/:note_id/pin requests.
+pub fn handle_task_note_pin(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+  note_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_pin(req, ctx, task_id, note_id, True)
+    http.Delete -> handle_pin(req, ctx, task_id, note_id, False)
+    _ -> wisp.method_not_allowed([http.Post, http.Delete])
+  }
+}
+
 fn handle_list(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -102,6 +119,24 @@ fn handle_delete(
   case auth.require_current_user_response(req, ctx) {
     Error(resp) -> resp
     Ok(user) -> delete_note_for_user(req, ctx, user, task_id, note_id)
+  }
+}
+
+fn handle_pin(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+  note_id: String,
+  pinned: Bool,
+) -> wisp.Response {
+  case csrf.require_csrf(req) {
+    Error(resp) -> resp
+    Ok(Nil) ->
+      case auth.require_current_user_response(req, ctx) {
+        Error(resp) -> resp
+        Ok(user) ->
+          set_note_pinned_with_csrf(ctx, user, task_id, note_id, pinned)
+      }
   }
 }
 
@@ -145,7 +180,7 @@ fn create_note_for_user(
   task_id: String,
 ) -> wisp.Response {
   note_mutations.with_note_payload(req, task_id, fn(task_id, payload) {
-    create_note(ctx, user, task_id, payload.content)
+    create_note(ctx, user, task_id, payload.content, payload.url)
   })
 }
 
@@ -154,10 +189,11 @@ fn create_note(
   user: StoredUser,
   task_id: Int,
   content: String,
+  url: option.Option(String),
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case create_note_payload(db, user, task_id, content) {
+  case create_note_payload(db, user, task_id, content, url) {
     Ok(resp) -> resp
     Error(resp) -> resp
   }
@@ -168,10 +204,20 @@ fn create_note_payload(
   user: StoredUser,
   task_id: Int,
   content: String,
+  url: option.Option(String),
 ) -> Result(wisp.Response, wisp.Response) {
   use _ <- result.try(require_task_access(db, task_id, user.id))
 
-  case task_notes_db.create_note(db, task_id, user.id, content) {
+  case
+    task_notes_db.create_note_with_audit(
+      db,
+      user.org_id,
+      task_id,
+      user.id,
+      content,
+      url,
+    )
+  {
     Ok(note) -> Ok(api.ok(note_presenters.note_response(note)))
     Error(error) -> Error(service_error_response.to_database_response(error))
   }
@@ -203,6 +249,21 @@ fn delete_note_with_csrf(
   }
 }
 
+fn set_note_pinned_with_csrf(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: String,
+  note_id: String,
+  pinned: Bool,
+) -> wisp.Response {
+  case api.parse_id(task_id), api.parse_id(note_id) {
+    Error(resp), _ -> resp
+    _, Error(resp) -> resp
+    Ok(task_id), Ok(note_id) ->
+      set_note_pinned(ctx, user, task_id, note_id, pinned)
+  }
+}
+
 fn delete_note(
   ctx: auth.Ctx,
   user: StoredUser,
@@ -213,6 +274,21 @@ fn delete_note(
 
   case authorize_note_delete(db, user, task_id, note_id) {
     Ok(Nil) -> delete_note_in_db(db, task_id, note_id)
+    Error(resp) -> resp
+  }
+}
+
+fn set_note_pinned(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: Int,
+  note_id: Int,
+  pinned: Bool,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case authorize_note_delete(db, user, task_id, note_id) {
+    Ok(Nil) -> set_note_pinned_in_db(db, user, task_id, note_id, pinned)
     Error(resp) -> resp
   }
 }
@@ -236,7 +312,7 @@ fn get_note(
   db: pog.Connection,
   task_id: Int,
   note_id: Int,
-) -> Result(TaskNote, wisp.Response) {
+) -> Result(Note, wisp.Response) {
   case task_notes_db.get_note(db, task_id, note_id) {
     Ok(note) -> Ok(note)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -254,13 +330,35 @@ fn delete_note_in_db(
   }
 }
 
+fn set_note_pinned_in_db(
+  db: pog.Connection,
+  user: StoredUser,
+  task_id: Int,
+  note_id: Int,
+  pinned: Bool,
+) -> wisp.Response {
+  case
+    task_notes_db.set_note_pinned_with_audit(
+      db,
+      user.org_id,
+      task_id,
+      note_id,
+      user.id,
+      pinned,
+    )
+  {
+    Ok(note) -> api.ok(note_presenters.note_response(note))
+    Error(error) -> service_error_response.to_response(error)
+  }
+}
+
 fn can_delete_note(
   db: pog.Connection,
   user: StoredUser,
   project_id: Int,
-  note: TaskNote,
+  note: Note,
 ) -> Bool {
-  let TaskNote(user_id: author_id, ..) = note
+  let author_id = user_id.to_int(note.user_id)
 
   case
     authorization.require_project_manager_with_org_bypass(db, user, project_id)

@@ -1081,6 +1081,7 @@ fn view_task_item(
       actions: actions,
       reserve_actions_slot: True,
       action_slot_class: None,
+      content_testid: None,
       testid: Some("capability-task-item"),
     ),
     task_item.ListItem,
