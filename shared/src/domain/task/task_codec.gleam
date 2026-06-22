@@ -262,14 +262,28 @@ pub fn note_decoder() -> decode.Decoder(TaskNote) {
   use task_id <- decode.field("task_id", decode.int)
   use user_id <- decode.field("user_id", decode.int)
   use content <- decode.field("content", decode.string)
+  use url <- decode.optional_field(
+    "url",
+    option.None,
+    decode.optional(decode.string),
+  )
+  use pinned <- decode.optional_field("pinned", False, decode.bool)
   use created_at <- decode.field("created_at", decode.string)
+  use updated_at <- decode.optional_field(
+    "updated_at",
+    created_at,
+    decode.string,
+  )
 
   decode.success(TaskNote(
     id: id,
     task_id: task_id,
     user_id: user_id,
     content: content,
+    url: url,
+    pinned: pinned,
     created_at: created_at,
+    updated_at: updated_at,
   ))
 }
 

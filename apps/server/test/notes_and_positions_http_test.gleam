@@ -6,6 +6,7 @@ import gleam/json
 import gleam/list
 import gleam/string
 import gleam/time/timestamp
+import gleeunit
 import pog
 import scrumbringer_server
 import support/assertions as expect
@@ -13,6 +14,10 @@ import wisp
 import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+pub fn main() {
+  gleeunit.main()
+}
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
@@ -96,13 +101,68 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
     |> request.set_cookie("sb_csrf", member2_csrf)
     |> request.set_header("X-CSRF", member2_csrf)
     |> simulate.json_body(
-      json.object([#("content", json.string("Investigating"))]),
+      json.object([
+        #("content", json.string("Investigating")),
+        #("url", json.string("https://example.com/task-note")),
+      ]),
     )
 
   let note_res = handler(note_req)
   expect.expect_status(note_res, 200)
   decode_note_content(simulate.read_body(note_res))
   |> expect.equal("Investigating")
+  decode_created_note_contract(simulate.read_body(note_res))
+  |> expect.equal(#("https://example.com/task-note", False, True))
+  let note_id = decode_note_id(simulate.read_body(note_res))
+
+  let pin_by_non_author =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/"
+        <> int_to_string(task_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member1_session)
+    |> request.set_cookie("sb_csrf", member1_csrf)
+    |> request.set_header("X-CSRF", member1_csrf)
+
+  expect.expect_status(handler(pin_by_non_author), 403)
+
+  let pin_by_author =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/"
+        <> int_to_string(task_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member2_session)
+    |> request.set_cookie("sb_csrf", member2_csrf)
+    |> request.set_header("X-CSRF", member2_csrf)
+
+  let pin_res = handler(pin_by_author)
+  expect.expect_status(pin_res, 200)
+  decode_note_pinned(simulate.read_body(pin_res)) |> expect.equal(True)
+
+  let unpin_by_author =
+    simulate.request(
+      http.Delete,
+      "/api/v1/tasks/"
+        <> int_to_string(task_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member2_session)
+    |> request.set_cookie("sb_csrf", member2_csrf)
+    |> request.set_header("X-CSRF", member2_csrf)
+
+  let unpin_res = handler(unpin_by_author)
+  expect.expect_status(unpin_res, 200)
+  decode_note_pinned(simulate.read_body(unpin_res)) |> expect.equal(False)
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
@@ -628,11 +688,67 @@ pub fn card_notes_create_and_delete_permissions_test() {
     |> request.set_cookie("sb_session", member1_session)
     |> request.set_cookie("sb_csrf", member1_csrf)
     |> request.set_header("X-CSRF", member1_csrf)
-    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
+    |> simulate.json_body(
+      json.object([
+        #("content", json.string("Note")),
+        #("url", json.string("https://example.com/card-note")),
+      ]),
+    )
 
   let note_res = handler(note_req)
   expect.expect_status(note_res, 200)
+  decode_created_note_contract(simulate.read_body(note_res))
+  |> expect.equal(#("https://example.com/card-note", False, True))
   let note_id = decode_note_id(simulate.read_body(note_res))
+
+  let pin_forbidden =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member2_session)
+    |> request.set_cookie("sb_csrf", member2_csrf)
+    |> request.set_header("X-CSRF", member2_csrf)
+
+  expect.expect_status(handler(pin_forbidden), 403)
+
+  let pin_by_author =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member1_session)
+    |> request.set_cookie("sb_csrf", member1_csrf)
+    |> request.set_header("X-CSRF", member1_csrf)
+
+  let pin_res = handler(pin_by_author)
+  expect.expect_status(pin_res, 200)
+  decode_note_pinned(simulate.read_body(pin_res)) |> expect.equal(True)
+
+  let unpin_by_author =
+    simulate.request(
+      http.Delete,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", member1_session)
+    |> request.set_cookie("sb_csrf", member1_csrf)
+    |> request.set_header("X-CSRF", member1_csrf)
+
+  let unpin_res = handler(unpin_by_author)
+  expect.expect_status(unpin_res, 200)
+  decode_note_pinned(simulate.read_body(unpin_res)) |> expect.equal(False)
 
   let delete_forbidden =
     simulate.request(
@@ -665,6 +781,23 @@ pub fn card_notes_create_and_delete_permissions_test() {
   let note_res_2 = handler(note_req)
   expect.expect_status(note_res_2, 200)
   let note_id_2 = decode_note_id(simulate.read_body(note_res_2))
+
+  let pin_by_admin =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id_2)
+        <> "/pin",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+
+  let admin_pin_res = handler(pin_by_admin)
+  expect.expect_status(admin_pin_res, 200)
+  decode_note_pinned(simulate.read_body(admin_pin_res)) |> expect.equal(True)
 
   let delete_admin =
     simulate.request(
@@ -1230,6 +1363,52 @@ fn decode_note_content(body: String) -> String {
 
   let assert Ok(content) = decode.run(dynamic, response_decoder)
   content
+}
+
+fn decode_created_note_contract(body: String) -> #(String, Bool, Bool) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let note_decoder = {
+    use url <- decode.field("url", decode.string)
+    use pinned <- decode.field("pinned", decode.bool)
+    use updated_at <- decode.field("updated_at", decode.string)
+    decode.success(#(url, pinned, updated_at != ""))
+  }
+
+  let data_decoder = {
+    use note <- decode.field("note", note_decoder)
+    decode.success(note)
+  }
+
+  let response_decoder = {
+    use note <- decode.field("data", data_decoder)
+    decode.success(note)
+  }
+
+  let assert Ok(contract) = decode.run(dynamic, response_decoder)
+  contract
+}
+
+fn decode_note_pinned(body: String) -> Bool {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let note_decoder = {
+    use pinned <- decode.field("pinned", decode.bool)
+    decode.success(pinned)
+  }
+
+  let data_decoder = {
+    use note <- decode.field("note", note_decoder)
+    decode.success(note)
+  }
+
+  let response_decoder = {
+    use pinned <- decode.field("data", data_decoder)
+    decode.success(pinned)
+  }
+
+  let assert Ok(pinned) = decode.run(dynamic, response_decoder)
+  pinned
 }
 
 fn decode_note_list_contents(body: String) -> List(String) {

@@ -1,3 +1,4 @@
+import gleam/option.{None}
 import gleam/string
 import lustre/element
 import lustre/element/html
@@ -60,6 +61,9 @@ fn note(id: Int) -> TaskNote {
     task_id: 42,
     user_id: 7,
     content: "Note",
+    url: None,
+    pinned: False,
     created_at: "2026-06-01T10:00:00Z",
+    updated_at: "2026-06-01T10:00:00Z",
   )
 }

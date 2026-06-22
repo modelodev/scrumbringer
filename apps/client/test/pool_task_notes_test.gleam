@@ -103,6 +103,9 @@ fn note(id: Int, user_id user_id: Int, content content: String) -> TaskNote {
     task_id: 10,
     user_id: user_id,
     content: content,
+    url: None,
+    pinned: False,
     created_at: "2026-06-08T09:00:00Z",
+    updated_at: "2026-06-08T09:00:00Z",
   )
 }

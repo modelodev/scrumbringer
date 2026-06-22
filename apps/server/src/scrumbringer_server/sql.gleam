@@ -394,6 +394,7 @@ pub fn card_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(CardNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -431,8 +432,8 @@ with card_scope as (
   from cards
   where id = $1
 ), inserted_note as (
-  insert into notes (project_id, user_id, content)
-  select project_id, $2, $3
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
   from card_scope
   returning id, project_id, user_id, content, url, pinned, created_at, updated_at
 ), inserted_relation as (
@@ -464,6 +465,7 @@ left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.pro
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -688,6 +690,105 @@ order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesSetPinnedRow {
+  CardNotesSetPinnedRow(
+    id: Int,
+    card_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: card_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(CardNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(CardNotesSetPinnedRow(
+      id:,
+      card_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: card_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from card_notes cn
+  where cn.note_id = n.id
+    and cn.card_id = $1
+    and n.id = $2
+  returning n.id, cn.card_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.card_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -2320,9 +2421,7 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(
-  db: pog.Connection,
-) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -4780,6 +4879,7 @@ pub fn task_notes_create(
   arg_1: Int,
   arg_2: Int,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(TaskNotesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4816,8 +4916,8 @@ with task_scope as (
   from tasks
   where id = $1
 ), inserted_note as (
-  insert into notes (project_id, user_id, content)
-  select project_id, $2, $3
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
   from task_scope
   returning id, project_id, user_id, content, url, pinned, created_at, updated_at
 ), inserted_relation as (
@@ -4849,6 +4949,7 @@ left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.pro
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5069,6 +5170,105 @@ order by n.created_at asc, n.id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_set_pinned.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesSetPinnedRow {
+  TaskNotesSetPinnedRow(
+    id: Int,
+    task_id: Int,
+    project_id: Int,
+    user_id: Int,
+    content: String,
+    url: String,
+    pinned: Bool,
+    created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
+  )
+}
+
+/// name: task_notes_set_pinned
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_set_pinned(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Bool,
+) -> Result(pog.Returned(TaskNotesSetPinnedRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
+    decode.success(TaskNotesSetPinnedRow(
+      id:,
+      task_id:,
+      project_id:,
+      user_id:,
+      content:,
+      url:,
+      pinned:,
+      created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
+    ))
+  }
+
+  "-- name: task_notes_set_pinned
+with updated as (
+  update notes n
+  set pinned = $3,
+      updated_at = now()
+  from task_notes tn
+  where tn.note_id = n.id
+    and tn.task_id = $1
+    and n.id = $2
+  returning n.id, tn.task_id, n.project_id, n.user_id, n.content, n.url, n.pinned, n.created_at, n.updated_at
+)
+select
+  updated.id,
+  updated.task_id,
+  updated.project_id,
+  updated.user_id,
+  updated.content,
+  coalesce(updated.url, '') as url,
+  updated.pinned,
+  to_char(updated.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(updated.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from updated
+join users u on u.id = updated.user_id
+left join project_members pm on pm.user_id = updated.user_id and pm.project_id = updated.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.bool(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

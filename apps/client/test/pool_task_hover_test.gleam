@@ -133,6 +133,9 @@ fn sample_note(id: Int, user_id: Int, content: String) {
     task_id: 42,
     user_id: user_id,
     content: content,
+    url: None,
+    pinned: False,
     created_at: "2026-06-02T12:00:00Z",
+    updated_at: "2026-06-02T12:00:00Z",
   )
 }

@@ -53,8 +53,7 @@ pub fn decode_note_payload_keeps_content_unchanged_test() {
   let assert Ok(payloads.NotePayload(
     content: "  surrounding spaces  ",
     url: option.None,
-  )) =
-    payloads.decode_note(dynamic)
+  )) = payloads.decode_note(dynamic)
 }
 
 pub fn with_note_payload_valid_request_calls_handler_test() {

@@ -5,8 +5,8 @@ with card_scope as (
   from cards
   where id = $1
 ), inserted_note as (
-  insert into notes (project_id, user_id, content)
-  select project_id, $2, $3
+  insert into notes (project_id, user_id, content, url)
+  select project_id, $2, $3, nullif($4, '')
   from card_scope
   returning id, project_id, user_id, content, url, pinned, created_at, updated_at
 ), inserted_relation as (

@@ -5,6 +5,7 @@
 
 import domain/task.{type TaskNote, TaskNote}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/sql
@@ -51,8 +52,17 @@ pub fn create_note(
   task_id: Int,
   user_id: Int,
   content: String,
+  url: Option(String),
 ) -> Result(TaskNote, ServiceError) {
-  case sql.task_notes_create(db, task_id, user_id, content) {
+  case
+    sql.task_notes_create(
+      db,
+      task_id,
+      user_id,
+      content,
+      optional_url_value(url),
+    )
+  {
     Ok(pog.Returned(rows: rows, ..)) -> {
       use row <- result.try(persisted_field.returned_row(
         rows,
@@ -90,13 +100,30 @@ pub fn delete_note(
   }
 }
 
+/// Updates whether a task note is pinned.
+pub fn set_note_pinned(
+  db: pog.Connection,
+  task_id: Int,
+  note_id: Int,
+  pinned: Bool,
+) -> Result(TaskNote, ServiceError) {
+  case sql.task_notes_set_pinned(db, task_id, note_id, pinned) {
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_set_pinned_row(row))
+  }
+}
+
 fn note_from_list_row(row: sql.TaskNotesListRow) -> TaskNote {
   note_from_fields(
     row.id,
     row.task_id,
     row.user_id,
     row.content,
+    row.url,
+    row.pinned,
     row.created_at,
+    row.updated_at,
   )
 }
 
@@ -106,7 +133,10 @@ fn note_from_create_row(row: sql.TaskNotesCreateRow) -> TaskNote {
     row.task_id,
     row.user_id,
     row.content,
+    row.url,
+    row.pinned,
     row.created_at,
+    row.updated_at,
   )
 }
 
@@ -116,7 +146,23 @@ fn note_from_get_row(row: sql.TaskNotesGetRow) -> TaskNote {
     row.task_id,
     row.user_id,
     row.content,
+    row.url,
+    row.pinned,
     row.created_at,
+    row.updated_at,
+  )
+}
+
+fn note_from_set_pinned_row(row: sql.TaskNotesSetPinnedRow) -> TaskNote {
+  note_from_fields(
+    row.id,
+    row.task_id,
+    row.user_id,
+    row.content,
+    row.url,
+    row.pinned,
+    row.created_at,
+    row.updated_at,
   )
 }
 
@@ -125,13 +171,33 @@ fn note_from_fields(
   task_id: Int,
   user_id: Int,
   content: String,
+  url: String,
+  pinned: Bool,
   created_at: String,
+  updated_at: String,
 ) -> TaskNote {
   TaskNote(
     id: id,
     task_id: task_id,
     user_id: user_id,
     content: content,
+    url: optional_string(url),
+    pinned: pinned,
     created_at: created_at,
+    updated_at: updated_at,
   )
+}
+
+fn optional_url_value(url: Option(String)) -> String {
+  case url {
+    Some(value) -> value
+    None -> ""
+  }
+}
+
+fn optional_string(value: String) -> Option(String) {
+  case value {
+    "" -> None
+    _ -> Some(value)
+  }
 }

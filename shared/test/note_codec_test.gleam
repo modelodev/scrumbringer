@@ -61,23 +61,27 @@ pub fn note_decoder_rejects_invalid_subject_type_test() {
 }
 
 pub fn note_to_json_roundtrips_task_subject_test() {
-  let note = Note(
-    id: note_id.new(9),
-    project_id: project_id.new(2),
-    subject: TaskNoteSubject(task_id.new(20)),
-    user_id: user_id.new(43),
-    content: "Check logs",
-    url: option.None,
-    pinned: True,
-    created_at: "2026-06-22T11:00:00Z",
-    updated_at: "2026-06-22T11:10:00Z",
-    author_email: "luis@example.com",
-    author_project_role: option.Some(project_role.Member),
-    author_org_role: org_role.Member,
-  )
+  let note =
+    Note(
+      id: note_id.new(9),
+      project_id: project_id.new(2),
+      subject: TaskNoteSubject(task_id.new(20)),
+      user_id: user_id.new(43),
+      content: "Check logs",
+      url: option.None,
+      pinned: True,
+      created_at: "2026-06-22T11:00:00Z",
+      updated_at: "2026-06-22T11:10:00Z",
+      author_email: "luis@example.com",
+      author_project_role: option.Some(project_role.Member),
+      author_org_role: org_role.Member,
+    )
 
   let encoded = note_codec.to_json(note) |> json.to_string
-  let assert Ok(Note(subject: TaskNoteSubject(decoded_task_id), pinned: True, ..)) =
-    json.parse(encoded, note_codec.note_decoder())
+  let assert Ok(Note(
+    subject: TaskNoteSubject(decoded_task_id),
+    pinned: True,
+    ..,
+  )) = json.parse(encoded, note_codec.note_decoder())
   let assert 20 = task_id.to_int(decoded_task_id)
 }

@@ -23,7 +23,11 @@ pub fn subject_decoder() -> decode.Decoder(NoteSubject) {
   case subject_type {
     "card" -> decode.success(CardNoteSubject(card_id.new(subject_id)))
     "task" -> decode.success(TaskNoteSubject(task_id.new(subject_id)))
-    other -> decode.failure(CardNoteSubject(card_id.new(subject_id)), "note subject " <> other)
+    other ->
+      decode.failure(
+        CardNoteSubject(card_id.new(subject_id)),
+        "note subject " <> other,
+      )
   }
 }
 
@@ -33,7 +37,11 @@ pub fn note_decoder() -> decode.Decoder(Note) {
   use subject <- decode.then(subject_decoder())
   use user_id <- decode.field("user_id", decode.int)
   use content <- decode.field("content", decode.string)
-  use url <- decode.optional_field("url", option.None, decode.optional(decode.string))
+  use url <- decode.optional_field(
+    "url",
+    option.None,
+    decode.optional(decode.string),
+  )
   use pinned <- decode.field("pinned", decode.bool)
   use created_at <- decode.field("created_at", decode.string)
   use updated_at <- decode.field("updated_at", decode.string)

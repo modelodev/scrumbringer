@@ -82,7 +82,18 @@ pub fn card_note_decoder() -> decode.Decoder(CardNote) {
   use card_id <- decode.field("card_id", decode.int)
   use user_id <- decode.field("user_id", decode.int)
   use content <- decode.field("content", decode.string)
+  use url <- decode.optional_field(
+    "url",
+    option.None,
+    decode.optional(decode.string),
+  )
+  use pinned <- decode.optional_field("pinned", False, decode.bool)
   use created_at <- decode.field("created_at", decode.string)
+  use updated_at <- decode.optional_field(
+    "updated_at",
+    created_at,
+    decode.string,
+  )
   use author_email <- decode.field("author_email", decode.string)
   use author_project_role <- decode.optional_field(
     "author_project_role",
@@ -98,7 +109,10 @@ pub fn card_note_decoder() -> decode.Decoder(CardNote) {
     card_id: card_id,
     user_id: user_id,
     content: content,
+    url: url,
+    pinned: pinned,
     created_at: created_at,
+    updated_at: updated_at,
     author_email: author_email,
     author_project_role: author_project_role,
     author_org_role: author_org_role,

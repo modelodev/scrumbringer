@@ -4,6 +4,7 @@
 
 import domain/card.{type CardNote, CardNote}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/sql
@@ -45,8 +46,17 @@ pub fn create_note(
   card_id: Int,
   user_id: Int,
   content: String,
+  url: Option(String),
 ) -> Result(CardNote, ServiceError) {
-  case sql.card_notes_create(db, card_id, user_id, content) {
+  case
+    sql.card_notes_create(
+      db,
+      card_id,
+      user_id,
+      content,
+      optional_url_value(url),
+    )
+  {
     Ok(pog.Returned(rows: rows, ..)) -> {
       use row <- result.try(persisted_field.returned_row(
         rows,
@@ -71,6 +81,20 @@ pub fn delete_note(
   }
 }
 
+/// Updates whether a card note is pinned.
+pub fn set_note_pinned(
+  db: pog.Connection,
+  card_id: Int,
+  note_id: Int,
+  pinned: Bool,
+) -> Result(CardNote, ServiceError) {
+  case sql.card_notes_set_pinned(db, card_id, note_id, pinned) {
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..)) -> note_from_set_pinned_row(row)
+  }
+}
+
 fn note_from_list_row(
   row: sql.CardNotesListRow,
 ) -> Result(CardNote, ServiceError) {
@@ -79,7 +103,10 @@ fn note_from_list_row(
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
+    url: row.url,
+    pinned: row.pinned,
     created_at: row.created_at,
+    updated_at: row.updated_at,
     author_email: row.author_email,
     author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
@@ -94,7 +121,10 @@ fn note_from_create_row(
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
+    url: row.url,
+    pinned: row.pinned,
     created_at: row.created_at,
+    updated_at: row.updated_at,
     author_email: row.author_email,
     author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
@@ -107,7 +137,28 @@ fn note_from_get_row(row: sql.CardNotesGetRow) -> Result(CardNote, ServiceError)
     card_id: row.card_id,
     user_id: row.user_id,
     content: row.content,
+    url: row.url,
+    pinned: row.pinned,
     created_at: row.created_at,
+    updated_at: row.updated_at,
+    author_email: row.author_email,
+    author_project_role: row.author_project_role,
+    author_org_role: row.author_org_role,
+  )
+}
+
+fn note_from_set_pinned_row(
+  row: sql.CardNotesSetPinnedRow,
+) -> Result(CardNote, ServiceError) {
+  note_from_fields(
+    id: row.id,
+    card_id: row.card_id,
+    user_id: row.user_id,
+    content: row.content,
+    url: row.url,
+    pinned: row.pinned,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
     author_email: row.author_email,
     author_project_role: row.author_project_role,
     author_org_role: row.author_org_role,
@@ -119,7 +170,10 @@ fn note_from_fields(
   card_id card_id: Int,
   user_id user_id: Int,
   content content: String,
+  url url_raw: String,
+  pinned pinned: Bool,
   created_at created_at: String,
+  updated_at updated_at: String,
   author_email author_email: String,
   author_project_role author_project_role_raw: String,
   author_org_role author_org_role_raw: String,
@@ -140,9 +194,26 @@ fn note_from_fields(
     card_id: card_id,
     user_id: user_id,
     content: content,
+    url: optional_string(url_raw),
+    pinned: pinned,
     created_at: created_at,
+    updated_at: updated_at,
     author_email: author_email,
     author_project_role: author_project_role,
     author_org_role: author_org_role,
   ))
+}
+
+fn optional_url_value(url: Option(String)) -> String {
+  case url {
+    Some(value) -> value
+    None -> ""
+  }
+}
+
+fn optional_string(value: String) -> Option(String) {
+  case value {
+    "" -> None
+    _ -> Some(value)
+  }
 }

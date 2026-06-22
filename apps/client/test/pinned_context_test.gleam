@@ -23,12 +23,14 @@ pub fn pinned_context_hides_when_empty_test() {
 
 pub fn pinned_context_limits_visible_notes_to_three_test() {
   let html =
-    pinned_context.view(config([
-      note(1, "First"),
-      note(2, "Second"),
-      note(3, "Third"),
-      note(4, "Fourth"),
-    ]))
+    pinned_context.view(
+      config([
+        note(1, "First"),
+        note(2, "Second"),
+        note(3, "Third"),
+        note(4, "Fourth"),
+      ]),
+    )
     |> element.to_document_string
 
   assert_contains(html, "Contexto fijado")
@@ -41,17 +43,21 @@ pub fn pinned_context_limits_visible_notes_to_three_test() {
 
 pub fn pinned_context_does_not_show_more_button_at_three_notes_test() {
   let html =
-    pinned_context.view(config([
-      note(1, "First"),
-      note(2, "Second"),
-      note(3, "Third"),
-    ]))
+    pinned_context.view(
+      config([
+        note(1, "First"),
+        note(2, "Second"),
+        note(3, "Third"),
+      ]),
+    )
     |> element.to_document_string
 
   assert_not_contains(html, "pinned-context-more")
 }
 
-fn config(notes: List(pinned_context.PinnedNote)) -> pinned_context.Config(String) {
+fn config(
+  notes: List(pinned_context.PinnedNote),
+) -> pinned_context.Config(String) {
   pinned_context.Config(
     title: "Contexto fijado",
     notes: notes,

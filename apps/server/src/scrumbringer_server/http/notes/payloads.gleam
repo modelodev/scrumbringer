@@ -16,7 +16,11 @@ pub type DecodeError {
 pub fn decode_note(data: Dynamic) -> Result(NotePayload, DecodeError) {
   let decoder = {
     use content <- decode.field("content", decode.string)
-    use url <- decode.optional_field("url", None, decode.optional(decode.string))
+    use url <- decode.optional_field(
+      "url",
+      None,
+      decode.optional(decode.string),
+    )
     decode.success(NotePayload(content: content, url: url))
   }
 

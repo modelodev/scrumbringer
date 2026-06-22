@@ -1,5 +1,6 @@
 import gleam/dict
 import gleam/int
+import gleam/option.{None}
 
 import domain/api_error.{type ApiError, ApiError}
 import domain/task.{type TaskNote, TaskNote}
@@ -12,7 +13,10 @@ fn sample_note(id: Int) -> TaskNote {
     task_id: 42,
     user_id: 7,
     content: "Note " <> int.to_string(id),
+    url: None,
+    pinned: False,
     created_at: "2026-06-02T12:00:00Z",
+    updated_at: "2026-06-02T12:00:00Z",
   )
 }
 

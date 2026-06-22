@@ -1372,18 +1372,13 @@ pub fn insert_task_note(
   let #(timestamp_cols, timestamp_vals, _, timestamp_params) =
     append_optional_timestamp(cols, vals, idx, "updated_at", created_at, params)
 
-  let sql =
-    "WITH task_scope AS (
+  let sql = "WITH task_scope AS (
        SELECT id, project_id
        FROM tasks
        WHERE id = $1
      ), inserted_note AS (
-       INSERT INTO notes (project_id, user_id, content"
-    <> timestamp_cols
-    <> ")
-       SELECT project_id, $2, $3"
-    <> timestamp_vals
-    <> "
+       INSERT INTO notes (project_id, user_id, content" <> timestamp_cols <> ")
+       SELECT project_id, $2, $3" <> timestamp_vals <> "
        FROM task_scope
        RETURNING id
      ), inserted_relation AS (

@@ -26,7 +26,10 @@ fn sample_note() -> TaskNote {
     task_id: 42,
     user_id: 7,
     content: "Reviewed",
+    url: None,
+    pinned: False,
     created_at: "2026-03-20T14:00:00Z",
+    updated_at: "2026-03-20T14:00:00Z",
   )
 }
 

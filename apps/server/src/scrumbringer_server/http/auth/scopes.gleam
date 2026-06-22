@@ -39,8 +39,16 @@ pub fn required_scope(
     http.Get, ["api", "v1", "tasks", _, "notes"] -> read(api_token_scope.Notes)
     http.Post, ["api", "v1", "tasks", _, "notes"] ->
       write(api_token_scope.Notes)
+    http.Post, ["api", "v1", "tasks", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
+    http.Delete, ["api", "v1", "tasks", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
     http.Get, ["api", "v1", "cards", _, "notes"] -> read(api_token_scope.Notes)
     http.Post, ["api", "v1", "cards", _, "notes"] ->
+      write(api_token_scope.Notes)
+    http.Post, ["api", "v1", "cards", _, "notes", _, "pin"] ->
+      write(api_token_scope.Notes)
+    http.Delete, ["api", "v1", "cards", _, "notes", _, "pin"] ->
       write(api_token_scope.Notes)
     http.Delete, ["api", "v1", "cards", _, "notes", _] ->
       write(api_token_scope.Notes)

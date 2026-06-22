@@ -106,7 +106,10 @@ pub type TaskDependency {
 ///   task_id: 1,
 ///   user_id: 1,
 ///   content: "Added more details",
+///   url: None,
+///   pinned: False,
 ///   created_at: "2024-01-17T12:00:00Z",
+///   updated_at: "2024-01-17T12:00:00Z",
 /// )
 /// ```
 pub type TaskNote {
@@ -115,7 +118,10 @@ pub type TaskNote {
     task_id: Int,
     user_id: Int,
     content: String,
+    url: Option(String),
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
   )
 }
 
