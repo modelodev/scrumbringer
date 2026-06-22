@@ -530,6 +530,15 @@ fn view_automations_console(
   automations_console.view(automations_console.Config(
     selected_project_id: model.core.selected_project_id,
     mode: mode,
+    active_engines_count: loaded_count_where(
+      model.admin.workflows.workflows_project,
+      fn(workflow) { workflow.active },
+    ),
+    rules_count: loaded_count(model.admin.rules.rules),
+    templates_count: loaded_count(
+      model.admin.task_templates.task_templates_project,
+    ),
+    created_tasks_count: created_tasks_count(model),
     engines_view: admin_workflows_view.view_workflows(
       admin_workflows_config.from_state(
         model.ui.locale,
@@ -561,6 +570,33 @@ fn view_automations_console(
       ),
     ),
   ))
+}
+
+fn loaded_count(remote_value: remote.Remote(List(a))) -> Int {
+  case remote_value {
+    remote.Loaded(items) -> list.length(items)
+    _ -> 0
+  }
+}
+
+fn loaded_count_where(
+  remote_value: remote.Remote(List(a)),
+  predicate: fn(a) -> Bool,
+) -> Int {
+  case remote_value {
+    remote.Loaded(items) -> items |> list.filter(predicate) |> list.length
+    _ -> 0
+  }
+}
+
+fn created_tasks_count(model: client_state.Model) -> Int {
+  case model.admin.metrics.admin_rule_metrics {
+    remote.Loaded(workflows) ->
+      list.fold(workflows, 0, fn(total, workflow) {
+        total + workflow.applied_count
+      })
+    _ -> 0
+  }
 }
 
 fn admin_invites_config(
