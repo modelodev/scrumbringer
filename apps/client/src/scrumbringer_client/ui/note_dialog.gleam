@@ -28,7 +28,7 @@
 //// ## Relations
 ////
 //// - **ui/notes_composer.gleam**: Reused for textarea with Ctrl+Enter support
-//// - **components/card_detail_modal.gleam**: Uses this for card note creation
+//// - **components/card_show.gleam**: Uses this for card note creation
 //// - **features/pool/dialogs.gleam**: Uses this for task note creation
 
 import gleam/option.{type Option}

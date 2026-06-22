@@ -7,7 +7,7 @@
 //// ## Responsibilities
 ////
 //// - Display cards list with state badges and color indicators
-//// - Handle card selection for detail modal
+//// - Handle card selection for Card Show
 //// - Show empty state when no cards
 //// - Render Card Show when a card is selected
 ////
@@ -16,7 +16,7 @@
 //// - **client_view.gleam**: Imports and renders this component
 //// - **features/cards/view_config.gleam**: Builds configs from root state
 //// - **api/cards.gleam**: Handles card data fetching
-//// - **components/card_detail_modal.gleam**: Card Show component
+//// - **components/card_show.gleam**: Card Show component
 
 import gleam/option.{type Option}
 
@@ -26,9 +26,9 @@ import lustre/element/html.{div}
 
 import domain/card.{type Card}
 import domain/task.{type Task}
-import scrumbringer_client/components/card_detail_modal
-import scrumbringer_client/features/cards/detail_modal_entry
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/list_view
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -40,7 +40,7 @@ pub type Config(msg) {
     locale: Locale,
     cards: List(Card),
     pending_count: Int,
-    detail_model: card_detail_modal.Model,
+    detail_model: card_show.Model,
     detail_card: Option(Card),
     detail_tasks: List(Task),
     current_user_id: Option(Int),
@@ -48,7 +48,7 @@ pub type Config(msg) {
     can_manage_structure: Bool,
     can_execute_work: Bool,
     on_card_opened: fn(Int) -> msg,
-    on_card_detail_msg: fn(card_detail_modal.Msg) -> msg,
+    on_card_show_msg: fn(card_show.Msg) -> msg,
   )
 }
 
@@ -63,7 +63,7 @@ pub fn view_cards(config: Config(msg)) -> Element(msg) {
       view_cards_header(config),
       view_cards_content(config),
     ]),
-    view_card_detail_modal(config),
+    view_card_show(config),
   ])
 }
 
@@ -82,13 +82,13 @@ fn view_cards_content(config: Config(msg)) -> Element(msg) {
 }
 
 // =============================================================================
-// Card Detail Modal Component Integration
+// Card Show Component Integration
 // =============================================================================
 
 /// Render Card Show when a card is open.
 /// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
-pub fn view_card_detail_modal(config: Config(msg)) -> Element(msg) {
-  detail_modal_entry.view(detail_modal_entry.Config(
+pub fn view_card_show(config: Config(msg)) -> Element(msg) {
+  show_entry.view(show_entry.Config(
     model: config.detail_model,
     card: config.detail_card,
     cards: config.cards,
@@ -98,6 +98,6 @@ pub fn view_card_detail_modal(config: Config(msg)) -> Element(msg) {
     can_manage_notes: config.can_manage_notes,
     can_manage_structure: config.can_manage_structure,
     can_execute_work: config.can_execute_work,
-    on_card_detail_msg: config.on_card_detail_msg,
+    on_card_show_msg: config.on_card_show_msg,
   ))
 }

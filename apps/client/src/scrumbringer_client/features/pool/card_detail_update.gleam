@@ -9,7 +9,7 @@ import domain/api_error.{type ApiError, type ApiResult}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/components/card_detail_modal
+import scrumbringer_client/components/card_show
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/pool/card_detail
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -21,7 +21,7 @@ pub type Model {
 pub type Context(parent_msg) {
   Context(
     on_card_marked: fn(ApiResult(Nil)) -> parent_msg,
-    on_card_detail_msg: fn(card_detail_modal.Msg) -> parent_msg,
+    on_card_show_msg: fn(card_show.Msg) -> parent_msg,
     on_card_activated: fn(ApiResult(card_contracts.CardActionResponse)) ->
       parent_msg,
     on_create_task: fn(Int) -> parent_msg,
@@ -48,7 +48,7 @@ pub fn try_update(
     pool_messages.OpenCardDetail(card_id) ->
       option.Some(opened(model, card_id, context))
     pool_messages.CloseCardDetail -> option.Some(closed(model))
-    pool_messages.CardDetailMsg(msg) ->
+    pool_messages.CardShowMsg(msg) ->
       option.Some(child_updated(model, msg, context))
     pool_messages.CardActivateRequested(card_id) ->
       option.Some(activate_requested(model, card_id, context))
@@ -65,7 +65,7 @@ fn opened(
   card_id: Int,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
-  let #(detail_model, detail_fx) = card_detail_modal.open(card_id)
+  let #(detail_model, detail_fx) = card_show.open(card_id)
   let pool =
     card_detail.handle_opened(model.pool, card_id)
     |> card_detail.set_model(detail_model)
@@ -77,7 +77,7 @@ fn opened(
     ),
     effect.batch([
       api_cards.mark_card_view(card_id, context.on_card_marked),
-      detail_fx |> effect.map(context.on_card_detail_msg),
+      detail_fx |> effect.map(context.on_card_show_msg),
     ]),
   )
 }
@@ -88,38 +88,38 @@ fn closed(model: Model) -> #(Model, Effect(parent_msg)) {
 
 fn child_updated(
   model: Model,
-  msg: card_detail_modal.Msg,
+  msg: card_show.Msg,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
   case msg {
-    card_detail_modal.CreateTaskClicked -> #(
+    card_show.CreateTaskClicked -> #(
       model,
       dispatch_card_action(model.pool.card_detail_open, context.on_create_task),
     )
-    card_detail_modal.CreateCardClicked -> #(
+    card_show.CreateCardClicked -> #(
       model,
       dispatch_card_action(model.pool.card_detail_open, context.on_create_card),
     )
-    card_detail_modal.MoveRequested -> #(
+    card_show.MoveRequested -> #(
       model,
       dispatch_card_action(model.pool.card_detail_open, context.on_move_card),
     )
-    card_detail_modal.DeleteCardClicked -> #(
+    card_show.DeleteCardClicked -> #(
       model,
       dispatch_card_action(model.pool.card_detail_open, context.on_delete_card),
     )
-    card_detail_modal.CloseClicked -> #(
+    card_show.CloseClicked -> #(
       model,
       effect.from(fn(dispatch) { dispatch(context.on_close) }),
     )
-    card_detail_modal.ActivateCardConfirmed -> {
+    card_show.ActivateCardConfirmed -> {
       let #(detail_model, detail_fx) =
-        card_detail_modal.update(model.pool.card_detail_model, msg)
+        card_show.update(model.pool.card_show_model, msg)
       let pool = card_detail.set_model(model.pool, detail_model)
       #(
         Model(..model, pool: pool),
         effect.batch([
-          detail_fx |> effect.map(context.on_card_detail_msg),
+          detail_fx |> effect.map(context.on_card_show_msg),
           dispatch_card_action(
             model.pool.card_detail_open,
             context.on_activate_card,
@@ -129,10 +129,10 @@ fn child_updated(
     }
     _ -> {
       let #(detail_model, detail_fx) =
-        card_detail_modal.update(model.pool.card_detail_model, msg)
+        card_show.update(model.pool.card_show_model, msg)
       #(
         Model(..model, pool: card_detail.set_model(model.pool, detail_model)),
-        detail_fx |> effect.map(context.on_card_detail_msg),
+        detail_fx |> effect.map(context.on_card_show_msg),
       )
     }
   }

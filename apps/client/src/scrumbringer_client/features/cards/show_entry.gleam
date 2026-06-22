@@ -7,13 +7,13 @@ import lustre/element as el
 import domain/card.{type Card}
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
-import scrumbringer_client/components/card_detail_modal
+import scrumbringer_client/components/card_show
 import scrumbringer_client/i18n/locale.{type Locale}
 
 /// Data and parent callback needed to render Card Show.
 pub type Config(msg) {
   Config(
-    model: card_detail_modal.Model,
+    model: card_show.Model,
     card: Option(Card),
     cards: List(Card),
     tasks: List(domain_task.Task),
@@ -22,7 +22,7 @@ pub type Config(msg) {
     can_manage_notes: Bool,
     can_manage_structure: Bool,
     can_execute_work: Bool,
-    on_card_detail_msg: fn(card_detail_modal.Msg) -> msg,
+    on_card_show_msg: fn(card_show.Msg) -> msg,
   )
 }
 
@@ -31,7 +31,7 @@ pub fn view(config: Config(msg)) -> el.Element(msg) {
   case config.card {
     None -> el.none()
     Some(card) -> {
-      card_detail_modal.hydrate(
+      card_show.hydrate(
         config.model,
         card,
         config.cards,
@@ -43,8 +43,8 @@ pub fn view(config: Config(msg)) -> el.Element(msg) {
         config.can_manage_structure,
         config.can_execute_work,
       )
-      |> card_detail_modal.view
-      |> el.map(config.on_card_detail_msg)
+      |> card_show.view
+      |> el.map(config.on_card_show_msg)
     }
   }
 }

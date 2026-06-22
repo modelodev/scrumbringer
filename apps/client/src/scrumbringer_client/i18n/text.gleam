@@ -943,7 +943,7 @@ pub type Text {
   ActivityEmpty
   ActivityLoadFailed
   ActivityLoadMore(remaining: Int)
-  // 5.4.1: Task detail modal
+  // 5.4.1: Task Show
   TabDetails
   TabDependencies
   EditTask

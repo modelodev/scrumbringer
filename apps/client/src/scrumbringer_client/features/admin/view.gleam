@@ -55,7 +55,7 @@ import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/features/admin/views/workflows_config
 import scrumbringer_client/features/admin/workflow_rules_view_config
-import scrumbringer_client/features/cards/detail_modal_entry
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/utils/card_queries
 
@@ -349,7 +349,7 @@ pub fn view_cards(
         model,
         project.id,
         project.name,
-        view_card_detail_modal(model, project),
+        view_card_show(model, project),
       ))
   }
 }
@@ -406,18 +406,18 @@ fn cards_config(
 }
 
 // =============================================================================
-// Card Detail Modal (Config Cards)
+// Card Show (Config Cards)
 // =============================================================================
 
-fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
+fn view_card_show(model: Model, project: Project) -> Element(Msg) {
   let is_org_admin = case model.core.user {
     opt.Some(user) -> permissions.is_org_admin(user.org_role)
     opt.None -> False
   }
 
-  detail_modal_entry.view(
-    detail_modal_entry.Config(
-      model: model.member.pool.card_detail_model,
+  show_entry.view(
+    show_entry.Config(
+      model: model.member.pool.card_show_model,
       card: selected_detail_card(model),
       cards: admin_cards_list(model),
       tasks: selected_detail_card_tasks(model),
@@ -427,7 +427,7 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
       can_manage_structure: is_org_admin
         || permissions.is_project_manager(project),
       can_execute_work: True,
-      on_card_detail_msg: fn(msg) { pool_msg(pool_messages.CardDetailMsg(msg)) },
+      on_card_show_msg: fn(msg) { pool_msg(pool_messages.CardShowMsg(msg)) },
     ),
   )
 }
@@ -454,7 +454,7 @@ fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
 fn selected_detail_card_tasks(model: Model) -> List(domain_task.Task) {
   case model.member.pool.card_detail_open {
     opt.Some(card_id) ->
-      detail_modal_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
+      show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
     opt.None -> []
   }
 }

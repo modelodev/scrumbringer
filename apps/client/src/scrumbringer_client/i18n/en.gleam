@@ -1090,7 +1090,7 @@ pub fn translate(text: Text) -> String {
     text.ActivityLoadFailed -> "Could not load activity."
     text.ActivityLoadMore(remaining) ->
       "Load more (" <> int.to_string(remaining) <> ")"
-    // 5.4.1: Task detail modal
+    // 5.4.1: Task Show
     text.TabDetails -> "Details"
     text.TabDependencies -> "Dependencies"
     text.EditTask -> "Edit task"

@@ -1116,7 +1116,7 @@ fn view_member_three_panel(
       i18n.t(model.ui.locale, i18n_text.MainNavigation),
       i18n.t(model.ui.locale, i18n_text.MyActivity),
     ),
-    view_member_card_detail_modal(model, user),
+    view_member_card_show(model, user),
   ])
 }
 
@@ -1813,15 +1813,15 @@ fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
 }
 
 // =============================================================================
-// Card Detail Modal for Member Views
+// Card Show for Member Views
 // =============================================================================
 
 /// Renders Card Show for Pool/Kanban/Hierarchies views.
-fn view_member_card_detail_modal(
+fn view_member_card_show(
   model: client_state.Model,
   _user: User,
 ) -> Element(client_state.Msg) {
-  cards_view.view_card_detail_modal(member_cards_config(model))
+  cards_view.view_card_show(member_cards_config(model))
 }
 
 fn member_cards_config(
@@ -1835,7 +1835,7 @@ fn member_cards_config(
     model.core.user,
     state_selectors.selected_project(model),
     fn(id) { client_state.pool_msg(pool_messages.OpenCardDetail(id)) },
-    fn(msg) { client_state.pool_msg(pool_messages.CardDetailMsg(msg)) },
+    fn(msg) { client_state.pool_msg(pool_messages.CardShowMsg(msg)) },
   )
 }
 

@@ -82,7 +82,7 @@ pub type TitleElement {
   TitleH2
   /// Use h3 for dialog headers (CRUD modals, smaller dialogs)
   TitleH3
-  /// Use span for detail modals where title is part of a larger heading
+  /// Use span for detail views where title is part of a larger heading
   TitleSpan
 }
 
@@ -326,7 +326,7 @@ pub fn view_dialog_with_icon_and_close_label(
   )
 }
 
-/// Configuration for detail modal headers.
+/// Configuration for detail headers.
 pub type DetailConfig(msg) {
   DetailConfig(
     /// The main title text
@@ -344,13 +344,13 @@ pub type DetailConfig(msg) {
   )
 }
 
-/// Render a detail modal header with meta row and optional progress.
-/// Use this for card_detail_modal and task detail views.
+/// Render a detail header with meta row and optional progress.
+/// Use this for Card Show and Task Show.
 pub fn view_detail(config: DetailConfig(msg)) -> Element(msg) {
   view_detail_with_close_label(config, "Close")
 }
 
-/// Render a detail modal header with a localized close button label.
+/// Render a detail header with a localized close button label.
 pub fn view_detail_with_close_label(
   config: DetailConfig(msg),
   close_label: String,

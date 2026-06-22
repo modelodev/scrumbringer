@@ -379,7 +379,7 @@ pub fn css() -> List(String) {
     ".ficha-state-cerrada { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); color: var(--sb-success-text); }",
     ".ficha-description { font-size: var(--sb-font-base); color: var(--sb-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
     ".ficha-meta { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-size: var(--sb-font-sm); color: var(--sb-muted); }",
-    // Card detail modal
+    // Card Show
     ".ficha-detail-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }",
     ".ficha-detail-info { flex: 1; }",
     ".ficha-detail-title { font-size: var(--sb-font-2xl); font-weight: var(--sb-weight-bold); line-height: var(--sb-line-title); margin-bottom: 8px; }",
@@ -488,7 +488,7 @@ pub fn css() -> List(String) {
     // Shared section header for card detail tabs (Tasks, Notes)
     ".card-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
     ".card-section-title { font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); color: var(--sb-muted-strong); }",
-    // Note dialog (modal within card detail modal)
+    // Note dialog (modal within Card Show)
     ".note-dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1100; }",
     ".note-dialog { background: var(--sb-elevated); border-radius: 8px; padding: 16px; min-width: 320px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }",
     ".note-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
@@ -497,7 +497,7 @@ pub fn css() -> List(String) {
     ".note-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }",
     // Task notes section (Story 5.4 UX unification)
     ".task-notes-section { position: relative; }",
-    // Shared detail modal shell (used by hierarchy detail)
+    // Shared detail shell (used by hierarchy detail)
     ".detail-modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }",
     ".detail-modal-overlay .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
     ".detail-modal-overlay .modal-content.detail-modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 760px; width: 92%; height: min(84vh, 760px); max-height: 84vh; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",

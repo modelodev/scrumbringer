@@ -101,11 +101,11 @@ fn update_pool_drag_model(
   })
 }
 
-fn pool_card_detail_model(model: client_state.Model) -> card_detail_update.Model {
+fn pool_card_show_model(model: client_state.Model) -> card_detail_update.Model {
   card_detail_update.Model(pool: model.member.pool, cards: model.admin.cards)
 }
 
-fn update_pool_card_detail_model(
+fn update_pool_card_show_model(
   model: client_state.Model,
   local: card_detail_update.Model,
 ) -> client_state.Model {
@@ -198,8 +198,8 @@ fn card_detail_context(
 ) -> card_detail_update.Context(client_state.Msg) {
   card_detail_update.Context(
     on_card_marked: fn(_result) { client_state.NoOp },
-    on_card_detail_msg: fn(msg) {
-      client_state.pool_msg(pool_messages.CardDetailMsg(msg))
+    on_card_show_msg: fn(msg) {
+      client_state.pool_msg(pool_messages.CardShowMsg(msg))
     },
     on_card_activated: fn(result) {
       client_state.pool_msg(pool_messages.CardActivated(result))
@@ -359,13 +359,13 @@ fn try_pool_card_detail_update(
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
     card_detail_update.try_update(
-      pool_card_detail_model(model),
+      pool_card_show_model(model),
       inner,
       card_detail_context(model),
     )
   {
     opt.Some(#(local, fx)) -> {
-      let updated = update_pool_card_detail_model(model, local)
+      let updated = update_pool_card_show_model(model, local)
       opt.Some(apply_card_detail_refresh(updated, inner, fx, member_refresh))
     }
     opt.None -> opt.None
@@ -939,7 +939,7 @@ fn update_without_view_mode(
     // Handled by card_detail_update.try_update before this dispatch.
     pool_messages.OpenCardDetail(_)
     | pool_messages.CloseCardDetail
-    | pool_messages.CardDetailMsg(_)
+    | pool_messages.CardShowMsg(_)
     | pool_messages.CardActivateRequested(_)
     | pool_messages.CardActivated(_) -> #(model, effect.none())
 

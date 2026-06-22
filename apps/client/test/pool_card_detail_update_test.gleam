@@ -22,7 +22,7 @@ fn local_model() -> card_detail_update.Model {
 fn context() -> card_detail_update.Context(Nil) {
   card_detail_update.Context(
     on_card_marked: fn(_result: ApiResult(Nil)) { Nil },
-    on_card_detail_msg: fn(_msg) { Nil },
+    on_card_show_msg: fn(_msg) { Nil },
     on_card_activated: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
       Nil
     },

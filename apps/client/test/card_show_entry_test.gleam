@@ -8,8 +8,8 @@ import domain/task.{Task}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/components/card_detail_modal
-import scrumbringer_client/features/cards/detail_modal_entry
+import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -65,9 +65,9 @@ fn sample_task(id: Int, card_id) {
   )
 }
 
-fn config(card) -> detail_modal_entry.Config(String) {
-  detail_modal_entry.Config(
-    model: card_detail_modal.init_model(),
+fn config(card) -> show_entry.Config(String) {
+  show_entry.Config(
+    model: card_show.init_model(),
     card: card,
     cards: [],
     tasks: [],
@@ -76,13 +76,13 @@ fn config(card) -> detail_modal_entry.Config(String) {
     can_manage_notes: True,
     can_manage_structure: True,
     can_execute_work: True,
-    on_card_detail_msg: fn(_msg) { "card-detail-msg" },
+    on_card_show_msg: fn(_msg) { "card-detail-msg" },
   )
 }
 
-pub fn card_detail_modal_entry_renders_without_root_model_test() {
+pub fn card_show_entry_renders_without_root_model_test() {
   let html =
-    detail_modal_entry.view(config(Some(sample_card())))
+    show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
   assert_contains(html, "card-show")
@@ -90,13 +90,10 @@ pub fn card_detail_modal_entry_renders_without_root_model_test() {
   assert_contains(html, "Customer-facing card")
 }
 
-pub fn card_detail_modal_entry_renders_without_current_user_test() {
+pub fn card_show_entry_renders_without_current_user_test() {
   let html =
-    detail_modal_entry.view(
-      detail_modal_entry.Config(
-        ..config(Some(sample_card())),
-        current_user_id: None,
-      ),
+    show_entry.view(
+      show_entry.Config(..config(Some(sample_card())), current_user_id: None),
     )
     |> element.to_document_string
 
@@ -106,7 +103,7 @@ pub fn card_detail_modal_entry_renders_without_current_user_test() {
 
 pub fn card_detail_secondary_actions_render_as_menu_items_test() {
   let html =
-    detail_modal_entry.view(config(Some(sample_card())))
+    show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"card-secondary-actions-trigger\"")
@@ -145,12 +142,13 @@ pub fn card_detail_header_renders_path_due_date_and_health_test() {
   let blocked_again = Task(..sample_task(4, Some(4)), blocked_count: 1)
 
   let html =
-    detail_modal_entry.view(
-      detail_modal_entry.Config(
-        ..config(Some(card)),
-        cards: [parent, card],
-        tasks: [ready, claimed, blocked, blocked_again],
-      ),
+    show_entry.view(
+      show_entry.Config(..config(Some(card)), cards: [parent, card], tasks: [
+        ready,
+        claimed,
+        blocked,
+        blocked_again,
+      ]),
     )
     |> element.to_document_string
 
@@ -170,29 +168,26 @@ pub fn card_detail_header_renders_path_due_date_and_health_test() {
   assert_contains(html, "Blocked")
 }
 
-pub fn card_detail_modal_entry_omits_missing_card_test() {
+pub fn card_show_entry_omits_missing_card_test() {
   let html =
-    detail_modal_entry.view(config(None))
+    show_entry.view(config(None))
     |> element.to_document_string
 
   assert_not_contains(html, "card-show")
 }
 
-pub fn card_detail_modal_entry_filters_loaded_tasks_by_card_test() {
+pub fn card_show_entry_filters_loaded_tasks_by_card_test() {
   let matching = sample_task(1, Some(4))
   let other_card = sample_task(2, Some(9))
   let no_card = sample_task(3, None)
 
   let matches =
-    detail_modal_entry.tasks_for_card(
-      Loaded([matching, other_card, no_card]),
-      4,
-    )
+    show_entry.tasks_for_card(Loaded([matching, other_card, no_card]), 4)
 
   let assert [task] = matches
   let assert 1 = task.id
 }
 
-pub fn card_detail_modal_entry_treats_unloaded_tasks_as_empty_test() {
-  let assert [] = detail_modal_entry.tasks_for_card(Loading, 4)
+pub fn card_show_entry_treats_unloaded_tasks_as_empty_test() {
+  let assert [] = show_entry.tasks_for_card(Loading, 4)
 }
