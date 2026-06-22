@@ -17,6 +17,8 @@ pub fn required_scope(
     http.Get, ["api", "v1", "projects", _, "tasks"] ->
       read(api_token_scope.Tasks)
     http.Get, ["api", "v1", "tasks", _] -> read(api_token_scope.Tasks)
+    http.Get, ["api", "v1", "tasks", _, "activity"] ->
+      read(api_token_scope.Tasks)
     http.Post, ["api", "v1", "projects", _, "tasks"] ->
       write(api_token_scope.Tasks)
     http.Patch, ["api", "v1", "tasks", _] -> write(api_token_scope.Tasks)
@@ -31,6 +33,8 @@ pub fn required_scope(
     http.Get, ["api", "v1", "projects", _, "cards"] ->
       read(api_token_scope.Cards)
     http.Get, ["api", "v1", "cards", _] -> read(api_token_scope.Cards)
+    http.Get, ["api", "v1", "cards", _, "activity"] ->
+      read(api_token_scope.Cards)
     http.Post, ["api", "v1", "projects", _, "cards"] ->
       write(api_token_scope.Cards)
     http.Patch, ["api", "v1", "cards", _] -> write(api_token_scope.Cards)

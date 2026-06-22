@@ -1,7 +1,9 @@
 import gleam/option as opt
 import lustre/element.{type Element}
 
+import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
+import domain/remote.{type Remote}
 import domain/task.{type Task}
 
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
@@ -90,10 +92,15 @@ pub fn from_state(
     dependencies: dependencies_config(dependencies, callbacks),
     editor: editor_config(pool, cards, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),
+    activity: activity_config(notes),
     actions: actions_config(pool, callbacks),
     on_close: callbacks.on_close,
     on_tab_clicked: callbacks.on_tab_clicked,
   )
+}
+
+fn activity_config(notes: notes_state.Model) -> Remote(List(ActivityEvent)) {
+  notes.member_activity
 }
 
 fn dependencies_config(

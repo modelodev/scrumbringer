@@ -41,14 +41,17 @@ import domain/task/task_codec
 import domain/task_state
 import domain/task_status.{Available, Done}
 
+import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_section_header
@@ -90,6 +93,7 @@ pub type Model {
     note_in_flight: Bool,
     note_error: Option(String),
     note_pin_in_flight: Option(Int),
+    activity: Remote(List(ActivityEvent)),
     tasks: Remote(List(Task)),
     activation_confirm_open: Bool,
   )
@@ -108,6 +112,7 @@ pub type Msg {
   CanManageStructureReceived(Bool)
   CanExecuteWorkReceived(Bool)
   NotesReceived(ApiResult(List(CardNote)))
+  ActivityReceived(ApiResult(List(ActivityEvent)))
   TasksReceived(List(Task))
   // AC21: Tab navigation
   TabClicked(show_tabs.CardShowTab)
@@ -346,6 +351,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       note_in_flight: False,
       note_error: option.None,
       note_pin_in_flight: option.None,
+      activity: NotAsked,
       tasks: NotAsked,
       activation_confirm_open: False,
     ),
@@ -360,8 +366,13 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     CardIdReceived(id) -> #(
-      Model(..model, card_id: option.Some(id), notes: Loading),
-      fetch_notes(id),
+      Model(
+        ..model,
+        card_id: option.Some(id),
+        notes: Loading,
+        activity: Loading,
+      ),
+      effect.batch([fetch_notes(id), fetch_activity(id)]),
     )
 
     CardReceived(card) -> #(
@@ -405,6 +416,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     NotesReceived(Error(err)) -> #(
       Model(..model, notes: Failed(err), note_error: option.Some(err.message)),
+      effect.none(),
+    )
+
+    ActivityReceived(Ok(events)) -> #(
+      Model(..model, activity: Loaded(events)),
+      effect.none(),
+    )
+
+    ActivityReceived(Error(err)) -> #(
+      Model(..model, activity: Failed(err)),
       effect.none(),
     )
 
@@ -527,6 +548,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 fn fetch_notes(card_id: Int) -> Effect(Msg) {
   api_cards.get_card_notes(card_id, NotesReceived)
+}
+
+fn fetch_activity(card_id: Int) -> Effect(Msg) {
+  api_activity.list_card_activity(card_id, ActivityReceived)
 }
 
 fn handle_submit_note(model: Model) -> #(Model, Effect(Msg)) {
@@ -1147,8 +1172,13 @@ fn progress_text(card: Card) -> String {
 }
 
 fn view_card_activity_section(model: Model) -> Element(Msg) {
-  div([attribute.class("card-activity-empty detail-empty")], [
-    text(t(model.locale, i18n_text.TabActivity)),
+  div([attribute.class("card-activity-panel")], [
+    activity_feed.view(activity_feed.Config(
+      events: model.activity,
+      loading_label: t(model.locale, i18n_text.ActivityLoading),
+      empty_label: t(model.locale, i18n_text.ActivityEmpty),
+      error_label: t(model.locale, i18n_text.ActivityLoadFailed),
+    )),
   ])
 }
 

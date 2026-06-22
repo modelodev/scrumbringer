@@ -70,12 +70,16 @@ fn project_id_for_request(
     _, ["api", "v1", "tasks", task_id, "notes"] -> task_project_id(db, task_id)
     _, ["api", "v1", "tasks", task_id, "notes", _, "pin"] ->
       task_project_id(db, task_id)
+    _, ["api", "v1", "tasks", task_id, "activity"] ->
+      task_project_id(db, task_id)
 
     _, ["api", "v1", "cards", card_id] -> card_project_id(db, card_id)
     _, ["api", "v1", "cards", card_id, "notes"] -> card_project_id(db, card_id)
     _, ["api", "v1", "cards", card_id, "notes", _, "pin"] ->
       card_project_id(db, card_id)
     _, ["api", "v1", "cards", card_id, "notes", _] ->
+      card_project_id(db, card_id)
+    _, ["api", "v1", "cards", card_id, "activity"] ->
       card_project_id(db, card_id)
 
     _, _ -> Ok(None)

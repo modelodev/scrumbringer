@@ -41,6 +41,8 @@ pub fn open(
       member_notes: Loading,
       member_note_error: opt.None,
       member_note_delete_in_flight: opt.None,
+      member_note_pin_in_flight: opt.None,
+      member_activity: Loading,
     ),
     member_dependencies.Model(
       ..dependencies,
@@ -107,6 +109,8 @@ pub fn close(
       member_note_error: opt.None,
       member_note_dialog_mode: dialog_mode.DialogClosed,
       member_note_delete_in_flight: opt.None,
+      member_note_pin_in_flight: opt.None,
+      member_activity: NotAsked,
     ),
     member_dependencies.default_model(),
   )

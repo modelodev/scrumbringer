@@ -934,6 +934,9 @@ pub type Text {
   TabSummary
   TabWork
   TabActivity
+  ActivityLoading
+  ActivityEmpty
+  ActivityLoadFailed
   // 5.4.1: Task detail modal
   TabDetails
   TabDependencies

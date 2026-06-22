@@ -1,0 +1,65 @@
+import gleam/option
+import gleam/string
+import lustre/element
+
+import domain/activity/entity.{type ActivityEvent, ActivityEvent}
+import domain/activity/id as activity_id
+import domain/activity/kind
+import domain/activity/subject.{ActivityTask}
+import domain/project/id as project_id
+import domain/remote.{Loaded}
+import domain/task/id as task_id
+import domain/user/id as user_id
+import scrumbringer_client/ui/activity_feed
+
+fn assert_contains(html: String, fragment: String) {
+  let assert True = string.contains(html, fragment)
+}
+
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
+pub fn activity_feed_renders_empty_state_test() {
+  let html =
+    activity_feed.view(activity_feed.Config(
+      events: Loaded([]),
+      loading_label: "Loading activity...",
+      empty_label: "No activity yet.",
+      error_label: "Could not load activity.",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "No activity yet.")
+  assert_not_contains(html, "activity-feed-item")
+}
+
+pub fn activity_feed_renders_event_actor_summary_and_time_test() {
+  let html =
+    activity_feed.view(activity_feed.Config(
+      events: Loaded([sample_event()]),
+      loading_label: "Loading activity...",
+      empty_label: "No activity yet.",
+      error_label: "Could not load activity.",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "activity-feed-item")
+  assert_contains(html, "admin@example.com")
+  assert_contains(html, "Task claimed")
+  assert_contains(html, "2026-06-22T10:30:00Z")
+}
+
+fn sample_event() -> ActivityEvent {
+  ActivityEvent(
+    id: activity_id.new(1),
+    project_id: project_id.new(1),
+    subject: ActivityTask(task_id.new(42)),
+    kind: kind.TaskClaimed,
+    actor_user_id: user_id.new(7),
+    actor_label: "admin@example.com",
+    summary: "Task claimed",
+    related_subject: option.None,
+    created_at: "2026-06-22T10:30:00Z",
+  )
+}

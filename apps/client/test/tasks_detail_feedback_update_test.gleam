@@ -31,6 +31,7 @@ fn open_context() -> detail_update.Context(Nil) {
   detail_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
+    on_activity_fetched: fn(_result) { Nil },
   )
 }
 

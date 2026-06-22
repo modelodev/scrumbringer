@@ -35,6 +35,7 @@ fn make_model() -> Model {
     note_in_flight: False,
     note_error: option.None,
     note_pin_in_flight: option.None,
+    activity: NotAsked,
     tasks: NotAsked,
     activation_confirm_open: False,
   )

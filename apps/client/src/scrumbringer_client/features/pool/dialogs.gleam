@@ -24,9 +24,10 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, text}
+import lustre/element/html.{div}
 import lustre/event
 
+import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
@@ -43,6 +44,7 @@ import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
@@ -56,6 +58,7 @@ pub type TaskDetailsConfig(msg) {
     dependencies: TaskDependenciesConfig(msg),
     editor: TaskEditorConfig(msg),
     notes: TaskNotesConfig(msg),
+    activity: Remote(List(ActivityEvent)),
     actions: TaskActionsConfig(msg),
     on_close: msg,
     on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
@@ -207,8 +210,13 @@ fn view_task_tab_content(config: TaskDetailsConfig(msg)) -> Element(msg) {
 }
 
 fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  div([attribute.class("task-activity-empty detail-empty")], [
-    text(i18n.t(config.locale, i18n_text.TabActivity)),
+  div([attribute.class("task-activity-panel")], [
+    activity_feed.view(activity_feed.Config(
+      events: config.activity,
+      loading_label: i18n.t(config.locale, i18n_text.ActivityLoading),
+      empty_label: i18n.t(config.locale, i18n_text.ActivityEmpty),
+      error_label: i18n.t(config.locale, i18n_text.ActivityLoadFailed),
+    )),
   ])
 }
 

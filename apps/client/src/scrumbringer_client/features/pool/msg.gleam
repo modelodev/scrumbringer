@@ -1,6 +1,7 @@
 //// Pool feature messages.
 
 import api/cards/contracts as card_contracts
+import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
@@ -156,6 +157,7 @@ pub type Msg {
   MemberNoteDeleted(Int, ApiResult(Nil))
   MemberNotePinClicked(Int, Bool)
   MemberNotePinned(Int, ApiResult(TaskNote))
+  MemberActivityFetched(ApiResult(List(ActivityEvent)))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))

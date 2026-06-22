@@ -3,6 +3,7 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
+import domain/activity/entity.{type ActivityEvent}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type TaskNote}
 import scrumbringer_client/client_state/dialog_mode
@@ -20,6 +21,7 @@ pub type Model {
     member_note_dialog_mode: dialog_mode.DialogMode,
     member_note_delete_in_flight: Option(Int),
     member_note_pin_in_flight: Option(Int),
+    member_activity: Remote(List(ActivityEvent)),
   )
 }
 
@@ -36,5 +38,6 @@ pub fn default_model() -> Model {
     member_note_dialog_mode: dialog_mode.DialogClosed,
     member_note_delete_in_flight: option.None,
     member_note_pin_in_flight: option.None,
+    member_activity: NotAsked,
   )
 }

@@ -1106,6 +1106,9 @@ pub fn translate(text: Text) -> String {
     text.TabSummary -> "Resumen"
     text.TabWork -> "Trabajo"
     text.TabActivity -> "Actividad"
+    text.ActivityLoading -> "Cargando actividad..."
+    text.ActivityEmpty -> "Aún no hay actividad."
+    text.ActivityLoadFailed -> "No se pudo cargar la actividad."
     // 5.4.1: Task detail modal
     text.TabDetails -> "Detalles"
     text.TabDependencies -> "Dependencias"
