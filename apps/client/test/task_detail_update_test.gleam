@@ -4,12 +4,13 @@ import gleam/string
 import lustre/effect
 import lustre/element
 
+import domain/capability.{Capability}
 import domain/org_role
 import domain/remote
 import domain/task
 import domain/task_state
 import domain/task_status
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{TaskType, TaskTypeInline}
 import domain/user.{User}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
@@ -68,6 +69,7 @@ fn task_detail_view(model: client_state.Model, task_id: Int) {
     model.member.notes,
     model.core.user |> opt.map(fn(user) { user.id }),
     False,
+    [],
     [],
     task_id,
     task_details_callbacks(),
@@ -182,6 +184,15 @@ pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test(
           ..pool,
           member_tasks: remote.Loaded([]),
           member_tasks_by_project: dict.from_list([#(1, [sample_task()])]),
+          member_task_types: remote.Loaded([
+            TaskType(
+              id: 1,
+              name: "Bug",
+              icon: "bug-ant",
+              capability_id: opt.Some(5),
+              tasks_count: 1,
+            ),
+          ]),
         ),
       )
     })
@@ -195,12 +206,14 @@ pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test(
       model.core.user |> opt.map(fn(user) { user.id }),
       False,
       [],
+      [Capability(id: 5, name: "Backend")],
       42,
       task_details_callbacks(),
     )
 
   let assert opt.Some(found) = config.task
   let assert "Prepare release" = found.title
+  let assert opt.Some("Backend") = config.capability_name
 }
 
 pub fn task_details_close_resets_default_tasks_tab_test() {

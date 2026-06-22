@@ -41,6 +41,7 @@ import domain/org.{type OrgUser}
 import domain/org_role
 import domain/project.{type Project, type ProjectDepthName}
 import domain/project/project_codec
+import domain/remote
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import domain/view_mode
@@ -198,6 +199,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           model.core.user |> opt.map(fn(user) { user.id }),
           can_manage_task_notes(model),
           project_cards(model),
+          project_capabilities(model),
           task_id,
           task_details_callbacks(),
         )
@@ -1855,6 +1857,10 @@ fn project_cards(model: client_state.Model) -> List(Card) {
     model.admin.cards.cards,
     model.core.selected_project_id,
   )
+}
+
+fn project_capabilities(model: client_state.Model) {
+  remote.unwrap(model.member.skills.member_capabilities, [])
 }
 
 fn can_manage_task_notes(model: client_state.Model) -> Bool {

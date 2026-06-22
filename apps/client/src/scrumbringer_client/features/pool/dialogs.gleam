@@ -56,6 +56,7 @@ pub type TaskDetailsConfig(msg) {
     task_id: Int,
     task: opt.Option(Task),
     parent_card: opt.Option(Card),
+    capability_name: opt.Option(String),
     current_user_id: opt.Option(Int),
     active_tab: show_tabs.TaskShowTab,
     dependencies: TaskDependenciesConfig(msg),
@@ -181,6 +182,7 @@ fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
     locale: config.locale,
     task: config.task,
     parent_card_title: config.editor.parent_card_title,
+    capability_name: config.capability_name,
     dependencies: config.dependencies.items,
     on_close: config.on_close,
   ))

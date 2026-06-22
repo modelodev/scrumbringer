@@ -20,6 +20,7 @@ pub fn task_detail_header_renders_loaded_task_test() {
       locale: locale.En,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
+      capability_name: Some("Backend"),
       dependencies: Loaded([]),
       on_close: "close",
     ))
@@ -28,6 +29,8 @@ pub fn task_detail_header_renders_loaded_task_test() {
   assert_contains(html, "Prepare release")
   assert_contains(html, "Release card")
   assert_contains(html, "Feature")
+  assert_contains(html, "Backend")
+  assert_contains(html, "task-meta-capability")
   assert_contains(html, "P2")
   assert_contains(html, "Available")
   assert_contains(html, "Unassigned")
@@ -41,6 +44,7 @@ pub fn task_detail_header_renders_assigned_task_test() {
       locale: locale.En,
       task: Some(claimed_task()),
       parent_card_title: Some("Release card"),
+      capability_name: None,
       dependencies: Loaded([]),
       on_close: "close",
     ))
@@ -57,6 +61,7 @@ pub fn task_detail_header_renders_loading_title_test() {
       locale: locale.En,
       task: None,
       parent_card_title: None,
+      capability_name: None,
       dependencies: Loaded([]),
       on_close: "close",
     ))
@@ -72,6 +77,7 @@ pub fn task_detail_header_localizes_close_label_test() {
       locale: locale.Es,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
+      capability_name: None,
       dependencies: Loaded([]),
       on_close: "close",
     ))
@@ -86,6 +92,7 @@ pub fn task_detail_header_renders_due_date_and_loaded_blockers_test() {
       locale: locale.En,
       task: Some(Task(..available_task(), due_date: Some("2026-06-24"))),
       parent_card_title: Some("Release card"),
+      capability_name: None,
       dependencies: Loaded([
         dependency(11, Available),
         dependency(12, Done),

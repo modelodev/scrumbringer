@@ -4,7 +4,7 @@ import gleam/int
 import gleam/option as opt
 
 import lustre/attribute
-import lustre/element.{type Element}
+import lustre/element.{type Element, none}
 import lustre/element/html.{div, span, text}
 
 import domain/remote.{type Remote, Loaded}
@@ -23,6 +23,7 @@ pub type Config(msg) {
     locale: Locale,
     task: opt.Option(domain_task.Task),
     parent_card_title: opt.Option(String),
+    capability_name: opt.Option(String),
     dependencies: Remote(List(domain_task.TaskDependency)),
     on_close: msg,
   )
@@ -85,6 +86,7 @@ fn task_meta(config: Config(msg), task: domain_task.Task) -> Element(msg) {
         icons.nav_icon(icons.TaskTypes, icons.Small),
         text(task.task_type.name),
       ]),
+      capability_chip(config),
       span([attribute.class("task-meta-chip task-meta-priority")], [
         icons.nav_icon(icons.Automation, icons.Small),
         text("P" <> int.to_string(task.priority)),
@@ -112,6 +114,17 @@ fn card_chip(config: Config(msg)) -> Element(msg) {
       span([attribute.class("task-meta-chip task-meta-card muted")], [
         text(t(config, i18n_text.NoCard)),
       ])
+  }
+}
+
+fn capability_chip(config: Config(msg)) -> Element(msg) {
+  case config.capability_name {
+    opt.Some(name) ->
+      span([attribute.class("task-meta-chip task-meta-capability")], [
+        icons.nav_icon(icons.Capabilities, icons.Small),
+        text(name),
+      ])
+    opt.None -> none()
   }
 }
 
