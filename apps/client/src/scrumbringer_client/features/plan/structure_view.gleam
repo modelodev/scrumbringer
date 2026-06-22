@@ -535,7 +535,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
         span([attribute.class("plan-tree-level")], [text(level_name)]),
         case path {
           "" -> element.none()
-          _ -> span([attribute.class("plan-tree-path")], [text(path)])
+          _ -> span([attribute.class("plan-tree-mobile-parent")], [text(path)])
         },
       ]),
       div([attribute.class("plan-tree-mobile-meta")], [
@@ -583,10 +583,6 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
         [span([attribute.class("plan-tree-title")], [text(card.title)])],
       ),
       span([attribute.class("plan-tree-level")], [text(level_name)]),
-      case path {
-        "" -> element.none()
-        _ -> span([attribute.class("plan-tree-path")], [text(path)])
-      },
     ],
   )
 }
@@ -604,7 +600,10 @@ fn view_tree_rails(count: Int) -> List(Element(msg)) {
     False -> [
       span(
         [
-          attribute.class("plan-tree-rail"),
+          attribute.class(case count == 1 {
+            True -> "plan-tree-rail is-current"
+            False -> "plan-tree-rail"
+          }),
           attribute.attribute("aria-hidden", "true"),
         ],
         [],

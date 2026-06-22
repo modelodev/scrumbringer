@@ -48,8 +48,10 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_contains(html, "plan-tree-cell is-nested")
   assert_contains(html, "plan-tree-gutter")
   assert_contains(html, "plan-tree-rail")
+  assert_contains(html, "plan-tree-rail is-current")
   assert_contains(html, "class=\"plan-tree-marker\">▾</span>")
   assert_contains(html, "class=\"plan-tree-leaf\"></span>")
+  assert_not_contains(html, "plan-tree-path")
 }
 
 pub fn tree_gutter_scales_for_deep_card_nesting_test() {
@@ -65,6 +67,7 @@ pub fn tree_gutter_scales_for_deep_card_nesting_test() {
   assert_contains(html, "Root Initiative / Portal Feature / API Story")
   assert_contains(html, "plan-tree-gutter")
   assert_contains(html, "plan-tree-rail")
+  assert_contains(html, "plan-tree-rail is-current")
   assert_contains(html, "class=\"plan-tree-leaf\"></span>")
 }
 
@@ -94,7 +97,7 @@ pub fn status_filter_limits_visible_rows_test() {
   assert_not_contains(html, "plan-tree-title\">Portal Feature")
 }
 
-pub fn level_scope_uses_visible_level_name_and_parent_path_test() {
+pub fn level_scope_uses_visible_level_name_and_matching_card_rows_test() {
   let html =
     render(
       structure_view.Config(
@@ -105,7 +108,6 @@ pub fn level_scope_uses_visible_level_name_and_parent_path_test() {
     )
 
   assert_contains(html, "Story")
-  assert_contains(html, "Root Initiative / Portal Feature")
   assert_contains(html, "API Story")
 }
 
