@@ -26,6 +26,7 @@ import domain/project_role.{type ProjectRole}
 import gleam/dynamic/decode
 import gleam/list
 import gleam/result
+import gleam/string
 import pog
 import scrumbringer_server/sql
 import scrumbringer_server/use_case/persisted_field
@@ -41,6 +42,7 @@ pub type ProjectRecord {
     my_role: ProjectRole,
     members_count: Int,
     card_depth_names: List(ProjectDepthName),
+    healthy_pool_limit: Int,
   )
 }
 
@@ -52,6 +54,14 @@ pub type ProjectMemberRecord {
     role: ProjectRole,
     created_at: String,
     claimed_count: Int,
+  )
+}
+
+pub type DepthReductionImpact {
+  DepthReductionImpact(
+    affected_cards_count: Int,
+    available_tasks_count: Int,
+    claimed_tasks_count: Int,
   )
 }
 
@@ -87,6 +97,7 @@ fn project_from_fields(
     my_role: my_role,
     members_count: members_count,
     card_depth_names: project_codec.default_card_depth_names(),
+    healthy_pool_limit: 20,
   )
 }
 
@@ -185,7 +196,7 @@ pub fn list_projects_for_user(
       row.my_role,
       row.members_count,
     ))
-    with_card_depth_names(db, project)
+    with_project_settings(db, project)
   })
 }
 
@@ -223,16 +234,23 @@ pub fn list_projects_for_org(
       my_role,
       members_count,
     ))
-    with_card_depth_names(db, project)
+    with_project_settings(db, project)
   })
 }
 
-fn with_card_depth_names(
+fn with_project_settings(
   db: pog.Connection,
   project: ProjectRecord,
 ) -> Result(ProjectRecord, pog.QueryError) {
   use card_depth_names <- result.try(list_card_depth_names(db, project.id))
-  Ok(ProjectRecord(..project, card_depth_names: card_depth_names))
+  use healthy_pool_limit <- result.try(healthy_pool_limit(db, project.id))
+  Ok(
+    ProjectRecord(
+      ..project,
+      card_depth_names: card_depth_names,
+      healthy_pool_limit: healthy_pool_limit,
+    ),
+  )
 }
 
 fn list_card_depth_names(
@@ -262,6 +280,30 @@ fn list_card_depth_names(
   case returned.rows {
     [] -> Ok(project_codec.default_card_depth_names())
     rows -> Ok(rows)
+  }
+}
+
+fn healthy_pool_limit(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(Int, pog.QueryError) {
+  let decoder = {
+    use value <- decode.field(0, decode.int)
+    decode.success(value)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "\nselect coalesce(ps.healthy_pool_limit, 20)::int\nfrom projects p\nleft join project_settings ps on ps.project_id = p.id\nwhere p.id = $1",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [value, ..] -> Ok(value)
+    [] -> Ok(20)
   }
 }
 
@@ -629,7 +671,15 @@ fn parse_role_update_result(
 /// Errors returned when updating a project.
 pub type UpdateProjectError {
   UpdateProjectNotFound
+  InvalidProjectSettings
+  DepthReductionBlocked(claimed_tasks_count: Int)
   UpdateProjectDbError(pog.QueryError)
+}
+
+pub type DepthReductionPreviewError {
+  DepthReductionProjectNotFound
+  InvalidDepthReduction
+  DepthReductionDbError(pog.QueryError)
 }
 
 /// Errors returned when deleting a project.
@@ -638,29 +688,284 @@ pub type DeleteProjectError {
   DeleteProjectDbError(pog.QueryError)
 }
 
-/// Updates a project's name.
+/// Updates a project's editable settings.
 ///
 /// Example:
-///   update_project(db, project_id, "New name")
+///   update_project(db, project_id, user_id, "New name", 20, project_codec.default_card_depth_names())
 pub fn update_project(
   db: pog.Connection,
   project_id: Int,
+  actor_user_id: Int,
   name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(ProjectRecord, UpdateProjectError) {
+  case valid_project_settings(healthy_pool_limit, card_depth_names) {
+    False -> Error(InvalidProjectSettings)
+    True ->
+      do_update_project(
+        db,
+        project_id,
+        actor_user_id,
+        name,
+        healthy_pool_limit,
+        card_depth_names,
+      )
+  }
+}
+
+pub fn preview_depth_reduction(
+  db: pog.Connection,
+  project_id: Int,
+  new_max_depth: Int,
+) -> Result(DepthReductionImpact, DepthReductionPreviewError) {
+  case new_max_depth > 0 {
+    False -> Error(InvalidDepthReduction)
+    True -> do_preview_depth_reduction(db, project_id, new_max_depth)
+  }
+}
+
+fn do_preview_depth_reduction(
+  db: pog.Connection,
+  project_id: Int,
+  new_max_depth: Int,
+) -> Result(DepthReductionImpact, DepthReductionPreviewError) {
+  case project_exists(db, project_id) {
+    Ok(False) -> Error(DepthReductionProjectNotFound)
+    Error(e) -> Error(DepthReductionDbError(e))
+    Ok(True) -> {
+      let decoder = {
+        use affected_cards_count <- decode.field(0, decode.int)
+        use available_tasks_count <- decode.field(1, decode.int)
+        use claimed_tasks_count <- decode.field(2, decode.int)
+        decode.success(DepthReductionImpact(
+          affected_cards_count: affected_cards_count,
+          available_tasks_count: available_tasks_count,
+          claimed_tasks_count: claimed_tasks_count,
+        ))
+      }
+
+      use returned <- result.try(
+        pog.query(
+          "\nwith recursive card_depths as (\n  select c.id, c.parent_card_id, 1::int as depth\n  from cards c\n  where c.project_id = $1\n    and c.parent_card_id is null\n  union all\n  select child.id, child.parent_card_id, parent.depth + 1\n  from cards child\n  join card_depths parent on child.parent_card_id = parent.id\n  where child.project_id = $1\n), affected_cards as (\n  select id\n  from card_depths\n  where depth > $2\n), affected_tasks as (\n  select t.id, t.execution_state\n  from tasks t\n  join affected_cards c on c.id = t.card_id\n  where t.execution_state <> 'closed'\n)\nselect\n  (select count(*)::int from affected_cards),\n  (select count(*)::int from affected_tasks where execution_state = 'available'),\n  (select count(*)::int from affected_tasks where execution_state = 'claimed')",
+        )
+        |> pog.parameter(pog.int(project_id))
+        |> pog.parameter(pog.int(new_max_depth))
+        |> pog.returning(decoder)
+        |> pog.execute(db)
+        |> result.map_error(DepthReductionDbError),
+      )
+
+      case returned.rows {
+        [impact, ..] -> Ok(impact)
+        [] -> Ok(DepthReductionImpact(0, 0, 0))
+      }
+    }
+  }
+}
+
+fn do_update_project(
+  db: pog.Connection,
+  project_id: Int,
+  actor_user_id: Int,
+  name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(ProjectRecord, UpdateProjectError) {
+  pog.transaction(db, fn(tx) {
+    use existing_depth_names <- result.try(
+      list_card_depth_names(tx, project_id)
+      |> result.map_error(UpdateProjectDbError),
+    )
+
+    use _ <- result.try(apply_depth_structure_change(
+      tx,
+      project_id,
+      actor_user_id,
+      existing_depth_names,
+      card_depth_names,
+    ))
+
+    update_project_record(
+      tx,
+      project_id,
+      name,
+      healthy_pool_limit,
+      card_depth_names,
+    )
+  })
+  |> result.map_error(transaction_error_to_update_project_error)
+}
+
+fn apply_depth_structure_change(
+  db: pog.Connection,
+  project_id: Int,
+  actor_user_id: Int,
+  existing_depth_names: List(ProjectDepthName),
+  requested_depth_names: List(ProjectDepthName),
+) -> Result(Nil, UpdateProjectError) {
+  let existing_depth = list.length(existing_depth_names)
+  let requested_depth = list.length(requested_depth_names)
+
+  case requested_depth < existing_depth {
+    True ->
+      apply_depth_reduction(db, project_id, actor_user_id, requested_depth)
+    False -> Ok(Nil)
+  }
+}
+
+fn apply_depth_reduction(
+  db: pog.Connection,
+  project_id: Int,
+  actor_user_id: Int,
+  new_max_depth: Int,
+) -> Result(Nil, UpdateProjectError) {
+  let decoder = {
+    use claimed_tasks_count <- decode.field(0, decode.int)
+    decode.success(claimed_tasks_count)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "\nwith recursive card_depths as (\n  select c.id, c.parent_card_id, c.project_id, p.org_id, 1::int as depth\n  from cards c\n  join projects p on p.id = c.project_id\n  where c.project_id = $1\n    and c.parent_card_id is null\n  union all\n  select child.id, child.parent_card_id, child.project_id, parent.org_id, parent.depth + 1\n  from cards child\n  join card_depths parent on child.parent_card_id = parent.id\n  where child.project_id = $1\n), affected_cards as (\n  select id, project_id, org_id\n  from card_depths\n  where depth > $2\n), claimed as (\n  select count(*)::int as claimed_tasks_count\n  from tasks task\n  join affected_cards card on card.id = task.card_id\n  where task.execution_state = 'claimed'\n), closed_tasks as (\n  update tasks task\n  set execution_state = 'closed',\n      closed_at = now(),\n      closed_by = $3,\n      closed_reason = 'closed_by_depth_reduction',\n      pool_lifetime_s = pool_lifetime_s + case\n        when last_entered_pool_at is null then 0\n        else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)\n      end,\n      last_entered_pool_at = null,\n      version = version + 1\n  where task.card_id in (select id from affected_cards)\n    and task.execution_state = 'available'\n    and (select claimed_tasks_count from claimed) = 0\n  returning task.id\n), closed_cards as (\n  update cards card\n  set execution_state = 'closed',\n      closed_at = coalesce(card.closed_at, now()),\n      closed_by = $3,\n      closed_by_kind = 'user',\n      closed_reason = 'depth_reduction'\n  from affected_cards affected\n  where card.id = affected.id\n    and card.execution_state <> 'closed'\n    and (select claimed_tasks_count from claimed) = 0\n  returning card.id, affected.project_id, affected.org_id\n), audit as (\n  insert into audit_events (\n    org_id,\n    project_id,\n    card_id,\n    actor_user_id,\n    event_type,\n    payload_json,\n    created_at\n  )\n  select\n    org_id,\n    project_id,\n    id,\n    $3,\n    'card_closed',\n    '{}'::jsonb,\n    now()\n  from closed_cards\n  returning id\n)\nselect claimed_tasks_count from claimed",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(new_max_depth))
+    |> pog.parameter(pog.int(actor_user_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+    |> result.map_error(UpdateProjectDbError),
+  )
+
+  case returned.rows {
+    [claimed_tasks_count, ..] if claimed_tasks_count > 0 ->
+      Error(DepthReductionBlocked(claimed_tasks_count))
+    _ -> Ok(Nil)
+  }
+}
+
+fn transaction_error_to_update_project_error(
+  error: pog.TransactionError(UpdateProjectError),
+) -> UpdateProjectError {
+  case error {
+    pog.TransactionRolledBack(err) -> err
+    pog.TransactionQueryError(err) -> UpdateProjectDbError(err)
+  }
+}
+
+fn update_project_record(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
 ) -> Result(ProjectRecord, UpdateProjectError) {
   case sql.project_update(db, project_id, name) {
-    Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(project_from_fields(
-        row.id,
-        row.org_id,
-        row.name,
-        row.created_at,
-        project_role.Manager,
-        0,
+    Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      use _ <- result.try(
+        upsert_healthy_pool_limit(db, project_id, healthy_pool_limit)
+        |> result.map_error(UpdateProjectDbError),
+      )
+      use _ <- result.try(
+        replace_card_depth_names(db, project_id, card_depth_names)
+        |> result.map_error(UpdateProjectDbError),
+      )
+      Ok(ProjectRecord(
+        id: row.id,
+        org_id: row.org_id,
+        name: row.name,
+        created_at: row.created_at,
+        my_role: project_role.Manager,
+        members_count: 0,
+        card_depth_names: card_depth_names,
+        healthy_pool_limit: healthy_pool_limit,
       ))
+    }
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateProjectNotFound)
     Error(e) -> Error(UpdateProjectDbError(e))
   }
+}
+
+fn depth_numbers(depth_names: List(ProjectDepthName)) -> List(Int) {
+  list.map(depth_names, fn(depth_name) {
+    let ProjectDepthName(depth: depth, ..) = depth_name
+    depth
+  })
+}
+
+fn valid_project_settings(
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Bool {
+  healthy_pool_limit > 0
+  && !list.is_empty(card_depth_names)
+  && depth_numbers(card_depth_names)
+  == expected_depth_numbers(1, list.length(card_depth_names))
+  && !list.any(card_depth_names, fn(depth_name) {
+    let ProjectDepthName(
+      depth: depth,
+      singular_name: singular,
+      plural_name: plural,
+    ) = depth_name
+    depth <= 0 || string.trim(singular) == "" || string.trim(plural) == ""
+  })
+}
+
+fn expected_depth_numbers(next_depth: Int, max_depth: Int) -> List(Int) {
+  case next_depth > max_depth {
+    True -> []
+    False -> [next_depth, ..expected_depth_numbers(next_depth + 1, max_depth)]
+  }
+}
+
+fn upsert_healthy_pool_limit(
+  db: pog.Connection,
+  project_id: Int,
+  healthy_pool_limit: Int,
+) -> Result(Nil, pog.QueryError) {
+  use _returned <- result.try(
+    pog.query(
+      "\ninsert into project_settings (project_id, healthy_pool_limit)\nvalues ($1, $2)\non conflict (project_id) do update\nset healthy_pool_limit = excluded.healthy_pool_limit",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(healthy_pool_limit))
+    |> pog.execute(db),
+  )
+  Ok(Nil)
+}
+
+fn replace_card_depth_names(
+  db: pog.Connection,
+  project_id: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(Nil, pog.QueryError) {
+  use _deleted <- result.try(
+    pog.query("\ndelete from project_card_depth_names where project_id = $1")
+    |> pog.parameter(pog.int(project_id))
+    |> pog.execute(db),
+  )
+
+  card_depth_names
+  |> list.try_each(fn(depth_name) {
+    let ProjectDepthName(
+      depth: depth,
+      singular_name: singular_name,
+      plural_name: plural_name,
+    ) = depth_name
+
+    use _inserted <- result.try(
+      pog.query(
+        "\ninsert into project_card_depth_names (project_id, depth, singular_name, plural_name)\nvalues ($1, $2, $3, $4)",
+      )
+      |> pog.parameter(pog.int(project_id))
+      |> pog.parameter(pog.int(depth))
+      |> pog.parameter(pog.text(string.trim(singular_name)))
+      |> pog.parameter(pog.text(string.trim(plural_name)))
+      |> pog.execute(db),
+    )
+    Ok(Nil)
+  })
 }
 
 /// Deletes a project and all related data.

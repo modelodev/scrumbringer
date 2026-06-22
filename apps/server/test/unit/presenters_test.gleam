@@ -119,6 +119,7 @@ pub fn project_json_does_not_expose_internal_org_id_test() {
       my_role: project_role.Manager,
       members_count: 3,
       card_depth_names: [],
+      healthy_pool_limit: 20,
     )
 
   let body =
@@ -150,6 +151,7 @@ pub fn project_json_includes_card_depth_names_test() {
           plural_name: "Stories",
         ),
       ],
+      healthy_pool_limit: 18,
     )
 
   let body =
@@ -177,6 +179,32 @@ pub fn project_json_includes_card_depth_names_test() {
 
   depth_names
   |> expect.equal([#(1, "Epic", "Epics"), #(2, "Story", "Stories")])
+}
+
+pub fn project_json_includes_healthy_pool_limit_test() {
+  let project =
+    projects_db.ProjectRecord(
+      id: 7,
+      org_id: 99,
+      name: "Core",
+      created_at: "2026-06-15T09:00:00Z",
+      my_role: project_role.Manager,
+      members_count: 3,
+      card_depth_names: [],
+      healthy_pool_limit: 14,
+    )
+
+  let body =
+    project
+    |> project_presenters.project
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok(14) =
+    decode.run(
+      dynamic,
+      decode.field("healthy_pool_limit", decode.int, decode.success),
+    )
 }
 
 pub fn project_member_json_does_not_expose_internal_project_id_test() {

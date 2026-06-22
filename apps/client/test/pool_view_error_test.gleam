@@ -101,6 +101,7 @@ pub fn view_pool_main_shows_tasks_error_test() {
       created_at: "2026-01-01T00:00:00Z",
       members_count: 1,
       card_depth_names: [],
+      healthy_pool_limit: 20,
     )
 
   let model =

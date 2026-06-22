@@ -19,6 +19,8 @@
 //// - **features/admin/update.gleam**: Assembles root state and toasts
 //// - **api/projects.gleam**: Provides API effects for project operations
 
+import gleam/int
+import gleam/list
 import gleam/option as opt
 import gleam/string
 
@@ -29,7 +31,8 @@ import scrumbringer_client/api/projects as api_projects
 
 // Domain types
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/project.{type Project}
+import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
+import domain/project/project_codec
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
   type DialogState, type OperationState, DialogClosed, DialogOpen,
@@ -42,6 +45,10 @@ pub type Context(parent_msg) {
     on_project_created: fn(ApiResult(Project)) -> parent_msg,
     on_project_updated: fn(ApiResult(Project)) -> parent_msg,
     on_project_deleted: fn(ApiResult(Nil)) -> parent_msg,
+    on_depth_reduction_previewed: fn(
+      ApiResult(api_projects.DepthReductionImpact),
+    ) ->
+      parent_msg,
     name_required: String,
   )
 }
@@ -117,8 +124,19 @@ pub fn try_update(
       handle_project_created_error(model, err, error_feedback)
       |> with_auth_policy(CheckAuth(err))
 
-    admin_messages.ProjectEditDialogOpened(project_id, project_name) ->
-      handle_project_edit_dialog_opened(model, project_id, project_name)
+    admin_messages.ProjectEditDialogOpened(
+      project_id,
+      project_name,
+      healthy_pool_limit,
+      card_depth_names,
+    ) ->
+      handle_project_edit_dialog_opened(
+        model,
+        project_id,
+        project_name,
+        healthy_pool_limit,
+        card_depth_names,
+      )
       |> without_policies
 
     admin_messages.ProjectEditDialogClosed ->
@@ -127,6 +145,34 @@ pub fn try_update(
 
     admin_messages.ProjectEditNameChanged(name) ->
       handle_project_edit_name_changed(model, name)
+      |> without_policies
+
+    admin_messages.ProjectEditHealthyPoolLimitChanged(value) ->
+      handle_project_edit_healthy_pool_limit_changed(model, value)
+      |> without_policies
+
+    admin_messages.ProjectEditMaxDepthChanged(value) ->
+      handle_project_edit_max_depth_changed(model, value)
+      |> without_policies
+
+    admin_messages.ProjectEditDepthSingularChanged(depth, value) ->
+      handle_project_edit_depth_singular_changed(model, depth, value)
+      |> without_policies
+
+    admin_messages.ProjectEditDepthPluralChanged(depth, value) ->
+      handle_project_edit_depth_plural_changed(model, depth, value)
+      |> without_policies
+
+    admin_messages.ProjectEditDepthReductionReviewClicked ->
+      handle_project_edit_depth_reduction_review_clicked(model, context)
+      |> without_policies
+
+    admin_messages.ProjectEditDepthReductionPreviewed(result) ->
+      handle_project_edit_depth_reduction_previewed(model, result)
+      |> without_policies
+
+    admin_messages.ProjectEditDepthReductionConfirmed ->
+      handle_project_edit_depth_reduction_confirmed(model)
       |> without_policies
 
     admin_messages.ProjectEditSubmitted ->
@@ -334,7 +380,11 @@ fn handle_project_edit_dialog_opened(
   model: admin_projects.Model,
   project_id: Int,
   project_name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let normalized_depth_names = normalize_depth_names(card_depth_names)
+
   #(
     set_projects_dialog(
       model,
@@ -342,6 +392,10 @@ fn handle_project_edit_dialog_opened(
         form: admin_projects.ProjectDialogEdit(
           id: project_id,
           name: project_name,
+          max_depth: int.to_string(list.length(normalized_depth_names)),
+          healthy_pool_limit: int.to_string(healthy_pool_limit),
+          card_depth_names: normalized_depth_names,
+          depth_reduction: admin_projects.NoDepthReduction,
         ),
         operation: Idle,
       ),
@@ -364,11 +418,289 @@ fn handle_project_edit_name_changed(
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let next_state = case model.projects_dialog {
     DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: id, name: _),
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: depth_reduction,
+        ..,
+      ),
       operation: op,
     ) ->
       DialogOpen(
-        form: admin_projects.ProjectDialogEdit(id: id, name: name),
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: card_depth_names,
+          depth_reduction: depth_reduction,
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_edit_healthy_pool_limit_changed(
+  model: admin_projects.Model,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        name: name,
+        max_depth: max_depth,
+        card_depth_names: card_depth_names,
+        depth_reduction: depth_reduction,
+        ..,
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: value,
+          card_depth_names: card_depth_names,
+          depth_reduction: depth_reduction,
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_edit_max_depth_changed(
+  model: admin_projects.Model,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        name: name,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        ..,
+      ),
+      operation: op,
+    ) -> {
+      let normalized = normalize_depth_names(card_depth_names)
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: value,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: normalized,
+          depth_reduction: depth_reduction_for_max_depth(value, normalized),
+        ),
+        operation: op,
+      )
+    }
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_edit_depth_singular_changed(
+  model: admin_projects.Model,
+  depth: Int,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  update_project_edit_depth_name(model, depth, fn(depth_name) {
+    ProjectDepthName(..depth_name, singular_name: value)
+  })
+}
+
+fn handle_project_edit_depth_plural_changed(
+  model: admin_projects.Model,
+  depth: Int,
+  value: String,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  update_project_edit_depth_name(model, depth, fn(depth_name) {
+    ProjectDepthName(..depth_name, plural_name: value)
+  })
+}
+
+fn update_project_edit_depth_name(
+  model: admin_projects.Model,
+  depth: Int,
+  update_depth_name: fn(ProjectDepthName) -> ProjectDepthName,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: depth_reduction,
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: update_depth_names(
+            card_depth_names,
+            depth,
+            update_depth_name,
+          ),
+          depth_reduction: depth_reduction,
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_edit_depth_reduction_review_clicked(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: project_id,
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: admin_projects.DepthReductionNeedsReview(new_max_depth),
+      ),
+      operation: op,
+    ) -> {
+      let next_model =
+        set_projects_dialog(
+          model,
+          DialogOpen(
+            form: admin_projects.ProjectDialogEdit(
+              id: project_id,
+              name: name,
+              max_depth: max_depth,
+              healthy_pool_limit: healthy_pool_limit,
+              card_depth_names: card_depth_names,
+              depth_reduction: admin_projects.DepthReductionLoading(
+                new_max_depth,
+              ),
+            ),
+            operation: op,
+          ),
+        )
+
+      #(
+        next_model,
+        api_projects.preview_depth_reduction(
+          project_id,
+          new_max_depth,
+          context.on_depth_reduction_previewed,
+        ),
+      )
+    }
+    _ -> #(model, effect.none())
+  }
+}
+
+fn handle_project_edit_depth_reduction_previewed(
+  model: admin_projects.Model,
+  result: ApiResult(api_projects.DepthReductionImpact),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case result {
+    Ok(impact) -> set_depth_reduction_ready(model, impact)
+    Error(err) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(
+          model.projects_dialog,
+          "Could not review depth reduction: " <> err.message,
+        ),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+fn set_depth_reduction_ready(
+  model: admin_projects.Model,
+  impact: api_projects.DepthReductionImpact,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: admin_projects.DepthReductionLoading(new_max_depth),
+      ),
+      operation: op,
+    ) ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: card_depth_names,
+          depth_reduction: admin_projects.DepthReductionReady(
+            new_max_depth,
+            impact,
+          ),
+        ),
+        operation: op,
+      )
+    other -> other
+  }
+
+  #(set_projects_dialog(model, next_state), effect.none())
+}
+
+fn handle_project_edit_depth_reduction_confirmed(
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  let next_state = case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogEdit(
+        id: id,
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: admin_projects.DepthReductionReady(
+          new_max_depth,
+          impact,
+        ),
+      ),
+      operation: op,
+    )
+      if impact.blocked == False
+    ->
+      DialogOpen(
+        form: admin_projects.ProjectDialogEdit(
+          id: id,
+          name: name,
+          max_depth: max_depth,
+          healthy_pool_limit: healthy_pool_limit,
+          card_depth_names: card_depth_names,
+          depth_reduction: admin_projects.DepthReductionConfirmed(new_max_depth),
+        ),
         operation: op,
       )
     other -> other
@@ -384,13 +716,24 @@ fn handle_project_edit_submitted(
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
     DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: project_id, name: name),
+      form: admin_projects.ProjectDialogEdit(
+        id: project_id,
+        name: name,
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: depth_reduction,
+      ),
       operation: op,
     ) ->
       submit_project_edit(
         model,
         project_id,
         name,
+        max_depth,
+        healthy_pool_limit,
+        card_depth_names,
+        depth_reduction,
         operation_in_flight(op),
         context,
       )
@@ -402,6 +745,10 @@ fn submit_project_edit(
   model: admin_projects.Model,
   project_id: Int,
   name: String,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+  depth_reduction: admin_projects.DepthReductionState,
   in_flight: Bool,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
@@ -420,9 +767,184 @@ fn submit_project_edit(
           ),
           effect.none(),
         )
-        False -> submit_project_edit_valid(model, project_id, trimmed, context)
+        False ->
+          submit_project_edit_settings(
+            model,
+            project_id,
+            trimmed,
+            max_depth,
+            healthy_pool_limit,
+            card_depth_names,
+            depth_reduction,
+            context,
+          )
       }
     }
+  }
+}
+
+fn submit_project_edit_settings(
+  model: admin_projects.Model,
+  project_id: Int,
+  name: String,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+  depth_reduction: admin_projects.DepthReductionState,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case
+    validate_project_settings(
+      max_depth,
+      healthy_pool_limit,
+      card_depth_names,
+      depth_reduction,
+    )
+  {
+    Error(message) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(model.projects_dialog, message),
+      ),
+      effect.none(),
+    )
+    Ok(#(limit, depth_names)) ->
+      submit_project_edit_valid(
+        model,
+        project_id,
+        name,
+        limit,
+        depth_names,
+        context,
+      )
+  }
+}
+
+fn validate_project_settings(
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+  depth_reduction: admin_projects.DepthReductionState,
+) -> Result(#(Int, List(ProjectDepthName)), String) {
+  case int.parse(string.trim(healthy_pool_limit)) {
+    Error(_) -> Error("Pool soft limit must be a positive number")
+    Ok(value) if value <= 0 ->
+      Error("Pool soft limit must be a positive number")
+    Ok(value) ->
+      validate_depth_settings(
+        max_depth,
+        value,
+        card_depth_names,
+        depth_reduction,
+      )
+  }
+}
+
+fn validate_depth_settings(
+  max_depth: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+  depth_reduction: admin_projects.DepthReductionState,
+) -> Result(#(Int, List(ProjectDepthName)), String) {
+  case int.parse(string.trim(max_depth)) {
+    Error(_) -> Error("Maximum depth must be a positive number")
+    Ok(value) if value <= 0 -> Error("Maximum depth must be a positive number")
+    Ok(value) -> {
+      let normalized = normalize_depth_names(card_depth_names)
+      let current_depth = list.length(normalized)
+      case value == current_depth {
+        True -> validate_depth_names(healthy_pool_limit, normalized)
+        False ->
+          validate_pending_depth_change(
+            value,
+            current_depth,
+            healthy_pool_limit,
+            normalized,
+            depth_reduction,
+          )
+      }
+    }
+  }
+}
+
+fn validate_pending_depth_change(
+  max_depth: Int,
+  current_depth: Int,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+  depth_reduction: admin_projects.DepthReductionState,
+) -> Result(#(Int, List(ProjectDepthName)), String) {
+  case max_depth > current_depth {
+    True -> Error("Add level names before increasing maximum depth")
+    False ->
+      case depth_reduction {
+        admin_projects.DepthReductionConfirmed(confirmed_depth)
+          if confirmed_depth == max_depth
+        ->
+          validate_depth_names(
+            healthy_pool_limit,
+            list.take(card_depth_names, max_depth),
+          )
+        _ -> Error("Review affected cards before saving a lower maximum depth")
+      }
+  }
+}
+
+fn validate_depth_names(
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(#(Int, List(ProjectDepthName)), String) {
+  let normalized = normalize_depth_names(card_depth_names)
+  case list.any(normalized, invalid_depth_name) {
+    True -> Error("Every level needs singular and plural names")
+    False -> Ok(#(healthy_pool_limit, normalized))
+  }
+}
+
+fn invalid_depth_name(depth_name: ProjectDepthName) -> Bool {
+  let ProjectDepthName(
+    depth: depth,
+    singular_name: singular,
+    plural_name: plural,
+  ) = depth_name
+  depth <= 0 || string.trim(singular) == "" || string.trim(plural) == ""
+}
+
+fn normalize_depth_names(
+  card_depth_names: List(ProjectDepthName),
+) -> List(ProjectDepthName) {
+  case card_depth_names {
+    [] -> project_codec.default_card_depth_names()
+    _ -> card_depth_names
+  }
+}
+
+fn update_depth_names(
+  card_depth_names: List(ProjectDepthName),
+  target_depth: Int,
+  update_depth_name: fn(ProjectDepthName) -> ProjectDepthName,
+) -> List(ProjectDepthName) {
+  normalize_depth_names(card_depth_names)
+  |> list.map(fn(depth_name) {
+    let ProjectDepthName(depth: depth, ..) = depth_name
+    case depth == target_depth {
+      True -> update_depth_name(depth_name)
+      False -> depth_name
+    }
+  })
+}
+
+fn depth_reduction_for_max_depth(
+  max_depth: String,
+  card_depth_names: List(ProjectDepthName),
+) -> admin_projects.DepthReductionState {
+  case int.parse(string.trim(max_depth)) {
+    Ok(value) ->
+      case value < list.length(card_depth_names) && value > 0 {
+        True -> admin_projects.DepthReductionNeedsReview(value)
+        False -> admin_projects.NoDepthReduction
+      }
+    _ -> admin_projects.NoDepthReduction
   }
 }
 
@@ -430,6 +952,8 @@ fn submit_project_edit_valid(
   model: admin_projects.Model,
   project_id: Int,
   name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   let model =
@@ -439,7 +963,13 @@ fn submit_project_edit_valid(
     )
   #(
     model,
-    api_projects.update_project(project_id, name, context.on_project_updated),
+    api_projects.update_project(
+      project_id,
+      name,
+      healthy_pool_limit,
+      card_depth_names,
+      context.on_project_updated,
+    ),
   )
 }
 
@@ -463,7 +993,7 @@ fn handle_project_updated_error(
   let message = error_message(err, feedback)
 
   case model.projects_dialog {
-    DialogOpen(form: admin_projects.ProjectDialogEdit(id: _, name: _), ..) -> #(
+    DialogOpen(form: admin_projects.ProjectDialogEdit(id: _, ..), ..) -> #(
       set_projects_dialog(
         model,
         update_project_dialog_error(model.projects_dialog, message),

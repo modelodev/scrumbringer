@@ -3274,6 +3274,11 @@ with new_project as (
       (3, 'Task group', 'Task groups')
   ) as names(depth, singular_name, plural_name)
   on conflict (project_id, depth) do nothing
+), settings as (
+  insert into project_settings (project_id, healthy_pool_limit)
+  select new_project.id, 20
+  from new_project
+  on conflict (project_id) do nothing
 ), default_task_types as (
   insert into task_types (project_id, name, icon)
   select

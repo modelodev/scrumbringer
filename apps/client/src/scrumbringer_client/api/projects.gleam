@@ -22,7 +22,9 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/project.{type Project, type ProjectMember}
+import domain/project.{
+  type Project, type ProjectDepthName, type ProjectMember, ProjectDepthName,
+}
 import domain/project/project_codec
 import domain/project_role.{type ProjectRole}
 import domain/project_role/project_role_codec
@@ -143,6 +145,15 @@ pub type ReleaseAllResult {
   ReleaseAllResult(released_count: Int, task_ids: List(Int))
 }
 
+pub type DepthReductionImpact {
+  DepthReductionImpact(
+    affected_cards_count: Int,
+    available_tasks_count: Int,
+    claimed_tasks_count: Int,
+    blocked: Bool,
+  )
+}
+
 fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
   use released_count <- decode.field("released_count", decode.int)
   use task_ids <- decode.field("task_ids", decode.list(decode.int))
@@ -150,6 +161,36 @@ fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
     released_count: released_count,
     task_ids: task_ids,
   ))
+}
+
+fn depth_reduction_impact_decoder() -> decode.Decoder(DepthReductionImpact) {
+  use affected_cards_count <- decode.field("affected_cards_count", decode.int)
+  use available_tasks_count <- decode.field("available_tasks_count", decode.int)
+  use claimed_tasks_count <- decode.field("claimed_tasks_count", decode.int)
+  use blocked <- decode.field("blocked", decode.bool)
+  decode.success(DepthReductionImpact(
+    affected_cards_count: affected_cards_count,
+    available_tasks_count: available_tasks_count,
+    claimed_tasks_count: claimed_tasks_count,
+    blocked: blocked,
+  ))
+}
+
+pub fn preview_depth_reduction(
+  project_id: Int,
+  new_max_depth: Int,
+  to_msg: fn(ApiResult(DepthReductionImpact)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("new_max_depth", json.int(new_max_depth))])
+  core.request(
+    core.Post,
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/depth-reduction-preview",
+    option.Some(body),
+    depth_reduction_impact_decoder(),
+    to_msg,
+  )
 }
 
 fn role_change_result_decoder() -> decode.Decoder(RoleChangeResult) {
@@ -342,9 +383,19 @@ pub fn set_capability_members(
 pub fn update_project(
   project_id: Int,
   name: String,
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("name", json.string(name))])
+  let body =
+    json.object([
+      #("name", json.string(name)),
+      #("healthy_pool_limit", json.int(healthy_pool_limit)),
+      #(
+        "card_depth_names",
+        json.array(card_depth_names, of: project_depth_name_json),
+      ),
+    ])
   let decoder =
     decode.field("project", project_codec.project_decoder(), decode.success)
   core.request(
@@ -354,6 +405,20 @@ pub fn update_project(
     decoder,
     to_msg,
   )
+}
+
+fn project_depth_name_json(depth_name: ProjectDepthName) -> json.Json {
+  let ProjectDepthName(
+    depth: depth,
+    singular_name: singular_name,
+    plural_name: plural_name,
+  ) = depth_name
+
+  json.object([
+    #("depth", json.int(depth)),
+    #("singular_name", json.string(singular_name)),
+    #("plural_name", json.string(plural_name)),
+  ])
 }
 
 /// Delete a project.

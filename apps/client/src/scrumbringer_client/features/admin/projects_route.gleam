@@ -92,6 +92,11 @@ fn context(
     on_project_deleted: fn(result) {
       client_state.admin_msg(admin_messages.ProjectDeleted(result))
     },
+    on_depth_reduction_previewed: fn(result) {
+      client_state.admin_msg(admin_messages.ProjectEditDepthReductionPreviewed(
+        result,
+      ))
+    },
     name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
   )
 }

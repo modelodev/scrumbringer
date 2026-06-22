@@ -32,6 +32,7 @@ pub type Project {
     created_at: String,
     members_count: Int,
     card_depth_names: List(ProjectDepthName),
+    healthy_pool_limit: Int,
   )
 }
 

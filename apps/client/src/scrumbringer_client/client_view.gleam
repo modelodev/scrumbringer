@@ -655,10 +655,12 @@ fn admin_projects_config(
     on_create_name_changed: fn(value) {
       client_state.admin_msg(admin_messages.ProjectCreateNameChanged(value))
     },
-    on_edit_dialog_opened: fn(project_id, name) {
+    on_edit_dialog_opened: fn(project_id, name, healthy_pool_limit, depth_names) {
       client_state.admin_msg(admin_messages.ProjectEditDialogOpened(
         project_id,
         name,
+        healthy_pool_limit,
+        depth_names,
       ))
     },
     on_edit_dialog_closed: client_state.admin_msg(
@@ -670,6 +672,32 @@ fn admin_projects_config(
     on_edit_name_changed: fn(value) {
       client_state.admin_msg(admin_messages.ProjectEditNameChanged(value))
     },
+    on_edit_max_depth_changed: fn(value) {
+      client_state.admin_msg(admin_messages.ProjectEditMaxDepthChanged(value))
+    },
+    on_edit_healthy_pool_limit_changed: fn(value) {
+      client_state.admin_msg(admin_messages.ProjectEditHealthyPoolLimitChanged(
+        value,
+      ))
+    },
+    on_edit_depth_singular_changed: fn(depth, value) {
+      client_state.admin_msg(admin_messages.ProjectEditDepthSingularChanged(
+        depth,
+        value,
+      ))
+    },
+    on_edit_depth_plural_changed: fn(depth, value) {
+      client_state.admin_msg(admin_messages.ProjectEditDepthPluralChanged(
+        depth,
+        value,
+      ))
+    },
+    on_edit_depth_reduction_review_clicked: client_state.admin_msg(
+      admin_messages.ProjectEditDepthReductionReviewClicked,
+    ),
+    on_edit_depth_reduction_confirmed: client_state.admin_msg(
+      admin_messages.ProjectEditDepthReductionConfirmed,
+    ),
     on_delete_confirm_opened: fn(project_id, name) {
       client_state.admin_msg(admin_messages.ProjectDeleteConfirmOpened(
         project_id,

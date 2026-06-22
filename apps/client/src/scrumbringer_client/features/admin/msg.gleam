@@ -6,7 +6,7 @@ import domain/api_token_scope
 import domain/capability.{type Capability}
 import domain/org.{type InviteLink, type OrgUser}
 import domain/org_role
-import domain/project.{type Project, type ProjectMember}
+import domain/project.{type Project, type ProjectDepthName, type ProjectMember}
 import domain/project_role.{type ProjectRole}
 import domain/task_type.{type TaskType}
 
@@ -23,9 +23,18 @@ pub type Msg {
   ProjectCreateNameChanged(String)
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
-  ProjectEditDialogOpened(Int, String)
+  ProjectEditDialogOpened(Int, String, Int, List(ProjectDepthName))
   ProjectEditDialogClosed
   ProjectEditNameChanged(String)
+  ProjectEditMaxDepthChanged(String)
+  ProjectEditHealthyPoolLimitChanged(String)
+  ProjectEditDepthSingularChanged(Int, String)
+  ProjectEditDepthPluralChanged(Int, String)
+  ProjectEditDepthReductionReviewClicked
+  ProjectEditDepthReductionPreviewed(
+    ApiResult(api_projects.DepthReductionImpact),
+  )
+  ProjectEditDepthReductionConfirmed
   ProjectEditSubmitted
   ProjectUpdated(ApiResult(Project))
   ProjectDeleteConfirmOpened(Int, String)

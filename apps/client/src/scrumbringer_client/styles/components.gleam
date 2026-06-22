@@ -47,7 +47,9 @@ pub fn css() -> List(String) {
     ".project-structure-settings__title { margin: 0; color: var(--sb-text); font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); }",
     ".project-structure-settings__hint, .project-structure-settings__summary { margin: 0; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
     ".project-structure-settings__levels { display: grid; gap: 6px; }",
-    ".project-structure-settings__level { min-height: 30px; display: flex; align-items: center; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
+    ".project-structure-settings__level { min-height: 30px; display: grid; grid-template-columns: minmax(58px, auto) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
+    ".project-structure-settings__level-label { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); white-space: nowrap; }",
+    ".project-structure-settings__level input { min-width: 0; width: 100%; min-height: 30px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface-1); color: var(--sb-text); padding: 4px 7px; font: inherit; }",
     "@media (max-width: 640px) { .automations-console__modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } .automations-console__mode { min-width: 0; padding-inline: 6px; } }",
   ]
 }

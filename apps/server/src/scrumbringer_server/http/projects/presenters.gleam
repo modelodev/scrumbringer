@@ -22,6 +22,7 @@ pub fn project(project: projects_db.ProjectRecord) -> json.Json {
     my_role: my_role,
     members_count: members_count,
     card_depth_names: card_depth_names,
+    healthy_pool_limit: healthy_pool_limit,
     ..,
   ) = project
 
@@ -32,6 +33,7 @@ pub fn project(project: projects_db.ProjectRecord) -> json.Json {
     #("my_role", json.string(project_role.to_string(my_role))),
     #("members_count", json.int(members_count)),
     #("card_depth_names", json.array(card_depth_names, of: card_depth_name)),
+    #("healthy_pool_limit", json.int(healthy_pool_limit)),
   ])
 }
 
@@ -51,6 +53,23 @@ fn card_depth_name(depth_name: ProjectDepthName) -> json.Json {
 
 pub fn project_response(value: projects_db.ProjectRecord) -> json.Json {
   json.object([#("project", project(value))])
+}
+
+pub fn depth_reduction_impact_response(
+  impact: projects_db.DepthReductionImpact,
+) -> json.Json {
+  let projects_db.DepthReductionImpact(
+    affected_cards_count: affected_cards_count,
+    available_tasks_count: available_tasks_count,
+    claimed_tasks_count: claimed_tasks_count,
+  ) = impact
+
+  json.object([
+    #("affected_cards_count", json.int(affected_cards_count)),
+    #("available_tasks_count", json.int(available_tasks_count)),
+    #("claimed_tasks_count", json.int(claimed_tasks_count)),
+    #("blocked", json.bool(claimed_tasks_count > 0)),
+  ])
 }
 
 pub fn members(members: List(projects_db.ProjectMemberRecord)) -> json.Json {

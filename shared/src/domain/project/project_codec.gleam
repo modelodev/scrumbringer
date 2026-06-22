@@ -42,6 +42,11 @@ pub fn project_decoder() -> decode.Decoder(Project) {
     default_card_depth_names(),
     decode.list(project_depth_name_decoder()),
   )
+  use healthy_pool_limit <- decode.optional_field(
+    "healthy_pool_limit",
+    20,
+    decode.int,
+  )
   decode.success(Project(
     id: id,
     name: name,
@@ -49,6 +54,7 @@ pub fn project_decoder() -> decode.Decoder(Project) {
     created_at: created_at,
     members_count: members_count,
     card_depth_names: card_depth_names,
+    healthy_pool_limit: healthy_pool_limit,
   ))
 }
 
@@ -78,5 +84,6 @@ pub fn user_project_decoder() -> decode.Decoder(Project) {
     created_at: "",
     members_count: 0,
     card_depth_names: default_card_depth_names(),
+    healthy_pool_limit: 20,
   ))
 }

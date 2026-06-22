@@ -12,6 +12,7 @@ fn project_with_role(role) {
     created_at: "",
     members_count: 0,
     card_depth_names: [],
+    healthy_pool_limit: 20,
   )
 }
 
@@ -83,16 +84,15 @@ pub fn can_access_members_requires_selected_project_or_any_admin_test() {
       permissions.Members,
       org_role.Member,
       projects,
-      option.Some(
-        Project(
-          id: 2,
-          name: "P2",
-          my_role: Member,
-          created_at: "",
-          members_count: 0,
-          card_depth_names: [],
-        ),
-      ),
+      option.Some(Project(
+        id: 2,
+        name: "P2",
+        my_role: Member,
+        created_at: "",
+        members_count: 0,
+        card_depth_names: [],
+        healthy_pool_limit: 20,
+      )),
     )
 }
 

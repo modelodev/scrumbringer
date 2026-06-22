@@ -23,6 +23,7 @@
 import domain/api_token as api_token_domain
 import domain/org_role
 import gleam/http
+import gleam/int
 import gleam/list
 import gleam/result
 import scrumbringer_server/http/api
@@ -105,6 +106,39 @@ pub fn handle_project(
   }
 }
 
+pub fn handle_depth_reduction_preview(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_depth_reduction_preview_post(req, ctx, project_id)
+    _ -> wisp.method_not_allowed([http.Post])
+  }
+}
+
+fn handle_depth_reduction_preview_post(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case require_project_settings_access(req, ctx, project_id) {
+    Error(resp) -> resp
+    Ok(project_id) ->
+      json_payload.with_response(
+        req,
+        decode_depth_reduction_preview,
+        fn(payload) {
+          case preview_depth_reduction(ctx, project_id, payload) {
+            Ok(impact) ->
+              api.ok(project_presenters.depth_reduction_impact_response(impact))
+            Error(resp) -> resp
+          }
+        },
+      )
+  }
+}
+
 fn handle_project_update(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -112,13 +146,31 @@ fn handle_project_update(
 ) -> wisp.Response {
   case require_project_update_access(req, ctx, project_id) {
     Error(resp) -> resp
-    Ok(project_id) ->
-      json_payload.with_response(req, decode_project_name, fn(payload) {
-        case update_project(ctx, project_id, payload) {
+    Ok(#(project_id, actor_user_id)) ->
+      json_payload.with_response(req, decode_project_update, fn(payload) {
+        case update_project(ctx, project_id, actor_user_id, payload) {
           Ok(project) -> api.ok(project_presenters.project_response(project))
           Error(resp) -> resp
         }
       })
+  }
+}
+
+fn preview_depth_reduction(
+  ctx: auth.Ctx,
+  project_id: Int,
+  payload: project_payloads.DepthReductionPreviewPayload,
+) -> Result(projects_db.DepthReductionImpact, wisp.Response) {
+  let project_payloads.DepthReductionPreviewPayload(new_max_depth:) = payload
+  let auth.Ctx(db: db, ..) = ctx
+  case projects_db.preview_depth_reduction(db, project_id, new_max_depth) {
+    Ok(impact) -> Ok(impact)
+    Error(projects_db.DepthReductionProjectNotFound) ->
+      Error(project_not_found_response())
+    Error(projects_db.InvalidDepthReduction) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid depth reduction"))
+    Error(projects_db.DepthReductionDbError(_)) ->
+      Error(database_error_response())
   }
 }
 
@@ -243,18 +295,47 @@ fn require_project_update_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   project_id: String,
+) -> Result(#(Int, Int), wisp.Response) {
+  use user <- result.try(require_org_admin_write(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id))
+  Ok(#(project_id, user.id))
+}
+
+fn require_project_settings_access(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
 ) -> Result(Int, wisp.Response) {
-  use _user <- result.try(require_org_admin_write(req, ctx))
-  api.parse_id(project_id)
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use _ <- result.try(csrf.require_csrf(req))
+  use project_id <- result.try(api.parse_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_members_management_access(db, user, project_id))
+  Ok(project_id)
 }
 
 fn update_project(
   ctx: auth.Ctx,
   project_id: Int,
-  payload: project_payloads.ProjectNamePayload,
+  actor_user_id: Int,
+  payload: project_payloads.ProjectUpdatePayload,
 ) -> Result(projects_db.ProjectRecord, wisp.Response) {
+  let project_payloads.ProjectUpdatePayload(
+    name: name,
+    healthy_pool_limit: healthy_pool_limit,
+    card_depth_names: card_depth_names,
+  ) = payload
   let auth.Ctx(db: db, ..) = ctx
-  case projects_db.update_project(db, project_id, payload.name) {
+  case
+    projects_db.update_project(
+      db,
+      project_id,
+      actor_user_id,
+      name,
+      healthy_pool_limit,
+      card_depth_names,
+    )
+  {
     Ok(project) -> Ok(project)
     Error(error) -> Error(update_project_error_response(error))
   }
@@ -492,6 +573,16 @@ fn update_project_error_response(
 ) -> wisp.Response {
   case error {
     projects_db.UpdateProjectNotFound -> project_not_found_response()
+    projects_db.InvalidProjectSettings ->
+      api.error(422, "VALIDATION_ERROR", "Invalid project settings")
+    projects_db.DepthReductionBlocked(claimed_tasks_count) ->
+      api.error(
+        409,
+        "DEPTH_REDUCTION_BLOCKED",
+        "Cannot reduce project depth while "
+          <> int.to_string(claimed_tasks_count)
+          <> " affected tasks are claimed or ongoing",
+      )
     projects_db.UpdateProjectDbError(_) -> database_error_response()
   }
 }
@@ -559,6 +650,24 @@ fn decode_project_name(
   data,
 ) -> Result(project_payloads.ProjectNamePayload, wisp.Response) {
   case project_payloads.decode_project_name(data) {
+    Ok(payload) -> Ok(payload)
+    Error(_) -> Error(api.error(400, "INVALID_BODY", "Invalid request body"))
+  }
+}
+
+fn decode_project_update(
+  data,
+) -> Result(project_payloads.ProjectUpdatePayload, wisp.Response) {
+  case project_payloads.decode_project_update(data) {
+    Ok(payload) -> Ok(payload)
+    Error(_) -> Error(api.error(400, "INVALID_BODY", "Invalid request body"))
+  }
+}
+
+fn decode_depth_reduction_preview(
+  data,
+) -> Result(project_payloads.DepthReductionPreviewPayload, wisp.Response) {
+  case project_payloads.decode_depth_reduction_preview(data) {
     Ok(payload) -> Ok(payload)
     Error(_) -> Error(api.error(400, "INVALID_BODY", "Invalid request body"))
   }

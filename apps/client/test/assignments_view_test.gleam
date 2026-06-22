@@ -60,10 +60,22 @@ fn projects_dialogs_config(
     on_create_dialog_closed: "project-create-close",
     on_create_submitted: "project-create-submit",
     on_create_name_changed: fn(value) { "project-create-name:" <> value },
-    on_edit_dialog_opened: fn(_, _) { "project-edit-open" },
+    on_edit_dialog_opened: fn(_, _, _, _) { "project-edit-open" },
     on_edit_dialog_closed: "project-edit-close",
     on_edit_submitted: "project-edit-submit",
     on_edit_name_changed: fn(value) { "project-edit-name:" <> value },
+    on_edit_max_depth_changed: fn(value) { "project-edit-depth:" <> value },
+    on_edit_healthy_pool_limit_changed: fn(value) {
+      "project-edit-limit:" <> value
+    },
+    on_edit_depth_singular_changed: fn(_, value) {
+      "project-edit-singular:" <> value
+    },
+    on_edit_depth_plural_changed: fn(_, value) {
+      "project-edit-plural:" <> value
+    },
+    on_edit_depth_reduction_review_clicked: "project-edit-depth-review",
+    on_edit_depth_reduction_confirmed: "project-edit-depth-confirm",
     on_delete_confirm_opened: fn(_, _) { "project-delete-open" },
     on_delete_confirm_closed: "project-delete-close",
     on_delete_submitted: "project-delete-submit",
@@ -135,6 +147,7 @@ fn sample_project(id: Int, name: String) -> Project {
     created_at: "2026-01-01",
     members_count: 0,
     card_depth_names: [],
+    healthy_pool_limit: 20,
   )
 }
 

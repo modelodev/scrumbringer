@@ -207,6 +207,8 @@ fn route_projects(
     ["api", "v1", "projects"] -> Some(projects.handle_projects(req, auth_ctx))
     ["api", "v1", "projects", project_id] ->
       Some(projects.handle_project(req, auth_ctx, project_id))
+    ["api", "v1", "projects", project_id, "depth-reduction-preview"] ->
+      Some(projects.handle_depth_reduction_preview(req, auth_ctx, project_id))
     ["api", "v1", "projects", project_id, "members"] ->
       Some(projects.handle_members(req, auth_ctx, project_id))
     ["api", "v1", "projects", project_id, "members", user_id] ->

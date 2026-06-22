@@ -22,13 +22,14 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{div, form, input, p, text}
+import lustre/element/html.{div, form, input, label, p, text}
 import lustre/event
 
 import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
 import domain/project/project_codec
 import domain/project_role
-import domain/remote.{type Remote, Loaded}
+import domain/remote.{type Remote}
+import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{
   type OperationState, DialogOpen, Error as OpError, InFlight,
@@ -58,10 +59,16 @@ pub type Config(msg) {
     on_create_dialog_closed: msg,
     on_create_submitted: msg,
     on_create_name_changed: fn(String) -> msg,
-    on_edit_dialog_opened: fn(Int, String) -> msg,
+    on_edit_dialog_opened: fn(Int, String, Int, List(ProjectDepthName)) -> msg,
     on_edit_dialog_closed: msg,
     on_edit_submitted: msg,
     on_edit_name_changed: fn(String) -> msg,
+    on_edit_max_depth_changed: fn(String) -> msg,
+    on_edit_healthy_pool_limit_changed: fn(String) -> msg,
+    on_edit_depth_singular_changed: fn(Int, String) -> msg,
+    on_edit_depth_plural_changed: fn(Int, String) -> msg,
+    on_edit_depth_reduction_review_clicked: msg,
+    on_edit_depth_reduction_confirmed: msg,
     on_delete_confirm_opened: fn(Int, String) -> msg,
     on_delete_confirm_closed: msg,
     on_delete_submitted: msg,
@@ -161,26 +168,47 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
   )
 }
 
-fn edit_project_depth_names(config: Config(msg)) -> List(ProjectDepthName) {
-  case config.project_dialog.projects_dialog, config.projects {
-    DialogOpen(form: projects_state.ProjectDialogEdit(id: project_id, ..), ..),
-      Loaded(projects)
-    ->
-      case list.find(projects, fn(project) { project.id == project_id }) {
-        Ok(project) -> project.card_depth_names
-        Error(_) -> project_codec.default_card_depth_names()
-      }
-    _, _ -> project_codec.default_card_depth_names()
+fn edit_project_structure(
+  config: Config(msg),
+) -> #(
+  String,
+  String,
+  List(ProjectDepthName),
+  projects_state.DepthReductionState,
+) {
+  case config.project_dialog.projects_dialog {
+    DialogOpen(
+      form: projects_state.ProjectDialogEdit(
+        max_depth: max_depth,
+        healthy_pool_limit: healthy_pool_limit,
+        card_depth_names: card_depth_names,
+        depth_reduction: depth_reduction,
+        ..,
+      ),
+      ..,
+    ) -> #(
+      max_depth,
+      healthy_pool_limit,
+      normalize_depth_names(card_depth_names),
+      depth_reduction,
+    )
+    _ -> #(
+      int.to_string(list.length(project_codec.default_card_depth_names())),
+      "20",
+      project_codec.default_card_depth_names(),
+      projects_state.NoDepthReduction,
+    )
   }
 }
 
 fn view_project_structure_settings(
   depth_names: List(ProjectDepthName),
+  max_depth: String,
+  healthy_pool_limit: String,
+  depth_reduction: projects_state.DepthReductionState,
+  config: Config(msg),
 ) -> element.Element(msg) {
-  let depth_names = case depth_names {
-    [] -> project_codec.default_card_depth_names()
-    _ -> depth_names
-  }
+  let depth_names = normalize_depth_names(depth_names)
 
   div(
     [
@@ -196,40 +224,188 @@ fn view_project_structure_settings(
           "Visible level names define how cards are grouped before work reaches the Pool.",
         ),
       ]),
-      div([attribute.class("project-structure-settings__summary")], [
-        text("Maximum depth: " <> int.to_string(list.length(depth_names))),
-      ]),
+      form_field.view(
+        "Maximum depth",
+        input([
+          attribute.type_("number"),
+          attribute.min("1"),
+          attribute.value(max_depth),
+          event.on_input(config.on_edit_max_depth_changed),
+          attribute.required(True),
+        ]),
+      ),
       div([attribute.class("project-structure-settings__levels")], {
         depth_names
-        |> list.map(fn(depth_name) { view_depth_name(depth_name) })
+        |> list.map(fn(depth_name) { view_depth_name(depth_name, config) })
       }),
-      div([attribute.class("project-structure-settings__summary")], [
-        text("Pool soft limit: 20 tasks"),
+      form_field.view(
+        "Pool soft limit",
+        input([
+          attribute.type_("number"),
+          attribute.min("1"),
+          attribute.value(healthy_pool_limit),
+          event.on_input(config.on_edit_healthy_pool_limit_changed),
+          attribute.required(True),
+        ]),
+      ),
+      p([attribute.class("project-structure-settings__hint")], [
+        text(
+          "This limit never blocks work. It helps avoid saturation and team frustration when too many tasks are available in the Pool.",
+        ),
       ]),
+      view_depth_reduction_confirmation(depth_reduction, config),
+    ],
+  )
+}
+
+fn view_depth_reduction_confirmation(
+  depth_reduction: projects_state.DepthReductionState,
+  config: Config(msg),
+) -> element.Element(msg) {
+  let attrs = [
+    attribute.class("project-depth-reduction-confirmation"),
+    attribute.attribute("data-testid", "project-depth-reduction-confirmation"),
+  ]
+
+  case depth_reduction {
+    projects_state.NoDepthReduction ->
       div(
-        [
-          attribute.class("project-depth-reduction-confirmation"),
-          attribute.attribute(
-            "data-testid",
-            "project-depth-reduction-confirmation",
-          ),
+        list.append(attrs, [
           attribute.attribute("aria-hidden", "true"),
           attribute.attribute("hidden", ""),
-        ],
+        ]),
         [
           text(
             "Depth reduction confirmation appears before closing cards outside a new limit.",
           ),
         ],
-      ),
-    ],
-  )
+      )
+
+    projects_state.DepthReductionNeedsReview(new_max_depth) ->
+      div(attrs, [
+        p([], [
+          text(
+            "Reducing depth to "
+            <> int.to_string(new_max_depth)
+            <> " levels needs review before any cards are closed.",
+          ),
+        ]),
+        ui_button.text(
+          "Review affected cards",
+          config.on_edit_depth_reduction_review_clicked,
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.view,
+      ])
+
+    projects_state.DepthReductionLoading(new_max_depth) ->
+      div(attrs, [
+        p([], [
+          text(
+            "Checking cards below "
+            <> int.to_string(new_max_depth)
+            <> " levels...",
+          ),
+        ]),
+      ])
+
+    projects_state.DepthReductionReady(_new_max_depth, impact) ->
+      view_depth_reduction_ready(impact, config, attrs)
+
+    projects_state.DepthReductionConfirmed(new_max_depth) ->
+      div(attrs, [
+        p([], [
+          text(
+            "Depth reduction to "
+            <> int.to_string(new_max_depth)
+            <> " levels confirmed.",
+          ),
+        ]),
+      ])
+  }
 }
 
-fn view_depth_name(depth_name: ProjectDepthName) -> element.Element(msg) {
+fn view_depth_reduction_ready(
+  impact: api_projects.DepthReductionImpact,
+  config: Config(msg),
+  attrs,
+) -> element.Element(msg) {
+  case impact.blocked {
+    True ->
+      div(attrs, [
+        p([], [
+          text(
+            int.to_string(impact.affected_cards_count)
+            <> " cards are below the new limit, but "
+            <> int.to_string(impact.claimed_tasks_count)
+            <> " claimed or ongoing tasks must be released or closed first.",
+          ),
+        ]),
+      ])
+    False ->
+      div(attrs, [
+        p([], [
+          text(
+            int.to_string(impact.affected_cards_count)
+            <> " cards and "
+            <> int.to_string(impact.available_tasks_count)
+            <> " available tasks are below the new limit.",
+          ),
+        ]),
+        ui_button.text(
+          "Confirm depth reduction",
+          config.on_edit_depth_reduction_confirmed,
+          ui_button.Danger,
+          ui_button.EntityAction,
+        )
+          |> ui_button.view,
+      ])
+  }
+}
+
+fn normalize_depth_names(
+  depth_names: List(ProjectDepthName),
+) -> List(ProjectDepthName) {
+  case depth_names {
+    [] -> project_codec.default_card_depth_names()
+    _ -> depth_names
+  }
+}
+
+fn view_depth_name(
+  depth_name: ProjectDepthName,
+  config: Config(msg),
+) -> element.Element(msg) {
   let ProjectDepthName(depth:, singular_name:, plural_name:) = depth_name
   div([attribute.class("project-structure-settings__level")], [
-    text(int.to_string(depth) <> " " <> singular_name <> " / " <> plural_name),
+    label([attribute.class("project-structure-settings__level-label")], [
+      text("Level " <> int.to_string(depth)),
+    ]),
+    input([
+      attribute.type_("text"),
+      attribute.value(singular_name),
+      attribute.attribute(
+        "aria-label",
+        "Level " <> int.to_string(depth) <> " singular name",
+      ),
+      event.on_input(fn(value) {
+        config.on_edit_depth_singular_changed(depth, value)
+      }),
+      attribute.required(True),
+    ]),
+    input([
+      attribute.type_("text"),
+      attribute.value(plural_name),
+      attribute.attribute(
+        "aria-label",
+        "Level " <> int.to_string(depth) <> " plural name",
+      ),
+      event.on_input(fn(value) {
+        config.on_edit_depth_plural_changed(depth, value)
+      }),
+      attribute.required(True),
+    ]),
   ])
 }
 
@@ -239,13 +415,14 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
     config.project_dialog.projects_dialog
   {
     DialogOpen(
-      form: projects_state.ProjectDialogEdit(id: _, name: name),
+      form: projects_state.ProjectDialogEdit(name: name, ..),
       operation: op,
     ) -> #(True, name, operation_in_flight(op), operation_error(op))
     _ -> #(False, "", False, opt.None)
   }
 
-  let depth_names = edit_project_depth_names(config)
+  let #(max_depth, healthy_pool_limit, depth_names, depth_reduction) =
+    edit_project_structure(config)
 
   dialog.view(
     dialog.DialogConfig(
@@ -274,7 +451,13 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
               attribute.autofocus(True),
             ]),
           ),
-          view_project_structure_settings(depth_names),
+          view_project_structure_settings(
+            depth_names,
+            max_depth,
+            healthy_pool_limit,
+            depth_reduction,
+            config,
+          ),
         ],
       ),
     ],
@@ -409,7 +592,12 @@ fn view_projects_list(config: Config(msg)) -> element.Element(msg) {
 fn view_project_actions(config: Config(msg), p: Project) -> element.Element(msg) {
   action_buttons.edit_delete_row(
     edit_title: t(config, i18n_text.EditProject),
-    edit_click: config.on_edit_dialog_opened(p.id, p.name),
+    edit_click: config.on_edit_dialog_opened(
+      p.id,
+      p.name,
+      p.healthy_pool_limit,
+      p.card_depth_names,
+    ),
     delete_title: t(config, i18n_text.DeleteProject),
     delete_click: config.on_delete_confirm_opened(p.id, p.name),
   )

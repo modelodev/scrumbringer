@@ -34,6 +34,7 @@ fn project() -> Project {
     created_at: "2026-03-20",
     members_count: 1,
     card_depth_names: [],
+    healthy_pool_limit: 20,
   )
 }
 

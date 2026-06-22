@@ -3,8 +3,9 @@ import gleam/option
 import lustre/effect
 
 import domain/api_error.{ApiError}
-import domain/project.{type Project, Project}
+import domain/project.{type Project, Project, ProjectDepthName}
 import domain/project_role
+import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
   DialogClosed, DialogOpen, Error as OpError, Idle, InFlight,
@@ -20,6 +21,30 @@ fn project(id: Int, name: String) -> Project {
     created_at: "2026-01-01T00:00:00Z",
     members_count: 1,
     card_depth_names: [],
+    healthy_pool_limit: 20,
+  )
+}
+
+fn edit_form(id: Int, name: String) -> admin_projects.ProjectDialogForm {
+  edit_form_with_limit(id, name, "20")
+}
+
+fn edit_form_with_limit(
+  id: Int,
+  name: String,
+  healthy_pool_limit: String,
+) -> admin_projects.ProjectDialogForm {
+  admin_projects.ProjectDialogEdit(
+    id: id,
+    name: name,
+    max_depth: "3",
+    healthy_pool_limit: healthy_pool_limit,
+    card_depth_names: [
+      ProjectDepthName(1, "Initiative", "Initiatives"),
+      ProjectDepthName(2, "Feature", "Features"),
+      ProjectDepthName(3, "Task group", "Task groups"),
+    ],
+    depth_reduction: admin_projects.NoDepthReduction,
   )
 }
 
@@ -28,6 +53,7 @@ fn context() -> projects_update.Context(Nil) {
     on_project_created: fn(_result) { Nil },
     on_project_updated: fn(_result) { Nil },
     on_project_deleted: fn(_result) { Nil },
+    on_depth_reduction_previewed: fn(_result) { Nil },
     name_required: "Name required",
   )
 }
@@ -130,18 +156,214 @@ pub fn create_submit_sets_in_flight_for_valid_name_test() {
 pub fn edit_name_changed_preserves_project_id_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: 9, name: "Old"),
+      form: edit_form(9, "Old"),
       operation: Idle,
     ))
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditNameChanged("New"))
 
+  let assert True =
+    next.projects_dialog
+    == DialogOpen(form: edit_form(9, "New"), operation: Idle)
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn edit_submit_rejects_invalid_pool_limit_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: edit_form_with_limit(9, "Project", "0"),
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditSubmitted)
+
+  let assert True =
+    next.projects_dialog
+    == DialogOpen(
+      form: edit_form_with_limit(9, "Project", "0"),
+      operation: OpError("Pool soft limit must be a positive number"),
+    )
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn edit_depth_name_changed_preserves_other_settings_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: edit_form_with_limit(9, "Project", "18"),
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditDepthSingularChanged(2, "Entrega"))
+
   let assert DialogOpen(
-    form: admin_projects.ProjectDialogEdit(id: 9, name: "New"),
+    form: admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "3",
+      healthy_pool_limit: "18",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Entrega", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.NoDepthReduction,
+    ),
     operation: Idle,
   ) = next.projects_dialog
   let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn edit_max_depth_changed_marks_reduction_for_review_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: edit_form(9, "Project"),
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditMaxDepthChanged("2"))
+
+  let assert DialogOpen(
+    form: admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "2",
+      healthy_pool_limit: "20",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Feature", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.DepthReductionNeedsReview(2),
+    ),
+    operation: Idle,
+  ) = next.projects_dialog
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn depth_reduction_previewed_sets_ready_state_test() {
+  let form =
+    admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "2",
+      healthy_pool_limit: "20",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Feature", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.DepthReductionLoading(2),
+    )
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: form,
+      operation: Idle,
+    ))
+  let impact =
+    api_projects.DepthReductionImpact(
+      affected_cards_count: 4,
+      available_tasks_count: 3,
+      claimed_tasks_count: 1,
+      blocked: True,
+    )
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditDepthReductionPreviewed(Ok(impact)))
+
+  let assert DialogOpen(
+    form: admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "2",
+      healthy_pool_limit: "20",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Feature", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.DepthReductionReady(2, ready_impact),
+    ),
+    operation: Idle,
+  ) = next.projects_dialog
+  let assert True = ready_impact == impact
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn edit_submit_blocks_lower_depth_before_review_test() {
+  let form =
+    admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "2",
+      healthy_pool_limit: "20",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Feature", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.DepthReductionNeedsReview(2),
+    )
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: form,
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditSubmitted)
+
+  let assert DialogOpen(
+    form: _,
+    operation: OpError(
+      "Review affected cards before saving a lower maximum depth",
+    ),
+  ) = next.projects_dialog
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn edit_submit_allows_confirmed_lower_depth_test() {
+  let form =
+    admin_projects.ProjectDialogEdit(
+      id: 9,
+      name: "Project",
+      max_depth: "2",
+      healthy_pool_limit: "20",
+      card_depth_names: [
+        ProjectDepthName(1, "Initiative", "Initiatives"),
+        ProjectDepthName(2, "Feature", "Features"),
+        ProjectDepthName(3, "Task group", "Task groups"),
+      ],
+      depth_reduction: admin_projects.DepthReductionConfirmed(2),
+    )
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: form,
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectEditSubmitted)
+
+  let assert DialogOpen(form: submitted_form, operation: InFlight) =
+    next.projects_dialog
+  let assert True = submitted_form == form
+  let assert True = fx != effect.none()
   let assert projects_update.NoAuthCheck = auth_policy
   let assert projects_update.NoCoreChange = core_policy
 }
@@ -166,7 +388,7 @@ pub fn created_ok_closes_dialog_and_emits_feedback_test() {
 pub fn updated_ok_closes_dialog_and_emits_feedback_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: 9, name: "Project"),
+      form: edit_form(9, "Project"),
       operation: InFlight,
     ))
 
@@ -183,7 +405,7 @@ pub fn updated_ok_closes_dialog_and_emits_feedback_test() {
 pub fn update_error_sets_edit_dialog_error_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: 9, name: "Name"),
+      form: edit_form(9, "Name"),
       operation: InFlight,
     ))
 
@@ -191,10 +413,12 @@ pub fn update_error_sets_edit_dialog_error_test() {
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectUpdated(Error(err)))
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogEdit(id: 9, name: "Name"),
-    operation: OpError("Not permitted"),
-  ) = next.projects_dialog
+  let assert True =
+    next.projects_dialog
+    == DialogOpen(
+      form: edit_form(9, "Name"),
+      operation: OpError("Not permitted"),
+    )
   let assert True = fx == effect.none()
   let assert projects_update.CheckAuth(auth_err) = auth_policy
   let assert True = auth_err == err
@@ -371,7 +595,7 @@ pub fn try_update_error_requests_auth_check_test() {
   let err = ApiError(status: 500, code: "ERR", message: "Backend failed")
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogEdit(id: 9, name: "Project"),
+      form: edit_form(9, "Project"),
       operation: InFlight,
     ))
 
@@ -389,10 +613,12 @@ pub fn try_update_error_requests_auth_check_test() {
       error_feedback_context(),
     )
 
-  let assert DialogOpen(
-    form: admin_projects.ProjectDialogEdit(id: 9, name: "Project"),
-    operation: OpError("Backend failed"),
-  ) = next.projects_dialog
+  let assert True =
+    next.projects_dialog
+    == DialogOpen(
+      form: edit_form(9, "Project"),
+      operation: OpError("Backend failed"),
+    )
   let assert True = fx == effect.none()
   let assert projects_update.CheckAuth(auth_err) = auth_policy
   let assert True = auth_err == err
