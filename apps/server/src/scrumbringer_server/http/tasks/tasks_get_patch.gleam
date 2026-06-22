@@ -62,9 +62,9 @@ pub fn handle_task_patch(
 
   case require_update_task_access(req, ctx, task_id) {
     Error(resp) -> resp
-    Ok(#(db, task_id, user_id)) ->
+    Ok(#(db, task_id, user_id, org_id)) ->
       json_payload.with_response(req, decode_update_payload, fn(payload) {
-        response_from_result(update_task(db, task_id, user_id, payload))
+        response_from_result(update_task(db, task_id, user_id, org_id, payload))
       })
   }
 }
@@ -140,12 +140,12 @@ fn require_update_task_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   task_id_str: String,
-) -> Result(#(pog.Connection, Int, Int), wisp.Response) {
+) -> Result(#(pog.Connection, Int, Int, Int), wisp.Response) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
   use _ <- result.try(csrf.require_csrf(req))
   use task_id <- result.try(api.parse_id(task_id_str))
   let auth.Ctx(db: db, ..) = ctx
-  Ok(#(db, task_id, user.id))
+  Ok(#(db, task_id, user.id, user.org_id))
 }
 
 fn require_delete_task_access(
@@ -164,12 +164,14 @@ fn update_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
+  org_id: Int,
   payload: payloads.UpdateTaskPayload,
 ) -> Result(wisp.Response, wisp.Response) {
   use response <- result.try(update_task_in_workflow(
     db,
     task_id,
     user_id,
+    org_id,
     payload.version,
     payload.updates,
   ))
@@ -202,13 +204,14 @@ fn update_task_in_workflow(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
+  org_id: Int,
   version: Int,
   updates: workflow_types.TaskUpdates,
 ) -> Result(wisp.Response, wisp.Response) {
   case
     workflow.handle(
       db,
-      workflow_types.UpdateTask(task_id, user_id, version, updates),
+      workflow_types.UpdateTask(task_id, user_id, org_id, version, updates),
     )
   {
     Ok(response) -> task_response(response)

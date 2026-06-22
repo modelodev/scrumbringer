@@ -200,6 +200,67 @@ pub fn card_activity_includes_note_create_pin_and_unpin_events_test() {
   has_event(events, card_subject, kind.NoteUnpinned) |> expect.is_true
 }
 
+pub fn task_activity_includes_due_date_change_event_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
+
+  let update_res = update_task_due_date(handler, session, task_id, "2026-06-24")
+  expect.expect_status(update_res, 200)
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/activity",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 200)
+  let events = decode_activity(simulate.read_body(res))
+
+  has_event(
+    events,
+    ActivityTask(task_id_domain.new(task_id)),
+    kind.DueDateChanged,
+  )
+  |> expect.is_true
+}
+
+pub fn card_activity_includes_due_date_change_event_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(card_id) =
+    fixtures.create_card(handler, session, project_id, "API Cleanup")
+
+  let update_res =
+    update_card_due_date(handler, session, card_id, "API Cleanup", "2026-06-24")
+  expect.expect_status(update_res, 200)
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/activity",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 200)
+  let events = decode_activity(simulate.read_body(res))
+
+  has_event(
+    events,
+    ActivityCard(card_id_domain.new(card_id)),
+    kind.DueDateChanged,
+  )
+  |> expect.is_true
+}
+
 pub fn activity_requires_project_membership_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -415,6 +476,44 @@ fn activate_card(
     )
     |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([])),
+  )
+}
+
+fn update_task_due_date(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  task_id: Int,
+  due_date: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(
+      json.object([
+        #("version", json.int(1)),
+        #("due_date", json.string(due_date)),
+      ]),
+    ),
+  )
+}
+
+fn update_card_due_date(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  card_id: Int,
+  title: String,
+  due_date: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Patch, "/api/v1/cards/" <> int.to_string(card_id))
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(
+      json.object([
+        #("title", json.string(title)),
+        #("description", json.string("Test card")),
+        #("due_date", json.string(due_date)),
+      ]),
+    ),
   )
 }
 

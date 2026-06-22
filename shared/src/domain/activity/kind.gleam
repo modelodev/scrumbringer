@@ -69,5 +69,6 @@ pub fn from_audit_kind(kind: audit_kind.Kind) -> ActivityKind {
     audit_kind.NoteCreated -> NoteCreated
     audit_kind.NotePinned -> NotePinned
     audit_kind.NoteUnpinned -> NoteUnpinned
+    audit_kind.DueDateChanged -> DueDateChanged
   }
 }

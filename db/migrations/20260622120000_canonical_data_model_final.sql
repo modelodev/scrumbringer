@@ -313,7 +313,8 @@ ALTER TABLE public.audit_events
       'task_dependency_removed',
       'note_created',
       'note_pinned',
-      'note_unpinned'
+      'note_unpinned',
+      'due_date_changed'
     )
   ),
   ADD CONSTRAINT audit_events_target_check CHECK (
@@ -327,7 +328,8 @@ ALTER TABLE public.audit_events
         'task_dependency_removed',
         'note_created',
         'note_pinned',
-        'note_unpinned'
+        'note_unpinned',
+        'due_date_changed'
       )
       AND task_id IS NOT NULL
       AND card_id IS NULL
@@ -339,7 +341,8 @@ ALTER TABLE public.audit_events
         'card_moved',
         'note_created',
         'note_pinned',
-        'note_unpinned'
+        'note_unpinned',
+        'due_date_changed'
       )
       AND card_id IS NOT NULL
       AND task_id IS NULL

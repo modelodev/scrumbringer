@@ -33,6 +33,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/cards_db
 import scrumbringer_server/use_case/rules_engine
 import scrumbringer_server/use_case/service_error
@@ -107,8 +108,8 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
 
     GetTask(task_id, user_id) -> handle_get_task(db, task_id, user_id)
 
-    UpdateTask(task_id, user_id, version, updates) ->
-      handle_update_task(db, task_id, user_id, version, updates)
+    UpdateTask(task_id, user_id, org_id, version, updates) ->
+      handle_update_task(db, task_id, user_id, org_id, version, updates)
 
     DeleteTask(task_id, user_id) -> handle_delete_task(db, task_id, user_id)
 
@@ -442,6 +443,7 @@ fn handle_update_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
+  org_id: Int,
   version: Int,
   updates: TaskUpdates,
 ) -> Result(Response, Error) {
@@ -460,7 +462,15 @@ fn handle_update_task(
     Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
-      update_task_for_current(db, task_id, user_id, version, updates, current)
+      update_task_for_current(
+        db,
+        task_id,
+        user_id,
+        org_id,
+        version,
+        updates,
+        current,
+      )
   }
 }
 
@@ -502,12 +512,13 @@ fn update_task_for_current(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
+  org_id: Int,
   version: Int,
   updates: TaskUpdates,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
   use Nil <- result.try(authorize_task_edit(current, user_id))
-  update_editable_task(db, task_id, user_id, version, updates, current)
+  update_editable_task(db, task_id, user_id, org_id, version, updates, current)
 }
 
 fn authorize_task_edit(
@@ -526,6 +537,7 @@ fn update_editable_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
+  org_id: Int,
   version: Int,
   updates: TaskUpdates,
   current: domain_task.Task,
@@ -551,12 +563,24 @@ fn update_editable_task(
       description_update,
       priority_update,
       type_id_update,
+      updates.due_date,
       updates.parent_card_id,
       updates.card_id,
       version,
     )
   {
-    Ok(task) -> Ok(TaskResult(task))
+    Ok(task) -> {
+      use _ <- result.try(record_due_date_change(
+        db,
+        org_id,
+        task.project_id,
+        task_id,
+        user_id,
+        current.due_date,
+        task.due_date,
+      ))
+      Ok(TaskResult(task))
+    }
     Error(service_error.NotFound) -> Error(VersionConflict)
     Error(service_error.DbError(e)) -> Error(DbError(e))
     Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
@@ -566,6 +590,30 @@ fn update_editable_task(
       Error(ValidationError("Unexpected error"))
     Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
     Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn record_due_date_change(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  task_id: Int,
+  user_id: Int,
+  previous_due_date: Option(String),
+  next_due_date: Option(String),
+) -> Result(Nil, Error) {
+  case previous_due_date == next_due_date {
+    True -> Ok(Nil)
+    False ->
+      audit_events_db.insert_for_task(
+        db,
+        org_id,
+        project_id,
+        task_id,
+        user_id,
+        audit_events_db.DueDateChanged,
+      )
+      |> result.map_error(DbError)
   }
 }
 

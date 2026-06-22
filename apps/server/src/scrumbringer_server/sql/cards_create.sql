@@ -6,7 +6,8 @@ WITH input AS (
     $3::text AS description,
     NULLIF($4, '')::text AS color,
     $5::int AS created_by,
-    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id
+    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id,
+    NULLIF($7, '')::date AS due_date
 )
 INSERT INTO cards (
   project_id,
@@ -14,7 +15,8 @@ INSERT INTO cards (
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 )
 SELECT
   project_id,
@@ -22,7 +24,8 @@ SELECT
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 FROM input
 WHERE parent_card_id IS NULL
    OR NOT EXISTS (

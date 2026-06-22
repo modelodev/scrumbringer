@@ -15,6 +15,7 @@ pub type Kind {
   NoteCreated
   NotePinned
   NoteUnpinned
+  DueDateChanged
 }
 
 pub fn to_string(kind: Kind) -> String {
@@ -31,6 +32,7 @@ pub fn to_string(kind: Kind) -> String {
     NoteCreated -> "note_created"
     NotePinned -> "note_pinned"
     NoteUnpinned -> "note_unpinned"
+    DueDateChanged -> "due_date_changed"
   }
 }
 
@@ -48,6 +50,7 @@ pub fn parse(value: String) -> Result(Kind, String) {
     "note_created" -> Ok(NoteCreated)
     "note_pinned" -> Ok(NotePinned)
     "note_unpinned" -> Ok(NoteUnpinned)
+    "due_date_changed" -> Ok(DueDateChanged)
     other -> Error(other)
   }
 }

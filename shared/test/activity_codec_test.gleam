@@ -88,6 +88,7 @@ pub fn activity_kind_covers_audit_schema_values_test() {
     "note_created",
     "note_pinned",
     "note_unpinned",
+    "due_date_changed",
   ]
 
   let assert True =

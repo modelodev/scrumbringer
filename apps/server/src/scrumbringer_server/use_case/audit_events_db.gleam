@@ -31,6 +31,7 @@ pub type EventType {
   NoteCreated
   NotePinned
   NoteUnpinned
+  DueDateChanged
 }
 
 /// Converts a task event type to its DB string value.
@@ -46,6 +47,7 @@ pub fn event_type_to_string(event_type: EventType) -> String {
     NoteCreated -> "note_created"
     NotePinned -> "note_pinned"
     NoteUnpinned -> "note_unpinned"
+    DueDateChanged -> "due_date_changed"
   }
 }
 

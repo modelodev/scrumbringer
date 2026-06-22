@@ -876,6 +876,7 @@ pub fn cards_create(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
+  arg_7: String,
 ) -> Result(pog.Returned(CardsCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -908,7 +909,8 @@ WITH input AS (
     $3::text AS description,
     NULLIF($4, '')::text AS color,
     $5::int AS created_by,
-    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id
+    CASE WHEN $6 <= 0 THEN NULL ELSE $6 END AS parent_card_id,
+    NULLIF($7, '')::date AS due_date
 )
 INSERT INTO cards (
   project_id,
@@ -916,7 +918,8 @@ INSERT INTO cards (
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 )
 SELECT
   project_id,
@@ -924,7 +927,8 @@ SELECT
   description,
   color,
   created_by,
-  parent_card_id
+  parent_card_id,
+  due_date
 FROM input
 WHERE parent_card_id IS NULL
    OR NOT EXISTS (
@@ -950,6 +954,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -1250,6 +1255,7 @@ pub fn cards_update(
   arg_3: String,
   arg_4: String,
   arg_5: Int,
+  arg_6: String,
 ) -> Result(pog.Returned(CardsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -1284,7 +1290,8 @@ SET
     when $5 < 0 then parent_card_id
     when $5 = 0 then null
     else $5
-  end
+  end,
+  due_date = NULLIF($6, '')::date
 WHERE id = $1
 RETURNING
     id,
@@ -1303,6 +1310,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_3))
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -7851,9 +7859,10 @@ pub fn tasks_update(
   arg_4: String,
   arg_5: Int,
   arg_6: Int,
-  arg_7: Int,
+  arg_7: String,
   arg_8: Int,
   arg_9: Int,
+  arg_10: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -7922,10 +7931,11 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
+  due_date = case when $7 = '__unset__' then due_date else nullif($7, '')::date end,
   card_id = case
-    when $7 = -999999 then card_id
-    when $8 = -1 then card_id
-    else nullif($8, 0)
+    when $8 = -999999 then card_id
+    when $9 = -1 then card_id
+    else nullif($9, 0)
   end,
   version = version + 1
 where id = $1
@@ -7933,7 +7943,7 @@ where id = $1
     execution_state = 'available'
     or (execution_state = 'claimed' and claimed_by = $2)
   )
-  and version = $9
+  and version = $10
   returning
     id,
     project_id,
@@ -8002,9 +8012,10 @@ left join lateral (
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
+  |> pog.parameter(pog.int(arg_10))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

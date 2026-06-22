@@ -423,8 +423,8 @@ CREATE TABLE public.audit_events (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     card_id bigint,
     payload_json jsonb DEFAULT '{}'::jsonb NOT NULL,
-    CONSTRAINT audit_events_event_type_check CHECK ((event_type = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_closed'::text, 'card_activated'::text, 'card_closed'::text, 'card_moved'::text, 'task_dependency_added'::text, 'task_dependency_removed'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text]))),
-    CONSTRAINT audit_events_target_check CHECK ((((event_type = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_closed'::text, 'task_dependency_added'::text, 'task_dependency_removed'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text])) AND (task_id IS NOT NULL) AND (card_id IS NULL)) OR ((event_type = ANY (ARRAY['card_activated'::text, 'card_closed'::text, 'card_moved'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text])) AND (card_id IS NOT NULL) AND (task_id IS NULL))))
+    CONSTRAINT audit_events_event_type_check CHECK ((event_type = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_closed'::text, 'card_activated'::text, 'card_closed'::text, 'card_moved'::text, 'task_dependency_added'::text, 'task_dependency_removed'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text, 'due_date_changed'::text]))),
+    CONSTRAINT audit_events_target_check CHECK ((((event_type = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_closed'::text, 'task_dependency_added'::text, 'task_dependency_removed'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text, 'due_date_changed'::text])) AND (task_id IS NOT NULL) AND (card_id IS NULL)) OR ((event_type = ANY (ARRAY['card_activated'::text, 'card_closed'::text, 'card_moved'::text, 'note_created'::text, 'note_pinned'::text, 'note_unpinned'::text, 'due_date_changed'::text])) AND (card_id IS NOT NULL) AND (task_id IS NULL))))
 );
 
 
@@ -2731,4 +2731,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260621121000'),
     ('20260622120000'),
     ('20260622130000'),
-    ('20260622132000');
+    ('20260622132000'),
+    ('20260622133000');

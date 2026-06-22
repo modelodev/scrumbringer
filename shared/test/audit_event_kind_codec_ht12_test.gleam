@@ -15,6 +15,7 @@ pub fn audit_event_kind_codec_roundtrip_test() {
     kind_codec.NoteCreated,
     kind_codec.NotePinned,
     kind_codec.NoteUnpinned,
+    kind_codec.DueDateChanged,
   ]
 
   let assert True =

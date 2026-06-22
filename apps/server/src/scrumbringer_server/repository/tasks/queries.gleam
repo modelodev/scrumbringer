@@ -117,6 +117,16 @@ fn text_update_value(value: Option(String)) -> String {
   option_helpers.option_to_value(value, unchanged_text_update_value)
 }
 
+fn optional_date_update_value(
+  value: field_update.FieldUpdate(Option(String)),
+) -> String {
+  case value {
+    field_update.Unchanged -> unchanged_text_update_value
+    field_update.Set(None) -> ""
+    field_update.Set(Some(date)) -> date
+  }
+}
+
 fn priority_update_value(value: Option(Int)) -> Int {
   option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
@@ -233,6 +243,7 @@ pub fn update_editable_task(
   description: Option(String),
   priority: Option(Int),
   type_id: Option(Int),
+  due_date: field_update.FieldUpdate(Option(String)),
   parent_card_id: field_update.FieldUpdate(Option(Int)),
   card_id: field_update.FieldUpdate(Option(Int)),
   version: Int,
@@ -246,6 +257,7 @@ pub fn update_editable_task(
       text_update_value(description),
       priority_update_value(priority),
       type_id_update_value(type_id),
+      optional_date_update_value(due_date),
       parent_card_id_update_value(parent_card_id),
       card_id_update_value(card_id),
       version,

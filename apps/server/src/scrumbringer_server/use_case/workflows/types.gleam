@@ -77,7 +77,13 @@ pub type Message {
 
   /// Update task fields. Available tasks are editable by project members;
   /// claimed tasks are editable only by the claiming user.
-  UpdateTask(task_id: Int, user_id: Int, version: Int, updates: TaskUpdates)
+  UpdateTask(
+    task_id: Int,
+    user_id: Int,
+    org_id: Int,
+    version: Int,
+    updates: TaskUpdates,
+  )
 
   /// Delete a task only when it has no operational history.
   DeleteTask(task_id: Int, user_id: Int)
@@ -116,6 +122,7 @@ pub type TaskUpdates {
     type_id: field_update.FieldUpdate(Int),
     parent_card_id: field_update.FieldUpdate(Option(Int)),
     card_id: field_update.FieldUpdate(Option(Int)),
+    due_date: field_update.FieldUpdate(Option(String)),
   )
 }
 
