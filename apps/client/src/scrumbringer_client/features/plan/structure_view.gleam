@@ -18,8 +18,8 @@ import lustre/element/html.{
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/cards/detail_policy
 import scrumbringer_client/features/cards/move_target
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/card_picker
@@ -84,7 +84,7 @@ pub type Config(msg) {
 type DropTargetState {
   NotDropTarget
   ValidDropTarget
-  InvalidDropTarget(detail_policy.MoveBlockedReason)
+  InvalidDropTarget(card_policy.MoveBlockedReason)
   ActiveDropTarget
 }
 
@@ -334,7 +334,7 @@ fn view_move_destination_option(
 fn view_move_root_option(config: Config(msg)) -> Element(msg) {
   case moving_card(config) {
     Some(card) ->
-      case detail_policy.move_to_root_blocked_reason(card) {
+      case card_policy.move_to_root_blocked_reason(card) {
         None ->
           button(
             [
@@ -795,7 +795,7 @@ fn view_move_actions_cell(
               text("No disponible"),
             ]),
             span([attribute.class("plan-move-invalid-reason")], [
-              text(detail_policy.move_blocked_reason_label(reason)),
+              text(card_policy.move_blocked_reason_label(reason)),
             ]),
           ],
         )
@@ -1498,11 +1498,11 @@ fn action_availability(
     types.MoveCard ->
       case
         config.is_pm_or_admin,
-        detail_policy.move_unavailable_reason(card, config.cards, config.tasks)
+        card_policy.move_unavailable_reason(card, config.cards, config.tasks)
       {
         True, None -> types.Available
         True, Some(reason) ->
-          types.Disabled(detail_policy.move_blocked_reason_label(reason))
+          types.Disabled(card_policy.move_blocked_reason_label(reason))
         False, _ -> types.Disabled("Solo managers pueden mover cards")
       }
     types.CloseCard ->
@@ -1685,7 +1685,7 @@ fn move_search_state(
   let query = move_query(config)
   let options = case moving_card(config) {
     Some(card) ->
-      detail_policy.move_destination_entries(card, config.cards, config.tasks)
+      card_policy.move_destination_entries(card, config.cards, config.tasks)
       |> card_picker.move_destination_options(config.cards, config.depth_names)
       |> card_picker.filter_options(query)
     None -> []
@@ -1716,7 +1716,7 @@ fn drop_target_state(
   destination: Card,
 ) -> DropTargetState {
   case
-    detail_policy.move_blocked_reason(
+    card_policy.move_blocked_reason(
       source,
       destination,
       config.cards,

@@ -101,7 +101,7 @@ pub fn card_show_entry_renders_without_current_user_test() {
   assert_contains(html, "Customer Card")
 }
 
-pub fn card_detail_secondary_actions_render_as_menu_items_test() {
+pub fn card_show_secondary_actions_render_as_menu_items_test() {
   let html =
     show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
@@ -115,7 +115,7 @@ pub fn card_detail_secondary_actions_render_as_menu_items_test() {
   assert_not_contains(html, "data-testid=\"card-delete-action\"")
 }
 
-pub fn card_detail_header_renders_path_due_date_and_health_test() {
+pub fn card_show_header_renders_path_due_date_and_health_test() {
   let parent = Card(..sample_card(), id: 2, title: "Release", state: Active)
   let card =
     Card(

@@ -193,7 +193,7 @@ fn pool_drag_context(
   )
 }
 
-fn card_detail_context(
+fn card_show_context(
   model: client_state.Model,
 ) -> card_show_update.Context(client_state.Msg) {
   card_show_update.Context(
@@ -347,7 +347,7 @@ fn update_without_drag(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case try_pool_card_show_update(model, inner, member_refresh) {
     opt.Some(result) -> result
-    opt.None -> update_without_card_detail(model, inner, member_refresh)
+    opt.None -> update_without_card_show(model, inner, member_refresh)
   }
 }
 
@@ -361,18 +361,18 @@ fn try_pool_card_show_update(
     card_show_update.try_update(
       pool_card_show_model(model),
       inner,
-      card_detail_context(model),
+      card_show_context(model),
     )
   {
     opt.Some(#(local, fx)) -> {
       let updated = update_pool_card_show_model(model, local)
-      opt.Some(apply_card_detail_refresh(updated, inner, fx, member_refresh))
+      opt.Some(apply_card_show_refresh(updated, inner, fx, member_refresh))
     }
     opt.None -> opt.None
   }
 }
 
-fn apply_card_detail_refresh(
+fn apply_card_show_refresh(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   fx: effect.Effect(client_state.Msg),
@@ -388,7 +388,7 @@ fn apply_card_detail_refresh(
   }
 }
 
-fn update_without_card_detail(
+fn update_without_card_show(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   member_refresh: fn(client_state.Model) ->

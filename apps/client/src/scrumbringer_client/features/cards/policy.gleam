@@ -1,4 +1,4 @@
-//// Card detail action policy for hierarchy-aware card operations.
+//// Card policy for hierarchy-aware card operations.
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -6,7 +6,7 @@ import gleam/option.{type Option, None, Some}
 import domain/card.{type Card, Closed}
 import domain/task.{type Task, claimed_by}
 
-pub type DetailStructure {
+pub type CardStructure {
   EmptyCard
   CardGroup
   TaskGroup
@@ -35,7 +35,7 @@ pub type MoveDestination {
 
 pub type Policy {
   Policy(
-    structure: DetailStructure,
+    structure: CardStructure,
     can_create_card: Bool,
     can_create_task: Bool,
     can_delete: Bool,
@@ -92,7 +92,7 @@ pub fn structure_for(
   card: Card,
   direct_child_cards: List(Card),
   direct_tasks: List(Task),
-) -> DetailStructure {
+) -> CardStructure {
   case
     list.is_empty(direct_child_cards),
     list.is_empty(direct_tasks),

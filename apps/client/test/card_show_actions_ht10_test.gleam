@@ -8,7 +8,7 @@ import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
-import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
 
@@ -92,27 +92,27 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
   )
 }
 
-pub fn empty_card_detail_offers_create_card_or_task_test() {
+pub fn empty_card_show_offers_create_card_or_task_test() {
   let policy =
-    detail_policy.policy_for(card(1, opt.None, Draft), [], [], True, True)
+    card_policy.policy_for(card(1, opt.None, Draft), [], [], True, True)
 
   let assert True = policy.can_create_card
   let assert True = policy.can_create_task
 }
 
-pub fn card_group_detail_offers_create_card_only_test() {
+pub fn card_group_show_offers_create_card_only_test() {
   let parent = card(1, opt.None, Draft)
   let child = card(2, opt.Some(1), Draft)
-  let policy = detail_policy.policy_for(parent, [child], [], True, True)
+  let policy = card_policy.policy_for(parent, [child], [], True, True)
 
   let assert True = policy.can_create_card
   let assert False = policy.can_create_task
 }
 
-pub fn task_group_detail_offers_create_task_only_test() {
+pub fn task_group_show_offers_create_task_only_test() {
   let parent = card(1, opt.None, Draft)
   let policy =
-    detail_policy.policy_for(parent, [], [task(9, opt.Some(1), 4)], True, True)
+    card_policy.policy_for(parent, [], [task(9, opt.Some(1), 4)], True, True)
 
   let assert False = policy.can_create_card
   let assert True = policy.can_create_task
@@ -167,7 +167,7 @@ pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {
   let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
 
   let options =
-    detail_policy.move_destinations(moving, [
+    card_policy.move_destinations(moving, [
       root,
       valid_parent,
       deeper_parent,
@@ -181,7 +181,7 @@ pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {
 
 pub fn delete_disabled_when_card_has_operational_history_test() {
   let policy =
-    detail_policy.policy_for(
+    card_policy.policy_for(
       Card(..card(1, opt.None, Draft), task_count: 1),
       [],
       [task(9, opt.Some(1), 4)],
@@ -190,17 +190,17 @@ pub fn delete_disabled_when_card_has_operational_history_test() {
     )
 
   let assert False = policy.can_delete
-  let assert opt.Some(detail_policy.CardHasOperationalHistory) =
+  let assert opt.Some(card_policy.CardHasOperationalHistory) =
     policy.delete_disabled_reason
 }
 
-pub fn closed_card_detail_disables_create_actions_with_reason_test() {
+pub fn closed_card_show_disables_create_actions_with_reason_test() {
   let policy =
-    detail_policy.policy_for(card(1, opt.None, Closed), [], [], True, True)
+    card_policy.policy_for(card(1, opt.None, Closed), [], [], True, True)
 
   let assert False = policy.can_create_card
   let assert False = policy.can_create_task
-  let assert opt.Some(detail_policy.ClosedCardCannotReceiveChildren) =
+  let assert opt.Some(card_policy.ClosedCardCannotReceiveChildren) =
     policy.create_disabled_reason
 }
 
@@ -209,7 +209,7 @@ pub fn move_card_dialog_explains_invalid_destinations_test() {
   let moving = card(3, opt.Some(1), Draft)
   let task_group = Card(..card(5, opt.None, Draft), task_count: 1)
   let explanation =
-    detail_policy.invalid_move_explanation(moving, task_group, [
+    card_policy.invalid_move_explanation(moving, task_group, [
       root,
       moving,
       task_group,
@@ -227,7 +227,7 @@ pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
   let closed_parent = card(6, opt.Some(1), Closed)
 
   let entries =
-    detail_policy.move_destination_entries(
+    card_policy.move_destination_entries(
       moving,
       [
         root,
@@ -241,12 +241,12 @@ pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
     )
 
   let assert [
-    detail_policy.ValidDestination(root_destination),
-    detail_policy.InvalidDestination(_, detail_policy.SameParent),
-    detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
-    detail_policy.ValidDestination(destination),
-    detail_policy.InvalidDestination(_, detail_policy.SelfOrDescendant),
-    detail_policy.InvalidDestination(_, detail_policy.ClosedDestination),
+    card_policy.ValidDestination(root_destination),
+    card_policy.InvalidDestination(_, card_policy.SameParent),
+    card_policy.InvalidDestination(_, card_policy.SelfOrDescendant),
+    card_policy.ValidDestination(destination),
+    card_policy.InvalidDestination(_, card_policy.SelfOrDescendant),
+    card_policy.InvalidDestination(_, card_policy.ClosedDestination),
   ] = entries
   let assert 1 = root_destination.id
   let assert 4 = destination.id
@@ -254,7 +254,7 @@ pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
 
 pub fn root_card_can_move_when_card_destinations_exist_test() {
   let reason =
-    detail_policy.move_unavailable_reason(
+    card_policy.move_unavailable_reason(
       card(1, opt.None, Draft),
       [
         card(1, opt.None, Draft),
@@ -267,12 +267,11 @@ pub fn root_card_can_move_when_card_destinations_exist_test() {
 }
 
 pub fn moving_card_to_root_is_blocked_only_when_already_root_test() {
-  let reason =
-    detail_policy.move_to_root_blocked_reason(card(1, opt.None, Draft))
+  let reason = card_policy.move_to_root_blocked_reason(card(1, opt.None, Draft))
 
-  let assert opt.Some(detail_policy.AlreadyAtProjectRoot) = reason
+  let assert opt.Some(card_policy.AlreadyAtProjectRoot) = reason
   assert_contains(
-    detail_policy.move_blocked_reason_label(detail_policy.AlreadyAtProjectRoot),
+    card_policy.move_blocked_reason_label(card_policy.AlreadyAtProjectRoot),
     "raiz",
   )
 }
@@ -280,5 +279,5 @@ pub fn moving_card_to_root_is_blocked_only_when_already_root_test() {
 pub fn create_task_never_auto_claims_for_creator_test() {
   let created = task(9, opt.Some(1), 4)
 
-  let assert False = detail_policy.task_is_auto_claimed(created, 4)
+  let assert False = card_policy.task_is_auto_claimed(created, 4)
 }

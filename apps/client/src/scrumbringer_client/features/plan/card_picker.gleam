@@ -6,7 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
-import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/utils/card_queries
 
@@ -57,19 +57,19 @@ pub fn filter_options(
 }
 
 pub fn move_destination_options(
-  destinations: List(detail_policy.MoveDestination),
+  destinations: List(card_policy.MoveDestination),
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
 ) -> List(CardOption) {
   destinations
   |> list.map(fn(destination) {
     case destination {
-      detail_policy.ValidDestination(card) ->
+      card_policy.ValidDestination(card) ->
         option_for_card(card, cards, depth_names)
-      detail_policy.InvalidDestination(card, reason) ->
+      card_policy.InvalidDestination(card, reason) ->
         CardOption(
           ..option_for_card(card, cards, depth_names),
-          disabled_reason: Some(detail_policy.move_blocked_reason_label(reason)),
+          disabled_reason: Some(card_policy.move_blocked_reason_label(reason)),
         )
     }
   })

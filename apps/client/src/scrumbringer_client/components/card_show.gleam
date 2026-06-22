@@ -42,7 +42,7 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
-import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
@@ -930,7 +930,7 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
 
 fn view_create_card_action(
   model: Model,
-  policy: detail_policy.Policy,
+  policy: card_policy.Policy,
 ) -> Element(Msg) {
   case policy.can_create_card, policy.create_disabled_reason {
     True, _ ->
@@ -957,7 +957,7 @@ fn view_create_card_action(
 
 fn view_create_task_action(
   model: Model,
-  policy: detail_policy.Policy,
+  policy: card_policy.Policy,
 ) -> Element(Msg) {
   case policy.can_create_task, policy.create_disabled_reason {
     True, _ ->
@@ -985,7 +985,7 @@ fn view_create_task_action(
 fn view_secondary_action_menu(
   model: Model,
   card: Card,
-  policy: detail_policy.Policy,
+  policy: card_policy.Policy,
 ) -> Element(Msg) {
   action_menu.view(
     "...",
@@ -1043,7 +1043,7 @@ fn move_action_items(model: Model, card: Card) -> List(action_menu.Item(Msg)) {
 
 fn delete_action_items(
   model: Model,
-  policy: detail_policy.Policy,
+  policy: card_policy.Policy,
 ) -> List(action_menu.Item(Msg)) {
   case policy.can_delete, policy.delete_disabled_reason {
     True, _ -> [
@@ -1067,12 +1067,12 @@ fn delete_action_items(
 
 fn disabled_reason_label(
   model: Model,
-  reason: detail_policy.DisabledReason,
+  reason: card_policy.DisabledReason,
 ) -> String {
   case reason {
-    detail_policy.ClosedCardCannotReceiveChildren ->
+    card_policy.ClosedCardCannotReceiveChildren ->
       t(model.locale, i18n_text.CardClosedCannotReceiveChildren)
-    detail_policy.CardHasOperationalHistory ->
+    card_policy.CardHasOperationalHistory ->
       t(model.locale, i18n_text.CardHasOperationalHistory)
   }
 }
@@ -1342,7 +1342,7 @@ fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {
   ])
 }
 
-fn view_tasks_header(model: Model, policy: detail_policy.Policy) -> Element(Msg) {
+fn view_tasks_header(model: Model, policy: card_policy.Policy) -> Element(Msg) {
   case policy.can_create_task, policy.create_disabled_reason {
     True, _ ->
       card_section_header.view(card_section_header.Config(
@@ -1421,15 +1421,15 @@ fn view_task_claim_status(task: Task) -> Element(Msg) {
   span([attribute.class("card-task-info")], [text(claimed_text)])
 }
 
-fn action_policy(model: Model, card: Card) -> detail_policy.Policy {
+fn action_policy(model: Model, card: Card) -> card_policy.Policy {
   let tasks = case model.tasks {
     Loaded(task_list) -> task_list
     _ -> []
   }
 
-  detail_policy.policy_for(
+  card_policy.policy_for(
     card,
-    detail_policy.direct_child_cards(card, model.cards),
+    card_policy.direct_child_cards(card, model.cards),
     tasks,
     model.can_manage_structure,
     model.can_execute_work,
