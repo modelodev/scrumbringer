@@ -22,6 +22,7 @@ import pog
 pub type ActivityError {
   UnknownAuditKind(String)
   InvalidSubject(String)
+  UnexpectedActivityCount
   DbError(pog.QueryError)
 }
 
@@ -58,6 +59,7 @@ left join users u on u.id = e.actor_user_id
 where e.task_id = $1
 order by e.created_at desc, e.id desc
 limit $2
+offset $3
 "
 
 const card_activity_sql = "
@@ -117,22 +119,74 @@ from events
 left join users u on u.id = events.actor_user_id
 order by events.created_at desc, events.id desc
 limit $2
+offset $3
+"
+
+const task_activity_count_sql = "
+select count(*)::int
+from audit_events e
+join tasks t on t.id = e.task_id
+where e.task_id = $1
+"
+
+const card_activity_count_sql = "
+with recursive subtree as (
+  select c.id
+  from cards c
+  where c.id = $1
+
+  union all
+
+  select child.id
+  from cards child
+  join subtree parent on parent.id = child.parent_card_id
+),
+events as (
+  select e.id
+  from audit_events e
+  where e.card_id in (select id from subtree)
+
+  union all
+
+  select e.id
+  from audit_events e
+  join tasks t on t.id = e.task_id
+  where t.card_id in (select id from subtree)
+)
+select count(*)::int
+from events
 "
 
 pub fn list_for_task(
   db: pog.Connection,
   task_id: Int,
   limit: Int,
+  offset: Int,
 ) -> Result(List(ActivityEvent), ActivityError) {
-  query_activity(db, task_activity_sql, task_id, limit)
+  query_activity(db, task_activity_sql, task_id, limit, offset)
 }
 
 pub fn list_for_card(
   db: pog.Connection,
   card_id: Int,
   limit: Int,
+  offset: Int,
 ) -> Result(List(ActivityEvent), ActivityError) {
-  query_activity(db, card_activity_sql, card_id, limit)
+  query_activity(db, card_activity_sql, card_id, limit, offset)
+}
+
+pub fn count_for_task(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(Int, ActivityError) {
+  count_activity(db, task_activity_count_sql, task_id)
+}
+
+pub fn count_for_card(
+  db: pog.Connection,
+  card_id: Int,
+) -> Result(Int, ActivityError) {
+  count_activity(db, card_activity_count_sql, card_id)
 }
 
 fn query_activity(
@@ -140,17 +194,38 @@ fn query_activity(
   sql: String,
   subject_id: Int,
   limit: Int,
+  offset: Int,
 ) -> Result(List(ActivityEvent), ActivityError) {
   use returned <- result.try(
     pog.query(sql)
     |> pog.parameter(pog.int(subject_id))
     |> pog.parameter(pog.int(limit))
+    |> pog.parameter(pog.int(offset))
     |> pog.returning(activity_row_decoder())
     |> pog.execute(db)
     |> result.map_error(DbError),
   )
 
   list.try_map(returned.rows, row_to_activity)
+}
+
+fn count_activity(
+  db: pog.Connection,
+  sql: String,
+  subject_id: Int,
+) -> Result(Int, ActivityError) {
+  use returned <- result.try(
+    pog.query(sql)
+    |> pog.parameter(pog.int(subject_id))
+    |> pog.returning(decode.field(0, decode.int, decode.success))
+    |> pog.execute(db)
+    |> result.map_error(DbError),
+  )
+
+  case returned.rows {
+    [total] -> Ok(total)
+    _ -> Error(UnexpectedActivityCount)
+  }
 }
 
 fn activity_row_decoder() -> decode.Decoder(ActivityRow) {

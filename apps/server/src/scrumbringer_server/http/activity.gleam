@@ -28,6 +28,12 @@ const min_limit = 1
 
 const max_limit = 100
 
+const default_offset = 0
+
+const min_offset = 0
+
+const max_offset = 10_000
+
 pub fn handle_task_activity(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -60,10 +66,11 @@ fn handle_task_activity_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case api.parse_id(task_id), parse_limit(req) {
+  case api.parse_id(task_id), parse_pagination(req) {
     Error(resp), _ -> resp
     _, Error(resp) -> resp
-    Ok(task_id), Ok(limit) -> list_task_activity(ctx, user, task_id, limit)
+    Ok(task_id), Ok(#(limit, offset)) ->
+      list_task_activity(ctx, user, task_id, limit, offset)
   }
 }
 
@@ -73,25 +80,34 @@ fn handle_card_activity_for_user(
   user: StoredUser,
   card_id: String,
 ) -> wisp.Response {
-  case api.parse_id(card_id), parse_limit(req) {
+  case api.parse_id(card_id), parse_pagination(req) {
     Error(resp), _ -> resp
     _, Error(resp) -> resp
-    Ok(card_id), Ok(limit) -> list_card_activity(ctx, user, card_id, limit)
+    Ok(card_id), Ok(#(limit, offset)) ->
+      list_card_activity(ctx, user, card_id, limit, offset)
   }
 }
 
-fn parse_limit(req: wisp.Request) -> Result(Int, wisp.Response) {
-  case
-    query.bounded_int(
-      wisp.get_query(req),
-      "limit",
-      default_limit,
-      min_limit,
-      max_limit,
-    )
-  {
+fn parse_pagination(req: wisp.Request) -> Result(#(Int, Int), wisp.Response) {
+  let params = wisp.get_query(req)
+  use limit <- result.try(parse_limit(params))
+  use offset <- result.try(parse_offset(params))
+  Ok(#(limit, offset))
+}
+
+fn parse_limit(params: List(#(String, String))) -> Result(Int, wisp.Response) {
+  case query.bounded_int(params, "limit", default_limit, min_limit, max_limit) {
     Ok(limit) -> Ok(limit)
     Error(_) -> Error(api.error(400, "BAD_REQUEST", "Invalid limit"))
+  }
+}
+
+fn parse_offset(params: List(#(String, String))) -> Result(Int, wisp.Response) {
+  case
+    query.bounded_int(params, "offset", default_offset, min_offset, max_offset)
+  {
+    Ok(offset) -> Ok(offset)
+    Error(_) -> Error(api.error(400, "BAD_REQUEST", "Invalid offset"))
   }
 }
 
@@ -100,10 +116,11 @@ fn list_task_activity(
   user: StoredUser,
   task_id: Int,
   limit: Int,
+  offset: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case task_activity_payload(db, user, task_id, limit) {
+  case task_activity_payload(db, user, task_id, limit, offset) {
     Ok(resp) -> resp
     Error(resp) -> resp
   }
@@ -114,14 +131,21 @@ fn task_activity_payload(
   user: StoredUser,
   task_id: Int,
   limit: Int,
+  offset: Int,
 ) -> Result(wisp.Response, wisp.Response) {
   use task <- result.try(require_task_access(db, task_id, user.id))
   use _ <- result.try(require_read_history(db, user, task.project_id))
 
-  case activity_db.list_for_task(db, task_id, limit) {
-    Ok(events) -> Ok(api.ok(presenters.activity_response(events)))
-    Error(error) -> Error(activity_error_response(error))
-  }
+  use events <- result.try(
+    activity_db.list_for_task(db, task_id, limit, offset)
+    |> result.map_error(activity_error_response),
+  )
+  use total <- result.try(
+    activity_db.count_for_task(db, task_id)
+    |> result.map_error(activity_error_response),
+  )
+
+  Ok(api.ok(presenters.activity_response(events, limit, offset, total)))
 }
 
 fn list_card_activity(
@@ -129,10 +153,11 @@ fn list_card_activity(
   user: StoredUser,
   card_id: Int,
   limit: Int,
+  offset: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case card_activity_payload(db, user, card_id, limit) {
+  case card_activity_payload(db, user, card_id, limit, offset) {
     Ok(resp) -> resp
     Error(resp) -> resp
   }
@@ -143,14 +168,21 @@ fn card_activity_payload(
   user: StoredUser,
   card_id: Int,
   limit: Int,
+  offset: Int,
 ) -> Result(wisp.Response, wisp.Response) {
   use card <- result.try(require_card_access(db, card_id, user.id))
   use _ <- result.try(require_read_history(db, user, card.project_id))
 
-  case activity_db.list_for_card(db, card_id, limit) {
-    Ok(events) -> Ok(api.ok(presenters.activity_response(events)))
-    Error(error) -> Error(activity_error_response(error))
-  }
+  use events <- result.try(
+    activity_db.list_for_card(db, card_id, limit, offset)
+    |> result.map_error(activity_error_response),
+  )
+  use total <- result.try(
+    activity_db.count_for_card(db, card_id)
+    |> result.map_error(activity_error_response),
+  )
+
+  Ok(api.ok(presenters.activity_response(events, limit, offset, total)))
 }
 
 fn require_task_access(
@@ -219,6 +251,7 @@ fn activity_error_response(error: activity_db.ActivityError) -> wisp.Response {
     activity_db.DbError(_) -> database_error_response()
     activity_db.UnknownAuditKind(_) -> database_error_response()
     activity_db.InvalidSubject(_) -> database_error_response()
+    activity_db.UnexpectedActivityCount -> database_error_response()
   }
 }
 

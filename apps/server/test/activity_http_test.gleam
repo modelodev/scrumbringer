@@ -54,7 +54,40 @@ pub fn task_activity_lists_real_audit_events_with_limit_test() {
   actor_label |> expect.equal("admin@example.com")
 }
 
-pub fn card_activity_includes_descendant_task_events_test() {
+pub fn task_activity_paginates_with_offset_and_metadata_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
+
+  let claim_res = claim_task(handler, session, task_id)
+  expect.expect_status(claim_res, 200)
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/tasks/"
+          <> int.to_string(task_id)
+          <> "/activity?limit=1&offset=1",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 200)
+  let body = simulate.read_body(res)
+  expect.expect_json_field_int(body, ["data", "pagination", "limit"], 1)
+  expect.expect_json_field_int(body, ["data", "pagination", "offset"], 1)
+  expect.expect_json_field_int(body, ["data", "pagination", "total"], 2)
+
+  let events = decode_activity(body)
+  let assert [event] = events
+  event.kind |> expect.equal(kind.TaskCreated)
+}
+
+pub fn card_activity_includes_descendant_task_activity_items_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
@@ -146,6 +179,26 @@ pub fn activity_rejects_invalid_limit_test() {
       simulate.request(
         http.Get,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/activity?limit=101",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 400)
+}
+
+pub fn activity_rejects_invalid_offset_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/activity?offset=-1",
       )
       |> fixtures.with_auth(session),
     )
