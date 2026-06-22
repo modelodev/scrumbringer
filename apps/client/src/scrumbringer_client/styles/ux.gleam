@@ -627,7 +627,6 @@ pub fn css() -> List(String) {
     ".member-selected-hint { align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--sb-primary) 30%, var(--sb-border)); border-radius: 8px; background: color-mix(in oklab, var(--sb-primary) 6%, var(--sb-surface)); }",
     ".member-selected-hint-icon { color: var(--sb-primary); display: inline-flex; align-items: center; }",
     ".member-selected-badge { margin-left: auto; }",
-    ".task-blocked { opacity: 0.6; }",
     ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: var(--sb-radius-pill); border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning-text); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); line-height: 1; }",
     ".task-blocked-count { font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); font-variant-numeric: tabular-nums; }",
     ".task-blocked-inline { margin-left: 6px; }",

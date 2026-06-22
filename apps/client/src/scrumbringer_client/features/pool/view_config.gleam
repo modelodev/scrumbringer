@@ -384,7 +384,7 @@ fn initial_task_position(index: Int) -> #(Int, Int) {
   let card_size = 128
   let gap = 32
   let columns = 5
-  let padding = 60
+  let padding = 12
   let initial_x = padding + { { index % columns } * { card_size + gap } }
   let initial_y = padding + { { index / columns } * { card_size + gap } }
   #(initial_x, initial_y)

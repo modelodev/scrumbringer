@@ -5,6 +5,7 @@ pub fn css() -> List(String) {
   [
     "#member-canvas { background-image: radial-gradient(circle, color-mix(in oklab, var(--sb-border) 55%, transparent) 1px, transparent 1px); background-size: 24px 24px; border-radius: var(--sb-radius-lg); isolation: isolate; }",
     ".task-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; position: relative; }",
+    ".task-card.task-blocked { border-color: color-mix(in oklab, var(--sb-warning) 32%, var(--sb-border)); background: color-mix(in oklab, var(--sb-surface) 92%, var(--sb-warning) 8%); }",
     ".task-card:hover, .task-card:focus-within { z-index: 40; overflow: visible; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }",
     ".task-card-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 6px; align-items: center; z-index: 2; }",
     ".task-card-type-icon { display: none; }",
@@ -12,7 +13,10 @@ pub fn css() -> List(String) {
     ".task-card-actions-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }",
     ".task-card-primary-action { width: 28px; min-width: 28px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--sb-primary-subtle-border); border-radius: 8px; background: var(--sb-primary-subtle-bg); color: var(--sb-primary); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-tight); cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
 .task-card-primary-action:hover, .task-card-primary-action:focus-visible { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 16%, var(--sb-elevated)); color: var(--sb-primary-strong); }
-.task-card-primary-action:disabled { opacity: 0.55; cursor: not-allowed; }",
+.task-card-primary-action:disabled { opacity: 0.55; cursor: not-allowed; }
+.task-card-primary-action[aria-disabled=\"true\"] { position: relative; border-color: var(--sb-border); background: var(--sb-surface-3); color: var(--sb-muted-strong); box-shadow: none; opacity: 0.72; cursor: not-allowed; }
+.task-card-primary-action[aria-disabled=\"true\"]:hover, .task-card-primary-action[aria-disabled=\"true\"]:focus-visible { border-color: var(--sb-border); background: var(--sb-surface-3); color: var(--sb-muted-strong); }
+.task-card-primary-action-blocked::before { content: ''; position: absolute; width: 18px; height: 2px; border-radius: 999px; background: currentColor; transform: rotate(-35deg); opacity: 0.9; pointer-events: none; }",
     ".task-card-body { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 10px; padding-top: 40px; box-sizing: border-box; }
 .task-card-open-action { appearance: none; border: 0; background: transparent; color: inherit; font: inherit; width: 100%; min-width: 0; min-height: 0; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; text-align: inherit; }
 .task-card-open-action:focus-visible { outline: 2px solid var(--sb-primary); outline-offset: 3px; border-radius: 8px; }

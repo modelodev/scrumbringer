@@ -102,6 +102,26 @@ fn blocked_icon_button(
   |> ui_button.view
 }
 
+/// Generic blocked icon-only task action button.
+pub fn blocked_task_icon_button(
+  reason: String,
+  on_click: msg,
+  icon: icons.NavIcon,
+  size: ButtonSize,
+  extra_class: String,
+  testid: Option(String),
+) -> Element(msg) {
+  blocked_icon_button(
+    reason,
+    on_click,
+    icon,
+    ui_button.Neutral,
+    size,
+    extra_class,
+    testid,
+  )
+}
+
 /// Generic icon-only task action button.
 pub fn task_icon_button(
   title: String,

@@ -109,13 +109,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     [
       div([attribute.class("task-card-top")], [
         div([attribute.class("task-card-actions-left")], [
-          task_blocked_badge.view(
-            config.locale,
-            config.task,
-            "task-blocked-card",
-          ),
-          due_signal(config),
           claim_action,
+          due_signal(config),
           top_left_action,
         ]),
         div([attribute.class("task-card-actions-right")], [
@@ -305,10 +300,21 @@ fn top_left_action(
 }
 
 fn claim_action(locale: Locale, config: Config(msg)) -> Element(msg) {
-  case claimability.can_claim(config.task) {
-    True -> claim_primary_action(locale, config)
-    False -> element.none()
+  case claimability.can_claim(config.task), config.task.blocked_count > 0 {
+    True, _ -> claim_primary_action(locale, config)
+    False, True -> claim_blocked_action(locale, config)
+    False, False -> element.none()
   }
+}
+
+fn claim_blocked_action(locale: Locale, config: Config(msg)) -> Element(msg) {
+  task_actions.claim_icon_blocked(
+    task_blocked_badge.tooltip_text(locale, config.task),
+    config.on_claim,
+    action_buttons.SizeXs,
+    "task-card-primary-action task-card-primary-action-blocked",
+    option.None,
+  )
 }
 
 fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {

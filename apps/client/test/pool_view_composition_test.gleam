@@ -33,7 +33,11 @@ pub fn pool_renders_header_control_bar_and_body_test() {
     pool_view.view_pool_main(main_config(pool_prefs.Canvas))
     |> element.to_document_string
 
+  assert_contains(html, "class=\"work-surface pool-view\"")
+  assert_contains(html, "work-surface-chrome")
   assert_contains(html, "work-surface-header")
+  assert_contains(html, "work-surface-filters")
+  assert_contains(html, "work-surface-content")
   assert_contains(html, "data-testid=\"pool-control-bar\"")
   assert_contains(html, "id=\"member-canvas\"")
   assert_contains(html, "Task 1")

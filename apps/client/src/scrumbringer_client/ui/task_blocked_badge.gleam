@@ -21,15 +21,13 @@ import scrumbringer_client/ui/task_status_utils
 pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
   case task.blocked_count > 0 {
     False -> element.none()
-    True ->
+    True -> {
+      let tooltip = tooltip_text(locale, task)
       span(
         [
           attribute.class("task-blocked-badge " <> extra_class),
-          attribute.attribute("title", tooltip_text(locale, task.dependencies)),
-          attribute.attribute(
-            "aria-label",
-            tooltip_text(locale, task.dependencies),
-          ),
+          attribute.attribute("title", tooltip),
+          attribute.attribute("aria-label", tooltip),
         ],
         [
           icons.nav_icon(icons.Warning, icons.XSmall),
@@ -38,12 +36,18 @@ pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
           ]),
         ],
       )
+    }
   }
 }
 
-fn tooltip_text(locale: Locale, deps: List(TaskDependency)) -> String {
-  let blocking = list.filter(deps, fn(dep) { dep.status != task_status.Done })
-  let header = i18n.t(locale, i18n_text.BlockedByTasks(list.length(blocking)))
+pub fn tooltip_text(locale: Locale, task: Task) -> String {
+  let blocking =
+    list.filter(task.dependencies, fn(dep) { dep.status != task_status.Done })
+  let blocking_count = case blocking {
+    [] -> task.blocked_count
+    _ -> list.length(blocking)
+  }
+  let header = i18n.t(locale, i18n_text.BlockedByTasks(blocking_count))
   let items =
     list.map(blocking, fn(dep) {
       dep.title <> " (" <> dependency_status(locale, dep) <> ")"

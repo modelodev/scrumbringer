@@ -34,6 +34,46 @@ pub fn positions_to_dict_maps_task_id_test() {
   let assert Ok(#(4, 8)) = dict.get(result, 10)
 }
 
+pub fn compact_positions_for_task_ids_preserves_relative_layout_test() {
+  let positions = dict.from_list([#(10, #(61, 195)), #(11, #(283, 210))])
+
+  let result =
+    helpers_dicts.compact_positions_for_task_ids(positions, [10, 11], 12)
+
+  let assert Ok(#(12, 12)) = dict.get(result, 10)
+  let assert Ok(#(234, 27)) = dict.get(result, 11)
+}
+
+pub fn compact_positions_for_task_ids_keeps_near_origin_positions_test() {
+  let positions = dict.from_list([#(10, #(4, 8))])
+
+  let result = helpers_dicts.compact_positions_for_task_ids(positions, [10], 12)
+
+  let assert Ok(#(4, 8)) = dict.get(result, 10)
+}
+
+pub fn compact_positions_for_task_ids_anchors_leftmost_column_test() {
+  let positions = dict.from_list([#(10, #(61, 195)), #(11, #(1028, 0))])
+
+  let result =
+    helpers_dicts.compact_positions_for_task_ids(positions, [10, 11], 12)
+
+  let assert Ok(#(12, 12)) = dict.get(result, 10)
+  let assert Ok(#(979, 0)) = dict.get(result, 11)
+}
+
+pub fn compact_positions_for_task_ids_ignores_hidden_origin_test() {
+  let positions =
+    dict.from_list([#(10, #(61, 195)), #(11, #(283, 210)), #(99, #(0, 0))])
+
+  let result =
+    helpers_dicts.compact_positions_for_task_ids(positions, [10, 11], 12)
+
+  let assert Ok(#(12, 12)) = dict.get(result, 10)
+  let assert Ok(#(234, 27)) = dict.get(result, 11)
+  let assert Ok(#(0, 0)) = dict.get(result, 99)
+}
+
 pub fn flatten_tasks_collects_all_tasks_test() {
   let state = task_state.Available
   let t1 =

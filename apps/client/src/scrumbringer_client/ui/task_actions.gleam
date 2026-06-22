@@ -73,6 +73,23 @@ pub fn claim_icon(
   )
 }
 
+pub fn claim_icon_blocked(
+  reason: String,
+  on_click: msg,
+  size: action_buttons.ButtonSize,
+  extra_class: String,
+  testid: Option(String),
+) -> Element(msg) {
+  action_buttons.blocked_task_icon_button(
+    reason,
+    on_click,
+    icons.HandRaised,
+    size,
+    extra_class,
+    testid,
+  )
+}
+
 pub fn release_icon(
   title: String,
   on_click: msg,

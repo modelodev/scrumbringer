@@ -9,6 +9,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/pool/position_layout
 import scrumbringer_client/features/pool/project_refresh
 import scrumbringer_client/features/pool/route_support
 
@@ -42,7 +43,10 @@ fn apply_project_update(
   route_support.apply_auth_check_before(
     model,
     project_refresh_auth_error(auth_policy),
-    fn() { #(update_member_pool(model, fn(_) { pool }), effect.none()) },
+    fn() {
+      let model = update_member_pool(model, fn(_) { pool })
+      #(position_layout.compact_loaded_pool_positions(model), effect.none())
+    },
   )
 }
 

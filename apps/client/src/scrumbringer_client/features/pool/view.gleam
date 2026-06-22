@@ -86,15 +86,15 @@ pub fn view_pool_main(config: MainConfig(msg)) -> Element(msg) {
     True -> {
       let task_state = available_tasks.state(config.available_tasks)
       let counts = available_tasks.counts(config.available_tasks)
-      div([attribute.class("section pool-view")], [
-        pool_chrome.header(
-          config.locale,
-          config.on_create_opened,
-          pool_summary(config, counts),
-        ),
-        control_bar.view(config.control_bar),
-        view_tasks(config, task_state),
-      ])
+      work_surface.new_surface(pool_chrome.header(
+        config.locale,
+        config.on_create_opened,
+        pool_summary(config, counts),
+      ))
+      |> work_surface.with_filters(control_bar.view(config.control_bar))
+      |> work_surface.with_content(view_tasks(config, task_state))
+      |> work_surface.surface_with_class("pool-view")
+      |> work_surface.surface
     }
   }
 }
