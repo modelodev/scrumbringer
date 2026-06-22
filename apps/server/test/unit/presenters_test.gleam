@@ -2,12 +2,19 @@
 ////
 //// Tests shared optional JSON helpers and presenter-specific fallback logic.
 
+import domain/note/entity.{Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
 import domain/project.{ProjectDepthName}
+import domain/project/id as project_id
 import domain/project_role
 import domain/task.{Task}
+import domain/task/id as task_id
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
+import domain/user/id as user_id
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{None, Some}
@@ -15,6 +22,7 @@ import gleeunit
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
 import scrumbringer_server/http/projects/presenters as project_presenters
+import scrumbringer_server/http/task_notes/presenters as task_note_presenters
 import scrumbringer_server/http/tasks/presenters as task_presenters
 import scrumbringer_server/use_case/projects_db
 import support/assertions as expect
@@ -235,6 +243,42 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
   work_state |> expect.equal("ongoing")
   claimed_by |> expect.equal(42)
   claimed_at |> expect.equal("2026-06-15T10:00:00Z")
+}
+
+pub fn task_note_presenter_uses_common_note_contract_test() {
+  let note =
+    Note(
+      id: note_id.new(5),
+      project_id: project_id.new(8),
+      subject: TaskNoteSubject(task_id.new(13)),
+      user_id: user_id.new(21),
+      content: "Use the rollout checklist",
+      url: Some("https://example.com/checklist"),
+      pinned: True,
+      created_at: "2026-06-22T09:00:00Z",
+      updated_at: "2026-06-22T09:10:00Z",
+      author_email: "ana@example.com",
+      author_project_role: Some(project_role.Manager),
+      author_org_role: org_role.Member,
+    )
+
+  let body =
+    note
+    |> task_note_presenters.note
+    |> json.to_string
+
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok("task") =
+    decode.run(
+      dynamic,
+      decode.field("subject_type", decode.string, decode.success),
+    )
+  let assert Ok(13) =
+    decode.run(dynamic, decode.field("subject_id", decode.int, decode.success))
+  let assert Ok(8) =
+    decode.run(dynamic, decode.field("project_id", decode.int, decode.success))
+  let assert Error(_) =
+    decode.run(dynamic, decode.field("task_id", decode.int, decode.success))
 }
 
 fn task_lifecycle_decoder() -> decode.Decoder(#(String, String, Int, String)) {

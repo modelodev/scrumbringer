@@ -11,8 +11,6 @@
 //// let card = Card(id: 1, project_id: 10, title: "OAuth", ...)
 //// ```
 
-import domain/org_role.{type OrgRole}
-import domain/project_role.{type ProjectRole}
 import gleam/option.{type Option, None, Some}
 
 // =============================================================================
@@ -87,40 +85,6 @@ pub type Card {
 }
 
 /// A note attached to a card.
-///
-/// ## Example
-///
-/// ```gleam
-/// CardNote(
-///   id: 1,
-///   card_id: 10,
-///   user_id: 42,
-///   content: "Scope agreed with PM",
-///   url: None,
-///   pinned: False,
-///   created_at: "2026-01-28T12:00:00Z",
-///   updated_at: "2026-01-28T12:00:00Z",
-///   author_email: "user@example.com",
-///   author_project_role: Some(Manager),
-///   author_org_role: Admin,
-/// )
-/// ```
-pub type CardNote {
-  CardNote(
-    id: Int,
-    card_id: Int,
-    user_id: Int,
-    content: String,
-    url: Option(String),
-    pinned: Bool,
-    created_at: String,
-    updated_at: String,
-    author_email: String,
-    author_project_role: Option(ProjectRole),
-    author_org_role: OrgRole,
-  )
-}
-
 /// Convert CardPhase to string for API.
 pub fn state_to_string(state: CardPhase) -> String {
   case state {

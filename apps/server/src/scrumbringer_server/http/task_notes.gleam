@@ -20,7 +20,9 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `use_case/task_notes_db.gleam` for repository
 
-import domain/task.{type Task, type TaskNote, TaskNote}
+import domain/note/entity.{type Note}
+import domain/task.{type Task}
+import domain/user/id as user_id
 import gleam/http
 import gleam/option
 import gleam/result
@@ -301,7 +303,7 @@ fn get_note(
   db: pog.Connection,
   task_id: Int,
   note_id: Int,
-) -> Result(TaskNote, wisp.Response) {
+) -> Result(Note, wisp.Response) {
   case task_notes_db.get_note(db, task_id, note_id) {
     Ok(note) -> Ok(note)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -335,9 +337,9 @@ fn can_delete_note(
   db: pog.Connection,
   user: StoredUser,
   project_id: Int,
-  note: TaskNote,
+  note: Note,
 ) -> Bool {
-  let TaskNote(user_id: author_id, ..) = note
+  let author_id = user_id.to_int(note.user_id)
 
   case
     authorization.require_project_manager_with_org_bypass(db, user, project_id)

@@ -4,11 +4,9 @@ import gleam/dynamic/decode
 import gleam/option
 
 import domain/card.{
-  type Card, type CardColor, type CardNote, type CardPhase, Card, CardNote,
-  Draft, parse_color, parse_state,
+  type Card, type CardColor, type CardPhase, Card, Draft, parse_color,
+  parse_state,
 }
-import domain/org_role/org_role_codec
-import domain/project_role/project_role_codec
 
 /// Decoder for CardPhase.
 pub fn card_state_decoder() -> decode.Decoder(CardPhase) {
@@ -73,48 +71,5 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     created_at: created_at,
     due_date: due_date,
     has_new_notes: has_new_notes,
-  ))
-}
-
-/// Decoder for CardNote.
-pub fn card_note_decoder() -> decode.Decoder(CardNote) {
-  use id <- decode.field("id", decode.int)
-  use card_id <- decode.field("card_id", decode.int)
-  use user_id <- decode.field("user_id", decode.int)
-  use content <- decode.field("content", decode.string)
-  use url <- decode.optional_field(
-    "url",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use pinned <- decode.optional_field("pinned", False, decode.bool)
-  use created_at <- decode.field("created_at", decode.string)
-  use updated_at <- decode.optional_field(
-    "updated_at",
-    created_at,
-    decode.string,
-  )
-  use author_email <- decode.field("author_email", decode.string)
-  use author_project_role <- decode.optional_field(
-    "author_project_role",
-    option.None,
-    decode.optional(project_role_codec.project_role_decoder()),
-  )
-  use author_org_role <- decode.field(
-    "author_org_role",
-    org_role_codec.org_role_decoder(),
-  )
-  decode.success(CardNote(
-    id: id,
-    card_id: card_id,
-    user_id: user_id,
-    content: content,
-    url: url,
-    pinned: pinned,
-    created_at: created_at,
-    updated_at: updated_at,
-    author_email: author_email,
-    author_project_role: author_project_role,
-    author_org_role: author_org_role,
   ))
 }

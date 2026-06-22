@@ -4,8 +4,8 @@ import gleam/list
 
 import lustre/element.{type Element}
 
+import domain/note/entity.{type Note}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type TaskNote}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -17,7 +17,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     active_tab: show_tabs.TaskShowTab,
-    notes: Remote(List(TaskNote)),
+    notes: Remote(List(Note)),
     on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
   )
 }
@@ -57,7 +57,7 @@ pub fn task_items(
   )
 }
 
-fn notes_count(notes: Remote(List(TaskNote))) -> Int {
+fn notes_count(notes: Remote(List(Note))) -> Int {
   case notes {
     Loaded(notes) -> list.length(notes)
     NotAsked -> 0

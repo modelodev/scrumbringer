@@ -3,8 +3,14 @@ import gleam/string
 import lustre/element
 import lustre/element/html
 
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
 import domain/remote
-import domain/task.{type TaskNote, TaskNote}
+import domain/task/id as task_id
+import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_detail_tabs
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/show_tabs
@@ -55,15 +61,19 @@ pub fn task_detail_tabs_panel_sets_accessible_tab_contract_test() {
   assert_contains(html, "aria-labelledby=\"modal-tab-3\"")
 }
 
-fn note(id: Int) -> TaskNote {
-  TaskNote(
-    id: id,
-    task_id: 42,
-    user_id: 7,
+fn note(id: Int) -> Note {
+  Note(
+    id: note_id.new(id),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(7),
     content: "Note",
     url: None,
     pinned: False,
     created_at: "2026-06-01T10:00:00Z",
     updated_at: "2026-06-01T10:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }

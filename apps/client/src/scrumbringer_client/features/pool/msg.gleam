@@ -9,10 +9,10 @@ import domain/metrics.{
   type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
 }
+import domain/note/entity as note_entity
 import domain/project.{type ProjectMember}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, type TaskPosition,
-  type WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskPosition, type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
@@ -68,7 +68,7 @@ pub type Msg {
   MemberTaskHoverClosed
   MemberTaskFocused(Int)
   MemberTaskBlurred
-  MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
+  MemberTaskHoverNotesFetched(Int, ApiResult(List(note_entity.Note)))
   MemberListHideDoneToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
@@ -148,16 +148,16 @@ pub type Msg {
   MemberDependencyAdded(ApiResult(TaskDependency))
   MemberDependencyRemoveClicked(Int)
   MemberDependencyRemoved(Int, ApiResult(Nil))
-  MemberNotesFetched(ApiResult(List(TaskNote)))
+  MemberNotesFetched(ApiResult(List(note_entity.Note)))
   MemberNoteContentChanged(String)
   MemberNoteDialogOpened
   MemberNoteDialogClosed
   MemberNoteSubmitted
-  MemberNoteAdded(ApiResult(TaskNote))
+  MemberNoteAdded(ApiResult(note_entity.Note))
   MemberNoteDeleteClicked(Int)
   MemberNoteDeleted(Int, ApiResult(Nil))
   MemberNotePinClicked(Int, Bool)
-  MemberNotePinned(Int, ApiResult(TaskNote))
+  MemberNotePinned(Int, ApiResult(note_entity.Note))
   MemberActivityFetched(ApiResult(List(ActivityEvent)))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))

@@ -8,8 +8,9 @@ import lustre/element.{type Element}
 
 import domain/capability.{type Capability}
 import domain/card.{type Card}
+import domain/note/entity.{type Note}
 import domain/remote.{unwrap}
-import domain/task.{type Task, type TaskNote, type WorkSession, Task}
+import domain/task.{type Task, type WorkSession, Task}
 import domain/task_state
 import domain/task_status.{Taken}
 import domain/user.{type User}
@@ -326,7 +327,7 @@ fn highlighted_hidden_count_for_source(
   }
 }
 
-fn hover_notes_for_task(context: Context(msg), task_id: Int) -> List(TaskNote) {
+fn hover_notes_for_task(context: Context(msg), task_id: Int) -> List(Note) {
   case dict.get(context.notes.member_hover_notes_cache, task_id) {
     Ok(notes) -> notes
     Error(_) -> []

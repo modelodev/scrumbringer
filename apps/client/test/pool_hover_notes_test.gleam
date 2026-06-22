@@ -3,20 +3,30 @@ import gleam/int
 import gleam/option.{None}
 
 import domain/api_error.{type ApiError, ApiError}
-import domain/task.{type TaskNote, TaskNote}
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_id
+import domain/note/subject.{TaskNoteSubject}
+import domain/org_role
+import domain/project/id as project_id
+import domain/task/id as task_id
+import domain/user/id as user_id
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/features/pool/hover_notes
 
-fn sample_note(id: Int) -> TaskNote {
-  TaskNote(
-    id: id,
-    task_id: 42,
-    user_id: 7,
+fn sample_note(id: Int) -> Note {
+  Note(
+    id: note_id.new(id),
+    project_id: project_id.new(1),
+    subject: TaskNoteSubject(task_id.new(42)),
+    user_id: user_id.new(7),
     content: "Note " <> int.to_string(id),
     url: None,
     pinned: False,
     created_at: "2026-06-02T12:00:00Z",
     updated_at: "2026-06-02T12:00:00Z",
+    author_email: "user@example.com",
+    author_project_role: None,
+    author_org_role: org_role.Member,
   )
 }
 
@@ -46,8 +56,9 @@ pub fn fetched_success_caches_last_two_notes_and_clears_pending_test() {
     )
 
   let assert Error(_) = dict.get(next.member_hover_notes_pending, 42)
-  let assert Ok([TaskNote(id: 2, ..), TaskNote(id: 3, ..)]) =
-    dict.get(next.member_hover_notes_cache, 42)
+  let assert Ok([first, second]) = dict.get(next.member_hover_notes_cache, 42)
+  let assert 2 = note_id.to_int(first.id)
+  let assert 3 = note_id.to_int(second.id)
 }
 
 pub fn fetched_error_only_clears_pending_test() {

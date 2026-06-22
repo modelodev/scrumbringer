@@ -1,7 +1,9 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
+import domain/note/entity.{type Note}
 import domain/task as domain_task
+import domain/user/id as user_ids
 import lustre/element.{type Element}
 
 import scrumbringer_client/features/pool/blocking
@@ -20,7 +22,7 @@ pub type Config(msg) {
     card_title: Option(String),
     age_days: Int,
     hidden_blocked_count: Option(Int),
-    notes: List(domain_task.TaskNote),
+    notes: List(Note),
     current_user_id: Option(Int),
     on_open: msg,
   )
@@ -95,10 +97,7 @@ fn hidden_blocked_note(
   }
 }
 
-fn notes_label(
-  locale: Locale,
-  notes: List(domain_task.TaskNote),
-) -> Option(String) {
+fn notes_label(locale: Locale, notes: List(Note)) -> Option(String) {
   case notes {
     [] -> None
     _ -> Some(pool_labels.recent_notes(locale))
@@ -108,23 +107,18 @@ fn notes_label(
 fn hover_notes(
   locale: Locale,
   current_user_id: Option(Int),
-  notes: List(domain_task.TaskNote),
+  notes: List(Note),
 ) -> List(task_hover_popup.HoverNote) {
   list.map(notes, fn(note) {
-    let domain_task.TaskNote(
-      user_id: user_id,
-      created_at: created_at,
-      content: content,
-      ..,
-    ) = note
+    let user_id = user_ids.to_int(note.user_id)
     let author = case current_user_id == Some(user_id) {
       True -> pool_labels.current_user(locale)
       False -> pool_labels.user_number(locale, user_id)
     }
     task_hover_popup.HoverNote(
       author: author,
-      created_at: created_at,
-      content: content,
+      created_at: note.created_at,
+      content: note.content,
     )
   })
 }

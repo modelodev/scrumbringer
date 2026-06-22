@@ -29,8 +29,10 @@ import lustre/event
 
 import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
+import domain/note/entity as note_entity
+import domain/note/id as note_ids
 import domain/remote.{type Remote, Loaded}
-import domain/task.{type Task, type TaskDependency, type TaskNote}
+import domain/task.{type Task, type TaskDependency}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/dialog_mode
@@ -111,7 +113,7 @@ pub type TaskEditorConfig(msg) {
 pub type TaskNotesConfig(msg) {
   TaskNotesConfig(
     can_manage: Bool,
-    items: Remote(List(TaskNote)),
+    items: Remote(List(note_entity.Note)),
     dialog_mode: dialog_mode.DialogMode,
     content: String,
     error: opt.Option(String),
@@ -262,7 +264,7 @@ fn details_config(
 }
 
 fn pinned_task_notes(
-  notes: Remote(List(TaskNote)),
+  notes: Remote(List(note_entity.Note)),
 ) -> List(pinned_context.PinnedNote) {
   case notes {
     Loaded(items) ->
@@ -270,7 +272,7 @@ fn pinned_task_notes(
       |> list.filter(fn(note) { note.pinned })
       |> list.map(fn(note) {
         pinned_context.PinnedNote(
-          id: note.id,
+          id: note_ids.to_int(note.id),
           content: note.content,
           url: note.url,
         )

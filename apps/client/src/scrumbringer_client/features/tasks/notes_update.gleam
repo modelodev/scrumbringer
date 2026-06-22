@@ -5,7 +5,7 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/task.{type TaskNote}
+import domain/note/entity.{type Note}
 import scrumbringer_client/api/tasks/notes as task_notes_api
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -16,10 +16,10 @@ pub type Context(parent_msg) {
   Context(
     content_required: String,
     note_added: String,
-    on_note_added: fn(ApiResult(TaskNote)) -> parent_msg,
+    on_note_added: fn(ApiResult(Note)) -> parent_msg,
     on_note_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
-    on_note_pinned: fn(Int, ApiResult(TaskNote)) -> parent_msg,
-    on_notes_fetched: fn(ApiResult(List(TaskNote))) -> parent_msg,
+    on_note_pinned: fn(Int, ApiResult(Note)) -> parent_msg,
+    on_notes_fetched: fn(ApiResult(List(Note))) -> parent_msg,
     on_success_toast: fn(String) -> Effect(parent_msg),
   )
 }
@@ -116,7 +116,7 @@ fn with_auth_check(
 
 fn handle_notes_fetched_ok(
   model: member_notes.Model,
-  notes: List(TaskNote),
+  notes: List(Note),
 ) -> #(member_notes.Model, Effect(parent_msg)) {
   #(note_state.loaded(model, notes), effect.none())
 }
@@ -198,7 +198,7 @@ fn submit_note_with_content(
 
 fn handle_added_ok(
   model: member_notes.Model,
-  note: TaskNote,
+  note: Note,
   context: Context(parent_msg),
 ) -> #(member_notes.Model, Effect(parent_msg)) {
   #(note_state.added(model, note), context.on_success_toast(context.note_added))
@@ -271,7 +271,7 @@ fn handle_pin_clicked(
 
 fn handle_pinned_ok(
   model: member_notes.Model,
-  note: TaskNote,
+  note: Note,
 ) -> #(member_notes.Model, Effect(parent_msg)) {
   #(note_state.pinned(model, note), effect.none())
 }

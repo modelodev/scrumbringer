@@ -6,8 +6,9 @@ import lustre/effect.{type Effect}
 
 import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/note/entity as note_entity
 import domain/remote.{type Remote, Failed, Loaded}
-import domain/task.{type Task, type TaskDependency, type TaskNote}
+import domain/task.{type Task, type TaskDependency}
 import scrumbringer_client/api/activity as activity_api
 import scrumbringer_client/api/tasks/dependencies as task_dependencies_api
 import scrumbringer_client/api/tasks/notes as task_notes_api
@@ -44,7 +45,7 @@ pub type Model {
 
 pub type Context(parent_msg) {
   Context(
-    on_notes_fetched: fn(ApiResult(List(TaskNote))) -> parent_msg,
+    on_notes_fetched: fn(ApiResult(List(note_entity.Note))) -> parent_msg,
     on_dependencies_fetched: fn(ApiResult(List(TaskDependency))) -> parent_msg,
     on_activity_fetched: fn(ApiResult(List(ActivityEvent))) -> parent_msg,
   )
