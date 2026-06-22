@@ -6,7 +6,6 @@ import gleam/option
 
 import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/metrics.{type CardModalMetrics}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -23,7 +22,6 @@ pub type Context(parent_msg) {
   Context(
     on_card_marked: fn(ApiResult(Nil)) -> parent_msg,
     on_card_detail_msg: fn(card_detail_modal.Msg) -> parent_msg,
-    on_card_metrics_fetched: fn(ApiResult(CardModalMetrics)) -> parent_msg,
     on_card_activated: fn(ApiResult(card_contracts.CardActionResponse)) ->
       parent_msg,
     on_create_task: fn(Int) -> parent_msg,
@@ -52,10 +50,6 @@ pub fn try_update(
     pool_messages.CloseCardDetail -> option.Some(closed(model))
     pool_messages.CardDetailMsg(msg) ->
       option.Some(child_updated(model, msg, context))
-    pool_messages.CardMetricsFetched(Ok(metrics)) ->
-      option.Some(metrics_fetched_ok(model, metrics))
-    pool_messages.CardMetricsFetched(Error(err)) ->
-      option.Some(metrics_fetched_error(model, err))
     pool_messages.CardActivateRequested(card_id) ->
       option.Some(activate_requested(model, card_id, context))
     pool_messages.CardActivated(Ok(response)) ->
@@ -83,7 +77,6 @@ fn opened(
     ),
     effect.batch([
       api_cards.mark_card_view(card_id, context.on_card_marked),
-      api_cards.get_card_metrics(card_id, context.on_card_metrics_fetched),
       detail_fx |> effect.map(context.on_card_detail_msg),
     ]),
   )
@@ -153,32 +146,6 @@ fn dispatch_card_action(
     option.Some(id) -> effect.from(fn(dispatch) { dispatch(to_msg(id)) })
     option.None -> effect.none()
   }
-}
-
-fn metrics_fetched_ok(
-  model: Model,
-  metrics: CardModalMetrics,
-) -> #(Model, Effect(parent_msg)) {
-  #(
-    Model(
-      ..model,
-      pool: card_detail.handle_metrics_fetched_ok(model.pool, metrics),
-    ),
-    effect.none(),
-  )
-}
-
-fn metrics_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(parent_msg)) {
-  #(
-    Model(
-      ..model,
-      pool: card_detail.handle_metrics_fetched_error(model.pool, err),
-    ),
-    effect.none(),
-  )
 }
 
 fn activate_requested(

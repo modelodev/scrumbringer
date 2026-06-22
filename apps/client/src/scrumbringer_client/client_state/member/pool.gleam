@@ -4,7 +4,6 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/metrics.{type CardModalMetrics}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
@@ -159,7 +158,6 @@ pub type Model {
     member_pool_preview_task_id: Option(Int),
     card_detail_open: Option(Int),
     card_detail_model: card_detail_modal.Model,
-    card_detail_metrics: Remote(CardModalMetrics),
     member_task_detail_tab: show_tabs.TaskShowTab,
     member_task_detail_editing: Bool,
     member_task_detail_edit_title: String,
@@ -233,7 +231,6 @@ pub fn default_model() -> Model {
     member_pool_preview_task_id: option.None,
     card_detail_open: option.None,
     card_detail_model: card_detail_modal.init_model(),
-    card_detail_metrics: NotAsked,
     member_task_detail_tab: show_tabs.TaskDetailsTab,
     member_task_detail_editing: False,
     member_task_detail_edit_title: "",

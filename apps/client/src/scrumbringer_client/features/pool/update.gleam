@@ -201,9 +201,6 @@ fn card_detail_context(
     on_card_detail_msg: fn(msg) {
       client_state.pool_msg(pool_messages.CardDetailMsg(msg))
     },
-    on_card_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.CardMetricsFetched(result))
-    },
     on_card_activated: fn(result) {
       client_state.pool_msg(pool_messages.CardActivated(result))
     },
@@ -942,7 +939,6 @@ fn update_without_view_mode(
     pool_messages.OpenCardDetail(_)
     | pool_messages.CloseCardDetail
     | pool_messages.CardDetailMsg(_)
-    | pool_messages.CardMetricsFetched(_)
     | pool_messages.CardActivateRequested(_)
     | pool_messages.CardActivated(_) -> #(model, effect.none())
 

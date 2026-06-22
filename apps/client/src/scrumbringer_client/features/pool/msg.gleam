@@ -6,8 +6,8 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
-  type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
-  type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
+  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview,
 }
 import domain/note/entity as note_entity
 import domain/project.{type ProjectMember}
@@ -197,7 +197,6 @@ pub type Msg {
   OpenCardDetail(Int)
   CloseCardDetail
   CardDetailMsg(card_detail_modal.Msg)
-  CardMetricsFetched(ApiResult(CardModalMetrics))
   CardActivateRequested(Int)
   CardActivated(ApiResult(card_contracts.CardActionResponse))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
