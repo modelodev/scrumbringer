@@ -53,7 +53,7 @@ Decisiones:
   completo vive en las vistas principales.
 - Al finalizar, eliminar codigo, CSS y tests que solo validen el contrato viejo.
 
-### Tipos De Tabs Recomendados
+### Tipos De Tabs Cerrados
 
 ```gleam
 pub type CardShowTab {
@@ -81,6 +81,12 @@ TabItem(id, label, count, has_indicator)
 Despues de esto, `ui/card_tabs.gleam` y `ui/task_tabs.gleam` deben retirarse si
 solo existen para el modal anterior.
 
+La tab `Actividad` entra en la primera iteracion. No debe ser una tab vacia ni
+decorativa: debe mostrar eventos operativos reales.
+
+Regla UX: si una tab no tiene datos todavia, debe tener un empty state con una
+accion o explicacion operativa breve. No debe existir contenido de relleno.
+
 ## Card Show
 
 ### Mision
@@ -101,7 +107,7 @@ Responder rapidamente:
 │ Hito > Entrega > Historia
 │ 12 tasks · 7 done · 2 blocked · due 24 Jun
 │
-│ [Plan] [Capacidades] [Personas] [Kanban]
+│ Abrir en: [Plan] [Capacidades] [Personas] [Kanban]
 ├───────────────────────────────────────────────────────────────
 │ Resumen
 │ Progreso        7 / 12 tasks cerradas
@@ -134,7 +140,17 @@ Card Show debe incluir enlaces visibles a:
 Estos enlaces deben ser botones secundarios o chips de navegacion, no acciones
 primarias. Su funcion es permitir saltar desde el nodo al analisis completo.
 
-### Tabs recomendadas
+Tratamiento visual recomendado:
+
+- Mostrar como bloque compacto `Abrir en:` bajo el path/resumen, no como CTA
+  dominante.
+- Usar el mismo vocabulario de botones secundarios de las superficies
+  principales.
+- Si una vista no esta disponible por permisos, mostrar el enlace deshabilitado
+  con razon estable o no mostrarlo si no aporta aprendizaje.
+- No duplicar filtros de esas vistas dentro del show.
+
+### Tabs
 
 ```text
 Resumen | Trabajo | Notas | Actividad
@@ -145,8 +161,9 @@ Resumen | Trabajo | Notas | Actividad
 - **Trabajo:** lista de subcards o tasks, nunca ambas a la vez. La UI debe
   explicar claramente el tipo de contenido de la card.
 - **Notas:** notas completas, enlaces, discusiones breves y gestion de fijados.
-- **Actividad:** eventos relevantes de activacion, cierre, movimiento, cambios
-  de estructura y notas.
+- **Actividad:** feed operativo con eventos relevantes de activacion, cierre,
+  movimiento, cambios de estructura, cambios de due date, dependencias, notas y
+  lifecycle de tasks descendientes cuando aporte contexto.
 
 ### Acciones
 
@@ -166,6 +183,14 @@ Acciones secundarias en menu:
 Las acciones peligrosas o poco frecuentes no deben estar a mano. Cerrar una
 card debe sentirse mas cercano a borrar logicamente que a completar trabajo
 ordinario.
+
+Orden recomendado:
+
+- Accion contextual principal: `+ Task` o `+ Subcard`.
+- Navegacion contextual: `Abrir en ...`.
+- Menu secundario `...`: activar, mover, cerrar, eliminar.
+
+No mezclar acciones de estructura con navegacion ni con resumen de salud.
 
 ## Task Show
 
@@ -206,7 +231,7 @@ Responder rapidamente:
 └───────────────────────────────────────────────────────────────
 ```
 
-### Tabs recomendadas
+### Tabs
 
 ```text
 Detalles | Dependencias | Notas | Actividad
@@ -217,7 +242,8 @@ Detalles | Dependencias | Notas | Actividad
 - **Dependencias:** bloqueos entrantes y salientes, con estados claros y accion
   para abrir la task relacionada.
 - **Notas:** notas completas, enlaces, discusiones breves y gestion de fijados.
-- **Actividad:** claim, release, start, pause, complete, close, cambios y notas.
+- **Actividad:** claim, release, start, pause, complete, close, cambios de due
+  date, dependencias, notas fijadas/desfijadas y cambios relevantes.
 
 ### Acciones
 
@@ -231,6 +257,11 @@ La accion primaria depende del estado:
 
 Task Show no debe convertirse en un dashboard. Debe ser una superficie de
 ejecucion compacta.
+
+La action bar de Task Show debe ser sticky en la parte inferior del drawer en
+desktop y en la parte inferior de la pantalla completa en mobile. En modo
+edicion, las acciones visibles cambian a `Cancelar` y `Guardar`; no deben
+convivir con acciones de lifecycle.
 
 ## Notas Y Contexto Fijado
 
@@ -265,6 +296,17 @@ Reglas:
 4. El contenido se renderiza siempre como texto seguro; no HTML de usuario.
 5. Fijar una nota no cambia el estado de la card ni de la task.
 6. El usuario debe poder fijar y desfijar desde la tab Notas.
+7. Si no hay notas fijadas, la seccion `Contexto fijado` puede ocultarse en el
+   resumen para no meter ruido visual. La tab Notas sigue mostrando el empty
+   state correspondiente.
+8. Fijar/desfijar es una accion compartida visible para el equipo; debe tener
+   feedback inmediato y quedar registrada en Actividad.
+
+Permisos:
+
+- Cualquier miembro puede fijar/desfijar sus propias notas.
+- Managers pueden fijar/desfijar cualquier nota del proyecto.
+- La UI debe explicar cuando una nota no puede fijarse/desfijarse por permisos.
 
 ### Diferencia de intencion
 
@@ -285,12 +327,11 @@ En **Task Show**, el contexto fijado representa contexto de ejecucion:
 - decision puntual;
 - nota de traspaso.
 
-### Modelo minimo recomendado
+### Modelo De Notas Cerrado
 
-El modelo debe mantenerse simple, pero debe evitar duplicar dos conceptos de
-nota incompatibles.
-
-Opcion preferida si se toca SQL en esta iteracion:
+Se adopta la opcion de tabla comun `notes` con tablas de relacion especificas
+por entidad. Es la opcion preferida porque mantiene FKs reales, evita duplicar
+logica de notas y conserva un modelo formalmente claro.
 
 ```text
 notes
@@ -312,24 +353,35 @@ task_notes
 - task_id
 ```
 
+Reglas:
+
+- Una nota vive en `notes`.
+- La pertenencia a card o task vive en la tabla de relacion correspondiente.
+- La primera iteracion permite una nota vinculada a una sola entidad.
+- Si en el futuro se permite compartir una nota entre varias entidades, el
+  modelo soporta multiples filas de relacion sin cambiar `notes`.
+- `pinned` vive en `notes`; fijar una nota no cambia el estado de la card ni de
+  la task.
+
 Dominio:
 
 ```gleam
-pub type NoteTarget {
-  CardNoteTarget(card_id: Int)
-  TaskNoteTarget(task_id: Int)
+pub type NoteSubject {
+  CardNoteSubject(card_id: card_id.CardId)
+  TaskNoteSubject(task_id: task_id.TaskId)
 }
 
 pub type Note {
   Note(
-    id: Int,
-    project_id: Int,
-    target: NoteTarget,
-    user_id: Int,
+    id: note_id.NoteId,
+    project_id: project_id.ProjectId,
+    subject: NoteSubject,
+    user_id: user_id.UserId,
     content: String,
     url: Option(String),
     pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: Option(ProjectRole),
     author_org_role: OrgRole,
@@ -337,19 +389,16 @@ pub type Note {
 }
 ```
 
-Opcion aceptable si se quiere una migracion menor:
+Codigo recomendado:
 
-```text
-CardNote / TaskNote
-- content
-- url: Option(String)
-- pinned: Bool
-- created_by
-- created_at
-```
+- `shared/src/domain/note/entity.gleam`
+- `shared/src/domain/note/id.gleam`
+- `shared/src/domain/note/subject.gleam`
+- `shared/src/domain/note/note_codec.gleam`
 
-Pero en ese caso debe existir un `PinnedNoteView`/`NoteView` comun que oculte
-las diferencias de shape entre card notes y task notes en la UI.
+Evitar `Option(card_id)` + `Option(task_id)` en el dominio. El sujeto debe ser
+un ADT para que una nota no pueda no tener destino ni tener dos destinos a la
+vez dentro del codigo.
 
 No introducir `NoteKind` al inicio salvo que ya exista una necesidad clara. La
 UI debe inferir el tratamiento visual:
@@ -384,9 +433,213 @@ pantalla generica.
 - `ui/note_content.gleam`: render seguro de contenido, deteccion de URLs y
   enlaces externos. Debe reutilizar la logica existente de `domain/link_detection`.
 - `ui/pinned_context.gleam`: muestra hasta 3 notas fijadas y `+N en notas`.
+- `ui/activity_list.gleam`: feed compacto, agrupado por fecha, con actor,
+  timestamp, copy operativo y enlace opcional a entidad relacionada.
 - `ui/detail_action_bar.gleam`: distribuye accion primaria, secundarias y menu.
 - `ui/entity_path.gleam`: muestra path de card/task con wrapping seguro.
 - `ui/detail_tabs.gleam`: API generica; no debe codificar `tasks/notes/metrics`.
+
+Reglas de componentes:
+
+- Preferir funciones de vista puras con `Config(msg)` antes que componentes
+  Lustre con estado interno.
+- Solo usar componente registrable/custom element cuando haya aislamiento real
+  de estado o integracion externa que lo justifique.
+- Los componentes compartidos no deben importar `features/cards/show` ni
+  `features/tasks/show`; la direccion de dependencia debe ser features -> ui.
+
+## Presentacion Del Show
+
+Card Show y Task Show no deben quedar atados al modal antiguo.
+
+Decision:
+
+- Desktop: drawer/panel ancho de detalle.
+- Mobile: pantalla completa.
+- Modal bloqueante solo para confirmaciones o dialogs secundarios.
+
+Razon:
+
+- Card Show funciona como hub contextual y puerta a otras vistas; un drawer
+  mantiene mejor continuidad con Plan/Capacidades/Personas.
+- Task Show es operativo; un panel ancho permite mantener accion primaria,
+  dependencias y notas sin encerrar al usuario en una pantalla pesada.
+- Mobile necesita foco completo y targets tactiles claros.
+
+## Navegacion Scoped
+
+Card Show debe navegar a las vistas principales con card cargada como scope
+mediante contrato tipado y URL/query params.
+
+Contrato recomendado:
+
+```gleam
+pub type ScopedView {
+  ScopedPlan
+  ScopedCapabilities
+  ScopedPeople
+  ScopedKanban
+}
+
+pub type ShowNavigation {
+  NavigateToScopedView(
+    view: ScopedView,
+    project_id: Int,
+    card_id: Int,
+  )
+}
+```
+
+Formato de URL orientativo:
+
+```text
+/app?project=6&view=cards&work_scope=card&card=42
+/app?project=6&view=cards&plan_mode=kanban&work_scope=card&card=42
+/app?project=6&view=capabilities&work_scope=card&card=42
+/app?project=6&view=people&work_scope=card&card=42
+```
+
+La navegacion debe poder recargarse y compartirse sin perder contexto.
+
+No reutilizar `scope=card` si `scope` ya existe para otro filtro en `url_state`.
+Debe haber un contrato canonico en `url_state.gleam` y tests de round-trip.
+
+## Actividad
+
+La tab Actividad entra en esta iteracion como feed operativo.
+
+Principio UX:
+
+- Actividad muestra cambios que ayudan a entender que paso y quien debe hablar
+  con quien.
+- No es una auditoria exhaustiva en bruto.
+- Por defecto muestra eventos relevantes; si se necesita auditoria completa,
+  debe existir un filtro o expansion explicita.
+- El feed debe agrupar por fecha, paginar o limitar resultados, y ofrecer `Ver
+  mas` para no empujar el contenido principal.
+
+### Card Activity
+
+Eventos incluidos:
+
+- card creada;
+- card activada;
+- card cerrada;
+- card movida;
+- subcard creada;
+- task creada;
+- due date modificada;
+- nota creada;
+- nota fijada/desfijada;
+- dependencia relevante creada/resuelta en task descendiente cuando afecte al
+  estado global;
+- task descendiente claim/release/start/complete cuando aporte contexto de flujo.
+
+Ejemplo:
+
+```text
+Actividad
+Hoy
+10:42  Ana activo la card
+10:18  Luis creo 3 tasks dentro de esta card
+
+Ayer
+17:20  Marta movio la card desde Entrega API
+16:05  Ana fijo una nota: Requisitos API Cleanup
+```
+
+### Task Activity
+
+Eventos incluidos:
+
+- task creada;
+- claim;
+- release;
+- start;
+- pause, si existe en el modelo;
+- complete;
+- close;
+- due date modificada;
+- dependencia anadida/eliminada/resuelta;
+- nota creada;
+- nota fijada/desfijada;
+- cambios relevantes de titulo, descripcion, capability, prioridad o card padre.
+
+Ejemplo:
+
+```text
+Actividad
+Hoy
+11:03  Luis reclamo la task
+11:30  Luis empezo trabajo
+12:10  Se anadio bloqueo: Configure secrets
+
+Ayer
+18:22  Ana cambio due date a 24 Jun
+17:05  Marta fijo una nota: Conversacion OAuth
+```
+
+Eventos excluidos:
+
+- hover;
+- apertura/cierre de show;
+- cambios internos sin valor operativo;
+- ruido tecnico de workflows que no ayude al usuario final.
+
+Si algun evento aun no existe en audit log, el slice debe ampliarlo de abajo
+arriba en vez de inventar actividad solo en frontend.
+
+### Modelo De Actividad
+
+El dominio debe usar un ADT compartido, no strings sueltos.
+
+```gleam
+pub type ActivitySubject {
+  ActivityCard(card_id: card_id.CardId)
+  ActivityTask(task_id: task_id.TaskId)
+}
+
+pub type ActivityKind {
+  CardCreated
+  CardActivated
+  CardClosed
+  CardMoved
+  TaskCreated
+  TaskClaimed
+  TaskReleased
+  TaskStarted
+  TaskClosed
+  TaskDependencyAdded
+  TaskDependencyRemoved
+  NoteCreated
+  NotePinned
+  NoteUnpinned
+  DueDateChanged
+}
+
+pub type ActivityEvent {
+  ActivityEvent(
+    id: activity_id.ActivityId,
+    project_id: project_id.ProjectId,
+    subject: ActivitySubject,
+    kind: ActivityKind,
+    actor_user_id: user_id.UserId,
+    actor_label: String,
+    summary: String,
+    created_at: String,
+  )
+}
+```
+
+`shared/src/domain/audit_event/kind_codec.gleam` debe ampliarse o sustituirse
+para cubrir la taxonomia real de `audit_events`. No debe quedar una lista
+parcial que compile pero pierda eventos.
+
+Permisos:
+
+- Leer Actividad requiere `ReadHistory`.
+- Si el usuario no tiene permiso, la tab no se muestra o aparece deshabilitada
+  con razon clara, segun el patron usado por el resto del producto.
 
 ## Impacto De Codigo Esperado
 
@@ -400,6 +653,9 @@ Areas actuales relevantes:
 - `apps/client/src/scrumbringer_client/ui/notes_list.gleam`
 - `apps/client/src/scrumbringer_client/ui/modal_header.gleam`
 - `apps/client/src/scrumbringer_client/features/layout/work_surface.gleam`
+- `apps/client/src/scrumbringer_client/url_state.gleam`
+- `shared/src/domain/audit_event/kind_codec.gleam`
+- `apps/server/src/scrumbringer_server/use_case/audit_events_db.gleam`
 
 La implementacion debe revisar si `ui/notes_list` puede soportar pinned notes
 sin duplicar logica entre card notes y task notes.
@@ -441,17 +697,32 @@ Los matches restantes deben estar justificados o eliminarse.
 - Retirar `card_tabs.gleam` y `task_tabs.gleam` si ya no aportan contrato propio.
 - Cambiar estado cliente para usar los nuevos tabs.
 - Tests de render, aria, indicadores de notas y cambio de tab.
+- Asegurar que las tabs se ocultan/deshabilitan por permiso cuando aplique
+  (`Actividad` requiere `ReadHistory`).
 
 ### Slice 2: notas y contexto fijado bottom-up
 
-- Anadir `pinned` y `url` al modelo elegido.
+- Migrar a `notes` + `card_notes`/`task_notes` como tablas de relacion.
+- Anadir `pinned` y `url`.
 - Actualizar SQL, queries, presenters, codecs y API cliente.
 - Crear accion de fijar/desfijar nota.
 - Crear `note_content` y `pinned_context`.
 - Reutilizar deteccion de links existente.
 - Tests de codec, API, permisos, render seguro y limite de 3 fijadas.
+- Crear migracion que preserve notas existentes sin mantener tipos legacy.
+- Actualizar seeds con notas fijadas y no fijadas para Card Show y Task Show.
 
-### Slice 3: Card Show nuevo
+### Slice 3: actividad bottom-up
+
+- Revisar audit log actual.
+- Definir `ActivityKind` y mapper de eventos a activity feed.
+- Anadir eventos faltantes necesarios para Card Show y Task Show.
+- Crear componentes de activity list.
+- Tests de eventos incluidos/excluidos, orden y copy visible.
+- Anadir endpoints paginados/limitados para card activity y task activity.
+- Card activity debe poder consultar eventos del subarbol de forma acotada.
+
+### Slice 4: Card Show nuevo
 
 - Implementar Card Show como vista Lustre normal.
 - Cabecera: titulo, path, estado, due date, progreso y chips de salud.
@@ -461,8 +732,10 @@ Los matches restantes deben estar justificados o eliminarse.
 - Retirar emojis y representaciones legacy.
 - Tests de navegacion scoped, acciones por permisos, contenido task/subcard y
   contexto fijado.
+- Validar que el drawer no tapa permanentemente el contexto ni duplica el panel
+  derecho.
 
-### Slice 4: Task Show nuevo
+### Slice 5: Task Show nuevo
 
 - Implementar Task Show como superficie de ejecucion.
 - Cabecera: titulo, path/card padre, capability, prioridad, due date, estado,
@@ -472,8 +745,9 @@ Los matches restantes deben estar justificados o eliminarse.
 - Navegacion contextual minima: abrir card padre y ver en Plan.
 - Tests de estado, claimability, bloqueos, due date, notas fijadas y lectura en
   closed.
+- En mobile, action bar sticky y contenido con un unico eje de scroll.
 
-### Slice 5: retirada de legacy y refactor
+### Slice 6: retirada de legacy y refactor
 
 - Eliminar modulos, CSS y tests obsoletos.
 - Ejecutar busquedas `rg` de simbolos legacy.
@@ -522,6 +796,31 @@ Los matches restantes deben estar justificados o eliminarse.
 - El mismo renderizador de contenido se usa en lista completa y contexto fijado.
 - Los codecs de nota aceptan y emiten `pinned` y `url`.
 - El orden de notas fijadas es estable y predecible.
+- Fijar/desfijar respeta permisos: autor o manager.
+- Crear/fijar/desfijar nota genera actividad visible.
+- La migracion conserva notas existentes en la nueva tabla `notes`.
+
+### Actividad
+
+- Card Activity muestra eventos reales de card, estructura, due date, notas y
+  flujo descendiente relevante.
+- Task Activity muestra eventos reales de lifecycle, due date, dependencias,
+  notas y cambios relevantes.
+- No aparecen eventos de hover, apertura de show o ruido tecnico.
+- El orden es cronologico descendente y agrupable por fecha.
+- Si falta audit log, se anade en backend antes de pintar el evento.
+- Leer actividad respeta `ReadHistory`.
+- Los endpoints limitan/paginan resultados.
+- Los eventos usan `ActivityKind`/`AuditEventKind` tipado, no strings filtrados
+  ad hoc en frontend.
+
+### Navegacion
+
+- La navegacion scoped usa `work_scope=card` para evitar conflicto con otros
+  parametros `scope`.
+- `url_state.gleam` tiene parse/serialize round-trip para Plan, Kanban,
+  Capacidades y Personas con card scope.
+- Recargar la URL mantiene la card seleccionada.
 
 ### Limpieza
 
@@ -530,6 +829,8 @@ Los matches restantes deben estar justificados o eliminarse.
 - No quedan tests que validen contratos visuales retirados.
 - No queda serializacion JSON innecesaria entre Card Show y el estado Lustre si
   se elimina el custom element.
+- No quedan modelos duplicados `CardNote`/`TaskNote` si la migracion a `Note`
+  comun se completa.
 
 ## Validacion Visual Con Agent Browser
 
@@ -552,8 +853,14 @@ Recorrer al menos:
 - Card Show enlaza a las vistas principales con scope card.
 - Task Show se centra en ejecucion, no en analisis global.
 - Las notas son contexto ligero y enlaces, no documentacion extensa.
+- Las notas se modelan con `notes` comun y relaciones especificas
+  `card_notes`/`task_notes`.
 - El show principal muestra solo contexto fijado limitado.
 - No se introduce una abstraccion generica de detalle de entidad.
 - No se preserva legacy si contradice la nueva estructura.
 - `MetricsTab` no forma parte del nuevo show; las senales utiles se integran en
   resumen.
+- `Actividad` forma parte de la primera iteracion y debe alimentarse de eventos
+  reales.
+- Desktop usa drawer/panel ancho; mobile usa pantalla completa.
+- La navegacion scoped se refleja en URL/query params.
