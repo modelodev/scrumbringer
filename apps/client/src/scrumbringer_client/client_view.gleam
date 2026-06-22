@@ -84,7 +84,7 @@ import scrumbringer_client/features/plan/kanban_view as plan_kanban_view
 import scrumbringer_client/features/plan/structure_view as plan_structure_view
 import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
-import scrumbringer_client/features/pool/task_details_dialog_config
+import scrumbringer_client/features/pool/task_show_config
 import scrumbringer_client/features/pool/view_config as pool_view
 import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
@@ -191,7 +191,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
     // Global task detail dialog (renders from list/canvas/pool)
     case model.member.notes.member_notes_task_id {
       opt.Some(task_id) ->
-        task_details_dialog_config.view(
+        task_show_config.view(
           model.ui.locale,
           model.member.pool,
           model.member.dependencies,
@@ -201,7 +201,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           project_cards(model),
           project_capabilities(model),
           task_id,
-          task_details_callbacks(),
+          task_show_callbacks(),
         )
       opt.None -> element.none()
     },
@@ -229,10 +229,8 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
   ])
 }
 
-fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
-  client_state.Msg,
-) {
-  task_details_dialog_config.Callbacks(
+fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
+  task_show_config.Callbacks(
     on_close: client_state.pool_msg(pool_messages.MemberTaskDetailsClosed),
     on_tab_clicked: fn(tab) {
       client_state.pool_msg(pool_messages.MemberTaskDetailTabClicked(tab))

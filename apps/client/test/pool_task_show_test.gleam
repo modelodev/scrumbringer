@@ -7,7 +7,7 @@ import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/features/pool/dialogs
+import scrumbringer_client/features/pool/task_show
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/show_tabs
 
@@ -21,7 +21,7 @@ fn assert_not_contains(html: String, fragment: String) {
 
 pub fn task_show_renders_as_panel_not_modal_test() {
   let html =
-    dialogs.view_task_details(config())
+    task_show.view_task_show(config())
     |> element.to_document_string
 
   assert_contains(html, "task-show-panel")
@@ -32,8 +32,8 @@ pub fn task_show_renders_as_panel_not_modal_test() {
   assert_not_contains(html, "modal-backdrop")
 }
 
-fn config() -> dialogs.TaskDetailsConfig(String) {
-  dialogs.TaskDetailsConfig(
+fn config() -> task_show.TaskShowConfig(String) {
+  task_show.TaskShowConfig(
     locale: locale.En,
     task_id: 42,
     task: Some(task()),
@@ -48,7 +48,7 @@ fn config() -> dialogs.TaskDetailsConfig(String) {
     activity_total: 0,
     activity_loading_more: False,
     on_activity_more: "activity-more",
-    actions: dialogs.TaskActionsConfig(
+    actions: task_show.TaskActionsConfig(
       disable_actions: False,
       on_claim: fn(_, _) { "claim" },
       on_release: fn(_, _) { "release" },
@@ -61,8 +61,8 @@ fn config() -> dialogs.TaskDetailsConfig(String) {
   )
 }
 
-fn dependencies_config() -> dialogs.TaskDependenciesConfig(String) {
-  dialogs.TaskDependenciesConfig(
+fn dependencies_config() -> task_show.TaskDependenciesConfig(String) {
+  task_show.TaskDependenciesConfig(
     items: remote.Loaded([]),
     dialog_mode: dialog_mode.DialogClosed,
     search_query: "",
@@ -80,8 +80,8 @@ fn dependencies_config() -> dialogs.TaskDependenciesConfig(String) {
   )
 }
 
-fn editor_config() -> dialogs.TaskEditorConfig(String) {
-  dialogs.TaskEditorConfig(
+fn editor_config() -> task_show.TaskEditorConfig(String) {
+  task_show.TaskEditorConfig(
     editing: False,
     edit_title: "Prepare release",
     edit_description: "Task description",
@@ -104,8 +104,8 @@ fn editor_config() -> dialogs.TaskEditorConfig(String) {
   )
 }
 
-fn notes_config() -> dialogs.TaskNotesConfig(String) {
-  dialogs.TaskNotesConfig(
+fn notes_config() -> task_show.TaskNotesConfig(String) {
+  task_show.TaskNotesConfig(
     can_manage: False,
     items: remote.Loaded([]),
     dialog_mode: dialog_mode.DialogClosed,

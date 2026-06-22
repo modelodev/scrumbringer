@@ -1,4 +1,4 @@
-//// Pool Dialog Components for Scrumbringer client.
+//// Task Show components for Scrumbringer client.
 ////
 //// ## Mission
 ////
@@ -12,12 +12,12 @@
 ////
 //// - Task creation dialog wiring (see features/pool/create_dialog_config.gleam)
 //// - Position edit dialog wiring (see features/pool/position_edit_dialog_config.gleam)
-//// - Dialog state management (see features/pool/update.gleam, features/tasks/detail_update.gleam)
+//// - Task Show state management (see features/pool/update.gleam, features/tasks/detail_update.gleam)
 //// - Form validation (handled by update handlers)
 ////
 //// ## Relations
 ////
-//// - **features/pool/view.gleam**: Imports and renders these dialogs
+//// - **features/pool/view.gleam**: Imports and renders this surface
 
 import gleam/list
 import gleam/option as opt
@@ -49,8 +49,8 @@ import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
-pub type TaskDetailsConfig(msg) {
-  TaskDetailsConfig(
+pub type TaskShowConfig(msg) {
+  TaskShowConfig(
     locale: Locale,
     task_id: Int,
     task: opt.Option(Task),
@@ -144,7 +144,7 @@ pub type TaskActionsConfig(msg) {
   )
 }
 
-pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
+pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
   div([attribute.class("task-show task-show-panel")], [
     div(
       [
@@ -171,7 +171,7 @@ pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ])
 }
 
-fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
   task_detail_header.view(task_detail_header.Config(
     locale: config.locale,
     task: config.task,
@@ -182,7 +182,7 @@ fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_show_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_show_tabs(config: TaskShowConfig(msg)) -> Element(msg) {
   detail_tabs.view(detail_tabs.Config(
     active_tab: config.active_tab,
     tabs: task_tab_items(config),
@@ -192,7 +192,7 @@ fn view_task_show_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_tab_content(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_tab_content(config: TaskShowConfig(msg)) -> Element(msg) {
   let panel = case config.active_tab {
     show_tabs.TaskDetailsTab -> view_task_details_tab(config)
     show_tabs.TaskDependenciesTab -> view_dependencies(config)
@@ -204,7 +204,7 @@ fn view_task_tab_content(config: TaskDetailsConfig(msg)) -> Element(msg) {
 }
 
 fn task_tab_items(
-  config: TaskDetailsConfig(msg),
+  config: TaskShowConfig(msg),
 ) -> List(detail_tabs.TabItem(show_tabs.TaskShowTab)) {
   show_tabs.task_items(
     show_tabs.TaskLabels(
@@ -225,7 +225,7 @@ fn notes_count(notes: Remote(List(note_entity.Note))) -> Int {
   }
 }
 
-fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_activity(config: TaskShowConfig(msg)) -> Element(msg) {
   div([attribute.class("task-activity-panel")], [
     activity_feed.view(activity_feed.Config(
       events: config.activity,
@@ -238,7 +238,7 @@ fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
 }
 
 fn task_activity_load_more(
-  config: TaskDetailsConfig(msg),
+  config: TaskShowConfig(msg),
 ) -> opt.Option(activity_feed.LoadMore(msg)) {
   case config.activity {
     Loaded(events) -> {
@@ -261,7 +261,7 @@ fn task_activity_load_more(
 }
 
 /// Renders the dependencies section for a task.
-fn view_dependencies(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_dependencies(config: TaskShowConfig(msg)) -> Element(msg) {
   task_dependencies.view(task_dependencies.Config(
     locale: config.locale,
     task_id: config.task_id,
@@ -283,12 +283,12 @@ fn view_dependencies(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_details_tab(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_details_tab(config: TaskShowConfig(msg)) -> Element(msg) {
   task_detail_details.view(details_config(config))
 }
 
 fn details_config(
-  config: TaskDetailsConfig(msg),
+  config: TaskShowConfig(msg),
 ) -> task_detail_details.Config(msg) {
   task_detail_details.Config(
     locale: config.locale,
@@ -321,7 +321,7 @@ fn pinned_task_notes(
   }
 }
 
-fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
+fn editor_config(config: TaskShowConfig(msg)) -> detail_editor.Config(msg) {
   detail_editor.Config(
     locale: config.locale,
     current_user_id: config.current_user_id,
@@ -346,7 +346,7 @@ fn editor_config(config: TaskDetailsConfig(msg)) -> detail_editor.Config(msg) {
   )
 }
 
-fn view_notes(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_notes(config: TaskShowConfig(msg)) -> Element(msg) {
   task_notes.view(task_notes.Config(
     locale: config.locale,
     current_user_id: config.current_user_id,
@@ -367,7 +367,7 @@ fn view_notes(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_footer(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
   task_detail_footer.view(task_detail_footer.Config(
     locale: config.locale,
     task: config.task,
@@ -386,7 +386,7 @@ fn view_task_footer(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn edit_dirty(config: TaskDetailsConfig(msg)) -> Bool {
+fn edit_dirty(config: TaskShowConfig(msg)) -> Bool {
   case config.task {
     opt.Some(task) -> task_detail_details.is_dirty(details_config(config), task)
     opt.None -> False

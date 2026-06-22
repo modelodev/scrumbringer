@@ -12,7 +12,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
 import scrumbringer_client/client_state/member/pool as pool_state
-import scrumbringer_client/features/pool/dialogs
+import scrumbringer_client/features/pool/task_show
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/ui/show_tabs
@@ -63,7 +63,7 @@ pub fn view(
   task_id: Int,
   callbacks: Callbacks(msg),
 ) -> Element(msg) {
-  dialogs.view_task_details(from_state(
+  task_show.view_task_show(from_state(
     locale,
     pool,
     dependencies,
@@ -88,10 +88,10 @@ pub fn from_state(
   capabilities: List(Capability),
   task_id: Int,
   callbacks: Callbacks(msg),
-) -> dialogs.TaskDetailsConfig(msg) {
+) -> task_show.TaskShowConfig(msg) {
   let task = find_task(pool, task_id)
 
-  dialogs.TaskDetailsConfig(
+  task_show.TaskShowConfig(
     locale: locale,
     task_id: task_id,
     task: task,
@@ -150,8 +150,8 @@ fn capability_name(
 fn dependencies_config(
   dependencies: dependencies_state.Model,
   callbacks: Callbacks(msg),
-) -> dialogs.TaskDependenciesConfig(msg) {
-  dialogs.TaskDependenciesConfig(
+) -> task_show.TaskDependenciesConfig(msg) {
+  task_show.TaskDependenciesConfig(
     items: dependencies.member_dependencies,
     dialog_mode: dependencies.member_dependency_dialog_mode,
     search_query: dependencies.member_dependency_search_query,
@@ -174,8 +174,8 @@ fn editor_config(
   cards: List(Card),
   task: opt.Option(Task),
   callbacks: Callbacks(msg),
-) -> dialogs.TaskEditorConfig(msg) {
-  dialogs.TaskEditorConfig(
+) -> task_show.TaskEditorConfig(msg) {
+  task_show.TaskEditorConfig(
     editing: pool.member_task_detail_editing,
     edit_title: pool.member_task_detail_edit_title,
     edit_description: pool.member_task_detail_edit_description,
@@ -202,8 +202,8 @@ fn notes_config(
   notes: notes_state.Model,
   can_manage_notes: Bool,
   callbacks: Callbacks(msg),
-) -> dialogs.TaskNotesConfig(msg) {
-  dialogs.TaskNotesConfig(
+) -> task_show.TaskNotesConfig(msg) {
+  task_show.TaskNotesConfig(
     can_manage: can_manage_notes,
     items: notes.member_notes,
     dialog_mode: notes.member_note_dialog_mode,
@@ -224,8 +224,8 @@ fn notes_config(
 fn actions_config(
   pool: pool_state.Model,
   callbacks: Callbacks(msg),
-) -> dialogs.TaskActionsConfig(msg) {
-  dialogs.TaskActionsConfig(
+) -> task_show.TaskActionsConfig(msg) {
+  task_show.TaskActionsConfig(
     disable_actions: pool.member_task_mutation_in_flight
       || pool.member_task_detail_editing
       || pool.member_task_detail_edit_in_flight,

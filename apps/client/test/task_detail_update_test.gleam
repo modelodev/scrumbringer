@@ -24,7 +24,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/pool/task_details_dialog_config as task_details_dialog
+import scrumbringer_client/features/pool/task_show_config
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/ui/show_tabs
 
@@ -36,8 +36,8 @@ fn test_context() -> pool_update.Context {
   pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
 }
 
-fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
-  task_details_dialog.Callbacks(
+fn task_show_callbacks() -> task_show_config.Callbacks(String) {
+  task_show_config.Callbacks(
     on_close: "close",
     on_tab_clicked: fn(_) { "tab" },
     on_dependency_dialog_opened: "dependency-open",
@@ -70,7 +70,7 @@ fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
 }
 
 fn task_detail_view(model: client_state.Model, task_id: Int) {
-  task_details_dialog.view(
+  task_show_config.view(
     model.ui.locale,
     model.member.pool,
     model.member.dependencies,
@@ -80,7 +80,7 @@ fn task_detail_view(model: client_state.Model, task_id: Int) {
     [],
     [],
     task_id,
-    task_details_callbacks(),
+    task_show_callbacks(),
   )
 }
 
@@ -220,7 +220,7 @@ pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test(
     })
 
   let config =
-    task_details_dialog.from_state(
+    task_show_config.from_state(
       model.ui.locale,
       model.member.pool,
       model.member.dependencies,
@@ -230,7 +230,7 @@ pub fn task_details_config_uses_project_cache_when_active_list_misses_task_test(
       [],
       [Capability(id: 5, name: "Backend")],
       42,
-      task_details_callbacks(),
+      task_show_callbacks(),
     )
 
   let assert opt.Some(found) = config.task
