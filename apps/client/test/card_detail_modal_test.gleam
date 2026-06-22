@@ -145,6 +145,17 @@ pub fn card_activity_tab_renders_load_more_when_more_events_exist_test() {
   let assert True = string.contains(html, "Load more (1)")
 }
 
+pub fn card_show_renders_as_panel_not_modal_test() {
+  let html =
+    Model(..make_model(), card: option.Some(make_card(42)))
+    |> card_detail_modal.view
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "card-show-panel")
+  let assert False = string.contains(html, "aria-modal=\"true\"")
+  let assert False = string.contains(html, "modal-backdrop")
+}
+
 // =============================================================================
 // Msg Type Tests (verifying message constructors work)
 // =============================================================================

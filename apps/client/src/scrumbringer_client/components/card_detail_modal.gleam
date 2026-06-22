@@ -559,39 +559,30 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
   let tabs = card_tab_items(model, notes_count, card.has_new_notes)
 
   div([attribute.class("card-show")], [
-    // Backdrop (clicking closes modal)
+    // Card Show panel
     div(
       [
-        attribute.class("modal-backdrop"),
-        event.on_click(CloseClicked),
-      ],
-      [],
-    ),
-    // Modal content
-    div(
-      [
-        attribute.class("modal-content card-detail " <> border_class),
-        attribute.attribute("role", "dialog"),
-        attribute.attribute("aria-modal", "true"),
+        attribute.class("card-show-panel card-detail " <> border_class),
+        attribute.attribute("role", "complementary"),
         attribute.attribute("aria-labelledby", "card-detail-title"),
       ],
       [
         div(
           [
-            attribute.class("modal-header-block detail-header-block"),
+            attribute.class("card-show-header-block detail-header-block"),
           ],
           [
             view_card_header(model, card),
             detail_tabs.view(detail_tabs.Config(
               active_tab: model.active_tab,
               tabs: tabs,
-              container_class: "card-tabs modal-tabs detail-tabs",
-              tab_class: "card-tab modal-tab detail-tab",
+              container_class: "card-tabs card-show-tabs detail-tabs",
+              tab_class: "card-tab card-show-tab detail-tab",
               on_tab_click: TabClicked,
             )),
           ],
         ),
-        div([attribute.class("modal-body card-detail-body")], [
+        div([attribute.class("card-show-body card-detail-body")], [
           detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
             show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
             show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
