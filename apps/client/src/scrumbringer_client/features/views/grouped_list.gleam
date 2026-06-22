@@ -10,7 +10,7 @@
 //// - Handle ungrouped tasks (tasks without a card)
 ////
 //// Non-responsibilities:
-//// - domain_task.Task CRUD operations (handled by parent)
+//// - Task CRUD operations (handled by parent)
 //// - Card state management (handled by parent)
 
 import gleam/dict.{type Dict}
@@ -97,7 +97,7 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
       ])
     _ ->
       div([attribute.class("grouped-list")], [
-        // domain_task.Task groups
+        // Task groups
         div(
           [attribute.class("grouped-list-content")],
           list.map(groups, fn(group) { view_card_group(config, group) }),
@@ -181,7 +181,7 @@ fn view_card_group(
         ],
         header_children,
       ),
-      // domain_task.Task list (collapsible)
+      // Task list (collapsible)
       case is_expanded {
         True -> view_task_list(config, group.tasks, card_border_class)
         False -> element.none()
@@ -209,7 +209,7 @@ fn view_task_item(
   // AC7: Show claimed by user when task is Claimed (based on status, not claimed_by)
   let status_display = case domain_task.status(task) {
     Claimed(_) -> {
-      // domain_task.Task is claimed - try to find who claimed it
+      // Task is claimed - try to find who claimed it
       let claimed_email = case domain_task.claimed_by(task) {
         Some(user_id) ->
           list.find(config.org_users, fn(u) { u.id == user_id })
@@ -306,6 +306,7 @@ fn view_task_item(
       actions: actions,
       reserve_actions_slot: True,
       action_slot_class: None,
+      content_testid: None,
       testid: Some("task-card"),
     ),
     task_item.ListItem,

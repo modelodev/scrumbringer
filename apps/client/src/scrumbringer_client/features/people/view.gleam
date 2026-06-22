@@ -616,6 +616,7 @@ fn view_task_item(config: Config(msg), task: domain_task.Task) -> Element(msg) {
       actions: task_item.no_actions(),
       reserve_actions_slot: True,
       action_slot_class: None,
+      content_testid: None,
       testid: None,
     ),
     task_item.Div,

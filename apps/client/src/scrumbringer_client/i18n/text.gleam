@@ -946,6 +946,7 @@ pub type Text {
   // 5.4.1: Task Show
   TabDetails
   TabDependencies
+  TabBlockers
   EditTask
   TaskUpdated
   TaskEditPlanning

@@ -191,7 +191,20 @@ fn default_extended_config() -> ExtendedConfig(Nil) {
     title_class: "custom-title",
     title_id: "custom-modal-title",
     close_button_class: "custom-close-btn",
+    close_button_testid: None,
   )
+}
+
+pub fn view_extended_can_render_stable_close_target_test() {
+  let config =
+    ExtendedConfig(
+      ..default_extended_config(),
+      close_button_testid: Some("entity-show-close"),
+    )
+
+  let html = modal_header.view_extended(config) |> element.to_string()
+
+  assert_contains(html, "data-testid=\"entity-show-close\"")
 }
 
 pub fn view_extended_uses_custom_header_class_test() {

@@ -558,50 +558,56 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
   }
   let tabs = card_tab_items(model, notes_count, card.has_new_notes)
 
-  div([attribute.class("card-show")], [
-    // Card Show panel
-    div(
-      [
-        attribute.class("card-show-panel card-show-surface " <> border_class),
-        attribute.attribute("role", "complementary"),
-        attribute.attribute("aria-labelledby", "card-show-title"),
-      ],
-      [
-        div(
-          [
-            attribute.class("card-show-header-block detail-header-block"),
-          ],
-          [
-            view_card_header(model, card),
-            detail_tabs.view(detail_tabs.Config(
-              active_tab: model.active_tab,
-              tabs: tabs,
-              container_class: "card-tabs card-show-tabs detail-tabs",
-              tab_class: "card-tab card-show-tab detail-tab",
-              on_tab_click: TabClicked,
-            )),
-          ],
-        ),
-        div([attribute.class("card-show-body card-show-body")], [
-          detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
-            show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
-            show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
-            show_tabs.CardNotesTab -> view_card_notes_section(model)
-            show_tabs.CardActivityTab -> view_card_activity_section(model)
-          }),
-        ]),
-      ],
-    ),
-    // Note creation dialog (modal within modal)
-    case model.note_dialog_open {
-      True -> view_note_dialog(model)
-      False -> element.none()
-    },
-    case model.activation_confirm_open {
-      True -> view_activation_confirm_dialog(model, card)
-      False -> element.none()
-    },
-  ])
+  div(
+    [
+      attribute.class("card-show"),
+      attribute.attribute("data-testid", "card-show"),
+    ],
+    [
+      // Card Show panel
+      div(
+        [
+          attribute.class("card-show-panel card-show-surface " <> border_class),
+          attribute.attribute("role", "complementary"),
+          attribute.attribute("aria-labelledby", "card-show-title"),
+        ],
+        [
+          div(
+            [
+              attribute.class("card-show-header-block detail-header-block"),
+            ],
+            [
+              view_card_header(model, card),
+              detail_tabs.view(detail_tabs.Config(
+                active_tab: model.active_tab,
+                tabs: tabs,
+                container_class: "card-show-tabs detail-tabs",
+                tab_class: "card-tab card-show-tab detail-tab",
+                on_tab_click: TabClicked,
+              )),
+            ],
+          ),
+          div([attribute.class("card-show-body")], [
+            detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
+              show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
+              show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
+              show_tabs.CardNotesTab -> view_card_notes_section(model)
+              show_tabs.CardActivityTab -> view_card_activity_section(model)
+            }),
+          ]),
+        ],
+      ),
+      // Note creation dialog (modal within modal)
+      case model.note_dialog_open {
+        True -> view_note_dialog(model)
+        False -> element.none()
+      },
+      case model.activation_confirm_open {
+        True -> view_activation_confirm_dialog(model, card)
+        False -> element.none()
+      },
+    ],
+  )
 }
 
 fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
@@ -744,7 +750,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       modal_header.ExtendedConfig(
         title: card.title,
         title_element: modal_header.TitleSpan,
-        close_position: modal_header.CloseBeforeTitle,
+        close_position: modal_header.CloseAfterTitle,
         icon: option.None,
         badges: [],
         meta: option.Some(meta),
@@ -755,6 +761,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         title_class: "detail-title",
         title_id: "card-show-title",
         close_button_class: "modal-close btn-icon",
+        close_button_testid: option.Some("entity-show-close"),
       ),
       t(model.locale, i18n_text.Close),
     ),
@@ -1133,7 +1140,14 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
     case card.description {
       "" -> element.none()
       description ->
-        div([attribute.class("card-summary-description")], [text(description)])
+        div([attribute.class("card-summary-description")], [
+          span([attribute.class("detail-section-kicker")], [
+            text(t(model.locale, i18n_text.Description)),
+          ]),
+          div([attribute.class("card-summary-description-text")], [
+            text(description),
+          ]),
+        ])
     },
     pinned_context.view(pinned_context.Config(
       title: t(model.locale, i18n_text.PinnedContext),
@@ -1396,6 +1410,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
       actions: task_item.no_actions(),
       reserve_actions_slot: False,
       action_slot_class: option.None,
+      content_testid: option.None,
       testid: option.None,
     ),
     task_item.Div,

@@ -313,6 +313,9 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
         version,
       ))
     },
+    on_start_work: fn(task_id) {
+      client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
+    },
     on_release: fn(release_task_id, version) {
       client_state.pool_msg(pool_messages.MemberReleaseClicked(
         release_task_id,
@@ -958,7 +961,15 @@ fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
     opt.Some(user) ->
       case model.ui.is_mobile {
         // Mobile: mini-bar + drawer layout
-        True -> view_mobile_shell(model, user, view_member_app(model, user))
+        True ->
+          view_mobile_shell(
+            model,
+            user,
+            element.fragment([
+              view_member_app(model, user),
+              view_member_card_show(model, user),
+            ]),
+          )
 
         False ->
           div([attribute.class("member")], [

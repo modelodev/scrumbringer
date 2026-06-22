@@ -73,6 +73,7 @@ fn base_header_config(
     title_class: "detail-title",
     title_id: "task-show-title",
     close_button_class: "modal-close btn-icon",
+    close_button_testid: opt.Some("entity-show-close"),
   )
 }
 

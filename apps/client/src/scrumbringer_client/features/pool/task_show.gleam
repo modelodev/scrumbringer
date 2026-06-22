@@ -23,8 +23,8 @@ import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
-import lustre/element.{type Element}
-import lustre/element/html.{div}
+import lustre/element.{type Element, none}
+import lustre/element/html.{a, div, span, text}
 
 import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
@@ -35,6 +35,7 @@ import domain/task.{type Task, type TaskDependency}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/features/pool/task_show_details
@@ -45,7 +46,9 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/activity_feed
+import scrumbringer_client/ui/button
 import scrumbringer_client/ui/detail_tabs
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
@@ -138,6 +141,7 @@ pub type TaskActionsConfig(msg) {
   TaskActionsConfig(
     disable_actions: Bool,
     on_claim: fn(Int, Int) -> msg,
+    on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
@@ -145,30 +149,37 @@ pub type TaskActionsConfig(msg) {
 }
 
 pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
-  div([attribute.class("task-show task-show-panel")], [
-    div(
-      [
-        attribute.class("task-show-content"),
-        attribute.attribute("role", "complementary"),
-        attribute.attribute("aria-labelledby", "task-show-title"),
-      ],
-      [
-        div(
-          [
-            attribute.class("task-show-header-block detail-header-block"),
-          ],
-          [
-            view_task_header(config),
-            view_task_show_tabs(config),
-          ],
-        ),
-        div([attribute.class("task-show-body")], [
-          view_task_tab_content(config),
-        ]),
-        view_task_footer(config),
-      ],
-    ),
-  ])
+  div(
+    [
+      attribute.class("task-show task-show-panel"),
+      attribute.attribute("data-testid", "task-show"),
+    ],
+    [
+      div(
+        [
+          attribute.class("task-show-content"),
+          attribute.attribute("role", "complementary"),
+          attribute.attribute("aria-labelledby", "task-show-title"),
+        ],
+        [
+          div(
+            [
+              attribute.class("task-show-header-block detail-header-block"),
+            ],
+            [
+              view_task_header(config),
+              view_task_context_navigation(config),
+              view_task_show_tabs(config),
+            ],
+          ),
+          div([attribute.class("task-show-body")], [
+            view_task_tab_content(config),
+          ]),
+          view_task_footer(config),
+        ],
+      ),
+    ],
+  )
 }
 
 fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
@@ -182,11 +193,47 @@ fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
   ))
 }
 
+fn view_task_context_navigation(config: TaskShowConfig(msg)) -> Element(msg) {
+  case config.parent_card {
+    opt.Some(card) ->
+      div([attribute.class("task-context-navigation")], [
+        span([attribute.class("task-context-navigation-label")], [
+          text(i18n.t(config.locale, i18n_text.OpenIn)),
+        ]),
+        button.view(
+          button.icon_text(
+            i18n.t(config.locale, i18n_text.OpenCard),
+            config.on_open_parent_card(card.id),
+            icons.Cards,
+            button.Secondary,
+            button.EntityAction,
+          )
+          |> button.with_class("task-context-open-card"),
+        ),
+        a(
+          [
+            attribute.class(
+              "btn btn-secondary btn-icon-text btn-entity-action btn-sm task-context-plan-link",
+            ),
+            attribute.href(scoped_navigation.plan_url(card)),
+          ],
+          [
+            span([attribute.class("btn-icon-prefix")], [
+              icons.nav_icon(icons.List, icons.Small),
+            ]),
+            text(i18n.t(config.locale, i18n_text.ViewInPlan)),
+          ],
+        ),
+      ])
+    opt.None -> none()
+  }
+}
+
 fn view_task_show_tabs(config: TaskShowConfig(msg)) -> Element(msg) {
   detail_tabs.view(detail_tabs.Config(
     active_tab: config.active_tab,
     tabs: task_tab_items(config),
-    container_class: "task-tabs task-show-tabs detail-tabs",
+    container_class: "task-show-tabs detail-tabs",
     tab_class: "task-tab task-show-tab detail-tab",
     on_tab_click: config.on_tab_clicked,
   ))
@@ -209,7 +256,7 @@ fn task_tab_items(
   show_tabs.task_items(
     show_tabs.TaskLabels(
       details: i18n.t(config.locale, i18n_text.TabDetails),
-      dependencies: i18n.t(config.locale, i18n_text.TabDependencies),
+      dependencies: i18n.t(config.locale, i18n_text.TabBlockers),
       notes: i18n.t(config.locale, i18n_text.TabNotes),
       activity: i18n.t(config.locale, i18n_text.TabActivity),
     ),
@@ -293,10 +340,8 @@ fn details_config(config: TaskShowConfig(msg)) -> task_show_details.Config(msg) 
     task: config.task,
     dependencies: config.dependencies.items,
     parent_card_title: config.editor.parent_card_title,
-    parent_card: config.parent_card,
     pinned_notes: pinned_task_notes(config.notes.items),
     on_open_notes: config.on_tab_clicked(show_tabs.TaskNotesTab),
-    on_open_parent_card: config.on_open_parent_card,
     editor: editor_config(config),
   )
 }
@@ -378,6 +423,7 @@ fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
     on_edit_cancelled: config.editor.on_edit_cancelled,
     on_edit_submitted: config.editor.on_edit_submitted,
     on_claim: config.actions.on_claim,
+    on_start_work: config.actions.on_start_work,
     on_release: config.actions.on_release,
     on_complete: config.actions.on_complete,
     on_delete: config.actions.on_delete,

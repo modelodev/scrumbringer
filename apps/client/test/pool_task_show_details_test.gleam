@@ -1,9 +1,7 @@
-import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
 
-import domain/card.{type Card, Active, Card}
 import domain/remote.{NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_state
@@ -30,12 +28,8 @@ pub fn task_show_details_renders_loaded_task_without_root_model_test() {
   assert_contains(html, "Details")
   assert_contains(html, "Edit task")
   assert_contains(html, "Release card")
-  assert_contains(html, "Open card")
-  assert_contains(html, "View in Plan")
-  assert_contains(
-    html,
-    "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
-  )
+  assert_not_contains(html, "Open card")
+  assert_not_contains(html, "View in Plan")
   assert_contains(html, "Review release checklist.")
 }
 
@@ -79,10 +73,8 @@ fn config_with_pins(
     task: task,
     dependencies: NotAsked,
     parent_card_title: Some("Release card"),
-    parent_card: Some(parent_card()),
     pinned_notes: pinned_notes,
     on_open_notes: "notes",
-    on_open_parent_card: fn(card_id) { "open-card:" <> int.to_string(card_id) },
     editor: editor_config(current_user_id),
   )
 }
@@ -96,24 +88,6 @@ fn config(
 
 fn pinned_note(id: Int, content: String) -> pinned_context.PinnedNote {
   pinned_context.PinnedNote(id: id, content: content, url: None)
-}
-
-fn parent_card() -> Card {
-  Card(
-    id: 10,
-    project_id: 1,
-    parent_card_id: None,
-    title: "Release card",
-    description: "Release",
-    color: None,
-    state: Active,
-    task_count: 1,
-    completed_count: 0,
-    created_by: 7,
-    created_at: "2026-03-20T10:00:00Z",
-    due_date: None,
-    has_new_notes: False,
-  )
 }
 
 fn editor_config(current_user_id: Option(Int)) -> show_editor.Config(String) {

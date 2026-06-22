@@ -41,3 +41,18 @@ pub fn note_content_renders_explicit_url_test() {
   assert_contains(html, "Spec")
   assert_contains(html, "href=\"https://example.com/spec\"")
 }
+
+pub fn note_content_does_not_duplicate_explicit_url_already_in_content_test() {
+  let html =
+    note_content.view(
+      "Spec https://example.com/spec",
+      option.Some("https://example.com/spec"),
+    )
+    |> element.fragment
+    |> element.to_document_string
+
+  assert_contains(html, "href=\"https://example.com/spec\"")
+  let without_href =
+    string.replace(html, "href=\"https://example.com/spec\"", "")
+  assert_not_contains(without_href, "href=\"https://example.com/spec\"")
+}

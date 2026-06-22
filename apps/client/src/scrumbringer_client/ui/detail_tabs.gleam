@@ -24,13 +24,15 @@ pub type Config(id, msg) {
 }
 
 pub fn view(config: Config(id, msg)) -> Element(msg) {
-  base_tabs.view(base_tabs.config(
-    tabs: list.map(config.tabs, to_base_tab),
-    active: config.active_tab,
-    container_class: config.container_class,
-    tab_class: config.tab_class,
-    on_click: config.on_tab_click,
-  ))
+  div([attribute.attribute("data-testid", "entity-tabs")], [
+    base_tabs.view(base_tabs.config(
+      tabs: list.map(config.tabs, to_base_tab),
+      active: config.active_tab,
+      container_class: config.container_class,
+      tab_class: config.tab_class,
+      on_click: config.on_tab_click,
+    )),
+  ])
 }
 
 pub fn panel(

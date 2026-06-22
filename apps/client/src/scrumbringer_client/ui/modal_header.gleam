@@ -62,6 +62,7 @@
 ////   title_class: "task-show-title",
 ////   title_id: "task-show-title",
 ////   close_button_class: "modal-close btn-icon",
+////   close_button_testid: None,
 //// ))
 //// ```
 
@@ -142,6 +143,8 @@ pub type ExtendedConfig(msg) {
     title_id: String,
     /// CSS class for the close button (default: "btn-icon modal-close")
     close_button_class: String,
+    /// Optional stable selector for high-level entity shows
+    close_button_testid: Option(String),
   )
 }
 
@@ -191,10 +194,11 @@ pub fn view_extended_with_close_label(
   close_label: String,
 ) -> Element(msg) {
   let close_button =
-    modal_close_button.view_with_label_and_class(
+    modal_close_button.view_with_label_class_and_testid(
       close_label,
       config.close_button_class,
       config.on_close,
+      config.close_button_testid,
     )
 
   let title_content = [
@@ -248,6 +252,7 @@ pub fn extend(config: Config(msg)) -> ExtendedConfig(msg) {
     title_class: "modal-header-title",
     title_id: "modal-title",
     close_button_class: "btn-icon modal-close",
+    close_button_testid: None,
   )
 }
 
@@ -370,6 +375,7 @@ pub fn view_detail_with_close_label(
       title_class: config.class_prefix <> "-title",
       title_id: config.class_prefix <> "-title",
       close_button_class: "modal-close btn-icon",
+      close_button_testid: None,
     ),
     close_label,
   )

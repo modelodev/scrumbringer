@@ -1119,6 +1119,7 @@ pub fn translate(text: Text) -> String {
     // 5.4.1: Task Show
     text.TabDetails -> "Detalles"
     text.TabDependencies -> "Dependencias"
+    text.TabBlockers -> "Bloqueos"
     text.EditTask -> "Editar tarea"
     text.TaskUpdated -> "Tarea actualizada"
     text.TaskEditPlanning -> "Planificación"

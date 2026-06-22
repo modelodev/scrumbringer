@@ -6,6 +6,7 @@ import domain/link_detection.{
 }
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
 import lustre/element/html.{a, span, text}
@@ -22,10 +23,14 @@ pub fn view(content: String, url: Option(String)) -> List(Element(msg)) {
     None -> content_segments
     Some("") -> content_segments
     Some(note_url) ->
-      list.append(content_segments, [
-        text(" "),
-        a(link_attrs(note_url), [text(note_url)]),
-      ])
+      case string.contains(content, note_url) {
+        True -> content_segments
+        False ->
+          list.append(content_segments, [
+            text(" "),
+            a(link_attrs(note_url), [text(note_url)]),
+          ])
+      }
   }
 }
 

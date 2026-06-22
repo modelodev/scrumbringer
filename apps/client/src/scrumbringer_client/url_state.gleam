@@ -47,6 +47,12 @@ pub type WorkScopeParam {
   CardWorkScopeParam
 }
 
+/// Entity show supported by member routes.
+pub type ShowParam {
+  CardShowParam(card_id: Int)
+  TaskShowParam(task_id: Int)
+}
+
 /// Estado de URL - solo se puede crear mediante parse().
 pub opaque type UrlState {
   UrlState(
@@ -60,6 +66,7 @@ pub opaque type UrlState {
     search: option.Option(String),
     expanded_card: option.Option(Int),
     card_depth: option.Option(Int),
+    show: option.Option(ShowParam),
   )
 }
 
@@ -81,6 +88,7 @@ type UrlQueryParams {
     search: option.Option(String),
     expanded_card: option.Option(Int),
     card_depth: option.Option(Int),
+    show: option.Option(ShowParam),
   )
 }
 
@@ -93,6 +101,8 @@ type QueryError {
   InvalidType(String)
   InvalidCapability(String)
   InvalidCard(String)
+  InvalidTask(String)
+  InvalidShow(String)
   InvalidDepth(String)
   UnexpectedParam(String)
 }
@@ -118,6 +128,7 @@ pub fn empty() -> UrlState {
     search: option.None,
     expanded_card: option.None,
     card_depth: option.None,
+    show: option.None,
   )
 }
 
@@ -199,6 +210,21 @@ pub fn without_work_scope(state: UrlState) -> UrlState {
   UrlState(..state, work_scope: option.None)
 }
 
+/// Builder: opens Card Show without changing the primary view scope.
+pub fn with_card_show(state: UrlState, card_id: Int) -> UrlState {
+  UrlState(..state, show: option.Some(CardShowParam(card_id)))
+}
+
+/// Builder: opens Task Show without changing the primary view scope.
+pub fn with_task_show(state: UrlState, task_id: Int) -> UrlState {
+  UrlState(..state, show: option.Some(TaskShowParam(task_id)))
+}
+
+/// Builder: clears any entity show without changing filters or scope.
+pub fn without_show(state: UrlState) -> UrlState {
+  UrlState(..state, show: option.None)
+}
+
 /// Builder: actualiza el modo de vista de assignments.
 pub fn with_assignments_view(
   state: UrlState,
@@ -274,6 +300,7 @@ pub fn clear_filters(state: UrlState) -> UrlState {
     expanded_card: option.None,
     card_depth: option.None,
     work_scope: option.None,
+    show: option.None,
     plan_mode: case view_param(state) {
       option.Some(view_mode.Cards) -> state.plan_mode
       _ -> option.None
@@ -407,6 +434,26 @@ pub fn card_depth(state: UrlState) -> option.Option(Int) {
   }
 }
 
+/// Provides the currently open Card Show id, if present.
+pub fn card_show(state: UrlState) -> option.Option(Int) {
+  case state.show {
+    option.Some(CardShowParam(card_id)) -> option.Some(card_id)
+    _ -> option.None
+  }
+}
+
+/// Provides the currently open Task Show id, if present.
+pub fn task_show(state: UrlState) -> option.Option(Int) {
+  case state.show {
+    option.Some(TaskShowParam(task_id)) -> option.Some(task_id)
+    _ -> option.None
+  }
+}
+
+pub fn show(state: UrlState) -> option.Option(ShowParam) {
+  state.show
+}
+
 // =============================================================================
 // Serialización
 // =============================================================================
@@ -438,6 +485,9 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
       state.search |> option.map(fn(s) { "search=" <> uri.percent_encode(s) }),
       state.expanded_card |> option.map(fn(c) { "card=" <> int.to_string(c) }),
       card_depth(state) |> option.map(fn(d) { "depth=" <> int.to_string(d) }),
+      show_kind_query_param(state),
+      show_card_query_param(state),
+      show_task_query_param(state),
     ]
 
     Config -> [
@@ -485,6 +535,7 @@ fn to_state(params: UrlQueryParams) -> UrlState {
     search: params.search,
     expanded_card: params.expanded_card,
     card_depth: params.card_depth,
+    show: params.show,
   )
 }
 
@@ -500,6 +551,30 @@ fn work_scope_query_param(state: UrlState) -> option.Option(String) {
   case card_work_scope(state) {
     option.Some(_) -> option.Some("work_scope=card")
     option.None -> option.None
+  }
+}
+
+fn show_kind_query_param(state: UrlState) -> option.Option(String) {
+  case state.show {
+    option.Some(CardShowParam(_)) -> option.Some("show=card")
+    option.Some(TaskShowParam(_)) -> option.Some("show=task")
+    option.None -> option.None
+  }
+}
+
+fn show_card_query_param(state: UrlState) -> option.Option(String) {
+  case state.show {
+    option.Some(CardShowParam(card_id)) ->
+      option.Some("show_card=" <> int.to_string(card_id))
+    _ -> option.None
+  }
+}
+
+fn show_task_query_param(state: UrlState) -> option.Option(String) {
+  case state.show {
+    option.Some(TaskShowParam(task_id)) ->
+      option.Some("task=" <> int.to_string(task_id))
+    _ -> option.None
   }
 }
 
@@ -523,6 +598,8 @@ fn context_errors(
   }
   let has_plan_mode = has("plan_mode")
   let has_work_scope_without_card = has("work_scope") && !has("card")
+  let has_show_card_without_show = has("show_card") && !has("show")
+  let has_task_without_show = has("task") && !has("show")
 
   case context {
     Member ->
@@ -532,6 +609,8 @@ fn context_errors(
           #(has("depth") && !view_is_cards, "depth"),
           #(has_plan_mode && !view_is_cards, "plan_mode"),
           #(has_work_scope_without_card, "work_scope"),
+          #(has_show_card_without_show, "show_card"),
+          #(has_task_without_show, "task"),
         ],
         fn(entry) {
           case entry.0 {
@@ -553,6 +632,9 @@ fn context_errors(
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
           #(has("work_scope"), "work_scope"),
+          #(has("show"), "show"),
+          #(has("show_card"), "show_card"),
+          #(has("task"), "task"),
         ],
         fn(entry) {
           case entry.0 {
@@ -574,6 +656,9 @@ fn context_errors(
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
           #(has("work_scope"), "work_scope"),
+          #(has("show"), "show"),
+          #(has("show_card"), "show_card"),
+          #(has("task"), "task"),
           #(has("view") && !view_is_assignments, "view"),
         ],
         fn(entry) {
@@ -597,6 +682,9 @@ fn context_errors(
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
           #(has("work_scope"), "work_scope"),
+          #(has("show"), "show"),
+          #(has("show_card"), "show_card"),
+          #(has("task"), "task"),
         ],
         fn(entry) {
           case entry.0 {
@@ -630,6 +718,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     parse_optional_int_param(params, "card", InvalidCard)
   let #(card_depth, depth_error) =
     parse_optional_int_param(params, "depth", InvalidDepth)
+  let #(show, show_error) = parse_optional_show_param(params)
 
   let known_keys = [
     "project",
@@ -642,6 +731,9 @@ fn parse_query_params(query: String) -> ParsedParams {
     "search",
     "card",
     "depth",
+    "show",
+    "show_card",
+    "task",
   ]
   let unknown_keys =
     present_keys
@@ -660,6 +752,7 @@ fn parse_query_params(query: String) -> ParsedParams {
       search: search,
       expanded_card: expanded_card,
       card_depth: card_depth,
+      show: show,
     )
 
   let errors =
@@ -673,6 +766,7 @@ fn parse_query_params(query: String) -> ParsedParams {
       cap_error,
       card_error,
       depth_error,
+      show_error,
     ]
     |> list.filter_map(fn(err) { option.to_result(err, Nil) })
 
@@ -774,6 +868,59 @@ fn parse_optional_work_scope_param(
         "card" -> #(option.Some(CardWorkScopeParam), option.None)
         _ -> #(option.None, option.Some(InvalidScope(raw)))
       }
+  }
+}
+
+fn parse_optional_show_param(
+  params: List(#(String, String)),
+) -> #(option.Option(ShowParam), option.Option(QueryError)) {
+  case get_string(params, "show") {
+    option.None -> #(option.None, option.None)
+    option.Some(raw) ->
+      case raw {
+        "card" ->
+          parse_show_id(params, "show_card", InvalidCard)
+          |> show_id_to_card_show
+        "task" ->
+          parse_show_id(params, "task", InvalidTask)
+          |> show_id_to_task_show
+        _ -> #(option.None, option.Some(InvalidShow(raw)))
+      }
+  }
+}
+
+fn parse_show_id(
+  params: List(#(String, String)),
+  key: String,
+  err: fn(String) -> QueryError,
+) -> #(option.Option(Int), option.Option(QueryError)) {
+  case get_string(params, key) {
+    option.None -> #(option.None, option.Some(err("")))
+    option.Some(raw) ->
+      case int.parse(raw) {
+        Ok(value) -> #(option.Some(value), option.None)
+        Error(_) -> #(option.None, option.Some(err(raw)))
+      }
+  }
+}
+
+fn show_id_to_card_show(
+  parsed: #(option.Option(Int), option.Option(QueryError)),
+) -> #(option.Option(ShowParam), option.Option(QueryError)) {
+  let #(id, error) = parsed
+  case id {
+    option.Some(card_id) -> #(option.Some(CardShowParam(card_id)), error)
+    option.None -> #(option.None, error)
+  }
+}
+
+fn show_id_to_task_show(
+  parsed: #(option.Option(Int), option.Option(QueryError)),
+) -> #(option.Option(ShowParam), option.Option(QueryError)) {
+  let #(id, error) = parsed
+  case id {
+    option.Some(task_id) -> #(option.Some(TaskShowParam(task_id)), error)
+    option.None -> #(option.None, error)
   }
 }
 

@@ -229,6 +229,7 @@ fn view_task(config: Config(msg), task: domain_task.Task) -> Element(msg) {
       actions: task_actions_for(config, task),
       reserve_actions_slot: True,
       action_slot_class: action_slot_class(),
+      content_testid: option.None,
       testid: config.task_item_testid,
     ),
     task_item.Div,

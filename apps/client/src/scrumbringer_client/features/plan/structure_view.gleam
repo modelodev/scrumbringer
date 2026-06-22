@@ -546,7 +546,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
           [
             attribute.type_("button"),
             attribute.class("plan-tree-trigger"),
-            attribute.attribute("data-testid", "plan-structure-row-trigger"),
+            attribute.attribute("data-testid", "mobile-card-open"),
             attribute.attribute("title", path),
             event.on_click(config.on_card_click(card.id)),
           ],
@@ -593,7 +593,7 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
         [
           attribute.type_("button"),
           attribute.class("plan-tree-trigger"),
-          attribute.attribute("data-testid", "plan-structure-row-trigger"),
+          attribute.attribute("data-testid", "card-show-open"),
           attribute.attribute("title", path),
           event.on_click(config.on_card_click(card.id)),
         ],
@@ -1543,10 +1543,7 @@ fn action_event(
 ) -> #(String, msg) {
   case action {
     types.CreateSubcard -> #("+ Subcard", config.on_create_subcard(card.id))
-    types.CreateTask -> #(
-      "+ domain_task.Task",
-      config.on_create_task_in_card(card.id),
-    )
+    types.CreateTask -> #("+ Task", config.on_create_task_in_card(card.id))
     types.ActivateSubtree -> #(
       "Activar subarbol",
       config.on_card_click(card.id),

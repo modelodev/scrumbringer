@@ -63,6 +63,7 @@ fn task_show_callbacks() -> task_show_config.Callbacks(String) {
     on_activity_more: "activity-more",
     on_open_parent_card: fn(_) { "open-card" },
     on_claim: fn(_, _) { "claim" },
+    on_start_work: fn(_) { "start-work" },
     on_release: fn(_, _) { "release" },
     on_complete: fn(_, _) { "complete" },
     on_delete: fn(_) { "delete" },

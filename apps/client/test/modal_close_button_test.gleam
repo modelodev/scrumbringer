@@ -1,5 +1,6 @@
 //// Tests for modal_close_button UI component.
 
+import gleam/option.{Some}
 import gleam/string
 import lustre/element
 import scrumbringer_client/ui/modal_close_button
@@ -36,6 +37,19 @@ pub fn renders_close_button_with_correct_class_test() {
   // Then: Has expected CSS classes
   assert_contains(html, "btn-icon")
   assert_contains(html, "modal-close")
+}
+
+pub fn renders_stable_entity_show_close_target_test() {
+  let html =
+    modal_close_button.view_with_label_class_and_testid(
+      "Close",
+      "btn-icon modal-close",
+      Nil,
+      Some("entity-show-close"),
+    )
+    |> element.to_string()
+
+  assert_contains(html, "data-testid=\"entity-show-close\"")
 }
 
 pub fn renders_close_icon_test() {

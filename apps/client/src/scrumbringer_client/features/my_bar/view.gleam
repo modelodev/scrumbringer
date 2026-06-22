@@ -9,12 +9,12 @@
 ////
 //// - List of user's claimed tasks with actions
 //// - Personal metrics panel (claimed/released/completed counts)
-//// - domain_task.Task row rendering with action buttons
-//// - domain_task.Task sorting by priority and status
+//// - Task row rendering with action buttons
+//// - Task sorting by priority and status
 ////
 //// ## Non-responsibilities
 ////
-//// - domain_task.Task state management (see client_state.gleam)
+//// - Task state management (see client_state.gleam)
 //// - API calls (see api/ modules)
 //// - Pool/canvas views (see pool/view.gleam)
 ////
@@ -292,7 +292,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
         _, _ -> element.none()
       },
     ]),
-    // domain_task.Task list
+    // Task list
     keyed.div(
       [attribute.class("task-list")],
       list.map(tasks, fn(t) {
@@ -482,6 +482,7 @@ pub fn view_member_bar_task_row(
       actions: [div([attribute.class("task-row-actions")], actions)],
       reserve_actions_slot: False,
       action_slot_class: opt.None,
+      content_testid: opt.None,
       testid: opt.None,
     ),
     task_item.Div,

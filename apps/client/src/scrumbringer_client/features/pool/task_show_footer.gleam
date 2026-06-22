@@ -1,5 +1,6 @@
 //// Task Show footer action bar.
 
+import gleam/int
 import gleam/list
 import gleam/option as opt
 
@@ -15,6 +16,7 @@ import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/button
 
 pub type Config(msg) {
@@ -30,6 +32,7 @@ pub type Config(msg) {
     on_edit_cancelled: msg,
     on_edit_submitted: msg,
     on_claim: fn(Int, Int) -> msg,
+    on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
@@ -50,21 +53,10 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn reading_actions(config: Config(msg)) -> List(Element(msg)) {
-  let close_button =
-    text_button(
-      t(config, i18n_text.Close),
-      config.on_close,
-      button.Secondary,
-      False,
-    )
-    |> button.view
-
-  let actions = case config.task {
+  case config.task {
     opt.None -> []
     opt.Some(task) -> task_actions(config, task)
   }
-
-  list.append([close_button], actions)
 }
 
 fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
@@ -95,61 +87,104 @@ fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
 
 fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
   let is_mine = claimed_by(task) == config.current_user_id
+
   case task_state.to_work_state(task.state) {
     task_status.WorkAvailable -> [
-      delete_button(config, task, task.blocked_count > 0),
       claim_button(config, task),
+      secondary_actions_menu(config, task, allow_release: False),
     ]
 
-    task_status.WorkClaimed | task_status.WorkOngoing ->
+    task_status.WorkClaimed ->
       case is_mine {
         True -> [
-          delete_button(config, task, True),
+          start_work_button(config, task),
+          secondary_actions_menu(config, task, allow_release: True),
+        ]
+        False -> [secondary_actions_menu(config, task, allow_release: False)]
+      }
+
+    task_status.WorkOngoing ->
+      case is_mine {
+        True -> [
           text_button(
-            t(config, i18n_text.Release),
-            config.on_release(task.id, task.version),
-            button.Secondary,
-            config.disable_actions,
-          )
-            |> button.view,
-          text_button(
-            t(config, i18n_text.Complete),
+            t(config, i18n_text.TaskNextActionComplete),
             config.on_complete(task.id, task.version),
             button.Primary,
             config.disable_actions,
           )
+            |> button.with_testid("task-show-primary-complete")
             |> button.view,
+          secondary_actions_menu(config, task, allow_release: True),
         ]
-        False -> [delete_button(config, task, True)]
+        False -> [secondary_actions_menu(config, task, allow_release: False)]
       }
 
-    task_status.WorkDone -> [delete_button(config, task, True)]
+    task_status.WorkDone -> [
+      secondary_actions_menu(config, task, allow_release: False),
+    ]
   }
 }
 
-fn delete_button(
+fn secondary_actions_menu(
   config: Config(msg),
   task: Task,
-  blocked_by_history: Bool,
+  allow_release allow_release: Bool,
 ) -> Element(msg) {
-  let base_button =
-    button.text(
-      t(config, i18n_text.Delete),
-      config.on_delete(task.id),
-      button.Danger,
-      button.EntityAction,
-    )
+  action_menu.view(
+    "...",
+    "task-show-secondary-actions-trigger",
+    "task-show-secondary-actions-" <> int_to_string(task.id),
+    opt.Some(t(config, i18n_text.HierarchyMoreActions)),
+    "secondary-actions-menu",
+    "secondary-actions-trigger task-show-secondary-actions-trigger",
+    "secondary-actions-panel task-show-secondary-actions-panel",
+    "secondary-actions-item task-show-secondary-actions-item",
+    secondary_action_items(config, task, allow_release),
+  )
+}
 
-  case config.disable_actions, blocked_by_history {
-    True, _ -> button.with_disabled(base_button, True)
-    False, True ->
-      button.with_blocked_reason(
-        base_button,
-        t(config, i18n_text.TaskHasOperationalHistory),
-      )
-    False, False -> base_button
+fn secondary_action_items(
+  config: Config(msg),
+  task: Task,
+  allow_release: Bool,
+) -> List(action_menu.Item(msg)) {
+  let release_items = case allow_release {
+    True if config.disable_actions -> [
+      action_menu.disabled_item(
+        t(config, i18n_text.TaskNextActionRelease),
+        "task-show-secondary-release",
+        t(config, i18n_text.Working),
+        config.on_release(task.id, task.version),
+      ),
+    ]
+    True -> [
+      action_menu.item(
+        t(config, i18n_text.TaskNextActionRelease),
+        "task-show-secondary-release",
+        config.on_release(task.id, task.version),
+      ),
+    ]
+    False -> []
   }
-  |> button.view
+
+  let delete_item = case config.disable_actions {
+    True ->
+      action_menu.disabled_item(
+        t(config, i18n_text.Delete),
+        "task-show-secondary-delete",
+        t(config, i18n_text.Working),
+        config.on_delete(task.id),
+      )
+    False ->
+      action_menu.disabled_item(
+        t(config, i18n_text.Delete),
+        "task-show-secondary-delete",
+        t(config, i18n_text.TaskHasOperationalHistory),
+        config.on_delete(task.id),
+      )
+  }
+
+  list.append(release_items, [delete_item])
 }
 
 fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
@@ -161,6 +196,7 @@ fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
       button.Primary,
       button.EntityAction,
     )
+    |> button.with_testid("task-show-primary-claim")
 
   case config.disable_actions, blocked_by_dependencies {
     True, _ -> button.with_disabled(base_button, True)
@@ -175,6 +211,18 @@ fn claim_button(config: Config(msg), task: Task) -> Element(msg) {
   |> button.view
 }
 
+fn start_work_button(config: Config(msg), task: Task) -> Element(msg) {
+  button.text(
+    t(config, i18n_text.TaskNextActionStart),
+    config.on_start_work(task.id),
+    button.Primary,
+    button.EntityAction,
+  )
+  |> button.with_testid("task-show-primary-start")
+  |> button.with_disabled(config.disable_actions)
+  |> button.view
+}
+
 fn text_button(
   label: String,
   on_click: msg,
@@ -183,4 +231,8 @@ fn text_button(
 ) -> button.Config(msg) {
   button.text(label, on_click, intent, button.EntityAction)
   |> button.with_disabled(disabled)
+}
+
+fn int_to_string(value: Int) -> String {
+  value |> int.to_string
 }

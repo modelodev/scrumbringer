@@ -101,6 +101,21 @@ pub fn shortcut_update_escape_closes_notes_detail_test() {
   let assert None = next.notes.member_notes_task_id
 }
 
+pub fn shortcut_update_escape_closes_card_show_test() {
+  let model =
+    shortcut_update.Model(
+      ..local_model(),
+      pool: member_pool.Model(
+        ..member_pool.default_model(),
+        card_show_open: Some(42),
+      ),
+    )
+
+  let next = shortcut(model, "Escape")
+
+  let assert None = next.pool.card_show_open
+}
+
 pub fn shortcut_update_escape_closes_position_edit_test() {
   let model =
     shortcut_update.Model(

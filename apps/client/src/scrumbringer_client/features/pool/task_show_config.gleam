@@ -45,6 +45,7 @@ pub type Callbacks(msg) {
     on_activity_more: msg,
     on_open_parent_card: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
+    on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
@@ -230,6 +231,7 @@ fn actions_config(
       || pool.member_task_show_editing
       || pool.member_task_show_edit_in_flight,
     on_claim: callbacks.on_claim,
+    on_start_work: callbacks.on_start_work,
     on_release: callbacks.on_release,
     on_complete: callbacks.on_complete,
     on_delete: callbacks.on_delete,

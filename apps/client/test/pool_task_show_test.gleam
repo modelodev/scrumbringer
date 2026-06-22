@@ -2,6 +2,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
+import domain/card.{type Card, Active, Card}
 import domain/remote
 import domain/task.{type Task, Task}
 import domain/task_state
@@ -26,10 +27,27 @@ pub fn task_show_renders_as_panel_not_modal_test() {
 
   assert_contains(html, "task-show-panel")
   assert_contains(html, "task-show-content")
+  assert_contains(html, "data-testid=\"task-show\"")
+  assert_contains(html, "data-testid=\"entity-tabs\"")
   assert_contains(html, "role=\"complementary\"")
   assert_contains(html, "task-action-bar")
   assert_not_contains(html, "aria-modal=\"true\"")
   assert_not_contains(html, "modal-backdrop")
+}
+
+pub fn task_show_renders_parent_card_navigation_in_header_test() {
+  let html =
+    task_show.view_task_show(config_with_parent_card())
+    |> element.to_document_string
+
+  assert_contains(html, "task-context-navigation")
+  assert_contains(html, "Open in")
+  assert_contains(html, "Open card")
+  assert_contains(html, "View in Plan")
+  assert_contains(
+    html,
+    "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
+  )
 }
 
 fn config() -> task_show.TaskShowConfig(String) {
@@ -51,6 +69,7 @@ fn config() -> task_show.TaskShowConfig(String) {
     actions: task_show.TaskActionsConfig(
       disable_actions: False,
       on_claim: fn(_, _) { "claim" },
+      on_start_work: fn(_) { "start-work" },
       on_release: fn(_, _) { "release" },
       on_complete: fn(_, _) { "complete" },
       on_delete: fn(_) { "delete" },
@@ -58,6 +77,28 @@ fn config() -> task_show.TaskShowConfig(String) {
     on_close: "close",
     on_open_parent_card: fn(_) { "open-card" },
     on_tab_clicked: fn(_) { "tab" },
+  )
+}
+
+fn config_with_parent_card() -> task_show.TaskShowConfig(String) {
+  task_show.TaskShowConfig(..config(), parent_card: Some(parent_card()))
+}
+
+fn parent_card() -> Card {
+  Card(
+    id: 10,
+    project_id: 1,
+    parent_card_id: None,
+    title: "Release card",
+    description: "Release",
+    color: None,
+    state: Active,
+    task_count: 1,
+    completed_count: 0,
+    created_by: 7,
+    created_at: "2026-03-20T10:00:00Z",
+    due_date: None,
+    has_new_notes: False,
   )
 }
 
