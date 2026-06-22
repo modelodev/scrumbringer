@@ -965,6 +965,7 @@ pub fn translate(text: Text) -> String {
     text.RuleMetricsNoRules -> "No rules in this workflow"
     text.ViewDetails -> "View Details"
     text.OpenTask -> "Open task"
+    text.OpenCard -> "Open card"
     text.AgeLabel -> "Age"
     text.ParentCardLabel -> "Card"
     text.RuleMetricsDrilldown -> "Rule Metrics Details"

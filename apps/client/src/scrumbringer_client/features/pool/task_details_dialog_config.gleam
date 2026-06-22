@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option as opt
 import lustre/element.{type Element}
 
@@ -39,6 +40,7 @@ pub type Callbacks(msg) {
     on_note_submitted: msg,
     on_note_delete: fn(Int) -> msg,
     on_note_pin_toggle: fn(Int, Bool) -> msg,
+    on_open_parent_card: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_complete: fn(Int, Int) -> msg,
@@ -87,6 +89,7 @@ pub fn from_state(
     locale: locale,
     task_id: task_id,
     task: task,
+    parent_card: parent_card(cards, task),
     current_user_id: current_user_id,
     active_tab: pool.member_task_detail_tab,
     dependencies: dependencies_config(dependencies, callbacks),
@@ -95,6 +98,7 @@ pub fn from_state(
     activity: activity_config(notes),
     actions: actions_config(pool, callbacks),
     on_close: callbacks.on_close,
+    on_open_parent_card: callbacks.on_open_parent_card,
     on_tab_clicked: callbacks.on_tab_clicked,
   )
 }
@@ -210,6 +214,19 @@ fn parent_card_title(
         card_queries.resolve_task_card_info(cards, current_task)
       title
     }
+    opt.None -> opt.None
+  }
+}
+
+fn parent_card(cards: List(Card), task: opt.Option(Task)) -> opt.Option(Card) {
+  case task {
+    opt.Some(current_task) ->
+      case current_task.card_id {
+        opt.Some(card_id) ->
+          list.find(cards, fn(card) { card.id == card_id })
+          |> opt.from_result
+        opt.None -> opt.None
+      }
     opt.None -> opt.None
   }
 }

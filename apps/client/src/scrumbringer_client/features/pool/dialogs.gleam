@@ -55,6 +55,7 @@ pub type TaskDetailsConfig(msg) {
     locale: Locale,
     task_id: Int,
     task: opt.Option(Task),
+    parent_card: opt.Option(Card),
     current_user_id: opt.Option(Int),
     active_tab: show_tabs.TaskShowTab,
     dependencies: TaskDependenciesConfig(msg),
@@ -63,6 +64,7 @@ pub type TaskDetailsConfig(msg) {
     activity: Remote(List(ActivityEvent)),
     actions: TaskActionsConfig(msg),
     on_close: msg,
+    on_open_parent_card: fn(Int) -> msg,
     on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
   )
 }
@@ -259,8 +261,10 @@ fn details_config(
     task: config.task,
     dependencies: config.dependencies.items,
     parent_card_title: config.editor.parent_card_title,
+    parent_card: config.parent_card,
     pinned_notes: pinned_task_notes(config.notes.items),
     on_open_notes: config.on_tab_clicked(show_tabs.TaskNotesTab),
+    on_open_parent_card: config.on_open_parent_card,
     editor: editor_config(config),
   )
 }

@@ -826,6 +826,7 @@ pub type Text {
   RuleMetricsNoRules
   ViewDetails
   OpenTask
+  OpenCard
   AgeLabel
   ParentCardLabel
   RuleMetricsDrilldown

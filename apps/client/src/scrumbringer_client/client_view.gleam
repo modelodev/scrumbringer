@@ -307,6 +307,9 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
     on_note_pin_toggle: fn(note_id, pinned) {
       client_state.pool_msg(pool_messages.MemberNotePinClicked(note_id, pinned))
     },
+    on_open_parent_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+    },
     on_claim: fn(claim_task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(
         claim_task_id,
