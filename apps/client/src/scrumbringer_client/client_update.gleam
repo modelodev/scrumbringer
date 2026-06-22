@@ -334,7 +334,8 @@ fn current_route(model: client_state.Model) -> router.Route {
           state,
           model.member.pool.member_card_depth_filter,
         )
-      let state = case model.member.pool.member_plan_scope_kind,
+      let state = case
+        model.member.pool.member_plan_scope_kind,
         model.member.pool.member_plan_scope_card_id
       {
         member_pool.PlanScopeCard, opt.Some(card_id) ->

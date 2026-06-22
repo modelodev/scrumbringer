@@ -393,7 +393,8 @@ pub fn expanded_card(state: UrlState) -> option.Option(Int) {
 /// Provides the scoped card id when the URL explicitly uses work_scope=card.
 pub fn card_work_scope(state: UrlState) -> option.Option(Int) {
   case state.work_scope, state.expanded_card {
-    option.Some(CardWorkScopeParam), option.Some(card_id) -> option.Some(card_id)
+    option.Some(CardWorkScopeParam), option.Some(card_id) ->
+      option.Some(card_id)
     _, _ -> option.None
   }
 }

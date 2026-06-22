@@ -27,8 +27,7 @@ pub fn plan_url_uses_card_work_scope_test() {
 }
 
 pub fn kanban_url_uses_card_work_scope_and_plan_mode_test() {
-  let assert
-    "/app?project=6&view=cards&plan_mode=kanban&work_scope=card&card=42" =
+  let assert "/app?project=6&view=cards&plan_mode=kanban&work_scope=card&card=42" =
     scoped_navigation.kanban_url(sample_card())
 }
 

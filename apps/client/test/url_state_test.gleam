@@ -513,7 +513,9 @@ pub fn to_query_string_card_work_scope_kanban_test() {
     |> url_state.to_query_string
 
   query
-  |> assert_equal("project=8&view=cards&plan_mode=kanban&work_scope=card&card=15")
+  |> assert_equal(
+    "project=8&view=cards&plan_mode=kanban&work_scope=card&card=15",
+  )
 }
 
 // =============================================================================
