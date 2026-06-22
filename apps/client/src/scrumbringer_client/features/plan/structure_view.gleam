@@ -718,7 +718,7 @@ fn view_normal_actions_cell(
       [
         attribute.type_("button"),
         attribute.class("plan-action-btn"),
-        attribute.attribute("data-testid", "plan-card-detail-action"),
+        attribute.attribute("data-testid", "plan-card-show-action"),
         event.on_click(config.on_card_click(card.id)),
       ],
       [text("Ver")],

@@ -76,7 +76,7 @@ pub fn cards_view_renders_detail_button_test() {
   assert_contains(html, "admin-surface-content")
   assert_contains(html, "data-testid=\"cards-filters\"")
   assert_contains(html, "card-title-button")
-  assert_contains(html, "card-detail-open")
+  assert_contains(html, "card-show-open")
 }
 
 pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
@@ -161,7 +161,7 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(..pool, card_detail_open: opt.Some(1)),
+        pool: member_pool.Model(..pool, card_show_open: opt.Some(1)),
       )
     })
 

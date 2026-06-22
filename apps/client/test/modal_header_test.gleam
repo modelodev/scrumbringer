@@ -358,15 +358,15 @@ pub fn view_detail_uses_class_prefix_test() {
       meta: None,
       progress: None,
       on_close: Nil,
-      class_prefix: "card-detail",
+      class_prefix: "card-show",
     )
 
   // When: Render
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Uses prefix for all classes
-  assert_contains(html, "card-detail-header")
-  assert_contains(html, "card-detail-title")
+  assert_contains(html, "card-show-header")
+  assert_contains(html, "card-show-title")
 }
 
 pub fn view_detail_with_meta_and_progress_test() {

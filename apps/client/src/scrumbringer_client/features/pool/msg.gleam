@@ -195,8 +195,8 @@ pub type Msg {
   CardsShowDoneToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
-  OpenCardDetail(Int)
-  CloseCardDetail
+  OpenCardShow(Int)
+  CloseCardShow
   CardShowMsg(card_show.Msg)
   CardActivateRequested(Int)
   CardActivated(ApiResult(card_contracts.CardActionResponse))

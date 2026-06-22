@@ -388,7 +388,7 @@ fn cards_config(
     },
     on_show_empty_toggled: pool_msg(pool_messages.CardsShowEmptyToggled),
     on_show_completed_toggled: pool_msg(pool_messages.CardsShowDoneToggled),
-    on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardDetail(id)) },
+    on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardShow(id)) },
     on_task_create_opened: fn(id) {
       pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id))
     },
@@ -418,9 +418,9 @@ fn view_card_show(model: Model, project: Project) -> Element(Msg) {
   show_entry.view(
     show_entry.Config(
       model: model.member.pool.card_show_model,
-      card: selected_detail_card(model),
+      card: selected_show_card(model),
       cards: admin_cards_list(model),
-      tasks: selected_detail_card_tasks(model),
+      tasks: selected_show_card_tasks(model),
       locale: model.ui.locale,
       current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
       can_manage_notes: is_org_admin || permissions.is_project_manager(project),
@@ -439,8 +439,8 @@ fn admin_cards_list(model: Model) -> List(domain_card.Card) {
   }
 }
 
-fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
-  case model.member.pool.card_detail_open {
+fn selected_show_card(model: Model) -> opt.Option(domain_card.Card) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) ->
       card_queries.find_card(
         model.member.pool.member_cards_store,
@@ -451,8 +451,8 @@ fn selected_detail_card(model: Model) -> opt.Option(domain_card.Card) {
   }
 }
 
-fn selected_detail_card_tasks(model: Model) -> List(domain_task.Task) {
-  case model.member.pool.card_detail_open {
+fn selected_show_card_tasks(model: Model) -> List(domain_task.Task) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) ->
       show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
     opt.None -> []

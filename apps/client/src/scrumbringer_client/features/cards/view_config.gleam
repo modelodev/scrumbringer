@@ -19,7 +19,7 @@ pub fn from_state(
   locale: Locale,
   cards: List(Card),
   pool: pool_state.Model,
-  detail_card: option.Option(Card),
+  show_card: option.Option(Card),
   current_user: option.Option(User),
   selected_project: option.Option(Project),
   on_card_opened: fn(Int) -> msg,
@@ -29,9 +29,9 @@ pub fn from_state(
     locale: locale,
     cards: cards,
     pending_count: normalized_store.pending(pool.member_cards_store),
-    detail_model: pool.card_show_model,
-    detail_card: detail_card,
-    detail_tasks: selected_detail_card_tasks(pool),
+    show_model: pool.card_show_model,
+    show_card: show_card,
+    show_tasks: selected_show_card_tasks(pool),
     current_user_id: current_user |> option.map(fn(user) { user.id }),
     can_manage_notes: can_manage_notes(current_user, selected_project),
     can_manage_structure: can_manage_notes(current_user, selected_project),
@@ -72,8 +72,8 @@ fn can_execute_work(
   }
 }
 
-fn selected_detail_card_tasks(pool: pool_state.Model) -> List(Task) {
-  case pool.card_detail_open {
+fn selected_show_card_tasks(pool: pool_state.Model) -> List(Task) {
+  case pool.card_show_open {
     option.Some(card_id) ->
       show_entry.tasks_for_card(pool.member_tasks, card_id)
     option.None -> []

@@ -76,7 +76,7 @@ fn config(card) -> show_entry.Config(String) {
     can_manage_notes: True,
     can_manage_structure: True,
     can_execute_work: True,
-    on_card_show_msg: fn(_msg) { "card-detail-msg" },
+    on_card_show_msg: fn(_msg) { "card-show-msg" },
   )
 }
 

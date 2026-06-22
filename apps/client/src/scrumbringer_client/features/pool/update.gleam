@@ -37,7 +37,7 @@ import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
-import scrumbringer_client/features/pool/card_detail_update
+import scrumbringer_client/features/pool/card_show_update
 import scrumbringer_client/features/pool/drag_update
 import scrumbringer_client/features/pool/filters_route
 import scrumbringer_client/features/pool/metrics_route
@@ -101,13 +101,13 @@ fn update_pool_drag_model(
   })
 }
 
-fn pool_card_show_model(model: client_state.Model) -> card_detail_update.Model {
-  card_detail_update.Model(pool: model.member.pool, cards: model.admin.cards)
+fn pool_card_show_model(model: client_state.Model) -> card_show_update.Model {
+  card_show_update.Model(pool: model.member.pool, cards: model.admin.cards)
 }
 
 fn update_pool_card_show_model(
   model: client_state.Model,
-  local: card_detail_update.Model,
+  local: card_show_update.Model,
 ) -> client_state.Model {
   let model =
     client_state.update_member(model, fn(member) {
@@ -195,8 +195,8 @@ fn pool_drag_context(
 
 fn card_detail_context(
   model: client_state.Model,
-) -> card_detail_update.Context(client_state.Msg) {
-  card_detail_update.Context(
+) -> card_show_update.Context(client_state.Msg) {
+  card_show_update.Context(
     on_card_marked: fn(_result) { client_state.NoOp },
     on_card_show_msg: fn(msg) {
       client_state.pool_msg(pool_messages.CardShowMsg(msg))
@@ -227,7 +227,7 @@ fn card_detail_context(
         pool_messages.OpenCardDialog(admin_cards.CardDialogDelete(card_id)),
       )
     },
-    on_close: client_state.pool_msg(pool_messages.CloseCardDetail),
+    on_close: client_state.pool_msg(pool_messages.CloseCardShow),
     on_success_toast: app_effects.toast_success,
     on_error_toast: app_effects.toast_error,
     hierarchy_activated: i18n.t(model.ui.locale, i18n_text.HierarchyActivated),
@@ -345,20 +345,20 @@ fn update_without_drag(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_card_detail_update(model, inner, member_refresh) {
+  case try_pool_card_show_update(model, inner, member_refresh) {
     opt.Some(result) -> result
     opt.None -> update_without_card_detail(model, inner, member_refresh)
   }
 }
 
-fn try_pool_card_detail_update(
+fn try_pool_card_show_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    card_detail_update.try_update(
+    card_show_update.try_update(
       pool_card_show_model(model),
       inner,
       card_detail_context(model),
@@ -936,9 +936,9 @@ fn update_without_view_mode(
     | pool_messages.MemberDragMoved(_, _)
     | pool_messages.MemberDragEnded -> #(model, effect.none())
 
-    // Handled by card_detail_update.try_update before this dispatch.
-    pool_messages.OpenCardDetail(_)
-    | pool_messages.CloseCardDetail
+    // Handled by card_show_update.try_update before this dispatch.
+    pool_messages.OpenCardShow(_)
+    | pool_messages.CloseCardShow
     | pool_messages.CardShowMsg(_)
     | pool_messages.CardActivateRequested(_)
     | pool_messages.CardActivated(_) -> #(model, effect.none())

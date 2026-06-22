@@ -93,7 +93,7 @@ fn move_requested(
             member_plan_move_drag: member_pool.PlanMoveNotDragging,
             member_plan_move_error: opt.None,
             member_plan_move_in_flight: False,
-            card_detail_open: opt.None,
+            card_show_open: opt.None,
           ),
           effect.none(),
         )

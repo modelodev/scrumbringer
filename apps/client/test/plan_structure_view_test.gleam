@@ -207,7 +207,7 @@ pub fn incompatible_actions_are_disabled_with_reason_test() {
 pub fn row_actions_are_detail_contextual_create_and_secondary_menu_test() {
   let html = render(base_config())
 
-  assert_contains(html, "data-testid=\"plan-card-detail-action\"")
+  assert_contains(html, "data-testid=\"plan-card-show-action\"")
   assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
   assert_contains(html, "data-testid=\"plan-action-menu\"")
   assert_contains(html, "data-testid=\"plan-action-menu-toggle\"")

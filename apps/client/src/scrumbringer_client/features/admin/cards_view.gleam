@@ -293,7 +293,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
               button(
                 [
                   attribute.class("card-title-button"),
-                  attribute.attribute("data-testid", "card-detail-open"),
+                  attribute.attribute("data-testid", "card-show-open"),
                   event.on_click(config.on_detail_opened(c.id)),
                 ],
                 [text(c.title)],

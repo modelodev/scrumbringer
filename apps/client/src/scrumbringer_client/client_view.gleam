@@ -313,7 +313,7 @@ fn task_details_callbacks() -> task_details_dialog_config.Callbacks(
       pool_messages.MemberActivityMoreClicked,
     ),
     on_open_parent_card: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     on_claim: fn(claim_task_id, version) {
       client_state.pool_msg(pool_messages.MemberClaimClicked(
@@ -1400,7 +1400,7 @@ fn kanban_config(
       state_selectors.selected_project(model),
     ),
     on_card_click: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     on_card_edit: fn(card_id) {
       client_state.pool_msg(
@@ -1518,7 +1518,7 @@ fn plan_structure_config(
       client_state.pool_msg(pool_messages.MemberPlanCardToggled(card_id))
     },
     on_card_click: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     on_card_edit: fn(card_id) {
       client_state.pool_msg(
@@ -1781,7 +1781,7 @@ fn build_right_panel(
       client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
     },
     on_card_click: fn(card_id) {
-      client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     drag_armed: drag_armed,
     drag_over_my_tasks: drag_over_my_tasks,
@@ -1831,16 +1831,16 @@ fn member_cards_config(
     model.ui.locale,
     project_cards(model),
     model.member.pool,
-    selected_member_detail_card(model),
+    selected_member_show_card(model),
     model.core.user,
     state_selectors.selected_project(model),
-    fn(id) { client_state.pool_msg(pool_messages.OpenCardDetail(id)) },
+    fn(id) { client_state.pool_msg(pool_messages.OpenCardShow(id)) },
     fn(msg) { client_state.pool_msg(pool_messages.CardShowMsg(msg)) },
   )
 }
 
-fn selected_member_detail_card(model: client_state.Model) -> opt.Option(Card) {
-  case model.member.pool.card_detail_open {
+fn selected_member_show_card(model: client_state.Model) -> opt.Option(Card) {
+  case model.member.pool.card_show_open {
     opt.Some(card_id) -> find_card(model, card_id)
     opt.None -> opt.None
   }

@@ -562,9 +562,9 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     // Card Show panel
     div(
       [
-        attribute.class("card-show-panel card-detail " <> border_class),
+        attribute.class("card-show-panel card-show-surface " <> border_class),
         attribute.attribute("role", "complementary"),
-        attribute.attribute("aria-labelledby", "card-detail-title"),
+        attribute.attribute("aria-labelledby", "card-show-title"),
       ],
       [
         div(
@@ -582,7 +582,7 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
             )),
           ],
         ),
-        div([attribute.class("card-show-body card-detail-body")], [
+        div([attribute.class("card-show-body card-show-body")], [
           detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
             show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
             show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
@@ -753,7 +753,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         header_class: "detail-header",
         title_row_class: "detail-title-row",
         title_class: "detail-title",
-        title_id: "card-detail-title",
+        title_id: "card-show-title",
         close_button_class: "modal-close btn-icon",
       ),
       t(model.locale, i18n_text.Close),
@@ -761,7 +761,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
     view_card_path(model, card),
     case card.description {
       "" -> element.none()
-      desc -> div([attribute.class("card-detail-description")], [text(desc)])
+      desc -> div([attribute.class("card-show-description")], [text(desc)])
     },
     view_scoped_navigation(model, card),
     view_card_action_bar(model, card),
@@ -921,7 +921,7 @@ fn scoped_navigation_link(
 fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
   let policy = action_policy(model, card)
 
-  div([attribute.class("card-detail-actions")], [
+  div([attribute.class("card-show-actions")], [
     view_create_card_action(model, policy),
     view_create_task_action(model, policy),
     view_secondary_action_menu(model, card, policy),
@@ -1093,7 +1093,7 @@ fn blocked_action(
   )
   |> ui_button.with_blocked_reason(reason)
   |> ui_button.with_testid(testid)
-  |> ui_button.with_class("card-detail-action-blocked")
+  |> ui_button.with_class("card-show-action-blocked")
   |> ui_button.view
 }
 
@@ -1221,7 +1221,7 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
     <> int.to_string(list.length(notes))
     <> ")"
 
-  div([attribute.class("card-detail-notes-section detail-section")], [
+  div([attribute.class("card-show-notes-section detail-section")], [
     // Shared section header component (consistent with Tasks tab)
     // Button opens dialog instead of submitting directly
     card_section_header.view(card_section_header.Config(
@@ -1321,7 +1321,7 @@ fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {
   }
   let policy = action_policy(model, card)
 
-  div([attribute.class("card-detail-tasks-section detail-section")], [
+  div([attribute.class("card-show-tasks-section detail-section")], [
     view_tasks_header(model, policy),
     // Task list content
     case model.tasks {

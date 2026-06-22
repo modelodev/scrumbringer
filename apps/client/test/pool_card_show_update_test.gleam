@@ -9,18 +9,18 @@ import domain/card.{type Card, Card, Draft}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/pool/card_detail_update
+import scrumbringer_client/features/pool/card_show_update
 import scrumbringer_client/features/pool/msg as pool_messages
 
-fn local_model() -> card_detail_update.Model {
-  card_detail_update.Model(
+fn local_model() -> card_show_update.Model {
+  card_show_update.Model(
     pool: member_pool.default_model(),
     cards: admin_cards.default_model(),
   )
 }
 
-fn context() -> card_detail_update.Context(Nil) {
-  card_detail_update.Context(
+fn context() -> card_show_update.Context(Nil) {
+  card_show_update.Context(
     on_card_marked: fn(_result: ApiResult(Nil)) { Nil },
     on_card_show_msg: fn(_msg) { Nil },
     on_card_activated: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
@@ -48,8 +48,8 @@ fn context() -> card_detail_update.Context(Nil) {
   )
 }
 
-fn context_with_toasts() -> card_detail_update.Context(Nil) {
-  card_detail_update.Context(
+fn context_with_toasts() -> card_show_update.Context(Nil) {
+  card_show_update.Context(
     ..context(),
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
@@ -74,9 +74,9 @@ fn sample_card(id: Int) -> Card {
   )
 }
 
-pub fn card_detail_update_opened_updates_pool_cards_and_effects_test() {
+pub fn card_show_update_opened_updates_pool_cards_and_effects_test() {
   let model =
-    card_detail_update.Model(
+    card_show_update.Model(
       ..local_model(),
       cards: admin_cards.Model(
         ..admin_cards.default_model(),
@@ -85,43 +85,35 @@ pub fn card_detail_update_opened_updates_pool_cards_and_effects_test() {
     )
 
   let assert Some(#(next, fx)) =
-    card_detail_update.try_update(
-      model,
-      pool_messages.OpenCardDetail(7),
-      context(),
-    )
+    card_show_update.try_update(model, pool_messages.OpenCardShow(7), context())
 
-  let assert Some(7) = next.pool.card_detail_open
+  let assert Some(7) = next.pool.card_show_open
   let assert Loaded([first, second]) = next.cards.cards
   let assert False = first.has_new_notes
   let assert True = second.has_new_notes
   let assert False = fx == effect.none()
 }
 
-pub fn card_detail_update_closed_clears_pool_detail_test() {
+pub fn card_show_update_closed_clears_pool_show_test() {
   let model =
-    card_detail_update.Model(
+    card_show_update.Model(
       ..local_model(),
       pool: member_pool.Model(
         ..member_pool.default_model(),
-        card_detail_open: Some(7),
+        card_show_open: Some(7),
       ),
     )
 
   let assert Some(#(next, fx)) =
-    card_detail_update.try_update(
-      model,
-      pool_messages.CloseCardDetail,
-      context(),
-    )
+    card_show_update.try_update(model, pool_messages.CloseCardShow, context())
 
-  let assert None = next.pool.card_detail_open
+  let assert None = next.pool.card_show_open
   let assert True = fx == effect.none()
 }
 
-pub fn card_detail_update_activate_requested_submits_effect_test() {
+pub fn card_show_update_activate_requested_submits_effect_test() {
   let assert Some(#(next, fx)) =
-    card_detail_update.try_update(
+    card_show_update.try_update(
       local_model(),
       pool_messages.CardActivateRequested(7),
       context(),
@@ -131,7 +123,7 @@ pub fn card_detail_update_activate_requested_submits_effect_test() {
   let assert False = fx == effect.none()
 }
 
-pub fn card_detail_update_activated_ok_shows_feedback_test() {
+pub fn card_show_update_activated_ok_shows_feedback_test() {
   let response =
     card_contracts.CardActionResponse(
       card_id: 7,
@@ -142,7 +134,7 @@ pub fn card_detail_update_activated_ok_shows_feedback_test() {
     )
 
   let assert Some(#(_next, fx)) =
-    card_detail_update.try_update(
+    card_show_update.try_update(
       local_model(),
       pool_messages.CardActivated(Ok(response)),
       context_with_toasts(),
@@ -151,21 +143,21 @@ pub fn card_detail_update_activated_ok_shows_feedback_test() {
   let assert False = fx == effect.none()
 }
 
-pub fn card_detail_update_try_update_handles_open_message_test() {
+pub fn card_show_update_try_update_handles_open_message_test() {
   let assert Some(#(next, fx)) =
-    card_detail_update.try_update(
+    card_show_update.try_update(
       local_model(),
-      pool_messages.OpenCardDetail(7),
+      pool_messages.OpenCardShow(7),
       context(),
     )
 
-  let assert Some(7) = next.pool.card_detail_open
+  let assert Some(7) = next.pool.card_show_open
   let assert False = fx == effect.none()
 }
 
-pub fn card_detail_update_try_update_ignores_non_detail_message_test() {
+pub fn card_show_update_try_update_ignores_non_card_show_message_test() {
   let assert None =
-    card_detail_update.try_update(
+    card_show_update.try_update(
       local_model(),
       pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(),

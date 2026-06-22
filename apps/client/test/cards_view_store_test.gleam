@@ -47,16 +47,16 @@ fn cards_config(model: client_state.Model) {
     model.ui.locale,
     project_cards(model),
     model.member.pool,
-    selected_detail_card(model),
+    selected_show_card(model),
     model.core.user,
     state_selectors.selected_project(model),
     fn(_) { "open" },
-    fn(_) { "card-detail-msg" },
+    fn(_) { "card-show-msg" },
   )
 }
 
-fn selected_detail_card(model: client_state.Model) {
-  case model.member.pool.card_detail_open {
+fn selected_show_card(model: client_state.Model) {
+  case model.member.pool.card_show_open {
     option.Some(card_id) -> find_card(model, card_id)
     option.None -> option.None
   }

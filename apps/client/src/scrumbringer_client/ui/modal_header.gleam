@@ -339,7 +339,7 @@ pub type DetailConfig(msg) {
     progress: Option(Element(msg)),
     /// Message to emit when close button is clicked
     on_close: msg,
-    /// CSS class prefix for all elements (e.g., "task-detail" or "card-detail")
+    /// CSS class prefix for all elements (e.g., "task-detail" or "card-show")
     class_prefix: String,
   )
 }

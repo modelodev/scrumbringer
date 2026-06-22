@@ -40,9 +40,9 @@ pub type Config(msg) {
     locale: Locale,
     cards: List(Card),
     pending_count: Int,
-    detail_model: card_show.Model,
-    detail_card: Option(Card),
-    detail_tasks: List(Task),
+    show_model: card_show.Model,
+    show_card: Option(Card),
+    show_tasks: List(Task),
     current_user_id: Option(Int),
     can_manage_notes: Bool,
     can_manage_structure: Bool,
@@ -86,13 +86,13 @@ fn view_cards_content(config: Config(msg)) -> Element(msg) {
 // =============================================================================
 
 /// Render Card Show when a card is open.
-/// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
+/// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban Card Show)
 pub fn view_card_show(config: Config(msg)) -> Element(msg) {
   show_entry.view(show_entry.Config(
-    model: config.detail_model,
-    card: config.detail_card,
+    model: config.show_model,
+    card: config.show_card,
     cards: config.cards,
-    tasks: config.detail_tasks,
+    tasks: config.show_tasks,
     locale: config.locale,
     current_user_id: config.current_user_id,
     can_manage_notes: config.can_manage_notes,
