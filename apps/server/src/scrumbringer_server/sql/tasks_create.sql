@@ -69,7 +69,10 @@ with type_ok as (
     0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
-    coalesce(created_from_rule_id, 0) as created_from_rule_id
+    coalesce(created_from_rule_id, 0) as created_from_rule_id,
+    0 as automation_execution_id,
+    0 as automation_template_id,
+    0 as automation_template_version
 )
 select
   inserted.*,

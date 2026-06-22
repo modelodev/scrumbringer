@@ -239,6 +239,9 @@ pub type RuleExecution {
     suppression_reason: String,
     user_id: Int,
     user_email: String,
+    template_id: Option(Int),
+    template_version: Option(Int),
+    created_task_id: Option(Int),
     created_at: String,
   )
 }
@@ -277,6 +280,21 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
   )
   use user_id <- decode.optional_field("user_id", 0, decode.int)
   use user_email <- decode.optional_field("user_email", "", decode.string)
+  use template_id <- decode.optional_field(
+    "template_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use template_version <- decode.optional_field(
+    "template_version",
+    None,
+    decode.optional(decode.int),
+  )
+  use created_task_id <- decode.optional_field(
+    "created_task_id",
+    None,
+    decode.optional(decode.int),
+  )
   use created_at <- decode.field("created_at", decode.string)
   decode.success(RuleExecution(
     id: id,
@@ -286,6 +304,9 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
     suppression_reason: suppression_reason,
     user_id: user_id,
     user_email: user_email,
+    template_id: template_id,
+    template_version: template_version,
+    created_task_id: created_task_id,
     created_at: created_at,
   ))
 }

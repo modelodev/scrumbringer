@@ -29,6 +29,41 @@ Si durante la implementacion aparece una contradiccion real con esos planes, se
 debe documentar y aplicar el ajuste minimo. No reabrir decisiones ya cerradas por
 preferencia estetica o refactor oportunista.
 
+### Reanudacion Tras Ejecucion Detenida
+
+Antes de reejecutar este plan hay que tratar el arbol de trabajo como una
+ejecucion parcial, no como un punto limpio.
+
+Pasos obligatorios:
+
+1. Ejecutar `git status --short` y clasificar cambios en:
+   - cambios de dominio/SQL;
+   - cambios de API/servidor;
+   - cambios de UI;
+   - cambios de tests;
+   - archivos nuevos no versionados.
+2. Leer cada archivo modificado antes de tocarlo. No sobrescribir cambios
+   parciales sin entender si implementan ya una decision de este documento.
+3. Identificar modelos duplicados antes de avanzar. En particular, revisar la
+   convivencia entre:
+   - `shared/src/domain/automation.gleam`, si existe;
+   - `shared/src/domain/workflow.gleam`;
+   - `apps/server/src/scrumbringer_server/use_case/rules_engine.gleam`;
+   - dialogs/vistas admin de workflows, reglas, plantillas y metricas.
+4. Si ya hay una migracion parcial de idempotencia por `event_key`, completarla
+   o retirarla conscientemente. No dejar dos estrategias activas a la vez:
+   `(rule_id, task_id/card_id)` y `(rule_id, event_key)`.
+5. Al terminar cada bloque, dejar el repositorio compilando y los tests
+   relevantes verdes antes de pasar al siguiente. No acumular deuda de
+   compilacion para el final.
+
+Decision fuerte:
+
+- Este plan no debe conservar capas legacy por comodidad. Si una vista o tipo
+  antiguo queda sustituido por el modelo nuevo, se elimina o se absorbe en la
+  nueva superficie. La unica excepcion aceptable es una frontera temporal dentro
+  de una misma historia, que debe desaparecer antes del commit final.
+
 ## Alcance Activo
 
 ### Directrices Transversales
@@ -57,6 +92,118 @@ incompatibles entre si:
 - Ningun mockup debe contradecir las decisiones de dominio. Si el modelo impide
   guardar una regla incompleta, los ejemplos deben mostrar estados sanos,
   pausados o `requiere revision`, no configuraciones nuevas con 0 plantillas.
+
+#### Contrato Visual Y De Componentes
+
+`fin_refactor` debe continuar el lenguaje visual ya aplicado en Pool, Plan,
+Kanban, Capacidades y Personas:
+
+```text
+Superficie
+
+[Cabecera]
+Titulo claro
+Proposito en una frase
+Chips resumen                                                [Accion primaria]
+
+[Scope / filtros]
+Busqueda, estado, evento, fecha o nivel segun la vista
+
+[Cuerpo]
+Lista, tabla, matriz o empty state segun la mision real
+```
+
+Reglas de interfaz:
+
+- No crear una nueva familia visual para Automatizaciones, Settings o Wizard.
+- No usar `admin-card` como envoltorio principal si la vista es una superficie
+  de trabajo frecuente. Migrar a `work_surface`.
+- No anidar cards para separar secciones. Usar bandas, filas, tabs/chips o
+  panel/drawer segun corresponda.
+- La accion primaria vive en la cabecera. Acciones raras, destructivas o de
+  mantenimiento viven en menu secundario.
+- Los filtros viven en `filter_bar` salvo que sean pasos de un wizard.
+- Las tabs internas deben parecer tabs/chips operativos, no botones sueltos ni
+  texto dentro de una caja decorativa.
+- En mobile, las acciones principales deben seguir siendo alcanzables sin
+  duplicar controles ni convertir tablas en listas ilegibles.
+
+Componentes a reutilizar antes de crear nuevos:
+
+- `features/layout/work_surface.gleam` para cabecera, resumen, filtros y cuerpo.
+- `ui/filter_bar.gleam` para busqueda, selects y acciones de refinamiento.
+- `ui/data_table.gleam` solo para informacion tabular real: ejecuciones,
+  historial o listados densos.
+- `ui/empty_state.gleam`, `ui/skeleton.gleam`, `ui/error_notice.gleam` para
+  estados remotos.
+- `ui/button.gleam`, `ui/action_menu.gleam`, `ui/confirm_dialog.gleam`,
+  `ui/form_field.gleam`, `ui/modal_header.gleam` para controles comunes.
+- Chips/badges existentes (`ui/badge.gleam`, `ui/signal_chip.gleam`) para
+  estado, salud, conteos y severidad.
+
+Regla de promocion de componentes:
+
+- Los componentes nuevos empiezan en `features/automations/`, `features/projects/`
+  o la feature concreta que los necesite.
+- Solo se suben a `ui/` si quedan usados por al menos dos superficies y su API es
+  evidente.
+- No crear un `admin_surface`, `workflow_builder` o `settings_shell` generico
+  antes de demostrar dos usos reales. La reutilizacion debe reducir duplicacion,
+  no esconder diferencias de mision.
+
+Limpieza visual esperada:
+
+- Eliminar copy que fuerce al usuario a entender tablas tecnicas o conceptos
+  internos.
+- Sustituir enlaces cruzados tipo `ve a plantillas` por flujos integrados donde
+  el usuario pueda crear, escoger o previsualizar sin perder contexto.
+- Mantener el vocabulario de producto: `Automatizaciones`, `Motor`, `Regla`,
+  `Plantilla`, `Ejecucion`, `Pool`, `Card`, `Task`.
+- Evitar mezclar en la misma pantalla terminos tecnicos antiguos (`Workflow`,
+  `Rule Metrics`) con nombres de producto salvo en codigo interno.
+
+#### Accesibilidad Y Validacion De UI
+
+Cada superficie tocada por este plan debe quedar validable con teclado,
+screen-reader basico y agent-browser. No basta con que sea clicable.
+
+Requisitos:
+
+- La cabecera de cada superficie debe tener un titulo unico y reconocible.
+- Los botones de icono o menu secundario deben tener `aria-label`.
+- Los paneles/drawers deben:
+  - cerrar con Escape;
+  - mover foco inicial al primer campo o titulo;
+  - devolver foco al disparador al cerrar;
+  - no dejar foco navegable detras del panel cuando este abierto.
+- Tabs/chips de modo deben exponer estado seleccionado con `aria-selected` o
+  `aria-pressed`, segun el patron usado.
+- Los selects/search inputs usados en builders deben tener label visible o
+  `aria-label` especifico.
+- Los errores de validacion deben estar junto al campo afectado y tambien
+  resumidos cuando bloqueen guardar.
+- Las filas expandibles deben exponer `aria-expanded`.
+- Los estados `Requiere revision`, `Pausado`, `Activo`, `Ruidoso`, `Vencida` y
+  `Bloqueada` no pueden depender solo del color.
+
+Test ids estables obligatorios para agent-browser:
+
+- `automations-surface`
+- `automations-mode-engines`
+- `automations-mode-templates`
+- `automations-mode-executions`
+- `automation-engine-row`
+- `automation-rule-row`
+- `automation-rule-builder`
+- `automation-template-picker`
+- `automation-template-row`
+- `automation-execution-row`
+- `automation-created-task-origin`
+- `project-structure-settings`
+- `project-depth-reduction-confirmation`
+
+Estos `data-testid` no deben sustituir semantica HTML ni labels accesibles; son
+solo anclajes para pruebas.
 
 ### 1. Onboarding / Creacion De Proyecto
 
@@ -286,6 +433,27 @@ Permisos y auditoria:
 - Un motor, regla o plantilla sin ejecuciones puede eliminarse fisicamente.
 - Un motor, regla o plantilla con ejecuciones debe archivarse o pausarse, no
   borrarse fisicamente, para no romper auditoria ni trazabilidad.
+
+#### Fuente De Verdad Del Modelo
+
+El modelo nuevo no puede quedar partido entre un dominio antiguo de workflows y
+un dominio nuevo de automatizaciones.
+
+Decision:
+
+- `domain/automation.gleam` debe ser la fuente de verdad para triggers, scopes,
+  acciones, estados de regla, drafts validables, origen de tasks e idempotencia.
+- `domain/workflow.gleam` puede conservar tipos de transporte o entidades
+  persistidas solo si no duplica la semantica anterior. Si mantiene `RuleTarget`
+  o strings `resource_type/to_state`, debe quedar restringido a frontera
+  SQL/JSON y convertirse inmediatamente a ADTs de `domain/automation.gleam`.
+- La aplicacion no debe tomar decisiones de negocio leyendo strings
+  `resource_type`, `to_state`, `active` o `suppression_reason` directamente.
+- Los codecs deben tener sufijo `_codec` y vivir junto al dominio que codifican.
+- Si una regla no puede representarse como `AutomationTrigger + AutomationAction
+  + AutomationRuleStatus`, no se puede guardar como regla valida.
+- Cualquier dato migrado que no encaje en el modelo nuevo debe entrar como
+  `RequiresReview`, nunca como regla activa parcialmente valida.
 
 #### Eventos Del Motor
 
@@ -609,6 +777,49 @@ Seeds y validacion:
 La consola debe compartir lenguaje visual con Pool, Plan, Kanban, Capacidades y
 Personas.
 
+Estado actual a absorber:
+
+| Codigo actual | Problema | Destino esperado |
+| --- | --- | --- |
+| `features/admin/views/workflows.gleam` | Lista workflows como admin CRUD y salta a reglas como drill-down separado | Modo `Motores` dentro de `features/automations/console.gleam` o equivalente |
+| `features/admin/workflow_rules_view.gleam` | Tabla tecnica de reglas con columnas `resource_type`, `to_state`, `applied/suppressed` | Filas/frases causa -> efecto con expansion ligera |
+| `features/admin/task_templates_view.gleam` | Biblioteca separada y enlazada desde hints | Modo `Plantillas` de la misma consola y picker integrado en rule builder |
+| `features/admin/rule_metrics_view.gleam` | Pantalla de metricas separada, con `admin-card` y filtros propios | Modo `Ejecuciones`/salud con `work_surface`, `filter_bar` y `data_table` |
+| `components/workflow_crud_dialog.gleam` | Dialog CRUD generico y desconectado del flujo | Reemplazar por panel/drawer de motor o formulario feature-local |
+| `components/rule_crud_dialog.gleam` | Campos tecnicos y strings (`resource_type`, `to_state`) | Reemplazar por `rule_builder` basado en ADT y preview obligatoria |
+| `components/task_template_crud_dialog.gleam` | Dialog CRUD reusable pero no contextual | Reutilizar logica util si compensa, pero la UX final vive en biblioteca/picker integrado |
+
+Reglas de migracion:
+
+- No crear la nueva consola dejando accesibles las tres pantallas antiguas como
+  caminos equivalentes.
+- Si una vista antigua queda absorbida, retirar ruta, item de navegacion, tests
+  y copy obsoletos en la misma historia.
+- Si una pieza de los dialogs actuales se reutiliza, debe extraerse como funcion
+  o componente pequeno con responsabilidad concreta. No envolver el custom
+  element viejo dentro de la nueva consola.
+- Las nuevas vistas de automatizaciones deben usar `work_surface` en la misma
+  linea que Plan/Capacidades/Personas, no `section_header + admin-card`.
+- El modo `Ejecuciones` puede usar `data_table`; los modos `Motores` y
+  `Plantillas` no deben convertirse en tablas si una lista expandible o biblioteca
+  con preview expresa mejor la relacion causa/efecto.
+
+Contrato de navegacion:
+
+- Debe existir una sola entrada visible `Automatizaciones`.
+- La ruta/capacidad de deep-link debe identificar:
+  - proyecto;
+  - modo interno: `motores`, `plantillas` o `ejecuciones`;
+  - entidad seleccionada opcional: motor, regla, plantilla o ejecucion.
+- Las rutas antiguas de workflows, plantillas y rule metrics no deben seguir
+  apareciendo en el sidebar ni como destinos principales.
+- Si por compatibilidad tecnica temporal alguna URL antigua existe durante la
+  historia, debe redirigir o delegar a la consola nueva antes del commit final.
+- Los enlaces desde Task Show a origen de automatizacion deben abrir la consola
+  con el modo y entidad correctos, no una pantalla antigua.
+- Los enlaces internos de la consola no deben recargar la aplicacion ni perder
+  proyecto seleccionado.
+
 Estructura recomendada:
 
 ```text
@@ -892,10 +1103,43 @@ Componentes nuevos recomendados, especificos y pequenos:
 - `features/automations/template_usage_summary.gleam`
 - `features/automations/execution_row.gleam`
 - `features/automations/rule_builder.gleam`
+- `features/automations/engine_health.gleam`
+- `features/automations/automation_scope_picker.gleam`
 
 Evitar una abstraccion generica tipo `workflow_builder` hasta que haya una
 segunda necesidad real. La prioridad es claridad de producto y componentes
 pequenos.
+
+Contrato minimo de cada componente nuevo:
+
+- `rule_sentence`: recibe dominio tipado y produce una frase legible. No decide
+  permisos ni dispara acciones.
+- `template_picker`: busqueda, seleccion, empty state, preview compacta y salida
+  tipada. No guarda plantillas por si mismo.
+- `template_usage_summary`: muestra usos, reglas afectadas y version. No abre
+  modales globales.
+- `execution_row`: renderiza una ejecucion de negocio. Duplicados/idempotencia
+  viven en diagnostico avanzado, no como ejecuciones principales.
+- `rule_builder`: mantiene `RuleDraft`, valida hacia `ValidRuleDraft` y solo
+  emite guardar cuando la regla es representable.
+- `engine_health`: resume activo/pausado/requiere revision/ruidoso sin sustituir
+  a la lista de reglas.
+- `automation_scope_picker`: ofrece solo scopes permitidos por ADT:
+  `AnyCard` y `AtDepth`. No subtree, no query builder, no selector de card
+  concreta.
+
+Tests de reutilizacion y limpieza:
+
+- Ninguna vista nueva de automatizaciones renderiza `section_header` como
+  cabecera principal si ya puede usar `work_surface`.
+- `rule_crud_dialog` y `workflow_crud_dialog` no quedan usados si el builder y
+  panel nuevo los sustituyen.
+- `task_template_crud_dialog` solo queda si se justifica como componente real de
+  biblioteca; si se mantiene como compatibilidad del flujo viejo, se elimina.
+- No quedan rutas principales separadas para `Plantillas` o `Rule Metrics` si
+  los modos internos de la consola cubren su mision.
+- Los textos visibles no mezclan `Workflow`/`Rule Metrics` con `Motor`/
+  `Ejecuciones`.
 
 #### Tests De Comportamiento
 
@@ -986,17 +1230,80 @@ errores conocidos.
 
 Para controlar riesgo y evitar una gran reescritura:
 
-1. Corregir rango de fechas de metricas y tests asociados.
-2. Definir `AutomationTrigger` como ADT y conectar los triggers soportados.
-3. Crear la consola `Automatizaciones` con cabecera, chips, filtros y modo
-   `Motores`, reutilizando endpoints actuales.
-4. Sustituir tabla de reglas por `rule_sentence` y filas expandibles.
-5. Integrar `Plantillas` como modo interno con busqueda, usos y preview.
-6. Integrar `Ejecuciones` como modo interno usando `data_table`.
-7. Rehacer creacion/edicion con `rule_builder` en panel/drawer.
-8. Cubrir tests de comportamiento por trigger soportado.
-9. Retirar rutas, vistas y copy duplicados que hayan quedado obsoletos.
-10. Validar con agent-browser los flujos completos y ajustar UI/UX.
+1. **Auditoria de reanudacion**
+   - Clasificar cambios existentes.
+   - Identificar tipos/vistas duplicadas.
+   - Confirmar que Pool, Plan, Kanban, Capacidades, Personas, Card Show y Task
+     Show siguen siendo la referencia visual.
+
+2. **Base tipada y SQL**
+   - Definir o consolidar `AutomationTrigger`, `AutomationAction`,
+     `AutomationRuleStatus`, `RuleDraft`, `ValidRuleDraft` y `TaskCreationSource`.
+   - Eliminar supuestos de multiples plantillas por regla si siguen vivos.
+   - Completar idempotencia por `(event_key, rule_id)`.
+   - Corregir rango de fechas de metricas y tests asociados.
+
+3. **Slice vertical minimo**
+   - Mantener endpoints existentes solo si sirven al nuevo modelo.
+   - Crear o adaptar una regla `TaskCompleted -> CreateTask(template)`.
+   - Completar una task y verificar: task creada, Pool, ejecucion, trazabilidad en
+     Task Show.
+   - Este slice debe compilar y tener tests antes de tocar el resto de UI.
+
+4. **Consola `Automatizaciones` / modo `Motores`**
+   - Cabecera con `work_surface`.
+   - Chips resumen: motores activos, reglas activas, plantillas, tasks creadas.
+   - Filtros con `filter_bar`: busqueda, estado, evento.
+   - Lista expandible de motores con frases causa -> efecto.
+   - Sin tablas tecnicas como cuerpo principal.
+
+5. **Rule builder**
+   - Panel/drawer progresivo.
+   - Trigger tipado.
+   - Scope de card limitado a `AnyCard` o `AtDepth`.
+   - Selector de plantilla searchable.
+   - Preview obligatoria.
+   - Guardar deshabilitado hasta `ValidRuleDraft`.
+   - Backend rechaza configuraciones incompletas.
+
+6. **Modo `Plantillas`**
+   - Biblioteca interna con busqueda, usos, preview y variables como chips.
+   - Crear plantilla desde el builder debe volver al builder con la plantilla
+     seleccionada.
+   - Edicion de plantilla usada avisa que solo afecta futuras tasks.
+
+7. **Modo `Ejecuciones` y salud**
+   - Tabla densa con `data_table`.
+   - Fecha, motor, regla, plantilla, origen, outcome, task creada.
+   - Diagnostico de duplicados separado de ejecuciones de negocio.
+   - Salud: pausado, requiere revision, plantilla sin uso, motor ruidoso.
+
+8. **Triggers restantes**
+   - `TaskCreated`, `TaskClaimed`, `TaskReleased`, `CardActivated`,
+     `CardClosed`.
+   - Cada trigger se implementa con dominio, servidor, UI, tests y caso
+     agent-browser.
+   - No se implementan triggers por vencimiento.
+
+9. **Limpieza de rutas/vistas obsoletas**
+   - Retirar rutas principales separadas de plantillas/metricas si quedan
+     absorbidas.
+   - Eliminar dialogs CRUD que ya no se usen.
+   - Borrar tests que validen comportamiento viejo y reemplazarlos por tests de
+     producto.
+   - Eliminar copy/hints que manden al usuario a pantallas separadas ya
+     absorbidas.
+
+10. **Seeds y validacion integral**
+    - Redisenar seeds para proyecto sano y proyecto de estres.
+    - Ejecutar guion agent-browser completo en desktop y mobile.
+    - Corregir defectos, repetir guion y solo cerrar cuando no haya errores
+      conocidos.
+
+11. **Refactor final**
+    - Ejecutar revision con `gleam-refactor`.
+    - Limpiar codigo innecesario, sobreingenieria y duplicacion residual.
+    - Confirmar que no quedan componentes genericos creados sin dos usos reales.
 
 #### Limpieza Esperada
 

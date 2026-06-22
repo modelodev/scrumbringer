@@ -111,28 +111,34 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 }
 
 pub fn view_workflow_rules(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("section")], [
-    ui_button.text(
-      t(config, i18n_text.BackToWorkflows),
-      config.on_back_clicked,
-      ui_button.Secondary,
-      ui_button.ViewAction,
-    )
-      |> ui_button.view,
-    // Section header with add button (Story 4.8: consistent icons)
-    section_header.view_with_action(
-      icons.Rules,
-      t(config, i18n_text.RulesTitle(config.workflow_name)),
-      dialog.add_button_with_locale(
-        config.locale,
-        i18n_text.CreateRule,
-        config.on_create_clicked,
+  div(
+    [
+      attribute.class("section"),
+      attribute.attribute("data-testid", "automation-rule-builder"),
+    ],
+    [
+      ui_button.text(
+        t(config, i18n_text.BackToWorkflows),
+        config.on_back_clicked,
+        ui_button.Secondary,
+        ui_button.ViewAction,
+      )
+        |> ui_button.view,
+      // Section header with add button (Story 4.8: consistent icons)
+      section_header.view_with_action(
+        icons.Rules,
+        t(config, i18n_text.RulesTitle(config.workflow_name)),
+        dialog.add_button_with_locale(
+          config.locale,
+          i18n_text.CreateRule,
+          config.on_create_clicked,
+        ),
       ),
-    ),
-    view_rules_table(config, config.rules.rules, config.rules.rules_metrics),
-    // Rule CRUD dialog component (handles create/edit/delete internally)
-    view_rule_crud_dialog(config),
-  ])
+      view_rules_table(config, config.rules.rules, config.rules.rules_metrics),
+      // Rule CRUD dialog component (handles create/edit/delete internally)
+      view_rule_crud_dialog(config),
+    ],
+  )
 }
 
 fn find_workflow_name(
@@ -239,6 +245,7 @@ fn view_rule_row_expandable(
     tr(
       [
         attribute.class(row_class),
+        attribute.attribute("data-testid", "automation-rule-row"),
         attribute.attribute(
           "aria-expanded",
           attribute_value.boolean(is_expanded),
@@ -552,7 +559,10 @@ fn view_attach_template_modal_body(
             text(t(config, i18n_text.AvailableTemplatesInProject)),
           ]),
           div(
-            [attribute.class("radio-group template-radio-list")],
+            [
+              attribute.class("radio-group template-radio-list"),
+              attribute.attribute("data-testid", "automation-template-picker"),
+            ],
             list.map(templates, fn(tmpl) {
               view_template_radio_option(config, tmpl)
             }),

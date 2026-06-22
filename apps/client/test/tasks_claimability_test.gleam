@@ -57,5 +57,6 @@ fn sample_task(state: task_state.TaskState, blocked_count: Int) -> Task {
     has_new_notes: False,
     blocked_count: blocked_count,
     dependencies: [],
+    automation_origin: None,
   )
 }

@@ -72,6 +72,17 @@ pub type Task {
     blocked_count: Int,
     /// Story 5.6: Dependencies blocking this task.
     dependencies: List(TaskDependency),
+    automation_origin: Option(AutomationOrigin),
+  )
+}
+
+/// Traceability for a task created by automation.
+pub type AutomationOrigin {
+  AutomationOrigin(
+    rule_id: Int,
+    execution_id: Option(Int),
+    template_id: Option(Int),
+    template_version: Option(Int),
   )
 }
 

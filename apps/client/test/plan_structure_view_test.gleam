@@ -550,5 +550,6 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
       _ -> 0
     },
     dependencies: [],
+    automation_origin: None,
   )
 }

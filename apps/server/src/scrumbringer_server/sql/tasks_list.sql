@@ -41,6 +41,9 @@ select
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
     when (
@@ -63,6 +66,14 @@ select
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = t.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(

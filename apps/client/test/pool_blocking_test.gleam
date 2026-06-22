@@ -70,5 +70,6 @@ fn sample_task(id: Int, dependencies: List(TaskDependency)) {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: dependencies,
+    automation_origin: None,
   )
 }

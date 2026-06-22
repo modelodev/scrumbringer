@@ -45,7 +45,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
-import lustre/attribute.{attribute, class}
+import lustre/attribute.{type Attribute, attribute, class}
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, caption, div, span, table, td, text, th, thead, tr,
@@ -83,6 +83,7 @@ pub opaque type DataTableConfig(row, msg) {
     columns: List(Column(row, msg)),
     rows: List(row),
     key_fn: fn(row) -> String,
+    row_attrs_fn: fn(row) -> List(Attribute(msg)),
     empty_state: Option(Element(msg)),
     css_class: String,
     caption: Option(String),
@@ -101,6 +102,7 @@ pub fn new() -> DataTableConfig(row, msg) {
     columns: [],
     rows: [],
     key_fn: fn(_) { "" },
+    row_attrs_fn: fn(_) { [] },
     empty_state: None,
     css_class: "table data-table",
     caption: None,
@@ -157,6 +159,14 @@ pub fn with_key(
   DataTableConfig(..config, key_fn: key_fn)
 }
 
+/// Set attributes to apply to each rendered row.
+pub fn with_row_attrs(
+  config: DataTableConfig(row, msg),
+  row_attrs_fn: fn(row) -> List(Attribute(msg)),
+) -> DataTableConfig(row, msg) {
+  DataTableConfig(..config, row_attrs_fn: row_attrs_fn)
+}
+
 /// Set error message prefix for failed Remote state.
 pub fn with_error_prefix(
   config: DataTableConfig(row, msg),
@@ -175,6 +185,7 @@ pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
     columns:,
     rows:,
     key_fn:,
+    row_attrs_fn:,
     empty_state:,
     css_class:,
     caption: cap,
@@ -197,7 +208,9 @@ pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
           thead([], [tr([], list.map(columns, view_header))]),
           keyed.tbody(
             [],
-            list.map(rows, fn(row) { #(key_fn(row), view_row(columns, row)) }),
+            list.map(rows, fn(row) {
+              #(key_fn(row), view_row(columns, row, row_attrs_fn(row)))
+            }),
           ),
         ]),
       ])
@@ -245,9 +258,13 @@ fn view_header(column: Column(row, msg)) -> Element(msg) {
   }
 }
 
-fn view_row(columns: List(Column(row, msg)), row: row) -> Element(msg) {
+fn view_row(
+  columns: List(Column(row, msg)),
+  row: row,
+  row_attrs: List(Attribute(msg)),
+) -> Element(msg) {
   tr(
-    [attribute("role", "row")],
+    list.append([attribute("role", "row")], row_attrs),
     list.map(columns, fn(col) {
       let Column(render:, header:, cell_class:, ..) = col
       let base_attrs = [attribute("data-label", header)]

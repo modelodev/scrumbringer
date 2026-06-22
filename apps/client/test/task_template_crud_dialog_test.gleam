@@ -64,10 +64,7 @@ pub fn create_dialog_renders_shared_template_fields_test() {
   assert_contains(html, "Template name")
   assert_contains(html, "Template description")
   assert_contains(html, "Available variables")
-  assert_contains(
-    html,
-    "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
-  )
+  assert_contains(html, "{{origin}}, {{trigger}}, {{project}}, {{user}}")
   assert_contains(html, "Bug")
   assert_contains(html, "3 - Medium")
 }

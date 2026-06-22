@@ -34,6 +34,7 @@ fn task(id: Int, title: String, type_id: Int, state) -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }
 

@@ -297,6 +297,9 @@ fn view_workflows_table(
         ),
       ])
       |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) })
+      |> data_table.with_row_attrs(fn(_w: Workflow) {
+        [attribute.attribute("data-testid", "automation-engine-row")]
+      })
       |> data_table.with_empty_state(empty_state.simple(
         "cog-6-tooth",
         t(config, i18n_text.NoWorkflowsYet),

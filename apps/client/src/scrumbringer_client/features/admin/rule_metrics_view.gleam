@@ -517,32 +517,42 @@ fn view_drilldown_executions_loaded(
   config: Config(msg),
   response: api_rule_metrics.RuleExecutionsResponse,
 ) -> Element(msg) {
-  let origin_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_rule_metrics.RuleExecution(_, task_id, card_id, _, _, _, _, _) =
-      exec
-    text(execution_target_label(task_id, card_id))
+  let origin_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec: api_rule_metrics.RuleExecution,
+  ) {
+    text(execution_target_label(exec.task_id, exec.card_id))
   }
   let outcome_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
-    exec,
+    exec: api_rule_metrics.RuleExecution,
   ) {
-    let api_rule_metrics.RuleExecution(_, _, _, outcome, _, _, _, _) = exec
-    span([attribute.class(outcome_class_for(outcome))], [
+    span([attribute.class(outcome_class_for(exec.outcome))], [
       text(outcome_text_for(config, exec)),
     ])
   }
-  let user_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(exec) {
-    let api_rule_metrics.RuleExecution(_, _, _, _, _, _, user_email, _) = exec
-    text(display_user_email(user_email))
+  let user_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec: api_rule_metrics.RuleExecution,
+  ) {
+    text(display_user_email(exec.user_email))
   }
   let timestamp_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
-    exec,
+    exec: api_rule_metrics.RuleExecution,
   ) {
-    let api_rule_metrics.RuleExecution(_, _, _, _, _, _, _, created_at) = exec
-    text(created_at)
+    text(exec.created_at)
   }
-  let key_fn: fn(api_rule_metrics.RuleExecution) -> String = fn(exec) {
-    let api_rule_metrics.RuleExecution(id, _, _, _, _, _, _, _) = exec
-    int.to_string(id)
+  let created_task_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec: api_rule_metrics.RuleExecution,
+  ) {
+    text(option_id_label(exec.created_task_id, "task #"))
+  }
+  let template_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
+    exec: api_rule_metrics.RuleExecution,
+  ) {
+    text(execution_template_label(exec.template_id, exec.template_version))
+  }
+  let key_fn: fn(api_rule_metrics.RuleExecution) -> String = fn(
+    exec: api_rule_metrics.RuleExecution,
+  ) {
+    int.to_string(exec.id)
   }
 
   div([attribute.class("drilldown-executions")], [
@@ -561,16 +571,40 @@ fn view_drilldown_executions_loaded(
             |> data_table.with_columns([
               data_table.column(t(config, i18n_text.Origin), origin_cell),
               data_table.column(t(config, i18n_text.Outcome), outcome_cell),
+              data_table.column("Created task", created_task_cell),
+              data_table.column("Template", template_cell),
               data_table.column(t(config, i18n_text.User), user_cell),
               data_table.column(t(config, i18n_text.Timestamp), timestamp_cell),
             ])
             |> data_table.with_rows(executions, key_fn)
+            |> data_table.with_row_attrs(fn(_exec) {
+              [attribute.attribute("data-testid", "automation-execution-row")]
+            })
             |> data_table.view(),
           // Pagination
           view_executions_pagination(config, response.pagination),
         ])
     },
   ])
+}
+
+fn execution_template_label(
+  template_id: opt.Option(Int),
+  template_version: opt.Option(Int),
+) -> String {
+  case template_id, template_version {
+    opt.Some(id), opt.Some(version) ->
+      "#" <> int.to_string(id) <> " v" <> int.to_string(version)
+    opt.Some(id), _ -> "#" <> int.to_string(id)
+    _, _ -> "-"
+  }
+}
+
+fn option_id_label(value: opt.Option(Int), prefix: String) -> String {
+  case value {
+    opt.Some(id) -> prefix <> int.to_string(id)
+    opt.None -> "-"
+  }
 }
 
 fn execution_target_label(

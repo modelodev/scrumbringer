@@ -28,7 +28,8 @@ WITH current AS (
     name = case when $4 = '__unset__' then name else $4 end,
     description = case when $5 = '__unset__' then description else nullif($5, '') end,
     type_id = type_ok.type_id,
-    priority = case when $7 <= 0 then priority else $7 end
+    priority = case when $7 <= 0 then priority else $7 end,
+    version = version + 1
   FROM type_ok
   WHERE task_templates.id = $1
     AND task_templates.org_id = $3
@@ -42,6 +43,7 @@ WITH current AS (
     task_templates.type_id,
     task_templates.priority,
     task_templates.created_by,
+    task_templates.version,
     to_char(task_templates.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
 )
 SELECT

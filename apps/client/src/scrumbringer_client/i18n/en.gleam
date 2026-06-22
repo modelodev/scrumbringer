@@ -847,7 +847,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanSummaryOngoing -> "Ongoing"
 
     // Workflows
-    text.AdminWorkflows -> "Workflows"
+    text.AdminWorkflows -> "Automations"
     text.WorkflowsTitle -> "Workflows"
     text.WorkflowsOrgTitle -> "Organization Workflows"
     text.WorkflowsProjectTitle(project_name) -> "Workflows - " <> project_name
@@ -957,9 +957,9 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleteConfirm(name) ->
       "Delete template \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{father}} (origin task/card), {{from_state}} (previous state), {{to_state}} (new state), {{project}} (project name), {{user}} (user who triggered)"
+      "Variables: {{origin}} (origin task/card), {{trigger}} (event), {{project}} (project name), {{user}} (user who triggered)"
     text.TaskTemplateDescriptionHint ->
-      "Use variables in the description: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+      "Use variables in the description: {{origin}}, {{trigger}}, {{project}}, {{user}}"
     text.AvailableVariables -> "Available variables"
     text.SelectTaskType -> "Select type"
 

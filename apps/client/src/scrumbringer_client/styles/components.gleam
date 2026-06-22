@@ -37,5 +37,17 @@ pub fn css() -> List(String) {
     // Icon theme class for dark mode
     ".icon-theme-dark { color: var(--sb-text-soft); }",
     ".icon-theme-dark svg { filter: none; }",
+    ".automations-console { display: flex; flex-direction: column; gap: 14px; }",
+    ".automations-console__modes { display: inline-flex; align-items: center; gap: 4px; width: fit-content; max-width: 100%; padding: 4px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-elevated); overflow-x: auto; }",
+    ".automations-console__mode { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 7px 12px; border-radius: 6px; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); text-decoration: none; white-space: nowrap; }",
+    ".automations-console__mode:hover, .automations-console__mode:focus-visible { color: var(--sb-text-strong); background: var(--sb-surface); outline: none; }",
+    ".automations-console__mode.is-active { color: var(--sb-text-strong); background: var(--sb-surface); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sb-primary) 36%, var(--sb-border)); }",
+    ".automations-console__content > .section { padding: 0; }",
+    ".project-structure-settings { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sb-border); }",
+    ".project-structure-settings__title { margin: 0; color: var(--sb-text); font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); }",
+    ".project-structure-settings__hint, .project-structure-settings__summary { margin: 0; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
+    ".project-structure-settings__levels { display: grid; gap: 6px; }",
+    ".project-structure-settings__level { min-height: 30px; display: flex; align-items: center; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
+    "@media (max-width: 640px) { .automations-console__modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } .automations-console__mode { min-width: 0; padding-inline: 6px; } }",
   ]
 }

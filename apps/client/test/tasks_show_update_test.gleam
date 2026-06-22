@@ -104,6 +104,7 @@ fn sample_task() -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }
 

@@ -174,5 +174,6 @@ fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }

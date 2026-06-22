@@ -54,6 +54,7 @@ fn make_task(id: Int, card_id: Int) -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: option.None,
   )
 }
 

@@ -983,9 +983,9 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleteConfirm(name) ->
       "¿Eliminar la plantilla \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{father}} (tarea/tarjeta origen), {{from_state}} (estado anterior), {{to_state}} (estado nuevo), {{project}} (nombre del proyecto), {{user}} (usuario que disparó)"
+      "Variables: {{origin}} (tarea/tarjeta origen), {{trigger}} (evento), {{project}} (nombre del proyecto), {{user}} (usuario que disparó)"
     text.TaskTemplateDescriptionHint ->
-      "Usa variables en la descripción: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+      "Usa variables en la descripción: {{origin}}, {{trigger}}, {{project}}, {{user}}"
     text.AvailableVariables -> "Variables disponibles"
     text.SelectTaskType -> "Selecciona tipo"
 

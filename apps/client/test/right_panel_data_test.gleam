@@ -141,5 +141,6 @@ fn task(id: Int, state: task_state.TaskState) {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }

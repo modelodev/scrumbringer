@@ -8,6 +8,7 @@ select
   coalesce(t.description, '') as description,
   t.type_id,
   t.priority,
+  t.version,
   t.created_by,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
   rt.execution_order

@@ -705,7 +705,7 @@ fn view_template_variables_hint(model: Model) -> Element(Msg) {
       text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
     ]),
     span([attribute.class("field-variables-list")], [
-      text("{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"),
+      text("{{origin}}, {{trigger}}, {{project}}, {{user}}"),
     ]),
   ])
 }

@@ -111,6 +111,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         div([attribute.class("task-card-actions-left")], [
           claim_action,
           due_signal(config),
+          automation_origin_signal(config.task.automation_origin),
           top_left_action,
         ]),
         div([attribute.class("task-card-actions-right")], [
@@ -211,6 +212,26 @@ fn due_signal(config: Config(msg)) -> Element(msg) {
         ],
         [icons.nav_icon(icons.Calendar, icons.XSmall)],
       )
+    option.None -> element.none()
+  }
+}
+
+fn automation_origin_signal(
+  origin: Option(domain_task.AutomationOrigin),
+) -> Element(msg) {
+  case origin {
+    option.Some(domain_task.AutomationOrigin(rule_id: rule_id, ..)) -> {
+      let label = "Created by automation rule #" <> int.to_string(rule_id)
+      span(
+        [
+          attribute.class("task-card-signal task-card-signal-automation"),
+          attribute.attribute("data-testid", "automation-created-task-origin"),
+          attribute.attribute("title", label),
+          attribute.attribute("aria-label", label),
+        ],
+        [icons.nav_icon(icons.Automation, icons.XSmall)],
+      )
+    }
     option.None -> element.none()
   }
 }

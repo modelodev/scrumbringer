@@ -104,6 +104,7 @@ fn make_task(
     has_new_notes: False,
     blocked_count: blocked_count,
     dependencies: dependencies,
+    automation_origin: None,
   )
 }
 

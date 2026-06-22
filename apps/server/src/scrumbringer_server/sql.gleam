@@ -3411,7 +3411,7 @@ pub type RuleExecutionsCheckRow {
 }
 
 /// name: rule_executions_check
-/// Check if a rule has already been executed for a given target (idempotency).
+/// Check if a rule has already been executed for a given event (idempotency).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3419,8 +3419,7 @@ pub type RuleExecutionsCheckRow {
 pub fn rule_executions_check(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: Int,
-  arg_3: Int,
+  arg_2: String,
 ) -> Result(pog.Returned(RuleExecutionsCheckRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -3430,23 +3429,19 @@ pub fn rule_executions_check(
   }
 
   "-- name: rule_executions_check
--- Check if a rule has already been executed for a given target (idempotency).
+-- Check if a rule has already been executed for a given event (idempotency).
 select
   id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason
 from rule_executions
 where rule_id = $1
-  and (
-    (task_id is not null and task_id = nullif($2, 0))
-    or (card_id is not null and card_id = nullif($3, 0))
-  )
+  and event_key = $2
 limit 1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -3509,6 +3504,9 @@ pub type RuleExecutionsListRow {
     suppression_reason: String,
     user_id: Int,
     user_email: String,
+    template_id: Int,
+    template_version: Int,
+    created_task_id: Int,
     created_at: String,
   )
 }
@@ -3535,7 +3533,10 @@ pub fn rule_executions_list(
     use suppression_reason <- decode.field(4, decode.string)
     use user_id <- decode.field(5, decode.int)
     use user_email <- decode.field(6, decode.string)
-    use created_at <- decode.field(7, decode.string)
+    use template_id <- decode.field(7, decode.int)
+    use template_version <- decode.field(8, decode.int)
+    use created_task_id <- decode.field(9, decode.int)
+    use created_at <- decode.field(10, decode.string)
     decode.success(RuleExecutionsListRow(
       id:,
       task_id:,
@@ -3544,6 +3545,9 @@ pub fn rule_executions_list(
       suppression_reason:,
       user_id:,
       user_email:,
+      template_id:,
+      template_version:,
+      created_task_id:,
       created_at:,
     ))
   }
@@ -3558,6 +3562,9 @@ select
     coalesce(re.suppression_reason, '') as suppression_reason,
     coalesce(re.user_id, 0) as user_id,
     coalesce(u.email, '') as user_email,
+    coalesce(re.template_id, 0) as template_id,
+    coalesce(re.template_version, 0) as template_version,
+    coalesce(re.created_task_id, 0) as created_task_id,
     to_char(re.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
 from rule_executions re
 left join users u on u.id = re.user_id
@@ -3587,11 +3594,15 @@ pub type RuleExecutionsLogRow {
   RuleExecutionsLogRow(
     id: Int,
     rule_id: Int,
+    event_key: String,
     task_id: Int,
     card_id: Int,
     outcome: String,
     suppression_reason: String,
     user_id: Int,
+    template_id: Int,
+    template_version: Int,
+    created_task_id: Int,
     created_at: String,
   )
 }
@@ -3605,29 +3616,41 @@ pub type RuleExecutionsLogRow {
 pub fn rule_executions_log(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: Int,
+  arg_2: String,
   arg_3: Int,
-  arg_4: String,
+  arg_4: Int,
   arg_5: String,
-  arg_6: Int,
+  arg_6: String,
+  arg_7: Int,
+  arg_8: Int,
+  arg_9: Int,
+  arg_10: Int,
 ) -> Result(pog.Returned(RuleExecutionsLogRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use rule_id <- decode.field(1, decode.int)
-    use task_id <- decode.field(2, decode.int)
-    use card_id <- decode.field(3, decode.int)
-    use outcome <- decode.field(4, decode.string)
-    use suppression_reason <- decode.field(5, decode.string)
-    use user_id <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
+    use event_key <- decode.field(2, decode.string)
+    use task_id <- decode.field(3, decode.int)
+    use card_id <- decode.field(4, decode.int)
+    use outcome <- decode.field(5, decode.string)
+    use suppression_reason <- decode.field(6, decode.string)
+    use user_id <- decode.field(7, decode.int)
+    use template_id <- decode.field(8, decode.int)
+    use template_version <- decode.field(9, decode.int)
+    use created_task_id <- decode.field(10, decode.int)
+    use created_at <- decode.field(11, decode.string)
     decode.success(RuleExecutionsLogRow(
       id:,
       rule_id:,
+      event_key:,
       task_id:,
       card_id:,
       outcome:,
       suppression_reason:,
       user_id:,
+      template_id:,
+      template_version:,
+      created_task_id:,
       created_at:,
     ))
   }
@@ -3636,38 +3659,54 @@ pub fn rule_executions_log(
 -- Log a rule execution for idempotency tracking and metrics.
 insert into rule_executions (
   rule_id,
+  event_key,
   task_id,
   card_id,
   outcome,
   suppression_reason,
-  user_id
+  user_id,
+  template_id,
+  template_version,
+  created_task_id
 )
 values (
   $1,
-  nullif($2, 0),
+  $2,
   nullif($3, 0),
-  $4,
-  nullif($5, ''),
-  $6
+  nullif($4, 0),
+  $5,
+  nullif($6, ''),
+  nullif($7, 0),
+  nullif($8, 0),
+  nullif($9, 0),
+  nullif($10, 0)
 )
 on conflict do nothing
 returning
   id,
   rule_id,
+  event_key,
   coalesce(task_id, 0) as task_id,
   coalesce(card_id, 0) as card_id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason,
   coalesce(user_id, 0) as user_id,
+  coalesce(template_id, 0) as template_id,
+  coalesce(template_version, 0) as template_version,
+  coalesce(created_task_id, 0) as created_task_id,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_4))
   |> pog.parameter(pog.text(arg_5))
-  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.text(arg_6))
+  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.int(arg_8))
+  |> pog.parameter(pog.int(arg_9))
+  |> pog.parameter(pog.int(arg_10))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4473,6 +4512,7 @@ pub type RulesGetTemplatesForExecutionRow {
     description: String,
     type_id: Int,
     priority: Int,
+    version: Int,
     created_by: Int,
     created_at: String,
     execution_order: Int,
@@ -4497,9 +4537,10 @@ pub fn rules_get_templates_for_execution(
     use description <- decode.field(4, decode.string)
     use type_id <- decode.field(5, decode.int)
     use priority <- decode.field(6, decode.int)
-    use created_by <- decode.field(7, decode.int)
-    use created_at <- decode.field(8, decode.string)
-    use execution_order <- decode.field(9, decode.int)
+    use version <- decode.field(7, decode.int)
+    use created_by <- decode.field(8, decode.int)
+    use created_at <- decode.field(9, decode.string)
+    use execution_order <- decode.field(10, decode.int)
     decode.success(RulesGetTemplatesForExecutionRow(
       id:,
       org_id:,
@@ -4508,6 +4549,7 @@ pub fn rules_get_templates_for_execution(
       description:,
       type_id:,
       priority:,
+      version:,
       created_by:,
       created_at:,
       execution_order:,
@@ -4524,6 +4566,7 @@ select
   coalesce(t.description, '') as description,
   t.type_id,
   t.priority,
+  t.version,
   t.created_by,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   rt.execution_order
@@ -6303,6 +6346,9 @@ pub type TasksClaimRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     type_name: String,
     type_icon: String,
     is_ongoing: Bool,
@@ -6345,14 +6391,17 @@ pub fn tasks_claim(
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
-    use type_name <- decode.field(19, decode.string)
-    use type_icon <- decode.field(20, decode.string)
-    use is_ongoing <- decode.field(21, decode.bool)
-    use ongoing_by_user_id <- decode.field(22, decode.int)
-    use card_title <- decode.field(23, decode.string)
-    use card_color <- decode.field(24, decode.string)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(19, decode.int)
+    use automation_template_id <- decode.field(20, decode.int)
+    use automation_template_version <- decode.field(21, decode.int)
+    use type_name <- decode.field(22, decode.string)
+    use type_icon <- decode.field(23, decode.string)
+    use is_ongoing <- decode.field(24, decode.bool)
+    use ongoing_by_user_id <- decode.field(25, decode.int)
+    use card_title <- decode.field(26, decode.string)
+    use card_color <- decode.field(27, decode.string)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -6373,6 +6422,9 @@ pub fn tasks_claim(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       type_name:,
       type_icon:,
       is_ongoing:,
@@ -6459,6 +6511,9 @@ with recursive claim_target as (
 )
 select
   updated.*,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
@@ -6470,6 +6525,14 @@ select
 from updated
 join task_types tt on tt.id = updated.type_id
 left join cards c on c.id = updated.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = updated.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(
@@ -6529,6 +6592,9 @@ pub type TasksCompleteRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     type_name: String,
     type_icon: String,
     is_ongoing: Bool,
@@ -6571,14 +6637,17 @@ pub fn tasks_complete(
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
-    use type_name <- decode.field(19, decode.string)
-    use type_icon <- decode.field(20, decode.string)
-    use is_ongoing <- decode.field(21, decode.bool)
-    use ongoing_by_user_id <- decode.field(22, decode.int)
-    use card_title <- decode.field(23, decode.string)
-    use card_color <- decode.field(24, decode.string)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(19, decode.int)
+    use automation_template_id <- decode.field(20, decode.int)
+    use automation_template_version <- decode.field(21, decode.int)
+    use type_name <- decode.field(22, decode.string)
+    use type_icon <- decode.field(23, decode.string)
+    use is_ongoing <- decode.field(24, decode.bool)
+    use ongoing_by_user_id <- decode.field(25, decode.int)
+    use card_title <- decode.field(26, decode.string)
+    use card_color <- decode.field(27, decode.string)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -6599,6 +6668,9 @@ pub fn tasks_complete(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       type_name:,
       type_icon:,
       is_ongoing:,
@@ -6653,6 +6725,9 @@ with updated as (
 )
 select
   updated.*,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
@@ -6664,6 +6739,14 @@ select
 from updated
 join task_types tt on tt.id = updated.type_id
 left join cards c on c.id = updated.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = updated.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(
@@ -6723,6 +6806,9 @@ pub type TasksCreateRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     type_name: String,
     type_icon: String,
     is_ongoing: Bool,
@@ -6773,14 +6859,17 @@ pub fn tasks_create(
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
-    use type_name <- decode.field(19, decode.string)
-    use type_icon <- decode.field(20, decode.string)
-    use is_ongoing <- decode.field(21, decode.bool)
-    use ongoing_by_user_id <- decode.field(22, decode.int)
-    use card_title <- decode.field(23, decode.string)
-    use card_color <- decode.field(24, decode.string)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(19, decode.int)
+    use automation_template_id <- decode.field(20, decode.int)
+    use automation_template_version <- decode.field(21, decode.int)
+    use type_name <- decode.field(22, decode.string)
+    use type_icon <- decode.field(23, decode.string)
+    use is_ongoing <- decode.field(24, decode.bool)
+    use ongoing_by_user_id <- decode.field(25, decode.int)
+    use card_title <- decode.field(26, decode.string)
+    use card_color <- decode.field(27, decode.string)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -6801,6 +6890,9 @@ pub fn tasks_create(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       type_name:,
       type_icon:,
       is_ongoing:,
@@ -6883,7 +6975,10 @@ with type_ok as (
     0 as parent_card_id,
     pool_lifetime_s,
     coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
-    coalesce(created_from_rule_id, 0) as created_from_rule_id
+    coalesce(created_from_rule_id, 0) as created_from_rule_id,
+    0 as automation_execution_id,
+    0 as automation_template_id,
+    0 as automation_template_version
 )
 select
   inserted.*,
@@ -7026,6 +7121,9 @@ pub type TasksGetForUserRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     dependencies: String,
     blocked_count: Int,
   )
@@ -7067,8 +7165,11 @@ pub fn tasks_get_for_user(
     use pool_lifetime_s <- decode.field(22, decode.int)
     use last_entered_pool_at <- decode.field(23, decode.string)
     use created_from_rule_id <- decode.field(24, decode.int)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(25, decode.int)
+    use automation_template_id <- decode.field(26, decode.int)
+    use automation_template_version <- decode.field(27, decode.int)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
@@ -7095,6 +7196,9 @@ pub fn tasks_get_for_user(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       dependencies:,
       blocked_count:,
     ))
@@ -7143,11 +7247,22 @@ select
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = t.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(
@@ -7219,6 +7334,9 @@ pub type TasksListRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     has_new_notes: Bool,
     dependencies: String,
     blocked_count: Int,
@@ -7266,9 +7384,12 @@ pub fn tasks_list(
     use pool_lifetime_s <- decode.field(22, decode.int)
     use last_entered_pool_at <- decode.field(23, decode.string)
     use created_from_rule_id <- decode.field(24, decode.int)
-    use has_new_notes <- decode.field(25, decode.bool)
-    use dependencies <- decode.field(26, decode.string)
-    use blocked_count <- decode.field(27, decode.int)
+    use automation_execution_id <- decode.field(25, decode.int)
+    use automation_template_id <- decode.field(26, decode.int)
+    use automation_template_version <- decode.field(27, decode.int)
+    use has_new_notes <- decode.field(28, decode.bool)
+    use dependencies <- decode.field(29, decode.string)
+    use blocked_count <- decode.field(30, decode.int)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -7295,6 +7416,9 @@ pub fn tasks_list(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       has_new_notes:,
       dependencies:,
       blocked_count:,
@@ -7344,6 +7468,9 @@ select
   t.pool_lifetime_s,
   coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_entered_pool_at,
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
     when (
@@ -7366,6 +7493,14 @@ select
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = t.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(
@@ -7598,6 +7733,9 @@ pub type TasksReleaseRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     type_name: String,
     type_icon: String,
     is_ongoing: Bool,
@@ -7640,14 +7778,17 @@ pub fn tasks_release(
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
-    use type_name <- decode.field(19, decode.string)
-    use type_icon <- decode.field(20, decode.string)
-    use is_ongoing <- decode.field(21, decode.bool)
-    use ongoing_by_user_id <- decode.field(22, decode.int)
-    use card_title <- decode.field(23, decode.string)
-    use card_color <- decode.field(24, decode.string)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(19, decode.int)
+    use automation_template_id <- decode.field(20, decode.int)
+    use automation_template_version <- decode.field(21, decode.int)
+    use type_name <- decode.field(22, decode.string)
+    use type_icon <- decode.field(23, decode.string)
+    use is_ongoing <- decode.field(24, decode.bool)
+    use ongoing_by_user_id <- decode.field(25, decode.int)
+    use card_title <- decode.field(26, decode.string)
+    use card_color <- decode.field(27, decode.string)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -7668,6 +7809,9 @@ pub fn tasks_release(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       type_name:,
       type_icon:,
       is_ongoing:,
@@ -7716,6 +7860,9 @@ with updated as (
 )
 select
   updated.*,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
@@ -7727,6 +7874,14 @@ select
 from updated
 join task_types tt on tt.id = updated.type_id
 left join cards c on c.id = updated.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = updated.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(
@@ -7835,6 +7990,9 @@ pub type TasksUpdateRow {
     pool_lifetime_s: Int,
     last_entered_pool_at: String,
     created_from_rule_id: Int,
+    automation_execution_id: Int,
+    automation_template_id: Int,
+    automation_template_version: Int,
     type_name: String,
     type_icon: String,
     is_ongoing: Bool,
@@ -7884,14 +8042,17 @@ pub fn tasks_update(
     use pool_lifetime_s <- decode.field(16, decode.int)
     use last_entered_pool_at <- decode.field(17, decode.string)
     use created_from_rule_id <- decode.field(18, decode.int)
-    use type_name <- decode.field(19, decode.string)
-    use type_icon <- decode.field(20, decode.string)
-    use is_ongoing <- decode.field(21, decode.bool)
-    use ongoing_by_user_id <- decode.field(22, decode.int)
-    use card_title <- decode.field(23, decode.string)
-    use card_color <- decode.field(24, decode.string)
-    use dependencies <- decode.field(25, decode.string)
-    use blocked_count <- decode.field(26, decode.int)
+    use automation_execution_id <- decode.field(19, decode.int)
+    use automation_template_id <- decode.field(20, decode.int)
+    use automation_template_version <- decode.field(21, decode.int)
+    use type_name <- decode.field(22, decode.string)
+    use type_icon <- decode.field(23, decode.string)
+    use is_ongoing <- decode.field(24, decode.bool)
+    use ongoing_by_user_id <- decode.field(25, decode.int)
+    use card_title <- decode.field(26, decode.string)
+    use card_color <- decode.field(27, decode.string)
+    use dependencies <- decode.field(28, decode.string)
+    use blocked_count <- decode.field(29, decode.int)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -7912,6 +8073,9 @@ pub fn tasks_update(
       pool_lifetime_s:,
       last_entered_pool_at:,
       created_from_rule_id:,
+      automation_execution_id:,
+      automation_template_id:,
+      automation_template_version:,
       type_name:,
       type_icon:,
       is_ongoing:,
@@ -7970,6 +8134,9 @@ where id = $1
 )
 select
   updated.*,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
@@ -7981,6 +8148,14 @@ select
 from updated
 join task_types tt on tt.id = updated.type_id
 left join cards c on c.id = updated.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = updated.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(

@@ -17,6 +17,7 @@
 //// - **features/projects/update.gleam**: Handles project messages
 
 import gleam/int
+import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
@@ -24,9 +25,10 @@ import lustre/element
 import lustre/element/html.{div, form, input, p, text}
 import lustre/event
 
-import domain/project.{type Project}
+import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
+import domain/project/project_codec
 import domain/project_role
-import domain/remote.{type Remote}
+import domain/remote.{type Remote, Loaded}
 import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{
   type OperationState, DialogOpen, Error as OpError, InFlight,
@@ -159,6 +161,78 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
   )
 }
 
+fn edit_project_depth_names(config: Config(msg)) -> List(ProjectDepthName) {
+  case config.project_dialog.projects_dialog, config.projects {
+    DialogOpen(form: projects_state.ProjectDialogEdit(id: project_id, ..), ..),
+      Loaded(projects)
+    ->
+      case list.find(projects, fn(project) { project.id == project_id }) {
+        Ok(project) -> project.card_depth_names
+        Error(_) -> project_codec.default_card_depth_names()
+      }
+    _, _ -> project_codec.default_card_depth_names()
+  }
+}
+
+fn view_project_structure_settings(
+  depth_names: List(ProjectDepthName),
+) -> element.Element(msg) {
+  let depth_names = case depth_names {
+    [] -> project_codec.default_card_depth_names()
+    _ -> depth_names
+  }
+
+  div(
+    [
+      attribute.class("project-structure-settings"),
+      attribute.attribute("data-testid", "project-structure-settings"),
+    ],
+    [
+      p([attribute.class("project-structure-settings__title")], [
+        text("Structure and Pool"),
+      ]),
+      p([attribute.class("project-structure-settings__hint")], [
+        text(
+          "Visible level names define how cards are grouped before work reaches the Pool.",
+        ),
+      ]),
+      div([attribute.class("project-structure-settings__summary")], [
+        text("Maximum depth: " <> int.to_string(list.length(depth_names))),
+      ]),
+      div([attribute.class("project-structure-settings__levels")], {
+        depth_names
+        |> list.map(fn(depth_name) { view_depth_name(depth_name) })
+      }),
+      div([attribute.class("project-structure-settings__summary")], [
+        text("Pool soft limit: 20 tasks"),
+      ]),
+      div(
+        [
+          attribute.class("project-depth-reduction-confirmation"),
+          attribute.attribute(
+            "data-testid",
+            "project-depth-reduction-confirmation",
+          ),
+          attribute.attribute("aria-hidden", "true"),
+          attribute.attribute("hidden", ""),
+        ],
+        [
+          text(
+            "Depth reduction confirmation appears before closing cards outside a new limit.",
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_depth_name(depth_name: ProjectDepthName) -> element.Element(msg) {
+  let ProjectDepthName(depth:, singular_name:, plural_name:) = depth_name
+  div([attribute.class("project-structure-settings__level")], [
+    text(int.to_string(depth) <> " " <> singular_name <> " / " <> plural_name),
+  ])
+}
+
 /// Dialog for editing a project (Story 4.8 AC39).
 fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
   let #(is_open, name, in_flight, error) = case
@@ -170,6 +244,8 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
     ) -> #(True, name, operation_in_flight(op), operation_error(op))
     _ -> #(False, "", False, opt.None)
   }
+
+  let depth_names = edit_project_depth_names(config)
 
   dialog.view(
     dialog.DialogConfig(
@@ -198,6 +274,7 @@ fn view_projects_edit_dialog(config: Config(msg)) -> element.Element(msg) {
               attribute.autofocus(True),
             ]),
           ),
+          view_project_structure_settings(depth_names),
         ],
       ),
     ],

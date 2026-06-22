@@ -68,6 +68,9 @@ fn execution() -> api_rule_metrics.RuleExecution {
     suppression_reason: "",
     user_id: 7,
     user_email: "member@example.com",
+    template_id: option.Some(12),
+    template_version: option.Some(3),
+    created_task_id: option.Some(43),
     created_at: "2026-06-08T10:00:00Z",
   )
 }

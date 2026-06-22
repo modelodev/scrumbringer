@@ -23,7 +23,10 @@
 //// - **domain/task_status**: Provides TaskPhase ADT
 
 import domain/card
-import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
+import domain/task.{
+  type AutomationOrigin, type Task, type TaskDependency, AutomationOrigin, Task,
+  TaskDependency,
+}
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
@@ -63,6 +66,12 @@ pub fn from_list_row(row: sql.TasksListRow) -> Result(Task, ServiceError) {
     has_new_notes: row.has_new_notes,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -94,6 +103,12 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Result(Task, ServiceError) {
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -125,6 +140,12 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Result(Task, ServiceError) {
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -156,6 +177,12 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Result(Task, ServiceError) {
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -187,6 +214,12 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Result(Task, ServiceError) {
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -218,6 +251,12 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Result(Task, ServiceError) 
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -251,6 +290,12 @@ pub fn from_complete_row(
     has_new_notes: False,
     blocked_count: row.blocked_count,
     dependencies: row.dependencies,
+    automation_origin: automation_origin_from_fields(
+      row.created_from_rule_id,
+      row.automation_execution_id,
+      row.automation_template_id,
+      row.automation_template_version,
+    ),
   )
 }
 
@@ -281,6 +326,7 @@ fn from_fields(
   has_new_notes has_new_notes: Bool,
   blocked_count blocked_count: Int,
   dependencies dependencies_raw: String,
+  automation_origin automation_origin: Option(AutomationOrigin),
 ) -> Result(Task, ServiceError) {
   let claimed_by_option = option_helpers.int_to_option(claimed_by)
   let claimed_at_option = option_helpers.string_to_option(claimed_at)
@@ -320,7 +366,26 @@ fn from_fields(
     has_new_notes: has_new_notes,
     blocked_count: blocked_count,
     dependencies: dependencies,
+    automation_origin: automation_origin,
   ))
+}
+
+fn automation_origin_from_fields(
+  rule_id: Int,
+  execution_id: Int,
+  template_id: Int,
+  template_version: Int,
+) -> Option(AutomationOrigin) {
+  case option_helpers.int_to_option(rule_id) {
+    Some(id) ->
+      Some(AutomationOrigin(
+        rule_id: id,
+        execution_id: option_helpers.int_to_option(execution_id),
+        template_id: option_helpers.int_to_option(template_id),
+        template_version: option_helpers.int_to_option(template_version),
+      ))
+    None -> None
+  }
 }
 
 fn ongoing_by_from_user_id(user_id: Int) -> Option(task_status.OngoingBy) {

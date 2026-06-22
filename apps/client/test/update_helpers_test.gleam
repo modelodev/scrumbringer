@@ -60,6 +60,7 @@ fn task_with_state(id: Int, state: task_state.TaskState) -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }
 

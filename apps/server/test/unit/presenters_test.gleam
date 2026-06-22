@@ -228,6 +228,7 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
       has_new_notes: False,
       blocked_count: 0,
       dependencies: [],
+      automation_origin: None,
     )
 
   let body =

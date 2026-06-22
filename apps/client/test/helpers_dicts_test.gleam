@@ -98,6 +98,7 @@ pub fn flatten_tasks_collects_all_tasks_test() {
       has_new_notes: False,
       blocked_count: 0,
       dependencies: [],
+      automation_origin: None,
     )
   let t2 = Task(..t1, id: 2, title: "B")
   let tasks = dict.from_list([#(1, [t1]), #(2, [t2])])

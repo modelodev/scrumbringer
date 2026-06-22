@@ -59,6 +59,7 @@ import scrumbringer_client/features/i18n/msg as i18n_messages
 import scrumbringer_client/features/layout/msg as layout_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 
+import scrumbringer_client/features/admin/automations_console
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/rule_metrics_view as admin_rule_metrics_view
 import scrumbringer_client/features/admin/rule_metrics_view_config as admin_rule_metrics_view_config
@@ -499,43 +500,67 @@ fn view_section(
         permissions.ApiTokens -> admin_view.view_api_tokens(model)
         permissions.Metrics ->
           metrics_view.view_metrics(admin_metrics_config(model, selected))
-        permissions.RuleMetrics ->
-          admin_rule_metrics_view.view_rule_metrics(
-            admin_rule_metrics_view_config.from_state(
-              model.ui.locale,
-              model.admin.metrics,
-              admin_rule_metrics_callbacks(),
-            ),
-          )
         permissions.Capabilities -> admin_view.view_capabilities(model)
         permissions.Members -> admin_view.view_members(model, selected)
         permissions.TaskTypes -> admin_view.view_task_types(model, selected)
         permissions.Cards -> admin_view.view_cards(model, selected)
         permissions.Workflows ->
-          admin_workflows_view.view_workflows(admin_workflows_config.from_state(
-            model.ui.locale,
-            model.ui.theme,
-            selected,
-            model.core.selected_project_id,
-            model.admin.workflows,
-            model.admin.rules,
-            model.admin.task_templates,
-            model.admin.task_types,
-            admin_workflow_callbacks(),
-          ))
+          view_automations_console(model, selected, automations_console.Engines)
         permissions.TaskTemplates ->
-          admin_task_templates_view.view_task_templates(
-            admin_task_templates_view_config.from_state(
-              model.ui.locale,
-              selected,
-              model.core.selected_project_id,
-              model.admin.task_templates,
-              model.admin.task_types,
-              admin_task_template_callbacks(),
-            ),
+          view_automations_console(
+            model,
+            selected,
+            automations_console.Templates,
+          )
+        permissions.RuleMetrics ->
+          view_automations_console(
+            model,
+            selected,
+            automations_console.Executions,
           )
       }
   }
+}
+
+fn view_automations_console(
+  model: client_state.Model,
+  selected: opt.Option(Project),
+  mode: automations_console.Mode,
+) -> Element(client_state.Msg) {
+  automations_console.view(automations_console.Config(
+    selected_project_id: model.core.selected_project_id,
+    mode: mode,
+    engines_view: admin_workflows_view.view_workflows(
+      admin_workflows_config.from_state(
+        model.ui.locale,
+        model.ui.theme,
+        selected,
+        model.core.selected_project_id,
+        model.admin.workflows,
+        model.admin.rules,
+        model.admin.task_templates,
+        model.admin.task_types,
+        admin_workflow_callbacks(),
+      ),
+    ),
+    templates_view: admin_task_templates_view.view_task_templates(
+      admin_task_templates_view_config.from_state(
+        model.ui.locale,
+        selected,
+        model.core.selected_project_id,
+        model.admin.task_templates,
+        model.admin.task_types,
+        admin_task_template_callbacks(),
+      ),
+    ),
+    executions_view: admin_rule_metrics_view.view_rule_metrics(
+      admin_rule_metrics_view_config.from_state(
+        model.ui.locale,
+        model.admin.metrics,
+        admin_rule_metrics_callbacks(),
+      ),
+    ),
+  ))
 }
 
 fn admin_invites_config(

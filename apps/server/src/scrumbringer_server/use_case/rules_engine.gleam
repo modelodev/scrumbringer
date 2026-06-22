@@ -9,6 +9,7 @@
 //// Set SB_RULES_ENGINE_LOG=true to enable debug logging for rule evaluation.
 //// This helps diagnose why rules might not be firing or creating tasks.
 
+import domain/automation
 import domain/card as domain_card
 import domain/task_status
 import domain/workflow
@@ -119,6 +120,7 @@ pub type RuleOutcome {
 pub type RuleEngineError {
   DbError(pog.QueryError)
   InvalidRuleTarget
+  UnsupportedAutomationTrigger
 }
 
 // =============================================================================
@@ -241,6 +243,7 @@ fn debug_error(e: RuleEngineError) -> String {
       <> int.to_string(got)
     DbError(_) -> "database error"
     InvalidRuleTarget -> "invalid persisted rule target"
+    UnsupportedAutomationTrigger -> "unsupported automation trigger"
   }
 }
 
@@ -271,6 +274,7 @@ type ExecutionTemplate {
     description: option.Option(String),
     type_id: Int,
     priority: Int,
+    version: Int,
     created_by: Int,
     created_at: String,
     execution_order: Int,
@@ -285,9 +289,10 @@ fn find_matching_rules(
   db: pog.Connection,
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
-  let resource_type_str = event_resource_type(event)
-  let task_type_param = task_type_filter_value(event)
-  let to_state_value = event_to_state_string(event)
+  use trigger <- result.try(event_trigger(event))
+  let resource_type_str = automation.trigger_resource_type(trigger)
+  let task_type_param = task_type_filter_value(trigger)
+  let to_state_value = automation.trigger_to_state_string(trigger)
 
   case
     sql.rules_find_matching(
@@ -352,8 +357,12 @@ fn evaluate_single_rule(
   rule: MatchingRule,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
+  use trigger <- result.try(event_trigger(event))
+  let event_key =
+    automation.trigger_to_event_key(trigger, event_resource_id(event))
+
   // Check idempotency
-  case check_already_executed(db, rule.id, event) {
+  case check_already_executed(db, rule.id, event_key) {
     Error(e) -> {
       log("  Error checking idempotency: " <> debug_error(e))
       Error(e)
@@ -364,21 +373,11 @@ fn evaluate_single_rule(
 }
 
 fn suppress_idempotent_execution(
-  db: pog.Connection,
+  _db: pog.Connection,
   rule: MatchingRule,
-  event: StateChange,
+  _event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
   log("  Suppressed: already executed for this resource")
-
-  let _ =
-    log_execution(
-      db,
-      rule.id,
-      event,
-      "suppressed",
-      "idempotent",
-      event_user_id(event),
-    )
 
   Ok(RuleResult(rule.id, Suppressed("idempotent")))
 }
@@ -394,55 +393,63 @@ fn evaluate_rule_templates(
 
   case templates {
     [] -> apply_rule_without_templates(db, rule, event)
-    _ -> apply_rule_with_templates(db, rule, templates, event)
+    [template, ..] -> apply_rule_with_template(db, rule, template, event)
   }
 }
 
 fn apply_rule_without_templates(
-  db: pog.Connection,
+  _db: pog.Connection,
   rule: MatchingRule,
-  event: StateChange,
+  _event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
-  log("  Applied: no templates to execute")
+  log("  Suppressed: rule has no template")
 
-  let _ = log_execution(db, rule.id, event, "applied", "", event_user_id(event))
-
-  Ok(RuleResult(rule.id, Applied(0)))
+  Ok(RuleResult(rule.id, Suppressed("template_missing")))
 }
 
-fn apply_rule_with_templates(
+fn apply_rule_with_template(
   db: pog.Connection,
   rule: MatchingRule,
-  templates: List(ExecutionTemplate),
+  template: ExecutionTemplate,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
-  use tasks_created <- result.try(create_tasks_from_templates(
+  use task_id <- result.try(create_task_from_template(
     db,
     rule.id,
-    templates,
+    template,
     event,
+    get_project_name(db, event_project_id(event)),
+    get_user_name(db, event_user_id(event)),
   ))
+  use trigger <- result.try(event_trigger(event))
+  let event_key =
+    automation.trigger_to_event_key(trigger, event_resource_id(event))
 
-  log("  Applied: created " <> int.to_string(tasks_created) <> " task(s)")
+  log("  Applied: created task #" <> int.to_string(task_id))
 
-  let _ = log_execution(db, rule.id, event, "applied", "", event_user_id(event))
+  let _ =
+    log_execution(
+      db,
+      rule.id,
+      event_key,
+      event,
+      "applied",
+      "",
+      event_user_id(event),
+      template.id,
+      template.version,
+      task_id,
+    )
 
-  Ok(RuleResult(rule.id, Applied(tasks_created)))
+  Ok(RuleResult(rule.id, Applied(1)))
 }
 
 fn check_already_executed(
   db: pog.Connection,
   rule_id: Int,
-  event: StateChange,
+  event_key: String,
 ) -> Result(Bool, RuleEngineError) {
-  case
-    sql.rule_executions_check(
-      db,
-      rule_id,
-      execution_task_id(event),
-      execution_card_id(event),
-    )
-  {
+  case sql.rule_executions_check(db, rule_id, event_key) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(True)
     Ok(pog.Returned(rows: [], ..)) -> Ok(False)
     Error(e) -> Error(DbError(e))
@@ -473,48 +480,11 @@ fn execution_template_from_row(
     description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     priority: row.priority,
+    version: row.version,
     created_by: row.created_by,
     created_at: row.created_at,
     execution_order: row.execution_order,
   ))
-}
-
-fn create_tasks_from_templates(
-  db: pog.Connection,
-  rule_id: Int,
-  templates: List(ExecutionTemplate),
-  event: StateChange,
-) -> Result(Int, RuleEngineError) {
-  // Get variable values for substitution
-  let project_name = get_project_name(db, event_project_id(event))
-  let user_name = get_user_name(db, event_user_id(event))
-
-  // Create a task for each template
-  let results =
-    templates
-    |> list.map(fn(template) {
-      create_task_from_template(
-        db,
-        rule_id,
-        template,
-        event,
-        project_name,
-        user_name,
-      )
-    })
-
-  // Count successes
-  let created =
-    results
-    |> list.filter(fn(r) {
-      case r {
-        Ok(_) -> True
-        Error(_) -> False
-      }
-    })
-    |> list.length
-
-  Ok(created)
 }
 
 fn create_task_from_template(
@@ -525,8 +495,8 @@ fn create_task_from_template(
   project_name: String,
   user_name: String,
 ) -> Result(Int, RuleEngineError) {
-  let father =
-    rules_templates.format_father_link(
+  let origin =
+    rules_templates.format_origin_link(
       event_resource_type(event),
       event_resource_id(event),
     )
@@ -535,7 +505,7 @@ fn create_task_from_template(
   let title =
     rules_templates.substitute(
       template.name,
-      father,
+      origin,
       from_state,
       to_state,
       project_name,
@@ -544,7 +514,7 @@ fn create_task_from_template(
   let description =
     rules_templates.substitute(
       template_description_text(template),
-      father,
+      origin,
       from_state,
       to_state,
       project_name,
@@ -621,20 +591,28 @@ fn get_user_name(db: pog.Connection, user_id: Int) -> String {
 fn log_execution(
   db: pog.Connection,
   rule_id: Int,
+  event_key: String,
   event: StateChange,
   outcome: String,
   suppression_reason: String,
   user_id: Int,
+  template_id: Int,
+  template_version: Int,
+  created_task_id: Int,
 ) -> Result(Nil, RuleEngineError) {
   case
     sql.rule_executions_log(
       db,
       rule_id,
+      event_key,
       execution_task_id(event),
       execution_card_id(event),
       outcome,
       suppression_reason,
       user_id,
+      template_id,
+      template_version,
+      created_task_id,
     )
   {
     Ok(_) -> Ok(Nil)
@@ -715,9 +693,9 @@ fn event_task_type_id(event: StateChange) -> option.Option(Int) {
   }
 }
 
-fn task_type_filter_value(event: StateChange) -> Int {
+fn task_type_filter_value(trigger: automation.AutomationTrigger) -> Int {
   option_helpers.option_to_value(
-    event_task_type_id(event),
+    automation.trigger_task_type_id(trigger),
     no_task_type_filter_value,
   )
 }
@@ -735,6 +713,24 @@ fn event_card_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) -> ctx.card_id
     CardChange(..) -> option.None
+  }
+}
+
+fn event_trigger(
+  event: StateChange,
+) -> Result(automation.AutomationTrigger, RuleEngineError) {
+  case event {
+    TaskChange(from_state: from_state, to_state: to_state, ..) ->
+      automation.task_transition_trigger(
+        from_state,
+        to_state,
+        event_task_type_id(event),
+      )
+      |> result.map_error(fn(_) { UnsupportedAutomationTrigger })
+
+    CardChange(to_state: to_state, ..) ->
+      automation.card_transition_trigger(to_state, automation.AnyCard)
+      |> result.map_error(fn(_) { UnsupportedAutomationTrigger })
   }
 }
 

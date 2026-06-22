@@ -9,6 +9,7 @@ SELECT
   tt.name as type_name,
   t.priority,
   t.created_by,
+  t.version,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id

@@ -632,6 +632,7 @@ pub fn css() -> List(String) {
     ".task-blocked-inline { margin-left: 6px; }",
     ".task-blocked-card { font-size: var(--sb-font-xs); }",
     ".task-card-signal { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; min-width: 20px; border-radius: var(--sb-radius-pill); border: 1px solid var(--sb-border); background: var(--sb-surface); line-height: 1; }",
+    ".task-card-signal-automation { color: var(--sb-primary); border-color: color-mix(in oklab, var(--sb-primary) 34%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 8%, var(--sb-surface)); }",
     ".task-card-signal-due.is-overdue { color: var(--sb-error-text); border-color: color-mix(in oklab, var(--sb-error) 42%, var(--sb-border)); background: color-mix(in oklab, var(--sb-error) 10%, var(--sb-surface)); }",
     ".task-card-signal-due.is-due-today { color: var(--sb-warning-text); border-color: color-mix(in oklab, var(--sb-warning) 48%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 14%, var(--sb-surface)); }",
     ".task-card-signal-due.is-due-soon { color: var(--sb-warning-text); border-color: color-mix(in oklab, var(--sb-warning) 30%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 8%, var(--sb-surface)); }",

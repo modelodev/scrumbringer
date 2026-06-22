@@ -70,6 +70,7 @@ fn task(id: Int, dependencies: List(TaskDependency)) -> Task {
     has_new_notes: False,
     blocked_count: list.length(dependencies),
     dependencies: dependencies,
+    automation_origin: None,
   )
 }
 

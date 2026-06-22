@@ -344,7 +344,7 @@ pub fn rule_metrics_detailed_decoder_decodes_zero_counts_test() {
 
 pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let body =
-    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"task_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"task_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
+    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"task_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"template_id\":12,\"template_version\":3,\"created_task_id\":102,\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"task_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
 
   let assert Ok(response) =
     json.parse(
@@ -355,6 +355,9 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let assert [execution_a, execution_b] = response.executions
   let assert option.Some(100) = execution_a.task_id
   let assert "applied" = execution_a.outcome
+  let assert option.Some(12) = execution_a.template_id
+  let assert option.Some(3) = execution_a.template_version
+  let assert option.Some(102) = execution_a.created_task_id
   let assert "idempotent" = execution_b.suppression_reason
   let assert 2 = response.pagination.total
 }

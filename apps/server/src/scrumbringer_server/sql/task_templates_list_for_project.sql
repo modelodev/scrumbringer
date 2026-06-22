@@ -10,6 +10,7 @@ SELECT
   tt.name as type_name,
   t.priority,
   t.created_by,
+  t.version,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
   coalesce(rule_counts.count, 0) as rules_count
 FROM task_templates t

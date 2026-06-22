@@ -5,9 +5,9 @@ import gleam/option
 
 import domain/card/card_codec
 import domain/task.{
-  type Task, type TaskDependency, type TaskPosition, type WorkSession,
-  type WorkSessionsPayload, Task, TaskDependency, TaskPosition, WorkSession,
-  WorkSessionsPayload,
+  type AutomationOrigin, type Task, type TaskDependency, type TaskPosition,
+  type WorkSession, type WorkSessionsPayload, AutomationOrigin, Task,
+  TaskDependency, TaskPosition, WorkSession, WorkSessionsPayload,
 }
 import domain/task_state
 import domain/task_status.{
@@ -174,6 +174,11 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     [],
     decode.list(task_dependency_decoder()),
   )
+  use automation_origin <- decode.optional_field(
+    "automation_origin",
+    option.None,
+    decode.optional(automation_origin_decoder()),
+  )
 
   decode.success(Task(
     id: id,
@@ -196,6 +201,32 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     has_new_notes: has_new_notes,
     blocked_count: blocked_count,
     dependencies: dependencies,
+    automation_origin: automation_origin,
+  ))
+}
+
+fn automation_origin_decoder() -> decode.Decoder(AutomationOrigin) {
+  use rule_id <- decode.field("rule_id", decode.int)
+  use execution_id <- decode.optional_field(
+    "execution_id",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use template_id <- decode.optional_field(
+    "template_id",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use template_version <- decode.optional_field(
+    "template_version",
+    option.None,
+    decode.optional(decode.int),
+  )
+  decode.success(AutomationOrigin(
+    rule_id: rule_id,
+    execution_id: execution_id,
+    template_id: template_id,
+    template_version: template_version,
   ))
 }
 

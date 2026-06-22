@@ -44,6 +44,7 @@ fn make_task(id: Int, dependencies: List(TaskDependency)) -> Task {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: dependencies,
+    automation_origin: None,
   )
 }
 

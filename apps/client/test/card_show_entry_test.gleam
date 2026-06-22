@@ -62,6 +62,7 @@ fn sample_task(id: Int, card_id) {
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }
 

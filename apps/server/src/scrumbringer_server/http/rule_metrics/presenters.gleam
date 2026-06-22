@@ -168,6 +168,21 @@ fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
     email -> [#("user_email", json.string(email)), ..fields]
   }
 
+  let fields = case exec.template_id {
+    None -> fields
+    Some(id) -> [#("template_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.template_version {
+    None -> fields
+    Some(version) -> [#("template_version", json.int(version)), ..fields]
+  }
+
+  let fields = case exec.created_task_id {
+    None -> fields
+    Some(id) -> [#("created_task_id", json.int(id)), ..fields]
+  }
+
   json.object(fields)
 }
 

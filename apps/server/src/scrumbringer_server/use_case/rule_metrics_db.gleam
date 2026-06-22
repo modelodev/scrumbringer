@@ -69,6 +69,9 @@ pub type RuleExecution {
     suppression_reason: String,
     user_id: Int,
     user_email: String,
+    template_id: Option(Int),
+    template_version: Option(Int),
+    created_task_id: Option(Int),
     created_at: String,
   )
 }
@@ -124,6 +127,9 @@ fn rule_execution_from_row(row: sql.RuleExecutionsListRow) -> RuleExecution {
     suppression_reason: row.suppression_reason,
     user_id: row.user_id,
     user_email: row.user_email,
+    template_id: option_helpers.int_to_option(row.template_id),
+    template_version: option_helpers.int_to_option(row.template_version),
+    created_task_id: option_helpers.int_to_option(row.created_task_id),
     created_at: row.created_at,
   )
 }

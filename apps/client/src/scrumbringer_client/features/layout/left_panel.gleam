@@ -526,27 +526,10 @@ fn view_config_items(config: LeftPanelConfig(msg)) -> Element(msg) {
     view_config_nav_link(
       config,
       permissions.Workflows,
-      "nav-rules",
+      "nav-automations",
       icons.Automation,
       i18n_text.AdminWorkflows,
       config.on_navigate_config_rules,
-    ),
-    view_config_nav_link(
-      config,
-      permissions.TaskTemplates,
-      "nav-templates",
-      icons.TaskTemplates,
-      i18n_text.Templates,
-      config.on_navigate_config_templates,
-    ),
-    view_nav_separator(),
-    view_config_nav_link(
-      config,
-      permissions.RuleMetrics,
-      "nav-metrics",
-      icons.Metrics,
-      i18n_text.AdminMetrics,
-      config.on_navigate_config_metrics,
     ),
   ])
 }

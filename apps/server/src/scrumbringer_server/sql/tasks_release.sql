@@ -35,6 +35,9 @@ with updated as (
 )
 select
   updated.*,
+  coalesce(automation.id, 0) as automation_execution_id,
+  coalesce(automation.template_id, 0) as automation_template_id,
+  coalesce(automation.template_version, 0) as automation_template_version,
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
@@ -46,6 +49,14 @@ select
 from updated
 join task_types tt on tt.id = updated.type_id
 left join cards c on c.id = updated.card_id
+left join lateral (
+  select re.id, re.template_id, re.template_version
+  from rule_executions re
+  where re.created_task_id = updated.id
+    and re.outcome = 'applied'
+  order by re.created_at desc, re.id desc
+  limit 1
+) automation on true
 left join lateral (
   select
     coalesce(

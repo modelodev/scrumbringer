@@ -327,6 +327,9 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
           "cell-actions",
         ),
       ])
-      |> data_table.with_key(fn(tmpl) { int.to_string(tmpl.id) }),
+      |> data_table.with_key(fn(tmpl) { int.to_string(tmpl.id) })
+      |> data_table.with_row_attrs(fn(_tmpl) {
+        [attribute.attribute("data-testid", "automation-template-row")]
+      }),
   )
 }

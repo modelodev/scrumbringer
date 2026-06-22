@@ -297,6 +297,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       has_new_notes: False,
       blocked_count: 0,
       dependencies: [],
+      automation_origin: option.None,
     )
 
   decode.success(MetricsProjectTask(

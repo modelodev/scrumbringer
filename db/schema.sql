@@ -727,6 +727,10 @@ CREATE TABLE public.rule_executions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     task_id bigint,
     card_id bigint,
+    event_key text NOT NULL,
+    template_id bigint,
+    template_version integer,
+    created_task_id bigint,
     CONSTRAINT rule_executions_outcome_check CHECK ((outcome = ANY (ARRAY['applied'::text, 'suppressed'::text]))),
     CONSTRAINT rule_executions_target_check CHECK ((((task_id IS NOT NULL) AND (card_id IS NULL)) OR ((task_id IS NULL) AND (card_id IS NOT NULL))))
 );
@@ -878,6 +882,7 @@ CREATE TABLE public.task_templates (
     priority integer DEFAULT 3 NOT NULL,
     created_by bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
     CONSTRAINT task_templates_priority_check CHECK (((priority >= 1) AND (priority <= 5)))
 );
 
@@ -1970,17 +1975,10 @@ CREATE INDEX idx_workflows_project ON public.workflows USING btree (project_id);
 
 
 --
--- Name: rule_executions_rule_id_card_id_key; Type: INDEX; Schema: public; Owner: -
+-- Name: rule_executions_rule_id_event_key_key; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX rule_executions_rule_id_card_id_key ON public.rule_executions USING btree (rule_id, card_id) WHERE (card_id IS NOT NULL);
-
-
---
--- Name: rule_executions_rule_id_task_id_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX rule_executions_rule_id_task_id_key ON public.rule_executions USING btree (rule_id, task_id) WHERE (task_id IS NOT NULL);
+CREATE UNIQUE INDEX rule_executions_rule_id_event_key_key ON public.rule_executions USING btree (rule_id, event_key);
 
 
 --
@@ -2327,6 +2325,14 @@ ALTER TABLE ONLY public.rule_executions
 
 
 --
+-- Name: rule_executions rule_executions_created_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions
+    ADD CONSTRAINT rule_executions_created_task_id_fkey FOREIGN KEY (created_task_id) REFERENCES public.tasks(id) ON DELETE SET NULL;
+
+
+--
 -- Name: rule_executions rule_executions_rule_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2340,6 +2346,14 @@ ALTER TABLE ONLY public.rule_executions
 
 ALTER TABLE ONLY public.rule_executions
     ADD CONSTRAINT rule_executions_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rule_executions rule_executions_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions
+    ADD CONSTRAINT rule_executions_template_id_fkey FOREIGN KEY (template_id) REFERENCES public.task_templates(id);
 
 
 --

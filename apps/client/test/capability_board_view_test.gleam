@@ -162,6 +162,7 @@ fn task_with(
     has_new_notes: False,
     blocked_count: 0,
     dependencies: [],
+    automation_origin: None,
   )
 }
 

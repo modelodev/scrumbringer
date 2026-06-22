@@ -1,13 +1,14 @@
 //// Pool task row view.
 
+import gleam/int
 import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div}
+import lustre/element/html.{div, span, text}
 
 import domain/card.{type CardColor}
-import domain/task.{type Task, Task}
+import domain/task.{type AutomationOrigin, type Task, AutomationOrigin, Task}
 
 import scrumbringer_client/features/pool/labels as pool_labels
 import scrumbringer_client/features/tasks/claimability
@@ -77,6 +78,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           config.task,
           "task-blocked-inline",
         ),
+        automation_origin_chip(config.task.automation_origin),
       ]),
       actions: [div([attribute.class("task-row-actions")], claim_actions)],
       reserve_actions_slot: False,
@@ -86,4 +88,19 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ),
     task_item.Div,
   )
+}
+
+fn automation_origin_chip(origin: opt.Option(AutomationOrigin)) -> Element(msg) {
+  case origin {
+    opt.Some(AutomationOrigin(rule_id: rule_id, ..)) ->
+      span(
+        [
+          attribute.class("task-automation-origin"),
+          attribute.attribute("data-testid", "automation-created-task-origin"),
+          attribute.attribute("title", "Created by automation rule"),
+        ],
+        [text("Automation #" <> int.to_string(rule_id))],
+      )
+    opt.None -> element.none()
+  }
 }

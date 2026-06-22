@@ -6,7 +6,7 @@ import gleam/int
 import gleam/string
 
 /// Build a link to the triggering resource for template substitution.
-pub fn format_father_link(resource_type: String, resource_id: Int) -> String {
+pub fn format_origin_link(resource_type: String, resource_id: Int) -> String {
   case resource_type {
     "task" ->
       "[Task #"
@@ -23,17 +23,25 @@ pub fn format_father_link(resource_type: String, resource_id: Int) -> String {
   }
 }
 
+/// Deprecated compatibility helper for persisted templates saved before the
+/// product variable was renamed to `{{origin}}`.
+pub fn format_father_link(resource_type: String, resource_id: Int) -> String {
+  format_origin_link(resource_type, resource_id)
+}
+
 /// Substitute workflow template variables with event context values.
 pub fn substitute(
   text: String,
-  father: String,
+  origin: String,
   from_state: String,
   to_state: String,
   project_name: String,
   user_name: String,
 ) -> String {
   text
-  |> string.replace("{{father}}", father)
+  |> string.replace("{{origin}}", origin)
+  |> string.replace("{{father}}", origin)
+  |> string.replace("{{trigger}}", to_state)
   |> string.replace("{{from_state}}", from_state)
   |> string.replace("{{to_state}}", to_state)
   |> string.replace("{{project}}", project_name)

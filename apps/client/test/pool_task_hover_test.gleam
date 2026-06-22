@@ -71,6 +71,7 @@ pub fn task_hover_hides_empty_optional_sections_test() {
         description: None,
         blocked_count: 0,
         dependencies: [],
+        automation_origin: None,
       ),
       card_title: None,
       age_days: 0,
@@ -132,6 +133,7 @@ fn sample_task() {
         claimed_by: None,
       ),
     ],
+    automation_origin: None,
   )
 }
 

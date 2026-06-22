@@ -15,7 +15,9 @@
 //// ```
 
 import domain/card
-import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
+import domain/task.{
+  type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
+}
 import domain/task_state
 import domain/task_status.{
   type OngoingBy, type TaskPhase, type WorkState, OngoingBy,
@@ -101,6 +103,7 @@ pub fn task_json(task: Task) -> json.Json {
     has_new_notes: has_new_notes,
     blocked_count: blocked_count,
     dependencies: dependencies,
+    automation_origin: automation_origin,
   ) = task
 
   let claimed_by = task_state.claimed_by(state)
@@ -142,7 +145,26 @@ pub fn task_json(task: Task) -> json.Json {
     #("has_new_notes", json.bool(has_new_notes)),
     #("blocked_count", json.int(blocked_count)),
     #("dependencies", json.array(dependencies, of: dependency_json)),
+    #("automation_origin", automation_origin_json(automation_origin)),
   ])
+}
+
+fn automation_origin_json(origin) -> json.Json {
+  case origin {
+    None -> json.null()
+    Some(AutomationOrigin(
+      rule_id: rule_id,
+      execution_id: execution_id,
+      template_id: template_id,
+      template_version: template_version,
+    )) ->
+      json.object([
+        #("rule_id", json.int(rule_id)),
+        #("execution_id", json_helpers.option_int_json(execution_id)),
+        #("template_id", json_helpers.option_int_json(template_id)),
+        #("template_version", json_helpers.option_int_json(template_version)),
+      ])
+  }
 }
 
 pub fn tasks_response(values: List(Task)) -> json.Json {
