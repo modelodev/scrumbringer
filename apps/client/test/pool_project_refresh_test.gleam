@@ -170,8 +170,6 @@ fn task(id: Int) -> Task {
     description: None,
     priority: 3,
     state: task_state.Available,
-    status: task_state.to_status(task_state.Available),
-    work_state: task_state.to_work_state(task_state.Available),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,

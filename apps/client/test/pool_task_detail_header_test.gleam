@@ -4,7 +4,7 @@ import lustre/element
 
 import domain/task.{type Task, Task}
 import domain/task_state
-import domain/task_status.{Available, Claimed, Taken}
+import domain/task_status.{Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_detail_header
 import scrumbringer_client/i18n/locale
@@ -80,8 +80,6 @@ fn available_task() -> Task {
     description: Some("Task description"),
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: task_state.to_work_state(task_state.Available),
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,
@@ -104,10 +102,5 @@ fn claimed_task() -> Task {
       mode: Taken,
     )
 
-  Task(
-    ..available_task(),
-    state: state,
-    status: Claimed(Taken),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..available_task(), state: state)
 }

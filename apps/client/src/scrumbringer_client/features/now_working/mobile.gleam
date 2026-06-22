@@ -27,7 +27,7 @@ import lustre/element/html.{button, div, h3, hr, span, text}
 import lustre/event
 
 import domain/remote.{type Remote, Loaded}
-import domain/task.{type Task, type WorkSession, Task, WorkSession, claimed_by}
+import domain/task as domain_task
 import domain/task_status.{Claimed, Ongoing, Taken}
 
 import scrumbringer_client/client_ffi
@@ -49,8 +49,8 @@ pub type Config(msg) {
     theme: Theme,
     panel_expanded: Bool,
     user_id: Int,
-    tasks: Remote(List(Task)),
-    active_sessions: List(WorkSession),
+    tasks: Remote(List(domain_task.Task)),
+    active_sessions: List(domain_task.WorkSession),
     server_offset_ms: Int,
     disable_actions: Bool,
     on_panel_toggled: msg,
@@ -276,9 +276,14 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
 
 /// Row for a claimed (paused) task (CLAIMED section).
 /// Actions: Start, Release
-fn view_claimed_row(config: Config(msg), task: Task) -> Element(msg) {
-  let Task(id: id, title: title, task_type: task_type, version: version, ..) =
-    task
+fn view_claimed_row(config: Config(msg), task: domain_task.Task) -> Element(msg) {
+  let domain_task.Task(
+    id: id,
+    title: title,
+    task_type: task_type,
+    version: version,
+    ..,
+  ) = task
 
   let actions = [
     action_buttons.task_icon_button_with_class(
@@ -346,14 +351,14 @@ type SessionInfo {
 fn get_active_sessions(config: Config(msg)) -> List(SessionInfo) {
   config.active_sessions
   |> list.map(fn(session) {
-    let WorkSession(
+    let domain_task.WorkSession(
       task_id: task_id,
       started_at: started_at,
       accumulated_s: accumulated_s,
     ) = session
     let task_info = find_task_by_id(config.tasks, task_id)
     let #(title, icon, version) = case task_info {
-      opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(
+      opt.Some(domain_task.Task(title: t, task_type: tt, version: v, ..)) -> #(
         t,
         tt.icon,
         v,
@@ -370,7 +375,7 @@ fn get_active_sessions(config: Config(msg)) -> List(SessionInfo) {
 fn get_claimed_not_working(
   config: Config(msg),
   active_sessions: List(SessionInfo),
-) -> List(Task) {
+) -> List(domain_task.Task) {
   let active_ids =
     list.map(active_sessions, fn(s) {
       let SessionInfo(task_id: id, ..) = s
@@ -381,10 +386,9 @@ fn get_claimed_not_working(
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        let Task(id: id, status: status, ..) = t
-        status == Claimed(Taken)
-        && claimed_by(t) == opt.Some(config.user_id)
-        && !list.contains(active_ids, id)
+        domain_task.status(t) == Claimed(Taken)
+        && domain_task.claimed_by(t) == opt.Some(config.user_id)
+        && !list.contains(active_ids, t.id)
       })
     _ -> []
   }
@@ -425,12 +429,15 @@ fn calculate_elapsed(
   )
 }
 
-fn find_task_by_id(tasks: Remote(List(Task)), task_id: Int) -> opt.Option(Task) {
+fn find_task_by_id(
+  tasks: Remote(List(domain_task.Task)),
+  task_id: Int,
+) -> opt.Option(domain_task.Task) {
   case tasks {
     Loaded(items) ->
       case
         list.find(items, fn(task) {
-          let Task(id: id, ..) = task
+          let domain_task.Task(id: id, ..) = task
           id == task_id
         })
       {

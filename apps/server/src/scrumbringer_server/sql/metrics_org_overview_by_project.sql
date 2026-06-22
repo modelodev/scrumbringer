@@ -4,7 +4,7 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
   from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval

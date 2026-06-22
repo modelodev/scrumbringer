@@ -5,7 +5,6 @@ import domain/card.{type Card, Card, Draft}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_state
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/state/normalized_store
@@ -44,8 +43,6 @@ fn make_task(id: Int, card_id: Int) -> Task {
     description: option.None,
     priority: 3,
     state: task_state.Available,
-    status: task_status.Available,
-    work_state: task_state.to_work_state(task_state.Available),
     created_by: 1,
     created_at: "2026-02-01T00:00:00Z",
     due_date: option.None,

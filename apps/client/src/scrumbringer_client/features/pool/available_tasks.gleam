@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option.{type Option}
 
 import domain/remote as rem
-import domain/task.{type Task, Task}
+import domain/task as domain_task
 import domain/task_status.{Available}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
@@ -10,7 +10,7 @@ import scrumbringer_client/features/work_filters
 
 pub type Config {
   Config(
-    tasks: rem.Remote(List(Task)),
+    tasks: rem.Remote(List(domain_task.Task)),
     task_types: rem.Remote(List(TaskType)),
     my_capability_ids: rem.Remote(List(Int)),
     type_filter: Option(Int),
@@ -24,7 +24,7 @@ pub type State {
   Loading
   Error(message: String)
   Empty(has_filters: Bool)
-  Ready(tasks: List(Task))
+  Ready(tasks: List(domain_task.Task))
 }
 
 pub fn state(config: Config) -> State {
@@ -36,8 +36,7 @@ pub fn state(config: Config) -> State {
       let available =
         tasks
         |> list.filter(fn(task) {
-          let Task(status: status, ..) = task
-          status == Available && matches(filters, task)
+          domain_task.status(task) == Available && matches(filters, task)
         })
 
       case available {
@@ -48,11 +47,11 @@ pub fn state(config: Config) -> State {
   }
 }
 
-pub fn matches_work_filters(config: Config, task: Task) -> Bool {
+pub fn matches_work_filters(config: Config, task: domain_task.Task) -> Bool {
   matches(filters(config), task)
 }
 
-fn matches(filters: work_filters.Filters, task: Task) -> Bool {
+fn matches(filters: work_filters.Filters, task: domain_task.Task) -> Bool {
   work_filters.matches(filters, task)
 }
 

@@ -77,8 +77,6 @@ fn sample_task() -> Task {
     description: Some("Details"),
     priority: 1,
     state: task_state.Available,
-    status: task_status.Available,
-    work_state: task_status.WorkAvailable,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,

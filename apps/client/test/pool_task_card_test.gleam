@@ -4,9 +4,7 @@ import lustre/element
 
 import domain/task.{type Task, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{
-  Available, Claimed, Done, Taken, WorkAvailable, WorkClaimed,
-}
+import domain/task_status.{Available, Done, Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/i18n/locale
@@ -66,8 +64,6 @@ pub fn task_card_renders_claimed_owner_actions_test() {
           claimed_at: "2026-06-01T11:00:00Z",
           mode: Taken,
         ),
-        status: Claimed(Taken),
-        work_state: WorkClaimed,
       ),
       x: 100,
       age_days: 1,
@@ -185,8 +181,6 @@ fn sample_task() {
     description: Some("Task description"),
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

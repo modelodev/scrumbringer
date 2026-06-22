@@ -27,7 +27,7 @@ pub type TaskEventType {
   TaskCreated
   TaskClaimed
   TaskReleased
-  TaskDone
+  TaskClosed
 }
 
 /// Converts a task event type to its DB string value.
@@ -39,7 +39,7 @@ pub fn event_type_to_string(event_type: TaskEventType) -> String {
     TaskCreated -> "task_created"
     TaskClaimed -> "task_claimed"
     TaskReleased -> "task_released"
-    TaskDone -> "task_completed"
+    TaskClosed -> "task_closed"
   }
 }
 

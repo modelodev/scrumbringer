@@ -10,7 +10,7 @@
 //// - Handle ungrouped tasks (tasks without a card)
 ////
 //// Non-responsibilities:
-//// - Task CRUD operations (handled by parent)
+//// - domain_task.Task CRUD operations (handled by parent)
 //// - Card state management (handled by parent)
 
 import gleam/dict.{type Dict}
@@ -24,7 +24,7 @@ import lustre/event
 
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
-import domain/task.{type Task, claimed_by}
+import domain/task as domain_task
 import domain/task_status.{Available, Claimed, Done}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -54,7 +54,7 @@ pub type GroupedListConfig(msg) {
   GroupedListConfig(
     locale: Locale,
     theme: Theme,
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     cards: List(Card),
     org_users: List(OrgUser),
     expanded_cards: Dict(Int, Bool),
@@ -68,7 +68,12 @@ pub type GroupedListConfig(msg) {
 
 /// Internal type for grouped data
 type CardGroup {
-  CardGroup(card: Option(Card), tasks: List(Task), completed: Int, total: Int)
+  CardGroup(
+    card: Option(Card),
+    tasks: List(domain_task.Task),
+    completed: Int,
+    total: Int,
+  )
 }
 
 // =============================================================================
@@ -79,7 +84,7 @@ type CardGroup {
 pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
   // Filter out completed tasks if hide_completed is true
   let filtered_tasks = case config.hide_completed {
-    True -> list.filter(config.tasks, fn(t) { t.status != Done })
+    True -> list.filter(config.tasks, fn(t) { domain_task.status(t) != Done })
     False -> config.tasks
   }
 
@@ -92,7 +97,7 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
       ])
     _ ->
       div([attribute.class("grouped-list")], [
-        // Task groups
+        // domain_task.Task groups
         div(
           [attribute.class("grouped-list-content")],
           list.map(groups, fn(group) { view_card_group(config, group) }),
@@ -176,7 +181,7 @@ fn view_card_group(
         ],
         header_children,
       ),
-      // Task list (collapsible)
+      // domain_task.Task list (collapsible)
       case is_expanded {
         True -> view_task_list(config, group.tasks, card_border_class)
         False -> element.none()
@@ -187,7 +192,7 @@ fn view_card_group(
 
 fn view_task_list(
   config: GroupedListConfig(msg),
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
   card_border_class: String,
 ) -> Element(msg) {
   ul(
@@ -198,14 +203,14 @@ fn view_task_list(
 
 fn view_task_item(
   config: GroupedListConfig(msg),
-  task: Task,
+  task: domain_task.Task,
   card_border_class: String,
 ) -> Element(msg) {
   // AC7: Show claimed by user when task is Claimed (based on status, not claimed_by)
-  let status_display = case task.status {
+  let status_display = case domain_task.status(task) {
     Claimed(_) -> {
-      // Task is claimed - try to find who claimed it
-      let claimed_email = case claimed_by(task) {
+      // domain_task.Task is claimed - try to find who claimed it
+      let claimed_email = case domain_task.claimed_by(task) {
         Some(user_id) ->
           list.find(config.org_users, fn(u) { u.id == user_id })
           |> option.from_result
@@ -213,13 +218,13 @@ fn view_task_item(
           |> claimed_email_or_unknown(config)
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
-      let status_icon = task_status_utils.claimed_icon(task.status)
+      let status_icon = task_status_utils.claimed_icon(domain_task.status(task))
       span(
         [
           attribute.class("task-claimed-by"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
         [
@@ -238,10 +243,10 @@ fn view_task_item(
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
-        [text(task_status_utils.label(config.locale, task.status))],
+        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
       )
     Done ->
       // Done - show status label
@@ -250,20 +255,20 @@ fn view_task_item(
           attribute.class("task-status"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
-        [text(task_status_utils.label(config.locale, task.status))],
+        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
       )
     // Available tasks: no label needed (claim icon is sufficient indicator)
   }
 
   let type_icon = task.task_type.icon
 
-  let actions = case task.status {
+  let actions = case domain_task.status(task) {
     Available ->
       task_item.single_action(task_actions.claim_icon(
-        task_state_ui.next_action(config.locale, task.status),
+        task_state_ui.next_action(config.locale, domain_task.status(task)),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,
@@ -311,7 +316,10 @@ fn view_task_item(
 // Helpers
 // =============================================================================
 
-fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) {
+fn group_tasks_by_card(
+  tasks: List(domain_task.Task),
+  cards: List(Card),
+) -> List(CardGroup) {
   // Create a dict of card_id -> card
   let card_map =
     list.fold(cards, dict.new(), fn(acc, card) {
@@ -342,7 +350,8 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
   |> list.map(fn(pair) {
     let #(card_id, card_tasks) = pair
     let card = dict.get(card_map, card_id) |> option.from_result
-    let completed = list.count(card_tasks, fn(t) { t.status == Done })
+    let completed =
+      list.count(card_tasks, fn(t) { domain_task.status(t) == Done })
     let total = list.length(card_tasks)
     CardGroup(
       card: card,
@@ -379,7 +388,9 @@ fn claimed_email_or_unknown(
   }
 }
 
-fn task_group_or_empty(tasks: Option(List(Task))) -> List(Task) {
+fn task_group_or_empty(
+  tasks: Option(List(domain_task.Task)),
+) -> List(domain_task.Task) {
   case tasks {
     None -> []
     Some(values) -> values

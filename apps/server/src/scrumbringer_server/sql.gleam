@@ -1196,7 +1196,7 @@ pub fn metrics_my(
 select
   coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
   coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-  coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+  coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
 from audit_events
 where actor_user_id = $1
   and created_at >= now() - ($2 || ' days')::interval;
@@ -1266,7 +1266,7 @@ with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
   from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
@@ -1385,7 +1385,7 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
   from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
@@ -1585,7 +1585,7 @@ with task_scope as (
     e.task_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as complete_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as complete_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
   from audit_events e
   where e.project_id = $1
@@ -1886,7 +1886,7 @@ with event_counts as (
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
   from audit_events e
   where e.org_id = $1
@@ -3187,7 +3187,7 @@ pub type RuleExecutionsCheckRow {
 }
 
 /// name: rule_executions_check
-/// Check if a rule has already been executed for a given origin (idempotency).
+/// Check if a rule has already been executed for a given target (idempotency).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3195,7 +3195,7 @@ pub type RuleExecutionsCheckRow {
 pub fn rule_executions_check(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: String,
+  arg_2: Int,
   arg_3: Int,
 ) -> Result(pog.Returned(RuleExecutionsCheckRow), pog.QueryError) {
   let decoder = {
@@ -3206,20 +3206,22 @@ pub fn rule_executions_check(
   }
 
   "-- name: rule_executions_check
--- Check if a rule has already been executed for a given origin (idempotency).
+-- Check if a rule has already been executed for a given target (idempotency).
 select
   id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason
 from rule_executions
 where rule_id = $1
-  and origin_type = $2
-  and origin_id = $3
+  and (
+    (task_id is not null and task_id = nullif($2, 0))
+    or (card_id is not null and card_id = nullif($3, 0))
+  )
 limit 1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
@@ -3277,8 +3279,8 @@ where rule_id = $1
 pub type RuleExecutionsListRow {
   RuleExecutionsListRow(
     id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Int,
+    card_id: Int,
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -3303,8 +3305,8 @@ pub fn rule_executions_list(
 ) -> Result(pog.Returned(RuleExecutionsListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use origin_type <- decode.field(1, decode.string)
-    use origin_id <- decode.field(2, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use card_id <- decode.field(2, decode.int)
     use outcome <- decode.field(3, decode.string)
     use suppression_reason <- decode.field(4, decode.string)
     use user_id <- decode.field(5, decode.int)
@@ -3312,8 +3314,8 @@ pub fn rule_executions_list(
     use created_at <- decode.field(7, decode.string)
     decode.success(RuleExecutionsListRow(
       id:,
-      origin_type:,
-      origin_id:,
+      task_id:,
+      card_id:,
       outcome:,
       suppression_reason:,
       user_id:,
@@ -3326,8 +3328,8 @@ pub fn rule_executions_list(
 -- Get paginated list of executions for a rule (drill-down).
 select
     re.id,
-    re.origin_type,
-    re.origin_id,
+    coalesce(re.task_id, 0) as task_id,
+    coalesce(re.card_id, 0) as card_id,
     re.outcome,
     coalesce(re.suppression_reason, '') as suppression_reason,
     coalesce(re.user_id, 0) as user_id,
@@ -3361,8 +3363,8 @@ pub type RuleExecutionsLogRow {
   RuleExecutionsLogRow(
     id: Int,
     rule_id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Int,
+    card_id: Int,
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -3379,7 +3381,7 @@ pub type RuleExecutionsLogRow {
 pub fn rule_executions_log(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: String,
+  arg_2: Int,
   arg_3: Int,
   arg_4: String,
   arg_5: String,
@@ -3388,8 +3390,8 @@ pub fn rule_executions_log(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use rule_id <- decode.field(1, decode.int)
-    use origin_type <- decode.field(2, decode.string)
-    use origin_id <- decode.field(3, decode.int)
+    use task_id <- decode.field(2, decode.int)
+    use card_id <- decode.field(3, decode.int)
     use outcome <- decode.field(4, decode.string)
     use suppression_reason <- decode.field(5, decode.string)
     use user_id <- decode.field(6, decode.int)
@@ -3397,8 +3399,8 @@ pub fn rule_executions_log(
     decode.success(RuleExecutionsLogRow(
       id:,
       rule_id:,
-      origin_type:,
-      origin_id:,
+      task_id:,
+      card_id:,
       outcome:,
       suppression_reason:,
       user_id:,
@@ -3408,14 +3410,28 @@ pub fn rule_executions_log(
 
   "-- name: rule_executions_log
 -- Log a rule execution for idempotency tracking and metrics.
-insert into rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id)
-values ($1, $2, $3, $4, nullif($5, ''), $6)
-on conflict (rule_id, origin_type, origin_id) do nothing
+insert into rule_executions (
+  rule_id,
+  task_id,
+  card_id,
+  outcome,
+  suppression_reason,
+  user_id
+)
+values (
+  $1,
+  nullif($2, 0),
+  nullif($3, 0),
+  $4,
+  nullif($5, ''),
+  $6
+)
+on conflict do nothing
 returning
   id,
   rule_id,
-  origin_type,
-  origin_id,
+  coalesce(task_id, 0) as task_id,
+  coalesce(card_id, 0) as card_id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason,
   coalesce(user_id, 0) as user_id,
@@ -3423,7 +3439,7 @@ returning
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.text(arg_5))

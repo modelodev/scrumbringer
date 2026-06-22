@@ -3,7 +3,7 @@ import gleam/option.{None, Some}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type TaskDependency, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{Available, Done, WorkAvailable}
+import domain/task_status.{Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/blocking
 
@@ -59,8 +59,6 @@ fn sample_task(id: Int, dependencies: List(TaskDependency)) {
     description: None,
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

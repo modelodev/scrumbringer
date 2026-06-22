@@ -2,7 +2,7 @@
 
 import gleam/option as opt
 
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_status.{type TaskPhase}
 
 import scrumbringer_client/features/pool/available_tasks
@@ -21,7 +21,7 @@ pub type Config {
 
 pub fn view(
   config: Config,
-  task: Task,
+  task: domain_task.Task,
 ) -> #(String, toast.ToastVariant, toast.ToastAction) {
   case is_visible(config, task) {
     True -> #(
@@ -44,14 +44,17 @@ pub fn view(
   }
 }
 
-fn is_visible(config: Config, task: Task) -> Bool {
+fn is_visible(config: Config, task: domain_task.Task) -> Bool {
   status_matches(config.status_filter, task)
   && available_tasks.matches_work_filters(config.work_filters, task)
 }
 
-fn status_matches(status_filter: opt.Option(TaskPhase), task: Task) -> Bool {
+fn status_matches(
+  status_filter: opt.Option(TaskPhase),
+  task: domain_task.Task,
+) -> Bool {
   case status_filter {
-    opt.Some(status) -> task.status == status
+    opt.Some(status) -> domain_task.status(task) == status
     opt.None -> True
   }
 }

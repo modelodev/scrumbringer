@@ -106,8 +106,6 @@ fn sample_task() -> task.Task {
     description: opt.Some("Review release checklist."),
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
     due_date: opt.None,
@@ -125,12 +123,7 @@ fn sample_task() -> task.Task {
 fn unclaimed_task() -> task.Task {
   let state = task_state.Available
 
-  task.Task(
-    ..sample_task(),
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  task.Task(..sample_task(), state: state)
 }
 
 fn model_with_task() -> client_state.Model {

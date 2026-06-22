@@ -129,8 +129,6 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     claimed_at,
     completed_at,
   ))
-  let status = task_state.to_status(state)
-  let work_state = task_state.to_work_state(state)
 
   use created_at <- decode.field("created_at", decode.string)
   use due_date <- decode.optional_field(
@@ -187,8 +185,6 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     description: description,
     priority: priority,
     state: state,
-    status: status,
-    work_state: work_state,
     created_by: created_by,
     created_at: created_at,
     due_date: due_date,

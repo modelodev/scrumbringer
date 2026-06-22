@@ -297,8 +297,6 @@ fn task_decoder() -> Decoder(Task) {
     claimed_at,
     completed_at,
   ))
-  let status = task_state.to_status(state)
-  let work_state = task_state.to_work_state(state)
 
   decode.success(task.Task(
     id: id,
@@ -310,8 +308,6 @@ fn task_decoder() -> Decoder(Task) {
     description: description,
     priority: priority,
     state: state,
-    status: status,
-    work_state: work_state,
     created_by: created_by,
     created_at: created_at,
     due_date: due_date,
@@ -1234,7 +1230,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
 }
 
 fn view_task_status(task: Task) -> Element(Msg) {
-  let status_icon = case task.status {
+  let status_icon = case task_state.to_status(task.state) {
     Done -> "\u{2705}"
     task_status.Claimed(_) -> "\u{1F7E1}"
     Available -> "\u{26AA}"

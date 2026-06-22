@@ -49,8 +49,6 @@ fn task_with_state(id: Int, state: task_state.TaskState) -> Task {
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,

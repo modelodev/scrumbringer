@@ -400,7 +400,7 @@ pub fn complete_task(
         tx,
         user_id,
         task_id,
-        "task_completed",
+        "task_closed",
       )
 
     case sql.tasks_complete(tx, task_id, user_id, version) {
@@ -414,7 +414,7 @@ pub fn complete_task(
             task.project_id,
             task.id,
             user_id,
-            audit_events_db.TaskDone,
+            audit_events_db.TaskClosed,
           )
           |> result.map_error(service_error.DbError),
         )

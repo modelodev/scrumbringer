@@ -5,7 +5,6 @@ import lustre/element
 import domain/card
 import domain/task.{Task}
 import domain/task_state
-import domain/task_status.{Available, WorkAvailable}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/i18n/locale
@@ -69,8 +68,6 @@ fn sample_task() {
     description: Some("Task description"),
     priority: 2,
     state: task_state.Available,
-    status: Available,
-    work_state: WorkAvailable,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

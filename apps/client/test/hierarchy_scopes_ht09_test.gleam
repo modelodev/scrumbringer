@@ -47,8 +47,6 @@ fn task(id: Int, title: String, type_id: Int, card_id) -> Task {
     description: Some(""),
     priority: 3,
     state: task_state.Available,
-    status: task_state.to_status(task_state.Available),
-    work_state: task_state.to_work_state(task_state.Available),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
@@ -70,12 +68,7 @@ fn claimed_task(id: Int, title: String, type_id: Int, card_id) -> Task {
       claimed_at: "2026-01-01T00:00:00Z",
       mode: task_status.Taken,
     )
-  Task(
-    ..task(id, title, type_id, card_id),
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..task(id, title, type_id, card_id), state: state)
 }
 
 fn config(scope: scope_view.Scope) -> scope_view.Config(String) {

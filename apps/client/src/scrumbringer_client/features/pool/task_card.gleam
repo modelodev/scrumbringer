@@ -3,7 +3,7 @@ import gleam/option.{type Option}
 import gleam/string
 
 import domain/card.{type CardColor}
-import domain/task.{type Task, type TaskNote, Task}
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{Claimed}
 import lustre/attribute
@@ -30,7 +30,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     theme: Theme,
-    task: Task,
+    task: domain_task.Task,
     current_user_id: Option(Int),
     card_title: Option(String),
     card_color: Option(CardColor),
@@ -42,7 +42,7 @@ pub type Config(msg) {
     touch_preview: Bool,
     disable_actions: Bool,
     hidden_blocked_count: Option(Int),
-    notes: List(TaskNote),
+    notes: List(domain_task.TaskNote),
     on_claim: msg,
     on_release: msg,
     on_complete: msg,
@@ -58,8 +58,9 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let Task(id: id, task_type: task_type, title: title, status: status, ..) =
+  let domain_task.Task(id: id, task_type: task_type, title: title, ..) =
     config.task
+  let status = domain_task.status(config.task)
 
   let is_mine =
     task_state.claimed_by(config.task.state) == config.current_user_id
@@ -246,7 +247,8 @@ fn claim_action(locale: Locale, config: Config(msg)) -> Element(msg) {
 }
 
 fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {
-  let descriptive_label = task_state_ui.next_action(locale, config.task.status)
+  let descriptive_label =
+    task_state_ui.next_action(locale, domain_task.status(config.task))
 
   task_actions.claim_icon(
     descriptive_label,
@@ -283,7 +285,7 @@ fn complete_action(
   is_mine: Bool,
   config: Config(msg),
 ) -> Element(msg) {
-  case config.task.status, is_mine {
+  case domain_task.status(config.task), is_mine {
     Claimed(_), True ->
       task_actions.complete_icon(
         task_state_ui.complete_action(locale),

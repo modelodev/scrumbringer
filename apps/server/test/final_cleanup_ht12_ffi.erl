@@ -29,6 +29,8 @@ violations(Check) when is_binary(Check) ->
             legacy_route_violations(Root);
         "schema_final_has_no_legacy_tables_or_columns" ->
             schema_legacy_storage_violations(Root);
+        "schema_final_enforces_canonical_data_model_invariants" ->
+            schema_canonical_data_model_violations(Root);
         "seed_data_uses_hierarchy_and_root_pool_tasks" ->
             seed_hierarchy_violations(Root);
         "seed_data_covers_card_profiles_due_dates_and_closed_outcomes" ->
@@ -174,6 +176,57 @@ schema_legacy_storage_violations(Root) ->
         legacy_plural_bin(),
         legacy_id_bin()
     ], [".sql"]).
+
+schema_canonical_data_model_violations(Root) ->
+    Path = filename:join(Root, "db/schema.sql"),
+    case read_file(Path) of
+        {ok, Text} ->
+            forbidden_schema_terms(Text) ++ required_schema_terms(Text);
+        error ->
+            [<<"missing db/schema.sql">>]
+    end.
+
+forbidden_schema_terms(Text) ->
+    Forbidden = [
+        <<"status text DEFAULT 'available'::text NOT NULL">>,
+        <<"tasks_status_check">>,
+        <<"idx_tasks_status">>,
+        <<"idx_tasks_card_status">>,
+        <<" NOT VALID">>,
+        <<"task_completed">>,
+        <<"task_done">>,
+        <<"origin_type">>,
+        <<"origin_id">>
+    ],
+    [bin(["db/schema.sql contains forbidden final-schema term: ", Term])
+     || Term <- Forbidden,
+        binary:match(Text, Term) =/= nomatch].
+
+required_schema_terms(Text) ->
+    Required = [
+        <<"prevent_card_cycle">>,
+        <<"trg_cards_prevent_cycle">>,
+        <<"prevent_task_dependency_cycle">>,
+        <<"trg_task_dependencies_prevent_cycle">>,
+        <<"tasks_project_type_fk">>,
+        <<"tasks_project_capability_fk">>,
+        <<"task_types_project_capability_fk">>,
+        <<"task_templates_project_type_fk">>,
+        <<"rules_workflow_task_type_project_fk">>,
+        <<"enforce_api_token_org_scope">>,
+        <<"trg_api_tokens_org_scope">>,
+        <<"audit_events_target_check">>,
+        <<"audit_events_task_project_fk">>,
+        <<"audit_events_card_project_fk">>,
+        <<"task_closed">>,
+        <<"rule_executions_task_id_fkey">>,
+        <<"rule_executions_card_id_fkey">>,
+        <<"project_settings_increment_version">>,
+        <<"trg_project_settings_increment_version">>
+    ],
+    [bin(["db/schema.sql missing canonical final-schema term: ", Term])
+     || Term <- Required,
+        binary:match(Text, Term) =:= nomatch].
 
 seed_hierarchy_violations(Root) ->
     require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [

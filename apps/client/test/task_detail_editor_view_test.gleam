@@ -36,8 +36,6 @@ fn claimed_task() -> Task {
     description: Some("Review release checklist."),
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,
@@ -106,13 +104,7 @@ pub fn detail_editor_hides_edit_for_other_claimed_task_test() {
 
 pub fn detail_editor_hides_edit_for_completed_task_test() {
   let completed_state = task_state.Done("2026-06-14T12:00:00Z")
-  let task =
-    Task(
-      ..claimed_task(),
-      state: completed_state,
-      status: task_state.to_status(completed_state),
-      work_state: task_state.to_work_state(completed_state),
-    )
+  let task = Task(..claimed_task(), state: completed_state)
   let html =
     detail_editor.view_readonly_fields(config(Some(7)), task)
     |> element.to_document_string

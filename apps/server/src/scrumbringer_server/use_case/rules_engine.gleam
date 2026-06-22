@@ -352,27 +352,20 @@ fn evaluate_single_rule(
   rule: MatchingRule,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
-  let origin_type = event_resource_type(event)
-  let origin_id = event_resource_id(event)
-
   // Check idempotency
-  case check_already_executed(db, rule.id, origin_type, origin_id) {
+  case check_already_executed(db, rule.id, event) {
     Error(e) -> {
       log("  Error checking idempotency: " <> debug_error(e))
       Error(e)
     }
-    Ok(True) ->
-      suppress_idempotent_execution(db, rule, origin_type, origin_id, event)
-    Ok(False) ->
-      evaluate_rule_templates(db, rule, event, origin_type, origin_id)
+    Ok(True) -> suppress_idempotent_execution(db, rule, event)
+    Ok(False) -> evaluate_rule_templates(db, rule, event)
   }
 }
 
 fn suppress_idempotent_execution(
   db: pog.Connection,
   rule: MatchingRule,
-  origin_type: String,
-  origin_id: Int,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
   log("  Suppressed: already executed for this resource")
@@ -381,8 +374,7 @@ fn suppress_idempotent_execution(
     log_execution(
       db,
       rule.id,
-      origin_type,
-      origin_id,
+      event,
       "suppressed",
       "idempotent",
       event_user_id(event),
@@ -395,46 +387,25 @@ fn evaluate_rule_templates(
   db: pog.Connection,
   rule: MatchingRule,
   event: StateChange,
-  origin_type: String,
-  origin_id: Int,
 ) -> Result(RuleResult, RuleEngineError) {
   use templates <- result.try(get_rule_templates(db, rule.id))
 
   log("  Found " <> int.to_string(list.length(templates)) <> " template(s)")
 
   case templates {
-    [] -> apply_rule_without_templates(db, rule, origin_type, origin_id, event)
-    _ ->
-      apply_rule_with_templates(
-        db,
-        rule,
-        templates,
-        origin_type,
-        origin_id,
-        event,
-      )
+    [] -> apply_rule_without_templates(db, rule, event)
+    _ -> apply_rule_with_templates(db, rule, templates, event)
   }
 }
 
 fn apply_rule_without_templates(
   db: pog.Connection,
   rule: MatchingRule,
-  origin_type: String,
-  origin_id: Int,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
   log("  Applied: no templates to execute")
 
-  let _ =
-    log_execution(
-      db,
-      rule.id,
-      origin_type,
-      origin_id,
-      "applied",
-      "",
-      event_user_id(event),
-    )
+  let _ = log_execution(db, rule.id, event, "applied", "", event_user_id(event))
 
   Ok(RuleResult(rule.id, Applied(0)))
 }
@@ -443,8 +414,6 @@ fn apply_rule_with_templates(
   db: pog.Connection,
   rule: MatchingRule,
   templates: List(ExecutionTemplate),
-  origin_type: String,
-  origin_id: Int,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
   use tasks_created <- result.try(create_tasks_from_templates(
@@ -456,16 +425,7 @@ fn apply_rule_with_templates(
 
   log("  Applied: created " <> int.to_string(tasks_created) <> " task(s)")
 
-  let _ =
-    log_execution(
-      db,
-      rule.id,
-      origin_type,
-      origin_id,
-      "applied",
-      "",
-      event_user_id(event),
-    )
+  let _ = log_execution(db, rule.id, event, "applied", "", event_user_id(event))
 
   Ok(RuleResult(rule.id, Applied(tasks_created)))
 }
@@ -473,10 +433,16 @@ fn apply_rule_with_templates(
 fn check_already_executed(
   db: pog.Connection,
   rule_id: Int,
-  origin_type: String,
-  origin_id: Int,
+  event: StateChange,
 ) -> Result(Bool, RuleEngineError) {
-  case sql.rule_executions_check(db, rule_id, origin_type, origin_id) {
+  case
+    sql.rule_executions_check(
+      db,
+      rule_id,
+      execution_task_id(event),
+      execution_card_id(event),
+    )
+  {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(True)
     Ok(pog.Returned(rows: [], ..)) -> Ok(False)
     Error(e) -> Error(DbError(e))
@@ -655,8 +621,7 @@ fn get_user_name(db: pog.Connection, user_id: Int) -> String {
 fn log_execution(
   db: pog.Connection,
   rule_id: Int,
-  origin_type: String,
-  origin_id: Int,
+  event: StateChange,
   outcome: String,
   suppression_reason: String,
   user_id: Int,
@@ -665,8 +630,8 @@ fn log_execution(
     sql.rule_executions_log(
       db,
       rule_id,
-      origin_type,
-      origin_id,
+      execution_task_id(event),
+      execution_card_id(event),
       outcome,
       suppression_reason,
       user_id,
@@ -694,6 +659,22 @@ fn event_resource_id(event: StateChange) -> Int {
     CardChange(card_id: card_id, ..) -> card_id
   }
 }
+
+fn execution_task_id(event: StateChange) -> Int {
+  case event {
+    TaskChange(ctx: ctx, ..) -> ctx.task_id
+    CardChange(..) -> no_execution_resource_id
+  }
+}
+
+fn execution_card_id(event: StateChange) -> Int {
+  case event {
+    TaskChange(..) -> no_execution_resource_id
+    CardChange(card_id: card_id, ..) -> card_id
+  }
+}
+
+const no_execution_resource_id = 0
 
 fn event_project_id(event: StateChange) -> Int {
   case event {

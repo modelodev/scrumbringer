@@ -1,6 +1,6 @@
 import domain/card.{type Card, Closed}
 import domain/org.{type OrgUser}
-import domain/task.{type Task, claimed_by}
+import domain/task as domain_task
 import domain/task_status.{Available, Claimed, Done}
 import gleam/list
 import gleam/option
@@ -33,7 +33,7 @@ pub type Config(msg) {
     locale: Locale,
     theme: Theme,
     card: Card,
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     org_users: List(OrgUser),
     preview_limit: Int,
     progress_completed: Int,
@@ -197,7 +197,7 @@ fn view_task_preview(config: Config(msg)) -> Element(msg) {
   }
 }
 
-fn view_task(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task(config: Config(msg), task: domain_task.Task) -> Element(msg) {
   let blocked_class = case task.blocked_count > 0 {
     True -> " task-blocked"
     False -> ""
@@ -235,15 +235,15 @@ fn view_task(config: Config(msg), task: Task) -> Element(msg) {
   )
 }
 
-fn status_display(config: Config(msg), task: Task) -> Element(msg) {
-  case task.status {
+fn status_display(config: Config(msg), task: domain_task.Task) -> Element(msg) {
+  case domain_task.status(task) {
     Claimed(_) ->
       span(
         [
           attribute.class("task-claimed-by"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
         [text(compact_claimed_name(config, task))],
@@ -254,10 +254,10 @@ fn status_display(config: Config(msg), task: Task) -> Element(msg) {
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
-        [text(task_status_utils.label(config.locale, task.status))],
+        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
       )
     Done ->
       span(
@@ -265,23 +265,26 @@ fn status_display(config: Config(msg), task: Task) -> Element(msg) {
           attribute.class("task-status"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
-        [text(task_status_utils.label(config.locale, task.status))],
+        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
       )
   }
 }
 
-fn compact_claimed_name(config: Config(msg), task: Task) -> String {
+fn compact_claimed_name(config: Config(msg), task: domain_task.Task) -> String {
   case claimed_email(config, task) {
     option.Some(email) -> truncate_email(email)
     option.None -> "?"
   }
 }
 
-fn claimed_email(config: Config(msg), task: Task) -> option.Option(String) {
-  case claimed_by(task) {
+fn claimed_email(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> option.Option(String) {
+  case domain_task.claimed_by(task) {
     option.Some(user_id) ->
       list.find(config.org_users, fn(user) { user.id == user_id })
       |> option.from_result
@@ -290,11 +293,14 @@ fn claimed_email(config: Config(msg), task: Task) -> option.Option(String) {
   }
 }
 
-fn task_actions_for(config: Config(msg), task: Task) -> List(Element(msg)) {
-  case task.status {
+fn task_actions_for(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> List(Element(msg)) {
+  case domain_task.status(task) {
     Available ->
       task_item.single_action(task_actions.claim_icon_with_class(
-        task_state_ui.next_action(config.locale, task.status),
+        task_state_ui.next_action(config.locale, domain_task.status(task)),
         config.on_task_claim(task.id, task.version),
         icons.XSmall,
         False,
@@ -306,7 +312,7 @@ fn task_actions_for(config: Config(msg), task: Task) -> List(Element(msg)) {
   }
 }
 
-fn task_container_class(config: Config(msg), task: Task) -> String {
+fn task_container_class(config: Config(msg), task: domain_task.Task) -> String {
   let border_class =
     task.card_color
     |> option.or(config.card.color)

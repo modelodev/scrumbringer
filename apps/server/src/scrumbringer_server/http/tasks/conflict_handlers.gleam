@@ -14,6 +14,7 @@
 //// conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
 //// ```
 
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status.{Available, Claimed, Done}
 import gleam/option.{type Option, Some}
@@ -46,7 +47,7 @@ pub fn handle_claim_conflict(
     Error(error) -> service_error_response.to_database_response(error)
 
     Ok(current) ->
-      case current.status, current.blocked_count {
+      case domain_task.status(current), current.blocked_count {
         Claimed(_), _ ->
           api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
         Done, _ -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
@@ -77,7 +78,7 @@ pub fn handle_version_or_claim_conflict(
     Error(error) -> service_error_response.to_database_response(error)
 
     Ok(current) ->
-      case current.status {
+      case domain_task.status(current) {
         Claimed(_) ->
           claimed_conflict_response(
             task_state.claimed_by(current.state),

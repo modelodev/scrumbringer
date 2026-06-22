@@ -14,7 +14,7 @@ import domain/card.{type CardColor}
 import domain/org.{type OrgUser}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_state
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/people/state as people_state
@@ -41,18 +41,22 @@ type PeopleSummary {
 }
 
 type TaskGroup {
-  TaskGroup(card_id: Option(Int), card_title: Option(String), tasks: List(Task))
+  TaskGroup(
+    card_id: Option(Int),
+    card_title: Option(String),
+    tasks: List(domain_task.Task),
+  )
 }
 
 pub type Config(msg) {
   Config(
     locale: Locale,
     people_roster: Remote(List(ProjectMember)),
-    member_tasks: Remote(List(Task)),
+    member_tasks: Remote(List(domain_task.Task)),
     org_users: Remote(List(OrgUser)),
     people_expansions: dict.Dict(Int, people_state.RowExpansion),
     search_query: String,
-    task_card_color: fn(Task) -> Option(CardColor),
+    task_card_color: fn(domain_task.Task) -> Option(CardColor),
     on_person_toggle: fn(Int) -> msg,
     on_task_click: fn(Int) -> msg,
   )
@@ -297,7 +301,10 @@ fn view_row_metric(label: String, variant: badge.BadgeVariant) -> Element(msg) {
   |> badge.view_with_class("people-metric-chip")
 }
 
-fn view_person_cards(config: Config(msg), tasks: List(Task)) -> Element(msg) {
+fn view_person_cards(
+  config: Config(msg),
+  tasks: List(domain_task.Task),
+) -> Element(msg) {
   let titles = task_groups(tasks) |> card_titles_from_groups
 
   case titles {
@@ -320,7 +327,7 @@ fn view_person_cards(config: Config(msg), tasks: List(Task)) -> Element(msg) {
 
 fn view_load_warning(
   config: Config(msg),
-  claimed_tasks: List(Task),
+  claimed_tasks: List(domain_task.Task),
 ) -> Element(msg) {
   case list.length(claimed_tasks) >= load_warning_claimed_threshold {
     True ->
@@ -335,7 +342,7 @@ fn view_load_warning(
 
 fn view_active_section(
   config: Config(msg),
-  active_tasks: List(Task),
+  active_tasks: List(domain_task.Task),
 ) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
@@ -353,7 +360,7 @@ fn view_active_section(
 
 fn view_claimed_section(
   config: Config(msg),
-  claimed_tasks: List(Task),
+  claimed_tasks: List(domain_task.Task),
 ) -> Element(msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
@@ -369,7 +376,10 @@ fn view_claimed_section(
   ])
 }
 
-fn view_task_list(config: Config(msg), tasks: List(Task)) -> Element(msg) {
+fn view_task_list(
+  config: Config(msg),
+  tasks: List(domain_task.Task),
+) -> Element(msg) {
   ul(
     [attribute.class("people-claimed-list")],
     list.map(tasks, fn(task) {
@@ -380,7 +390,7 @@ fn view_task_list(config: Config(msg), tasks: List(Task)) -> Element(msg) {
   )
 }
 
-fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task_item(config: Config(msg), task: domain_task.Task) -> Element(msg) {
   let resolved_color = config.task_card_color(task)
   let border_class = task_color.card_border_class(resolved_color)
 
@@ -408,7 +418,7 @@ fn view_task_item(config: Config(msg), task: Task) -> Element(msg) {
 
 fn view_task_leading_swatch(
   config: Config(msg),
-  task: Task,
+  task: domain_task.Task,
   card_color: Option(CardColor),
 ) -> Option(Element(msg)) {
   case card_color {
@@ -440,36 +450,45 @@ fn view_card_identity_swatch(
   }
 }
 
-fn view_task_secondary(config: Config(msg), task: Task) -> Element(msg) {
+fn view_task_secondary(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> Element(msg) {
   div([attribute.class("task-item-meta people-task-meta")], [
     span(
       [
         attribute.class("task-status-muted"),
         attribute.attribute(
           "title",
-          task_state_ui.hint(config.locale, task.status),
+          task_state_ui.hint(config.locale, domain_task.status(task)),
         ),
       ],
-      [text(task_state_ui.label(config.locale, task.status))],
+      [text(task_state_ui.label(config.locale, domain_task.status(task)))],
     ),
   ])
 }
 
-fn task_card_accessibility_label(config: Config(msg), task: Task) -> String {
+fn task_card_accessibility_label(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> String {
   case task.card_title {
     Some(title) -> title
     None -> i18n.t(config.locale, i18n_text.PeopleNoCardContext)
   }
 }
 
-fn task_groups(tasks: List(Task)) -> List(TaskGroup) {
+fn task_groups(tasks: List(domain_task.Task)) -> List(TaskGroup) {
   tasks
   |> list.fold([], fn(groups, task) { upsert_task_group(groups, task) })
   |> list.reverse
   |> list.map(fn(group) { TaskGroup(..group, tasks: list.reverse(group.tasks)) })
 }
 
-fn upsert_task_group(groups: List(TaskGroup), task: Task) -> List(TaskGroup) {
+fn upsert_task_group(
+  groups: List(TaskGroup),
+  task: domain_task.Task,
+) -> List(TaskGroup) {
   case groups {
     [] -> [new_task_group(task)]
     [group, ..rest] -> {
@@ -481,11 +500,11 @@ fn upsert_task_group(groups: List(TaskGroup), task: Task) -> List(TaskGroup) {
   }
 }
 
-fn new_task_group(task: Task) -> TaskGroup {
+fn new_task_group(task: domain_task.Task) -> TaskGroup {
   TaskGroup(card_id: task.card_id, card_title: task.card_title, tasks: [task])
 }
 
-fn same_task_card(group: TaskGroup, task: Task) -> Bool {
+fn same_task_card(group: TaskGroup, task: domain_task.Task) -> Bool {
   group.card_id == task.card_id && group.card_title == task.card_title
 }
 
@@ -500,7 +519,7 @@ fn card_titles_from_groups(groups: List(TaskGroup)) -> List(String) {
   |> list.reverse
 }
 
-fn tasks_for_member(config: Config(msg), user_id: Int) -> List(Task) {
+fn tasks_for_member(config: Config(msg), user_id: Int) -> List(domain_task.Task) {
   case config.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(task) {

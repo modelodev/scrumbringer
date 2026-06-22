@@ -1,7 +1,7 @@
 //// Plan / Structure explorer.
 
 import domain/card.{type Card, Active, Closed, Draft}
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import gleam/dynamic/decode
 import gleam/int
@@ -39,7 +39,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     cards: List(Card),
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     depth_names: List(scope_view.DepthName),
     scope_kind: member_pool.PlanScopeKind,
     selected_depth: Option(Int),
@@ -1026,7 +1026,7 @@ fn view_detail_subcards(
 }
 
 fn view_detail_tasks(
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
   _rollup: types.CardRollup,
 ) -> Element(msg) {
   ul(
@@ -1313,7 +1313,7 @@ fn summary_for_rows(
   types.CardRollup(
     ..rollup,
     pool_impact: list.count(tasks, fn(task) {
-      task.status == Available
+      domain_task.status(task) == Available
       && list.any(row_cards, fn(card) {
         card.state == Draft
         && card_queries.task_in_card_subtree(task, card.id, config.cards)
@@ -1322,23 +1322,30 @@ fn summary_for_rows(
   )
 }
 
-fn rollup_for_tasks(tasks: List(Task)) -> types.CardRollup {
+fn rollup_for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
   types.CardRollup(
     total_tasks: list.length(tasks),
-    completed_tasks: list.count(tasks, fn(task) { task.status == Done }),
-    available_tasks: list.count(tasks, fn(task) { task.status == Available }),
-    claimed_tasks: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
+    completed_tasks: list.count(tasks, fn(task) {
+      domain_task.status(task) == Done
+    }),
+    available_tasks: list.count(tasks, fn(task) {
+      domain_task.status(task) == Available
+    }),
+    claimed_tasks: list.count(tasks, fn(task) {
+      domain_task.status(task) == Claimed(Taken)
+    }),
     ongoing_tasks: list.count(tasks, fn(task) {
-      task.status == Claimed(Ongoing)
+      domain_task.status(task) == Claimed(Ongoing)
     }),
     blocked_tasks: list.count(tasks, fn(task) { task.blocked_count > 0 }),
     pool_impact: 0,
   )
 }
 
-fn rollup_pool_impact(card: Card, tasks: List(Task)) -> Int {
+fn rollup_pool_impact(card: Card, tasks: List(domain_task.Task)) -> Int {
   case card.state {
-    Draft -> list.count(tasks, fn(task) { task.status == Available })
+    Draft ->
+      list.count(tasks, fn(task) { domain_task.status(task) == Available })
     Active | Closed -> 0
   }
 }
@@ -1346,7 +1353,7 @@ fn rollup_pool_impact(card: Card, tasks: List(Task)) -> Int {
 fn rollup_for_card(
   card: Card,
   cards: List(Card),
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
 ) -> types.CardRollup {
   let card_tasks =
     tasks
@@ -1522,7 +1529,7 @@ fn has_claimed_or_ongoing_descendants(config: Config(msg), card: Card) -> Bool {
     card_queries.task_in_card_subtree(task, card.id, config.cards)
   })
   |> list.any(fn(task) {
-    case task.status {
+    case domain_task.status(task) {
       Claimed(Taken) | Claimed(Ongoing) -> True
       _ -> False
     }
@@ -1536,7 +1543,10 @@ fn action_event(
 ) -> #(String, msg) {
   case action {
     types.CreateSubcard -> #("+ Subcard", config.on_create_subcard(card.id))
-    types.CreateTask -> #("+ Task", config.on_create_task_in_card(card.id))
+    types.CreateTask -> #(
+      "+ domain_task.Task",
+      config.on_create_task_in_card(card.id),
+    )
     types.ActivateSubtree -> #(
       "Activar subarbol",
       config.on_card_click(card.id),
@@ -1809,8 +1819,8 @@ fn plan_sort_value(sort: member_pool.PlanSort) -> String {
   }
 }
 
-fn task_status_label(task: Task) -> String {
-  case task.status {
+fn task_status_label(task: domain_task.Task) -> String {
+  case domain_task.status(task) {
     Available -> "disponible"
     Claimed(Taken) -> "reclamada"
     Claimed(Ongoing) -> "en curso"

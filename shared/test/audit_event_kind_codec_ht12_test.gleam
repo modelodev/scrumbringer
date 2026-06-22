@@ -5,7 +5,7 @@ pub fn audit_event_kind_codec_roundtrip_test() {
   let kinds = [
     kind_codec.TaskClaimed,
     kind_codec.TaskReleased,
-    kind_codec.TaskDone,
+    kind_codec.TaskClosed,
     kind_codec.CardActivated,
     kind_codec.CardClosed,
   ]

@@ -144,11 +144,15 @@ fn task_to_json(task: task_domain.Task) -> json.Json {
     #("priority", json.int(task.priority)),
     #(
       "status",
-      json.string(domain_task_status.task_status_to_string(task.status)),
+      json.string(
+        domain_task_status.task_status_to_string(task_domain.status(task)),
+      ),
     ),
     #(
       "work_state",
-      json.string(domain_task_status.work_state_to_string(task.work_state)),
+      json.string(
+        domain_task_status.work_state_to_string(task_domain.work_state(task)),
+      ),
     ),
     #("created_by", json.int(task.created_by)),
     #("claimed_by", case task_domain.claimed_by(task) {

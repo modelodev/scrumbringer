@@ -7,7 +7,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
 import domain/remote.{type Remote, Loaded}
-import domain/task.{type Task, type TaskDependency, claimed_by}
+import domain/task as domain_task
 
 import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/i18n/i18n
@@ -18,8 +18,8 @@ import scrumbringer_client/ui/task_state
 pub type Config {
   Config(
     locale: Locale,
-    task: Task,
-    dependencies: Remote(List(TaskDependency)),
+    task: domain_task.Task,
+    dependencies: Remote(List(domain_task.TaskDependency)),
     parent_card_title: opt.Option(String),
   )
 }
@@ -35,7 +35,7 @@ pub fn view(config: Config) -> Element(msg) {
     div([attribute.class("task-detail-summary-grid")], [
       summary_item(
         t(config.locale, i18n_text.Status),
-        task_state.label(config.locale, config.task.status),
+        task_state.label(config.locale, domain_task.status(config.task)),
         False,
       ),
       summary_item(
@@ -94,14 +94,14 @@ fn card_is_empty(config: Config) -> Bool {
 }
 
 fn owner_label(config: Config) -> String {
-  case claimed_by(config.task) {
+  case domain_task.claimed_by(config.task) {
     opt.Some(_) -> t(config.locale, i18n_text.Assigned)
     opt.None -> t(config.locale, i18n_text.Unassigned)
   }
 }
 
 fn owner_is_empty(config: Config) -> Bool {
-  claimed_by(config.task) == opt.None
+  domain_task.claimed_by(config.task) == opt.None
 }
 
 fn blocking_label(config: Config, count: Int) -> String {

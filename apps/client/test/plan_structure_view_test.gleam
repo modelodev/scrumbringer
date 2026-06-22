@@ -511,8 +511,6 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
     description: None,
     priority: 3,
     state: state,
-    status: status,
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,

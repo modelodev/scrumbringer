@@ -143,7 +143,16 @@ fn config(
 }
 
 fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
-  let state = task_state.Available
+  let state = case status {
+    Available -> task_state.Available
+    Claimed(mode) ->
+      task_state.Claimed(
+        claimed_by: 1,
+        claimed_at: "2026-06-08T00:00:00Z",
+        mode: mode,
+      )
+    Done -> task_state.Done(completed_at: "2026-06-08T00:00:00Z")
+  }
   Task(
     id: id,
     project_id: 1,
@@ -154,8 +163,6 @@ fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
     description: None,
     priority: 1,
     state: state,
-    status: status,
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-06-08T00:00:00Z",
     due_date: None,

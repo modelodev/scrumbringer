@@ -5,7 +5,6 @@ import domain/api_error.{ApiError}
 import domain/remote
 import domain/task.{type Task, Task}
 import domain/task_state
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/dialog_mode
@@ -174,8 +173,6 @@ fn sample_task(id: Int) -> Task {
     description: opt.None,
     priority: 1,
     state: task_state.Available,
-    status: task_status.Available,
-    work_state: task_status.WorkAvailable,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,

@@ -11,7 +11,7 @@
 ////
 //// Non-responsibilities:
 //// - Card CRUD operations (handled by parent)
-//// - Task details (handled by other views)
+//// - domain_task.Task details (handled by other views)
 
 import gleam/int
 import gleam/list
@@ -25,7 +25,7 @@ import lustre/element/keyed
 
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/org.{type OrgUser}
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
@@ -64,7 +64,7 @@ pub type KanbanConfig(msg) {
     surface_purpose: String,
     purpose: KanbanPurpose,
     cards: List(Card),
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     task_types: List(TaskType),
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
@@ -77,7 +77,7 @@ pub type KanbanConfig(msg) {
     on_card_click: fn(Int) -> msg,
     on_card_edit: fn(Int) -> msg,
     on_card_delete: fn(Int) -> msg,
-    // Story 4.8 UX: Task interaction handlers for consistency with Lista view
+    // Story 4.8 UX: domain_task.Task interaction handlers for consistency with Lista view
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
     // Story 4.12 AC8-AC9: Create task in card
@@ -100,7 +100,12 @@ pub type KanbanConfig(msg) {
 
 /// Card with computed progress and task list
 type CardWithProgress {
-  CardWithProgress(card: Card, completed: Int, total: Int, tasks: List(Task))
+  CardWithProgress(
+    card: Card,
+    completed: Int,
+    total: Int,
+    tasks: List(domain_task.Task),
+  )
 }
 
 type TaskHealth {
@@ -509,7 +514,7 @@ fn card_delete_availability(
 
 fn compute_progress(
   cards: List(Card),
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
   all_cards: List(Card),
 ) -> List(CardWithProgress) {
   list.map(cards, fn(card) {
@@ -517,7 +522,8 @@ fn compute_progress(
       list.filter(tasks, fn(task) {
         card_queries.task_in_card_subtree(task, card.id, all_cards)
       })
-    let completed = list.count(card_tasks, fn(t) { t.status == Done })
+    let completed =
+      list.count(card_tasks, fn(t) { domain_task.status(t) == Done })
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,
@@ -554,7 +560,7 @@ fn card_visible_for_purpose(
 fn show_closed(
   config: KanbanConfig(msg),
   scoped_cards: List(Card),
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
 ) -> Bool {
   case config.show_closed {
     option.Some(value) -> value
@@ -568,9 +574,9 @@ fn show_closed(
   }
 }
 
-fn has_work_in_progress(tasks: List(Task)) -> Bool {
+fn has_work_in_progress(tasks: List(domain_task.Task)) -> Bool {
   list.any(tasks, fn(task) {
-    case task.status {
+    case domain_task.status(task) {
       Claimed(Taken) | Claimed(Ongoing) -> True
       _ -> False
     }
@@ -590,19 +596,25 @@ fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
   )
 }
 
-fn task_health(tasks: List(Task)) -> TaskHealth {
+fn task_health(tasks: List(domain_task.Task)) -> TaskHealth {
   TaskHealth(
-    available: list.count(tasks, fn(task) { task.status == Available }),
-    claimed: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
-    ongoing: list.count(tasks, fn(task) { task.status == Claimed(Ongoing) }),
+    available: list.count(tasks, fn(task) {
+      domain_task.status(task) == Available
+    }),
+    claimed: list.count(tasks, fn(task) {
+      domain_task.status(task) == Claimed(Taken)
+    }),
+    ongoing: list.count(tasks, fn(task) {
+      domain_task.status(task) == Claimed(Ongoing)
+    }),
     blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
   )
 }
 
-fn next_relevant_tasks(tasks: List(Task)) -> List(Task) {
+fn next_relevant_tasks(tasks: List(domain_task.Task)) -> List(domain_task.Task) {
   let active =
     tasks
-    |> list.filter(fn(task) { task.status != Done })
+    |> list.filter(fn(task) { domain_task.status(task) != Done })
     |> list.sort(by: compare_relevant_tasks)
 
   case active {
@@ -611,7 +623,10 @@ fn next_relevant_tasks(tasks: List(Task)) -> List(Task) {
   }
 }
 
-fn compare_relevant_tasks(a: Task, b: Task) -> order.Order {
+fn compare_relevant_tasks(
+  a: domain_task.Task,
+  b: domain_task.Task,
+) -> order.Order {
   case int.compare(task_rank(a), task_rank(b)) {
     order.Eq ->
       case int.compare(b.priority, a.priority) {
@@ -626,8 +641,8 @@ fn compare_relevant_tasks(a: Task, b: Task) -> order.Order {
   }
 }
 
-fn task_rank(task: Task) -> Int {
-  case task.blocked_count > 0, task.status {
+fn task_rank(task: domain_task.Task) -> Int {
+  case task.blocked_count > 0, domain_task.status(task) {
     True, _ -> 0
     False, Available -> 1
     False, Claimed(Ongoing) -> 2

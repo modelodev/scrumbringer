@@ -114,8 +114,6 @@ fn claimed_task() -> Task {
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
@@ -143,8 +141,6 @@ fn available_task() -> Task {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
@@ -172,8 +168,6 @@ fn claimed_taken_task() -> Task {
     id: 3,
     title: "Prepare rollout",
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     priority: 4,
   )
 }
@@ -191,14 +185,7 @@ fn blocked_task() -> Task {
 fn completed_task() -> Task {
   let state = task_state.Done(completed_at: "2026-01-03T00:00:00Z")
 
-  Task(
-    ..available_task(),
-    id: 5,
-    title: "Done task",
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..available_task(), id: 5, title: "Done task", state: state)
 }
 
 pub fn kanban_task_item_renders_claimed_by_and_icon_test() {

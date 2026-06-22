@@ -46,8 +46,6 @@ fn sample_task(state: task_state.TaskState, blocked_count: Int) -> Task {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

@@ -775,8 +775,8 @@ pub fn query_nullable_int(
 pub fn fetch_rule_execution(
   db: pog.Connection,
   rule_id: Int,
-  origin_type: String,
-  origin_id: Int,
+  target_type: String,
+  target_id: Int,
 ) -> Result(RuleExecution, String) {
   let decoder = {
     use outcome <- decode.field(0, decode.string)
@@ -789,11 +789,11 @@ pub fn fetch_rule_execution(
 
   case
     pog.query(
-      "select outcome, coalesce(suppression_reason, '') from rule_executions where rule_id = $1 and origin_type = $2 and origin_id = $3",
+      "select outcome, coalesce(suppression_reason, '') from rule_executions where rule_id = $1 and (($2 = 'task' and task_id = $3) or ($2 = 'card' and card_id = $3))",
     )
     |> pog.parameter(pog.int(rule_id))
-    |> pog.parameter(pog.text(origin_type))
-    |> pog.parameter(pog.int(origin_id))
+    |> pog.parameter(pog.text(target_type))
+    |> pog.parameter(pog.int(target_id))
     |> pog.returning(decoder)
     |> pog.execute(db)
   {

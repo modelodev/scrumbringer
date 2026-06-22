@@ -3,7 +3,7 @@
 import gleam/list
 import gleam/option.{Some}
 
-import domain/task.{type Task}
+import domain/task as domain_task
 import domain/task_state
 import domain/task_status
 import scrumbringer_client/ui/badge
@@ -24,15 +24,15 @@ pub type PersonStatus {
     user_id: Int,
     label: String,
     availability: Availability,
-    active_tasks: List(Task),
-    claimed_tasks: List(Task),
+    active_tasks: List(domain_task.Task),
+    claimed_tasks: List(domain_task.Task),
   )
 }
 
 pub fn derive_status(
   user_id: Int,
   label: String,
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
 ) -> PersonStatus {
   let user_claimed =
     list.filter(tasks, fn(t) {
@@ -47,7 +47,7 @@ pub fn derive_status(
 
   let claimed_tasks =
     list.filter(user_claimed, fn(t) {
-      case t.status {
+      case domain_task.status(t) {
         task_status.Claimed(task_status.Taken) ->
           !is_active_for_user(t, user_id)
         _ -> False
@@ -72,8 +72,8 @@ pub fn derive_status(
   )
 }
 
-fn is_active_for_user(task: Task, user_id: Int) -> Bool {
-  case task.status {
+fn is_active_for_user(task: domain_task.Task, user_id: Int) -> Bool {
+  case domain_task.status(task) {
     task_status.Claimed(task_status.Ongoing) -> True
     _ ->
       case task.ongoing_by {

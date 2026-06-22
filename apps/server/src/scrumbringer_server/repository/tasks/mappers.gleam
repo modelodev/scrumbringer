@@ -309,8 +309,6 @@ fn from_fields(
     description: option_helpers.string_to_option(description),
     priority: priority,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: created_by,
     created_at: created_at,
     due_date: option_helpers.string_to_option(due_date),

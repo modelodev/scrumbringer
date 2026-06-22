@@ -60,8 +60,6 @@ fn make_task(
     description: None,
     priority: 3,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-02-01T09:00:00Z",
     due_date: None,

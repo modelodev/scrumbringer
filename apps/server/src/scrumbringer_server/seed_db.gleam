@@ -987,7 +987,8 @@ fn assign_pool_tasks_to_parent_card_by_status(
 ) -> Result(Nil, String) {
   use _ <- result.try(require_parent_card_accepts_tasks(db, card_id))
 
-  let status = task_status.task_status_to_string(status)
+  let execution_state = task_execution_state(status)
+  let claimed_mode = task_claimed_mode(status)
   pog.query(
     "UPDATE tasks
      SET card_id = $2
@@ -996,14 +997,16 @@ fn assign_pool_tasks_to_parent_card_by_status(
        FROM tasks
        WHERE project_id = $1
          AND card_id IS NULL
-         AND status = $3
+         AND execution_state = $3
+         AND coalesce(claimed_mode, '') = coalesce($4, '')
        ORDER BY id
-       LIMIT $4
+       LIMIT $5
      )",
   )
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(card_id))
-  |> pog.parameter(pog.text(status))
+  |> pog.parameter(pog.text(execution_state))
+  |> pog.parameter(pog.nullable(pog.text, claimed_mode))
   |> pog.parameter(pog.int(limit))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })

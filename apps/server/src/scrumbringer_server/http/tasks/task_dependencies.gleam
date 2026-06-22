@@ -1,5 +1,5 @@
 ////
-//// Task dependencies HTTP handlers.
+//// domain_task.Task dependencies HTTP handlers.
 ////
 
 import gleam/http
@@ -7,7 +7,7 @@ import gleam/list
 import gleam/result
 import pog
 
-import domain/task.{type Task, type TaskDependency, TaskDependency}
+import domain/task as domain_task
 import domain/task_status.{Done}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -157,7 +157,7 @@ fn create_dependency_row(
   task_id: Int,
   depends_on_task_id: Int,
   user_id: Int,
-) -> Result(TaskDependency, wisp.Response) {
+) -> Result(domain_task.TaskDependency, wisp.Response) {
   case
     task_dependencies_db.create_dependency(
       db,
@@ -215,7 +215,7 @@ fn fetch_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
-) -> Result(Task, wisp.Response) {
+) -> Result(domain_task.Task, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(task) -> Ok(task)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -226,7 +226,7 @@ fn fetch_task_database_response(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
-) -> Result(Task, wisp.Response) {
+) -> Result(domain_task.Task, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(task) -> Ok(task)
     Error(error) -> Error(service_error_response.to_database_response(error))
@@ -236,7 +236,7 @@ fn fetch_task_database_response(
 fn fetch_dependencies(
   db: pog.Connection,
   task_id: Int,
-) -> Result(List(TaskDependency), wisp.Response) {
+) -> Result(List(domain_task.TaskDependency), wisp.Response) {
   case task_dependencies_db.list_dependencies_for_task(db, task_id) {
     Ok(deps) -> Ok(deps)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -249,14 +249,18 @@ fn require_not_self_dependency(
 ) -> Result(Nil, wisp.Response) {
   case task_id == depends_on_task_id {
     True ->
-      Error(api.error(422, "VALIDATION_ERROR", "Task cannot depend on itself"))
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "domain_task.Task cannot depend on itself",
+      ))
     False -> Ok(Nil)
   }
 }
 
 fn require_same_project(
-  task: Task,
-  depends_on_task: Task,
+  task: domain_task.Task,
+  depends_on_task: domain_task.Task,
 ) -> Result(Nil, wisp.Response) {
   case depends_on_task.project_id != task.project_id {
     True ->
@@ -270,9 +274,9 @@ fn require_same_project(
 }
 
 fn require_dependency_not_completed(
-  depends_on_task: Task,
+  depends_on_task: domain_task.Task,
 ) -> Result(Nil, wisp.Response) {
-  case depends_on_task.status {
+  case domain_task.status(depends_on_task) {
     Done ->
       Error(api.error(
         422,
@@ -292,7 +296,7 @@ fn require_dependency_absent(
 
   case
     list.any(deps, fn(dep) {
-      let TaskDependency(depends_on_task_id: dep_id, ..) = dep
+      let domain_task.TaskDependency(depends_on_task_id: dep_id, ..) = dep
       dep_id == depends_on_task_id
     })
   {
@@ -305,7 +309,7 @@ fn require_dependency_absent(
 fn fetch_dependencies_for_validation(
   db: pog.Connection,
   task_id: Int,
-) -> Result(List(TaskDependency), wisp.Response) {
+) -> Result(List(domain_task.TaskDependency), wisp.Response) {
   case task_dependencies_db.list_dependencies_for_task(db, task_id) {
     Ok(deps) -> Ok(deps)
     Error(_) -> Error(database_error_response())

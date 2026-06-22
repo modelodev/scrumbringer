@@ -491,11 +491,15 @@ open_and_capture_route() {
   local label="$1"
   local url="$2"
   local expected_active_testid="${3:-}"
+  local expected_url_fragment="${4:-}"
   log "Opening ${label}: ${url}"
   ab open "$url" >/dev/null
   ab wait --load networkidle >/dev/null || true
   if [ -n "$expected_active_testid" ]; then
     assert_active_nav "$label" "$expected_active_testid"
+  fi
+  if [ -n "$expected_url_fragment" ]; then
+    assert_url_contains "$label" "$expected_url_fragment"
   fi
   ab snapshot -i >"${OUT_DIR}/${label}.snapshot.txt"
   ab screenshot "${OUT_DIR}/${label}.png" >/dev/null
@@ -598,15 +602,12 @@ EOF
   ab set viewport 1440 1000 >/dev/null
   open_and_capture_route "pool-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool" "nav-pool"
   open_and_capture_route "cards-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards" "nav-cards"
-  open_and_capture_route "depth-1-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=1" "nav-depth-1"
-  open_and_capture_route "depth-2-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=2" "nav-depth-2"
-  open_and_capture_route "depth-3-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=3" "nav-depth-3"
+  open_and_capture_route "depth-1-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=1" "nav-cards" "depth=1"
+  open_and_capture_route "depth-2-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=2" "nav-cards" "depth=2"
+  open_and_capture_route "depth-3-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=3" "nav-cards" "depth=3"
 
   open_and_capture_route "sidebar-click-start" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool" "nav-pool"
   click_and_capture_nav_route "sidebar-click-cards" "nav-cards" "view=cards"
-  click_and_capture_nav_route "sidebar-click-depth-1" "nav-depth-1" "depth=1"
-  click_and_capture_nav_route "sidebar-click-depth-2" "nav-depth-2" "depth=2"
-  click_and_capture_nav_route "sidebar-click-depth-3" "nav-depth-3" "depth=3"
   click_and_capture_nav_route "sidebar-click-pool" "nav-pool" "view=pool"
 
   ab get url >"${OUT_DIR}/final-url.txt"

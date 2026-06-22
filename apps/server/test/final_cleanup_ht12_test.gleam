@@ -51,6 +51,10 @@ pub fn schema_final_has_no_legacy_tables_or_columns_test() {
   expect_gate("schema_final_has_no_legacy_tables_or_columns")
 }
 
+pub fn schema_final_enforces_canonical_data_model_invariants_test() {
+  expect_gate("schema_final_enforces_canonical_data_model_invariants")
+}
+
 pub fn seed_data_uses_hierarchy_and_root_pool_tasks_test() {
   expect_gate("seed_data_uses_hierarchy_and_root_pool_tasks")
 }

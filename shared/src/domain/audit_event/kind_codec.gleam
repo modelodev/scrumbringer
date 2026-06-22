@@ -5,7 +5,7 @@ import gleam/dynamic/decode
 pub type Kind {
   TaskClaimed
   TaskReleased
-  TaskDone
+  TaskClosed
   CardActivated
   CardClosed
 }
@@ -14,7 +14,7 @@ pub fn to_string(kind: Kind) -> String {
   case kind {
     TaskClaimed -> "task_claimed"
     TaskReleased -> "task_released"
-    TaskDone -> "task_done"
+    TaskClosed -> "task_closed"
     CardActivated -> "card_activated"
     CardClosed -> "card_closed"
   }
@@ -24,7 +24,7 @@ pub fn parse(value: String) -> Result(Kind, String) {
   case value {
     "task_claimed" -> Ok(TaskClaimed)
     "task_released" -> Ok(TaskReleased)
-    "task_done" -> Ok(TaskDone)
+    "task_closed" -> Ok(TaskClosed)
     "card_activated" -> Ok(CardActivated)
     "card_closed" -> Ok(CardClosed)
     other -> Error(other)

@@ -146,7 +146,7 @@ fi
 
 if grep -Eq "assert_active_nav" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "\.nav-link\.active\[aria-current=\"page\"\]" scripts/ht12-agent-browser-sweep.sh \
-  && grep -Eq "nav-depth-1" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "depth-1-route" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "nav-cards" scripts/ht12-agent-browser-sweep.sh; then
   echo "ht12-static:sweep:sidebar_dom_active=ok"
 else
@@ -156,7 +156,6 @@ fi
 
 if grep -Eq "click_and_capture_nav_route" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "sidebar-click-cards" scripts/ht12-agent-browser-sweep.sh \
-  && grep -Eq "sidebar-click-depth-3" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "sidebar-click-pool" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "assert_url_contains" scripts/ht12-agent-browser-sweep.sh; then
   echo "ht12-static:sweep:sidebar_click_navigation=ok"

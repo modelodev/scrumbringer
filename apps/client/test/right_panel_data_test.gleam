@@ -4,7 +4,7 @@ import domain/card.{Active, Blue, Card, Gray}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{Task, WorkSession}
 import domain/task_state
-import domain/task_status.{Taken, WorkAvailable}
+import domain/task_status.{Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/right_panel_data
@@ -130,12 +130,6 @@ fn task(id: Int, state: task_state.TaskState) {
     description: None,
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: case state {
-      task_state.Available -> WorkAvailable
-      task_state.Claimed(..) -> task_state.to_work_state(state)
-      task_state.Done(..) -> task_state.to_work_state(state)
-    },
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

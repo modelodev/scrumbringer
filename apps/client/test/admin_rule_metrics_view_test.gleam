@@ -62,8 +62,8 @@ fn rule_details() -> api_rule_metrics.RuleMetricsDetailed {
 fn execution() -> api_rule_metrics.RuleExecution {
   api_rule_metrics.RuleExecution(
     id: 101,
-    origin_type: "task",
-    origin_id: 42,
+    task_id: option.Some(42),
+    card_id: option.None,
     outcome: "applied",
     suppression_reason: "",
     user_id: 7,

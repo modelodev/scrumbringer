@@ -90,8 +90,6 @@ pub fn task_json(task: Task) -> json.Json {
     description: description,
     priority: priority,
     state: state,
-    status: _status,
-    work_state: _work_state,
     created_by: created_by,
     created_at: created_at,
     due_date: due_date,

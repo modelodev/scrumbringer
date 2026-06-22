@@ -63,8 +63,8 @@ pub type RuleMetricsDetailed {
 pub type RuleExecution {
   RuleExecution(
     id: Int,
-    origin_type: String,
-    origin_id: Int,
+    task_id: Option(Int),
+    card_id: Option(Int),
     outcome: String,
     suppression_reason: String,
     user_id: Int,
@@ -118,8 +118,8 @@ fn rule_metrics_detailed_from_row(
 fn rule_execution_from_row(row: sql.RuleExecutionsListRow) -> RuleExecution {
   RuleExecution(
     id: row.id,
-    origin_type: row.origin_type,
-    origin_id: row.origin_id,
+    task_id: option_helpers.int_to_option(row.task_id),
+    card_id: option_helpers.int_to_option(row.card_id),
     outcome: row.outcome,
     suppression_reason: row.suppression_reason,
     user_id: row.user_id,

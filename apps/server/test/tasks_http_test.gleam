@@ -717,7 +717,7 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
 
   claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
   complete_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
-  count_audit_events(db, task_id, "task_completed") |> expect.equal(1)
+  count_audit_events(db, task_id, "task_closed") |> expect.equal(1)
 }
 
 pub fn delete_task_without_operational_history_removes_task_test() {

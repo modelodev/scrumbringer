@@ -1948,7 +1948,7 @@ fn build_work_sessions(
               started_at: Some("NOW() - INTERVAL '2 days'"),
               last_heartbeat_at: Some("NOW() - INTERVAL '1 day'"),
               ended_at: Some("NOW() - INTERVAL '1 day'"),
-              ended_reason: Some("task_completed"),
+              ended_reason: Some("task_closed"),
               created_at: None,
             ),
           ))
@@ -2233,7 +2233,7 @@ fn task_event_options_for_seed(
         project_id: seed.project_id,
         task_id: seed.task_id,
         actor_user_id: actor_id,
-        event_type: audit_events_db.TaskDone,
+        event_type: audit_events_db.TaskClosed,
         created_at: Some(complete_time),
       ))
     Available | Claimed(_) -> None

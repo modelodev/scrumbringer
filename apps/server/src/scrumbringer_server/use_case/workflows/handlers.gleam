@@ -636,7 +636,7 @@ fn claim_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case current.status, current.blocked_count {
+  case domain_task.status(current), current.blocked_count {
     Claimed(_), _ -> Error(AlreadyClaimed)
     Done, _ -> Error(InvalidTransition)
     Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
@@ -744,7 +744,14 @@ fn claim_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
 
   let _ =
     maybe_evaluate_card_rules(
@@ -788,7 +795,7 @@ fn release_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case current.status {
+  case domain_task.status(current) {
     Available | Done -> Error(InvalidTransition)
     Claimed(_) ->
       release_task_for_claimed(db, task_id, user_id, org_id, version, current)
@@ -857,7 +864,14 @@ fn release_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
 
   let _ =
     maybe_evaluate_card_rules(
@@ -901,7 +915,7 @@ fn complete_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case current.status {
+  case domain_task.status(current) {
     Available | Done -> Error(InvalidTransition)
     Claimed(_) ->
       complete_task_for_claimed(db, task_id, user_id, org_id, version, current)
@@ -932,12 +946,7 @@ fn complete_task_for_owner(
   current: domain_task.Task,
 ) -> Result(Response, Error) {
   let _ =
-    work_sessions_db.close_session_for_task(
-      db,
-      user_id,
-      task_id,
-      "task_completed",
-    )
+    work_sessions_db.close_session_for_task(db, user_id, task_id, "task_closed")
 
   case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
     Ok(task) ->
@@ -970,7 +979,14 @@ fn complete_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ = evaluate_task_rules(db, ctx, user_id, current.status, task.status)
+  let _ =
+    evaluate_task_rules(
+      db,
+      ctx,
+      user_id,
+      domain_task.status(current),
+      domain_task.status(task),
+    )
 
   let _ =
     maybe_evaluate_card_rules(
@@ -1023,7 +1039,7 @@ fn detect_conflict(
 }
 
 fn conflict_from_task(current: domain_task.Task) -> Result(Response, Error) {
-  case current.status, current.blocked_count {
+  case domain_task.status(current), current.blocked_count {
     Claimed(_), _ ->
       Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
     Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))

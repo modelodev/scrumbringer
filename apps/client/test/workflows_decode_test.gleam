@@ -344,7 +344,7 @@ pub fn rule_metrics_detailed_decoder_decodes_zero_counts_test() {
 
 pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let body =
-    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"task\",\"origin_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"origin_type\":\"task\",\"origin_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
+    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"task_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"task_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
 
   let assert Ok(response) =
     json.parse(
@@ -353,6 +353,7 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
     )
   let assert 1 = response.rule_id
   let assert [execution_a, execution_b] = response.executions
+  let assert option.Some(100) = execution_a.task_id
   let assert "applied" = execution_a.outcome
   let assert "idempotent" = execution_b.suppression_reason
   let assert 2 = response.pagination.total
@@ -372,9 +373,9 @@ pub fn rule_executions_response_decoder_decodes_empty_executions_test() {
 }
 
 pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
-  // Test that optional fields (suppression_reason, user_id, user_email) default correctly
+  // Test that optional fields (target, suppression_reason, user_id, user_email) default correctly
   let body =
-    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"card\",\"origin_id\":50,\"outcome\":\"applied\",\"created_at\":\"2026-01-19T12:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
+    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"card_id\":50,\"outcome\":\"applied\",\"created_at\":\"2026-01-19T12:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
 
   let assert Ok(response) =
     json.parse(
@@ -382,7 +383,8 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
       using: api_rule_metrics.rule_executions_response_decoder(),
     )
   let assert [execution] = response.executions
-  let assert "card" = execution.origin_type
+  let assert option.None = execution.task_id
+  let assert option.Some(50) = execution.card_id
   let assert "" = execution.suppression_reason
   let assert 0 = execution.user_id
   let assert "" = execution.user_email

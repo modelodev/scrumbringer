@@ -1,13 +1,27 @@
 -- name: rule_executions_log
 -- Log a rule execution for idempotency tracking and metrics.
-insert into rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id)
-values ($1, $2, $3, $4, nullif($5, ''), $6)
-on conflict (rule_id, origin_type, origin_id) do nothing
+insert into rule_executions (
+  rule_id,
+  task_id,
+  card_id,
+  outcome,
+  suppression_reason,
+  user_id
+)
+values (
+  $1,
+  nullif($2, 0),
+  nullif($3, 0),
+  $4,
+  nullif($5, ''),
+  $6
+)
+on conflict do nothing
 returning
   id,
   rule_id,
-  origin_type,
-  origin_id,
+  coalesce(task_id, 0) as task_id,
+  coalesce(card_id, 0) as card_id,
   outcome,
   coalesce(suppression_reason, '') as suppression_reason,
   coalesce(user_id, 0) as user_id,

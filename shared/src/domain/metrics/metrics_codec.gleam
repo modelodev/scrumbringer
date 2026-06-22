@@ -14,7 +14,6 @@ import domain/metrics.{
 }
 import domain/task.{Task}
 import domain/task/task_codec
-import domain/task_state
 
 // =============================================================================
 // Decoders
@@ -274,9 +273,6 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     claimed_at,
     completed_at,
   ))
-  let status = task_state.to_status(state)
-  let work_state = task_state.to_work_state(state)
-
   let task =
     Task(
       id: id,
@@ -288,8 +284,6 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       description: description,
       priority: priority,
       state: state,
-      status: status,
-      work_state: work_state,
       created_by: created_by,
       created_at: created_at,
       due_date: due_date,

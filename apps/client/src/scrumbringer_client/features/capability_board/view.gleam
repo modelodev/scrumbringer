@@ -3,7 +3,7 @@ import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded}
-import domain/task.{type Task, claimed_by}
+import domain/task as domain_task
 import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
 import domain/task_type.{type TaskType}
 import gleam/int
@@ -46,7 +46,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     theme: Theme,
-    tasks: Remote(List(Task)),
+    tasks: Remote(List(domain_task.Task)),
     task_types: Remote(List(TaskType)),
     capabilities: Remote(List(Capability)),
     cards: List(Card),
@@ -100,7 +100,7 @@ type CapabilityHealth {
 type CapabilityCell {
   CapabilityCell(
     column: CapabilityColumn,
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     health: CapabilityHealth,
   )
 }
@@ -111,7 +111,7 @@ type CapabilityRow {
     title: String,
     card: Card,
     cells: List(CapabilityCell),
-    tasks: List(Task),
+    tasks: List(domain_task.Task),
     health: CapabilityHealth,
   )
 }
@@ -461,15 +461,15 @@ fn capability_board_error(locale: Locale, err: ApiError) -> String {
   }
 }
 
-fn include_task_status(config: Config(msg), task: Task) -> Bool {
-  case task.status {
+fn include_task_status(config: Config(msg), task: domain_task.Task) -> Bool {
+  case domain_task.status(task) {
     Done -> include_closed(config)
     _ -> True
   }
 }
 
 fn matches_active_filters(
-  task: Task,
+  task: domain_task.Task,
   config: Config(msg),
   task_types: List(TaskType),
 ) -> Bool {
@@ -487,7 +487,7 @@ fn matches_active_filters(
 }
 
 fn build_rows(
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
   task_types: List(TaskType),
   capabilities: List(Capability),
   config: Config(msg),
@@ -546,7 +546,7 @@ fn row_cards(config: Config(msg)) -> List(Card) {
 }
 
 fn columns_for_tasks(
-  tasks: List(Task),
+  tasks: List(domain_task.Task),
   task_types: List(TaskType),
   capabilities: List(Capability),
   locale: Locale,
@@ -607,7 +607,7 @@ fn has_column(columns: List(CapabilityColumn), key: String) -> Bool {
 }
 
 fn task_matches_column(
-  task: Task,
+  task: domain_task.Task,
   column: CapabilityColumn,
   task_types: List(TaskType),
   capabilities: List(Capability),
@@ -1000,10 +1000,13 @@ fn view_summary_chip(
   |> signal_chip.view
 }
 
-fn view_task_item(config: Config(msg), task: Task) -> element.Element(msg) {
-  let status_display = case task.status {
+fn view_task_item(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> element.Element(msg) {
+  let status_display = case domain_task.status(task) {
     Claimed(_) -> {
-      let claimed_label = case claimed_by(task) {
+      let claimed_label = case domain_task.claimed_by(task) {
         Some(user_id) ->
           case list.find(config.org_users, fn(user) { user.id == user_id }) {
             Ok(user) -> user.email
@@ -1012,7 +1015,7 @@ fn view_task_item(config: Config(msg), task: Task) -> element.Element(msg) {
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
 
-      let status_icon = task_status_utils.claimed_icon(task.status)
+      let status_icon = task_status_utils.claimed_icon(domain_task.status(task))
       span(
         [
           attribute.class("task-claimed-by"),
@@ -1035,10 +1038,10 @@ fn view_task_item(config: Config(msg), task: Task) -> element.Element(msg) {
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, task.status),
+            task_state_ui.hint(config.locale, domain_task.status(task)),
           ),
         ],
-        [text(task_status_utils.label(config.locale, task.status))],
+        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
       )
     Done -> task_item.empty_secondary()
   }
@@ -1051,10 +1054,10 @@ fn view_task_item(config: Config(msg), task: Task) -> element.Element(msg) {
     False -> ""
   }
 
-  let actions = case task.status {
+  let actions = case domain_task.status(task) {
     Available ->
       task_item.single_action(task_actions.claim_icon(
-        task_state_ui.next_action(config.locale, task.status),
+        task_state_ui.next_action(config.locale, domain_task.status(task)),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,
@@ -1128,19 +1131,25 @@ fn include_closed(config: Config(msg)) -> Bool {
   }
 }
 
-fn loaded_tasks(tasks: Remote(List(Task))) -> List(Task) {
+fn loaded_tasks(tasks: Remote(List(domain_task.Task))) -> List(domain_task.Task) {
   case tasks {
     Loaded(values) -> values
     _ -> []
   }
 }
 
-fn health_for_tasks(tasks: List(Task)) -> CapabilityHealth {
+fn health_for_tasks(tasks: List(domain_task.Task)) -> CapabilityHealth {
   CapabilityHealth(
-    available: list.count(tasks, fn(task) { task.status == Available }),
-    claimed: list.count(tasks, fn(task) { task.status == Claimed(Taken) }),
-    ongoing: list.count(tasks, fn(task) { task.status == Claimed(Ongoing) }),
-    done: list.count(tasks, fn(task) { task.status == Done }),
+    available: list.count(tasks, fn(task) {
+      domain_task.status(task) == Available
+    }),
+    claimed: list.count(tasks, fn(task) {
+      domain_task.status(task) == Claimed(Taken)
+    }),
+    ongoing: list.count(tasks, fn(task) {
+      domain_task.status(task) == Claimed(Ongoing)
+    }),
+    done: list.count(tasks, fn(task) { domain_task.status(task) == Done }),
     blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
   )
 }
@@ -1160,11 +1169,11 @@ fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {
   }
 }
 
-fn sort_tasks(tasks: List(Task)) -> List(Task) {
+fn sort_tasks(tasks: List(domain_task.Task)) -> List(domain_task.Task) {
   list.sort(tasks, compare_tasks)
 }
 
-fn compare_tasks(a: Task, b: Task) -> order.Order {
+fn compare_tasks(a: domain_task.Task, b: domain_task.Task) -> order.Order {
   case int.compare(task_rank(a), task_rank(b)) {
     order.Eq ->
       case int.compare(b.priority, a.priority) {
@@ -1179,8 +1188,8 @@ fn compare_tasks(a: Task, b: Task) -> order.Order {
   }
 }
 
-fn task_rank(task: Task) -> Int {
-  case task.blocked_count > 0, task.status {
+fn task_rank(task: domain_task.Task) -> Int {
+  case task.blocked_count > 0, domain_task.status(task) {
     True, _ -> 0
     False, Available -> 1
     False, Claimed(Ongoing) -> 2

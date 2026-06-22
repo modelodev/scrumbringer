@@ -19,8 +19,6 @@ fn sample_task(id: Int, state: task_state.TaskState) -> Task {
     description: Some("Review checklist."),
     priority: 2,
     state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
     created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
     due_date: None,

@@ -4,7 +4,7 @@ with event_counts as (
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
   from audit_events e
   where e.org_id = $1

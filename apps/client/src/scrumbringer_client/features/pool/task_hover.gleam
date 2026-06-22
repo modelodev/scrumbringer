@@ -1,7 +1,7 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-import domain/task.{type Task, type TaskNote, TaskNote}
+import domain/task as domain_task
 import lustre/element.{type Element}
 
 import scrumbringer_client/features/pool/blocking
@@ -16,11 +16,11 @@ import scrumbringer_client/ui/task_status_utils
 pub type Config(msg) {
   Config(
     locale: Locale,
-    task: Task,
+    task: domain_task.Task,
     card_title: Option(String),
     age_days: Int,
     hidden_blocked_count: Option(Int),
-    notes: List(TaskNote),
+    notes: List(domain_task.TaskNote),
     current_user_id: Option(Int),
     on_open: msg,
   )
@@ -31,12 +31,18 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     card_label: pool_labels.parent_card(config.locale),
     card_title: config.card_title,
     status_label: i18n.t(config.locale, i18n_text.Status),
-    status_value: task_state_ui.label(config.locale, config.task.status),
-    status_hint: task_state_ui.hint(config.locale, config.task.status),
+    status_value: task_state_ui.label(
+      config.locale,
+      domain_task.status(config.task),
+    ),
+    status_hint: task_state_ui.hint(
+      config.locale,
+      domain_task.status(config.task),
+    ),
     next_action_label: i18n.t(config.locale, i18n_text.TaskNextActionLabel),
     next_action_value: task_state_ui.next_action(
       config.locale,
-      config.task.status,
+      domain_task.status(config.task),
     ),
     age_label: pool_labels.age(config.locale),
     age_value: pool_labels.created_ago_days(config.locale, config.age_days),
@@ -55,14 +61,14 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   ))
 }
 
-fn task_description(task: Task) -> String {
+fn task_description(task: domain_task.Task) -> String {
   case task.description {
     None -> ""
     Some(text) -> text
   }
 }
 
-fn blocked_label(locale: Locale, task: Task) -> Option(String) {
+fn blocked_label(locale: Locale, task: domain_task.Task) -> Option(String) {
   let count = list.length(blocking.incomplete_dependencies(task))
   case count > 0 {
     True -> Some(pool_labels.blocked_by_tasks(locale, count))
@@ -70,7 +76,7 @@ fn blocked_label(locale: Locale, task: Task) -> Option(String) {
   }
 }
 
-fn blocked_items(locale: Locale, task: Task) -> List(String) {
+fn blocked_items(locale: Locale, task: domain_task.Task) -> List(String) {
   blocking.incomplete_dependencies(task)
   |> list.take(2)
   |> list.map(fn(dep) {
@@ -89,7 +95,10 @@ fn hidden_blocked_note(
   }
 }
 
-fn notes_label(locale: Locale, notes: List(TaskNote)) -> Option(String) {
+fn notes_label(
+  locale: Locale,
+  notes: List(domain_task.TaskNote),
+) -> Option(String) {
   case notes {
     [] -> None
     _ -> Some(pool_labels.recent_notes(locale))
@@ -99,11 +108,15 @@ fn notes_label(locale: Locale, notes: List(TaskNote)) -> Option(String) {
 fn hover_notes(
   locale: Locale,
   current_user_id: Option(Int),
-  notes: List(TaskNote),
+  notes: List(domain_task.TaskNote),
 ) -> List(task_hover_popup.HoverNote) {
   list.map(notes, fn(note) {
-    let TaskNote(user_id: user_id, created_at: created_at, content: content, ..) =
-      note
+    let domain_task.TaskNote(
+      user_id: user_id,
+      created_at: created_at,
+      content: content,
+      ..,
+    ) = note
     let author = case current_user_id == Some(user_id) {
       True -> pool_labels.current_user(locale)
       False -> pool_labels.user_number(locale, user_id)

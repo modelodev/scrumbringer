@@ -35,8 +35,6 @@ import gleam/option.{type Option}
 ///   title: "Fix login button",
 ///   description: Some("Button doesn't respond on mobile"),
 ///   priority: 3,
-///   status: Available,
-///   work_state: WorkAvailable,
 ///   created_by: 1,
 ///   claimed_by: None,
 ///   claimed_at: None,
@@ -59,8 +57,6 @@ pub type Task {
     description: Option(String),
     priority: Int,
     state: task_state.TaskState,
-    status: TaskPhase,
-    work_state: WorkState,
     created_by: Int,
     created_at: String,
     due_date: Option(String),
@@ -178,12 +174,15 @@ pub type TaskFilters {
 // =============================================================================
 
 pub fn with_state(task: Task, state: task_state.TaskState) -> Task {
-  Task(
-    ..task,
-    state: state,
-    status: task_state.to_status(state),
-    work_state: task_state.to_work_state(state),
-  )
+  Task(..task, state: state)
+}
+
+pub fn status(task: Task) -> TaskPhase {
+  task_state.to_status(task.state)
+}
+
+pub fn work_state(task: Task) -> WorkState {
+  task_state.to_work_state(task.state)
 }
 
 pub fn claimed_by(task: Task) -> Option(Int) {
