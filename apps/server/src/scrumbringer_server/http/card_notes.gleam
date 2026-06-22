@@ -21,7 +21,9 @@
 //// - Uses `http/auth.gleam` for user identity
 //// - Uses `use_case/card_notes_db.gleam` for repository
 
-import domain/card.{type Card, type CardNote, CardNote}
+import domain/card.{type Card}
+import domain/note/entity.{type Note}
+import domain/user/id as user_id
 import gleam/http
 import gleam/option
 import gleam/result
@@ -299,7 +301,7 @@ fn get_note(
   db: pog.Connection,
   card_id: Int,
   note_id: Int,
-) -> Result(CardNote, wisp.Response) {
+) -> Result(Note, wisp.Response) {
   case card_notes_db.get_note(db, card_id, note_id) {
     Ok(note) -> Ok(note)
     Error(error) -> Error(service_error_response.to_response(error))
@@ -333,9 +335,9 @@ fn can_delete_note(
   db: pog.Connection,
   user: StoredUser,
   project_id: Int,
-  note: CardNote,
+  note: Note,
 ) -> Bool {
-  let CardNote(user_id: author_id, ..) = note
+  let author_id = user_id.to_int(note.user_id)
 
   case
     authorization.require_project_manager_with_org_bypass(db, user, project_id)

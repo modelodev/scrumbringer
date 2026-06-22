@@ -27,12 +27,14 @@ import api/cards/contracts
 import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
 
-import domain/card.{type Card, type CardColor, type CardNote}
+import domain/card.{type Card, type CardColor}
 import domain/card/card_codec
 import domain/metrics.{
   type CardModalMetrics, type ModalExecutionHealth, type WorkflowBreakdown,
   CardModalMetrics, ModalExecutionHealth, WorkflowBreakdown,
 }
+import domain/note/entity.{type Note}
+import domain/note/note_codec
 import domain/task.{type Task}
 import domain/task/task_codec
 
@@ -241,12 +243,12 @@ pub fn list_card_tasks(
 /// List all notes belonging to a card.
 pub fn get_card_notes(
   card_id: Int,
-  to_msg: fn(ApiResult(List(CardNote))) -> msg,
+  to_msg: fn(ApiResult(List(Note))) -> msg,
 ) -> Effect(msg) {
   let decoder =
     decode.field(
       "notes",
-      decode.list(card_codec.card_note_decoder()),
+      decode.list(note_codec.note_decoder()),
       decode.success,
     )
   core.request(
@@ -262,7 +264,7 @@ pub fn get_card_notes(
 pub fn create_card_note(
   card_id: Int,
   content: String,
-  to_msg: fn(ApiResult(CardNote)) -> msg,
+  to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
   create_card_note_with_url(card_id, content, option.None, to_msg)
 }
@@ -272,7 +274,7 @@ pub fn create_card_note_with_url(
   card_id: Int,
   content: String,
   url: option.Option(String),
-  to_msg: fn(ApiResult(CardNote)) -> msg,
+  to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
   let url_json = case url {
     option.Some(value) -> json.string(value)
@@ -280,8 +282,7 @@ pub fn create_card_note_with_url(
   }
   let body =
     json.object([#("content", json.string(content)), #("url", url_json)])
-  let decoder =
-    decode.field("note", card_codec.card_note_decoder(), decode.success)
+  let decoder = decode.field("note", note_codec.note_decoder(), decode.success)
   core.request(
     core.Post,
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
@@ -296,7 +297,7 @@ pub fn set_card_note_pinned(
   card_id: Int,
   note_id: Int,
   pinned: Bool,
-  to_msg: fn(ApiResult(CardNote)) -> msg,
+  to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
   let method = case pinned {
     True -> core.Post
@@ -306,8 +307,7 @@ pub fn set_card_note_pinned(
     True -> option.Some(json.object([]))
     False -> option.None
   }
-  let decoder =
-    decode.field("note", card_codec.card_note_decoder(), decode.success)
+  let decoder = decode.field("note", note_codec.note_decoder(), decode.success)
   core.request(
     method,
     "/api/v1/cards/"

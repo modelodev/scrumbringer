@@ -2,7 +2,12 @@
 ////
 //// Card notes provide context and decisions at the card level.
 
-import domain/card.{type CardNote, CardNote}
+import domain/card/id as card_ids
+import domain/note/entity.{type Note, Note}
+import domain/note/id as note_ids
+import domain/note/subject.{CardNoteSubject}
+import domain/project/id as project_ids
+import domain/user/id as user_ids
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -18,7 +23,7 @@ import scrumbringer_server/use_case/service_error.{
 pub fn list_notes_for_card(
   db: pog.Connection,
   card_id: Int,
-) -> Result(List(CardNote), ServiceError) {
+) -> Result(List(Note), ServiceError) {
   use returned <- result.try(
     sql.card_notes_list(db, card_id)
     |> result.map_error(DbError),
@@ -32,7 +37,7 @@ pub fn get_note(
   db: pog.Connection,
   card_id: Int,
   note_id: Int,
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   case sql.card_notes_get(db, card_id, note_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -47,7 +52,7 @@ pub fn create_note(
   user_id: Int,
   content: String,
   url: Option(String),
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   case
     sql.card_notes_create(
       db,
@@ -87,7 +92,7 @@ pub fn set_note_pinned(
   card_id: Int,
   note_id: Int,
   pinned: Bool,
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   case sql.card_notes_set_pinned(db, card_id, note_id, pinned) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -95,12 +100,11 @@ pub fn set_note_pinned(
   }
 }
 
-fn note_from_list_row(
-  row: sql.CardNotesListRow,
-) -> Result(CardNote, ServiceError) {
+fn note_from_list_row(row: sql.CardNotesListRow) -> Result(Note, ServiceError) {
   note_from_fields(
     id: row.id,
     card_id: row.card_id,
+    project_id: row.project_id,
     user_id: row.user_id,
     content: row.content,
     url: row.url,
@@ -115,10 +119,11 @@ fn note_from_list_row(
 
 fn note_from_create_row(
   row: sql.CardNotesCreateRow,
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   note_from_fields(
     id: row.id,
     card_id: row.card_id,
+    project_id: row.project_id,
     user_id: row.user_id,
     content: row.content,
     url: row.url,
@@ -131,10 +136,11 @@ fn note_from_create_row(
   )
 }
 
-fn note_from_get_row(row: sql.CardNotesGetRow) -> Result(CardNote, ServiceError) {
+fn note_from_get_row(row: sql.CardNotesGetRow) -> Result(Note, ServiceError) {
   note_from_fields(
     id: row.id,
     card_id: row.card_id,
+    project_id: row.project_id,
     user_id: row.user_id,
     content: row.content,
     url: row.url,
@@ -149,10 +155,11 @@ fn note_from_get_row(row: sql.CardNotesGetRow) -> Result(CardNote, ServiceError)
 
 fn note_from_set_pinned_row(
   row: sql.CardNotesSetPinnedRow,
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   note_from_fields(
     id: row.id,
     card_id: row.card_id,
+    project_id: row.project_id,
     user_id: row.user_id,
     content: row.content,
     url: row.url,
@@ -168,6 +175,7 @@ fn note_from_set_pinned_row(
 fn note_from_fields(
   id id: Int,
   card_id card_id: Int,
+  project_id project_id: Int,
   user_id user_id: Int,
   content content: String,
   url url_raw: String,
@@ -177,7 +185,7 @@ fn note_from_fields(
   author_email author_email: String,
   author_project_role author_project_role_raw: String,
   author_org_role author_org_role_raw: String,
-) -> Result(CardNote, ServiceError) {
+) -> Result(Note, ServiceError) {
   use author_project_role <- result.try(
     persisted_role.optional_project_role_service_error(
       author_project_role_raw,
@@ -189,10 +197,11 @@ fn note_from_fields(
     "Invalid persisted author org role",
   ))
 
-  Ok(CardNote(
-    id: id,
-    card_id: card_id,
-    user_id: user_id,
+  Ok(Note(
+    id: note_ids.new(id),
+    project_id: project_ids.new(project_id),
+    subject: CardNoteSubject(card_ids.new(card_id)),
+    user_id: user_ids.new(user_id),
     content: content,
     url: optional_string(url_raw),
     pinned: pinned,

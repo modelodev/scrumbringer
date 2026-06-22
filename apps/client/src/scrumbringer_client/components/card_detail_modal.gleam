@@ -29,12 +29,15 @@ import lustre/element.{type Element}
 import lustre/element/html.{a, div, span, text}
 import lustre/event
 
-import domain/card.{type Card, type CardNote, CardNote, Closed, Draft}
+import domain/card.{type Card, Closed, Draft}
+import domain/note/entity.{type Note}
+import domain/note/id as note_ids
 import domain/task.{type Task, claimed_by}
 import domain/task_state
 import domain/task_status.{Available, Done}
+import domain/user/id as user_ids
 
-import domain/activity/entity.{type ActivityEvent}
+import domain/activity/entity as activity_entity
 import domain/api_error.{type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
@@ -80,14 +83,14 @@ pub type Model {
     can_execute_work: Bool,
     // AC21: Tab system
     active_tab: show_tabs.CardShowTab,
-    notes: Remote(List(CardNote)),
+    notes: Remote(List(Note)),
     // Note dialog state
     note_dialog_open: Bool,
     note_content: String,
     note_in_flight: Bool,
     note_error: Option(String),
     note_pin_in_flight: Option(Int),
-    activity: Remote(List(ActivityEvent)),
+    activity: Remote(List(activity_entity.ActivityEvent)),
     tasks: Remote(List(Task)),
     activation_confirm_open: Bool,
   )
@@ -105,8 +108,8 @@ pub type Msg {
   CanManageNotesReceived(Bool)
   CanManageStructureReceived(Bool)
   CanExecuteWorkReceived(Bool)
-  NotesReceived(ApiResult(List(CardNote)))
-  ActivityReceived(ApiResult(List(ActivityEvent)))
+  NotesReceived(ApiResult(List(Note)))
+  ActivityReceived(ApiResult(List(activity_entity.ActivityEvent)))
   TasksReceived(List(Task))
   // AC21: Tab navigation
   TabClicked(show_tabs.CardShowTab)
@@ -115,11 +118,11 @@ pub type Msg {
   NoteDialogClosed
   NoteContentChanged(String)
   NoteSubmitted
-  NoteCreated(ApiResult(CardNote))
+  NoteCreated(ApiResult(Note))
   NoteDeleteClicked(Int)
   NoteDeleted(Int, ApiResult(Nil))
   NotePinClicked(Int, Bool)
-  NotePinned(Int, ApiResult(CardNote))
+  NotePinned(Int, ApiResult(Note))
   // Card operations
   CreateCardClicked
   ActivateCardClicked
@@ -458,24 +461,22 @@ fn handle_pin_note(
   }
 }
 
-fn append_note(notes: Remote(List(CardNote)), note: CardNote) -> List(CardNote) {
+fn append_note(notes: Remote(List(Note)), note: Note) -> List(Note) {
   case notes {
     Loaded(existing) -> list.append(existing, [note])
     _ -> [note]
   }
 }
 
-fn remove_note(notes: Remote(List(CardNote)), note_id: Int) -> List(CardNote) {
+fn remove_note(notes: Remote(List(Note)), note_id: Int) -> List(Note) {
   case notes {
-    Loaded(existing) -> list.filter(existing, fn(note) { note.id != note_id })
+    Loaded(existing) ->
+      list.filter(existing, fn(note) { note_ids.to_int(note.id) != note_id })
     _ -> []
   }
 }
 
-fn replace_note(
-  notes: Remote(List(CardNote)),
-  updated_note: CardNote,
-) -> List(CardNote) {
+fn replace_note(notes: Remote(List(Note)), updated_note: Note) -> List(Note) {
   case notes {
     Loaded(existing) ->
       list.map(existing, fn(note) {
@@ -970,7 +971,7 @@ fn card_pinned_notes(model: Model) -> List(pinned_context.PinnedNote) {
       |> list.filter(fn(note) { note.pinned })
       |> list.map(fn(note) {
         pinned_context.PinnedNote(
-          id: note.id,
+          id: note_ids.to_int(note.id),
           content: note.content,
           url: note.url,
         )
@@ -1063,19 +1064,9 @@ fn view_note_dialog(model: Model) -> Element(Msg) {
   ))
 }
 
-fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
-  let CardNote(
-    id: id,
-    user_id: user_id,
-    content: content,
-    url: url,
-    pinned: pinned,
-    created_at: created_at,
-    author_email: author_email,
-    author_project_role: author_project_role,
-    author_org_role: author_org_role,
-    ..,
-  ) = note
+fn note_to_view(model: Model, note: Note) -> notes_list.NoteView {
+  let id = note_ids.to_int(note.id)
+  let user_id = user_ids.to_int(note.user_id)
   let is_own_note = note_belongs_to_current_user(model.current_user_id, user_id)
   let author_label = case is_own_note {
     True -> t(model.locale, i18n_text.You)
@@ -1090,10 +1081,10 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
   notes_list.NoteView(
     id: id,
     author: author_label,
-    created_at: created_at,
-    content: content,
-    url: url,
-    pinned: pinned,
+    created_at: note.created_at,
+    content: note.content,
+    url: note.url,
+    pinned: note.pinned,
     can_pin: can_delete,
     pin_in_flight: model.note_pin_in_flight == option.Some(id),
     pin_disabled_reason: case can_delete {
@@ -1102,9 +1093,9 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     },
     can_delete: can_delete,
     delete_context: delete_context,
-    author_email: author_email,
-    author_project_role: author_project_role,
-    author_org_role: author_org_role,
+    author_email: note.author_email,
+    author_project_role: note.author_project_role,
+    author_org_role: note.author_org_role,
   )
 }
 
