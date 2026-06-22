@@ -370,9 +370,13 @@ pub type CardNotesCreateRow {
   CardNotesCreateRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -394,18 +398,26 @@ pub fn card_notes_create(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesCreateRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -414,24 +426,39 @@ pub fn card_notes_create(
 
   "-- name: card_notes_create
 -- AC20: Include author email and role for tooltip
-with inserted as (
-  insert into card_notes (card_id, user_id, content)
-  values ($1, $2, $3)
-  returning id, card_id, user_id, content, created_at
+with card_scope as (
+  select id, project_id
+  from cards
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content)
+  select project_id, $2, $3
+  from card_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
+  insert into card_notes (note_id, card_id)
+  select inserted_note.id, card_scope.id
+  from inserted_note, card_scope
+  returning note_id, card_id
 )
 select
-  i.id,
-  i.card_id,
-  i.user_id,
-  i.content,
-  to_char(i.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  n.id,
+  r.card_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from inserted i
-join users u on u.id = i.user_id
-left join cards c on c.id = i.card_id
-left join project_members pm on pm.user_id = i.user_id and pm.project_id = c.project_id;
+from inserted_note n
+join inserted_relation r on r.note_id = n.id
+join users u on u.id = n.user_id
+left join cards c on c.id = r.card_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -467,10 +494,12 @@ pub fn card_notes_delete(
   }
 
   "-- name: card_notes_delete
-delete from card_notes
-where card_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using card_notes cn
+where cn.note_id = n.id
+  and cn.card_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -489,9 +518,13 @@ pub type CardNotesGetRow {
   CardNotesGetRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -512,18 +545,26 @@ pub fn card_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesGetRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -534,18 +575,23 @@ pub fn card_notes_get(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
   and n.id = $2;
 "
   |> pog.query
@@ -565,9 +611,13 @@ pub type CardNotesListRow {
   CardNotesListRow(
     id: Int,
     card_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
     author_email: String,
     author_project_role: String,
     author_org_role: String,
@@ -587,18 +637,26 @@ pub fn card_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use card_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
-    use author_email <- decode.field(5, decode.string)
-    use author_project_role <- decode.field(6, decode.string)
-    use author_org_role <- decode.field(7, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(CardNotesListRow(
       id:,
       card_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
       author_email:,
       author_project_role:,
       author_org_role:,
@@ -609,18 +667,23 @@ pub fn card_notes_list(
 -- AC20: Include author email and role for tooltip
 select
   n.id,
-  n.card_id,
+  cn.card_id,
+  n.project_id,
   n.user_id,
   n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
   u.email as author_email,
   coalesce(pm.role, '') as author_project_role,
   u.org_role as author_org_role
-from card_notes n
+from card_notes cn
+join notes n on n.id = cn.note_id
 join users u on u.id = n.user_id
-left join cards c on c.id = n.card_id
+left join cards c on c.id = cn.card_id
 left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
-where n.card_id = $1
+where cn.card_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
@@ -851,7 +914,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.id = $1
 GROUP BY c.id, v.last_viewed_at;
@@ -954,7 +1018,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
 GROUP BY c.id, v.last_viewed_at
@@ -2255,7 +2320,9 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(
+  db: pog.Connection,
+) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -4690,9 +4757,16 @@ pub type TaskNotesCreateRow {
   TaskNotesCreateRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4710,27 +4784,66 @@ pub fn task_notes_create(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesCreateRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_create
-insert into task_notes (task_id, user_id, content)
-values ($1, $2, $3)
-returning
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+with task_scope as (
+  select id, project_id
+  from tasks
+  where id = $1
+), inserted_note as (
+  insert into notes (project_id, user_id, content)
+  select project_id, $2, $3
+  from task_scope
+  returning id, project_id, user_id, content, url, pinned, created_at, updated_at
+), inserted_relation as (
+  insert into task_notes (note_id, task_id)
+  select inserted_note.id, task_scope.id
+  from inserted_note, task_scope
+  returning note_id, task_id
+)
+select
+  n.id,
+  r.task_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from inserted_note n
+join inserted_relation r on r.note_id = n.id
+join users u on u.id = n.user_id
+left join tasks t on t.id = r.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4766,10 +4879,12 @@ pub fn task_notes_delete(
   }
 
   "-- name: task_notes_delete
-delete from task_notes
-where task_id = $1
-  and id = $2
-returning id;
+delete from notes n
+using task_notes tn
+where tn.note_id = n.id
+  and tn.task_id = $1
+  and n.id = $2
+returning n.id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4788,9 +4903,16 @@ pub type TaskNotesGetRow {
   TaskNotesGetRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4807,28 +4929,53 @@ pub fn task_notes_get(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesGetRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_get
 select
-  id,
-  task_id,
-  user_id,
-  content,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes
-where task_id = $1
-  and id = $2;
+  n.id,
+  tn.task_id,
+  n.project_id,
+  n.user_id,
+  n.content,
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from task_notes tn
+join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
+where tn.task_id = $1
+  and n.id = $2;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4847,9 +4994,16 @@ pub type TaskNotesListRow {
   TaskNotesListRow(
     id: Int,
     task_id: Int,
+    project_id: Int,
     user_id: Int,
     content: String,
+    url: String,
+    pinned: Bool,
     created_at: String,
+    updated_at: String,
+    author_email: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -4865,27 +5019,52 @@ pub fn task_notes_list(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use task_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    use content <- decode.field(3, decode.string)
-    use created_at <- decode.field(4, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use user_id <- decode.field(3, decode.int)
+    use content <- decode.field(4, decode.string)
+    use url <- decode.field(5, decode.string)
+    use pinned <- decode.field(6, decode.bool)
+    use created_at <- decode.field(7, decode.string)
+    use updated_at <- decode.field(8, decode.string)
+    use author_email <- decode.field(9, decode.string)
+    use author_project_role <- decode.field(10, decode.string)
+    use author_org_role <- decode.field(11, decode.string)
     decode.success(TaskNotesListRow(
       id:,
       task_id:,
+      project_id:,
       user_id:,
       content:,
+      url:,
+      pinned:,
       created_at:,
+      updated_at:,
+      author_email:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
   "-- name: task_notes_list
 select
   n.id,
-  n.task_id,
+  tn.task_id,
+  n.project_id,
   n.user_id,
   n.content,
-  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
-from task_notes n
-where n.task_id = $1
+  coalesce(n.url, '') as url,
+  n.pinned,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at,
+  u.email as author_email,
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
+from task_notes tn
+join notes n on n.id = tn.note_id
+join users u on u.id = n.user_id
+left join tasks t on t.id = tn.task_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = t.project_id
+where tn.task_id = $1
 order by n.created_at asc, n.id asc;
 "
   |> pog.query
@@ -6909,9 +7088,19 @@ select
   coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) is null then false
     when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
-    when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
+    when (
+      select max(n.created_at)
+      from task_notes tn
+      join notes n on n.id = tn.note_id
+      where tn.task_id = t.id
+    ) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
     else false
   end as has_new_notes,
   deps.dependencies::text as dependencies,

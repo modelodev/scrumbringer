@@ -469,31 +469,9 @@ ALTER SEQUENCE public.capabilities_id_seq OWNED BY public.capabilities.id;
 --
 
 CREATE TABLE public.card_notes (
-    id bigint NOT NULL,
-    card_id bigint NOT NULL,
-    user_id bigint NOT NULL,
-    content text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    note_id bigint NOT NULL,
+    card_id bigint NOT NULL
 );
-
-
---
--- Name: card_notes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.card_notes_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: card_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.card_notes_id_seq OWNED BY public.card_notes.id;
 
 
 --
@@ -544,6 +522,41 @@ CREATE SEQUENCE public.cards_id_seq
 --
 
 ALTER SEQUENCE public.cards_id_seq OWNED BY public.cards.id;
+
+
+--
+-- Name: notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notes (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    content text NOT NULL,
+    url text,
+    pinned boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: notes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.notes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.notes_id_seq OWNED BY public.notes.id;
 
 
 --
@@ -833,31 +846,9 @@ ALTER SEQUENCE public.task_dependencies_id_seq OWNED BY public.task_dependencies
 --
 
 CREATE TABLE public.task_notes (
-    id bigint NOT NULL,
-    task_id bigint NOT NULL,
-    user_id bigint NOT NULL,
-    content text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    note_id bigint NOT NULL,
+    task_id bigint NOT NULL
 );
-
-
---
--- Name: task_notes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.task_notes_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: task_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.task_notes_id_seq OWNED BY public.task_notes.id;
 
 
 --
@@ -1171,17 +1162,17 @@ ALTER TABLE ONLY public.capabilities ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: card_notes id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.card_notes ALTER COLUMN id SET DEFAULT nextval('public.card_notes_id_seq'::regclass);
-
-
---
 -- Name: cards id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cards ALTER COLUMN id SET DEFAULT nextval('public.cards_id_seq'::regclass);
+
+
+--
+-- Name: notes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notes ALTER COLUMN id SET DEFAULT nextval('public.notes_id_seq'::regclass);
 
 
 --
@@ -1217,13 +1208,6 @@ ALTER TABLE ONLY public.rules ALTER COLUMN id SET DEFAULT nextval('public.rules_
 --
 
 ALTER TABLE ONLY public.task_dependencies ALTER COLUMN id SET DEFAULT nextval('public.task_dependencies_id_seq'::regclass);
-
-
---
--- Name: task_notes id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.task_notes ALTER COLUMN id SET DEFAULT nextval('public.task_notes_id_seq'::regclass);
 
 
 --
@@ -1341,11 +1325,11 @@ ALTER TABLE ONLY public.capabilities
 
 
 --
--- Name: card_notes card_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: card_notes card_notes_pkey1; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.card_notes
-    ADD CONSTRAINT card_notes_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT card_notes_pkey1 PRIMARY KEY (note_id, card_id);
 
 
 --
@@ -1362,6 +1346,14 @@ ALTER TABLE ONLY public.cards
 
 ALTER TABLE ONLY public.cards
     ADD CONSTRAINT cards_project_id_id_unique UNIQUE (project_id, id);
+
+
+--
+-- Name: notes notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notes
+    ADD CONSTRAINT notes_pkey PRIMARY KEY (id);
 
 
 --
@@ -1485,11 +1477,11 @@ ALTER TABLE ONLY public.task_dependencies
 
 
 --
--- Name: task_notes task_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: task_notes task_notes_pkey1; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task_notes
-    ADD CONSTRAINT task_notes_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT task_notes_pkey1 PRIMARY KEY (note_id, task_id);
 
 
 --
@@ -1695,6 +1687,27 @@ CREATE INDEX idx_cards_project_execution_state ON public.cards USING btree (proj
 --
 
 CREATE INDEX idx_cards_project_parent ON public.cards USING btree (project_id, parent_card_id);
+
+
+--
+-- Name: idx_notes_pinned; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notes_pinned ON public.notes USING btree (project_id, pinned);
+
+
+--
+-- Name: idx_notes_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notes_project ON public.notes USING btree (project_id);
+
+
+--
+-- Name: idx_notes_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notes_user ON public.notes USING btree (user_id);
 
 
 --
@@ -2130,19 +2143,19 @@ ALTER TABLE ONLY public.capabilities
 
 
 --
--- Name: card_notes card_notes_card_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: card_notes card_notes_card_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.card_notes
-    ADD CONSTRAINT card_notes_card_id_fkey FOREIGN KEY (card_id) REFERENCES public.cards(id) ON DELETE CASCADE;
+    ADD CONSTRAINT card_notes_card_id_fkey1 FOREIGN KEY (card_id) REFERENCES public.cards(id) ON DELETE CASCADE;
 
 
 --
--- Name: card_notes card_notes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: card_notes card_notes_note_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.card_notes
-    ADD CONSTRAINT card_notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+    ADD CONSTRAINT card_notes_note_id_fkey FOREIGN KEY (note_id) REFERENCES public.notes(id) ON DELETE CASCADE;
 
 
 --
@@ -2183,6 +2196,22 @@ ALTER TABLE ONLY public.cards
 
 ALTER TABLE ONLY public.cards
     ADD CONSTRAINT cards_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: notes notes_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notes
+    ADD CONSTRAINT notes_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notes notes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notes
+    ADD CONSTRAINT notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -2378,19 +2407,19 @@ ALTER TABLE ONLY public.task_dependencies
 
 
 --
--- Name: task_notes task_notes_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: task_notes task_notes_note_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task_notes
-    ADD CONSTRAINT task_notes_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id);
+    ADD CONSTRAINT task_notes_note_id_fkey FOREIGN KEY (note_id) REFERENCES public.notes(id) ON DELETE CASCADE;
 
 
 --
--- Name: task_notes task_notes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: task_notes task_notes_task_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task_notes
-    ADD CONSTRAINT task_notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+    ADD CONSTRAINT task_notes_task_id_fkey1 FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
 
 
 --
@@ -2686,4 +2715,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260620108000'),
     ('20260621120000'),
     ('20260621121000'),
-    ('20260622120000');
+    ('20260622120000'),
+    ('20260622130000');

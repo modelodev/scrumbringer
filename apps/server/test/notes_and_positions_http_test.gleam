@@ -1264,7 +1264,25 @@ fn insert_note_with_created_at(
   let assert Ok(ts) = timestamp.parse_rfc3339(created_at)
   let assert Ok(_) =
     pog.query(
-      "insert into card_notes (card_id, user_id, content, created_at) values ($1, $2, $3, $4)",
+      "with card_scope as (
+         select id, project_id
+         from cards
+         where id = $1
+       ), inserted_note as (
+         insert into notes (
+           project_id,
+           user_id,
+           content,
+           created_at,
+           updated_at
+         )
+         select project_id, $2, $3, $4, $4
+         from card_scope
+         returning id
+       )
+       insert into card_notes (note_id, card_id)
+       select inserted_note.id, card_scope.id
+       from inserted_note, card_scope",
     )
     |> pog.parameter(pog.int(card_id))
     |> pog.parameter(pog.int(user_id))

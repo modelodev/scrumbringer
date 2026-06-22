@@ -22,6 +22,14 @@ pub fn css() -> List(String) {
     // AC2: GitHub links show icon and short path
     ".github-link { display: inline-flex; align-items: center; gap: 2px; }",
     ".github-link .nav-icon { color: var(--sb-muted); }",
+    // Pinned context
+    ".pinned-context { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }",
+    ".pinned-context-title { margin: 0; font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); color: var(--sb-muted); letter-spacing: 0.03em; text-transform: uppercase; }",
+    ".pinned-context-list { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }",
+    ".pinned-context-item { padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-bg); color: var(--sb-text); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); white-space: pre-wrap; }",
+    ".pinned-context-more { align-self: flex-start; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-surface); color: var(--sb-link); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-medium); padding: 5px 8px; cursor: pointer; }",
+    ".pinned-context-more:hover { background: var(--sb-bg); }",
+    ".pinned-context-more:focus-visible { outline: 2px solid var(--sb-focus-ring); outline-offset: 2px; }",
     // AC20: CSS-only tooltip for author info
     ".tooltip-trigger { position: relative; cursor: help; }",
     ".tooltip-trigger[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; left: 0; top: calc(100% + 4px); background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 6px; padding: 4px 8px; font-size: var(--sb-font-xs); color: var(--sb-text); white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }",

@@ -21,7 +21,8 @@ SELECT
     end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
-LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN card_notes cn ON cn.card_id = c.id
+LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
 GROUP BY c.id, v.last_viewed_at
