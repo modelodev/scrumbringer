@@ -58,6 +58,9 @@ pub fn activity_feed_renders_event_actor_summary_and_time_test() {
   assert_contains(html, "admin@example.com")
   assert_contains(html, "Task claimed")
   assert_contains(html, "2026-06-22T10:30:00Z")
+  assert_contains(html, "activity-feed-copy")
+  assert_contains(html, "activity-feed-main")
+  assert_contains(html, "activity-feed-time")
 }
 
 pub fn activity_feed_groups_loaded_events_by_date_test() {
