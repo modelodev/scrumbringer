@@ -558,15 +558,20 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
 
 fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) {
   let types.CardRow(depth:, card:, path:, level_name:, ..) = row
-  let indent = int.to_string({ depth - 1 } * 16)
+  let depth_class = case depth > 1 {
+    True -> " is-nested"
+    False -> ""
+  }
+
   div(
     [
-      attribute.class("plan-tree-cell " <> move_row_class(config, row)),
-      attribute.style("padding-left", indent <> "px"),
+      attribute.class(
+        "plan-tree-cell" <> depth_class <> " " <> move_row_class(config, row),
+      ),
       ..move_drop_attributes(config, card)
     ],
     [
-      view_tree_toggle(config, card),
+      view_tree_gutter(config, card, depth),
       button(
         [
           attribute.type_("button"),
@@ -584,6 +589,29 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
       },
     ],
   )
+}
+
+fn view_tree_gutter(config: Config(msg), card: Card, depth: Int) -> Element(msg) {
+  div(
+    [attribute.class("plan-tree-gutter")],
+    list.append(view_tree_rails(depth - 1), [view_tree_toggle(config, card)]),
+  )
+}
+
+fn view_tree_rails(count: Int) -> List(Element(msg)) {
+  case count <= 0 {
+    True -> []
+    False -> [
+      span(
+        [
+          attribute.class("plan-tree-rail"),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [],
+      ),
+      ..view_tree_rails(count - 1)
+    ]
+  }
 }
 
 fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
@@ -608,8 +636,8 @@ fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
         [
           span([attribute.class("plan-tree-marker")], [
             text(case collapsed {
-              True -> ">"
-              False -> "v"
+              True -> "▸"
+              False -> "▾"
             }),
           ]),
         ],
@@ -620,9 +648,7 @@ fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
           attribute.class("plan-tree-leaf"),
           attribute.attribute("aria-hidden", "true"),
         ],
-        [
-          text("o"),
-        ],
+        [],
       )
   }
 }
