@@ -492,9 +492,6 @@ fn task_detail_context() -> task_detail_update.Context(client_state.Msg) {
     on_dependencies_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberDependenciesFetched(result))
     },
-    on_metrics_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.MemberTaskMetricsFetched(result))
-    },
   )
 }
 

@@ -849,8 +849,7 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskDetailEditTypeIdChanged(_)
     | pool_messages.MemberTaskDetailEditCardIdChanged(_)
     | pool_messages.MemberTaskDetailEditSubmitted
-    | pool_messages.MemberTaskUpdated(_)
-    | pool_messages.MemberTaskMetricsFetched(_) -> #(model, effect.none())
+    | pool_messages.MemberTaskUpdated(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberDependenciesFetched(_)

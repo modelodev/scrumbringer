@@ -2,7 +2,6 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{type ApiError, ApiError}
-import domain/metrics.{type TaskModalMetrics, TaskModalMetrics}
 import domain/remote
 import domain/task.{type Task, Task}
 import domain/task_state
@@ -12,20 +11,7 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/detail_update
-import scrumbringer_client/ui/task_tabs
-
-fn sample_metrics() -> TaskModalMetrics {
-  TaskModalMetrics(
-    claim_count: 1,
-    release_count: 0,
-    unique_executors: 1,
-    first_claim_at: None,
-    current_state_duration_s: 10,
-    pool_lifetime_s: 20,
-    session_count: 1,
-    total_work_time_s: 30,
-  )
-}
+import scrumbringer_client/ui/show_tabs
 
 fn sample_error() -> ApiError {
   ApiError(status: 500, code: "ERR", message: "boom")
@@ -61,7 +47,6 @@ fn detail_context() -> detail_update.Context(Nil) {
   detail_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
-    on_metrics_fetched: fn(_result) { Nil },
   )
 }
 
@@ -127,11 +112,11 @@ pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
   let assert Some(detail_update.Update(next, fx, auth_policy)) =
     detail_update.try_update(
       model,
-      pool_messages.MemberTaskDetailTabClicked(task_tabs.MetricsTab),
+      pool_messages.MemberTaskDetailTabClicked(show_tabs.TaskActivityTab),
       dispatch_context(),
     )
 
-  let assert task_tabs.MetricsTab = next.pool.member_task_detail_tab
+  let assert show_tabs.TaskActivityTab = next.pool.member_task_detail_tab
   let assert True = next.notes == model.notes
   let assert True = next.dependencies == model.dependencies
   let assert detail_update.NoAuthCheck = auth_policy
@@ -176,11 +161,11 @@ pub fn local_task_detail_tab_clicked_sets_tab_test() {
   let #(next, fx, policy) =
     apply_pool_update(
       member_pool.default_model(),
-      pool_messages.MemberTaskDetailTabClicked(task_tabs.MetricsTab),
+      pool_messages.MemberTaskDetailTabClicked(show_tabs.TaskActivityTab),
       dispatch_context(),
     )
 
-  let assert task_tabs.MetricsTab = next.member_task_detail_tab
+  let assert show_tabs.TaskActivityTab = next.member_task_detail_tab
   let assert detail_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -391,32 +376,4 @@ pub fn local_task_updated_error_sets_edit_error_test() {
   let assert detail_update.CheckAuthAfter(auth_err) = policy
   let assert True = auth_err == err
   let assert True = fx != effect.none()
-}
-
-pub fn local_task_metrics_fetched_ok_sets_loaded_metrics_test() {
-  let metrics = sample_metrics()
-  let #(next, fx, policy) =
-    apply_pool_update(
-      member_pool.default_model(),
-      pool_messages.MemberTaskMetricsFetched(Ok(metrics)),
-      dispatch_context(),
-    )
-
-  let assert True = next.member_task_detail_metrics == remote.Loaded(metrics)
-  let assert detail_update.NoAuthCheck = policy
-  let assert True = fx == effect.none()
-}
-
-pub fn local_task_metrics_fetched_error_sets_failed_metrics_test() {
-  let err = sample_error()
-  let #(next, fx, policy) =
-    apply_pool_update(
-      member_pool.default_model(),
-      pool_messages.MemberTaskMetricsFetched(Error(err)),
-      dispatch_context(),
-    )
-
-  let assert True = next.member_task_detail_metrics == remote.Failed(err)
-  let assert detail_update.NoAuthCheck = policy
-  let assert True = fx == effect.none()
 }

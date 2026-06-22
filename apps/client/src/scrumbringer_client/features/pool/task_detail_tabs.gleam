@@ -2,9 +2,7 @@
 
 import gleam/list
 
-import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div}
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type TaskNote}
@@ -12,40 +10,50 @@ import domain/task.{type TaskNote}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/detail_tabs
+import scrumbringer_client/ui/show_tabs
 
 pub type Config(msg) {
   Config(
     locale: Locale,
-    active_tab: task_tabs.Tab,
+    active_tab: show_tabs.TaskShowTab,
     notes: Remote(List(TaskNote)),
-    on_tab_clicked: fn(task_tabs.Tab) -> msg,
+    on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
   )
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  task_tabs.view(task_tabs.Config(
+  let tabs = task_items(config)
+
+  detail_tabs.view(detail_tabs.Config(
     active_tab: config.active_tab,
-    notes_count: notes_count(config.notes),
-    has_new_notes: False,
-    labels: task_tabs.Labels(
-      tasks: t(config.locale, i18n_text.TabDetails),
-      notes: t(config.locale, i18n_text.TabNotes),
-      metrics: t(config.locale, i18n_text.TabMetrics),
-    ),
+    tabs: tabs,
+    container_class: "task-tabs modal-tabs detail-tabs",
+    tab_class: "task-tab modal-tab detail-tab",
     on_tab_click: config.on_tab_clicked,
   ))
 }
 
-pub fn panel(active_tab: task_tabs.Tab, content: Element(msg)) -> Element(msg) {
-  div(
-    [
-      attribute.class("detail-tabpanel"),
-      attribute.attribute("role", "tabpanel"),
-      attribute.id(tabpanel_id(active_tab)),
-      attribute.attribute("aria-labelledby", tab_id(active_tab)),
-    ],
-    [content],
+pub fn panel(
+  active_tab: show_tabs.TaskShowTab,
+  tabs: List(detail_tabs.TabItem(show_tabs.TaskShowTab)),
+  content: Element(msg),
+) -> Element(msg) {
+  detail_tabs.panel(active_tab, tabs, content)
+}
+
+pub fn task_items(
+  config: Config(msg),
+) -> List(detail_tabs.TabItem(show_tabs.TaskShowTab)) {
+  show_tabs.task_items(
+    show_tabs.TaskLabels(
+      details: t(config.locale, i18n_text.TabDetails),
+      dependencies: t(config.locale, i18n_text.TabDependencies),
+      notes: t(config.locale, i18n_text.TabNotes),
+      activity: t(config.locale, i18n_text.TabActivity),
+    ),
+    notes_count(config.notes),
+    False,
   )
 }
 
@@ -60,20 +68,4 @@ fn notes_count(notes: Remote(List(TaskNote))) -> Int {
 
 fn t(locale: Locale, key: i18n_text.Text) -> String {
   i18n.t(locale, key)
-}
-
-fn tabpanel_id(tab: task_tabs.Tab) -> String {
-  case tab {
-    task_tabs.TasksTab -> "modal-tabpanel-0"
-    task_tabs.NotesTab -> "modal-tabpanel-1"
-    task_tabs.MetricsTab -> "modal-tabpanel-2"
-  }
-}
-
-fn tab_id(tab: task_tabs.Tab) -> String {
-  case tab {
-    task_tabs.TasksTab -> "modal-tab-0"
-    task_tabs.NotesTab -> "modal-tab-1"
-    task_tabs.MetricsTab -> "modal-tab-2"
-  }
 }

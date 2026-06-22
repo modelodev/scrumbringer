@@ -12,7 +12,7 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/detail_update
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 fn sample_task() -> Task {
   let state = task_state.Available
@@ -44,7 +44,6 @@ fn detail_context() -> detail_update.Context(Nil) {
   detail_update.Context(
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
-    on_metrics_fetched: fn(_result) { Nil },
   )
 }
 
@@ -102,8 +101,7 @@ pub fn local_task_details_opened_sets_detail_state_and_fetches_test() {
       dispatch_context(),
     )
 
-  let assert task_tabs.TasksTab = next.pool.member_task_detail_tab
-  let assert True = next.pool.member_task_detail_metrics == remote.Loading
+  let assert show_tabs.TaskDetailsTab = next.pool.member_task_detail_tab
   let assert False = next.pool.member_task_detail_editing
   let assert "Prepare release" = next.pool.member_task_detail_edit_title
   let assert "Review checklist." = next.pool.member_task_detail_edit_description
@@ -145,8 +143,7 @@ pub fn local_task_details_closed_resets_detail_state_test() {
     detail_update.Model(
       pool: member_pool.Model(
         ..member_pool.default_model(),
-        member_task_detail_tab: task_tabs.MetricsTab,
-        member_task_detail_metrics: remote.Loading,
+        member_task_detail_tab: show_tabs.TaskActivityTab,
         member_task_detail_editing: True,
         member_task_detail_edit_title: "Changed",
         member_task_detail_edit_description: "Changed description",
@@ -180,8 +177,7 @@ pub fn local_task_details_closed_resets_detail_state_test() {
       dispatch_context(),
     )
 
-  let assert task_tabs.TasksTab = next.pool.member_task_detail_tab
-  let assert True = next.pool.member_task_detail_metrics == remote.NotAsked
+  let assert show_tabs.TaskDetailsTab = next.pool.member_task_detail_tab
   let assert False = next.pool.member_task_detail_editing
   let assert "" = next.pool.member_task_detail_edit_title
   let assert "" = next.pool.member_task_detail_edit_description

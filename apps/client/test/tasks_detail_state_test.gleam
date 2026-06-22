@@ -10,7 +10,7 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/detail_edit_form
 import scrumbringer_client/features/tasks/detail_state
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 fn sample_task() -> Task {
   let state = task_state.Available
@@ -58,8 +58,7 @@ pub fn detail_state_open_sets_loading_detail_state_test() {
       Some(sample_task()),
     )
 
-  let assert task_tabs.TasksTab = pool.member_task_detail_tab
-  let assert True = pool.member_task_detail_metrics == remote.Loading
+  let assert show_tabs.TaskDetailsTab = pool.member_task_detail_tab
   let assert "Prepare release" = pool.member_task_detail_edit_title
   let assert "Review checklist." = pool.member_task_detail_edit_description
   let assert "4" = pool.member_task_detail_edit_priority
@@ -88,8 +87,7 @@ pub fn detail_state_close_resets_detail_state_test() {
   let pool =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_detail_tab: task_tabs.MetricsTab,
-      member_task_detail_metrics: remote.Loading,
+      member_task_detail_tab: show_tabs.TaskActivityTab,
       member_task_detail_editing: True,
       member_task_detail_edit_title: "Changed",
       member_task_detail_edit_description: "Changed description",
@@ -111,8 +109,7 @@ pub fn detail_state_close_resets_detail_state_test() {
   let #(next_pool, next_notes, next_dependencies) =
     detail_state.close(pool, notes)
 
-  let assert task_tabs.TasksTab = next_pool.member_task_detail_tab
-  let assert True = next_pool.member_task_detail_metrics == remote.NotAsked
+  let assert show_tabs.TaskDetailsTab = next_pool.member_task_detail_tab
   let assert False = next_pool.member_task_detail_editing
   let assert "" = next_pool.member_task_detail_edit_title
   let assert "" = next_pool.member_task_detail_edit_description

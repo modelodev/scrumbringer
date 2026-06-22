@@ -1097,10 +1097,12 @@ pub fn translate(text: Text) -> String {
     // AC21: Tab labels
     text.TabTasks -> "Tareas"
     text.TabNotes -> "Notas"
+    text.TabSummary -> "Resumen"
+    text.TabWork -> "Trabajo"
+    text.TabActivity -> "Actividad"
     // 5.4.1: Task detail modal
     text.TabDetails -> "Detalles"
     text.TabDependencies -> "Dependencias"
-    text.TabMetrics -> "Métricas"
     text.EditTask -> "Editar tarea"
     text.TaskUpdated -> "Tarea actualizada"
     text.TaskEditPlanning -> "Planificación"

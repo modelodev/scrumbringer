@@ -7,7 +7,6 @@ import domain/card.{type Card}
 import domain/metrics.{
   type CardModalMetrics, type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
-  type TaskModalMetrics,
 }
 import domain/project.{type ProjectMember}
 import domain/task.{
@@ -27,7 +26,7 @@ import scrumbringer_client/client_state/admin/task_templates as admin_task_templ
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/pool_prefs
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 /// Represents PoolMsg.
 pub type Msg {
@@ -127,7 +126,7 @@ pub type Msg {
   MemberPositionSaved(ApiResult(TaskPosition))
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
-  MemberTaskDetailTabClicked(task_tabs.Tab)
+  MemberTaskDetailTabClicked(show_tabs.TaskShowTab)
   MemberTaskDetailEditStarted
   MemberTaskDetailEditCancelled
   MemberTaskDetailEditTitleChanged(String)
@@ -137,7 +136,6 @@ pub type Msg {
   MemberTaskDetailEditCardIdChanged(String)
   MemberTaskDetailEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
-  MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened
   MemberDependencyDialogClosed

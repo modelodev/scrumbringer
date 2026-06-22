@@ -18,7 +18,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/task_details_dialog_config as task_details_dialog
 import scrumbringer_client/features/pool/update as pool_update
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 fn assert_contains(text: String, fragment: String) {
   let assert True = string.contains(text, fragment)
@@ -162,7 +162,7 @@ pub fn task_details_open_sets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert task_tabs.TasksTab = next.member.pool.member_task_detail_tab
+  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_detail_tab
   let assert False = next.member.pool.member_task_detail_editing
   let assert "Prepare release" = next.member.pool.member_task_detail_edit_title
   let assert "Review release checklist." =
@@ -210,7 +210,7 @@ pub fn task_details_close_resets_default_tasks_tab_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_task_detail_tab: task_tabs.MetricsTab,
+          member_task_detail_tab: show_tabs.TaskActivityTab,
         ),
       )
     })
@@ -222,7 +222,7 @@ pub fn task_details_close_resets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert task_tabs.TasksTab = next.member.pool.member_task_detail_tab
+  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_detail_tab
   let assert False = next.member.pool.member_task_detail_editing
   let assert "" = next.member.pool.member_task_detail_edit_title
 }

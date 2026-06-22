@@ -925,10 +925,12 @@ pub type Text {
   // AC21: Tab labels
   TabTasks
   TabNotes
+  TabSummary
+  TabWork
+  TabActivity
   // 5.4.1: Task detail modal
   TabDetails
   TabDependencies
-  TabMetrics
   EditTask
   TaskUpdated
   TaskEditPlanning

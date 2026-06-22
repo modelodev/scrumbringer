@@ -23,11 +23,10 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div}
+import lustre/element/html.{div, text}
 import lustre/event
 
 import domain/card.{type Card}
-import domain/metrics.{type TaskModalMetrics}
 import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
 import domain/task_type.{type TaskType}
@@ -38,11 +37,12 @@ import scrumbringer_client/features/pool/task_detail_details
 import scrumbringer_client/features/pool/task_detail_footer
 import scrumbringer_client/features/pool/task_detail_header
 import scrumbringer_client/features/pool/task_detail_tabs
-import scrumbringer_client/features/pool/task_metrics
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/features/tasks/detail_editor
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/show_tabs
 
 pub type TaskDetailsConfig(msg) {
   TaskDetailsConfig(
@@ -50,14 +50,13 @@ pub type TaskDetailsConfig(msg) {
     task_id: Int,
     task: opt.Option(Task),
     current_user_id: opt.Option(Int),
-    active_tab: task_tabs.Tab,
-    metrics: Remote(TaskModalMetrics),
+    active_tab: show_tabs.TaskShowTab,
     dependencies: TaskDependenciesConfig(msg),
     editor: TaskEditorConfig(msg),
     notes: TaskNotesConfig(msg),
     actions: TaskActionsConfig(msg),
     on_close: msg,
-    on_tab_clicked: fn(task_tabs.Tab) -> msg,
+    on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
   )
 }
 
@@ -154,7 +153,7 @@ pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
           ],
           [
             view_task_header(config),
-            view_task_tabs(config),
+            view_task_show_tabs(config),
           ],
         ),
         div([attribute.class("modal-body task-detail-body")], [
@@ -174,7 +173,7 @@ fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
+fn view_task_show_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
   task_detail_tabs.view(task_detail_tabs.Config(
     locale: config.locale,
     active_tab: config.active_tab,
@@ -185,23 +184,28 @@ fn view_task_tabs(config: TaskDetailsConfig(msg)) -> Element(msg) {
 
 fn view_task_tab_content(config: TaskDetailsConfig(msg)) -> Element(msg) {
   let panel = case config.active_tab {
-    task_tabs.TasksTab ->
-      div([attribute.class("task-detail-grid detail-grid")], [
-        view_task_details_tab(config),
-        view_dependencies(config),
-      ])
-    task_tabs.NotesTab -> view_notes(config)
-    task_tabs.MetricsTab -> view_task_metrics(config)
+    show_tabs.TaskDetailsTab -> view_task_details_tab(config)
+    show_tabs.TaskDependenciesTab -> view_dependencies(config)
+    show_tabs.TaskNotesTab -> view_notes(config)
+    show_tabs.TaskActivityTab -> view_task_activity(config)
   }
 
-  task_detail_tabs.panel(config.active_tab, panel)
+  task_detail_tabs.panel(
+    config.active_tab,
+    task_detail_tabs.task_items(task_detail_tabs.Config(
+      locale: config.locale,
+      active_tab: config.active_tab,
+      notes: config.notes.items,
+      on_tab_clicked: config.on_tab_clicked,
+    )),
+    panel,
+  )
 }
 
-fn view_task_metrics(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  task_metrics.view(task_metrics.Config(
-    locale: config.locale,
-    metrics: config.metrics,
-  ))
+fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
+  div([attribute.class("task-activity-empty detail-empty")], [
+    text(i18n.t(config.locale, i18n_text.TabActivity)),
+  ])
 }
 
 /// Renders the dependencies section for a task.

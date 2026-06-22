@@ -3,9 +3,7 @@
 import gleam/int
 import gleam/option as opt
 
-import domain/api_error.{type ApiError}
-import domain/metrics.{type TaskModalMetrics}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/remote.{Loading, NotAsked}
 import domain/task.{type Task}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
@@ -13,7 +11,7 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/detail_edit_form
 import scrumbringer_client/features/tasks/task_list
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 pub fn open(
   pool: member_pool.Model,
@@ -27,8 +25,7 @@ pub fn open(
   #(
     member_pool.Model(
       ..pool,
-      member_task_detail_tab: task_tabs.TasksTab,
-      member_task_detail_metrics: Loading,
+      member_task_detail_tab: show_tabs.TaskDetailsTab,
       member_task_detail_editing: False,
       member_task_detail_edit_title: fields.title,
       member_task_detail_edit_description: fields.description,
@@ -92,8 +89,7 @@ pub fn close(
   #(
     member_pool.Model(
       ..pool,
-      member_task_detail_tab: task_tabs.TasksTab,
-      member_task_detail_metrics: NotAsked,
+      member_task_detail_tab: show_tabs.TaskDetailsTab,
       member_task_detail_editing: False,
       member_task_detail_edit_title: "",
       member_task_detail_edit_description: "",
@@ -118,7 +114,7 @@ pub fn close(
 
 pub fn select_tab(
   pool: member_pool.Model,
-  tab: task_tabs.Tab,
+  tab: show_tabs.TaskShowTab,
 ) -> member_pool.Model {
   member_pool.Model(..pool, member_task_detail_tab: tab)
 }
@@ -255,20 +251,6 @@ pub fn edit_started_submit(
     member_task_detail_edit_in_flight: True,
     member_task_detail_edit_error: opt.None,
   )
-}
-
-pub fn metrics_loaded(
-  pool: member_pool.Model,
-  metrics: TaskModalMetrics,
-) -> member_pool.Model {
-  member_pool.Model(..pool, member_task_detail_metrics: Loaded(metrics))
-}
-
-pub fn metrics_failed(
-  pool: member_pool.Model,
-  err: ApiError,
-) -> member_pool.Model {
-  member_pool.Model(..pool, member_task_detail_metrics: Failed(err))
 }
 
 pub fn task_updated(

@@ -11,7 +11,7 @@ import scrumbringer_client/components/card_detail_modal.{
   type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
-import scrumbringer_client/ui/card_tabs
+import scrumbringer_client/ui/show_tabs
 
 // =============================================================================
 // Test Helpers
@@ -28,15 +28,13 @@ fn make_model() -> Model {
     can_manage_notes: False,
     can_manage_structure: False,
     can_execute_work: False,
-    // AC21: Default tab
-    active_tab: card_tabs.TasksTab,
+    active_tab: show_tabs.CardSummaryTab,
     notes: NotAsked,
     note_dialog_open: False,
     note_content: "",
     note_in_flight: False,
     note_error: option.None,
     tasks: NotAsked,
-    metrics: NotAsked,
     activation_confirm_open: False,
   )
 }
@@ -82,9 +80,7 @@ pub fn initial_model_has_correct_defaults_test() {
   let assert False = model.note_in_flight
   let assert option.None = model.note_error
   let assert NotAsked = model.tasks
-  let assert NotAsked = model.metrics
-  // AC21: Default tab is Tasks
-  let assert card_tabs.TasksTab = model.active_tab
+  let assert show_tabs.CardSummaryTab = model.active_tab
 }
 
 pub fn model_with_card_retains_data_test() {

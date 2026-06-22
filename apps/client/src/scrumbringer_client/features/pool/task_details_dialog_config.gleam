@@ -10,13 +10,13 @@ import scrumbringer_client/client_state/member/pool as pool_state
 import scrumbringer_client/features/pool/dialogs
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/locale.{type Locale}
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/utils/card_queries
 
 pub type Callbacks(msg) {
   Callbacks(
     on_close: msg,
-    on_tab_clicked: fn(task_tabs.Tab) -> msg,
+    on_tab_clicked: fn(show_tabs.TaskShowTab) -> msg,
     on_dependency_dialog_opened: msg,
     on_dependency_dialog_closed: msg,
     on_dependency_add_submitted: msg,
@@ -86,7 +86,6 @@ pub fn from_state(
     task: task,
     current_user_id: current_user_id,
     active_tab: pool.member_task_detail_tab,
-    metrics: pool.member_task_detail_metrics,
     dependencies: dependencies_config(dependencies, callbacks),
     editor: editor_config(pool, cards, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),

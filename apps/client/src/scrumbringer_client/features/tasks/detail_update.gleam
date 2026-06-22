@@ -5,7 +5,6 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/metrics.{type TaskModalMetrics}
 import domain/task.{type Task, type TaskDependency, type TaskNote}
 import scrumbringer_client/api/tasks/dependencies as task_dependencies_api
 import scrumbringer_client/api/tasks/notes as task_notes_api
@@ -17,7 +16,7 @@ import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/detail_edit_form
 import scrumbringer_client/features/tasks/detail_state
 import scrumbringer_client/helpers/lookup as helpers_lookup
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/ui/toast
 
 pub type EditContext(parent_msg) {
@@ -44,7 +43,6 @@ pub type Context(parent_msg) {
   Context(
     on_notes_fetched: fn(ApiResult(List(TaskNote))) -> parent_msg,
     on_dependencies_fetched: fn(ApiResult(List(TaskDependency))) -> parent_msg,
-    on_metrics_fetched: fn(ApiResult(TaskModalMetrics)) -> parent_msg,
   )
 }
 
@@ -145,14 +143,6 @@ pub fn try_update(
       updated_error(model.pool, err, context.error_context)
       |> pool_result_after_auth(model, err)
 
-    pool_messages.MemberTaskMetricsFetched(Ok(metrics)) ->
-      handle_task_metrics_fetched_ok(model.pool, metrics)
-      |> pool_result(model)
-
-    pool_messages.MemberTaskMetricsFetched(Error(err)) ->
-      handle_task_metrics_fetched_error(model.pool, err)
-      |> pool_result(model)
-
     _ -> opt.None
   }
 }
@@ -210,10 +200,7 @@ fn handle_task_details_opened(
       task_id,
       context.on_dependencies_fetched,
     )
-  let metrics_fx =
-    task_operations_api.get_task_metrics(task_id, context.on_metrics_fetched)
-
-  #(next_model, effect.batch([notes_fx, deps_fx, metrics_fx]))
+  #(next_model, effect.batch([notes_fx, deps_fx]))
 }
 
 /// Close task details dialog.
@@ -224,7 +211,7 @@ fn handle_task_details_closed(model: Model) -> #(Model, Effect(parent_msg)) {
 
 fn handle_task_detail_tab_clicked(
   model: member_pool.Model,
-  tab: task_tabs.Tab,
+  tab: show_tabs.TaskShowTab,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   #(detail_state.select_tab(model, tab), effect.none())
 }
@@ -340,20 +327,6 @@ fn submit_task_detail_edit(
     }
     _, _ -> #(model, effect.none())
   }
-}
-
-fn handle_task_metrics_fetched_ok(
-  model: member_pool.Model,
-  metrics: TaskModalMetrics,
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(detail_state.metrics_loaded(model, metrics), effect.none())
-}
-
-fn handle_task_metrics_fetched_error(
-  model: member_pool.Model,
-  err: ApiError,
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  #(detail_state.metrics_failed(model, err), effect.none())
 }
 
 fn updated_ok(

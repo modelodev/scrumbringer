@@ -4,7 +4,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
+import domain/metrics.{type CardModalMetrics}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
@@ -16,7 +16,7 @@ import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/show_tabs
 
 import scrumbringer_client/features/people/state as people_state
 
@@ -158,8 +158,7 @@ pub type Model {
     member_pool_preview_task_id: Option(Int),
     card_detail_open: Option(Int),
     card_detail_metrics: Remote(CardModalMetrics),
-    member_task_detail_tab: task_tabs.Tab,
-    member_task_detail_metrics: Remote(TaskModalMetrics),
+    member_task_detail_tab: show_tabs.TaskShowTab,
     member_task_detail_editing: Bool,
     member_task_detail_edit_title: String,
     member_task_detail_edit_description: String,
@@ -232,8 +231,7 @@ pub fn default_model() -> Model {
     member_pool_preview_task_id: option.None,
     card_detail_open: option.None,
     card_detail_metrics: NotAsked,
-    member_task_detail_tab: task_tabs.TasksTab,
-    member_task_detail_metrics: NotAsked,
+    member_task_detail_tab: show_tabs.TaskDetailsTab,
     member_task_detail_editing: False,
     member_task_detail_edit_title: "",
     member_task_detail_edit_description: "",

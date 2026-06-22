@@ -47,7 +47,6 @@ fn model_with_open_task_detail(task_id: Int) -> client_state.Model {
       ..member,
       pool: member_pool.Model(
         ..member.pool,
-        member_task_detail_metrics: remote.Loading,
         member_task_detail_edit_title: "Open task",
         member_task_detail_edit_description: "Details",
         member_task_detail_edit_priority: "2",
@@ -117,8 +116,6 @@ pub fn task_delete_success_closes_deleted_task_detail_test() {
     )
 
   let assert opt.None = next.member.notes.member_notes_task_id
-  let assert True =
-    next.member.pool.member_task_detail_metrics == remote.NotAsked
   let assert "" = next.member.pool.member_task_detail_edit_title
   let assert "3" = next.member.pool.member_task_detail_edit_priority
 }
@@ -132,8 +129,6 @@ pub fn task_delete_success_keeps_other_task_detail_open_test() {
     )
 
   let assert opt.Some(99) = next.member.notes.member_notes_task_id
-  let assert True =
-    next.member.pool.member_task_detail_metrics == remote.Loading
   let assert "Open task" = next.member.pool.member_task_detail_edit_title
   let assert "2" = next.member.pool.member_task_detail_edit_priority
 }
