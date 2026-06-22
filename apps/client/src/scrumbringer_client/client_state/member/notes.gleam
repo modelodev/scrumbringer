@@ -22,6 +22,8 @@ pub type Model {
     member_note_delete_in_flight: Option(Int),
     member_note_pin_in_flight: Option(Int),
     member_activity: Remote(List(activity_entity.ActivityEvent)),
+    member_activity_total: Int,
+    member_activity_loading_more: Bool,
   )
 }
 
@@ -39,5 +41,7 @@ pub fn default_model() -> Model {
     member_note_delete_in_flight: option.None,
     member_note_pin_in_flight: option.None,
     member_activity: NotAsked,
+    member_activity_total: 0,
+    member_activity_loading_more: False,
   )
 }

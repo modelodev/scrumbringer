@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option
+import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
@@ -35,6 +35,7 @@ pub fn activity_feed_renders_empty_state_test() {
       loading_label: "Loading activity...",
       empty_label: "No activity yet.",
       error_label: "Could not load activity.",
+      load_more: None,
     ))
     |> element.to_document_string
 
@@ -49,6 +50,7 @@ pub fn activity_feed_renders_event_actor_summary_and_time_test() {
       loading_label: "Loading activity...",
       empty_label: "No activity yet.",
       error_label: "Could not load activity.",
+      load_more: None,
     ))
     |> element.to_document_string
 
@@ -69,6 +71,7 @@ pub fn activity_feed_groups_loaded_events_by_date_test() {
       loading_label: "Loading activity...",
       empty_label: "No activity yet.",
       error_label: "Could not load activity.",
+      load_more: None,
     ))
     |> element.to_document_string
 
@@ -80,6 +83,26 @@ pub fn activity_feed_groups_loaded_events_by_date_test() {
   assert_contains(html, "Task started")
   assert_contains(html, "Task released")
   let assert 2 = count_occurrences(html, "activity-feed-date")
+}
+
+pub fn activity_feed_renders_load_more_control_when_available_test() {
+  let html =
+    activity_feed.view(activity_feed.Config(
+      events: Loaded([sample_event()]),
+      loading_label: "Loading activity...",
+      empty_label: "No activity yet.",
+      error_label: "Could not load activity.",
+      load_more: Some(activity_feed.LoadMore(
+        label: "Ver mas",
+        in_flight: False,
+        on_click: Nil,
+      )),
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "activity-feed-more")
+  assert_contains(html, "Ver mas")
+  assert_not_contains(html, "disabled")
 }
 
 fn sample_event() -> ActivityEvent {

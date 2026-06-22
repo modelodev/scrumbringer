@@ -63,6 +63,9 @@ pub type TaskDetailsConfig(msg) {
     editor: TaskEditorConfig(msg),
     notes: TaskNotesConfig(msg),
     activity: Remote(List(ActivityEvent)),
+    activity_total: Int,
+    activity_loading_more: Bool,
+    on_activity_more: msg,
     actions: TaskActionsConfig(msg),
     on_close: msg,
     on_open_parent_card: fn(Int) -> msg,
@@ -224,8 +227,32 @@ fn view_task_activity(config: TaskDetailsConfig(msg)) -> Element(msg) {
       loading_label: i18n.t(config.locale, i18n_text.ActivityLoading),
       empty_label: i18n.t(config.locale, i18n_text.ActivityEmpty),
       error_label: i18n.t(config.locale, i18n_text.ActivityLoadFailed),
+      load_more: task_activity_load_more(config),
     )),
   ])
+}
+
+fn task_activity_load_more(
+  config: TaskDetailsConfig(msg),
+) -> opt.Option(activity_feed.LoadMore(msg)) {
+  case config.activity {
+    Loaded(events) -> {
+      let loaded_count = list.length(events)
+      case loaded_count < config.activity_total {
+        True ->
+          opt.Some(activity_feed.LoadMore(
+            label: i18n.t(
+              config.locale,
+              i18n_text.ActivityLoadMore(config.activity_total - loaded_count),
+            ),
+            in_flight: config.activity_loading_more,
+            on_click: config.on_activity_more,
+          ))
+        False -> opt.None
+      }
+    }
+    _ -> opt.None
+  }
 }
 
 /// Renders the dependencies section for a task.

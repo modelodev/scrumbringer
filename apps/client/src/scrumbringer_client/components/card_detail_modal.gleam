@@ -38,7 +38,7 @@ import domain/task_status.{Available, Done}
 import domain/user/id as user_ids
 
 import domain/activity/entity as activity_entity
-import domain/api_error.{type ApiResult}
+import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
@@ -92,6 +92,8 @@ pub type Model {
     note_error: Option(String),
     note_pin_in_flight: Option(Int),
     activity: Remote(List(activity_entity.ActivityEvent)),
+    activity_total: Int,
+    activity_loading_more: Bool,
     tasks: Remote(List(Task)),
     activation_confirm_open: Bool,
   )
@@ -110,7 +112,7 @@ pub type Msg {
   CanManageStructureReceived(Bool)
   CanExecuteWorkReceived(Bool)
   NotesReceived(ApiResult(List(Note)))
-  ActivityReceived(ApiResult(List(activity_entity.ActivityEvent)))
+  ActivityReceived(ApiResult(api_activity.ActivityPage))
   TasksReceived(List(Task))
   // AC21: Tab navigation
   TabClicked(show_tabs.CardShowTab)
@@ -124,6 +126,7 @@ pub type Msg {
   NoteDeleted(Int, ApiResult(Nil))
   NotePinClicked(Int, Bool)
   NotePinned(Int, ApiResult(Note))
+  ActivityMoreClicked
   // Card operations
   CreateCardClicked
   ActivateCardClicked
@@ -159,6 +162,8 @@ pub fn init_model() -> Model {
     note_error: option.None,
     note_pin_in_flight: option.None,
     activity: NotAsked,
+    activity_total: 0,
+    activity_loading_more: False,
     tasks: NotAsked,
     activation_confirm_open: False,
   )
@@ -214,6 +219,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         card_id: option.Some(id),
         notes: Loading,
         activity: Loading,
+        activity_total: 0,
+        activity_loading_more: False,
       ),
       effect.batch([fetch_notes(id), fetch_activity(id)]),
     )
@@ -262,13 +269,26 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    ActivityReceived(Ok(events)) -> #(
-      Model(..model, activity: Loaded(events)),
-      effect.none(),
-    )
+    ActivityReceived(Ok(page)) -> {
+      let api_activity.ActivityPage(activity: events, pagination: pagination) =
+        page
+      let next_events = case model.activity_loading_more, model.activity {
+        True, Loaded(current) -> list.append(current, events)
+        _, _ -> events
+      }
+      #(
+        Model(
+          ..model,
+          activity: Loaded(next_events),
+          activity_total: pagination.total,
+          activity_loading_more: False,
+        ),
+        effect.none(),
+      )
+    }
 
     ActivityReceived(Error(err)) -> #(
-      Model(..model, activity: Failed(err)),
+      card_activity_failed(model, err),
       effect.none(),
     )
 
@@ -279,6 +299,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     // AC21: Tab navigation
     TabClicked(tab) -> #(Model(..model, active_tab: tab), effect.none())
+
+    ActivityMoreClicked -> load_more_activity(model)
 
     // Note dialog
     NoteDialogOpened -> #(
@@ -395,6 +417,31 @@ fn fetch_notes(card_id: Int) -> Effect(Msg) {
 
 fn fetch_activity(card_id: Int) -> Effect(Msg) {
   api_activity.list_card_activity(card_id, ActivityReceived)
+}
+
+fn load_more_activity(model: Model) -> #(Model, Effect(Msg)) {
+  case model.activity_loading_more, model.card_id, model.activity {
+    False, option.Some(card_id), Loaded(events) -> {
+      let offset = list.length(events)
+      #(
+        Model(..model, activity_loading_more: True),
+        api_activity.list_card_activity_page(
+          card_id,
+          30,
+          offset,
+          ActivityReceived,
+        ),
+      )
+    }
+    _, _, _ -> #(model, effect.none())
+  }
+}
+
+fn card_activity_failed(model: Model, err: ApiError) -> Model {
+  case model.activity_loading_more {
+    True -> Model(..model, activity_loading_more: False)
+    False -> Model(..model, activity: Failed(err), activity_loading_more: False)
+  }
 }
 
 fn handle_submit_note(model: Model) -> #(Model, Effect(Msg)) {
@@ -1146,8 +1193,30 @@ fn view_card_activity_section(model: Model) -> Element(Msg) {
       loading_label: t(model.locale, i18n_text.ActivityLoading),
       empty_label: t(model.locale, i18n_text.ActivityEmpty),
       error_label: t(model.locale, i18n_text.ActivityLoadFailed),
+      load_more: card_activity_load_more(model),
     )),
   ])
+}
+
+fn card_activity_load_more(model: Model) -> Option(activity_feed.LoadMore(Msg)) {
+  case model.activity {
+    Loaded(events) -> {
+      let loaded_count = list.length(events)
+      case loaded_count < model.activity_total {
+        True ->
+          option.Some(activity_feed.LoadMore(
+            label: t(
+              model.locale,
+              i18n_text.ActivityLoadMore(model.activity_total - loaded_count),
+            ),
+            in_flight: model.activity_loading_more,
+            on_click: ActivityMoreClicked,
+          ))
+        False -> option.None
+      }
+    }
+    _ -> option.None
+  }
 }
 
 fn view_card_notes_section(model: Model) -> Element(Msg) {

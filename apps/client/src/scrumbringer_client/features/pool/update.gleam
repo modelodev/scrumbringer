@@ -899,6 +899,7 @@ fn update_without_view_mode(
     | pool_messages.MemberNoteDeleted(_, _)
     | pool_messages.MemberNotePinClicked(_, _)
     | pool_messages.MemberNotePinned(_, _)
+    | pool_messages.MemberActivityMoreClicked
     | pool_messages.MemberActivityFetched(_) -> #(model, effect.none())
 
     // Handled by cards_workflow.try_update before this dispatch.

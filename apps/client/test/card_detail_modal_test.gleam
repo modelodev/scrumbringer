@@ -4,9 +4,19 @@
 //// card detail modal component.
 
 import gleam/option
+import gleam/string
 
+import lustre/element
+
+import domain/activity/entity.{type ActivityEvent, ActivityEvent}
+import domain/activity/id as activity_id
+import domain/activity/kind
+import domain/activity/subject.{ActivityCard}
 import domain/card.{type Card, Active, Card, Draft}
+import domain/card/id as card_id
+import domain/project/id as project_id
 import domain/remote.{Loaded, NotAsked}
+import domain/user/id as user_id
 import scrumbringer_client/components/card_detail_modal.{
   type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
 }
@@ -36,6 +46,8 @@ fn make_model() -> Model {
     note_error: option.None,
     note_pin_in_flight: option.None,
     activity: NotAsked,
+    activity_total: 0,
+    activity_loading_more: False,
     tasks: NotAsked,
     activation_confirm_open: False,
   )
@@ -56,6 +68,20 @@ fn make_card(id: Int) -> Card {
     created_at: "2026-01-20T00:00:00Z",
     due_date: option.None,
     has_new_notes: False,
+  )
+}
+
+fn sample_activity(id: Int) -> ActivityEvent {
+  ActivityEvent(
+    id: activity_id.new(id),
+    project_id: project_id.new(1),
+    subject: ActivityCard(card_id.new(42)),
+    kind: kind.CardActivated,
+    actor_user_id: user_id.new(7),
+    actor_label: "admin@example.com",
+    summary: "Card activated",
+    related_subject: option.None,
+    created_at: "2026-06-22T10:30:00Z",
   )
 }
 
@@ -101,6 +127,22 @@ pub fn model_with_loaded_tasks_has_correct_remote_state_test() {
 
   let assert Loaded(t) = model.tasks
   let assert [] = t
+}
+
+pub fn card_activity_tab_renders_load_more_when_more_events_exist_test() {
+  let html =
+    Model(
+      ..make_model(),
+      card: option.Some(make_card(42)),
+      active_tab: show_tabs.CardActivityTab,
+      activity: Loaded([sample_activity(1)]),
+      activity_total: 2,
+    )
+    |> card_detail_modal.view
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "activity-feed-more")
+  let assert True = string.contains(html, "Load more (1)")
 }
 
 // =============================================================================

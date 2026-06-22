@@ -942,6 +942,7 @@ pub type Text {
   ActivityLoading
   ActivityEmpty
   ActivityLoadFailed
+  ActivityLoadMore(remaining: Int)
   // 5.4.1: Task detail modal
   TabDetails
   TabDependencies

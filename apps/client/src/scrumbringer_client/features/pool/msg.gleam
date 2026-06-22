@@ -1,7 +1,6 @@
 //// Pool feature messages.
 
 import api/cards/contracts as card_contracts
-import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
@@ -19,6 +18,7 @@ import domain/view_mode
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
+import scrumbringer_client/api/activity as api_activity
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/cards as admin_cards
@@ -158,7 +158,8 @@ pub type Msg {
   MemberNoteDeleted(Int, ApiResult(Nil))
   MemberNotePinClicked(Int, Bool)
   MemberNotePinned(Int, ApiResult(note_entity.Note))
-  MemberActivityFetched(ApiResult(List(ActivityEvent)))
+  MemberActivityMoreClicked
+  MemberActivityFetched(ApiResult(api_activity.ActivityPage))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
   AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))

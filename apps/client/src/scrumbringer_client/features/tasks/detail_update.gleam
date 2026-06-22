@@ -1,13 +1,13 @@
 //// Task detail workflow for the member pool.
 
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
-import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/note/entity as note_entity
-import domain/remote.{type Remote, Failed, Loaded}
+import domain/remote.{Failed, Loaded}
 import domain/task.{type Task, type TaskDependency}
 import scrumbringer_client/api/activity as activity_api
 import scrumbringer_client/api/tasks/dependencies as task_dependencies_api
@@ -47,7 +47,7 @@ pub type Context(parent_msg) {
   Context(
     on_notes_fetched: fn(ApiResult(List(note_entity.Note))) -> parent_msg,
     on_dependencies_fetched: fn(ApiResult(List(TaskDependency))) -> parent_msg,
-    on_activity_fetched: fn(ApiResult(List(ActivityEvent))) -> parent_msg,
+    on_activity_fetched: fn(ApiResult(activity_api.ActivityPage)) -> parent_msg,
   )
 }
 
@@ -140,6 +140,10 @@ pub fn try_update(
       handle_task_detail_edit_submitted(model.pool, context.edit_context)
       |> pool_result(model)
 
+    pool_messages.MemberActivityMoreClicked ->
+      handle_activity_more_clicked(model, context.open_context)
+      |> without_auth_check
+
     pool_messages.MemberTaskUpdated(Ok(task)) ->
       updated_ok(model.pool, task, context.success_context)
       |> pool_result(model)
@@ -148,18 +152,15 @@ pub fn try_update(
       updated_error(model.pool, err, context.error_context)
       |> pool_result_after_auth(model, err)
 
-    pool_messages.MemberActivityFetched(Ok(events)) ->
+    pool_messages.MemberActivityFetched(Ok(page)) ->
       #(
-        Model(..model, notes: set_activity(model.notes, Loaded(events))),
+        Model(..model, notes: activity_loaded(model.notes, page)),
         effect.none(),
       )
       |> without_auth_check
 
     pool_messages.MemberActivityFetched(Error(err)) ->
-      #(
-        Model(..model, notes: set_activity(model.notes, Failed(err))),
-        effect.none(),
-      )
+      #(Model(..model, notes: activity_failed(model.notes, err)), effect.none())
       |> model_result_after_auth(err)
 
     _ -> opt.None
@@ -232,11 +233,66 @@ fn handle_task_details_opened(
   #(next_model, effect.batch([notes_fx, deps_fx, activity_fx]))
 }
 
-fn set_activity(
+fn handle_activity_more_clicked(
+  model: Model,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  case
+    model.notes.member_activity_loading_more,
+    model.notes.member_notes_task_id,
+    model.notes.member_activity
+  {
+    False, opt.Some(task_id), Loaded(events) -> {
+      let next_notes =
+        member_notes.Model(..model.notes, member_activity_loading_more: True)
+      #(
+        Model(..model, notes: next_notes),
+        activity_api.list_task_activity_page(
+          task_id,
+          30,
+          list.length(events),
+          context.on_activity_fetched,
+        ),
+      )
+    }
+    _, _, _ -> #(model, effect.none())
+  }
+}
+
+fn activity_loaded(
   notes: member_notes.Model,
-  activity: Remote(List(ActivityEvent)),
+  page: activity_api.ActivityPage,
 ) -> member_notes.Model {
-  member_notes.Model(..notes, member_activity: activity)
+  let activity_api.ActivityPage(activity: events, pagination: pagination) = page
+  let next_events = case
+    notes.member_activity_loading_more,
+    notes.member_activity
+  {
+    True, Loaded(current) -> list.append(current, events)
+    _, _ -> events
+  }
+
+  member_notes.Model(
+    ..notes,
+    member_activity: Loaded(next_events),
+    member_activity_total: pagination.total,
+    member_activity_loading_more: False,
+  )
+}
+
+fn activity_failed(
+  notes: member_notes.Model,
+  err: ApiError,
+) -> member_notes.Model {
+  case notes.member_activity_loading_more {
+    True -> member_notes.Model(..notes, member_activity_loading_more: False)
+    False ->
+      member_notes.Model(
+        ..notes,
+        member_activity: Failed(err),
+        member_activity_loading_more: False,
+      )
+  }
 }
 
 /// Close task details dialog.

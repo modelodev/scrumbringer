@@ -4,14 +4,21 @@ import gleam/string
 import lustre/effect
 import lustre/element
 
+import domain/activity/entity.{type ActivityEvent, ActivityEvent}
+import domain/activity/id as activity_id
+import domain/activity/kind
+import domain/activity/subject.{ActivityTask}
 import domain/capability.{Capability}
 import domain/org_role
+import domain/project/id as project_id
 import domain/remote
 import domain/task
+import domain/task/id as task_id
 import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskType, TaskTypeInline}
 import domain/user.{User}
+import domain/user/id as user_id
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
@@ -53,6 +60,7 @@ fn task_details_callbacks() -> task_details_dialog.Callbacks(String) {
     on_note_submitted: "note-submit",
     on_note_delete: fn(_) { "note-delete" },
     on_note_pin_toggle: fn(_, _) { "note-pin" },
+    on_activity_more: "activity-more",
     on_open_parent_card: fn(_) { "open-card" },
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
@@ -128,6 +136,20 @@ fn unclaimed_task() -> task.Task {
   let state = task_state.Available
 
   task.Task(..sample_task(), state: state)
+}
+
+fn sample_activity(id: Int) -> ActivityEvent {
+  ActivityEvent(
+    id: activity_id.new(id),
+    project_id: project_id.new(1),
+    subject: ActivityTask(task_id.new(42)),
+    kind: kind.TaskClaimed,
+    actor_user_id: user_id.new(7),
+    actor_label: "admin@example.com",
+    summary: "Task claimed",
+    related_subject: opt.None,
+    created_at: "2026-06-22T10:30:00Z",
+  )
 }
 
 fn model_with_task() -> client_state.Model {
@@ -296,6 +318,33 @@ pub fn task_detail_modal_renders_edit_controls_for_owner_test() {
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
   assert_contains(html, "Edit task")
+}
+
+pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
+  let html =
+    model_with_task()
+    |> model_with_notes_task_id(42)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      let notes = member.notes
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_task_detail_tab: show_tabs.TaskActivityTab,
+        ),
+        notes: member_notes.Model(
+          ..notes,
+          member_activity: remote.Loaded([sample_activity(1)]),
+          member_activity_total: 2,
+        ),
+      )
+    })
+    |> task_detail_view(42)
+    |> element.to_document_string
+
+  assert_contains(html, "activity-feed-more")
+  assert_contains(html, "Load more (1)")
 }
 
 pub fn task_detail_modal_renders_edit_controls_for_unclaimed_task_test() {
