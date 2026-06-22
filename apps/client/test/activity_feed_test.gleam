@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option
 import gleam/string
 import lustre/element
@@ -18,6 +19,13 @@ fn assert_contains(html: String, fragment: String) {
 
 fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
+}
+
+fn count_occurrences(haystack: String, needle: String) -> Int {
+  case needle == "" {
+    True -> 0
+    False -> list.length(string.split(haystack, needle)) - 1
+  }
 }
 
 pub fn activity_feed_renders_empty_state_test() {
@@ -50,16 +58,48 @@ pub fn activity_feed_renders_event_actor_summary_and_time_test() {
   assert_contains(html, "2026-06-22T10:30:00Z")
 }
 
+pub fn activity_feed_groups_loaded_events_by_date_test() {
+  let html =
+    activity_feed.view(activity_feed.Config(
+      events: Loaded([
+        sample_event_at(1, "Task claimed", "2026-06-22T10:30:00Z"),
+        sample_event_at(2, "Task started", "2026-06-22T11:45:00Z"),
+        sample_event_at(3, "Task released", "2026-06-21T16:00:00Z"),
+      ]),
+      loading_label: "Loading activity...",
+      empty_label: "No activity yet.",
+      error_label: "Could not load activity.",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "activity-feed-group")
+  assert_contains(html, "activity-feed-date")
+  assert_contains(html, "2026-06-22")
+  assert_contains(html, "2026-06-21")
+  assert_contains(html, "Task claimed")
+  assert_contains(html, "Task started")
+  assert_contains(html, "Task released")
+  let assert 2 = count_occurrences(html, "activity-feed-date")
+}
+
 fn sample_event() -> ActivityEvent {
+  sample_event_at(1, "Task claimed", "2026-06-22T10:30:00Z")
+}
+
+fn sample_event_at(
+  id: Int,
+  summary: String,
+  created_at: String,
+) -> ActivityEvent {
   ActivityEvent(
-    id: activity_id.new(1),
+    id: activity_id.new(id),
     project_id: project_id.new(1),
     subject: ActivityTask(task_id.new(42)),
     kind: kind.TaskClaimed,
     actor_user_id: user_id.new(7),
     actor_label: "admin@example.com",
-    summary: "Task claimed",
+    summary: summary,
     related_subject: option.None,
-    created_at: "2026-06-22T10:30:00Z",
+    created_at: created_at,
   )
 }

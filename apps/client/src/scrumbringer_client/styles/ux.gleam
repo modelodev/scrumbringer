@@ -479,6 +479,10 @@ pub fn css() -> List(String) {
     ".tab-active .tab-count { color: var(--sb-text); }",
     ".new-notes-indicator { color: var(--sb-warning-text); font-size: 10px; margin-left: 2px; }",
     ".card-detail-activity-section { padding: 24px; text-align: center; color: var(--sb-muted); }",
+    ".activity-feed { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; }",
+    ".activity-feed-group { display: flex; flex-direction: column; gap: 8px; }",
+    ".activity-feed-date { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-bold); letter-spacing: var(--sb-letter-label); line-height: var(--sb-line-tight); text-transform: uppercase; }",
+    ".activity-feed-items { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }",
     // Shared section header for card detail tabs (Tasks, Notes)
     ".card-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
     ".card-section-title { font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); color: var(--sb-muted-strong); }",

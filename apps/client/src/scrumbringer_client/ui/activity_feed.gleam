@@ -1,11 +1,19 @@
 //// Compact activity feed for Card Show and Task Show.
 
 import domain/activity/entity.{type ActivityEvent}
+import domain/activity/id as activity_id
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import gleam/int
 import gleam/list
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, li, span, text, ul}
+import lustre/element/html.{div, li, span, text}
+import lustre/element/keyed
+import scrumbringer_client/utils/format_date
+
+type ActivityGroup {
+  ActivityGroup(date: String, events: List(ActivityEvent))
+}
 
 pub type Config {
   Config(
@@ -27,7 +35,25 @@ pub fn view(config: Config) -> Element(msg) {
 }
 
 fn activity_list(events: List(ActivityEvent)) -> Element(msg) {
-  ul([attribute.class("activity-feed")], list.map(events, activity_item))
+  keyed.element(
+    "div",
+    [attribute.class("activity-feed")],
+    events
+      |> activity_groups
+      |> list.map(fn(group) { #(group.date, activity_group(group)) }),
+  )
+}
+
+fn activity_group(group: ActivityGroup) -> Element(msg) {
+  div([attribute.class("activity-feed-group")], [
+    div([attribute.class("activity-feed-date")], [text(group.date)]),
+    keyed.element(
+      "ul",
+      [attribute.class("activity-feed-items")],
+      group.events
+        |> list.map(fn(event) { #(event_key(event), activity_item(event)) }),
+    ),
+  ])
 }
 
 fn activity_item(event: ActivityEvent) -> Element(msg) {
@@ -41,6 +67,47 @@ fn activity_item(event: ActivityEvent) -> Element(msg) {
       span([attribute.class("activity-feed-time")], [text(event.created_at)]),
     ]),
   ])
+}
+
+fn activity_groups(events: List(ActivityEvent)) -> List(ActivityGroup) {
+  events
+  |> list.fold([], fn(groups, event) { upsert_activity_group(groups, event) })
+  |> list.reverse
+  |> list.map(fn(group) {
+    ActivityGroup(..group, events: list.reverse(group.events))
+  })
+}
+
+fn upsert_activity_group(
+  groups: List(ActivityGroup),
+  event: ActivityEvent,
+) -> List(ActivityGroup) {
+  case groups {
+    [] -> [new_activity_group(event)]
+    [group, ..rest] -> {
+      case group.date == activity_date(event) {
+        True -> [
+          ActivityGroup(..group, events: [event, ..group.events]),
+          ..rest
+        ]
+        False -> [group, ..upsert_activity_group(rest, event)]
+      }
+    }
+  }
+}
+
+fn new_activity_group(event: ActivityEvent) -> ActivityGroup {
+  ActivityGroup(date: activity_date(event), events: [event])
+}
+
+fn activity_date(event: ActivityEvent) -> String {
+  format_date.date_only(event.created_at)
+}
+
+fn event_key(event: ActivityEvent) -> String {
+  event.id
+  |> activity_id.to_int
+  |> int.to_string
 }
 
 fn detail_empty(class: String, label: String) -> Element(msg) {
