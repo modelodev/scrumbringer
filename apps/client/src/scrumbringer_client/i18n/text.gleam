@@ -368,7 +368,11 @@ pub type Text {
   HierarchyCardNoProgress
   HierarchyCardBlocked
   HierarchyCardComplete
+  OpenIn
+  ViewInPlan
   ViewInKanban
+  ViewInCapabilities
+  ViewInPeople
   HierarchyTotalTasksCount(tasks_count: Int)
   HierarchyTaskPhaseAvailable
   HierarchyTaskPhaseClaimed

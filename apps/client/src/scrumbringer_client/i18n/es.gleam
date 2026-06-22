@@ -440,7 +440,11 @@ pub fn translate(text: Text) -> String {
     text.HierarchyCardNoProgress -> "Sin avance"
     text.HierarchyCardBlocked -> "Bloqueada"
     text.HierarchyCardComplete -> "Completa"
+    text.OpenIn -> "Abrir en"
+    text.ViewInPlan -> "Ver en Plan"
     text.ViewInKanban -> "Ver en Kanban"
+    text.ViewInCapabilities -> "Ver en Capacidades"
+    text.ViewInPeople -> "Ver en Personas"
     text.HierarchyTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " tareas totales"
     text.HierarchyTaskPhaseAvailable -> "disponible"

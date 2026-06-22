@@ -31,7 +31,7 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{div, span, text}
+import lustre/element/html.{a, div, span, text}
 import lustre/event
 
 import domain/card.{type Card, type CardNote, CardNote, Closed, Draft}
@@ -47,6 +47,7 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/features/cards/detail_policy
+import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -921,8 +922,52 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       "" -> element.none()
       desc -> div([attribute.class("card-detail-description")], [text(desc)])
     },
+    view_scoped_navigation(model, card),
     view_card_action_bar(model, card),
   ])
+}
+
+fn view_scoped_navigation(model: Model, card: Card) -> Element(Msg) {
+  div([attribute.class("card-scoped-navigation")], [
+    span([attribute.class("card-scoped-navigation-label")], [
+      text(t(model.locale, i18n_text.OpenIn)),
+    ]),
+    scoped_navigation_link(
+      t(model.locale, i18n_text.ViewInPlan),
+      scoped_navigation.plan_url(card),
+      "card-scope-plan",
+    ),
+    scoped_navigation_link(
+      t(model.locale, i18n_text.ViewInKanban),
+      scoped_navigation.kanban_url(card),
+      "card-scope-kanban",
+    ),
+    scoped_navigation_link(
+      t(model.locale, i18n_text.ViewInCapabilities),
+      scoped_navigation.capabilities_url(card),
+      "card-scope-capabilities",
+    ),
+    scoped_navigation_link(
+      t(model.locale, i18n_text.ViewInPeople),
+      scoped_navigation.people_url(card),
+      "card-scope-people",
+    ),
+  ])
+}
+
+fn scoped_navigation_link(
+  label: String,
+  href: String,
+  testid: String,
+) -> Element(Msg) {
+  a(
+    [
+      attribute.href(href),
+      attribute.class("card-scoped-navigation-link"),
+      attribute.attribute("data-testid", testid),
+    ],
+    [text(label)],
+  )
 }
 
 fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {

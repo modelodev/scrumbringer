@@ -42,12 +42,18 @@ pub type PlanModeParam {
   PlanKanbanParam
 }
 
+/// Work scope supported by primary member surfaces.
+pub type WorkScopeParam {
+  CardWorkScopeParam
+}
+
 /// Estado de URL - solo se puede crear mediante parse().
 pub opaque type UrlState {
   UrlState(
     project: option.Option(Int),
     view: option.Option(ViewParam),
     plan_mode: option.Option(PlanModeParam),
+    work_scope: option.Option(WorkScopeParam),
     capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
@@ -68,6 +74,7 @@ type UrlQueryParams {
     project: option.Option(Int),
     view: option.Option(ViewParam),
     plan_mode: option.Option(PlanModeParam),
+    work_scope: option.Option(WorkScopeParam),
     capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
@@ -104,6 +111,7 @@ pub fn empty() -> UrlState {
     project: option.None,
     view: option.None,
     plan_mode: option.None,
+    work_scope: option.None,
     capability_scope: capability_scope.default(),
     type_filter: option.None,
     capability_filter: option.None,
@@ -175,6 +183,20 @@ pub fn with_plan_mode(state: UrlState, mode: PlanModeParam) -> UrlState {
     view: option.Some(MemberView(view_mode.Cards)),
     plan_mode: option.Some(mode),
   )
+}
+
+/// Builder: scopes work surfaces to a single card.
+pub fn with_card_work_scope(state: UrlState, card_id: Int) -> UrlState {
+  UrlState(
+    ..state,
+    work_scope: option.Some(CardWorkScopeParam),
+    expanded_card: option.Some(card_id),
+  )
+}
+
+/// Builder: clears the contextual work scope.
+pub fn without_work_scope(state: UrlState) -> UrlState {
+  UrlState(..state, work_scope: option.None)
 }
 
 /// Builder: actualiza el modo de vista de assignments.
@@ -251,6 +273,7 @@ pub fn clear_filters(state: UrlState) -> UrlState {
     search: option.None,
     expanded_card: option.None,
     card_depth: option.None,
+    work_scope: option.None,
     plan_mode: case view_param(state) {
       option.Some(view_mode.Cards) -> state.plan_mode
       _ -> option.None
@@ -367,6 +390,14 @@ pub fn expanded_card(state: UrlState) -> option.Option(Int) {
   state.expanded_card
 }
 
+/// Provides the scoped card id when the URL explicitly uses work_scope=card.
+pub fn card_work_scope(state: UrlState) -> option.Option(Int) {
+  case state.work_scope, state.expanded_card {
+    option.Some(CardWorkScopeParam), option.Some(card_id) -> option.Some(card_id)
+    _, _ -> option.None
+  }
+}
+
 /// Provides selected card hierarchy depth.
 pub fn card_depth(state: UrlState) -> option.Option(Int) {
   case view_param(state) {
@@ -392,6 +423,7 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
       view_param(state)
         |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
       plan_mode_query_param(state),
+      work_scope_query_param(state),
       case capability_scope.is_default(state.capability_scope) {
         True -> option.None
         False ->
@@ -442,6 +474,10 @@ fn to_state(params: UrlQueryParams) -> UrlState {
     project: params.project,
     view: params.view,
     plan_mode: params.plan_mode,
+    work_scope: case params.work_scope, params.expanded_card {
+      option.Some(CardWorkScopeParam), option.Some(_) -> params.work_scope
+      _, _ -> option.None
+    },
     capability_scope: params.capability_scope,
     type_filter: params.type_filter,
     capability_filter: params.capability_filter,
@@ -456,6 +492,13 @@ fn plan_mode_query_param(state: UrlState) -> option.Option(String) {
     option.Some(view_mode.Cards), option.Some(PlanKanbanParam) ->
       option.Some("plan_mode=kanban")
     _, _ -> option.None
+  }
+}
+
+fn work_scope_query_param(state: UrlState) -> option.Option(String) {
+  case card_work_scope(state) {
+    option.Some(_) -> option.Some("work_scope=card")
+    option.None -> option.None
   }
 }
 
@@ -478,6 +521,7 @@ fn context_errors(
     _ -> False
   }
   let has_plan_mode = has("plan_mode")
+  let has_work_scope_without_card = has("work_scope") && !has("card")
 
   case context {
     Member ->
@@ -486,6 +530,7 @@ fn context_errors(
           #(has("view") && !view_is_member, "view"),
           #(has("depth") && !view_is_cards, "depth"),
           #(has_plan_mode && !view_is_cards, "plan_mode"),
+          #(has_work_scope_without_card, "work_scope"),
         ],
         fn(entry) {
           case entry.0 {
@@ -506,6 +551,7 @@ fn context_errors(
           #(has("card"), "card"),
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
+          #(has("work_scope"), "work_scope"),
         ],
         fn(entry) {
           case entry.0 {
@@ -526,6 +572,7 @@ fn context_errors(
           #(has("card"), "card"),
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
+          #(has("work_scope"), "work_scope"),
           #(has("view") && !view_is_assignments, "view"),
         ],
         fn(entry) {
@@ -548,6 +595,7 @@ fn context_errors(
           #(has("card"), "card"),
           #(has("depth"), "depth"),
           #(has("plan_mode"), "plan_mode"),
+          #(has("work_scope"), "work_scope"),
         ],
         fn(entry) {
           case entry.0 {
@@ -568,6 +616,8 @@ fn parse_query_params(query: String) -> ParsedParams {
   let #(view, view_error) = parse_optional_view_param(params, "view")
   let #(plan_mode, plan_mode_error) =
     parse_optional_plan_mode_param(params, "plan_mode")
+  let #(work_scope, work_scope_error) =
+    parse_optional_work_scope_param(params, "work_scope")
   let #(capability_scope, scope_error) =
     parse_optional_capability_scope(params, "scope")
   let #(type_filter, type_error) =
@@ -584,6 +634,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     "project",
     "view",
     "plan_mode",
+    "work_scope",
     "scope",
     "type",
     "cap",
@@ -601,6 +652,7 @@ fn parse_query_params(query: String) -> ParsedParams {
       project: project,
       view: view,
       plan_mode: plan_mode,
+      work_scope: work_scope,
       capability_scope: capability_scope,
       type_filter: type_filter,
       capability_filter: capability_filter,
@@ -614,6 +666,7 @@ fn parse_query_params(query: String) -> ParsedParams {
       project_error,
       view_error,
       plan_mode_error,
+      work_scope_error,
       scope_error,
       type_error,
       cap_error,
@@ -705,6 +758,20 @@ fn parse_optional_plan_mode_param(
       case plan_mode_param_from_raw(raw) {
         option.Some(mode) -> #(option.Some(mode), option.None)
         option.None -> #(option.None, option.Some(InvalidPlanMode(raw)))
+      }
+  }
+}
+
+fn parse_optional_work_scope_param(
+  params: List(#(String, String)),
+  key: String,
+) -> #(option.Option(WorkScopeParam), option.Option(QueryError)) {
+  case get_string(params, key) {
+    option.None -> #(option.None, option.None)
+    option.Some(raw) ->
+      case raw {
+        "card" -> #(option.Some(CardWorkScopeParam), option.None)
+        _ -> #(option.None, option.Some(InvalidScope(raw)))
       }
   }
 }
