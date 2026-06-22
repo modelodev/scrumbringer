@@ -74,8 +74,9 @@ Pool debe mostrar trabajo abierto en el pool, separando claramente:
 - tareas abiertas pero bloqueadas;
 - el total abierto visible.
 
-No debe ocultar los bloqueos por defecto. ScrumBringer busca fomentar
-comunicacion, y los bloqueos son una senal operativa importante.
+Las bloqueadas deben estar en Pool. No deben ocultarse por defecto.
+ScrumBringer busca fomentar comunicacion, y los bloqueos son una senal operativa
+importante.
 
 Por tanto, el filtro principal no debe ser `TaskPhase`. Debe ser un filtro
 propio de visibilidad de Pool.
@@ -143,12 +144,11 @@ El default debe ser:
 AllOpen
 ```
 
-con orden inteligente:
+manteniendo el orden actual/manual del Pool.
 
-1. reclamables primero;
-2. bloqueadas despues;
-3. dentro de cada grupo, mantener la logica actual de prioridad/posicion/edad
-   que ya tenga Pool.
+No introducir reordenacion inteligente nueva. Cada usuario puede ordenar su Pool
+con drag and drop y ese orden debe seguir siendo la fuente de verdad visual.
+`PoolVisibility` filtra que tareas se ven, pero no reordena automaticamente.
 
 Razon:
 
@@ -157,6 +157,8 @@ Razon:
   disponibles.
 - La UI puede hacer que las bloqueadas tengan menor peso visual y una accion
   clara de inspeccion, no de claim.
+- Mantener el orden manual simplifica el modelo y respeta como el usuario ya
+  organiza su trabajo.
 
 ## Tratamiento Visual De Tareas Bloqueadas
 
@@ -169,12 +171,12 @@ reclamables por error.
 
 Tratamiento recomendado:
 
-- badge explicito `Bloqueada`;
-- indicador de dependencias bloqueantes;
+- indicador compacto de bloqueo, preferiblemente icono de candado/cadena con
+  contador de dependencias si cabe;
 - tono de atencion basado en `danger` o `warning`, pero sutil;
 - borde completo o fondo muy leve, nunca una franja lateral nueva;
 - sin accion de claim;
-- accion secundaria de inspeccion, por ejemplo abrir detalle o `Ver bloqueo`;
+- accion secundaria de inspeccion mediante icono o abrir detalle;
 - hover/focus puede reutilizar el sistema actual de highlight de dependencias
   bloqueantes.
 
@@ -184,6 +186,9 @@ Evitar:
 - patron de alarma permanente;
 - ocultar la card bloqueada de `AllOpen`;
 - mostrar un boton de claim deshabilitado como accion principal.
+- badges largos de texto dentro de la task card pequena;
+- aumentar altura o ancho de card para hacer sitio a estados;
+- depender solo de color sin icono, tooltip o texto accesible.
 
 Wireframe:
 
@@ -191,14 +196,44 @@ Wireframe:
 ┌────────────────────────────┐
 │ Task bloqueada             │
 │ Backend · API Cleanup      │
-│ [Bloqueada] 2 dependencias │
-│ [Ver]                      │
+│ [lock]2    venc 24 Jun     │
+│ [icono ver]                │
 └────────────────────────────┘
 ```
 
 La intencion es que el usuario vea que existe trabajo bloqueado, entienda que no
 puede reclamarlo todavia y tenga una entrada clara para investigar o hablar con
 el equipo.
+
+### Senales Compactas En Task Cards
+
+La task card de Pool es pequena y no debe crecer ni saturarse. Bloqueo y
+vencimiento deben mostrarse con senales compactas:
+
+- **Bloqueada:** icono de candado/cadena + contador opcional. Tooltip y
+  `aria-label`: `Bloqueada por N dependencias`.
+- **Vencida:** icono de calendario o fecha compacta con tono `danger`.
+  Tooltip y `aria-label`: `Vencida el DD MMM`.
+- **Vence hoy:** mismo icono con tono `warning` fuerte. Tooltip:
+  `Vence hoy`.
+- **Vence pronto:** tono `warning` discreto, solo si ya existe espacio para due
+  date urgente.
+- **Bloqueada y vencida:** mostrar ambos iconos compactos. La accion principal
+  sigue siendo inspeccionar el bloqueo, nunca claim.
+
+No usar texto largo permanente como `Bloqueada`, `Vencida`, `2 dependencias` en
+la card compacta si eso provoca crecimiento, overflow o perdida de densidad.
+Ese texto debe aparecer en tooltip, accesibilidad, hover preview, detalle o modo
+lista.
+
+Regla visual:
+
+```text
+icono + color semantico + tooltip/aria-label
+```
+
+Color no es suficiente por si solo. La card debe seguir comunicando estado con
+forma/icono y texto accesible.
 
 ## Anatomia Visual Final
 
@@ -481,6 +516,7 @@ No eliminar:
 - `available_tasks_blocked_only_includes_only_blocked_test`.
 - `available_tasks_never_includes_claimed_or_closed_test`.
 - `available_tasks_filters_type_capability_search_and_my_capabilities_test`.
+- `available_tasks_visibility_preserves_manual_order_test`.
 
 ### Vista
 
@@ -493,6 +529,9 @@ No eliminar:
 - Empty state sin reclamables explica que puede haber bloqueadas.
 - Empty state de `Blocked` sin bloqueadas no sugiere crear una task nueva.
 - Pool no duplica `Mis tareas` en el body central.
+- Task card bloqueada usa senal compacta, no badge largo que agrande la card.
+- Task card vencida usa senal compacta y accesible.
+- Task card bloqueada y vencida muestra ambas senales sin overflow.
 
 ### Center Panel
 
@@ -508,8 +547,10 @@ No eliminar:
 - Claim action aparece solo en tareas reclamables.
 - Bloqueadas aparecen en `AllOpen` pero sin accion de claim.
 - Bloqueadas en `AllOpen` tienen tratamiento visual de atencion sutil:
-  badge/estado claro, indicador de dependencias y accion de inspeccion.
+  icono/estado claro, indicador compacto de dependencias y accion de inspeccion.
+- Cambiar `Ver` no reordena las tasks respecto al orden manual existente.
 - Drag-to-claim sigue funcionando.
+- Drag-to-claim no se dispara en bloqueadas.
 - Sidebar derecho sigue mostrando mis tareas reclamadas.
 - Shortcuts existentes no se rompen:
   - crear task;
@@ -529,14 +570,17 @@ Casos minimos:
    - Reclamables;
    - Bloqueadas.
 4. Comprobar que bloqueadas son visibles en Abiertas pero no reclamables.
-5. Buscar una task.
-6. Filtrar por tipo.
-7. Filtrar por capacidad.
-8. Cambiar entre todas/mis capacidades.
-9. Cambiar Canvas/List.
-10. Reclamar una task y confirmar que sale del body central y aparece en el
+5. Comprobar que cambiar `Ver` no reordena el Pool manualmente organizado.
+6. Comprobar que bloqueo y vencimiento se muestran con senales compactas sin
+   hacer crecer ni desbordar la task card.
+7. Buscar una task.
+8. Filtrar por tipo.
+9. Filtrar por capacidad.
+10. Cambiar entre todas/mis capacidades.
+11. Cambiar Canvas/List.
+12. Reclamar una task y confirmar que sale del body central y aparece en el
     sidebar derecho.
-11. Probar responsive/mobile:
+13. Probar responsive/mobile:
     - control bar no se desborda;
     - botones tactiles mantienen tamano util;
     - no se duplican acciones.
@@ -550,6 +594,10 @@ Repetir la validacion tras corregir cualquier problema visual o funcional.
 - La visibilidad de Pool se modela con `PoolVisibility`, no con `TaskPhase`.
 - `AllOpen` es el default.
 - Las tareas bloqueadas son visibles por defecto, pero no reclamables.
+- `PoolVisibility` no introduce orden inteligente ni reagrupacion automatica.
+- El orden manual actual del Pool se conserva al filtrar.
+- Bloqueo y vencimiento se muestran con senales compactas, accesibles y sin
+  aumentar el tamano de la task card.
 - El sidebar derecho sigue siendo el unico lugar para `Mis tareas`.
 - No hay codigo obsoleto de filtros antiguos.
 - Tests relevantes pasan.
