@@ -7,17 +7,16 @@ import gleam/string
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/pool/visibility
 import scrumbringer_client/helpers/options as helpers_options
-
-import domain/task_status
 
 pub fn try_update(
   model: member_pool.Model,
   inner: pool_messages.Msg,
 ) -> opt.Option(#(member_pool.Model, Bool)) {
   case inner {
-    pool_messages.MemberPoolStatusChanged(value) ->
-      opt.Some(handle_status_changed(model, value))
+    pool_messages.MemberPoolVisibilityChanged(value) ->
+      opt.Some(handle_visibility_changed(model, value))
     pool_messages.MemberPoolTypeChanged(value) ->
       opt.Some(handle_type_changed(model, value))
     pool_messages.MemberPoolCapabilityChanged(value) ->
@@ -61,20 +60,16 @@ pub fn try_update(
   }
 }
 
-pub fn handle_status_changed(
+pub fn handle_visibility_changed(
   model: member_pool.Model,
   value: String,
 ) -> #(member_pool.Model, Bool) {
-  let next_status = case string.trim(value) {
-    "" -> opt.None
-    _ ->
-      case task_status.parse_task_status(value) {
-        Ok(status) -> opt.Some(status)
-        Error(_) -> opt.None
-      }
+  let next_visibility = case visibility.parse(value) {
+    Ok(parsed) -> parsed
+    Error(_) -> visibility.default()
   }
 
-  #(member_pool.Model(..model, member_filters_status: next_status), True)
+  #(member_pool.Model(..model, member_pool_visibility: next_visibility), True)
 }
 
 pub fn handle_type_changed(
@@ -121,7 +116,7 @@ pub fn handle_clear(model: member_pool.Model) -> #(member_pool.Model, Bool) {
   #(
     member_pool.Model(
       ..model,
-      member_filters_status: opt.None,
+      member_pool_visibility: visibility.default(),
       member_filters_type_id: opt.None,
       member_filters_capability_id: opt.None,
       member_filters_q: "",

@@ -116,7 +116,7 @@ pub fn try_task_create_update_ignores_non_create_messages_test() {
   let assert None =
     create_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       local_context(None),
     )
 }

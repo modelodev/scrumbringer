@@ -157,7 +157,7 @@ pub fn try_update_ignores_non_mutation_messages_test() {
   let assert None =
     mutation_update.try_update(
       pool_with_tasks([]),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       dispatch_context(),
     )
 }

@@ -348,7 +348,7 @@ pub fn try_workflows_update_ignores_non_workflow_messages_test() {
   let assert opt.None =
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       workflow_feedback_context(),
     )
 }
@@ -527,7 +527,7 @@ pub fn try_rules_update_ignores_non_rule_messages_test() {
   let assert opt.None =
     workflows_update.try_rules_update(
       admin_rules.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       rules_context(opt.None),
       rule_feedback_context(),
     )

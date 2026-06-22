@@ -103,7 +103,7 @@ pub fn try_update_ignores_non_task_messages_test() {
   let assert opt.None =
     task_route.try_update(
       client_state.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       no_refresh,
     )
 }

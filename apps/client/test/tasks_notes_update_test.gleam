@@ -216,7 +216,7 @@ pub fn note_try_update_ignores_non_note_messages_test() {
   let assert None =
     notes_update.try_update(
       member_notes.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       note_context(),
     )
 }

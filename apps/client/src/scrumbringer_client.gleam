@@ -66,7 +66,6 @@ import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
 import scrumbringer_client/permissions
-import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/storage
@@ -276,12 +275,6 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   let active_theme = flags.theme
   let active_locale = flags.locale
 
-  let pool_filters_default_visible = theme.filters_default_visible(active_theme)
-
-  let pool_filters_visible =
-    storage.load_pool_filters_visibility(pool_filters_default_visible)
-    |> pool_prefs.visibility_to_bool
-
   let pool_view_mode = storage.load_pool_view_mode()
 
   // Load sidebar collapse state from localStorage
@@ -313,7 +306,6 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
           ..pool,
           view_mode: initial_view_mode,
           member_card_depth_filter: initial_card_depth,
-          member_pool_filters_visible: pool_filters_visible,
           member_pool_view_mode: pool_view_mode,
         ),
       )

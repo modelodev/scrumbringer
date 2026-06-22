@@ -720,7 +720,7 @@ fn update_without_view_mode(
     pool_messages.ViewModeChanged(_) -> #(model, effect.none())
 
     // Handled by pool_filters.try_update before this dispatch.
-    pool_messages.MemberPoolStatusChanged(_)
+    pool_messages.MemberPoolVisibilityChanged(_)
     | pool_messages.MemberPoolTypeChanged(_)
     | pool_messages.MemberPoolCapabilityChanged(_)
     | pool_messages.MemberPoolCapabilityScopeChanged(_)
@@ -750,8 +750,7 @@ fn update_without_view_mode(
     | pool_messages.MemberPlanCardMoved(_) -> #(model, effect.none())
 
     // Handled by pool_preferences.try_update before this dispatch.
-    pool_messages.MemberPoolFiltersToggled
-    | pool_messages.MemberPoolViewModeSet(_)
+    pool_messages.MemberPoolViewModeSet(_)
     | pool_messages.MemberListHideDoneToggled
     | pool_messages.MemberListCardToggled(_) -> #(model, effect.none())
 

@@ -167,7 +167,7 @@ pub fn try_update_ignores_non_detail_messages_test() {
   let assert None =
     detail_update.try_update(
       detail_model(member_pool.default_model()),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       dispatch_context(),
     )
 }

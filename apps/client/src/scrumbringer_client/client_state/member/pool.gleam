@@ -8,12 +8,12 @@ import domain/metrics.{type CardModalMetrics, type TaskModalMetrics}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
-import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
+import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
@@ -132,12 +132,11 @@ pub type Model {
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
-    member_filters_status: Option(task_status.TaskPhase),
+    member_pool_visibility: PoolVisibility,
     member_filters_type_id: Option(Int),
     member_filters_capability_id: Option(Int),
     member_filters_q: String,
     member_capability_scope: capability_scope.CapabilityScope,
-    member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
     member_list_hide_completed: Bool,
     member_list_expanded_cards: Dict(Int, Bool),
@@ -207,12 +206,11 @@ pub fn default_model() -> Model {
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
     member_tasks_snapshot: option.None,
-    member_filters_status: option.None,
+    member_pool_visibility: visibility.default(),
     member_filters_type_id: option.None,
     member_filters_capability_id: option.None,
     member_filters_q: "",
     member_capability_scope: capability_scope.default(),
-    member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
     member_list_hide_completed: True,
     member_list_expanded_cards: dict.new(),

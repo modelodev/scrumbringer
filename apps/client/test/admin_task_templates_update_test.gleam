@@ -225,7 +225,7 @@ pub fn try_update_ignores_non_task_template_messages_test() {
   let assert opt.None =
     task_templates_update.try_update(
       admin_task_templates.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       feedback_context(),
     )
 }

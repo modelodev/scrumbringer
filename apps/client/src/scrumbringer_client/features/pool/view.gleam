@@ -12,7 +12,6 @@
 //// ## Non-responsibilities
 ////
 //// - Root `client_state.Model` adaptation (see `features/pool/view_config.gleam`)
-//// - Filter panel (see `features/layout/center_panel.gleam`)
 //// - Dialogs (see `features/pool/dialogs.gleam`)
 
 import gleam/int
@@ -31,6 +30,7 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/chrome as pool_chrome
+import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
@@ -48,6 +48,7 @@ pub type MainConfig(msg) {
     has_active_projects: Bool,
     on_create_opened: msg,
     available_tasks: available_tasks.Config,
+    control_bar: control_bar.Config(msg),
     view_mode: pool_prefs.ViewMode,
     task_card_config: fn(Task) -> task_card.Config(msg),
     task_row_config: fn(Task) -> task_row.Config(msg),
@@ -80,12 +81,14 @@ pub fn view_pool_main(config: MainConfig(msg)) -> Element(msg) {
     False -> pool_chrome.no_projects(config.locale)
     True -> {
       let task_state = available_tasks.state(config.available_tasks)
+      let counts = available_tasks.counts(config.available_tasks)
       div([attribute.class("section pool-view")], [
         pool_chrome.header(
           config.locale,
           config.on_create_opened,
-          pool_summary(config, task_state),
+          pool_summary(config, counts),
         ),
+        control_bar.view(config.control_bar),
         view_tasks(config, task_state),
       ])
     }
@@ -163,30 +166,38 @@ fn view_tasks(
 
 fn pool_summary(
   config: MainConfig(msg),
-  task_state: available_tasks.State,
+  counts: available_tasks.Counts,
 ) -> List(work_surface.SummaryChip) {
-  let view_label = case config.view_mode {
-    pool_prefs.Canvas -> i18n.t(config.locale, i18n_text.Canvas)
-    pool_prefs.List -> i18n.t(config.locale, i18n_text.List)
+  let available_tasks.Counts(open: open, ready: ready, blocked: blocked) =
+    counts
+  let healthy_limit = 20
+  let healthy_tone = case open > healthy_limit {
+    True -> tone.Warning
+    False -> tone.Neutral
   }
-  let view_chip =
-    work_surface.summary_chip(
-      i18n.t(config.locale, i18n_text.WorkSurfaceView),
-      view_label,
-      tone.Neutral,
-    )
 
-  case task_state {
-    available_tasks.Ready(tasks) -> [
-      view_chip,
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.AvailableCount),
-        int.to_string(list.length(tasks)),
-        tone.Available,
-      ),
-    ]
-    _ -> [view_chip]
-  }
+  [
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolOpenCount),
+      int.to_string(open),
+      tone.Available,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolReadyCount),
+      int.to_string(ready),
+      tone.Success,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolBlockedCount),
+      int.to_string(blocked),
+      tone.Blocked,
+    ),
+    work_surface.summary_chip(
+      i18n.t(config.locale, i18n_text.PoolHealthyLimit),
+      int.to_string(healthy_limit),
+      healthy_tone,
+    ),
+  ]
 }
 
 fn view_tasks_collection(

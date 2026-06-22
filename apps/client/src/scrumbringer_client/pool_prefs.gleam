@@ -1,13 +1,9 @@
 //// Task pool user preferences and keyboard shortcuts.
 ////
-//// Manages view mode (canvas/list), filter visibility persistence,
-//// and keyboard shortcut handling for the task pool interface.
+//// Manages view mode (canvas/list) and keyboard shortcuts for the task pool
+//// interface.
 
-import gleam/option
 import gleam/string
-
-/// LocalStorage key for filter panel visibility.
-pub const filters_visible_storage_key = "sb_pool_filters_visible"
 
 /// LocalStorage key for view mode preference.
 pub const view_mode_storage_key = "sb_pool_view_mode"
@@ -46,53 +42,6 @@ pub fn decode_view_mode_storage(value: String) -> ViewModeStorage {
   }
 }
 
-/// Visibility state for pool filters.
-pub type FiltersVisibility {
-  FiltersVisible
-  FiltersHidden
-}
-
-/// Provides visibility from bool.
-///
-/// Example:
-///   visibility_from_bool(...)
-pub fn visibility_from_bool(value: Bool) -> FiltersVisibility {
-  case value {
-    True -> FiltersVisible
-    False -> FiltersHidden
-  }
-}
-
-/// Provides visibility to bool.
-///
-/// Example:
-///   visibility_to_bool(...)
-pub fn visibility_to_bool(value: FiltersVisibility) -> Bool {
-  case value {
-    FiltersVisible -> True
-    FiltersHidden -> False
-  }
-}
-
-/// Encodes filters visibility for storage.
-pub fn encode_filters_visibility(value: FiltersVisibility) -> String {
-  case value {
-    FiltersVisible -> "true"
-    FiltersHidden -> "false"
-  }
-}
-
-/// Decodes stored filters visibility with explicit invalid state.
-pub fn decode_filters_visibility(
-  value: String,
-) -> option.Option(FiltersVisibility) {
-  case string.trim(value) {
-    "true" -> option.Some(FiltersVisible)
-    "false" -> option.Some(FiltersHidden)
-    _ -> option.None
-  }
-}
-
 /// A keyboard event with modifier state.
 pub type KeyEvent {
   KeyEvent(
@@ -108,14 +57,13 @@ pub type KeyEvent {
 /// Actions that can be triggered by keyboard shortcuts.
 pub type ShortcutAction {
   NoAction
-  ToggleFilters
   FocusSearch
   OpenCreate
   CloseDialog
 }
 
 /// Maps a key event to its corresponding shortcut action.
-/// AC40: n (nueva tarea), f (filtros), / (búsqueda), Esc (cerrar)
+/// AC40: n (nueva tarea), / (búsqueda), Esc (cerrar)
 pub fn shortcut_action(event: KeyEvent) -> ShortcutAction {
   let KeyEvent(
     key: key,
@@ -152,7 +100,6 @@ fn shortcut_action_for_key(
 fn shortcut_action_for_unlocked_key(key: String) -> ShortcutAction {
   case key {
     "n" -> OpenCreate
-    "f" -> ToggleFilters
     "/" -> FocusSearch
     _ -> NoAction
   }

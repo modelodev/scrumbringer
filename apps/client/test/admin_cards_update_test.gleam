@@ -323,7 +323,7 @@ pub fn try_update_ignores_non_card_messages_test() {
   let assert option.None =
     cards.try_update(
       admin_cards.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       crud_feedback_context(),
     )
 }

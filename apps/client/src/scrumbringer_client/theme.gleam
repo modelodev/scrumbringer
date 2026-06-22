@@ -101,11 +101,6 @@ pub fn save_to_storage(theme: Theme) -> Nil {
   local_storage_set(storage_key, encode_storage(theme))
 }
 
-/// Returns whether filters should be visible by default.
-pub fn filters_default_visible(_theme: Theme) -> Bool {
-  True
-}
-
 /// Returns the CSS custom property values for a theme.
 pub fn tokens(theme: Theme) -> List(#(String, String)) {
   case theme {

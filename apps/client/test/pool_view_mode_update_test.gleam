@@ -49,7 +49,7 @@ pub fn try_update_ignores_non_view_mode_messages_test() {
   let assert opt.None =
     view_mode_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(opt.Some(7)),
     )
 }

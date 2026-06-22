@@ -11,6 +11,7 @@ import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/task_created_feedback
 import scrumbringer_client/features/pool/task_created_update
+import scrumbringer_client/features/pool/visibility
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/toast
 
@@ -93,7 +94,7 @@ pub fn post_create_effects_emit_feedback_timeout_and_toast_test() {
 fn config(locale, type_filter) -> task_created_feedback.Config {
   task_created_feedback.Config(
     locale: locale,
-    status_filter: None,
+    visibility: visibility.default(),
     work_filters: available_tasks.Config(
       tasks: Loaded([]),
       task_types: Loaded([]),
@@ -102,6 +103,7 @@ fn config(locale, type_filter) -> task_created_feedback.Config {
       capability_filter: None,
       search_query: "",
       capability_scope: AllCapabilities,
+      visibility: visibility.default(),
     ),
   )
 }

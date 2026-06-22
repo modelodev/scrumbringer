@@ -40,21 +40,21 @@ fn shortcut(
   next
 }
 
-pub fn shortcut_update_toggle_filters_changes_visibility_test() {
+pub fn shortcut_update_f_key_has_no_pool_action_test() {
   let next = shortcut(local_model(), "f")
 
-  let assert True = next.pool.member_pool_filters_visible
+  let assert True = next == local_model()
 }
 
-pub fn shortcut_try_update_global_keydown_consumes_active_pool_shortcut_test() {
+pub fn shortcut_try_update_global_keydown_consumes_focus_search_test() {
   let assert Some(shortcut_update.Update(next, _fx)) =
     shortcut_update.try_update(
       local_model(),
-      pool_messages.GlobalKeyDown(key("f")),
+      pool_messages.GlobalKeyDown(key("/")),
       shortcut_update.Context(is_pool_shortcut_target: True),
     )
 
-  let assert True = next.pool.member_pool_filters_visible
+  let assert True = next == local_model()
 }
 
 pub fn shortcut_try_update_global_keydown_consumes_inactive_target_test() {
@@ -73,7 +73,7 @@ pub fn shortcut_try_update_ignores_non_shortcut_message_test() {
   let assert None =
     shortcut_update.try_update(
       local_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       shortcut_update.Context(is_pool_shortcut_target: True),
     )
 }

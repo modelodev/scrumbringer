@@ -216,7 +216,7 @@ pub fn drag_update_try_update_ignores_non_drag_message_test() {
   let assert None =
     drag_update.try_update(
       local_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(),
     )
 }

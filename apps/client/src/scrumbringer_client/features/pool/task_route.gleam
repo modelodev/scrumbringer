@@ -362,7 +362,7 @@ fn task_created_feedback_config(
 ) -> task_created_feedback.Config {
   task_created_feedback.Config(
     locale: model.ui.locale,
-    status_filter: model.member.pool.member_filters_status,
+    visibility: model.member.pool.member_pool_visibility,
     work_filters: available_tasks.Config(
       tasks: model.member.pool.member_tasks,
       task_types: model.member.pool.member_task_types,
@@ -371,6 +371,7 @@ fn task_created_feedback_config(
       capability_filter: model.member.pool.member_filters_capability_id,
       search_query: model.member.pool.member_filters_q,
       capability_scope: model.member.pool.member_capability_scope,
+      visibility: model.member.pool.member_pool_visibility,
     ),
   )
 }

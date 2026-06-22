@@ -50,6 +50,8 @@ pub fn task_card_renders_blocked_canvas_card_test() {
   assert_contains(html, "Prepare release")
   assert_contains(html, "Blocked by 1 tasks")
   assert_contains(html, "API contract")
+  assert_contains(html, "task-card-open-action")
+  assert_contains(html, "aria-label=\"Open task: Prepare release\"")
   assert_not_contains(html, "Done dependency")
   assert_not_contains(html, "task-card-primary-action")
 }

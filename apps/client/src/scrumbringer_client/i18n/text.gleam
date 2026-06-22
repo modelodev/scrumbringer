@@ -195,8 +195,14 @@ pub type Text {
   PlanCapabilityMatrix
   PlanClosed
   PoolPurpose
-  ShowFilters
-  HideFilters
+  PoolVisibilityLabel
+  PoolVisibilityAllOpen
+  PoolVisibilityReadyToClaim
+  PoolVisibilityBlocked
+  PoolOpenCount
+  PoolReadyCount
+  PoolBlockedCount
+  PoolHealthyLimit
   NewTask
   Description
   Priority

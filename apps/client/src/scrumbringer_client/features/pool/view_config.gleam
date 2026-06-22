@@ -6,6 +6,7 @@ import gleam/option as opt
 
 import lustre/element.{type Element}
 
+import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/remote.{unwrap}
 import domain/task.{type Task, type TaskNote, type WorkSession, Task}
@@ -22,10 +23,12 @@ import scrumbringer_client/client_state/member/skills as skills_state
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
+import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/utils/card_queries
 
@@ -34,6 +37,12 @@ pub type Callbacks(msg) {
     on_drag_moved: fn(Int, Int) -> msg,
     on_drag_ended: msg,
     on_create_opened: msg,
+    on_capability_scope_change: fn(String) -> msg,
+    on_type_filter_change: fn(String) -> msg,
+    on_capability_filter_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
+    on_visibility_change: fn(String) -> msg,
+    on_view_mode_change: fn(pool_prefs.ViewMode) -> msg,
     on_now_working_pause: msg,
     on_now_working_start: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
@@ -59,6 +68,7 @@ pub type Context(msg) {
     active_task_id: opt.Option(Int),
     now_working_sessions: List(WorkSession),
     cards: List(Card),
+    capabilities: List(Capability),
     pool: member_pool_state.Model,
     now_working: now_working_state.Model,
     skills: skills_state.Model,
@@ -106,9 +116,30 @@ fn main_config(context: Context(msg)) -> pool_view.MainConfig(msg) {
     has_active_projects: context.has_active_projects,
     on_create_opened: context.callbacks.on_create_opened,
     available_tasks: available_tasks_config(context),
+    control_bar: control_bar_config(context),
     view_mode: context.pool.member_pool_view_mode,
     task_card_config: fn(task) { pool_task_card_config(context, task) },
     task_row_config: fn(task) { pool_task_row_config(context, task) },
+  )
+}
+
+fn control_bar_config(context: Context(msg)) -> control_bar.Config(msg) {
+  control_bar.Config(
+    locale: context.locale,
+    task_types: unwrap(context.pool.member_task_types, []),
+    capabilities: context.capabilities,
+    capability_scope: context.pool.member_capability_scope,
+    type_filter: context.pool.member_filters_type_id,
+    capability_filter: context.pool.member_filters_capability_id,
+    search_query: context.pool.member_filters_q,
+    visibility: context.pool.member_pool_visibility,
+    view_mode: context.pool.member_pool_view_mode,
+    on_capability_scope_change: context.callbacks.on_capability_scope_change,
+    on_type_filter_change: context.callbacks.on_type_filter_change,
+    on_capability_filter_change: context.callbacks.on_capability_filter_change,
+    on_search_change: context.callbacks.on_search_change,
+    on_visibility_change: context.callbacks.on_visibility_change,
+    on_view_mode_change: context.callbacks.on_view_mode_change,
   )
 }
 
@@ -155,6 +186,7 @@ fn available_tasks_config(context: Context(msg)) -> available_tasks.Config {
     capability_filter: context.pool.member_filters_capability_id,
     search_query: context.pool.member_filters_q,
     capability_scope: context.pool.member_capability_scope,
+    visibility: context.pool.member_pool_visibility,
   )
 }
 

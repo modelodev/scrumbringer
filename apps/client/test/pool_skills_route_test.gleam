@@ -55,6 +55,6 @@ pub fn try_update_ignores_non_skills_messages_test() {
   let assert opt.None =
     skills_route.try_update(
       client_state.default_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
     )
 }

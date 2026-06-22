@@ -8,6 +8,9 @@ import domain/task_status
 import domain/task_type.{TaskType, TaskTypeInline}
 import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/features/pool/available_tasks
+import scrumbringer_client/features/pool/visibility.{
+  AllOpen, Blocked, ReadyToClaim,
+}
 
 fn task(id: Int, title: String, type_id: Int, state) -> Task {
   Task(
@@ -53,6 +56,7 @@ fn config(tasks) -> available_tasks.Config {
     capability_filter: None,
     search_query: "",
     capability_scope: AllCapabilities,
+    visibility: AllOpen,
   )
 }
 
@@ -89,6 +93,80 @@ pub fn pool_available_tasks_keeps_only_available_tasks_test() {
   let assert 1 = available.id
 }
 
+pub fn available_tasks_all_open_includes_blocked_and_unblocked_test() {
+  let ready = task(1, "Ready", 1, task_state.Available)
+  let blocked =
+    Task(..task(2, "Blocked", 1, task_state.Available), blocked_count: 2)
+
+  let assert available_tasks.Ready(tasks) =
+    available_tasks.state(config(Loaded([blocked, ready])))
+  let assert [first, second] = tasks
+  let assert 1 = first.id
+  let assert 2 = second.id
+}
+
+pub fn available_tasks_ready_to_claim_excludes_blocked_test() {
+  let ready = task(1, "Ready", 1, task_state.Available)
+  let blocked =
+    Task(..task(2, "Blocked", 1, task_state.Available), blocked_count: 1)
+
+  let state =
+    available_tasks.state(
+      available_tasks.Config(
+        ..config(Loaded([ready, blocked])),
+        visibility: ReadyToClaim,
+      ),
+    )
+
+  let assert available_tasks.Ready(tasks) = state
+  let assert [only] = tasks
+  let assert 1 = only.id
+}
+
+pub fn available_tasks_blocked_only_includes_only_blocked_test() {
+  let ready = task(1, "Ready", 1, task_state.Available)
+  let blocked =
+    Task(..task(2, "Blocked", 1, task_state.Available), blocked_count: 1)
+
+  let state =
+    available_tasks.state(
+      available_tasks.Config(
+        ..config(Loaded([ready, blocked])),
+        visibility: Blocked,
+      ),
+    )
+
+  let assert available_tasks.Ready(tasks) = state
+  let assert [only] = tasks
+  let assert 2 = only.id
+}
+
+pub fn available_tasks_never_includes_claimed_or_closed_test() {
+  let claimed =
+    task(
+      1,
+      "Claimed",
+      1,
+      task_state.Claimed(
+        claimed_by: 1,
+        claimed_at: "2026-01-01T00:00:00Z",
+        mode: task_status.Taken,
+      ),
+    )
+  let done =
+    task(2, "Done", 1, task_state.Done(completed_at: "2026-01-02T00:00:00Z"))
+
+  let state =
+    available_tasks.state(
+      available_tasks.Config(
+        ..config(Loaded([claimed, done])),
+        visibility: AllOpen,
+      ),
+    )
+
+  let assert available_tasks.Empty(has_filters: False) = state
+}
+
 pub fn pool_available_tasks_marks_empty_with_active_filters_test() {
   let state =
     available_tasks.state(
@@ -121,6 +199,32 @@ pub fn pool_available_tasks_filters_by_my_capabilities_test() {
   let assert available_tasks.Ready(tasks) = state
   let assert [available] = tasks
   let assert 1 = available.id
+}
+
+pub fn available_tasks_filters_type_capability_search_and_my_capabilities_test() {
+  let matching = task(1, "Backend parser", 1, task_state.Available)
+  let other_type = task(2, "Backend UI", 2, task_state.Available)
+  let other_query = task(3, "Frontend parser", 1, task_state.Available)
+
+  let state =
+    available_tasks.state(
+      available_tasks.Config(
+        ..config(Loaded([matching, other_type, other_query])),
+        task_types: Loaded([
+          task_type(1, Some(10)),
+          task_type(2, Some(20)),
+        ]),
+        my_capability_ids: Loaded([10]),
+        type_filter: Some(1),
+        capability_filter: Some(10),
+        search_query: "backend",
+        capability_scope: MyCapabilities,
+      ),
+    )
+
+  let assert available_tasks.Ready(tasks) = state
+  let assert [only] = tasks
+  let assert 1 = only.id
 }
 
 pub fn pool_available_tasks_matches_work_filters_without_root_model_test() {

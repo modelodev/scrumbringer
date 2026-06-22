@@ -1,16 +1,4 @@
-import gleam/option.{None, Some}
 import scrumbringer_client/pool_prefs
-
-pub fn decode_filters_visibility_rejects_empty_test() {
-  let assert None = pool_prefs.decode_filters_visibility("")
-}
-
-pub fn decode_filters_visibility_parses_true_false_test() {
-  let assert Some(pool_prefs.FiltersVisible) =
-    pool_prefs.decode_filters_visibility("true")
-  let assert Some(pool_prefs.FiltersHidden) =
-    pool_prefs.decode_filters_visibility("false")
-}
 
 pub fn view_mode_storage_roundtrip_test() {
   let assert pool_prefs.ViewModeStored(pool_prefs.Canvas) =
@@ -52,7 +40,7 @@ pub fn shortcut_action_ignores_when_editing_or_modal_test() {
 }
 
 pub fn shortcut_action_maps_core_shortcuts_test() {
-  let assert pool_prefs.ToggleFilters =
+  let assert pool_prefs.NoAction =
     pool_prefs.shortcut_action(pool_prefs.KeyEvent(
       "f",
       False,

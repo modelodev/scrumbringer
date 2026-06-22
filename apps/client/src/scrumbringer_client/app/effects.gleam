@@ -53,15 +53,6 @@ pub fn save_theme(t: Theme) -> Effect(msg) {
 // Pool Preferences Persistence Effects
 // =============================================================================
 
-/// Save pool filters visibility preference to localStorage.
-pub fn save_pool_filters_visible(visible: Bool) -> Effect(msg) {
-  effect.from(fn(_dispatch) {
-    storage.save_pool_filters_visibility(pool_prefs.visibility_from_bool(
-      visible,
-    ))
-  })
-}
-
 /// Save pool view mode preference to localStorage.
 pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Effect(msg) {
   effect.from(fn(_dispatch) { storage.save_pool_view_mode(mode) })

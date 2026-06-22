@@ -28,7 +28,7 @@ pub fn pool_chrome_renders_header_without_root_model_test() {
 
   assert_contains(html, "work-surface-header")
   assert_contains(html, "pool-header")
-  assert_contains(html, "Choose the next personal task to claim.")
+  assert_contains(html, "Active tasks available for the team to claim.")
   assert_contains(html, "work-surface-chip available")
   assert_contains(html, "btn-primary pool-header-action")
   assert_contains(html, "btn-new-task-pool-header")

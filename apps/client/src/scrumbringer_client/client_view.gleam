@@ -1349,26 +1349,6 @@ fn build_center_panel(
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
     view_mode: model.member.pool.view_mode,
-    task_types: data.task_types,
-    capabilities: data.capabilities,
-    capability_scope: model.member.pool.member_capability_scope,
-    type_filter: model.member.pool.member_filters_type_id,
-    capability_filter: model.member.pool.member_filters_capability_id,
-    search_query: model.member.pool.member_filters_q,
-    on_capability_scope_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
-        value,
-      ))
-    },
-    on_type_filter_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
-    },
-    on_capability_filter_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
-    },
-    on_search_change: fn(value) {
-      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
-    },
     pool_content: pool_content,
     cards_content: cards_content,
     capabilities_content: capabilities_content,

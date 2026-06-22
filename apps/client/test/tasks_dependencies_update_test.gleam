@@ -266,7 +266,7 @@ pub fn dependency_update_try_update_ignores_non_dependency_messages_test() {
   let assert None =
     dependency_update.try_update(
       local_model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       local_context(Some(42), Some(sample_task())),
       feedback_context(),
     )

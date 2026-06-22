@@ -27,20 +27,8 @@ pub fn apply(
 ) -> effect.Effect(client_state.Msg) {
   case persistence {
     preferences.NoPersistence -> effect.none()
-    preferences.SaveFiltersVisible(visible) -> save_filters_visible(visible)
     preferences.SaveViewMode(mode) -> save_view_mode(mode)
   }
-}
-
-fn save_filters_visible(visible: Bool) -> effect.Effect(client_state.Msg) {
-  effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.filters_visible_storage_key,
-      pool_prefs.encode_filters_visibility(pool_prefs.visibility_from_bool(
-        visible,
-      )),
-    )
-  })
 }
 
 fn save_view_mode(mode: pool_prefs.ViewMode) -> effect.Effect(client_state.Msg) {

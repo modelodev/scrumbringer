@@ -283,7 +283,7 @@ pub fn try_update_ignores_non_now_working_messages_test() {
   let assert option.None =
     now_working_update.try_update(
       model(),
-      pool_messages.MemberPoolFiltersToggled,
+      pool_messages.MemberPoolVisibilityChanged("all-open"),
       context(),
     )
 }

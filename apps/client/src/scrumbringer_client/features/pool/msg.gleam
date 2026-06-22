@@ -33,7 +33,7 @@ import scrumbringer_client/ui/task_tabs
 pub type Msg {
   MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
   MemberPoolDragToClaimArmed(Bool)
-  MemberPoolStatusChanged(String)
+  MemberPoolVisibilityChanged(String)
   MemberPoolTypeChanged(String)
   MemberPoolCapabilityChanged(String)
   MemberPoolCapabilityScopeChanged(String)
@@ -58,7 +58,6 @@ pub type Msg {
   MemberPlanMoveDroppedOn(MoveTarget)
   MemberPlanMoveDragEnded
   MemberPlanCardMoved(ApiResult(card_contracts.CardActionResponse))
-  MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
   MemberPoolTouchStarted(Int, Int, Int)
