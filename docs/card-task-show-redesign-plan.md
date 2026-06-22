@@ -34,6 +34,19 @@ nombre.
    acepta tirar codigo existente si permite un modelo mas simple, tipado y
    homogeneo.
 
+## Dependencias Y Decisiones Compartidas
+
+Este plan es anterior a la unificacion final de Pool y a `fin_refactor`, pero
+debe mantenerse consistente con ellos:
+
+- `Blocked` no es un estado persistido de task. Es una condicion derivada de
+  dependencias incompletas.
+- Una task bloqueada puede mostrarse en Task Show y en Pool, pero no debe
+  ofrecer claim si la politica de claimability lo impide.
+- Due date es una senal visual y operativa, no un trigger de automatizacion.
+- No reabrir decisiones ya cerradas de Pool, Plan, Capacidades, Personas o
+  automatizaciones salvo contradiccion real documentada.
+
 ## Estrategia De Sustitucion Limpia
 
 La implementacion debe tratar Card Show y Task Show como una nueva superficie,
