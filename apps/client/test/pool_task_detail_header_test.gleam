@@ -2,9 +2,10 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/task.{type Task, Task}
+import domain/remote.{Loaded}
+import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task_state
-import domain/task_status.{Taken}
+import domain/task_status.{type TaskPhase, Available, Done, Taken}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_detail_header
 import scrumbringer_client/i18n/locale
@@ -18,15 +19,19 @@ pub fn task_detail_header_renders_loaded_task_test() {
     task_detail_header.view(task_detail_header.Config(
       locale: locale.En,
       task: Some(available_task()),
+      parent_card_title: Some("Release card"),
+      dependencies: Loaded([]),
       on_close: "close",
     ))
     |> element.to_document_string
 
   assert_contains(html, "Prepare release")
+  assert_contains(html, "Release card")
   assert_contains(html, "Feature")
   assert_contains(html, "P2")
   assert_contains(html, "Available")
   assert_contains(html, "Unassigned")
+  assert_contains(html, "No due date")
   assert_contains(html, "task-detail-title")
 }
 
@@ -35,6 +40,8 @@ pub fn task_detail_header_renders_assigned_task_test() {
     task_detail_header.view(task_detail_header.Config(
       locale: locale.En,
       task: Some(claimed_task()),
+      parent_card_title: Some("Release card"),
+      dependencies: Loaded([]),
       on_close: "close",
     ))
     |> element.to_document_string
@@ -49,6 +56,8 @@ pub fn task_detail_header_renders_loading_title_test() {
     task_detail_header.view(task_detail_header.Config(
       locale: locale.En,
       task: None,
+      parent_card_title: None,
+      dependencies: Loaded([]),
       on_close: "close",
     ))
     |> element.to_document_string
@@ -62,11 +71,32 @@ pub fn task_detail_header_localizes_close_label_test() {
     task_detail_header.view(task_detail_header.Config(
       locale: locale.Es,
       task: Some(available_task()),
+      parent_card_title: Some("Release card"),
+      dependencies: Loaded([]),
       on_close: "close",
     ))
     |> element.to_document_string
 
   assert_contains(html, "aria-label=\"Cerrar\"")
+}
+
+pub fn task_detail_header_renders_due_date_and_loaded_blockers_test() {
+  let html =
+    task_detail_header.view(task_detail_header.Config(
+      locale: locale.En,
+      task: Some(Task(..available_task(), due_date: Some("2026-06-24"))),
+      parent_card_title: Some("Release card"),
+      dependencies: Loaded([
+        dependency(11, Available),
+        dependency(12, Done),
+      ]),
+      on_close: "close",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Due 2026-06-24")
+  assert_contains(html, "Blocked by 1 tasks")
+  assert_contains(html, "task-meta-blocking blocking")
 }
 
 fn available_task() -> Task {
@@ -103,4 +133,13 @@ fn claimed_task() -> Task {
     )
 
   Task(..available_task(), state: state)
+}
+
+fn dependency(id: Int, status: TaskPhase) -> TaskDependency {
+  TaskDependency(
+    depends_on_task_id: id,
+    title: "Dependency",
+    status: status,
+    claimed_by: None,
+  )
 }

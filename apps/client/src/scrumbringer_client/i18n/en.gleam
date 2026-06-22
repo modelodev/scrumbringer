@@ -1105,6 +1105,8 @@ pub fn translate(text: Text) -> String {
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"
+    text.TaskDueDateLabel -> "Due"
+    text.NoDueDate -> "No due date"
     text.TaskBlockingClear -> "No active blockers"
     text.MetricsTasksTotal -> "Tasks total"
     text.MetricsTasksDone -> "Tasks completed"

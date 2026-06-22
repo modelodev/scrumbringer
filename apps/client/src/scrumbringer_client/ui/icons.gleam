@@ -226,6 +226,7 @@ pub type NavIcon {
   Play
   Return
   Cog
+  Calendar
   EmptyMailbox
   Close
   Menu
@@ -314,6 +315,7 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Play -> outline.play()
     Return -> outline.arrow_uturn_left()
     Cog -> outline.cog_6_tooth()
+    Calendar -> outline.calendar()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()
@@ -396,6 +398,7 @@ pub fn nav_icon_with_class(
     Play -> outline.play()
     Return -> outline.arrow_uturn_left()
     Cog -> outline.cog_6_tooth()
+    Calendar -> outline.calendar()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()

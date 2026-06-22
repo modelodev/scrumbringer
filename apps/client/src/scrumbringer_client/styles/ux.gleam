@@ -479,9 +479,9 @@ pub fn css() -> List(String) {
     ".hierarchy-detail-body { padding: 14px 20px 18px; }",
     // Task Detail Modal (Story 5.4.1)
     "html:has(.task-detail-modal), body:has(.task-detail-modal) { overflow: hidden; }",
-    ".task-detail-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; overflow: hidden; overscroll-behavior: contain; }",
+    ".task-detail-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: stretch; justify-content: flex-end; padding: 12px; overflow: hidden; overscroll-behavior: contain; }",
     ".task-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
-    ".task-detail-modal .modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 760px; width: 92%; height: min(88vh, 820px); max-height: 88vh; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
+    ".task-detail-modal .modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 860px; width: min(860px, calc(100vw - 48px)); height: 100%; max-height: none; min-height: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
     ".task-detail-modal .detail-tabpanel { min-height: 0; }",
     ".task-detail-modal .detail-header-block { padding: 16px 20px 18px; overflow: visible; }",
     ".task-detail-modal .detail-header { gap: 8px; }",
@@ -494,6 +494,9 @@ pub fn css() -> List(String) {
     ".modal-close:hover { background: var(--sb-surface-3); color: var(--sb-text-strong); border-color: var(--sb-border); }",
     ".task-meta-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: color-mix(in oklab, var(--sb-text) 84%, var(--sb-muted)); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-medium); line-height: var(--sb-line-tight); }",
     ".task-meta-assignee.muted { color: var(--sb-muted); opacity: 0.7; }",
+    ".task-meta-card { max-width: min(360px, 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    ".task-meta-due.muted, .task-meta-blocking.muted, .task-meta-card.muted { color: var(--sb-muted); opacity: 0.82; }",
+    ".task-meta-blocking.blocking { border-color: color-mix(in oklab, var(--sb-danger) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); color: var(--sb-danger); }",
     // Task tabs (aligned with card-tabs)
     ".task-tab .tab-count { font-size: var(--sb-font-sm); }",
     ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: var(--sb-font-xs); margin-left: 4px; animation: pulse 2s infinite; }",

@@ -957,6 +957,8 @@ pub type Text {
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
+  TaskDueDateLabel
+  NoDueDate
   TaskBlockingClear
   MetricsTasksTotal
   MetricsTasksDone

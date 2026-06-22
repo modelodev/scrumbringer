@@ -140,7 +140,7 @@ pub type TaskActionsConfig(msg) {
 }
 
 pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
-  div([attribute.class("task-detail-modal")], [
+  div([attribute.class("task-detail-modal task-show-panel")], [
     div(
       [
         attribute.class("modal-backdrop"),
@@ -150,7 +150,7 @@ pub fn view_task_details(config: TaskDetailsConfig(msg)) -> Element(msg) {
     ),
     div(
       [
-        attribute.class("modal-content task-detail-content"),
+        attribute.class("modal-content task-detail-content task-show-content"),
         attribute.attribute("role", "dialog"),
         attribute.attribute("aria-modal", "true"),
         attribute.attribute("aria-labelledby", "task-detail-title"),
@@ -178,6 +178,8 @@ fn view_task_header(config: TaskDetailsConfig(msg)) -> Element(msg) {
   task_detail_header.view(task_detail_header.Config(
     locale: config.locale,
     task: config.task,
+    parent_card_title: config.editor.parent_card_title,
+    dependencies: config.dependencies.items,
     on_close: config.on_close,
   ))
 }
