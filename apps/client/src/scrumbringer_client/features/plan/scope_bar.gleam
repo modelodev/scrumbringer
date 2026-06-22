@@ -29,6 +29,7 @@ pub type Config(msg) {
     id_prefix: String,
     mode_controls: List(ModeControl(msg)),
     refinement_controls: List(Element(msg)),
+    show_closed_control: Bool,
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
@@ -57,6 +58,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       view_scope_controls(config),
       view_mode_controls(config),
       view_refinement_controls(config),
+      view_closed_toggle(config),
+    ],
+  )
+}
+
+fn view_closed_toggle(config: Config(msg)) -> Element(msg) {
+  case config.show_closed_control {
+    False -> element.none()
+    True ->
       label([attribute.class("plan-closed-toggle")], [
         input([
           attribute.type_("checkbox"),
@@ -65,9 +75,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           event.on_check(config.on_closed_toggled),
         ]),
         span([], [text(i18n.t(config.locale, i18n_text.PlanClosed))]),
-      ]),
-    ],
-  )
+      ])
+  }
 }
 
 fn view_refinement_controls(config: Config(msg)) -> Element(msg) {

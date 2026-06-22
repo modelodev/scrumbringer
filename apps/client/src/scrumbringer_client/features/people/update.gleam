@@ -23,6 +23,12 @@ pub fn try_update(
       option.Some(handle_roster_fetched_error(model, err))
     pool_messages.MemberPeopleRowToggled(user_id) ->
       option.Some(handle_row_toggled(model, user_id))
+    pool_messages.MemberPeopleSearchChanged(query) ->
+      option.Some(handle_search_changed(model, query))
+    pool_messages.MemberPeopleFilterChanged(value) ->
+      option.Some(handle_filter_changed(model, value))
+    pool_messages.MemberPeopleSortChanged(value) ->
+      option.Some(handle_sort_changed(model, value))
     _ -> option.None
   }
 }
@@ -71,6 +77,42 @@ fn handle_row_toggled(
 
   #(
     member_pool.Model(..model, people_expansions: next_expansions),
+    effect.none(),
+  )
+}
+
+fn handle_search_changed(
+  model: member_pool.Model,
+  query: String,
+) -> #(member_pool.Model, effect.Effect(parent_msg)) {
+  #(
+    member_pool.Model(..model, member_people_search_query: query),
+    effect.none(),
+  )
+}
+
+fn handle_filter_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, effect.Effect(parent_msg)) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_people_filter: people_state.filter_from_string(value),
+    ),
+    effect.none(),
+  )
+}
+
+fn handle_sort_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, effect.Effect(parent_msg)) {
+  #(
+    member_pool.Model(
+      ..model,
+      member_people_sort: people_state.sort_from_string(value),
+    ),
     effect.none(),
   )
 }

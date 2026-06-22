@@ -253,6 +253,16 @@ pub type Text {
   PeopleAvailableCapacity
   PeopleNoClaimedTasks
   PeopleNoCardContext
+  PeopleShowLabel
+  PeopleFilterEveryone
+  PeopleFilterWithWork
+  PeopleFilterAttention
+  PeopleFilterFree
+  PeopleSortLabel
+  PeopleSortAttention
+  PeopleSortName
+  PeopleSortClaimed
+  PeopleCardScopeNoWork
   CapabilityBoardLoading
   CapabilityBoardEmpty
   CapabilityBoardNoResults

@@ -42,13 +42,14 @@ fn base_config(
   )
 }
 
-pub fn people_toolbar_renders_only_search_test() {
+pub fn people_toolbar_is_owned_by_people_view_test() {
   let html =
     center_panel.view(base_config(view_mode.People))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"people-toolbar\"")
-  assert_contains(html, "data-testid=\"filter-search-people\"")
+  assert_contains(html, "data-testid=\"people-view\"")
+  assert_not_contains(html, "data-testid=\"people-toolbar\"")
+  assert_not_contains(html, "data-testid=\"filter-search-people\"")
   assert_not_contains(html, "data-testid=\"filter-type\"")
   assert_not_contains(html, "data-testid=\"filter-capability\"")
 }

@@ -1337,7 +1337,7 @@ fn build_center_panel(
         data.my_capability_ids,
       ))
   }
-  let people_content = people_view.view(people_config(model))
+  let people_content = people_view.view(people_config(model, cards))
   let capabilities_content =
     capability_board_view.view(capability_board_config(
       model,
@@ -1598,15 +1598,52 @@ fn collapsed_plan_card_ids(pool: member_pool.Model) -> List(Int) {
 
 fn people_config(
   model: client_state.Model,
+  cards: List(Card),
 ) -> people_view.Config(client_state.Msg) {
   people_view.Config(
     locale: model.ui.locale,
     people_roster: model.member.pool.people_roster,
     member_tasks: model.member.pool.member_tasks,
+    task_types: model.member.pool.member_task_types,
+    capabilities: model.admin.capabilities.capabilities,
+    cards: cards,
+    depth_names: configured_depth_names(
+      state_selectors.active_projects(model),
+      model.core.selected_project_id,
+    ),
+    scope_kind: model.member.pool.member_plan_scope_kind,
+    selected_depth: model.member.pool.member_card_depth_filter,
+    selected_card_id: model.member.pool.member_plan_scope_card_id,
+    card_query: model.member.pool.member_plan_scope_card_query,
     org_users: model.admin.members.org_users_cache,
     people_expansions: model.member.pool.people_expansions,
-    search_query: model.member.pool.member_filters_q,
+    search_query: model.member.pool.member_people_search_query,
+    visibility_filter: model.member.pool.member_people_filter,
+    sort: model.member.pool.member_people_sort,
     task_card_color: fn(task) { resolved_task_card_color(model, task) },
+    on_scope_kind_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
+    },
+    on_scope_depth_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeDepthChanged(value))
+    },
+    on_scope_card_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardChanged(value))
+    },
+    on_scope_card_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPlanScopeCardSearchChanged(
+        value,
+      ))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleSearchChanged(value))
+    },
+    on_visibility_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleFilterChanged(value))
+    },
+    on_sort_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPeopleSortChanged(value))
+    },
     on_person_toggle: fn(user_id) {
       client_state.pool_msg(pool_messages.MemberPeopleRowToggled(user_id))
     },

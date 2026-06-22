@@ -172,6 +172,9 @@ pub type Model {
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
     people_expansions: Dict(Int, people_state.RowExpansion),
+    member_people_search_query: String,
+    member_people_filter: people_state.PeopleVisibilityFilter,
+    member_people_sort: people_state.PeopleSort,
   )
 }
 
@@ -244,5 +247,8 @@ pub fn default_model() -> Model {
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,
     people_expansions: dict.new(),
+    member_people_search_query: "",
+    member_people_filter: people_state.ShowEveryone,
+    member_people_sort: people_state.SortByAttention,
   )
 }

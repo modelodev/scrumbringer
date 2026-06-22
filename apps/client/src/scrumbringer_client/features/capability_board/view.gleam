@@ -283,6 +283,7 @@ fn with_scope_bar(
       id_prefix: "capability-plan",
       mode_controls: capability_mode_controls(config),
       refinement_controls: capability_refinement_controls(config),
+      show_closed_control: True,
       on_scope_kind_change: config.on_scope_kind_change,
       on_scope_depth_change: config.on_scope_depth_change,
       on_scope_card_change: config.on_scope_card_change,

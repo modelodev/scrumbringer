@@ -79,20 +79,19 @@ pub fn view(config: CenterPanelConfig(msg)) -> Element(msg) {
 
 fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
-    Pool | People ->
+    Pool ->
       div([attribute.class("center-toolbar")], [
         // Filters only - navigation moved to sidebar (Story 4.8 UX)
         view_filters(config),
       ])
-    Cards | Capabilities -> element.none()
+    People | Cards | Capabilities -> element.none()
   }
 }
 
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
     Pool -> view_work_filters(config)
-    People -> view_people_filters(config)
-    Cards | Capabilities -> element.none()
+    People | Cards | Capabilities -> element.none()
   }
 }
 
@@ -246,30 +245,6 @@ fn view_scope_button(
       ),
     ],
     [text(i18n.t(config.locale, label_key))],
-  )
-}
-
-fn view_people_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div(
-    [
-      attribute.class("center-filters center-filters-people"),
-      attribute.attribute("data-testid", "people-toolbar"),
-    ],
-    [
-      div([attribute.class("filter-field filter-search")], [
-        label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
-        input([
-          attribute.type_("search"),
-          attribute.attribute("data-testid", "filter-search-people"),
-          attribute.placeholder(i18n.t(
-            config.locale,
-            i18n_text.PeopleSearchPlaceholder,
-          )),
-          attribute.value(config.search_query),
-          event.on_input(config.on_search_change),
-        ]),
-      ]),
-    ],
   )
 }
 

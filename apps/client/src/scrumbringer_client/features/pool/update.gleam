@@ -757,7 +757,10 @@ fn update_without_view_mode(
 
     // Handled by people_workflow.try_update before this dispatch.
     pool_messages.MemberPeopleRosterFetched(_)
-    | pool_messages.MemberPeopleRowToggled(_) -> #(model, effect.none())
+    | pool_messages.MemberPeopleRowToggled(_)
+    | pool_messages.MemberPeopleSearchChanged(_)
+    | pool_messages.MemberPeopleFilterChanged(_)
+    | pool_messages.MemberPeopleSortChanged(_) -> #(model, effect.none())
 
     // Handled by project_refresh.try_update before this dispatch.
     pool_messages.MemberProjectTasksFetched(_, _)
