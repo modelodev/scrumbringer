@@ -2,10 +2,11 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/card.{Card, Draft}
+import domain/card.{Active, Card, Draft}
 import domain/remote.{Loaded, Loading}
 import domain/task.{Task}
 import domain/task_state
+import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/features/cards/detail_modal_entry
@@ -115,6 +116,57 @@ pub fn card_detail_secondary_actions_render_as_menu_items_test() {
   assert_not_contains(html, "data-testid=\"card-activate-action\"")
   assert_not_contains(html, "data-testid=\"card-move-action\"")
   assert_not_contains(html, "data-testid=\"card-delete-action\"")
+}
+
+pub fn card_detail_header_renders_path_due_date_and_health_test() {
+  let parent = Card(..sample_card(), id: 2, title: "Release", state: Active)
+  let card =
+    Card(
+      ..sample_card(),
+      id: 4,
+      parent_card_id: Some(2),
+      title: "API Cleanup",
+      state: Active,
+      task_count: 4,
+      completed_count: 1,
+      due_date: Some("2026-06-24"),
+    )
+  let ready = sample_task(1, Some(4))
+  let claimed =
+    Task(
+      ..sample_task(2, Some(4)),
+      state: task_state.Claimed(
+        claimed_by: 8,
+        claimed_at: "2026-06-20T10:00:00Z",
+        mode: task_status.Taken,
+      ),
+    )
+  let blocked = Task(..sample_task(3, Some(4)), blocked_count: 2)
+
+  let html =
+    detail_modal_entry.view(
+      detail_modal_entry.Config(
+        ..config(Some(card)),
+        cards: [parent, card],
+        tasks: [ready, claimed, blocked],
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"card-header-path\"")
+  assert_contains(html, "Release")
+  assert_contains(html, "API Cleanup")
+  assert_contains(html, "data-testid=\"card-header-due\"")
+  assert_contains(html, "Due 2026-06-24")
+  assert_contains(html, "data-testid=\"card-health-total\"")
+  assert_contains(html, "4")
+  assert_contains(html, "Tasks")
+  assert_contains(html, "data-testid=\"card-health-done\"")
+  assert_contains(html, "1")
+  assert_contains(html, "completed")
+  assert_contains(html, "data-testid=\"card-health-blocked\"")
+  assert_contains(html, "2")
+  assert_contains(html, "Blocked")
 }
 
 pub fn card_detail_modal_entry_omits_missing_card_test() {

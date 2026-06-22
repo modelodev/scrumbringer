@@ -670,7 +670,30 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   let state_label = card_state.label(model.locale, card.state)
   let meta =
     div([attribute.class("detail-meta")], [
-      card_state_badge.view(card.state, state_label, card_state_badge.Detail),
+      div([attribute.class("detail-meta-group")], [
+        card_state_badge.view(card.state, state_label, card_state_badge.Detail),
+        due_date_chip(model, card),
+      ]),
+      div([attribute.class("detail-meta-group")], [
+        card_health_chip(
+          "card-health-total",
+          int.to_string(card.task_count),
+          t(model.locale, i18n_text.CardTasks),
+          "",
+        ),
+        card_health_chip(
+          "card-health-done",
+          int.to_string(card.completed_count),
+          t(model.locale, i18n_text.CardTasksDone),
+          "done",
+        ),
+        card_health_chip(
+          "card-health-blocked",
+          int.to_string(blocked_count(model)),
+          t(model.locale, i18n_text.PoolBlockedCount),
+          "blocked",
+        ),
+      ]),
       card_progress.view(
         card.completed_count,
         card.task_count,
@@ -697,6 +720,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       ),
       t(model.locale, i18n_text.Close),
     ),
+    view_card_path(model, card),
     case card.description {
       "" -> element.none()
       desc -> div([attribute.class("card-detail-description")], [text(desc)])
@@ -704,6 +728,111 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
     view_scoped_navigation(model, card),
     view_card_action_bar(model, card),
   ])
+}
+
+fn view_card_path(model: Model, card: Card) -> Element(Msg) {
+  div(
+    [
+      attribute.class("card-header-path"),
+      attribute.attribute("data-testid", "card-header-path"),
+    ],
+    path_labels(model.cards, card)
+      |> list.index_map(fn(label, idx) {
+        span([attribute.class(path_part_class(idx))], [
+          text(path_part_text(label, idx)),
+        ])
+      }),
+  )
+}
+
+fn path_part_class(index: Int) -> String {
+  case index {
+    0 -> "card-header-path-part"
+    _ -> "card-header-path-part nested"
+  }
+}
+
+fn path_part_text(label: String, index: Int) -> String {
+  case index {
+    0 -> label
+    _ -> " > " <> label
+  }
+}
+
+fn path_labels(cards: List(Card), card: Card) -> List(String) {
+  card_path(cards, card)
+  |> list.map(fn(path_card) { path_card.title })
+}
+
+fn card_path(cards: List(Card), card: Card) -> List(Card) {
+  collect_path(cards, card, [])
+}
+
+fn collect_path(
+  cards: List(Card),
+  card: Card,
+  collected: List(Card),
+) -> List(Card) {
+  let next = [card, ..collected]
+
+  case card.parent_card_id {
+    option.Some(parent_id) ->
+      case find_card_by_id(cards, parent_id) {
+        option.Some(parent) -> collect_path(cards, parent, next)
+        option.None -> next
+      }
+    option.None -> next
+  }
+}
+
+fn due_date_chip(model: Model, card: Card) -> Element(Msg) {
+  case card.due_date {
+    option.Some(date) ->
+      span(
+        [
+          attribute.class("card-meta-chip card-meta-due"),
+          attribute.attribute("data-testid", "card-header-due"),
+        ],
+        [
+          icons.nav_icon(icons.Calendar, icons.Small),
+          text(t(model.locale, i18n_text.TaskDueDateLabel) <> " " <> date),
+        ],
+      )
+    option.None ->
+      span(
+        [
+          attribute.class("card-meta-chip card-meta-due muted"),
+          attribute.attribute("data-testid", "card-header-due"),
+        ],
+        [text(t(model.locale, i18n_text.NoDueDate))],
+      )
+  }
+}
+
+fn card_health_chip(
+  testid: String,
+  value: String,
+  label: String,
+  tone: String,
+) -> Element(Msg) {
+  span(
+    [
+      attribute.class("card-health-chip " <> tone),
+      attribute.attribute("data-testid", testid),
+    ],
+    [
+      span([attribute.class("card-health-value")], [text(value)]),
+      span([attribute.class("card-health-label")], [text(label)]),
+    ],
+  )
+}
+
+fn blocked_count(model: Model) -> Int {
+  case model.tasks {
+    Loaded(tasks) ->
+      list.fold(tasks, 0, fn(total, task) { total + task.blocked_count })
+    _ -> 0
+  }
 }
 
 fn view_scoped_navigation(model: Model, card: Card) -> Element(Msg) {
