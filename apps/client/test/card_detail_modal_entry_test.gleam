@@ -103,6 +103,20 @@ pub fn card_detail_modal_entry_renders_without_current_user_test() {
   assert_contains(html, "Customer Card")
 }
 
+pub fn card_detail_secondary_actions_render_as_menu_items_test() {
+  let html =
+    detail_modal_entry.view(config(Some(sample_card())))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"card-secondary-actions-trigger\"")
+  assert_contains(html, "data-testid=\"card-secondary-activate-action\"")
+  assert_contains(html, "data-testid=\"card-secondary-move-action\"")
+  assert_contains(html, "data-testid=\"card-secondary-delete-action\"")
+  assert_not_contains(html, "data-testid=\"card-activate-action\"")
+  assert_not_contains(html, "data-testid=\"card-move-action\"")
+  assert_not_contains(html, "data-testid=\"card-delete-action\"")
+}
+
 pub fn card_detail_modal_entry_omits_missing_card_test() {
   let html =
     detail_modal_entry.view(config(None))

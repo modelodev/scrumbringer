@@ -48,6 +48,7 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_progress
@@ -754,9 +755,7 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
   div([attribute.class("card-detail-actions")], [
     view_create_card_action(model, policy),
     view_create_task_action(model, policy),
-    view_activate_action(model, card),
-    view_move_action(model, card),
-    view_delete_action(model, policy),
+    view_secondary_action_menu(model, card, policy),
   ])
 }
 
@@ -814,71 +813,86 @@ fn view_create_task_action(
   }
 }
 
-fn view_activate_action(model: Model, card: Card) -> Element(Msg) {
-  case card.state, model.can_manage_structure {
-    Draft, True ->
-      ui_button.icon_text(
-        t(model.locale, i18n_text.ActivateHierarchy),
-        ActivateCardClicked,
-        icons.Play,
-        ui_button.Primary,
-        ui_button.EntityAction,
-      )
-      |> ui_button.with_testid("card-activate-action")
-      |> ui_button.with_class("hierarchy-activate-btn")
-      |> ui_button.view
-    Draft, False ->
-      blocked_action(
-        t(model.locale, i18n_text.ActivateHierarchy),
-        ActivateCardClicked,
-        icons.Play,
-        "card-activate-action",
-        t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
-      )
-    _, _ -> element.none()
-  }
-}
-
-fn view_move_action(model: Model, card: Card) -> Element(Msg) {
-  case card.state == Closed {
-    True -> element.none()
-    False ->
-      ui_button.icon_text(
-        t(model.locale, i18n_text.HierarchyMoveTo),
-        MoveRequested,
-        icons.Return,
-        ui_button.Secondary,
-        ui_button.EntityAction,
-      )
-      |> ui_button.with_testid("card-move-action")
-      |> ui_button.view
-  }
-}
-
-fn view_delete_action(
+fn view_secondary_action_menu(
   model: Model,
+  card: Card,
   policy: detail_policy.Policy,
 ) -> Element(Msg) {
+  action_menu.view(
+    "...",
+    "card-secondary-actions-trigger",
+    "card-secondary-actions-" <> int.to_string(card.id),
+    option.Some(t(model.locale, i18n_text.HierarchyMoreActions)),
+    "card-secondary-actions-menu",
+    "card-secondary-actions-trigger",
+    "card-secondary-actions-panel",
+    "card-secondary-actions-item",
+    list.flatten([
+      activate_action_items(model, card),
+      move_action_items(model, card),
+      delete_action_items(model, policy),
+    ]),
+  )
+}
+
+fn activate_action_items(
+  model: Model,
+  card: Card,
+) -> List(action_menu.Item(Msg)) {
+  case card.state, model.can_manage_structure {
+    Draft, True -> [
+      action_menu.item(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        "card-secondary-activate-action",
+        ActivateCardClicked,
+      ),
+    ]
+    Draft, False -> [
+      action_menu.disabled_item(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        "card-secondary-activate-action",
+        t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
+        ActivateCardClicked,
+      ),
+    ]
+    _, _ -> []
+  }
+}
+
+fn move_action_items(model: Model, card: Card) -> List(action_menu.Item(Msg)) {
+  case card.state == Closed {
+    True -> []
+    False -> [
+      action_menu.item(
+        t(model.locale, i18n_text.HierarchyMoveTo),
+        "card-secondary-move-action",
+        MoveRequested,
+      ),
+    ]
+  }
+}
+
+fn delete_action_items(
+  model: Model,
+  policy: detail_policy.Policy,
+) -> List(action_menu.Item(Msg)) {
   case policy.can_delete, policy.delete_disabled_reason {
-    True, _ ->
-      ui_button.icon_text(
+    True, _ -> [
+      action_menu.item(
         t(model.locale, i18n_text.DeleteCard),
+        "card-secondary-delete-action",
         DeleteCardClicked,
-        icons.Trash,
-        ui_button.Danger,
-        ui_button.EntityAction,
-      )
-      |> ui_button.with_testid("card-delete-action")
-      |> ui_button.view
-    False, option.Some(reason) ->
-      blocked_action(
+      ),
+    ]
+    False, option.Some(reason) -> [
+      action_menu.disabled_item(
         t(model.locale, i18n_text.DeleteCard),
-        DeleteCardClicked,
-        icons.Trash,
-        "card-delete-action",
+        "card-secondary-delete-action",
         disabled_reason_label(model, reason),
-      )
-    False, option.None -> element.none()
+        DeleteCardClicked,
+      ),
+    ]
+    False, option.None -> []
   }
 }
 
