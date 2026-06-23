@@ -20,6 +20,7 @@ EXPECTED_MIGRATIONS=(
   "20260620106000"
   "20260620107000"
   "20260620108000"
+  "20260623121000"
 )
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -260,6 +261,34 @@ task_lifecycle_checks AS (
       ) THEN 'ok'
       ELSE 'missing'
     END AS result
+),
+automation_history_fk_checks AS (
+  SELECT
+    check_name,
+    CASE WHEN ok THEN 'ok' ELSE 'missing' END AS result
+  FROM (
+    VALUES
+      (
+        'automation_history:rule_executions_rule_restrict',
+        EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = to_regclass('public.rule_executions')
+            AND conname = 'rule_executions_rule_id_fkey'
+            AND confdeltype = 'r'
+        )
+      ),
+      (
+        'automation_history:tasks_created_from_rule_restrict',
+        EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = to_regclass('public.tasks')
+            AND conname = 'tasks_created_from_rule_id_fkey'
+            AND confdeltype = 'r'
+        )
+      )
+  ) AS properties(check_name, ok)
 )
 SELECT check_name || '=' || result
 FROM (
@@ -280,6 +309,8 @@ FROM (
   SELECT * FROM card_lifecycle_checks
   UNION ALL
   SELECT * FROM task_lifecycle_checks
+  UNION ALL
+  SELECT * FROM automation_history_fk_checks
 ) checks
 ORDER BY check_name;
 SQL

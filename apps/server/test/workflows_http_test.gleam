@@ -155,6 +155,67 @@ pub fn workflow_delete_with_execution_pauses_and_preserves_history_test() {
   |> expect.equal(1)
 }
 
+pub fn workflow_delete_with_created_task_pauses_and_preserves_origin_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let create_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Workflow Origin")),
+          #("description", json.string("Generated task origin")),
+        ]),
+      ),
+    )
+
+  expect.expect_status(create_res, 200)
+  let workflow_id = decode_workflow_id(simulate.read_body(create_res))
+  let rule_id = insert_rule(db, workflow_id)
+  let type_id = insert_task_type(db, project_id)
+  let created_task_id =
+    insert_created_task_from_rule(db, project_id, type_id, rule_id)
+
+  let delete_res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
+    )
+
+  expect.expect_status(delete_res, 204)
+  single_int(db, "select count(*)::int from workflows where id = $1", [
+    pog.int(workflow_id),
+  ])
+  |> expect.equal(1)
+  workflow_active(db, workflow_id) |> expect.equal(False)
+  rule_active(db, workflow_id) |> expect.equal(False)
+  single_int(
+    db,
+    "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
+    [pog.int(created_task_id), pog.int(rule_id)],
+  )
+  |> expect.equal(1)
+}
+
 pub fn workflows_project_scope_requires_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -468,6 +529,19 @@ fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int 
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, now()) returning id",
     [pog.int(project_id), pog.int(type_id)],
+  )
+}
+
+fn insert_created_task_from_rule(
+  db: pog.Connection,
+  project_id: Int,
+  type_id: Int,
+  rule_id: Int,
+) -> Int {
+  single_int(
+    db,
+    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, now()) returning id",
+    [pog.int(project_id), pog.int(type_id), pog.int(rule_id)],
   )
 }
 

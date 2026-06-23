@@ -561,7 +561,7 @@ pub fn delete_rule(
       rows: [
         sql.RulesDeleteRow(
           rule_found: False,
-          has_executions: _,
+          has_history: _,
           paused_id: _,
           deleted_id: _,
         ),

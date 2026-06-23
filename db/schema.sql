@@ -2355,7 +2355,7 @@ ALTER TABLE ONLY public.rule_executions
 --
 
 ALTER TABLE ONLY public.rule_executions
-    ADD CONSTRAINT rule_executions_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.rules(id) ON DELETE CASCADE;
+    ADD CONSTRAINT rule_executions_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.rules(id) ON DELETE RESTRICT;
 
 
 --
@@ -2555,7 +2555,7 @@ ALTER TABLE ONLY public.tasks
 --
 
 ALTER TABLE ONLY public.tasks
-    ADD CONSTRAINT tasks_created_from_rule_id_fkey FOREIGN KEY (created_from_rule_id) REFERENCES public.rules(id) ON DELETE SET NULL;
+    ADD CONSTRAINT tasks_created_from_rule_id_fkey FOREIGN KEY (created_from_rule_id) REFERENCES public.rules(id) ON DELETE RESTRICT;
 
 
 --
@@ -2753,4 +2753,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260622133000'),
     ('20260622134000'),
     ('20260622135000'),
-    ('20260623120000');
+    ('20260623120000'),
+    ('20260623121000');
