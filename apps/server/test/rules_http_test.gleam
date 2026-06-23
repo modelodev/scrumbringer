@@ -14,7 +14,7 @@ import wisp/simulate
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 // Justification: large function kept intact to preserve cohesive logic.
-pub fn rules_crud_and_templates_test() {
+pub fn rules_crud_with_selected_template_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -49,7 +49,15 @@ pub fn rules_crud_and_templates_test() {
     )
 
   let rule_id =
-    create_rule(handler, session, csrf, workflow_id, type_id, "Rule 1")
+    create_rule(
+      handler,
+      session,
+      csrf,
+      workflow_id,
+      type_id,
+      template_id,
+      "Rule 1",
+    )
 
   let list_res =
     handler(
@@ -64,25 +72,8 @@ pub fn rules_crud_and_templates_test() {
   expect.expect_status(list_res, 200)
   decode_rule_names(simulate.read_body(list_res))
   |> expect.equal(["Rule 1"])
-
-  let attach_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/rules/"
-          <> int_to_string(rule_id)
-          <> "/templates/"
-          <> int_to_string(template_id),
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(json.object([#("execution_order", json.int(1))])),
-    )
-
-  expect.expect_status(attach_res, 200)
-  decode_template_names(simulate.read_body(attach_res))
-  |> expect.equal(["Rule Template"])
+  decode_first_rule_template_name(simulate.read_body(list_res))
+  |> expect.equal("Rule Template")
 
   let patch_res =
     handler(
@@ -101,22 +92,6 @@ pub fn rules_crud_and_templates_test() {
   expect.expect_status(patch_res, 200)
   decode_rule_name(simulate.read_body(patch_res))
   |> expect.equal("Rule 1 Updated")
-
-  let detach_res =
-    handler(
-      simulate.request(
-        http.Delete,
-        "/api/v1/rules/"
-          <> int_to_string(rule_id)
-          <> "/templates/"
-          <> int_to_string(template_id),
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
-    )
-
-  expect.expect_status(detach_res, 204)
 
   let delete_res =
     handler(
@@ -305,6 +280,7 @@ fn create_rule(
   csrf: String,
   workflow_id: Int,
   type_id: Int,
+  template_id: Int,
   name: String,
 ) -> Int {
   let res =
@@ -323,6 +299,7 @@ fn create_rule(
           #("resource_type", json.string("task")),
           #("task_type_id", json.int(type_id)),
           #("to_state", json.string("completed")),
+          #("template_id", json.int(template_id)),
           #("active", json.bool(True)),
         ]),
       ),
@@ -442,7 +419,7 @@ fn decode_rule_names(body: String) -> List(String) {
   rules
 }
 
-fn decode_template_names(body: String) -> List(String) {
+fn decode_first_rule_template_name(body: String) -> String {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
   let template_decoder = {
@@ -450,18 +427,23 @@ fn decode_template_names(body: String) -> List(String) {
     decode.success(name)
   }
 
+  let rule_decoder = {
+    use template <- decode.field("template", template_decoder)
+    decode.success(template)
+  }
+
   let data_decoder = {
-    use templates <- decode.field("templates", decode.list(template_decoder))
-    decode.success(templates)
+    use rules <- decode.field("rules", decode.list(rule_decoder))
+    decode.success(rules)
   }
 
   let response_decoder = {
-    use templates <- decode.field("data", data_decoder)
-    decode.success(templates)
+    use rules <- decode.field("data", data_decoder)
+    decode.success(rules)
   }
 
-  let assert Ok(templates) = decode.run(dynamic, response_decoder)
-  templates
+  let assert Ok([name, ..]) = decode.run(dynamic, response_decoder)
+  name
 }
 
 fn login_as(

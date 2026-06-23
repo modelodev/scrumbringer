@@ -1,6 +1,6 @@
--- name: attach_rule_template
+-- name: select_rule_template
 -- A rule has exactly one task template in the automation model.
--- Re-attaching selects/replaces the rule template and removes any previous one.
+-- Selecting replaces the rule template and removes any previous one.
 WITH removed AS (
   DELETE FROM rule_templates
   WHERE rule_id = $1

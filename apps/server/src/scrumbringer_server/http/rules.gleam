@@ -1,4 +1,4 @@
-//// HTTP handlers for workflow rules CRUD and template associations.
+//// HTTP handlers for workflow rules CRUD.
 ////
 //// ## Mission
 ////
@@ -70,21 +70,6 @@ pub fn handle_rule(
   }
 }
 
-/// Handle /api/rules/:rule_id/templates/:template_id requests.
-/// Example: handle_rule_template(req, ctx, rule_id, template_id)
-pub fn handle_rule_template(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  rule_id: String,
-  template_id: String,
-) -> wisp.Response {
-  case req.method {
-    http.Post -> handle_attach_template(req, ctx, rule_id, template_id)
-    http.Delete -> handle_detach_template(req, ctx, rule_id, template_id)
-    _ -> wisp.method_not_allowed([http.Post, http.Delete])
-  }
-}
-
 // =============================================================================
 // Handlers
 // =============================================================================
@@ -132,39 +117,6 @@ fn handle_delete(
   rule_id: String,
 ) -> wisp.Response {
   response_from_result(delete_rule_flow(req, ctx, rule_id))
-}
-
-fn handle_attach_template(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  rule_id: String,
-  template_id: String,
-) -> wisp.Response {
-  case require_attach_template_access(req, ctx, rule_id, template_id) {
-    Error(resp) -> resp
-    Ok(#(rule, db, template_id)) ->
-      json_payload.with_response(
-        req,
-        decode_execution_order,
-        fn(execution_order) {
-          response_from_result(attach_template_flow(
-            rule,
-            db,
-            template_id,
-            execution_order,
-          ))
-        },
-      )
-  }
-}
-
-fn handle_detach_template(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  rule_id: String,
-  template_id: String,
-) -> wisp.Response {
-  response_from_result(detach_template_flow(req, ctx, rule_id, template_id))
 }
 
 fn list_rules(
@@ -317,56 +269,6 @@ fn delete_rule_flow(
   Ok(api.no_content())
 }
 
-fn require_attach_template_access(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  rule_id_str: String,
-  template_id_str: String,
-) -> Result(#(rules_db.RuleRecord, pog.Connection, Int), wisp.Response) {
-  use #(rule, workflow, db) <- result.try(load_rule_access(
-    req,
-    ctx,
-    rule_id_str,
-  ))
-  use template_id <- result.try(api.parse_id(template_id_str))
-  use _ <- result.try(csrf.require_csrf(req))
-  use _ <- result.try(validate_template_scope(db, workflow, template_id))
-  Ok(#(rule, db, template_id))
-}
-
-fn attach_template_flow(
-  rule: rules_db.RuleRecord,
-  db: pog.Connection,
-  template_id: Int,
-  execution_order: Int,
-) -> Result(wisp.Response, wisp.Response) {
-  use templates <- result.try(attach_rule_template_db(
-    db,
-    rule.id,
-    template_id,
-    execution_order,
-  ))
-
-  Ok(api.ok(rule_presenters.templates_response(templates)))
-}
-
-fn detach_template_flow(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-  rule_id_str: String,
-  template_id_str: String,
-) -> Result(wisp.Response, wisp.Response) {
-  use #(rule, _workflow, db) <- result.try(load_rule_access(
-    req,
-    ctx,
-    rule_id_str,
-  ))
-  use template_id <- result.try(api.parse_id(template_id_str))
-  use _ <- result.try(csrf.require_csrf(req))
-  use _ <- result.try(detach_rule_template_db(db, rule.id, template_id))
-  Ok(api.no_content())
-}
-
 fn load_workflow_access(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -469,13 +371,6 @@ fn decode_update_payload(
   data,
 ) -> Result(rule_payloads.UpdatePayload, wisp.Response) {
   rule_payloads.decode_update(data)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
-}
-
-fn decode_execution_order(data) -> Result(Int, wisp.Response) {
-  rule_payloads.decode_execution_order(data)
   |> result.map_error(fn(_) {
     api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   })
@@ -605,7 +500,7 @@ fn sync_rule_template(
 ) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
   case template_id {
     None -> list_rule_template_response(db, rule_id)
-    Some(value) -> attach_rule_template_response(db, rule_id, value, 1)
+    Some(value) -> select_rule_template_response(db, rule_id, value, 1)
   }
 }
 
@@ -619,39 +514,14 @@ fn list_rule_template_response(
   }
 }
 
-fn list_rule_templates_response(
-  db: pog.Connection,
-  rule_id: Int,
-) -> Result(List(workflow.RuleTemplate), wisp.Response) {
-  case rules_db.list_rule_templates(db, rule_id) {
-    Ok(templates) -> Ok(templates)
-    Error(error) -> Error(service_error_response.to_database_response(error))
-  }
-}
-
-fn attach_rule_template_response(
+fn select_rule_template_response(
   db: pog.Connection,
   rule_id: Int,
   template_id: Int,
   execution_order: Int,
 ) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
-  use templates <- result.try(attach_rule_template_db(
-    db,
-    rule_id,
-    template_id,
-    execution_order,
-  ))
-  Ok(first_template(templates))
-}
-
-fn attach_rule_template_db(
-  db: pog.Connection,
-  rule_id: Int,
-  template_id: Int,
-  execution_order: Int,
-) -> Result(List(workflow.RuleTemplate), wisp.Response) {
-  case rules_db.attach_template(db, rule_id, template_id, execution_order) {
-    Ok(Nil) -> list_rule_templates_response(db, rule_id)
+  case rules_db.select_template(db, rule_id, template_id, execution_order) {
+    Ok(Nil) -> list_rule_template_response(db, rule_id)
     Error(error) -> Error(rule_write_error_response(error))
   }
 }
@@ -662,17 +532,6 @@ fn first_template(
   case templates {
     [] -> None
     [template, ..] -> Some(template)
-  }
-}
-
-fn detach_rule_template_db(
-  db: pog.Connection,
-  rule_id: Int,
-  template_id: Int,
-) -> Result(Nil, wisp.Response) {
-  case rules_db.detach_template(db, rule_id, template_id) {
-    Ok(Nil) -> Ok(Nil)
-    Error(error) -> Error(rule_write_error_response(error))
   }
 }
 

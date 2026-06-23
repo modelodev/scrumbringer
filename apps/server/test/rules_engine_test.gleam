@@ -58,7 +58,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Get org_id and user_id for the event
   let assert Ok(org_id) = fixtures.get_org_id(db)
@@ -285,7 +285,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Login Bug")
 
@@ -363,7 +363,7 @@ pub fn variable_origin_card_resolves_to_link_test() {
       domain_card.Closed,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card to Close")
 
@@ -434,7 +434,7 @@ pub fn variable_trigger_resolves_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Original Task")
 
@@ -499,7 +499,7 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
       task_status.Available,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "New Task")
 
@@ -568,7 +568,7 @@ pub fn variable_project_resolves_to_name_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Trigger Task")
 
@@ -628,7 +628,7 @@ pub fn variable_user_resolves_to_email_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "User Task")
 
@@ -703,7 +703,7 @@ pub fn all_five_variables_combined_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Get org_id and user_id for the event
   let assert Ok(org_id) = fixtures.get_org_id(db)
@@ -774,7 +774,7 @@ pub fn all_five_variables_combined_test() {
 // Positive Tests
 // =============================================================================
 
-pub fn attaching_template_replaces_previous_rule_template_test() {
+pub fn selecting_template_replaces_previous_rule_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -830,27 +830,27 @@ pub fn attaching_template_replaces_previous_rule_template_test() {
     )
 
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template1_id)
+    fixtures.select_rule_template(handler, session, rule_id, template1_id)
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template2_id)
+    fixtures.select_rule_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template3_id)
+    fixtures.select_rule_template(handler, session, rule_id, template3_id)
 
-  let assert Ok(attached_count) =
+  let assert Ok(selected_count) =
     fixtures.query_int(
       db,
       "select count(*)::int from rule_templates where rule_id = $1",
       [pog.int(rule_id)],
     )
-  attached_count |> expect.equal(1)
+  selected_count |> expect.equal(1)
 
-  let assert Ok(attached_template_id) =
+  let assert Ok(selected_template_id) =
     fixtures.query_int(
       db,
       "select template_id from rule_templates where rule_id = $1",
       [pog.int(rule_id)],
     )
-  attached_template_id |> expect.equal(template3_id)
+  selected_template_id |> expect.equal(template3_id)
 
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
@@ -1235,7 +1235,7 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create a card
   let assert Ok(card_id) =

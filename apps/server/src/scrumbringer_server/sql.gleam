@@ -4017,37 +4017,37 @@ order by w.name;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `rule_templates_attach` query
-/// defined in `./src/scrumbringer_server/sql/rule_templates_attach.sql`.
+/// A row you get from running the `rule_templates_select` query
+/// defined in `./src/scrumbringer_server/sql/rule_templates_select.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type RuleTemplatesAttachRow {
-  RuleTemplatesAttachRow(rule_id: Int)
+pub type RuleTemplatesSelectRow {
+  RuleTemplatesSelectRow(rule_id: Int)
 }
 
-/// name: attach_rule_template
+/// name: select_rule_template
 /// A rule has exactly one task template in the automation model.
-/// Re-attaching selects/replaces the rule template and removes any previous one.
+/// Selecting replaces the rule template and removes any previous one.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn rule_templates_attach(
+pub fn rule_templates_select(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-) -> Result(pog.Returned(RuleTemplatesAttachRow), pog.QueryError) {
+) -> Result(pog.Returned(RuleTemplatesSelectRow), pog.QueryError) {
   let decoder = {
     use rule_id <- decode.field(0, decode.int)
-    decode.success(RuleTemplatesAttachRow(rule_id:))
+    decode.success(RuleTemplatesSelectRow(rule_id:))
   }
 
-  "-- name: attach_rule_template
+  "-- name: select_rule_template
 -- A rule has exactly one task template in the automation model.
--- Re-attaching selects/replaces the rule template and removes any previous one.
+-- Selecting replaces the rule template and removes any previous one.
 WITH removed AS (
   DELETE FROM rule_templates
   WHERE rule_id = $1
@@ -4064,44 +4064,6 @@ RETURNING rule_id;
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `rule_templates_detach` query
-/// defined in `./src/scrumbringer_server/sql/rule_templates_detach.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type RuleTemplatesDetachRow {
-  RuleTemplatesDetachRow(rule_id: Int)
-}
-
-/// name: detach_rule_template
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn rule_templates_detach(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(RuleTemplatesDetachRow), pog.QueryError) {
-  let decoder = {
-    use rule_id <- decode.field(0, decode.int)
-    decode.success(RuleTemplatesDetachRow(rule_id:))
-  }
-
-  "-- name: detach_rule_template
-DELETE FROM rule_templates
-WHERE rule_id = $1
-  AND template_id = $2
-RETURNING rule_id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4531,7 +4493,7 @@ pub type RulesGetTemplatesForExecutionRow {
 }
 
 /// name: rules_get_templates_for_execution
-/// Get templates attached to a rule for execution, ordered by execution_order.
+/// Get the selected template for a rule execution.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4568,7 +4530,7 @@ pub fn rules_get_templates_for_execution(
   }
 
   "-- name: rules_get_templates_for_execution
--- Get templates attached to a rule for execution, ordered by execution_order.
+-- Get the selected template for a rule execution.
 select
   t.id,
   t.org_id,

@@ -1231,8 +1231,8 @@ pub fn insert_rule_simple(
   )
 }
 
-/// Attach a template to a rule.
-pub fn attach_template(
+/// Select the template used by a rule.
+pub fn select_rule_template(
   db: pog.Connection,
   rule_id: Int,
   template_id: Int,
@@ -1246,7 +1246,7 @@ pub fn attach_template(
   |> pog.parameter(pog.int(execution_order))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(e) { "attach_template: " <> string.inspect(e) })
+  |> result.map_error(fn(e) { "select_rule_template: " <> string.inspect(e) })
 }
 
 // =============================================================================

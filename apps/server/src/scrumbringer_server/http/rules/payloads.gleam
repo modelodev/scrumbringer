@@ -113,17 +113,3 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
   decode.run(data, decoder)
   |> result.map_error(fn(_) { Nil })
 }
-
-pub fn decode_execution_order(data: Dynamic) -> Result(Int, Nil) {
-  let decoder = {
-    use execution_order <- decode.optional_field(
-      "execution_order",
-      0,
-      decode.int,
-    )
-    decode.success(execution_order)
-  }
-
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
-}

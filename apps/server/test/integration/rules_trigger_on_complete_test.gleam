@@ -86,7 +86,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task that will trigger the rule
   let assert Ok(bug_task_id) =
@@ -232,27 +232,27 @@ pub fn complete_task_uses_latest_selected_template_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template1_id)
+    fixtures.select_rule_template(handler, session, rule_id, template1_id)
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template2_id)
+    fixtures.select_rule_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template3_id)
+    fixtures.select_rule_template(handler, session, rule_id, template3_id)
 
-  let assert Ok(attached_count) =
+  let assert Ok(selected_count) =
     fixtures.query_int(
       db,
       "SELECT count(*)::int FROM rule_templates WHERE rule_id = $1",
       [pog.int(rule_id)],
     )
-  attached_count |> expect.equal(1)
+  selected_count |> expect.equal(1)
 
-  let assert Ok(attached_template_id) =
+  let assert Ok(selected_template_id) =
     fixtures.query_int(
       db,
       "SELECT template_id FROM rule_templates WHERE rule_id = $1",
       [pog.int(rule_id)],
     )
-  attached_template_id |> expect.equal(template3_id)
+  selected_template_id |> expect.equal(template3_id)
 
   // Create feature task
   let assert Ok(feature_task_id) =
@@ -350,7 +350,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   let assert Ok(bug_task_id) =
     fixtures.create_task(
@@ -452,7 +452,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Deactivate the rule
   let assert Ok(Nil) = fixtures.set_rule_active(db, rule_id, False)
@@ -550,7 +550,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task WITH the card
   let assert Ok(bug_task_id) =
@@ -661,7 +661,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       task_status.Done,
     )
   let assert Ok(Nil) =
-    fixtures.attach_template(handler, session, rule_id, template_id)
+    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task WITHOUT a card
   let assert Ok(bug_task_id) =

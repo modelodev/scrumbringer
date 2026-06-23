@@ -194,7 +194,7 @@ pub fn seed() -> Result(SeedResult, String) {
     "On Bug Resolved",
     task_status.Done,
   ))
-  use _ <- result.try(fixtures.attach_template(
+  use _ <- result.try(fixtures.select_rule_template(
     handler,
     session,
     rule_bug_resolved,
@@ -210,7 +210,7 @@ pub fn seed() -> Result(SeedResult, String) {
     "On Bug Closed",
     task_status.Done,
   ))
-  use _ <- result.try(fixtures.attach_template(
+  use _ <- result.try(fixtures.select_rule_template(
     handler,
     session,
     rule_bug_closed,
@@ -234,7 +234,7 @@ pub fn seed() -> Result(SeedResult, String) {
     "On Feature Done",
     task_status.Done,
   ))
-  use _ <- result.try(fixtures.attach_template(
+  use _ <- result.try(fixtures.select_rule_template(
     handler,
     session,
     rule_feature_done,

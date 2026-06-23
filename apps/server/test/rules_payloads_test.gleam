@@ -77,16 +77,3 @@ pub fn decode_update_payload_rejects_unknown_active_flag_test() {
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
 }
-
-pub fn decode_execution_order_defaults_to_zero_test() {
-  let assert Ok(dynamic) = json.parse("{}", decode.dynamic)
-
-  let assert Ok(0) = payloads.decode_execution_order(dynamic)
-}
-
-pub fn decode_execution_order_rejects_wrong_type_test() {
-  let assert Ok(dynamic) =
-    json.parse("{\"execution_order\":\"first\"}", decode.dynamic)
-
-  let assert Error(Nil) = payloads.decode_execution_order(dynamic)
-}

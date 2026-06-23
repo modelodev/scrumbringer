@@ -92,7 +92,3 @@ pub fn template(template: workflow.RuleTemplate) -> json.Json {
     #("execution_order", json.int(execution_order)),
   ])
 }
-
-pub fn templates_response(values: List(workflow.RuleTemplate)) -> json.Json {
-  json.object([#("templates", json.array(values, of: template))])
-}

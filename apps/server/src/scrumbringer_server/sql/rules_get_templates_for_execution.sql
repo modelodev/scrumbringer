@@ -1,5 +1,5 @@
 -- name: rules_get_templates_for_execution
--- Get templates attached to a rule for execution, ordered by execution_order.
+-- Get the selected template for a rule execution.
 select
   t.id,
   t.org_id,

@@ -276,8 +276,6 @@ fn route_rules(
       Some(rules.handle_workflow_rules(req, auth_ctx(ctx), workflow_id))
     ["api", "v1", "rules", rule_id] ->
       Some(rules.handle_rule(req, auth_ctx(ctx), rule_id))
-    ["api", "v1", "rules", rule_id, "templates", template_id] ->
-      Some(rules.handle_rule_template(req, auth_ctx(ctx), rule_id, template_id))
     _ -> None
   }
 }

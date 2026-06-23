@@ -1,14 +1,14 @@
-//// Database operations for workflow rules and template attachments.
+//// Database operations for workflow rules and their selected task template.
 ////
 //// ## Mission
 ////
-//// Provide repository and mapping for workflow rules and their template links.
+//// Provide repository and mapping for workflow rules and their selected template.
 ////
 //// ## Responsibilities
 ////
 //// - Query and mutate rule records
 //// - Map SQL rows into domain types
-//// - Attach and detach rule templates
+//// - Select the single template used by a rule
 ////
 //// ## Non-responsibilities
 ////
@@ -427,7 +427,7 @@ pub fn delete_rule(
   }
 }
 
-/// Lists templates attached to a rule.
+/// Lists templates selected for a rule.
 ///
 /// Example:
 ///   list_rule_templates(db, rule_id)
@@ -447,30 +447,14 @@ pub fn list_rule_templates(
 /// Selects the single template used by a rule.
 ///
 /// Example:
-///   attach_template(db, rule_id, template_id, 1)
-pub fn attach_template(
+///   select_template(db, rule_id, template_id, 1)
+pub fn select_template(
   db: pog.Connection,
   rule_id: Int,
   template_id: Int,
   execution_order: Int,
 ) -> Result(Nil, ServiceError) {
-  case sql.rule_templates_attach(db, rule_id, template_id, execution_order) {
-    Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Error(e) -> Error(DbError(e))
-  }
-}
-
-/// Detaches a template from a rule.
-///
-/// Example:
-///   detach_template(db, rule_id, template_id)
-pub fn detach_template(
-  db: pog.Connection,
-  rule_id: Int,
-  template_id: Int,
-) -> Result(Nil, ServiceError) {
-  case sql.rule_templates_detach(db, rule_id, template_id) {
+  case sql.rule_templates_select(db, rule_id, template_id, execution_order) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(e) -> Error(DbError(e))

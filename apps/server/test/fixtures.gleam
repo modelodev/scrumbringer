@@ -660,8 +660,8 @@ pub fn create_card(
   }
 }
 
-/// Attach a template to a rule.
-pub fn attach_template(
+/// Select the template used by a rule.
+pub fn select_rule_template(
   handler: Handler,
   session: Session,
   rule_id: Int,
@@ -669,22 +669,18 @@ pub fn attach_template(
 ) -> Result(Nil, String) {
   let res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/rules/"
-          <> int.to_string(rule_id)
-          <> "/templates/"
-          <> int.to_string(template_id),
-      )
+      simulate.request(http.Patch, "/api/v1/rules/" <> int.to_string(rule_id))
       |> with_auth(session)
-      |> simulate.json_body(json.object([#("execution_order", json.int(1))])),
+      |> simulate.json_body(
+        json.object([#("template_id", json.int(template_id))]),
+      ),
     )
 
   case res.status {
     200 -> Ok(Nil)
     status ->
       Error(
-        "attach_template failed: status="
+        "select_rule_template failed: status="
         <> int.to_string(status)
         <> " rule_id="
         <> int.to_string(rule_id)
