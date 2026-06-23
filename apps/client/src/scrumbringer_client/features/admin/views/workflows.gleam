@@ -35,6 +35,8 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
+import scrumbringer_client/router
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
@@ -119,7 +121,12 @@ fn view_rules_hint(config: Config(msg)) -> Element(msg) {
       text(t(config, i18n_text.RulesHintTemplates)),
       a(
         [
-          attribute.href("/config/templates"),
+          attribute.href(
+            router.format(router.Config(
+              permissions.TaskTemplates,
+              config.selected_project_id,
+            )),
+          ),
           attribute.class("info-callout-link"),
         ],
         [

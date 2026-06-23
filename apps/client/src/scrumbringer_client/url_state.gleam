@@ -605,6 +605,7 @@ fn context_errors(
     Member ->
       list.filter_map(
         [
+          #(has("mode"), "mode"),
           #(has("view") && !view_is_member, "view"),
           #(has("depth") && !view_is_cards, "depth"),
           #(has_plan_mode && !view_is_cards, "plan_mode"),
@@ -647,6 +648,7 @@ fn context_errors(
     OrgAssignments ->
       list.filter_map(
         [
+          #(has("mode"), "mode"),
           #(has("project"), "project"),
           #(has("scope"), "scope"),
           #(has("type"), "type"),
@@ -672,6 +674,7 @@ fn context_errors(
     Org ->
       list.filter_map(
         [
+          #(has("mode"), "mode"),
           #(has("project"), "project"),
           #(has("view"), "view"),
           #(has("scope"), "scope"),
@@ -734,6 +737,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     "show",
     "show_card",
     "task",
+    "mode",
   ]
   let unknown_keys =
     present_keys

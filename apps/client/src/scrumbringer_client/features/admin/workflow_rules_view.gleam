@@ -46,6 +46,8 @@ import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
+import scrumbringer_client/router
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attribute_value
@@ -547,7 +549,12 @@ fn view_attach_template_modal_body(
           p([], [text(t(config, i18n_text.NoTemplatesInProject))]),
           a(
             [
-              attribute.href("/config/templates"),
+              attribute.href(
+                router.format(router.Config(
+                  permissions.TaskTemplates,
+                  workflow_project_id(config),
+                )),
+              ),
               attribute.class("link-to-templates"),
             ],
             [text(t(config, i18n_text.CreateTemplateLink))],
@@ -579,6 +586,19 @@ fn view_attach_template_modal_body(
         ])
     },
   ])
+}
+
+fn workflow_project_id(config: Config(msg)) -> opt.Option(Int) {
+  case config.workflows_project {
+    Loaded(workflows) ->
+      case
+        list.find(workflows, fn(workflow) { workflow.id == config.workflow_id })
+      {
+        Ok(workflow) -> workflow.project_id
+        Error(_) -> opt.None
+      }
+    _ -> opt.None
+  }
 }
 
 fn view_attach_template_modal_footer(config: Config(msg)) -> Element(msg) {

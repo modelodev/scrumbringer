@@ -131,8 +131,14 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/config")
   let result = url_state.parse_query(search_to_query(search), url_state.Config)
 
-  case config_section_from_slug(slug) {
-    Ok(section) -> config_parse_result(section, result)
+  case config_section_from_slug(slug, search) {
+    Ok(section) -> {
+      let parsed = config_parse_result(section, result)
+      case invalid_config_mode(slug, search) {
+        True -> as_redirect(parsed)
+        False -> parsed
+      }
+    }
     Error(_) -> config_parse_result(permissions.Members, result) |> as_redirect
   }
 }
@@ -254,10 +260,10 @@ fn format_parts(route: Route) -> #(String, Option(String), Option(String)) {
 
     // Story 4.5: New /config/* routes for project-scoped config
     Config(section, project_id) -> {
-      let base = "/config/" <> config_section_slug(section)
+      let #(route_section, mode) = config_route_section(section)
+      let base = "/config/" <> config_section_slug(route_section)
       let state = state_with_project(project_id)
-      let query =
-        query_option(url_state.to_query_string_for(url_state.Config, state))
+      let query = config_query(state, mode)
       #(base, query, None)
     }
 
@@ -277,6 +283,31 @@ fn state_with_project(project_id: Option(Int)) -> url_state.UrlState {
   case project_id {
     Some(id) -> url_state.with_project(url_state.empty(), id)
     None -> url_state.empty()
+  }
+}
+
+fn config_query(
+  state: url_state.UrlState,
+  mode: Option(String),
+) -> Option(String) {
+  let project_query = url_state.to_query_string_for(url_state.Config, state)
+  let query = case project_query, mode {
+    "", None -> ""
+    "", Some(mode) -> "mode=" <> mode
+    query, None -> query
+    query, Some(mode) -> query <> "&mode=" <> mode
+  }
+
+  query_option(query)
+}
+
+fn config_route_section(
+  section: permissions.AdminSection,
+) -> #(permissions.AdminSection, Option(String)) {
+  case section {
+    permissions.TaskTemplates -> #(permissions.Workflows, Some("templates"))
+    permissions.RuleMetrics -> #(permissions.Workflows, Some("executions"))
+    _ -> #(section, None)
   }
 }
 
@@ -388,16 +419,33 @@ fn path_segment(pathname: String, prefix: String) -> String {
 /// Parse slug into config section (project-scoped sections)
 fn config_section_from_slug(
   slug: String,
+  search: String,
 ) -> Result(permissions.AdminSection, Nil) {
   case slug {
     "" | "members" -> Ok(permissions.Members)
     "capabilities" -> Ok(permissions.Capabilities)
     "task-types" -> Ok(permissions.TaskTypes)
     "cards" -> Ok(permissions.Cards)
-    "workflows" -> Ok(permissions.Workflows)
+    "workflows" -> Ok(automation_section_from_search(search))
     "templates" -> Ok(permissions.TaskTemplates)
     "rule-metrics" -> Ok(permissions.RuleMetrics)
     _ -> Error(Nil)
+  }
+}
+
+fn automation_section_from_search(search: String) -> permissions.AdminSection {
+  case query_param(search, "mode") {
+    Some("templates") -> permissions.TaskTemplates
+    Some("executions") -> permissions.RuleMetrics
+    _ -> permissions.Workflows
+  }
+}
+
+fn invalid_config_mode(slug: String, search: String) -> Bool {
+  case query_param(search, "mode") {
+    None -> False
+    Some("templates") | Some("executions") -> slug != "workflows"
+    Some(_) -> True
   }
 }
 

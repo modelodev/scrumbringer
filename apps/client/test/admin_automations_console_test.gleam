@@ -58,6 +58,15 @@ pub fn automations_console_renders_internal_modes_as_tabs_test() {
   assert_contains(html, "data-testid=\"automations-mode-engines\"")
   assert_contains(html, "data-testid=\"automations-mode-templates\"")
   assert_contains(html, "data-testid=\"automations-mode-executions\"")
+  assert_contains(html, "href=\"/config/workflows?project=7\"")
+  assert_contains(
+    html,
+    "href=\"/config/workflows?project=7&amp;mode=templates\"",
+  )
+  assert_contains(
+    html,
+    "href=\"/config/workflows?project=7&amp;mode=executions\"",
+  )
   assert_contains(html, ">Motores<")
   assert_contains(html, ">Plantillas<")
   assert_contains(html, ">Ejecuciones<")
@@ -65,4 +74,6 @@ pub fn automations_console_renders_internal_modes_as_tabs_test() {
   assert_contains(html, "executions body")
   assert_not_contains(html, "engines body")
   assert_not_contains(html, "templates body")
+  assert_not_contains(html, "href=\"/config/templates")
+  assert_not_contains(html, "href=\"/config/rule-metrics")
 }

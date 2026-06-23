@@ -23,6 +23,49 @@ pub fn parse_config_members_with_project_test() {
   )
 }
 
+pub fn parse_config_automation_templates_mode_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/workflows", "?project=2&mode=templates"))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.Config(permissions.TaskTemplates, Some(2))),
+  )
+}
+
+pub fn parse_config_automation_executions_mode_test() {
+  let parsed =
+    router.parse_uri(build_uri(
+      "/config/workflows",
+      "?project=2&mode=executions",
+    ))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.Config(permissions.RuleMetrics, Some(2))),
+  )
+}
+
+pub fn parse_config_automation_unknown_mode_redirects_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/workflows", "?project=2&mode=metrics"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Workflows, Some(2))),
+  )
+}
+
+pub fn parse_config_mode_outside_automations_redirects_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/members", "?project=2&mode=templates"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Members, Some(2))),
+  )
+}
+
 pub fn parse_config_unknown_section_redirects_to_members_test() {
   let parsed = router.parse_uri(build_uri("/config/unknown", "?project=2"))
 
@@ -151,6 +194,20 @@ pub fn format_config_with_project_test() {
   )
 }
 
+pub fn format_config_templates_as_automation_mode_test() {
+  assert_equal(
+    router.format(router.Config(permissions.TaskTemplates, Some(2))),
+    "/config/workflows?project=2&mode=templates",
+  )
+}
+
+pub fn format_config_rule_metrics_as_automation_mode_test() {
+  assert_equal(
+    router.format(router.Config(permissions.RuleMetrics, Some(2))),
+    "/config/workflows?project=2&mode=executions",
+  )
+}
+
 // Story 4.5: Org routes format correctly
 pub fn format_org_invites_test() {
   assert_equal(router.format(router.Org(permissions.Invites)), "/org/invites")
@@ -237,6 +294,16 @@ pub fn format_member_cards_with_scope_test() {
 // Story 4.5: Config routes roundtrip correctly
 pub fn roundtrip_config_members_test() {
   let route = router.Config(permissions.Members, Some(2))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_config_templates_mode_test() {
+  let route = router.Config(permissions.TaskTemplates, Some(2))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_config_executions_mode_test() {
+  let route = router.Config(permissions.RuleMetrics, Some(2))
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
