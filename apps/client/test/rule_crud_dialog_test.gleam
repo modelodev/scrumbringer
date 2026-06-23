@@ -379,13 +379,13 @@ pub fn msg_close_requested_test() {
 // =============================================================================
 
 pub fn task_state_options_count_test() {
-  let states = ["available", "claimed", "completed"]
-  let assert ["available", "claimed", "completed"] = states
+  let states = ["claimed", "completed"]
+  let assert ["claimed", "completed"] = states
 }
 
 pub fn card_state_options_count_test() {
-  let states = ["pendiente", "en_curso", "cerrada"]
-  let assert ["pendiente", "en_curso", "cerrada"] = states
+  let states = ["en_curso", "cerrada"]
+  let assert ["en_curso", "cerrada"] = states
 }
 
 // =============================================================================
@@ -428,12 +428,12 @@ pub fn edit_dialog_renders_shared_rule_fields_test() {
 }
 
 pub fn task_state_options_use_canonical_values_test() {
-  let assert [#("available", _), #("claimed", _), #("completed", _)] =
+  let assert [#("claimed", _), #("completed", _)] =
     state_options_for_resource_type(En, "task")
 }
 
 pub fn card_state_options_use_canonical_values_test() {
-  let assert [#("pendiente", _), #("en_curso", _), #("cerrada", _)] =
+  let assert [#("en_curso", _), #("cerrada", _)] =
     state_options_for_resource_type(En, "card")
 }
 

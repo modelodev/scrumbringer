@@ -33,13 +33,9 @@ import lustre/element/html.{form, input, option as html_option, select, text}
 import lustre/event
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/card.{
-  Active, Closed, Draft, state_to_string as card_state_to_string,
-}
+import domain/card.{Active, Closed, state_to_string as card_state_to_string}
 import domain/task/task_codec
-import domain/task_status.{
-  Available, Claimed, Done, Taken, task_status_to_string,
-}
+import domain/task_status.{Claimed, Done, Taken, task_status_to_string}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
   type Rule, rule_resource_type, rule_task_type_id, rule_to_state_string,
@@ -435,8 +431,8 @@ fn handle_edit_resource_type_changed(
 /// Get default state for a resource type.
 fn default_state_for_resource_type(resource_type: String) -> String {
   case resource_type {
-    "task" -> "available"
-    _ -> "pendiente"
+    "task" -> "completed"
+    _ -> "en_curso"
   }
 }
 
@@ -1006,8 +1002,8 @@ fn view_state_selector(
 }
 
 /// Get state options based on resource type.
-/// Task: available, claimed, completed
-/// Card: pendiente, en_curso, cerrada
+/// Task: claimed, completed
+/// Card: en_curso, cerrada
 pub fn state_options_for_resource_type(
   locale: Locale,
   resource_type: String,
@@ -1015,17 +1011,12 @@ pub fn state_options_for_resource_type(
   case resource_type {
     "task" -> [
       #(
-        task_status_to_string(Available),
-        t(locale, i18n_text.TaskStateAvailable),
-      ),
-      #(
         task_status_to_string(Claimed(Taken)),
         t(locale, i18n_text.TaskStateClaimed),
       ),
       #(task_status_to_string(Done), t(locale, i18n_text.TaskStateDone)),
     ]
     _ -> [
-      #(card_state_to_string(Draft), t(locale, i18n_text.CardPhaseDraft)),
       #(card_state_to_string(Active), t(locale, i18n_text.CardPhaseActive)),
       #(card_state_to_string(Closed), t(locale, i18n_text.CardPhaseClosed)),
     ]
