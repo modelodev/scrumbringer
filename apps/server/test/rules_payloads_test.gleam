@@ -7,7 +7,7 @@ import scrumbringer_server/http/rules/payloads
 pub fn decode_create_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"resource_type\":\"task\",\"task_type_id\":7,\"to_state\":\"completed\",\"active\":true}",
+      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"resource_type\":\"task\",\"task_type_id\":7,\"to_state\":\"completed\",\"template_id\":11,\"active\":true}",
       decode.dynamic,
     )
 
@@ -17,6 +17,7 @@ pub fn decode_create_payload_test() {
     resource_type: "task",
     task_type_id: Some(7),
     to_state: "completed",
+    template_id: Some(11),
     active: True,
   )) = payloads.decode_create(dynamic)
 }
@@ -34,6 +35,7 @@ pub fn decode_create_payload_defaults_optional_fields_test() {
     resource_type: "card",
     task_type_id: None,
     to_state: "cerrada",
+    template_id: None,
     active: False,
   )) = payloads.decode_create(dynamic)
 }
@@ -41,7 +43,7 @@ pub fn decode_create_payload_defaults_optional_fields_test() {
 pub fn decode_update_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Updated\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":9,\"to_state\":\"claimed\",\"active\":1}",
+      "{\"name\":\"Updated\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":9,\"to_state\":\"claimed\",\"template_id\":12,\"active\":1}",
       decode.dynamic,
     )
 
@@ -51,6 +53,7 @@ pub fn decode_update_payload_test() {
     resource_type: Some("task"),
     task_type_id: Some(9),
     to_state: Some("claimed"),
+    template_id: Some(12),
     active: Some(True),
   )) = payloads.decode_update(dynamic)
 }
@@ -64,6 +67,7 @@ pub fn decode_update_payload_decodes_inactive_flag_test() {
     resource_type: None,
     task_type_id: None,
     to_state: None,
+    template_id: None,
     active: Some(False),
   )) = payloads.decode_update(dynamic)
 }

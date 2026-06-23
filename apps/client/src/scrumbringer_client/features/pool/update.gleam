@@ -969,6 +969,7 @@ fn update_without_view_mode(
     | pool_messages.RuleSubjectChanged(_)
     | pool_messages.RuleTaskTypeChanged(_)
     | pool_messages.RuleEventChanged(_)
+    | pool_messages.RuleTemplateChanged(_)
     | pool_messages.RuleActiveChanged(_)
     | pool_messages.RuleFormSubmitted
     | pool_messages.RuleSaved(_)

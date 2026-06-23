@@ -56,6 +56,7 @@ pub fn create_rule(
   name: String,
   goal: String,
   target: RuleTarget,
+  template_id: Int,
   active: Bool,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
@@ -72,6 +73,7 @@ pub fn create_rule(
         Some(id) -> json.int(id)
       }),
       #("to_state", json.string(workflow.rule_target_to_state_string(target))),
+      #("template_id", json.int(template_id)),
       #("active", json.bool(active)),
     ])
   core.request(
@@ -89,6 +91,7 @@ pub fn update_rule(
   name: String,
   goal: String,
   target: RuleTarget,
+  template_id: Int,
   active: Bool,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
@@ -105,6 +108,7 @@ pub fn update_rule(
         Some(id) -> json.int(id)
       }),
       #("to_state", json.string(workflow.rule_target_to_state_string(target))),
+      #("template_id", json.int(template_id)),
       payload_fields.active_update_field(active),
     ])
   core.request(

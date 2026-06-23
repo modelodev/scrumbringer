@@ -92,6 +92,7 @@ pub type Config(msg) {
     on_rule_subject_changed: fn(String) -> msg,
     on_rule_task_type_changed: fn(String) -> msg,
     on_rule_event_changed: fn(String) -> msg,
+    on_rule_template_changed: fn(String) -> msg,
     on_rule_active_changed: fn(Bool) -> msg,
     on_rule_submitted: msg,
     on_rule_delete_confirmed: msg,
@@ -774,6 +775,10 @@ fn view_rule_form_panel(
             },
             form_field.view("Event", view_rule_event_select(config)),
           ]),
+          form_field.view_required(
+            "Create task from",
+            view_rule_template_select(config),
+          ),
           form_field.view_checkbox(
             t(config, i18n_text.RuleActive),
             input([
@@ -797,6 +802,58 @@ fn view_rule_form_panel(
       ),
     ],
   )
+}
+
+fn view_rule_template_select(config: Config(msg)) -> Element(msg) {
+  select(
+    [
+      attribute.value(config.rules.rule_form_template_id),
+      event.on_input(config.on_rule_template_changed),
+      event.on_change(config.on_rule_template_changed),
+      attribute.attribute("aria-label", "Rule task template"),
+      attribute.attribute("data-testid", "automation-template-picker"),
+    ],
+    [
+      option(
+        [
+          attribute.value(""),
+          attribute.selected(config.rules.rule_form_template_id == ""),
+        ],
+        "Choose a template",
+      ),
+      ..task_template_options(config)
+    ],
+  )
+}
+
+fn task_template_options(config: Config(msg)) -> List(Element(msg)) {
+  available_templates_for_rule_builder(config)
+  |> list.map(fn(tmpl) {
+    let value = int.to_string(tmpl.id)
+    option(
+      [
+        attribute.value(value),
+        attribute.selected(config.rules.rule_form_template_id == value),
+      ],
+      tmpl.name,
+    )
+  })
+}
+
+fn available_templates_for_rule_builder(
+  config: Config(msg),
+) -> List(TaskTemplate) {
+  loaded_task_templates(config.task_templates_project)
+  |> list.append(loaded_task_templates(config.task_templates_org))
+}
+
+fn loaded_task_templates(
+  templates: Remote(List(TaskTemplate)),
+) -> List(TaskTemplate) {
+  case templates {
+    Loaded(values) -> values
+    _ -> []
+  }
 }
 
 fn view_rule_subject_select(config: Config(msg)) -> Element(msg) {
@@ -945,14 +1002,20 @@ fn task_subject_label(config: Config(msg)) -> String {
 }
 
 fn rule_template_preview(config: Config(msg)) -> String {
-  case config.rules.rules_dialog_mode {
-    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
-      case rule.templates {
-        [template, ..] ->
-          "It will create \"" <> template.name <> "\" as available work."
-        [] -> "Attach exactly one template before enabling this rule."
-      }
-    _ -> "Create the rule, then attach exactly one template from this panel."
+  case selected_rule_template_name(config) {
+    opt.Some(name) -> "It will create \"" <> name <> "\" as available work."
+    opt.None -> "Choose one template before saving this rule."
+  }
+}
+
+fn selected_rule_template_name(config: Config(msg)) -> opt.Option(String) {
+  case int.parse(config.rules.rule_form_template_id) {
+    Ok(template_id) ->
+      available_templates_for_rule_builder(config)
+      |> list.find(fn(tmpl) { tmpl.id == template_id })
+      |> result.map(fn(tmpl) { tmpl.name })
+      |> opt.from_result
+    Error(_) -> opt.None
   }
 }
 
@@ -969,6 +1032,7 @@ fn view_rule_form_error(config: Config(msg)) -> Element(msg) {
 fn rule_form_is_valid(config: Config(msg)) -> Bool {
   string.trim(config.rules.rule_form_name) != ""
   && config.rules.rule_form_event != "unsupported"
+  && config.rules.rule_form_template_id != ""
 }
 
 fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {

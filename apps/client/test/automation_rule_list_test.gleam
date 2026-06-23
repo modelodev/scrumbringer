@@ -149,6 +149,7 @@ fn config() -> rule_list.Config(String) {
     on_rule_subject_changed: fn(value) { "subject-" <> value },
     on_rule_task_type_changed: fn(value) { "task-type-" <> value },
     on_rule_event_changed: fn(value) { "event-" <> value },
+    on_rule_template_changed: fn(value) { "template-" <> value },
     on_rule_active_changed: fn(value) {
       "active-"
       <> case value {
@@ -210,6 +211,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
           rule_form_event: "task_completed",
+          rule_form_template_id: "12",
         ),
       ),
     )
@@ -223,7 +225,10 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_contains(html, "Bug")
   assert_contains(html, "Preview")
   assert_contains(html, "When a Bug task is completed")
-  assert_contains(html, "Create the rule, then attach exactly one template")
+  assert_contains(html, "Create task from")
+  assert_contains(html, "data-testid=\"automation-template-picker\"")
+  assert_contains(html, "Follow-up task")
+  assert_contains(html, "It will create &quot;Follow-up task&quot;")
   assert_not_contains(html, "rule-crud-dialog")
   assert_not_contains(html, "Resource Type")
   assert_not_contains(html, "Target State")

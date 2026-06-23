@@ -13,6 +13,7 @@ pub type CreatePayload {
     resource_type: String,
     task_type_id: Option(Int),
     to_state: String,
+    template_id: Option(Int),
     active: Bool,
   )
 }
@@ -24,6 +25,7 @@ pub type UpdatePayload {
     resource_type: Option(String),
     task_type_id: Option(Int),
     to_state: Option(String),
+    template_id: Option(Int),
     active: Option(Bool),
   )
 }
@@ -39,6 +41,11 @@ pub fn decode_create(data: Dynamic) -> Result(CreatePayload, Nil) {
       decode.optional(decode.int),
     )
     use to_state <- decode.field("to_state", decode.string)
+    use template_id <- decode.optional_field(
+      "template_id",
+      None,
+      decode.optional(decode.int),
+    )
     use active <- decode.optional_field("active", False, decode.bool)
     decode.success(CreatePayload(
       name: name,
@@ -46,6 +53,7 @@ pub fn decode_create(data: Dynamic) -> Result(CreatePayload, Nil) {
       resource_type: resource_type,
       task_type_id: task_type_id,
       to_state: to_state,
+      template_id: template_id,
       active: active,
     ))
   }
@@ -81,6 +89,11 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
       None,
       decode.optional(decode.string),
     )
+    use template_id <- decode.optional_field(
+      "template_id",
+      None,
+      decode.optional(decode.int),
+    )
     use active <- decode.optional_field(
       "active",
       None,
@@ -92,6 +105,7 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
       resource_type: resource_type,
       task_type_id: task_type_id,
       to_state: to_state,
+      template_id: template_id,
       active: active,
     ))
   }

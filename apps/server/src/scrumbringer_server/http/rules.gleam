@@ -119,9 +119,9 @@ fn handle_update(
 ) -> wisp.Response {
   case require_update_rule_access(req, ctx, rule_id) {
     Error(resp) -> resp
-    Ok(#(rule, db)) ->
+    Ok(#(rule, workflow, db)) ->
       json_payload.with_response(req, decode_update_payload, fn(payload) {
-        response_from_result(update_rule_flow(rule, db, payload))
+        response_from_result(update_rule_flow(rule, workflow, db, payload))
       })
   }
 }
@@ -217,6 +217,11 @@ fn create_rule_flow(
     task_type,
     payload.to_state,
   ))
+  use _ <- result.try(validate_rule_template_payload(
+    db,
+    workflow,
+    payload.template_id,
+  ))
 
   case
     rules_db.create_rule(
@@ -228,7 +233,14 @@ fn create_rule_flow(
       payload.active,
     )
   {
-    Ok(rule) -> Ok(api.ok(rule_presenters.rule_response(rule)))
+    Ok(rule) -> {
+      use templates <- result.try(sync_rule_template(
+        db,
+        rule.id,
+        payload.template_id,
+      ))
+      Ok(api.ok(rule_presenters.rule_response_with_templates(rule, templates)))
+    }
     Error(error) -> Error(create_rule_error_response(error))
   }
 }
@@ -237,18 +249,22 @@ fn require_update_rule_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   rule_id_str: String,
-) -> Result(#(rules_db.RuleRecord, pog.Connection), wisp.Response) {
-  use #(rule, _workflow, db) <- result.try(load_rule_access(
+) -> Result(
+  #(rules_db.RuleRecord, workflows_db.WorkflowRecord, pog.Connection),
+  wisp.Response,
+) {
+  use #(rule, workflow, db) <- result.try(load_rule_access(
     req,
     ctx,
     rule_id_str,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  Ok(#(rule, db))
+  Ok(#(rule, workflow, db))
 }
 
 fn update_rule_flow(
   rule: rules_db.RuleRecord,
+  workflow: workflows_db.WorkflowRecord,
   db: pog.Connection,
   payload: rule_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
@@ -257,6 +273,11 @@ fn update_rule_flow(
     payload.resource_type,
     payload.task_type_id,
     payload.to_state,
+  ))
+  use _ <- result.try(validate_rule_template_payload(
+    db,
+    workflow,
+    payload.template_id,
   ))
 
   case
@@ -269,7 +290,14 @@ fn update_rule_flow(
       payload.active,
     )
   {
-    Ok(rule) -> Ok(api.ok(rule_presenters.rule_response(rule)))
+    Ok(rule) -> {
+      use templates <- result.try(sync_rule_template(
+        db,
+        rule.id,
+        payload.template_id,
+      ))
+      Ok(api.ok(rule_presenters.rule_response_with_templates(rule, templates)))
+    }
     Error(error) -> Error(rule_write_error_response(error))
   }
 }
@@ -556,6 +584,40 @@ fn delete_rule_db(
   }
 }
 
+fn validate_rule_template_payload(
+  db: pog.Connection,
+  workflow: workflows_db.WorkflowRecord,
+  template_id: Option(Int),
+) -> Result(Nil, wisp.Response) {
+  case template_id {
+    None -> Ok(Nil)
+    Some(value) if value <= 0 ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid template_id"))
+    Some(value) -> validate_template_scope(db, workflow, value)
+  }
+}
+
+fn sync_rule_template(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Option(Int),
+) -> Result(List(workflow.RuleTemplate), wisp.Response) {
+  case template_id {
+    None -> list_rule_templates_response(db, rule_id)
+    Some(value) -> attach_rule_template_db(db, rule_id, value, 1)
+  }
+}
+
+fn list_rule_templates_response(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(List(workflow.RuleTemplate), wisp.Response) {
+  case rules_db.list_rule_templates(db, rule_id) {
+    Ok(templates) -> Ok(templates)
+    Error(error) -> Error(service_error_response.to_database_response(error))
+  }
+}
+
 fn attach_rule_template_db(
   db: pog.Connection,
   rule_id: Int,
@@ -563,12 +625,7 @@ fn attach_rule_template_db(
   execution_order: Int,
 ) -> Result(List(workflow.RuleTemplate), wisp.Response) {
   case rules_db.attach_template(db, rule_id, template_id, execution_order) {
-    Ok(Nil) ->
-      case rules_db.list_rule_templates(db, rule_id) {
-        Ok(templates) -> Ok(templates)
-        Error(error) ->
-          Error(service_error_response.to_database_response(error))
-      }
+    Ok(Nil) -> list_rule_templates_response(db, rule_id)
     Error(error) -> Error(rule_write_error_response(error))
   }
 }

@@ -191,6 +191,10 @@ pub fn try_rules_update(
       #(admin_rules.Model(..state, rule_form_event: value), effect.none())
       |> without_rules_auth_check
 
+    pool_messages.RuleTemplateChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_template_id: value), effect.none())
+      |> without_rules_auth_check
+
     pool_messages.RuleActiveChanged(value) ->
       #(admin_rules.Model(..state, rule_form_active: value), effect.none())
       |> without_rules_auth_check
@@ -1010,6 +1014,7 @@ fn submit_rule_create(
             form.name,
             form.goal,
             form.target,
+            form.template_id,
             form.active,
             feedback.on_rule_saved,
           ),
@@ -1032,6 +1037,7 @@ fn submit_rule_update(
         form.name,
         form.goal,
         form.target,
+        form.template_id,
         form.active,
         feedback.on_rule_saved,
       ),
@@ -1055,7 +1061,13 @@ fn confirm_rule_delete(
 }
 
 type RuleForm {
-  RuleForm(name: String, goal: String, target: RuleTarget, active: Bool)
+  RuleForm(
+    name: String,
+    goal: String,
+    target: RuleTarget,
+    template_id: Int,
+    active: Bool,
+  )
 }
 
 fn parse_rule_form(state: admin_rules.Model) -> Result(RuleForm, String) {
@@ -1064,10 +1076,14 @@ fn parse_rule_form(state: admin_rules.Model) -> Result(RuleForm, String) {
     "" -> Error("Rule name is required")
     _ -> {
       use target <- result.try(parse_rule_target_form(state))
+      use template_id <- result.try(parse_rule_template_id(
+        state.rule_form_template_id,
+      ))
       Ok(RuleForm(
         name: name,
         goal: state.rule_form_goal,
         target: target,
+        template_id: template_id,
         active: state.rule_form_active,
       ))
     }
@@ -1093,6 +1109,17 @@ fn parse_rule_target_form(
     "card_activated" -> Ok(CardRule(card.Active))
     "card_closed" -> Ok(CardRule(card.Closed))
     _ -> Error("Choose a supported automation event")
+  }
+}
+
+fn parse_rule_template_id(value: String) -> Result(Int, String) {
+  case string.trim(value) {
+    "" -> Error("Choose one template")
+    trimmed ->
+      case int.parse(trimmed) {
+        Ok(id) if id > 0 -> Ok(id)
+        _ -> Error("Choose a valid template")
+      }
   }
 }
 
@@ -1251,12 +1278,14 @@ fn open_rule_dialog(
         rule_form_subject: "task",
         rule_form_task_type_id: "",
         rule_form_event: "task_completed",
+        rule_form_template_id: "",
         rule_form_active: True,
         rule_form_submitting: False,
         rule_form_error: opt.None,
       )
     admin_rules.RuleDialogEdit(rule) -> {
       let #(subject, task_type_id, event) = rule_target_form_values(rule.target)
+      let template_id = selected_rule_template_id(rule.templates)
       admin_rules.Model(
         ..state,
         rules_dialog_mode: opt.Some(mode),
@@ -1265,6 +1294,7 @@ fn open_rule_dialog(
         rule_form_subject: subject,
         rule_form_task_type_id: task_type_id,
         rule_form_event: event,
+        rule_form_template_id: template_id,
         rule_form_active: rule.active,
         rule_form_submitting: False,
         rule_form_error: opt.None,
@@ -1277,6 +1307,13 @@ fn open_rule_dialog(
         rule_form_submitting: False,
         rule_form_error: opt.None,
       )
+  }
+}
+
+fn selected_rule_template_id(templates: List(RuleTemplate)) -> String {
+  case templates {
+    [template, ..] -> int.to_string(template.id)
+    [] -> ""
   }
 }
 

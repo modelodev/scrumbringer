@@ -223,6 +223,7 @@ pub type Msg {
   RuleSubjectChanged(String)
   RuleTaskTypeChanged(String)
   RuleEventChanged(String)
+  RuleTemplateChanged(String)
   RuleActiveChanged(Bool)
   RuleFormSubmitted
   RuleSaved(ApiResult(Rule))

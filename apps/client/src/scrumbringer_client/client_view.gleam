@@ -1077,6 +1077,9 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
     on_rule_event_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleEventChanged(value))
     },
+    on_rule_template_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleTemplateChanged(value))
+    },
     on_rule_active_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleActiveChanged(value))
     },
