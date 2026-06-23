@@ -84,6 +84,7 @@ pub type Config(msg) {
     on_rule_subject_changed: fn(String) -> msg,
     on_rule_task_type_changed: fn(String) -> msg,
     on_rule_event_changed: fn(String) -> msg,
+    on_rule_card_scope_changed: fn(String) -> msg,
     on_rule_template_changed: fn(String) -> msg,
     on_rule_active_changed: fn(Bool) -> msg,
     on_rule_submitted: msg,
@@ -503,7 +504,12 @@ fn view_rule_form_panel(
       form(
         [
           attribute.class("form automation-rule-form"),
-          event.on_submit(fn(_) { config.on_rule_submitted }),
+          event.on_submit(fn(_) {
+            case form_disabled {
+              True -> config.on_noop
+              False -> config.on_rule_submitted
+            }
+          }),
         ],
         [
           form_field.view_required(
@@ -530,6 +536,10 @@ fn view_rule_form_panel(
             },
             form_field.view("Event", view_rule_event_select(config)),
           ]),
+          case config.rules.rule_form_subject {
+            "card" -> view_rule_card_scope_select(config)
+            _ -> element.none()
+          },
           form_field.view_required(
             "Create task from",
             view_rule_template_select(config),
@@ -556,6 +566,20 @@ fn view_rule_form_panel(
         ],
       ),
     ],
+  )
+}
+
+fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    "Card level",
+    input([
+      attribute.type_("number"),
+      attribute.attribute("min", "1"),
+      attribute.value(config.rules.rule_form_card_scope),
+      event.on_input(config.on_rule_card_scope_changed),
+      attribute.attribute("aria-label", "Card automation scope"),
+      attribute.placeholder("Any card"),
+    ]),
   )
 }
 
@@ -745,9 +769,22 @@ fn rule_preview_sentence(config: Config(msg)) -> String {
       "When "
       <> task_subject_label(config)
       <> " is completed, work is created in the Pool."
-    "card_activated" -> "When a card is activated, work is created in the Pool."
-    "card_closed" -> "When a card is closed, work is created in the Pool."
+    "card_activated" ->
+      "When "
+      <> card_scope_label(config)
+      <> " is activated, work is created in the Pool."
+    "card_closed" ->
+      "When "
+      <> card_scope_label(config)
+      <> " is closed, work is created in the Pool."
     _ -> "This rule uses a target that requires review before it can run."
+  }
+}
+
+fn card_scope_label(config: Config(msg)) -> String {
+  case string.trim(config.rules.rule_form_card_scope) {
+    "" -> "any card"
+    value -> "a card at level " <> value
   }
 }
 
@@ -798,6 +835,22 @@ fn rule_form_is_valid(config: Config(msg)) -> Bool {
   string.trim(config.rules.rule_form_name) != ""
   && config.rules.rule_form_event != "unsupported"
   && config.rules.rule_form_template_id != ""
+  && rule_card_scope_is_valid(config)
+}
+
+fn rule_card_scope_is_valid(config: Config(msg)) -> Bool {
+  case
+    config.rules.rule_form_subject,
+    string.trim(config.rules.rule_form_card_scope)
+  {
+    "card", "" -> True
+    "card", value ->
+      case int.parse(value) {
+        Ok(depth) -> depth > 0
+        Error(_) -> False
+      }
+    _, _ -> True
+  }
 }
 
 fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {

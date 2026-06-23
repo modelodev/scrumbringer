@@ -105,3 +105,20 @@ pub fn rule_sentence_marks_missing_template_for_review_test() {
 
   let assert "Requires review: add one template" = sentence
 }
+
+pub fn rule_sentence_renders_card_depth_scope_test() {
+  let assert Ok(depth) = automation.card_depth_from_int(2)
+
+  let html =
+    rule_sentence.view(
+      locale.En,
+      rule(automation.CardClosed(automation.AtDepth(depth)), [
+        template("Delivery review", 11),
+      ]),
+      opt.None,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "When a card at level 2 is closed")
+  assert_contains(html, "-&gt; Create Delivery review in the Pool")
+}

@@ -153,6 +153,10 @@ pub fn try_rules_update(
       #(admin_rules.Model(..state, rule_form_event: value), effect.none())
       |> without_rules_auth_check
 
+    pool_messages.RuleCardScopeChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_card_scope: value), effect.none())
+      |> without_rules_auth_check
+
     pool_messages.RuleTemplateChanged(value) ->
       #(admin_rules.Model(..state, rule_form_template_id: value), effect.none())
       |> without_rules_auth_check
@@ -661,6 +665,7 @@ fn rule_subject_changed(
     rule_form_subject: subject,
     rule_form_task_type_id: task_type_id,
     rule_form_event: event,
+    rule_form_card_scope: "",
   )
 }
 
@@ -797,8 +802,14 @@ fn parse_rule_trigger_form(
       ))
       Ok(automation.TaskReleased(task_type_id))
     }
-    "card_activated" -> Ok(automation.CardActivated(automation.AnyCard))
-    "card_closed" -> Ok(automation.CardClosed(automation.AnyCard))
+    "card_activated" -> {
+      use scope <- result.try(parse_rule_card_scope(state.rule_form_card_scope))
+      Ok(automation.CardActivated(scope))
+    }
+    "card_closed" -> {
+      use scope <- result.try(parse_rule_card_scope(state.rule_form_card_scope))
+      Ok(automation.CardClosed(scope))
+    }
     _ -> Error("Choose a supported automation event")
   }
 }
@@ -828,6 +839,23 @@ fn parse_rule_task_type_id(value: String) -> Result(opt.Option(Int), String) {
       case int.parse(trimmed) {
         Ok(id) -> Ok(opt.Some(id))
         Error(_) -> Error("Choose a valid task type")
+      }
+  }
+}
+
+fn parse_rule_card_scope(
+  value: String,
+) -> Result(automation.CardAutomationScope, String) {
+  case string.trim(value) {
+    "" -> Ok(automation.AnyCard)
+    trimmed ->
+      case int.parse(trimmed) {
+        Ok(depth) ->
+          case automation.card_depth_from_int(depth) {
+            Ok(card_depth) -> Ok(automation.AtDepth(card_depth))
+            Error(_) -> Error("Choose a valid card level")
+          }
+        Error(_) -> Error("Choose a valid card level")
       }
   }
 }
@@ -976,13 +1004,14 @@ fn open_rule_dialog(
         rule_form_subject: "task",
         rule_form_task_type_id: "",
         rule_form_event: "task_completed",
+        rule_form_card_scope: "",
         rule_form_template_id: "",
         rule_form_active: True,
         rule_form_submitting: False,
         rule_form_error: opt.None,
       )
     admin_rules.RuleDialogEdit(rule) -> {
-      let #(subject, task_type_id, event) =
+      let #(subject, task_type_id, event, card_scope) =
         rule_trigger_form_values(rule.trigger)
       let template_id = selected_rule_template_id(rule.template)
       admin_rules.Model(
@@ -993,6 +1022,7 @@ fn open_rule_dialog(
         rule_form_subject: subject,
         rule_form_task_type_id: task_type_id,
         rule_form_event: event,
+        rule_form_card_scope: card_scope,
         rule_form_template_id: template_id,
         rule_form_active: automation.status_to_active(rule.status),
         rule_form_submitting: False,
@@ -1029,30 +1059,52 @@ fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
 
 fn rule_trigger_form_values(
   trigger: automation.AutomationTrigger,
-) -> #(String, String, String) {
+) -> #(String, String, String, String) {
   case trigger {
     automation.TaskCreated(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_created",
+      "",
     )
     automation.TaskCompleted(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_completed",
+      "",
     )
     automation.TaskClaimed(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_claimed",
+      "",
     )
     automation.TaskReleased(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_released",
+      "",
     )
-    automation.CardActivated(_) -> #("card", "", "card_activated")
-    automation.CardClosed(_) -> #("card", "", "card_closed")
+    automation.CardActivated(scope) -> #(
+      "card",
+      "",
+      "card_activated",
+      card_scope_form_value(scope),
+    )
+    automation.CardClosed(scope) -> #(
+      "card",
+      "",
+      "card_closed",
+      card_scope_form_value(scope),
+    )
+  }
+}
+
+fn card_scope_form_value(scope: automation.CardAutomationScope) -> String {
+  case scope {
+    automation.AnyCard -> ""
+    automation.AtDepth(depth) ->
+      int.to_string(automation.card_depth_to_int(depth))
   }
 }
 

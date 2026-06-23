@@ -4,6 +4,7 @@
 //// phrase used by the automations console. It does not decide permissions or
 //// trigger actions.
 
+import gleam/int
 import gleam/option as opt
 
 import lustre/attribute
@@ -82,16 +83,32 @@ fn supported_trigger_sentence(
       task_trigger_sentence(locale, task_type_name, "created", "creada")
     automation.TaskReleased(_) ->
       task_trigger_sentence(locale, task_type_name, "released", "liberada")
-    automation.CardActivated(_) ->
+    automation.CardActivated(scope) ->
       case locale {
-        En -> "When any card is activated"
-        Es -> "Cuando cualquier card se active"
+        En -> "When " <> card_scope_sentence_en(scope) <> " is activated"
+        Es -> "Cuando " <> card_scope_sentence_es(scope) <> " se active"
       }
-    automation.CardClosed(_) ->
+    automation.CardClosed(scope) ->
       case locale {
-        En -> "When any card is closed"
-        Es -> "Cuando cualquier card se cierre"
+        En -> "When " <> card_scope_sentence_en(scope) <> " is closed"
+        Es -> "Cuando " <> card_scope_sentence_es(scope) <> " se cierre"
       }
+  }
+}
+
+fn card_scope_sentence_en(scope: automation.CardAutomationScope) -> String {
+  case scope {
+    automation.AnyCard -> "any card"
+    automation.AtDepth(depth) ->
+      "a card at level " <> int.to_string(automation.card_depth_to_int(depth))
+  }
+}
+
+fn card_scope_sentence_es(scope: automation.CardAutomationScope) -> String {
+  case scope {
+    automation.AnyCard -> "cualquier card"
+    automation.AtDepth(depth) ->
+      "una card de nivel " <> int.to_string(automation.card_depth_to_int(depth))
   }
 }
 

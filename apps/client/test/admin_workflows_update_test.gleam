@@ -41,6 +41,14 @@ fn rule(id: Int, name: String) -> Rule {
   )
 }
 
+fn rule_with_trigger(
+  id: Int,
+  name: String,
+  trigger: automation.AutomationTrigger,
+) -> Rule {
+  Rule(..rule(id, name), trigger: trigger)
+}
+
 fn workflow_metrics(workflow_id: Int) -> api_rule_metrics.WorkflowMetrics {
   api_rule_metrics.WorkflowMetrics(
     workflow_id: workflow_id,
@@ -536,6 +544,71 @@ pub fn try_rules_update_open_dialog_returns_local_update_test() {
     )
 
   let assert opt.Some(admin_rules.RuleDialogCreate) = next.rules_dialog_mode
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+}
+
+pub fn try_rules_update_rule_card_scope_change_is_local_test() {
+  let assert opt.Some(workflows_update.RulesUpdate(next, fx, auth_policy)) =
+    workflows_update.try_rules_update(
+      admin_rules.default_model(),
+      pool_messages.RuleCardScopeChanged("2"),
+      rules_context(opt.None),
+      rule_feedback_context(),
+    )
+
+  let assert "2" = next.rule_form_card_scope
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+}
+
+pub fn try_rules_update_open_card_depth_rule_preserves_scope_test() {
+  let assert Ok(depth) = automation.card_depth_from_int(2)
+  let card_rule =
+    rule_with_trigger(
+      7,
+      "Depth close review",
+      automation.CardClosed(automation.AtDepth(depth)),
+    )
+
+  let assert opt.Some(workflows_update.RulesUpdate(next, fx, auth_policy)) =
+    workflows_update.try_rules_update(
+      admin_rules.default_model(),
+      pool_messages.OpenRuleDialog(admin_rules.RuleDialogEdit(card_rule)),
+      rules_context(opt.None),
+      rule_feedback_context(),
+    )
+
+  let assert "card" = next.rule_form_subject
+  let assert "card_closed" = next.rule_form_event
+  let assert "2" = next.rule_form_card_scope
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+}
+
+pub fn try_rules_update_invalid_card_depth_blocks_submit_test() {
+  let state =
+    admin_rules.Model(
+      ..admin_rules.default_model(),
+      rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+      rules_workflow_id: opt.Some(3),
+      rule_form_name: "Bad card scope",
+      rule_form_subject: "card",
+      rule_form_event: "card_activated",
+      rule_form_card_scope: "0",
+      rule_form_template_id: "12",
+    )
+
+  let assert opt.Some(workflows_update.RulesUpdate(next, fx, auth_policy)) =
+    workflows_update.try_rules_update(
+      state,
+      pool_messages.RuleFormSubmitted,
+      rules_context(opt.None),
+      rule_feedback_context(),
+    )
+
+  let assert opt.Some("Choose a valid card level") = next.rule_form_error
+  let assert False = next.rule_form_submitting
   let assert True = fx == effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 }

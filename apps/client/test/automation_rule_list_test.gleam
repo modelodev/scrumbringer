@@ -142,6 +142,7 @@ fn config() -> rule_list.Config(String) {
     on_rule_subject_changed: fn(value) { "subject-" <> value },
     on_rule_task_type_changed: fn(value) { "task-type-" <> value },
     on_rule_event_changed: fn(value) { "event-" <> value },
+    on_rule_card_scope_changed: fn(value) { "card-scope-" <> value },
     on_rule_template_changed: fn(value) { "template-" <> value },
     on_rule_active_changed: fn(value) {
       "active-"
@@ -155,6 +156,32 @@ fn config() -> rule_list.Config(String) {
     on_rule_panel_closed: "closed",
     on_noop: "noop",
   )
+}
+
+pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Delivery review",
+          rule_form_subject: "card",
+          rule_form_event: "card_closed",
+          rule_form_card_scope: "2",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Card level")
+  assert_contains(html, "Card automation scope")
+  assert_contains(html, "placeholder=\"Any card\"")
+  assert_contains(html, "value=\"2\"")
+  assert_contains(html, "When a card at level 2 is closed")
+  assert_not_contains(html, "subtree")
 }
 
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
