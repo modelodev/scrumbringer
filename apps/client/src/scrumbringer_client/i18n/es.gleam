@@ -1156,6 +1156,10 @@ pub fn translate(text: Text) -> String {
     text.TaskDescriptionEmpty -> "Sin descripción todavía"
     text.TaskOperationalSummary -> "Resumen operativo"
     text.TaskOwner -> "Responsable"
+    text.TaskAutomationOrigin -> "Automatización"
+    text.TaskAutomationExecutionLabel(execution_id) ->
+      "Ejecución #" <> int.to_string(execution_id)
+    text.TaskAutomationRuleLabel(rule_id) -> "Regla #" <> int.to_string(rule_id)
     text.TaskDueDateLabel -> "Vence"
     text.NoDueDate -> "Sin vencimiento"
     text.TaskBlockingClear -> "Sin bloqueos activos"

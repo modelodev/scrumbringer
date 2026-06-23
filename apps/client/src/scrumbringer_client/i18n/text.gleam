@@ -976,6 +976,9 @@ pub type Text {
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
+  TaskAutomationOrigin
+  TaskAutomationExecutionLabel(execution_id: Int)
+  TaskAutomationRuleLabel(rule_id: Int)
   TaskDueDateLabel
   NoDueDate
   TaskBlockingClear

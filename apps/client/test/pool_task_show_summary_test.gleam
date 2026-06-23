@@ -3,7 +3,9 @@ import gleam/string
 import lustre/element
 
 import domain/remote.{Loaded}
-import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
+import domain/task.{
+  type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
+}
 import domain/task_state
 import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
@@ -47,6 +49,33 @@ pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
     |> element.to_document_string
 
   assert_contains(html, "Blocked by 1 tasks")
+}
+
+pub fn task_show_summary_links_automation_origin_to_executions_test() {
+  let html =
+    task_show_summary.view(task_show_summary.Config(
+      locale: locale.En,
+      task: Task(
+        ..task(),
+        automation_origin: Some(AutomationOrigin(
+          rule_id: 8,
+          execution_id: Some(101),
+          template_id: Some(12),
+          template_version: Some(3),
+        )),
+      ),
+      dependencies: Loaded([]),
+      parent_card_title: None,
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Automation")
+  assert_contains(html, "Execution #101")
+  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
+  assert_contains(
+    html,
+    "href=\"/config/workflows?project=1&amp;mode=executions\"",
+  )
 }
 
 fn task() -> Task {

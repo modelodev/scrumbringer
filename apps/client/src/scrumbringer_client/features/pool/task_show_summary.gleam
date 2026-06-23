@@ -1,10 +1,11 @@
 //// Operational summary for a Task Show view.
 
+import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, text}
+import lustre/element/html.{a, div, text}
 
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
@@ -13,6 +14,8 @@ import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
+import scrumbringer_client/router
 import scrumbringer_client/ui/task_state
 
 pub type Config {
@@ -32,38 +35,42 @@ pub fn view(config: Config) -> Element(msg) {
     div([attribute.class("task-show-summary-title")], [
       text(t(config.locale, i18n_text.TaskOperationalSummary)),
     ]),
-    div([attribute.class("task-show-summary-grid")], [
-      summary_item(
-        t(config.locale, i18n_text.Status),
-        task_state.label(config.locale, domain_task.status(config.task)),
-        False,
-      ),
-      summary_item(
-        t(config.locale, i18n_text.Priority),
-        t(config.locale, i18n_text.PriorityShort(config.task.priority)),
-        False,
-      ),
-      summary_item(
-        t(config.locale, i18n_text.TaskType),
-        config.task.task_type.name,
-        False,
-      ),
-      summary_item(
-        t(config.locale, i18n_text.ParentCardLabel),
-        card_label(config),
-        card_is_empty(config),
-      ),
-      summary_item(
-        t(config.locale, i18n_text.TaskOwner),
-        owner_label(config),
-        is_owner_empty,
-      ),
-      summary_item(
-        t(config.locale, i18n_text.Blocked),
-        blocking_label(config, blocker_count),
-        blocker_count == 0,
-      ),
-    ]),
+    div(
+      [attribute.class("task-show-summary-grid")],
+      [
+        summary_item(
+          t(config.locale, i18n_text.Status),
+          task_state.label(config.locale, domain_task.status(config.task)),
+          False,
+        ),
+        summary_item(
+          t(config.locale, i18n_text.Priority),
+          t(config.locale, i18n_text.PriorityShort(config.task.priority)),
+          False,
+        ),
+        summary_item(
+          t(config.locale, i18n_text.TaskType),
+          config.task.task_type.name,
+          False,
+        ),
+        summary_item(
+          t(config.locale, i18n_text.ParentCardLabel),
+          card_label(config),
+          card_is_empty(config),
+        ),
+        summary_item(
+          t(config.locale, i18n_text.TaskOwner),
+          owner_label(config),
+          is_owner_empty,
+        ),
+        summary_item(
+          t(config.locale, i18n_text.Blocked),
+          blocking_label(config, blocker_count),
+          blocker_count == 0,
+        ),
+      ]
+        |> list.append(automation_origin_items(config)),
+    ),
   ])
 }
 
@@ -80,6 +87,49 @@ fn summary_item(label: String, value: String, muted: Bool) -> Element(msg) {
       [text(value)],
     ),
   ])
+}
+
+fn automation_origin_items(config: Config) -> List(Element(msg)) {
+  case config.task.automation_origin {
+    opt.Some(origin) -> [automation_origin_item(config, origin)]
+    opt.None -> []
+  }
+}
+
+fn automation_origin_item(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> Element(msg) {
+  div([attribute.class("task-show-summary-item")], [
+    div([attribute.class("task-show-summary-label")], [
+      text(t(config.locale, i18n_text.TaskAutomationOrigin)),
+    ]),
+    div([attribute.class("task-show-summary-value")], [
+      a(
+        [
+          attribute.href(
+            router.format(router.Config(
+              permissions.RuleMetrics,
+              opt.Some(config.task.project_id),
+            )),
+          ),
+          attribute.attribute("data-testid", "automation-created-task-origin"),
+        ],
+        [text(automation_origin_label(config.locale, origin))],
+      ),
+    ]),
+  ])
+}
+
+fn automation_origin_label(
+  locale: Locale,
+  origin: domain_task.AutomationOrigin,
+) -> String {
+  case origin.execution_id {
+    opt.Some(execution_id) ->
+      t(locale, i18n_text.TaskAutomationExecutionLabel(execution_id))
+    opt.None -> t(locale, i18n_text.TaskAutomationRuleLabel(origin.rule_id))
+  }
 }
 
 fn card_label(config: Config) -> String {
