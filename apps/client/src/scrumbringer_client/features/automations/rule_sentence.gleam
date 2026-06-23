@@ -35,21 +35,7 @@ pub fn trigger_sentence(
   rule: workflow.Rule,
   task_type_name: opt.Option(String),
 ) -> String {
-  case workflow.rule_target_to_automation_trigger(rule.target) {
-    Ok(trigger) -> supported_trigger_sentence(locale, trigger, task_type_name)
-    Error(workflow.AmbiguousTaskAvailableTrigger) ->
-      needs_review_sentence(
-        locale,
-        en: "choose TaskCreated or TaskReleased",
-        es: "elige TaskCreated o TaskReleased",
-      )
-    Error(workflow.UnsupportedCardDraftTrigger) ->
-      needs_review_sentence(
-        locale,
-        en: "draft cards are not automation triggers",
-        es: "las cards draft no son triggers de automatizacion",
-      )
-  }
+  supported_trigger_sentence(locale, rule.trigger, task_type_name)
 }
 
 pub fn effect_sentence(locale: Locale, rule: workflow.Rule) -> String {
@@ -69,9 +55,12 @@ pub fn effect_sentence(locale: Locale, rule: workflow.Rule) -> String {
 }
 
 pub fn status_badge(locale: Locale, rule: workflow.Rule) -> Element(msg) {
-  case workflow.rule_target_to_automation_trigger(rule.target), rule.template {
-    Ok(_), opt.Some(_) ->
+  case rule.status, rule.template {
+    automation.Active, opt.Some(_) ->
       badge.new_unchecked(active_label(locale), badge.Success)
+      |> badge.view_with_class("automation-rule-sentence__badge")
+    automation.Paused, opt.Some(_) ->
+      badge.new_unchecked(paused_label(locale), badge.Neutral)
       |> badge.view_with_class("automation-rule-sentence__badge")
     _, _ ->
       badge.new_unchecked(review_label(locale), badge.Warning)
@@ -112,18 +101,11 @@ fn task_trigger_sentence(
   en_event: String,
   es_event: String,
 ) -> String {
-  let type_label = case task_type_name {
-    opt.Some(name) -> name
-    opt.None ->
-      case locale {
-        En -> "any"
-        Es -> "cualquier"
-      }
-  }
-
-  case locale {
-    En -> "When a " <> type_label <> " task is " <> en_event
-    Es -> "Cuando una task " <> type_label <> " sea " <> es_event
+  case locale, task_type_name {
+    En, opt.Some(name) -> "When a " <> name <> " task is " <> en_event
+    En, opt.None -> "When any task is " <> en_event
+    Es, opt.Some(name) -> "Cuando una task " <> name <> " sea " <> es_event
+    Es, opt.None -> "Cuando cualquier task sea " <> es_event
   }
 }
 
@@ -145,5 +127,12 @@ fn review_label(locale: Locale) -> String {
   case locale {
     En -> "Requires review"
     Es -> "Requiere revision"
+  }
+}
+
+fn paused_label(locale: Locale) -> String {
+  case locale {
+    En -> "Paused"
+    Es -> "Pausada"
   }
 }

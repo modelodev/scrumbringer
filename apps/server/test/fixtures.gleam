@@ -396,18 +396,62 @@ fn build_rule_payload(
   let base_fields = [
     #("name", json.string(name)),
     #("goal", json.string(goal)),
-    #("resource_type", json.string(resource_type_str)),
-    #("to_state", json.string(to_state)),
-    #("template_id", json.int(template_id)),
-    #("active", json.bool(True)),
+    #("trigger", trigger_payload(resource_type_str, to_state, task_type_id)),
+    #(
+      "action",
+      json.object([
+        #("type", json.string("create_task")),
+        #("template_id", json.int(template_id)),
+      ]),
+    ),
+    #("status", json.object([#("type", json.string("active"))])),
   ]
 
-  let fields = case task_type_id {
-    Some(id) -> [#("task_type_id", json.int(id)), ..base_fields]
-    None -> base_fields
-  }
+  json.object(base_fields)
+}
 
-  json.object(fields)
+fn trigger_payload(
+  resource_type: String,
+  to_state: String,
+  task_type_id: Option(Int),
+) -> json.Json {
+  case resource_type {
+    "task" ->
+      json.object([
+        #("type", json.string(task_trigger_type(to_state))),
+        #("task_type_id", option_int_json(task_type_id)),
+      ])
+    "card" ->
+      json.object([
+        #("type", json.string(card_trigger_type(to_state))),
+        #("scope", json.object([#("type", json.string("any_card"))])),
+      ])
+    _ -> json.object([])
+  }
+}
+
+fn task_trigger_type(to_state: String) -> String {
+  case to_state {
+    "available" -> "task_created"
+    "claimed" | "ongoing" -> "task_claimed"
+    "completed" -> "task_completed"
+    _ -> "task_completed"
+  }
+}
+
+fn card_trigger_type(to_state: String) -> String {
+  case to_state {
+    "en_curso" -> "card_activated"
+    "cerrada" -> "card_closed"
+    _ -> "card_closed"
+  }
+}
+
+fn option_int_json(value: Option(Int)) -> json.Json {
+  case value {
+    Some(id) -> json.int(id)
+    None -> json.null()
+  }
 }
 
 /// Internal helper to create a rule with a pre-built payload.

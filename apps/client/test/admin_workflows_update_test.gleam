@@ -2,6 +2,7 @@ import gleam/option as opt
 import lustre/effect
 
 import domain/api_error.{ApiError}
+import domain/automation
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_status
 import domain/workflow.{type Rule, type Workflow, Rule, TaskRule, Workflow}
@@ -34,6 +35,9 @@ fn rule(id: Int, name: String) -> Rule {
     name: name,
     goal: opt.None,
     target: TaskRule(task_status.Done, opt.None),
+    trigger: automation.TaskCompleted(opt.None),
+    action: opt.None,
+    status: automation.RequiresReview(automation.TemplateMissing),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: opt.None,

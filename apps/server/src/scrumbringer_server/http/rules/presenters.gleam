@@ -1,5 +1,6 @@
 //// JSON presenters for workflow rule endpoints.
 
+import domain/automation
 import domain/automation/automation_codec
 import domain/workflow
 import gleam/json
@@ -43,6 +44,8 @@ pub fn rule_with_template(
   let resource_type = workflow.rule_target_resource_type(target)
   let task_type_id = workflow.rule_target_task_type_id(target)
   let to_state = workflow.rule_target_to_state_string(target)
+  let action = action_json(template)
+  let status = status_json(template, active)
 
   json.object([
     #("id", json.int(id)),
@@ -51,12 +54,36 @@ pub fn rule_with_template(
     #("goal", json_helpers.option_string_json(goal)),
     #("resource_type", json.string(resource_type)),
     #("trigger", automation_codec.trigger_to_json(trigger)),
+    #("action", action),
+    #("status", status),
     #("task_type_id", json_helpers.option_int_json(task_type_id)),
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),
     #("created_at", json.string(created_at)),
     #("template", option_template_json(template)),
   ])
+}
+
+fn action_json(template: Option(workflow.RuleTemplate)) -> json.Json {
+  case template {
+    Some(template) ->
+      automation_codec.action_to_json(automation.CreateTask(template.id))
+    None -> json.null()
+  }
+}
+
+fn status_json(
+  template: Option(workflow.RuleTemplate),
+  active: Bool,
+) -> json.Json {
+  case template, active {
+    None, _ ->
+      automation_codec.rule_status_to_json(automation.RequiresReview(
+        automation.TemplateMissing,
+      ))
+    Some(_), True -> automation_codec.rule_status_to_json(automation.Active)
+    Some(_), False -> automation_codec.rule_status_to_json(automation.Paused)
+  }
 }
 
 fn option_template_json(value: Option(workflow.RuleTemplate)) -> json.Json {

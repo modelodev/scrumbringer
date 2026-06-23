@@ -1,20 +1,22 @@
 //// JSON payload decoders for workflow rule endpoints.
 
+import domain/automation.{
+  type AutomationAction, type AutomationRuleStatus, type AutomationTrigger,
+  Active,
+}
+import domain/automation/automation_codec
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 import gleam/result
-import scrumbringer_server/http/payload_fields
 
 pub type CreatePayload {
   CreatePayload(
     name: String,
     goal: String,
-    resource_type: String,
-    task_type_id: Option(Int),
-    to_state: String,
-    template_id: Int,
-    active: Bool,
+    trigger: AutomationTrigger,
+    action: AutomationAction,
+    status: AutomationRuleStatus,
   )
 }
 
@@ -22,11 +24,9 @@ pub type UpdatePayload {
   UpdatePayload(
     name: Option(String),
     goal: Option(String),
-    resource_type: Option(String),
-    task_type_id: Option(Int),
-    to_state: Option(String),
-    template_id: Option(Int),
-    active: Option(Bool),
+    trigger: Option(AutomationTrigger),
+    action: Option(AutomationAction),
+    status: Option(AutomationRuleStatus),
   )
 }
 
@@ -34,23 +34,19 @@ pub fn decode_create(data: Dynamic) -> Result(CreatePayload, Nil) {
   let decoder = {
     use name <- decode.field("name", decode.string)
     use goal <- decode.optional_field("goal", "", decode.string)
-    use resource_type <- decode.field("resource_type", decode.string)
-    use task_type_id <- decode.optional_field(
-      "task_type_id",
-      None,
-      decode.optional(decode.int),
+    use trigger <- decode.field("trigger", automation_codec.trigger_decoder())
+    use action <- decode.field("action", automation_codec.action_decoder())
+    use status <- decode.optional_field(
+      "status",
+      Active,
+      automation_codec.rule_status_decoder(),
     )
-    use to_state <- decode.field("to_state", decode.string)
-    use template_id <- decode.field("template_id", decode.int)
-    use active <- decode.optional_field("active", False, decode.bool)
     decode.success(CreatePayload(
       name: name,
       goal: goal,
-      resource_type: resource_type,
-      task_type_id: task_type_id,
-      to_state: to_state,
-      template_id: template_id,
-      active: active,
+      trigger: trigger,
+      action: action,
+      status: status,
     ))
   }
 
@@ -70,39 +66,27 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
       None,
       decode.optional(decode.string),
     )
-    use resource_type <- decode.optional_field(
-      "resource_type",
+    use trigger <- decode.optional_field(
+      "trigger",
       None,
-      decode.optional(decode.string),
+      decode.optional(automation_codec.trigger_decoder()),
     )
-    use task_type_id <- decode.optional_field(
-      "task_type_id",
+    use action <- decode.optional_field(
+      "action",
       None,
-      decode.optional(decode.int),
+      decode.optional(automation_codec.action_decoder()),
     )
-    use to_state <- decode.optional_field(
-      "to_state",
+    use status <- decode.optional_field(
+      "status",
       None,
-      decode.optional(decode.string),
-    )
-    use template_id <- decode.optional_field(
-      "template_id",
-      None,
-      decode.optional(decode.int),
-    )
-    use active <- decode.optional_field(
-      "active",
-      None,
-      payload_fields.optional_active_flag_decoder(),
+      decode.optional(automation_codec.rule_status_decoder()),
     )
     decode.success(UpdatePayload(
       name: name,
       goal: goal,
-      resource_type: resource_type,
-      task_type_id: task_type_id,
-      to_state: to_state,
-      template_id: template_id,
-      active: active,
+      trigger: trigger,
+      action: action,
+      status: status,
     ))
   }
 

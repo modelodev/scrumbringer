@@ -4,6 +4,7 @@ import gleam/set
 import gleam/string
 import lustre/element
 
+import domain/automation
 import domain/remote.{Loaded, NotAsked}
 import domain/task_status
 import domain/task_type.{type TaskType, TaskType}
@@ -88,6 +89,9 @@ fn rule() -> Rule {
     name: "Complete bug workflow",
     goal: opt.Some("Create a follow-up when work completes"),
     target: TaskRule(task_status.Done, opt.Some(5)),
+    trigger: automation.TaskCompleted(opt.Some(5)),
+    action: opt.Some(automation.CreateTask(11)),
+    status: automation.Active,
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: opt.Some(rule_template()),

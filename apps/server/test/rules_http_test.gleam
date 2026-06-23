@@ -84,7 +84,7 @@ pub fn rules_crud_with_selected_template_test() {
       |> simulate.json_body(
         json.object([
           #("name", json.string("Rule 1 Updated")),
-          #("active", json.int(0)),
+          #("status", json.object([#("type", json.string("paused"))])),
         ]),
       ),
     )
@@ -180,10 +180,14 @@ pub fn rule_create_without_template_returns_400_test() {
         json.object([
           #("name", json.string("No Template")),
           #("goal", json.string("Should fail")),
-          #("resource_type", json.string("task")),
-          #("task_type_id", json.int(type_id)),
-          #("to_state", json.string("completed")),
-          #("active", json.bool(True)),
+          #(
+            "trigger",
+            json.object([
+              #("type", json.string("task_completed")),
+              #("task_type_id", json.int(type_id)),
+            ]),
+          ),
+          #("status", json.object([#("type", json.string("active"))])),
         ]),
       ),
     )
@@ -346,11 +350,21 @@ fn create_rule(
         json.object([
           #("name", json.string(name)),
           #("goal", json.string("Test")),
-          #("resource_type", json.string("task")),
-          #("task_type_id", json.int(type_id)),
-          #("to_state", json.string("completed")),
-          #("template_id", json.int(template_id)),
-          #("active", json.bool(True)),
+          #(
+            "trigger",
+            json.object([
+              #("type", json.string("task_completed")),
+              #("task_type_id", json.int(type_id)),
+            ]),
+          ),
+          #(
+            "action",
+            json.object([
+              #("type", json.string("create_task")),
+              #("template_id", json.int(template_id)),
+            ]),
+          ),
+          #("status", json.object([#("type", json.string("active"))])),
         ]),
       ),
     )

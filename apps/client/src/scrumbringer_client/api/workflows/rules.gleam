@@ -8,10 +8,13 @@ import gleam/option.{None, Some}
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/workflow.{type Rule, type RuleTarget}
+import domain/automation.{
+  type AutomationAction, type AutomationRuleStatus, type AutomationTrigger,
+}
+import domain/automation/automation_codec
+import domain/workflow.{type Rule}
 import domain/workflow/workflow_codec
 import scrumbringer_client/api/core
-import scrumbringer_client/api/payload_fields
 
 /// Decoder for rule wrapped in envelope.
 pub fn rule_payload_decoder() -> decode.Decoder(Rule) {
@@ -46,26 +49,18 @@ pub fn create_rule(
   workflow_id: Int,
   name: String,
   goal: String,
-  target: RuleTarget,
-  template_id: Int,
-  active: Bool,
+  trigger: AutomationTrigger,
+  action: AutomationAction,
+  status: AutomationRuleStatus,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([
       #("name", json.string(name)),
       #("goal", json.string(goal)),
-      #(
-        "resource_type",
-        json.string(workflow.rule_target_resource_type(target)),
-      ),
-      #("task_type_id", case workflow.rule_target_task_type_id(target) {
-        None -> json.null()
-        Some(id) -> json.int(id)
-      }),
-      #("to_state", json.string(workflow.rule_target_to_state_string(target))),
-      #("template_id", json.int(template_id)),
-      #("active", json.bool(active)),
+      #("trigger", automation_codec.trigger_to_json(trigger)),
+      #("action", automation_codec.action_to_json(action)),
+      #("status", automation_codec.rule_status_to_json(status)),
     ])
   core.request(
     core.Post,
@@ -81,26 +76,18 @@ pub fn update_rule(
   rule_id: Int,
   name: String,
   goal: String,
-  target: RuleTarget,
-  template_id: Int,
-  active: Bool,
+  trigger: AutomationTrigger,
+  action: AutomationAction,
+  status: AutomationRuleStatus,
   to_msg: fn(ApiResult(Rule)) -> msg,
 ) -> Effect(msg) {
   let body =
     json.object([
       #("name", json.string(name)),
       #("goal", json.string(goal)),
-      #(
-        "resource_type",
-        json.string(workflow.rule_target_resource_type(target)),
-      ),
-      #("task_type_id", case workflow.rule_target_task_type_id(target) {
-        None -> json.null()
-        Some(id) -> json.int(id)
-      }),
-      #("to_state", json.string(workflow.rule_target_to_state_string(target))),
-      #("template_id", json.int(template_id)),
-      payload_fields.active_update_field(active),
+      #("trigger", automation_codec.trigger_to_json(trigger)),
+      #("action", automation_codec.action_to_json(action)),
+      #("status", automation_codec.rule_status_to_json(status)),
     ])
   core.request(
     core.Patch,

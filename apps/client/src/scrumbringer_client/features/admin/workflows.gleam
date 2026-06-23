@@ -24,13 +24,10 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/card
+import domain/automation
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import domain/task_status
 import domain/task_type.{type TaskType}
-import domain/workflow.{
-  type Rule, type RuleTarget, type Workflow, CardRule, TaskRule,
-}
+import domain/workflow.{type Rule, type Workflow}
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/scoped_remote_list
@@ -646,7 +643,9 @@ fn rule_subject_changed(
   subject: String,
 ) -> admin_rules.Model {
   let event = case subject, state.rule_form_event {
+    "task", "task_created" -> "task_created"
     "task", "task_claimed" -> "task_claimed"
+    "task", "task_released" -> "task_released"
     "task", _ -> "task_completed"
     "card", "card_closed" -> "card_closed"
     "card", _ -> "card_activated"
@@ -693,9 +692,9 @@ fn submit_rule_create(
             workflow_id,
             form.name,
             form.goal,
-            form.target,
-            form.template_id,
-            form.active,
+            form.trigger,
+            form.action,
+            form.status,
             feedback.on_rule_saved,
           ),
         )
@@ -716,9 +715,9 @@ fn submit_rule_update(
         rule_id,
         form.name,
         form.goal,
-        form.target,
-        form.template_id,
-        form.active,
+        form.trigger,
+        form.action,
+        form.status,
         feedback.on_rule_saved,
       ),
     )
@@ -744,9 +743,9 @@ type RuleForm {
   RuleForm(
     name: String,
     goal: String,
-    target: RuleTarget,
-    template_id: Int,
-    active: Bool,
+    trigger: automation.AutomationTrigger,
+    action: automation.AutomationAction,
+    status: automation.AutomationRuleStatus,
   )
 }
 
@@ -755,40 +754,59 @@ fn parse_rule_form(state: admin_rules.Model) -> Result(RuleForm, String) {
   case name {
     "" -> Error("Rule name is required")
     _ -> {
-      use target <- result.try(parse_rule_target_form(state))
+      use trigger <- result.try(parse_rule_trigger_form(state))
       use template_id <- result.try(parse_rule_template_id(
         state.rule_form_template_id,
       ))
       Ok(RuleForm(
         name: name,
         goal: state.rule_form_goal,
-        target: target,
-        template_id: template_id,
-        active: state.rule_form_active,
+        trigger: trigger,
+        action: automation.CreateTask(template_id),
+        status: rule_form_status(state),
       ))
     }
   }
 }
 
-fn parse_rule_target_form(
+fn parse_rule_trigger_form(
   state: admin_rules.Model,
-) -> Result(RuleTarget, String) {
+) -> Result(automation.AutomationTrigger, String) {
   case state.rule_form_event {
+    "task_created" -> {
+      use task_type_id <- result.try(parse_rule_task_type_id(
+        state.rule_form_task_type_id,
+      ))
+      Ok(automation.TaskCreated(task_type_id))
+    }
     "task_completed" -> {
       use task_type_id <- result.try(parse_rule_task_type_id(
         state.rule_form_task_type_id,
       ))
-      Ok(TaskRule(task_status.Done, task_type_id))
+      Ok(automation.TaskCompleted(task_type_id))
     }
     "task_claimed" -> {
       use task_type_id <- result.try(parse_rule_task_type_id(
         state.rule_form_task_type_id,
       ))
-      Ok(TaskRule(task_status.Claimed(task_status.Taken), task_type_id))
+      Ok(automation.TaskClaimed(task_type_id))
     }
-    "card_activated" -> Ok(CardRule(card.Active))
-    "card_closed" -> Ok(CardRule(card.Closed))
+    "task_released" -> {
+      use task_type_id <- result.try(parse_rule_task_type_id(
+        state.rule_form_task_type_id,
+      ))
+      Ok(automation.TaskReleased(task_type_id))
+    }
+    "card_activated" -> Ok(automation.CardActivated(automation.AnyCard))
+    "card_closed" -> Ok(automation.CardClosed(automation.AnyCard))
     _ -> Error("Choose a supported automation event")
+  }
+}
+
+fn rule_form_status(state: admin_rules.Model) -> automation.AutomationRuleStatus {
+  case state.rule_form_active {
+    True -> automation.Active
+    False -> automation.Paused
   }
 }
 
@@ -964,7 +982,8 @@ fn open_rule_dialog(
         rule_form_error: opt.None,
       )
     admin_rules.RuleDialogEdit(rule) -> {
-      let #(subject, task_type_id, event) = rule_target_form_values(rule.target)
+      let #(subject, task_type_id, event) =
+        rule_trigger_form_values(rule.trigger)
       let template_id = selected_rule_template_id(rule.template)
       admin_rules.Model(
         ..state,
@@ -1008,26 +1027,32 @@ fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
   )
 }
 
-fn rule_target_form_values(target: RuleTarget) -> #(String, String, String) {
-  case target {
-    TaskRule(task_status.Done, task_type_id) -> #(
+fn rule_trigger_form_values(
+  trigger: automation.AutomationTrigger,
+) -> #(String, String, String) {
+  case trigger {
+    automation.TaskCreated(task_type_id) -> #(
+      "task",
+      optional_int_text(task_type_id),
+      "task_created",
+    )
+    automation.TaskCompleted(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_completed",
     )
-    TaskRule(task_status.Claimed(_), task_type_id) -> #(
+    automation.TaskClaimed(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_claimed",
     )
-    TaskRule(_, task_type_id) -> #(
+    automation.TaskReleased(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
-      "unsupported",
+      "task_released",
     )
-    CardRule(card.Active) -> #("card", "", "card_activated")
-    CardRule(card.Closed) -> #("card", "", "card_closed")
-    CardRule(_) -> #("card", "", "unsupported")
+    automation.CardActivated(_) -> #("card", "", "card_activated")
+    automation.CardClosed(_) -> #("card", "", "card_closed")
   }
 }
 

@@ -175,6 +175,26 @@ pub fn valid_rule_draft_action(valid: ValidRuleDraft) -> AutomationAction {
   action
 }
 
+pub fn action_template_id(action: AutomationAction) -> Int {
+  case action {
+    CreateTask(template_id) -> template_id
+  }
+}
+
+pub fn status_to_active(status: AutomationRuleStatus) -> Bool {
+  case status {
+    Active -> True
+    Paused | RequiresReview(_) -> False
+  }
+}
+
+pub fn active_to_rule_status(active: Bool) -> AutomationRuleStatus {
+  case active {
+    True -> Active
+    False -> Paused
+  }
+}
+
 pub type AutomationProcessResult {
   Executed(execution_id: Int)
   NoMatchingRule
@@ -310,6 +330,21 @@ pub fn trigger_task_type_id(trigger: AutomationTrigger) -> Option(Int) {
     | TaskCompleted(task_type_id) -> task_type_id
     CardActivated(_) | CardClosed(_) -> None
   }
+}
+
+pub fn trigger_to_db_values(
+  trigger: AutomationTrigger,
+) -> #(String, Int, String) {
+  let task_type_id = case trigger_task_type_id(trigger) {
+    Some(id) -> id
+    None -> 0
+  }
+
+  #(
+    trigger_resource_type(trigger),
+    task_type_id,
+    trigger_to_state_string(trigger),
+  )
 }
 
 pub fn available_template_variables(trigger: AutomationTrigger) -> List(String) {

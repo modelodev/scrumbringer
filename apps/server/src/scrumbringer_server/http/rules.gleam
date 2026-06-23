@@ -20,12 +20,12 @@
 //// - Uses `use_case/rules_db` and `use_case/workflows_db` for repository
 //// - Uses `http/authorization` for access control
 
+import domain/automation
 import domain/workflow
 import gleam/http
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import helpers/option as option_helpers
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -163,17 +163,8 @@ fn create_rule_flow(
   db: pog.Connection,
   payload: rule_payloads.CreatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use task_type <- result.try(normalize_task_type_create(payload.task_type_id))
-  use target <- result.try(parse_rule_target(
-    payload.resource_type,
-    task_type,
-    payload.to_state,
-  ))
-  use _ <- result.try(validate_required_rule_template(
-    db,
-    workflow,
-    payload.template_id,
-  ))
+  let template_id = automation.action_template_id(payload.action)
+  use _ <- result.try(validate_required_rule_template(db, workflow, template_id))
 
   case
     rules_db.create_rule(
@@ -181,15 +172,16 @@ fn create_rule_flow(
       workflow.id,
       payload.name,
       payload.goal,
-      target,
-      payload.active,
+      payload.trigger,
+      payload.action,
+      payload.status,
     )
   {
     Ok(rule) -> {
       use template <- result.try(sync_rule_template(
         db,
         rule.id,
-        Some(payload.template_id),
+        Some(template_id),
       ))
       Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
     }
@@ -220,17 +212,12 @@ fn update_rule_flow(
   db: pog.Connection,
   payload: rule_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use target_value <- result.try(resolve_update_target(
-    rule.target,
-    payload.resource_type,
-    payload.task_type_id,
-    payload.to_state,
-  ))
+  let template_id = option_action_template_id(payload.action)
   use _ <- result.try(validate_update_rule_template(
     db,
     workflow,
     rule.id,
-    payload.template_id,
+    template_id,
   ))
 
   case
@@ -239,16 +226,13 @@ fn update_rule_flow(
       rule.id,
       payload.name,
       payload.goal,
-      target_value,
-      payload.active,
+      payload.trigger,
+      payload.action,
+      payload.status,
     )
   {
     Ok(rule) -> {
-      use template <- result.try(sync_rule_template(
-        db,
-        rule.id,
-        payload.template_id,
-      ))
+      use template <- result.try(sync_rule_template(db, rule.id, template_id))
       Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
     }
     Error(error) -> Error(rule_write_error_response(error))
@@ -377,100 +361,6 @@ fn decode_update_payload(
   })
 }
 
-fn normalize_task_type_create(
-  task_type_id: Option(Int),
-) -> Result(Option(Int), wisp.Response) {
-  case task_type_id {
-    Some(value) if value <= 0 ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
-    _ -> Ok(task_type_id)
-  }
-}
-
-fn normalize_task_type_patch(
-  task_type_id: Option(Int),
-) -> Result(Option(Int), wisp.Response) {
-  case task_type_id {
-    Some(value) if value <= 0 -> Ok(None)
-    _ -> Ok(task_type_id)
-  }
-}
-
-fn resolve_update_target(
-  current: workflow.RuleTarget,
-  resource_type: Option(String),
-  task_type_id: Option(Int),
-  to_state: Option(String),
-) -> Result(Option(workflow.RuleTarget), wisp.Response) {
-  case resource_type, task_type_id, to_state {
-    None, None, None -> Ok(None)
-    _, _, _ -> {
-      let resource_type_value =
-        option_helpers.option_to_value(
-          resource_type,
-          workflow.rule_target_resource_type(current),
-        )
-      use task_type_value <- result.try(resolve_update_task_type(
-        current,
-        resource_type_value,
-        task_type_id,
-      ))
-      let to_state_value =
-        option_helpers.option_to_value(
-          to_state,
-          workflow.rule_target_to_state_string(current),
-        )
-      use target <- result.try(parse_rule_target(
-        resource_type_value,
-        task_type_value,
-        to_state_value,
-      ))
-      Ok(Some(target))
-    }
-  }
-}
-
-fn resolve_update_task_type(
-  current: workflow.RuleTarget,
-  resource_type: String,
-  task_type_id: Option(Int),
-) -> Result(Option(Int), wisp.Response) {
-  case task_type_id {
-    Some(_) -> normalize_task_type_patch(task_type_id)
-    None ->
-      case resource_type {
-        "task" -> Ok(workflow.rule_target_task_type_id(current))
-        _ -> Ok(None)
-      }
-  }
-}
-
-fn parse_rule_target(
-  resource_type: String,
-  task_type_id: Option(Int),
-  to_state: String,
-) -> Result(workflow.RuleTarget, wisp.Response) {
-  case workflow.parse_rule_target(resource_type, task_type_id, to_state) {
-    Ok(target) -> Ok(target)
-    Error(error) -> Error(rule_target_error_response(error))
-  }
-}
-
-fn rule_target_error_response(
-  error: workflow.RuleTargetValidationError,
-) -> wisp.Response {
-  case error {
-    workflow.UnknownRuleResourceType(_) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
-    workflow.CardRuleCannotHaveTaskType ->
-      api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
-    workflow.InvalidTaskRuleState(_) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid task to_state")
-    workflow.InvalidCardRuleState(_) ->
-      api.error(422, "VALIDATION_ERROR", "Invalid card to_state")
-  }
-}
-
 fn delete_rule_db(
   db: pog.Connection,
   rule_id: Int,
@@ -478,6 +368,15 @@ fn delete_rule_db(
   case rules_db.delete_rule(db, rule_id) {
     Ok(Nil) -> Ok(Nil)
     Error(error) -> Error(rule_write_error_response(error))
+  }
+}
+
+fn option_action_template_id(
+  action: Option(automation.AutomationAction),
+) -> Option(Int) {
+  case action {
+    Some(action) -> Some(automation.action_template_id(action))
+    None -> None
   }
 }
 
@@ -607,10 +506,10 @@ fn template_scope_error_response(
 
 fn rule_write_error_response(error: service_error.ServiceError) -> wisp.Response {
   case error {
-    service_error.InvalidReference("resource_type") ->
-      api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
     service_error.InvalidReference("task_type_id") ->
       api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
+    service_error.InvalidReference("template_id") ->
+      api.error(422, "VALIDATION_ERROR", "Invalid template_id")
     _ -> service_error_response.to_response(error)
   }
 }

@@ -2,30 +2,29 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{None, Some}
 
+import domain/automation
 import scrumbringer_server/http/rules/payloads
 
 pub fn decode_create_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"resource_type\":\"task\",\"task_type_id\":7,\"to_state\":\"completed\",\"template_id\":11,\"active\":true}",
+      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":7},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"}}",
       decode.dynamic,
     )
 
   let assert Ok(payloads.CreatePayload(
     name: "Rule",
     goal: "Ship",
-    resource_type: "task",
-    task_type_id: Some(7),
-    to_state: "completed",
-    template_id: 11,
-    active: True,
+    trigger: automation.TaskCompleted(Some(7)),
+    action: automation.CreateTask(11),
+    status: automation.Active,
   )) = payloads.decode_create(dynamic)
 }
 
 pub fn decode_create_payload_requires_template_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Rule\",\"resource_type\":\"card\",\"to_state\":\"cerrada\"}",
+      "{\"name\":\"Rule\",\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}}}",
       decode.dynamic,
     )
 
@@ -35,37 +34,35 @@ pub fn decode_create_payload_requires_template_test() {
 pub fn decode_update_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Updated\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":9,\"to_state\":\"claimed\",\"template_id\":12,\"active\":1}",
+      "{\"name\":\"Updated\",\"goal\":null,\"trigger\":{\"type\":\"task_claimed\",\"task_type_id\":9},\"action\":{\"type\":\"create_task\",\"template_id\":12},\"status\":{\"type\":\"active\"}}",
       decode.dynamic,
     )
 
   let assert Ok(payloads.UpdatePayload(
     name: Some("Updated"),
     goal: None,
-    resource_type: Some("task"),
-    task_type_id: Some(9),
-    to_state: Some("claimed"),
-    template_id: Some(12),
-    active: Some(True),
+    trigger: Some(automation.TaskClaimed(Some(9))),
+    action: Some(automation.CreateTask(12)),
+    status: Some(automation.Active),
   )) = payloads.decode_update(dynamic)
 }
 
-pub fn decode_update_payload_decodes_inactive_flag_test() {
-  let assert Ok(dynamic) = json.parse("{\"active\":0}", decode.dynamic)
+pub fn decode_update_payload_decodes_paused_status_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"status\":{\"type\":\"paused\"}}", decode.dynamic)
 
   let assert Ok(payloads.UpdatePayload(
     name: None,
     goal: None,
-    resource_type: None,
-    task_type_id: None,
-    to_state: None,
-    template_id: None,
-    active: Some(False),
+    trigger: None,
+    action: None,
+    status: Some(automation.Paused),
   )) = payloads.decode_update(dynamic)
 }
 
-pub fn decode_update_payload_rejects_unknown_active_flag_test() {
-  let assert Ok(dynamic) = json.parse("{\"active\":2}", decode.dynamic)
+pub fn decode_update_payload_rejects_unknown_status_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"status\":{\"type\":\"archived\"}}", decode.dynamic)
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
 }

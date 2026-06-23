@@ -667,8 +667,10 @@ fn view_rule_event_select(config: Config(msg)) -> Element(msg) {
       #("card_closed", "is closed"),
     ]
     _ -> [
+      #("task_created", "is created"),
       #("task_completed", "is completed"),
       #("task_claimed", "is claimed"),
+      #("task_released", "is released"),
     ]
   }
 
@@ -708,10 +710,18 @@ fn view_rule_preview(config: Config(msg)) -> Element(msg) {
 
 fn rule_preview_sentence(config: Config(msg)) -> String {
   case config.rules.rule_form_event {
+    "task_created" ->
+      "When "
+      <> task_subject_label(config)
+      <> " is created, work is created in the Pool."
     "task_claimed" ->
       "When "
       <> task_subject_label(config)
       <> " is claimed, work is created in the Pool."
+    "task_released" ->
+      "When "
+      <> task_subject_label(config)
+      <> " is released, work is created in the Pool."
     "task_completed" ->
       "When "
       <> task_subject_label(config)

@@ -3,6 +3,8 @@
 import gleam/dynamic/decode
 import gleam/option
 
+import domain/automation
+import domain/automation/automation_codec
 import domain/task_status
 import domain/workflow.{
   type Rule, type RuleTarget, type RuleTargetValidationError, type RuleTemplate,
@@ -44,16 +46,24 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
   use workflow_id <- decode.field("workflow_id", decode.int)
   use name <- decode.field("name", decode.string)
   use goal <- decode.field("goal", decode.optional(decode.string))
-  use resource_type <- decode.field("resource_type", decode.string)
-  use task_type_id <- decode.field("task_type_id", decode.optional(decode.int))
-  use to_state <- decode.field("to_state", decode.string)
+  use trigger <- decode.field("trigger", automation_codec.trigger_decoder())
+  use action <- decode.optional_field(
+    "action",
+    option.None,
+    decode.optional(automation_codec.action_decoder()),
+  )
+  use status <- decode.field("status", automation_codec.rule_status_decoder())
   use active <- decode.field("active", decode.bool)
   use created_at <- decode.field("created_at", decode.string)
   use template <- decode.field(
     "template",
     decode.optional(rule_template_decoder()),
   )
-  case decode_rule_target(resource_type, task_type_id, to_state) {
+  let #(resource_type, task_type_id, to_state) =
+    automation.trigger_to_db_values(trigger)
+  case
+    decode_rule_target(resource_type, db_task_type_id(task_type_id), to_state)
+  {
     Ok(target) ->
       decode.success(Rule(
         id: id,
@@ -61,6 +71,9 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
         name: name,
         goal: goal,
         target: target,
+        trigger: trigger,
+        action: action,
+        status: status,
         active: active,
         created_at: created_at,
         template: template,
@@ -81,6 +94,13 @@ fn decode_rule_target(
   parse_rule_target(resource_type, task_type_id, to_state)
 }
 
+fn db_task_type_id(value: Int) -> option.Option(Int) {
+  case value {
+    id if id > 0 -> option.Some(id)
+    _ -> option.None
+  }
+}
+
 fn rule_decode_placeholder() -> Rule {
   Rule(
     id: 0,
@@ -88,6 +108,9 @@ fn rule_decode_placeholder() -> Rule {
     name: "",
     goal: option.None,
     target: TaskRule(task_status.Available, option.None),
+    trigger: automation.TaskCompleted(option.None),
+    action: option.None,
+    status: automation.RequiresReview(automation.InvalidMigratedData),
     active: False,
     created_at: "",
     template: option.None,

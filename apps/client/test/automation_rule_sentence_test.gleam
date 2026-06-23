@@ -1,7 +1,9 @@
 import gleam/option as opt
+import gleam/result
 import gleam/string
 import lustre/element
 
+import domain/automation
 import domain/card
 import domain/task_status
 import domain/workflow.{
@@ -43,10 +45,32 @@ fn rule(target: RuleTarget, templates: List(RuleTemplate)) -> Rule {
     name: "Complete bug workflow",
     goal: opt.None,
     target: target,
+    trigger: workflow.rule_target_to_automation_trigger(target)
+      |> result.unwrap(automation.TaskCreated(opt.None)),
+    action: option_action(template),
+    status: rule_status(template),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: template,
   )
+}
+
+fn option_action(
+  template: opt.Option(RuleTemplate),
+) -> opt.Option(automation.AutomationAction) {
+  case template {
+    opt.Some(template) -> opt.Some(automation.CreateTask(template.id))
+    opt.None -> opt.None
+  }
+}
+
+fn rule_status(
+  template: opt.Option(RuleTemplate),
+) -> automation.AutomationRuleStatus {
+  case template {
+    opt.Some(_) -> automation.Active
+    opt.None -> automation.RequiresReview(automation.TemplateMissing)
+  }
 }
 
 pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
@@ -62,7 +86,7 @@ pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
   assert_contains(html, "-&gt; Create Bug triage in the Pool")
 }
 
-pub fn rule_sentence_marks_ambiguous_available_target_for_review_test() {
+pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
   let html =
     rule_sentence.view(
       locale.En,
@@ -73,7 +97,7 @@ pub fn rule_sentence_marks_ambiguous_available_target_for_review_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Requires review: choose TaskCreated or TaskReleased")
+  assert_contains(html, "When any task is created")
 }
 
 pub fn rule_sentence_marks_missing_template_for_review_test() {

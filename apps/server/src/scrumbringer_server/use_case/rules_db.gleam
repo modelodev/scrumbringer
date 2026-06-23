@@ -266,19 +266,21 @@ pub fn get_rule(
 /// Creates a new rule for a workflow.
 ///
 /// Example:
-///   create_rule(db, workflow_id, name, goal, target)
+///   create_rule(db, workflow_id, name, goal, trigger, action, status)
 pub fn create_rule(
   db: pog.Connection,
   workflow_id: Int,
   name: String,
   goal: String,
-  target: workflow.RuleTarget,
-  active: Bool,
+  trigger: automation.AutomationTrigger,
+  action: automation.AutomationAction,
+  status: automation.AutomationRuleStatus,
 ) -> Result(RuleRecord, ServiceError) {
+  use _ <- result.try(validate_rule_action(action))
   let #(resource_type_value, task_type_value, to_state_value) =
-    workflow.rule_target_to_db_values(target)
-  use trigger <- result.try(rule_target_to_trigger(target))
+    automation.trigger_to_db_values(trigger)
   let trigger_kind_value = automation.trigger_kind(trigger)
+  let active = automation.status_to_active(status)
 
   create_rule_in_db(
     db,
@@ -344,18 +346,28 @@ fn map_create_rule_constraint(
 /// Updates an existing rule.
 ///
 /// Example:
-///   update_rule(db, rule_id, name, goal, target)
+///   update_rule(db, rule_id, name, goal, trigger, action, status)
 pub fn update_rule(
   db: pog.Connection,
   rule_id: Int,
   name: Option(String),
   goal: Option(String),
-  target: Option(workflow.RuleTarget),
-  active: Option(Bool),
+  trigger: Option(automation.AutomationTrigger),
+  action: Option(automation.AutomationAction),
+  status: Option(automation.AutomationRuleStatus),
 ) -> Result(RuleRecord, ServiceError) {
   case sql.rules_get(db, rule_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
-      update_rule_with_row(db, rule_id, row, name, goal, target, active)
+      update_rule_with_row(
+        db,
+        rule_id,
+        row,
+        name,
+        goal,
+        trigger,
+        action,
+        status,
+      )
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(DbError(error))
   }
@@ -367,24 +379,27 @@ fn update_rule_with_row(
   row: sql.RulesGetRow,
   name: Option(String),
   goal: Option(String),
-  target: Option(workflow.RuleTarget),
-  active: Option(Bool),
+  trigger: Option(automation.AutomationTrigger),
+  action: Option(automation.AutomationAction),
+  status: Option(automation.AutomationRuleStatus),
 ) -> Result(RuleRecord, ServiceError) {
   let name_value = option_helpers.option_to_value(name, row.name)
   let goal_value = option_helpers.option_to_value(goal, row.goal)
-  let active_value = option_helpers.option_to_value(active, row.active)
-
-  use stored_target <- result.try(parse_stored_target(
-    row.resource_type,
+  use _ <- result.try(validate_optional_rule_action(action))
+  use stored_trigger <- result.try(parse_stored_trigger(
+    row.trigger_kind,
     row.task_type_id,
-    row.to_state,
   ))
-  let target_value = option_helpers.option_to_value(target, stored_target)
-  use trigger <- result.try(rule_target_to_trigger(target_value))
+  let trigger_value = option_helpers.option_to_value(trigger, stored_trigger)
+  let status_value =
+    option_helpers.option_to_value(
+      status,
+      automation.active_to_rule_status(row.active),
+    )
   let #(resource_type_param, task_type_param, to_state_param) =
-    workflow.rule_target_to_db_values(target_value)
-  let trigger_kind_param = automation.trigger_kind(trigger)
-  let active_flag = case active_value {
+    automation.trigger_to_db_values(trigger_value)
+  let trigger_kind_param = automation.trigger_kind(trigger_value)
+  let active_flag = case automation.status_to_active(status_value) {
     True -> 1
     False -> 0
   }
@@ -433,23 +448,21 @@ fn update_rule_in_db(
   }
 }
 
-fn rule_target_to_trigger(
-  target: workflow.RuleTarget,
-) -> Result(automation.AutomationTrigger, ServiceError) {
-  workflow.rule_target_to_automation_trigger(target)
-  |> result.map_error(fn(error) {
-    Unexpected(rule_target_trigger_error_label(error))
-  })
+fn validate_rule_action(
+  action: automation.AutomationAction,
+) -> Result(Nil, ServiceError) {
+  case action {
+    automation.CreateTask(template_id) if template_id > 0 -> Ok(Nil)
+    automation.CreateTask(_) -> Error(InvalidReference("template_id"))
+  }
 }
 
-fn rule_target_trigger_error_label(
-  error: workflow.RuleTargetTriggerError,
-) -> String {
-  case error {
-    workflow.AmbiguousTaskAvailableTrigger ->
-      "Task available target must be represented as TaskCreated or TaskReleased"
-    workflow.UnsupportedCardDraftTrigger ->
-      "Draft cards are not automation triggers"
+fn validate_optional_rule_action(
+  action: Option(automation.AutomationAction),
+) -> Result(Nil, ServiceError) {
+  case action {
+    Some(action) -> validate_rule_action(action)
+    None -> Ok(Nil)
   }
 }
 
