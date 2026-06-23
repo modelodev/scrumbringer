@@ -10,7 +10,7 @@ pub fn templates_response(
   json.object([#("templates", json.array(values, of: template))])
 }
 
-/// Story 4.9 AC20: Added rules_count field.
+/// Story 4.9 AC20: Added template usage counters.
 pub fn template(template: task_templates_db.TaskTemplate) -> json.Json {
   let task_templates_db.TaskTemplate(
     id: id,
@@ -24,6 +24,8 @@ pub fn template(template: task_templates_db.TaskTemplate) -> json.Json {
     created_by: created_by,
     created_at: created_at,
     rules_count: rules_count,
+    created_tasks_count: created_tasks_count,
+    last_execution_at: last_execution_at,
   ) = template
 
   json.object([
@@ -38,6 +40,8 @@ pub fn template(template: task_templates_db.TaskTemplate) -> json.Json {
     #("created_by", json.int(created_by)),
     #("created_at", json.string(created_at)),
     #("rules_count", json.int(rules_count)),
+    #("created_tasks_count", json.int(created_tasks_count)),
+    #("last_execution_at", json_helpers.option_string_json(last_execution_at)),
   ])
 }
 

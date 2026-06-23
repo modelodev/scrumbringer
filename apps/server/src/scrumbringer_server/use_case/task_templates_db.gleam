@@ -29,7 +29,7 @@ import scrumbringer_server/use_case/service_error.{
   type ServiceError, Conflict, DbError, InvalidReference, NotFound,
 }
 
-/// Template definition for creating tasks (includes rules_count).
+/// Template definition for creating tasks and automation usage counters.
 pub type TaskTemplate {
   TaskTemplate(
     id: Int,
@@ -43,6 +43,8 @@ pub type TaskTemplate {
     created_by: Int,
     created_at: String,
     rules_count: Int,
+    created_tasks_count: Int,
+    last_execution_at: Option(String),
   )
 }
 
@@ -66,7 +68,7 @@ fn priority_update_value(value: Option(Int)) -> Int {
   option_helpers.option_to_value(value, unchanged_positive_int_update_value)
 }
 
-/// Story 4.9 AC20: Includes rules_count from SQL.
+/// Story 4.9 AC20: Includes template usage counters from SQL.
 fn from_list_project_row(
   row: sql.TaskTemplatesListForProjectRow,
 ) -> Result(TaskTemplate, ServiceError) {
@@ -82,6 +84,8 @@ fn from_list_project_row(
     row.created_by,
     row.created_at,
     row.rules_count,
+    row.created_tasks_count,
+    row.last_execution_at,
   )
 }
 
@@ -100,6 +104,8 @@ fn from_get_row(
     row.created_by,
     row.created_at,
     0,
+    0,
+    "",
   )
 }
 
@@ -118,6 +124,8 @@ fn from_create_row(
     row.created_by,
     row.created_at,
     0,
+    0,
+    "",
   )
 }
 
@@ -136,6 +144,8 @@ fn from_update_row(
     row.created_by,
     row.created_at,
     0,
+    0,
+    "",
   )
 }
 
@@ -151,6 +161,8 @@ fn from_fields(
   created_by: Int,
   created_at: String,
   rules_count: Int,
+  created_tasks_count: Int,
+  last_execution_at: String,
 ) -> Result(TaskTemplate, ServiceError) {
   Ok(TaskTemplate(
     id: id,
@@ -164,6 +176,8 @@ fn from_fields(
     created_by: created_by,
     created_at: created_at,
     rules_count: rules_count,
+    created_tasks_count: created_tasks_count,
+    last_execution_at: option_helpers.string_to_option(last_execution_at),
   ))
 }
 

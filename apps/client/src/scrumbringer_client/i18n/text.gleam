@@ -821,6 +821,9 @@ pub type Text {
   TaskTemplateScope
   TaskTemplateUsages
   TaskTemplateUnused
+  TaskTemplateCreatedTasks
+  TaskTemplateLastExecution
+  TaskTemplateNeverExecuted
   TaskTemplateCreated
   TaskTemplateUpdated
   CreateTaskTemplate

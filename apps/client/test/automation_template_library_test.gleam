@@ -30,7 +30,27 @@ fn sample_template() -> TaskTemplate {
     priority: 4,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    rules_count: 2,
+    created_tasks_count: 8,
+    last_execution_at: opt.Some("2026-06-08T10:00:00Z"),
+  )
+}
+
+fn unused_template() -> TaskTemplate {
+  TaskTemplate(
+    id: 8,
+    org_id: 1,
+    project_id: opt.Some(3),
+    name: "Review backlog",
+    description: opt.Some("Review with no rules"),
+    type_id: 2,
+    type_name: "Bug",
+    priority: 3,
+    created_by: 1,
+    created_at: "2026-01-02T00:00:00Z",
     rules_count: 0,
+    created_tasks_count: 0,
+    last_execution_at: opt.None,
   )
 }
 
@@ -49,7 +69,7 @@ fn config() -> template_library.Config(String) {
     locale: locale.En,
     selected_project: opt.None,
     selected_project_id: opt.Some(3),
-    templates: Loaded([sample_template()]),
+    templates: Loaded([sample_template(), unused_template()]),
     selected_template_id: opt.None,
     dialog_mode: opt.None,
     task_types: Loaded([sample_task_type()]),
@@ -90,9 +110,14 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "data-testid=\"automation-template-search\"")
   assert_contains(html, "data-testid=\"automation-template-row\"")
   assert_contains(html, "Regression checklist")
+  assert_contains(html, "Review backlog")
   assert_contains(html, "Bug")
   assert_contains(html, "4")
   assert_contains(html, "Uses")
+  assert_contains(html, "Created")
+  assert_contains(html, "Last")
+  assert_contains(html, "2026-06-08T10:00:00Z")
+  assert_contains(html, "Never")
   assert_contains(html, "automation-template-unused-badge")
   assert_contains(html, "Unused")
   assert_contains(html, "template-edit-btn")
@@ -111,8 +136,12 @@ pub fn automation_template_library_localizes_unused_template_warning_test() {
 
   assert_contains(html, "Usos")
   assert_contains(html, "Sin uso")
+  assert_contains(html, "Creadas")
+  assert_contains(html, "Última")
+  assert_contains(html, "Nunca")
   assert_not_contains(html, "Uses")
   assert_not_contains(html, "Unused")
+  assert_not_contains(html, "Never")
 }
 
 pub fn automation_template_library_renders_empty_state_without_root_model_test() {

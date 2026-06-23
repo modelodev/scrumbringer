@@ -82,6 +82,16 @@ pub fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
   use rules_count <- decode.optional_field("rules_count", 0, decode.int)
+  use created_tasks_count <- decode.optional_field(
+    "created_tasks_count",
+    0,
+    decode.int,
+  )
+  use last_execution_at <- decode.optional_field(
+    "last_execution_at",
+    option.None,
+    decode.optional(decode.string),
+  )
   decode.success(TaskTemplate(
     id: id,
     org_id: org_id,
@@ -94,6 +104,8 @@ pub fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
     created_by: created_by,
     created_at: created_at,
     rules_count: rules_count,
+    created_tasks_count: created_tasks_count,
+    last_execution_at: last_execution_at,
   ))
 }
 

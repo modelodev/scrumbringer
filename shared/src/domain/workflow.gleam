@@ -48,6 +48,8 @@ pub type TaskTemplate {
     created_by: Int,
     created_at: String,
     rules_count: Int,
+    created_tasks_count: Int,
+    last_execution_at: Option(String),
   )
 }
 

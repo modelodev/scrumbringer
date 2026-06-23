@@ -2536,9 +2536,7 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(
-  db: pog.Connection,
-) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -6120,11 +6118,13 @@ pub type TaskTemplatesListForOrgRow {
     version: Int,
     created_at: String,
     rules_count: Int,
+    created_tasks_count: Int,
+    last_execution_at: String,
   )
 }
 
 /// name: list_task_templates_for_org
-/// Story 4.9 AC20: Include rules_count for each template
+/// Story 4.9 AC20: Include template usage counters
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6146,6 +6146,8 @@ pub fn task_templates_list_for_org(
     use version <- decode.field(9, decode.int)
     use created_at <- decode.field(10, decode.string)
     use rules_count <- decode.field(11, decode.int)
+    use created_tasks_count <- decode.field(12, decode.int)
+    use last_execution_at <- decode.field(13, decode.string)
     decode.success(TaskTemplatesListForOrgRow(
       id:,
       org_id:,
@@ -6159,11 +6161,13 @@ pub fn task_templates_list_for_org(
       version:,
       created_at:,
       rules_count:,
+      created_tasks_count:,
+      last_execution_at:,
     ))
   }
 
   "-- name: list_task_templates_for_org
--- Story 4.9 AC20: Include rules_count for each template
+-- Story 4.9 AC20: Include template usage counters
 SELECT
   t.id,
   t.org_id,
@@ -6176,7 +6180,9 @@ SELECT
   t.created_by,
   t.version,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(rule_counts.count, 0) as rules_count
+  coalesce(rule_counts.count, 0) as rules_count,
+  coalesce(execution_stats.created_tasks_count, 0) as created_tasks_count,
+  coalesce(execution_stats.last_execution_at, '') as last_execution_at
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id
 LEFT JOIN (
@@ -6184,6 +6190,21 @@ LEFT JOIN (
   FROM rule_templates
   GROUP BY template_id
 ) rule_counts ON rule_counts.template_id = t.id
+LEFT JOIN (
+  SELECT
+    template_id,
+    count(created_task_id) FILTER (
+      WHERE outcome = 'applied'
+        AND created_task_id IS NOT NULL
+    ) as created_tasks_count,
+    to_char(
+      (max(created_at) FILTER (WHERE outcome = 'applied')) at time zone 'utc',
+      'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'
+    ) as last_execution_at
+  FROM rule_executions
+  WHERE template_id IS NOT NULL
+  GROUP BY template_id
+) execution_stats ON execution_stats.template_id = t.id
 WHERE t.org_id = $1
   AND t.project_id is null
 ORDER BY t.created_at DESC;
@@ -6214,11 +6235,13 @@ pub type TaskTemplatesListForProjectRow {
     version: Int,
     created_at: String,
     rules_count: Int,
+    created_tasks_count: Int,
+    last_execution_at: String,
   )
 }
 
 /// name: list_task_templates_for_project
-/// Story 4.9 AC20: Include rules_count for each template
+/// Story 4.9 AC20: Include template usage counters
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6240,6 +6263,8 @@ pub fn task_templates_list_for_project(
     use version <- decode.field(9, decode.int)
     use created_at <- decode.field(10, decode.string)
     use rules_count <- decode.field(11, decode.int)
+    use created_tasks_count <- decode.field(12, decode.int)
+    use last_execution_at <- decode.field(13, decode.string)
     decode.success(TaskTemplatesListForProjectRow(
       id:,
       org_id:,
@@ -6253,11 +6278,13 @@ pub fn task_templates_list_for_project(
       version:,
       created_at:,
       rules_count:,
+      created_tasks_count:,
+      last_execution_at:,
     ))
   }
 
   "-- name: list_task_templates_for_project
--- Story 4.9 AC20: Include rules_count for each template
+-- Story 4.9 AC20: Include template usage counters
 SELECT
   t.id,
   t.org_id,
@@ -6270,7 +6297,9 @@ SELECT
   t.created_by,
   t.version,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(rule_counts.count, 0) as rules_count
+  coalesce(rule_counts.count, 0) as rules_count,
+  coalesce(execution_stats.created_tasks_count, 0) as created_tasks_count,
+  coalesce(execution_stats.last_execution_at, '') as last_execution_at
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id
 LEFT JOIN (
@@ -6278,6 +6307,21 @@ LEFT JOIN (
   FROM rule_templates
   GROUP BY template_id
 ) rule_counts ON rule_counts.template_id = t.id
+LEFT JOIN (
+  SELECT
+    template_id,
+    count(created_task_id) FILTER (
+      WHERE outcome = 'applied'
+        AND created_task_id IS NOT NULL
+    ) as created_tasks_count,
+    to_char(
+      (max(created_at) FILTER (WHERE outcome = 'applied')) at time zone 'utc',
+      'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'
+    ) as last_execution_at
+  FROM rule_executions
+  WHERE template_id IS NOT NULL
+  GROUP BY template_id
+) execution_stats ON execution_stats.template_id = t.id
 WHERE t.project_id = $1
 ORDER BY t.created_at DESC;
 "

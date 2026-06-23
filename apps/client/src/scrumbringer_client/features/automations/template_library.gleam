@@ -466,6 +466,18 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
           "col-number",
           "cell-number",
         ),
+        data_table.column_with_class(
+          t(i18n_text.TaskTemplateCreatedTasks),
+          fn(tmpl: TaskTemplate) {
+            text(int.to_string(tmpl.created_tasks_count))
+          },
+          "col-number",
+          "cell-number",
+        ),
+        data_table.column(
+          t(i18n_text.TaskTemplateLastExecution),
+          fn(tmpl: TaskTemplate) { view_last_execution(config, tmpl) },
+        ),
         // Actions column with icon buttons
         data_table.column_with_class(
           t(i18n_text.Actions),
@@ -513,6 +525,16 @@ fn view_template_usage(
       _ -> element.none()
     },
   ])
+}
+
+fn view_last_execution(
+  config: Config(msg),
+  template: TaskTemplate,
+) -> Element(msg) {
+  case template.last_execution_at {
+    opt.Some(value) -> text(value)
+    opt.None -> text(i18n.t(config.locale, i18n_text.TaskTemplateNeverExecuted))
+  }
 }
 
 fn row_class(base: String, is_selected: Bool) -> String {
