@@ -356,6 +356,40 @@ pub fn create_rule(
   do_create_rule(handler, session, workflow_id, name, payload)
 }
 
+/// Create a task rule with an explicit automation trigger type and return its ID.
+pub fn create_task_rule_with_trigger(
+  handler: Handler,
+  session: Session,
+  workflow_id: Int,
+  task_type_id: Option(Int),
+  name: String,
+  trigger_type: String,
+  template_id: Int,
+) -> Result(Int, String) {
+  let payload =
+    json.object([
+      #("name", json.string(name)),
+      #("goal", json.string("Auto QA")),
+      #(
+        "trigger",
+        json.object([
+          #("type", json.string(trigger_type)),
+          #("task_type_id", option_int_json(task_type_id)),
+        ]),
+      ),
+      #(
+        "action",
+        json.object([
+          #("type", json.string("create_task")),
+          #("template_id", json.int(template_id)),
+        ]),
+      ),
+      #("status", json.object([#("type", json.string("active"))])),
+    ])
+
+  do_create_rule(handler, session, workflow_id, name, payload)
+}
+
 /// Create a rule for card resource type and return its ID.
 pub fn create_rule_card(
   handler: Handler,

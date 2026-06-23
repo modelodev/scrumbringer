@@ -254,6 +254,172 @@ pub fn task_created_rule_does_not_cascade_from_automation_created_task_test() {
   source_task_applied_executions |> expect.equal(1)
 }
 
+/// Verifies claim and release task triggers fire from the HTTP lifecycle.
+pub fn claim_and_release_via_api_trigger_matching_rules_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Claim Release Triggers")
+  let assert Ok(source_type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Source", "check")
+  let assert Ok(other_type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Other", "circle")
+  let assert Ok(followup_type_id) =
+    fixtures.create_task_type(
+      handler,
+      session,
+      project_id,
+      "Follow-up",
+      "sparkles",
+    )
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Lifecycle WF")
+  let assert Ok(claim_template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      followup_type_id,
+      "Claim follow-up",
+    )
+  let assert Ok(release_template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      followup_type_id,
+      "Release follow-up",
+    )
+  let assert Ok(claim_rule_id) =
+    fixtures.create_task_rule_with_trigger(
+      handler,
+      session,
+      workflow_id,
+      Some(source_type_id),
+      "On Claim",
+      "task_claimed",
+      claim_template_id,
+    )
+  let assert Ok(release_rule_id) =
+    fixtures.create_task_rule_with_trigger(
+      handler,
+      session,
+      workflow_id,
+      Some(source_type_id),
+      "On Release",
+      "task_released",
+      release_template_id,
+    )
+
+  let assert Ok(source_task_id) =
+    fixtures.create_task(
+      handler,
+      session,
+      project_id,
+      source_type_id,
+      "Source task",
+    )
+  let assert Ok(other_task_id) =
+    fixtures.create_task(
+      handler,
+      session,
+      project_id,
+      other_type_id,
+      "Other task",
+    )
+
+  let source_claim_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(source_task_id) <> "/claim",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([#("version", json.int(1))])),
+    )
+  expect.expect_status(source_claim_res, 200)
+
+  let assert Ok(claim_created_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(claim_rule_id)],
+    )
+  claim_created_count |> expect.equal(1)
+  let assert Ok(release_created_before) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(release_rule_id)],
+    )
+  release_created_before |> expect.equal(0)
+
+  let source_release_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(source_task_id) <> "/release",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([#("version", json.int(2))])),
+    )
+  expect.expect_status(source_release_res, 200)
+
+  let assert Ok(release_created_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(release_rule_id)],
+    )
+  release_created_count |> expect.equal(1)
+
+  let other_claim_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(other_task_id) <> "/claim",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([#("version", json.int(1))])),
+    )
+  expect.expect_status(other_claim_res, 200)
+
+  let other_release_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(other_task_id) <> "/release",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([#("version", json.int(2))])),
+    )
+  expect.expect_status(other_release_res, 200)
+
+  let assert Ok(claim_created_after_other_type) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(claim_rule_id)],
+    )
+  claim_created_after_other_type |> expect.equal(1)
+  let assert Ok(release_created_after_other_type) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(release_rule_id)],
+    )
+  release_created_after_other_type |> expect.equal(1)
+
+  let assert Ok(followup_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE type_id = $1",
+      [pog.int(followup_type_id)],
+    )
+  followup_count |> expect.equal(2)
+}
+
 /// Verifies that selecting another template replaces the rule template.
 pub fn complete_task_uses_latest_selected_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
