@@ -94,6 +94,67 @@ pub fn workflows_project_crud_and_active_cascade_test() {
   expect.expect_status(delete_res, 204)
 }
 
+pub fn workflow_delete_with_execution_pauses_and_preserves_history_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let create_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Workflow History")),
+          #("description", json.string("Historical executions")),
+        ]),
+      ),
+    )
+
+  expect.expect_status(create_res, 200)
+  let workflow_id = decode_workflow_id(simulate.read_body(create_res))
+  let rule_id = insert_rule(db, workflow_id)
+  let type_id = insert_task_type(db, project_id)
+  let task_id = insert_origin_task(db, project_id, type_id)
+  insert_rule_execution(db, rule_id, task_id, "workflow-delete")
+
+  let delete_res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
+    )
+
+  expect.expect_status(delete_res, 204)
+  single_int(db, "select count(*)::int from workflows where id = $1", [
+    pog.int(workflow_id),
+  ])
+  |> expect.equal(1)
+  workflow_active(db, workflow_id) |> expect.equal(False)
+  rule_active(db, workflow_id) |> expect.equal(False)
+  single_int(
+    db,
+    "select count(*)::int from rule_executions where rule_id = $1",
+    [pog.int(rule_id)],
+  )
+  |> expect.equal(1)
+}
+
 pub fn workflows_project_scope_requires_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -347,15 +408,21 @@ fn decode_workflow_names(body: String) -> List(String) {
   workflows
 }
 
-fn insert_rule(db: pog.Connection, workflow_id: Int) {
-  let assert Ok(_) =
+fn insert_rule(db: pog.Connection, workflow_id: Int) -> Int {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(id)
+  }
+
+  let assert Ok(pog.Returned(rows: [rule_id, ..], ..)) =
     pog.query(
-      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_completed', null, 'completed', true)",
+      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_completed', null, 'completed', true) returning id",
     )
     |> pog.parameter(pog.int(workflow_id))
+    |> pog.returning(decoder)
     |> pog.execute(db)
 
-  Nil
+  rule_id
 }
 
 fn rule_active(db: pog.Connection, workflow_id: Int) -> Bool {
@@ -371,6 +438,57 @@ fn rule_active(db: pog.Connection, workflow_id: Int) -> Bool {
     |> pog.execute(db)
 
   active
+}
+
+fn workflow_active(db: pog.Connection, workflow_id: Int) -> Bool {
+  let decoder = {
+    use active <- decode.field(0, decode.bool)
+    decode.success(active)
+  }
+
+  let assert Ok(pog.Returned(rows: [active, ..], ..)) =
+    pog.query("select active from workflows where id = $1")
+    |> pog.parameter(pog.int(workflow_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+
+  active
+}
+
+fn insert_task_type(db: pog.Connection, project_id: Int) -> Int {
+  single_int(
+    db,
+    "insert into task_types (project_id, name, icon) values ($1, 'Workflow QA', 'bug-ant') returning id",
+    [pog.int(project_id)],
+  )
+}
+
+fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
+  single_int(
+    db,
+    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, now()) returning id",
+    [pog.int(project_id), pog.int(type_id)],
+  )
+}
+
+fn insert_rule_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  task_id: Int,
+  suffix: String,
+) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into rule_executions (rule_id, event_key, task_id, outcome, user_id) values ($1, $2, $3, 'applied', 1)",
+    )
+    |> pog.parameter(pog.int(rule_id))
+    |> pog.parameter(pog.text(
+      "task:" <> int.to_string(task_id) <> ":" <> suffix,
+    ))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
+  Nil
 }
 
 fn create_project(

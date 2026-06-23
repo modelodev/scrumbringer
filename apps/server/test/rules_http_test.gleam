@@ -108,6 +108,77 @@ pub fn rules_crud_with_selected_template_test() {
   expect.expect_status(delete_res, 204)
 }
 
+pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "RuleHistory")
+  let project_id =
+    single_int(db, "select id from projects where name = 'RuleHistory'", [])
+
+  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'QA'",
+      [pog.int(project_id)],
+    )
+
+  let workflow_id =
+    create_workflow(handler, session, csrf, project_id, "History Workflow")
+
+  let template_id =
+    create_template(
+      handler,
+      session,
+      csrf,
+      project_id,
+      type_id,
+      "History Template",
+    )
+
+  let rule_id =
+    create_rule(
+      handler,
+      session,
+      csrf,
+      workflow_id,
+      type_id,
+      template_id,
+      "History Rule",
+    )
+
+  let task_id = insert_origin_task(db, project_id, type_id)
+  insert_rule_execution(db, rule_id, task_id, "rule-delete")
+
+  let delete_res =
+    handler(
+      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
+    )
+
+  expect.expect_status(delete_res, 204)
+  single_int(db, "select count(*)::int from rules where id = $1", [
+    pog.int(rule_id),
+  ])
+  |> expect.equal(1)
+  single_bool(db, "select active from rules where id = $1", [pog.int(rule_id)])
+  |> expect.equal(False)
+  single_int(
+    db,
+    "select count(*)::int from rule_executions where rule_id = $1",
+    [pog.int(rule_id)],
+  )
+  |> expect.equal(1)
+}
+
 pub fn rules_invalid_payload_returns_400_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -637,6 +708,54 @@ fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
     |> pog.execute(db)
 
   value
+}
+
+fn single_bool(db: pog.Connection, sql: String, params: List(pog.Value)) -> Bool {
+  let decoder = {
+    use value <- decode.field(0, decode.bool)
+    decode.success(value)
+  }
+
+  let query =
+    params
+    |> list.fold(pog.query(sql), fn(query, param) {
+      pog.parameter(query, param)
+    })
+
+  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
+    query
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+
+  value
+}
+
+fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
+  single_int(
+    db,
+    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, now()) returning id",
+    [pog.int(project_id), pog.int(type_id)],
+  )
+}
+
+fn insert_rule_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  task_id: Int,
+  suffix: String,
+) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into rule_executions (rule_id, event_key, task_id, outcome, user_id) values ($1, $2, $3, 'applied', 1)",
+    )
+    |> pog.parameter(pog.int(rule_id))
+    |> pog.parameter(pog.text(
+      "task:" <> int_to_string(task_id) <> ":" <> suffix,
+    ))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
+  Nil
 }
 
 fn int_to_string(value: Int) -> String {

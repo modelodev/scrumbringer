@@ -557,8 +557,25 @@ pub fn delete_rule(
   rule_id: Int,
 ) -> Result(Nil, ServiceError) {
   case sql.rules_delete(db, rule_id) {
-    Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(
+      rows: [
+        sql.RulesDeleteRow(
+          rule_found: False,
+          has_executions: _,
+          paused_id: _,
+          deleted_id: _,
+        ),
+        ..
+      ],
+      ..,
+    )) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..))
+      if row.paused_id > 0 || row.deleted_id > 0
+    -> Ok(Nil)
+    Ok(pog.Returned(rows: [_row, ..], ..)) ->
+      Error(Unexpected("delete_rule returned no paused or deleted row"))
+    Ok(pog.Returned(rows: [], ..)) ->
+      Error(Unexpected("delete_rule returned no decision row"))
     Error(e) -> Error(DbError(e))
   }
 }

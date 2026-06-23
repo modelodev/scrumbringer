@@ -4465,7 +4465,12 @@ RETURNING
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type RulesDeleteRow {
-  RulesDeleteRow(id: Int)
+  RulesDeleteRow(
+    rule_found: Bool,
+    has_executions: Bool,
+    paused_id: Int,
+    deleted_id: Int,
+  )
 }
 
 /// name: delete_rule
@@ -4478,14 +4483,46 @@ pub fn rules_delete(
   arg_1: Int,
 ) -> Result(pog.Returned(RulesDeleteRow), pog.QueryError) {
   let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(RulesDeleteRow(id:))
+    use rule_found <- decode.field(0, decode.bool)
+    use has_executions <- decode.field(1, decode.bool)
+    use paused_id <- decode.field(2, decode.int)
+    use deleted_id <- decode.field(3, decode.int)
+    decode.success(RulesDeleteRow(
+      rule_found:,
+      has_executions:,
+      paused_id:,
+      deleted_id:,
+    ))
   }
 
   "-- name: delete_rule
-DELETE FROM rules
-WHERE id = $1
-RETURNING id;
+WITH matched AS (
+  SELECT id
+  FROM rules
+  WHERE id = $1
+), usage AS (
+  SELECT EXISTS (
+    SELECT 1
+    FROM rule_executions re
+    JOIN matched m ON m.id = re.rule_id
+  ) AS has_executions
+), paused AS (
+  UPDATE rules
+  SET active = false
+  WHERE id IN (SELECT id FROM matched)
+    AND (SELECT has_executions FROM usage)
+  RETURNING id
+), deleted AS (
+  DELETE FROM rules
+  WHERE id IN (SELECT id FROM matched)
+    AND NOT (SELECT has_executions FROM usage)
+  RETURNING id
+)
+SELECT
+  EXISTS (SELECT 1 FROM matched) AS rule_found,
+  (SELECT has_executions FROM usage) AS has_executions,
+  COALESCE((SELECT id FROM paused LIMIT 1), 0) AS paused_id,
+  COALESCE((SELECT id FROM deleted LIMIT 1), 0) AS deleted_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -8857,7 +8894,12 @@ RETURNING
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type WorkflowsDeleteRow {
-  WorkflowsDeleteRow(id: Int)
+  WorkflowsDeleteRow(
+    workflow_found: Bool,
+    has_executions: Bool,
+    paused_id: Int,
+    deleted_id: Int,
+  )
 }
 
 /// name: delete_workflow
@@ -8872,21 +8914,60 @@ pub fn workflows_delete(
   arg_3: Int,
 ) -> Result(pog.Returned(WorkflowsDeleteRow), pog.QueryError) {
   let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(WorkflowsDeleteRow(id:))
+    use workflow_found <- decode.field(0, decode.bool)
+    use has_executions <- decode.field(1, decode.bool)
+    use paused_id <- decode.field(2, decode.int)
+    use deleted_id <- decode.field(3, decode.int)
+    decode.success(WorkflowsDeleteRow(
+      workflow_found:,
+      has_executions:,
+      paused_id:,
+      deleted_id:,
+    ))
   }
 
   "-- name: delete_workflow
-DELETE FROM workflows
-WHERE id = $1
-  AND org_id = $2
-  AND (
-    CASE
-      WHEN $3 <= 0 THEN project_id is null
-      ELSE project_id = $3
-    END
-  )
-RETURNING id;
+WITH matched AS (
+  SELECT id
+  FROM workflows
+  WHERE id = $1
+    AND org_id = $2
+    AND (
+      CASE
+        WHEN $3 <= 0 THEN project_id is null
+        ELSE project_id = $3
+      END
+    )
+), usage AS (
+  SELECT EXISTS (
+    SELECT 1
+    FROM rule_executions re
+    JOIN rules r ON r.id = re.rule_id
+    JOIN matched m ON m.id = r.workflow_id
+  ) AS has_executions
+), paused_workflow AS (
+  UPDATE workflows
+  SET active = false
+  WHERE id IN (SELECT id FROM matched)
+    AND (SELECT has_executions FROM usage)
+  RETURNING id
+), paused_rules AS (
+  UPDATE rules
+  SET active = false
+  WHERE workflow_id IN (SELECT id FROM matched)
+    AND (SELECT has_executions FROM usage)
+  RETURNING id
+), deleted AS (
+  DELETE FROM workflows
+  WHERE id IN (SELECT id FROM matched)
+    AND NOT (SELECT has_executions FROM usage)
+  RETURNING id
+)
+SELECT
+  EXISTS (SELECT 1 FROM matched) AS workflow_found,
+  (SELECT has_executions FROM usage) AS has_executions,
+  COALESCE((SELECT id FROM paused_workflow LIMIT 1), 0) AS paused_id,
+  COALESCE((SELECT id FROM deleted LIMIT 1), 0) AS deleted_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))

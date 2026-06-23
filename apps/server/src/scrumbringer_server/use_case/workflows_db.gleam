@@ -28,7 +28,7 @@ import pog
 import scrumbringer_server/sql
 import scrumbringer_server/use_case/persisted_field
 import scrumbringer_server/use_case/service_error.{
-  type ServiceError, AlreadyExists, DbError, NotFound,
+  type ServiceError, AlreadyExists, DbError, NotFound, Unexpected,
 }
 
 const unchanged_text_value = "__unset__"
@@ -280,8 +280,25 @@ pub fn delete_workflow(
   project_id: Int,
 ) -> Result(Nil, ServiceError) {
   case sql.workflows_delete(db, workflow_id, org_id, project_id) {
-    Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Ok(pog.Returned(
+      rows: [
+        sql.WorkflowsDeleteRow(
+          workflow_found: False,
+          has_executions: _,
+          paused_id: _,
+          deleted_id: _,
+        ),
+        ..
+      ],
+      ..,
+    )) -> Error(NotFound)
+    Ok(pog.Returned(rows: [row, ..], ..))
+      if row.paused_id > 0 || row.deleted_id > 0
+    -> Ok(Nil)
+    Ok(pog.Returned(rows: [_row, ..], ..)) ->
+      Error(Unexpected("delete_workflow returned no paused or deleted row"))
+    Ok(pog.Returned(rows: [], ..)) ->
+      Error(Unexpected("delete_workflow returned no decision row"))
     Error(e) -> Error(DbError(e))
   }
 }
