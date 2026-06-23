@@ -1039,6 +1039,10 @@ pub fn translate(text: Text) -> String {
       "Esta plantilla usa variables no disponibles para el trigger seleccionado: "
       <> variables
       <> ". Cambia el trigger o elige otra plantilla."
+    text.RuleBuilderCardScopeUnavailable(depth) ->
+      "El nivel de card "
+      <> int.to_string(depth)
+      <> " ya no está disponible. Elige un nivel existente o cualquier card."
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"

@@ -232,6 +232,31 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
   assert_not_contains(html, "subtree")
 }
 
+pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Stale card scope",
+          rule_form_subject: "card",
+          rule_form_event: "card_activated",
+          rule_form_card_scope: "9",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Card level 9 is no longer available.")
+  assert_contains(html, "Choose an existing card level or Any card.")
+  assert_contains(html, "role=\"alert\"")
+  assert_contains(html, "disabled")
+  assert_not_contains(html, "value=\"9\" selected")
+}
+
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
   let html =
     rule_list.view(config())

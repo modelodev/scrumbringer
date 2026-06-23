@@ -501,7 +501,7 @@ fn view_rule_form_panel(
             ),
           ]),
           case config.rules.rule_form_subject {
-            "card" -> view_rule_card_scope_select(config)
+            "card" -> view_rule_card_scope_field(config)
             _ -> element.none()
           },
           form_field.view_required(
@@ -534,6 +534,13 @@ fn view_rule_form_panel(
   )
 }
 
+fn view_rule_card_scope_field(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("rule-builder-card-scope")], [
+    view_rule_card_scope_select(config),
+    view_rule_card_scope_error(config),
+  ])
+}
+
 fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
   form_field.view(
     t(config, i18n_text.RuleBuilderCardScope),
@@ -559,6 +566,20 @@ fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
       ],
     ),
   )
+}
+
+fn view_rule_card_scope_error(config: Config(msg)) -> Element(msg) {
+  case selected_card_scope_error(config) {
+    opt.Some(message) ->
+      p(
+        [
+          attribute.class("field-error rule-builder-card-scope__validation"),
+          attribute.role("alert"),
+        ],
+        [text(message)],
+      )
+    opt.None -> element.none()
+  }
 }
 
 fn card_depth_options(config: Config(msg)) -> List(Element(msg)) {
@@ -936,16 +957,31 @@ fn view_rule_form_error(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_rule_validation_summary(config: Config(msg)) -> Element(msg) {
-  case selected_template_variable_error(config) {
-    opt.Some(message) ->
+  case rule_validation_messages(config) {
+    [] -> element.none()
+    messages ->
       div(
         [
           attribute.class("field-error automation-rule-form__summary"),
           attribute.role("alert"),
         ],
-        [text(message)],
+        list.map(messages, fn(message) { p([], [text(message)]) }),
       )
-    opt.None -> element.none()
+  }
+}
+
+fn rule_validation_messages(config: Config(msg)) -> List(String) {
+  case
+    selected_card_scope_error(config),
+    selected_template_variable_error(config)
+  {
+    opt.Some(card_message), opt.Some(template_message) -> [
+      card_message,
+      template_message,
+    ]
+    opt.Some(card_message), opt.None -> [card_message]
+    opt.None, opt.Some(template_message) -> [template_message]
+    opt.None, opt.None -> []
   }
 }
 
@@ -965,10 +1001,45 @@ fn rule_card_scope_is_valid(config: Config(msg)) -> Bool {
     "card", "" -> True
     "card", value ->
       case int.parse(value) {
-        Ok(depth) -> depth > 0
+        Ok(depth) -> card_depth_exists(config, depth)
         Error(_) -> False
       }
     _, _ -> True
+  }
+}
+
+fn selected_card_scope_error(config: Config(msg)) -> opt.Option(String) {
+  case
+    config.rules.rule_form_subject,
+    string.trim(config.rules.rule_form_card_scope)
+  {
+    "card", "" -> opt.None
+    "card", value ->
+      case int.parse(value) {
+        Ok(depth) ->
+          case card_depth_exists(config, depth) {
+            True -> opt.None
+            False ->
+              t(config, i18n_text.RuleBuilderCardScopeUnavailable(depth))
+              |> opt.Some
+          }
+        Error(_) ->
+          t(config, i18n_text.RulePreviewRequiresReview)
+          |> opt.Some
+      }
+    _, _ -> opt.None
+  }
+}
+
+fn card_depth_exists(config: Config(msg), depth: Int) -> Bool {
+  case depth > 0 {
+    False -> False
+    True ->
+      config.depth_names
+      |> list.any(fn(depth_name) {
+        let scope_view.DepthName(depth: candidate, ..) = depth_name
+        candidate == depth
+      })
   }
 }
 
