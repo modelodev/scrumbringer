@@ -118,6 +118,7 @@ type BuildState {
     task_ids: List(Int),
     task_seeds: List(TaskSeedInfo),
     template_ids: List(Int),
+    template_ids_by_project: List(#(Int, List(Int))),
     audit_events_count: Int,
     rule_executions_count: Int,
   )
@@ -251,6 +252,7 @@ pub fn build_seed(
       task_ids: [],
       task_seeds: [],
       template_ids: [],
+      template_ids_by_project: [],
       audit_events_count: 0,
       rule_executions_count: 0,
     )
@@ -626,28 +628,42 @@ fn build_templates(
 ) -> Result(BuildState, String) {
   let template_names = ["Code Review", "QA Verification", "Deploy to Staging"]
 
-  use template_ids_nested <- result.try(
+  use template_ids_by_project <- result.try(
     list.try_map(state.task_type_ids, fn(types) {
       let #(project_id, _bug_id, _feature_id, task_type_id) = types
-      list.try_map(template_names, fn(name) {
-        seed_db.insert_template(
-          db,
-          seed_db.TemplateInsertOptions(
-            org_id: state.org_id,
-            project_id: project_id,
-            type_id: task_type_id,
-            name: name,
-            description: "Auto-created " <> name,
-            priority: 3,
-            created_by: state.admin_id,
-            created_at: None,
-          ),
-        )
-      })
+      use template_ids <- result.try(
+        list.try_map(template_names, fn(name) {
+          seed_db.insert_template(
+            db,
+            seed_db.TemplateInsertOptions(
+              org_id: state.org_id,
+              project_id: project_id,
+              type_id: task_type_id,
+              name: name,
+              description: "Auto-created " <> name,
+              priority: 3,
+              created_by: state.admin_id,
+              created_at: None,
+            ),
+          )
+        }),
+      )
+      Ok(#(project_id, template_ids))
     }),
   )
 
-  Ok(BuildState(..state, template_ids: list.flatten(template_ids_nested)))
+  Ok(
+    BuildState(
+      ..state,
+      template_ids: template_ids_by_project
+        |> list.map(fn(pair) {
+          let #(_project_id, template_ids) = pair
+          template_ids
+        })
+        |> list.flatten,
+      template_ids_by_project: template_ids_by_project,
+    ),
+  )
 }
 
 fn build_workflows(
@@ -709,9 +725,11 @@ fn build_rules(
   config: SeedConfig,
 ) -> Result(BuildState, String) {
   use rule_ids_by_project <- result.try(
-    list.try_map(state.workflow_ids_by_project, fn(pair) {
+    list.index_map(state.workflow_ids_by_project, fn(pair, project_idx) {
       let #(project_id, wf_ids) = pair
       let task_types = task_types_for_project(state.task_type_ids, project_id)
+      let templates =
+        templates_for_project(state.template_ids_by_project, project_id)
       let wf_ids = list.drop(wf_ids, config.empty_workflow_count)
 
       case wf_ids, task_types {
@@ -729,6 +747,12 @@ fn build_rules(
               created_at: None,
             ),
           ))
+          use _ <- result.try(select_seed_template(
+            db,
+            active_rule,
+            templates,
+            0,
+          ))
 
           use inactive_rule <- result.try(seed_db.insert_rule(
             db,
@@ -741,11 +765,24 @@ fn build_rules(
               created_at: None,
             ),
           ))
+          use _ <- result.try(select_seed_template(
+            db,
+            inactive_rule,
+            templates,
+            1,
+          ))
 
-          Ok(#(project_id, [active_rule, inactive_rule]))
+          use warning_rules <- result.try(seed_review_warning_rules(
+            db,
+            project_idx,
+            active_wf,
+            bug_id,
+          ))
+
+          Ok(#(project_id, [active_rule, inactive_rule, ..warning_rules]))
         }
-        [single_wf], Some(#(bug_id, _feature_id, _task_id)) ->
-          seed_db.insert_rule(
+        [single_wf], Some(#(bug_id, _feature_id, _task_id)) -> {
+          use rule_id <- result.try(seed_db.insert_rule(
             db,
             seed_rule_options(
               workflow_id: single_wf,
@@ -755,11 +792,20 @@ fn build_rules(
               active: True,
               created_at: None,
             ),
-          )
-          |> result.map(fn(id) { #(project_id, [id]) })
+          ))
+          use _ <- result.try(select_seed_template(db, rule_id, templates, 0))
+          use warning_rules <- result.try(seed_review_warning_rules(
+            db,
+            project_idx,
+            single_wf,
+            bug_id,
+          ))
+          Ok(#(project_id, [rule_id, ..warning_rules]))
+        }
         _, _ -> Ok(#(project_id, []))
       }
-    }),
+    })
+    |> result.all,
   )
 
   let rule_ids =
@@ -777,6 +823,44 @@ fn build_rules(
       rule_ids_by_project: rule_ids_by_project,
     ),
   )
+}
+
+fn select_seed_template(
+  db: pog.Connection,
+  rule_id: Int,
+  templates: List(Int),
+  index: Int,
+) -> Result(Nil, String) {
+  case list.drop(templates, index) {
+    [template_id, ..] ->
+      seed_db.select_rule_template(db, rule_id, template_id, 1)
+    [] -> Ok(Nil)
+  }
+}
+
+fn seed_review_warning_rules(
+  db: pog.Connection,
+  project_idx: Int,
+  workflow_id: Int,
+  task_type_id: Int,
+) -> Result(List(Int), String) {
+  case project_idx {
+    2 -> {
+      use rule_id <- result.try(seed_db.insert_rule(
+        db,
+        seed_rule_options(
+          workflow_id: workflow_id,
+          name: "Seed warning - template missing",
+          goal: Some("Shows requires-review automation state in stress data"),
+          trigger: automation.TaskCompleted(Some(task_type_id)),
+          active: True,
+          created_at: None,
+        ),
+      ))
+      Ok([rule_id])
+    }
+    _ -> Ok([])
+  }
 }
 
 fn seed_rule_options(
@@ -2582,6 +2666,21 @@ fn cards_for_project(
     })
   {
     Ok(#(_pid, cards)) -> cards
+    Error(_) -> []
+  }
+}
+
+fn templates_for_project(
+  template_ids_by_project: List(#(Int, List(Int))),
+  project_id: Int,
+) -> List(Int) {
+  case
+    list.find(template_ids_by_project, fn(pair) {
+      let #(pid, _templates) = pair
+      pid == project_id
+    })
+  {
+    Ok(#(_pid, templates)) -> templates
     Error(_) -> []
   }
 }
