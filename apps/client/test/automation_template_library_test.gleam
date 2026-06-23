@@ -92,11 +92,27 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "Regression checklist")
   assert_contains(html, "Bug")
   assert_contains(html, "4")
+  assert_contains(html, "Uses")
+  assert_contains(html, "automation-template-unused-badge")
+  assert_contains(html, "Unused")
   assert_contains(html, "template-edit-btn")
   assert_contains(html, "template-delete-btn")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")
   assert_not_contains(html, "task-template-crud-dialog")
+}
+
+pub fn automation_template_library_localizes_unused_template_warning_test() {
+  let html =
+    template_library.view(
+      template_library.Config(..config(), locale: locale.Es),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Usos")
+  assert_contains(html, "Sin uso")
+  assert_not_contains(html, "Uses")
+  assert_not_contains(html, "Unused")
 }
 
 pub fn automation_template_library_renders_empty_state_without_root_model_test() {

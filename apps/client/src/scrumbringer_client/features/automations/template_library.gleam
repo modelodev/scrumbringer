@@ -460,6 +460,12 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
           "col-number",
           "cell-number",
         ),
+        data_table.column_with_class(
+          t(i18n_text.TaskTemplateUsages),
+          fn(tmpl: TaskTemplate) { view_template_usage(config, tmpl) },
+          "col-number",
+          "cell-number",
+        ),
         // Actions column with icon buttons
         data_table.column_with_class(
           t(i18n_text.Actions),
@@ -487,6 +493,26 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
         ]
       }),
   )
+}
+
+fn view_template_usage(
+  config: Config(msg),
+  template: TaskTemplate,
+) -> Element(msg) {
+  div([attribute.class("automation-template-usage")], [
+    span([attribute.class("automation-template-usage__count")], [
+      text(int.to_string(template.rules_count)),
+    ]),
+    case template.rules_count {
+      0 ->
+        badge.new_unchecked(
+          i18n.t(config.locale, i18n_text.TaskTemplateUnused),
+          badge.Warning,
+        )
+        |> badge.view_with_class("automation-template-unused-badge")
+      _ -> element.none()
+    },
+  ])
 }
 
 fn row_class(base: String, is_selected: Bool) -> String {

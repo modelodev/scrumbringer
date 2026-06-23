@@ -819,6 +819,8 @@ pub type Text {
   TaskTemplateType
   TaskTemplatePriority
   TaskTemplateScope
+  TaskTemplateUsages
+  TaskTemplateUnused
   TaskTemplateCreated
   TaskTemplateUpdated
   CreateTaskTemplate

@@ -956,6 +956,8 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateType -> "Type"
     text.TaskTemplatePriority -> "Priority"
     text.TaskTemplateScope -> "Scope"
+    text.TaskTemplateUsages -> "Uses"
+    text.TaskTemplateUnused -> "Unused"
     text.TaskTemplateCreated -> "Template created"
     text.TaskTemplateUpdated -> "Template updated"
     text.CreateTaskTemplate -> "Create Template"
