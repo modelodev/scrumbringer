@@ -19,10 +19,10 @@ pub fn substitute_uses_current_automation_variables_test() {
   let assert "[Task #42](/tasks/42) completed Core admin@example.com" = rendered
 }
 
-pub fn substitute_leaves_legacy_variables_unresolved_test() {
+pub fn substitute_leaves_unknown_variables_unresolved_test() {
   let rendered =
     rules_templates.substitute(
-      "{{father}} {{from_state}} {{to_state}}",
+      "{{unsupported}} {{previous_status}} {{next_status}}",
       rules_templates.EventContext(
         origin: "[Task #42](/tasks/42)",
         trigger: "completed",
@@ -35,7 +35,7 @@ pub fn substitute_leaves_legacy_variables_unresolved_test() {
       ),
     )
 
-  let assert "{{father}} {{from_state}} {{to_state}}" = rendered
+  let assert "{{unsupported}} {{previous_status}} {{next_status}}" = rendered
 }
 
 pub fn substitute_uses_trigger_specific_variables_test() {

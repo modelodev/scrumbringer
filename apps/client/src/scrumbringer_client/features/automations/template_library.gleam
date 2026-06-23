@@ -214,7 +214,7 @@ fn view_form_panel(
       ),
       div([attribute.class("automation-template-panel__hint")], [
         text(
-          "Available variables: {{origin}}, {{trigger}}, {{project}}, {{user}}",
+          "Available variables: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}",
         ),
       ]),
       panel_actions(

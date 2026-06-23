@@ -667,8 +667,8 @@ pub fn variable_user_resolves_to_email_test() {
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
-/// Tests all 5 variables in one template.
-pub fn all_five_variables_combined_test() {
+/// Tests task trigger variables in one template.
+pub fn task_trigger_variables_combined_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 

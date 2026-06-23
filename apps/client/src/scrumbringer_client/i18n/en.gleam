@@ -942,9 +942,9 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleteConfirm(name) ->
       "Delete template \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{origin}} (origin task/card), {{trigger}} (event), {{project}} (project name), {{user}} (user who triggered)"
+      "Variables: {{origin}} (origin task/card), {{trigger}} (event), {{project}} (project name), {{user}} (user who triggered), {{task_title}} and {{task_type}} for task events, {{card_title}} and {{card_level}} for card events"
     text.TaskTemplateDescriptionHint ->
-      "Use variables in the description: {{origin}}, {{trigger}}, {{project}}, {{user}}"
+      "Use variables in the description: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}"
     text.AvailableVariables -> "Available variables"
     text.SelectTaskType -> "Select type"
 

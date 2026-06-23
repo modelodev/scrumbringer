@@ -88,7 +88,7 @@ pub fn available_variables_exclude_legacy_and_due_date_values_test() {
     )
 
   let assert True =
-    automation.template_uses_unknown_variables("{{father}}", trigger)
+    automation.template_uses_unknown_variables("{{unknown}}", trigger)
   let assert True =
     automation.template_uses_unknown_variables("{{due_date}}", trigger)
 }
