@@ -232,14 +232,20 @@ pub fn get_rule_metrics_detailed(
   )
 }
 
+/// Decoded execution outcome from API JSON.
+pub type RuleExecutionOutcome {
+  CreatedExecution
+  IgnoredExecution(reason: String)
+  UnknownExecution(raw: String)
+}
+
 /// Single rule execution record.
 pub type RuleExecution {
   RuleExecution(
     id: Int,
     task_id: Option(Int),
     card_id: Option(Int),
-    outcome: String,
-    suppression_reason: String,
+    outcome: RuleExecutionOutcome,
     user_id: Int,
     user_email: String,
     template_id: Option(Int),
@@ -247,6 +253,13 @@ pub type RuleExecution {
     created_task_id: Option(Int),
     created_at: String,
   )
+}
+
+pub fn execution_outcome_is_created(outcome: RuleExecutionOutcome) -> Bool {
+  case outcome {
+    CreatedExecution -> True
+    IgnoredExecution(_) | UnknownExecution(_) -> False
+  }
 }
 
 /// Pagination info.
@@ -275,7 +288,7 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
     None,
     decode.optional(decode.int),
   )
-  use outcome <- decode.field("outcome", decode.string)
+  use outcome_raw <- decode.field("outcome", decode.string)
   use suppression_reason <- decode.optional_field(
     "suppression_reason",
     "",
@@ -303,8 +316,7 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
     id: id,
     task_id: task_id,
     card_id: card_id,
-    outcome: outcome,
-    suppression_reason: suppression_reason,
+    outcome: parse_execution_outcome(outcome_raw, suppression_reason),
     user_id: user_id,
     user_email: user_email,
     template_id: template_id,
@@ -312,6 +324,17 @@ fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
     created_task_id: created_task_id,
     created_at: created_at,
   ))
+}
+
+fn parse_execution_outcome(
+  outcome: String,
+  suppression_reason: String,
+) -> RuleExecutionOutcome {
+  case outcome {
+    "applied" -> CreatedExecution
+    "suppressed" -> IgnoredExecution(suppression_reason)
+    other -> UnknownExecution(other)
+  }
 }
 
 fn pagination_decoder() -> decode.Decoder(Pagination) {

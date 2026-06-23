@@ -578,7 +578,7 @@ fn view_drilldown_executions_loaded(
 }
 
 fn is_business_execution(exec: api_rule_metrics.RuleExecution) -> Bool {
-  exec.outcome == "applied"
+  api_rule_metrics.execution_outcome_is_created(exec.outcome)
 }
 
 fn execution_template_label(
@@ -611,11 +611,11 @@ fn execution_target_label(
   }
 }
 
-fn outcome_class_for(outcome: String) -> String {
+fn outcome_class_for(outcome: api_rule_metrics.RuleExecutionOutcome) -> String {
   case outcome {
-    "applied" -> "outcome-applied"
-    "suppressed" -> "outcome-suppressed"
-    _ -> ""
+    api_rule_metrics.CreatedExecution -> "outcome-applied"
+    api_rule_metrics.IgnoredExecution(_) -> "outcome-suppressed"
+    api_rule_metrics.UnknownExecution(_) -> ""
   }
 }
 
@@ -624,11 +624,11 @@ fn outcome_text_for(
   exec: api_rule_metrics.RuleExecution,
 ) -> String {
   case exec.outcome {
-    "applied" -> t(config, i18n_text.OutcomeApplied)
-    "suppressed" ->
+    api_rule_metrics.CreatedExecution -> t(config, i18n_text.OutcomeApplied)
+    api_rule_metrics.IgnoredExecution(reason) ->
       t(config, i18n_text.OutcomeSuppressed)
-      <> suppression_reason_suffix(exec.suppression_reason)
-    _ -> exec.outcome
+      <> suppression_reason_suffix(reason)
+    api_rule_metrics.UnknownExecution(raw) -> raw
   }
 }
 

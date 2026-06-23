@@ -334,11 +334,12 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let assert 1 = response.rule_id
   let assert [execution_a, execution_b] = response.executions
   let assert option.Some(100) = execution_a.task_id
-  let assert "applied" = execution_a.outcome
+  let assert api_rule_metrics.CreatedExecution = execution_a.outcome
   let assert option.Some(12) = execution_a.template_id
   let assert option.Some(3) = execution_a.template_version
   let assert option.Some(102) = execution_a.created_task_id
-  let assert "idempotent" = execution_b.suppression_reason
+  let assert api_rule_metrics.IgnoredExecution("idempotent") =
+    execution_b.outcome
   let assert 2 = response.pagination.total
 }
 
@@ -368,7 +369,7 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
   let assert [execution] = response.executions
   let assert option.None = execution.task_id
   let assert option.Some(50) = execution.card_id
-  let assert "" = execution.suppression_reason
+  let assert api_rule_metrics.CreatedExecution = execution.outcome
   let assert 0 = execution.user_id
   let assert "" = execution.user_email
 }
