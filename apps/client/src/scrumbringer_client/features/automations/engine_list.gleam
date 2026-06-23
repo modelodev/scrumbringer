@@ -21,7 +21,6 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
-import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/filter_bar
@@ -135,13 +134,6 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
       ],
       config.on_status_filter_changed,
       "automation-engine-status-filter",
-    ),
-  ])
-  |> filter_bar.with_actions([
-    dialog.add_button_with_locale(
-      config.locale,
-      i18n_text.CreateWorkflow,
-      config.on_create_clicked,
     ),
   ])
   |> filter_bar.with_class("automation-engines-filters")

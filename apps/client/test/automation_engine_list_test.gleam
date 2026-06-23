@@ -93,7 +93,6 @@ pub fn automation_engine_list_renders_operational_rows_test() {
     |> element.to_document_string
 
   assert_contains(html, "Engines - Roadmap")
-  assert_contains(html, "Create engine")
   assert_contains(html, "filter-bar automation-engines-filters")
   assert_contains(html, "data-testid=\"automation-engines-filter-bar\"")
   assert_contains(html, "data-testid=\"automation-engine-search\"")
