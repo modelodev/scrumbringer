@@ -92,6 +92,51 @@ pub fn decode_update_payload_test() {
   )) = payloads.decode_update(dynamic)
 }
 
+pub fn decode_update_payload_accepts_all_supported_triggers_test() {
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.TaskCreated(None)),
+    ..,
+  )) =
+    decode_update_trigger("{\"type\":\"task_created\",\"task_type_id\":null}")
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.TaskClaimed(Some(7))),
+    ..,
+  )) = decode_update_trigger("{\"type\":\"task_claimed\",\"task_type_id\":7}")
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.TaskReleased(None)),
+    ..,
+  )) =
+    decode_update_trigger("{\"type\":\"task_released\",\"task_type_id\":null}")
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.TaskCompleted(Some(9))),
+    ..,
+  )) = decode_update_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.CardActivated(automation.AnyCard)),
+    ..,
+  )) =
+    decode_update_trigger(
+      "{\"type\":\"card_activated\",\"scope\":{\"type\":\"any_card\"}}",
+    )
+  let assert Ok(payloads.UpdatePayload(
+    trigger: Some(automation.CardClosed(automation.AtDepth(depth))),
+    ..,
+  )) =
+    decode_update_trigger(
+      "{\"type\":\"card_closed\",\"scope\":{\"type\":\"at_depth\",\"depth\":2}}",
+    )
+  let assert 2 = automation.card_depth_to_int(depth)
+}
+
+pub fn decode_update_payload_rejects_parked_and_due_date_triggers_test() {
+  let assert Error(Nil) =
+    decode_update_trigger("{\"type\":\"task_blocked\",\"task_type_id\":null}")
+  let assert Error(Nil) =
+    decode_update_trigger("{\"type\":\"task_unblocked\",\"task_type_id\":null}")
+  let assert Error(Nil) =
+    decode_update_trigger("{\"type\":\"task_due_date_overdue\"}")
+}
+
 pub fn decode_update_payload_decodes_paused_status_test() {
   let assert Ok(dynamic) =
     json.parse("{\"status\":{\"type\":\"paused\"}}", decode.dynamic)
@@ -124,4 +169,13 @@ fn decode_create_trigger(
     )
 
   payloads.decode_create(dynamic)
+}
+
+fn decode_update_trigger(
+  trigger_json: String,
+) -> Result(payloads.UpdatePayload, Nil) {
+  let assert Ok(dynamic) =
+    json.parse("{\"trigger\":" <> trigger_json <> "}", decode.dynamic)
+
+  payloads.decode_update(dynamic)
 }
