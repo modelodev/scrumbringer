@@ -814,6 +814,11 @@ fn view_rule_preview(config: Config(msg)) -> Element(msg) {
       ]),
       p([], [text(rule_preview_sentence(config))]),
       p([attribute.class("hint")], [text(rule_template_preview(config))]),
+      case rule_noise_warning(config) {
+        opt.Some(warning) ->
+          p([attribute.class("hint rule-builder-warning")], [text(warning)])
+        opt.None -> element.none()
+      },
     ],
   )
 }
@@ -821,40 +826,28 @@ fn view_rule_preview(config: Config(msg)) -> Element(msg) {
 fn rule_preview_sentence(config: Config(msg)) -> String {
   case config.rules.rule_form_event {
     "task_created" ->
-      "When "
-      <> task_subject_label(config)
-      <> " is created, work is created in the Pool."
+      t(config, i18n_text.RulePreviewTaskCreated(task_subject_label(config)))
     "task_claimed" ->
-      "When "
-      <> task_subject_label(config)
-      <> " is claimed, work is created in the Pool."
+      t(config, i18n_text.RulePreviewTaskClaimed(task_subject_label(config)))
     "task_released" ->
-      "When "
-      <> task_subject_label(config)
-      <> " is released, work is created in the Pool."
+      t(config, i18n_text.RulePreviewTaskReleased(task_subject_label(config)))
     "task_completed" ->
-      "When "
-      <> task_subject_label(config)
-      <> " is completed, work is created in the Pool."
+      t(config, i18n_text.RulePreviewTaskCompleted(task_subject_label(config)))
     "card_activated" ->
-      "When "
-      <> card_scope_label(config)
-      <> " is activated, work is created in the Pool."
+      t(config, i18n_text.RulePreviewCardActivated(card_scope_label(config)))
     "card_closed" ->
-      "When "
-      <> card_scope_label(config)
-      <> " is closed, work is created in the Pool."
-    _ -> "This rule uses a target that requires review before it can run."
+      t(config, i18n_text.RulePreviewCardClosed(card_scope_label(config)))
+    _ -> t(config, i18n_text.RulePreviewRequiresReview)
   }
 }
 
 fn card_scope_label(config: Config(msg)) -> String {
   case string.trim(config.rules.rule_form_card_scope) {
-    "" -> "any card"
+    "" -> t(config, i18n_text.RulePreviewAnyCard)
     value -> {
       case int.parse(value) {
         Ok(depth) -> card_depth_label(config, depth)
-        Error(_) -> "a selected card level"
+        Error(_) -> t(config, i18n_text.RulePreviewSelectedCardLevel)
       }
     }
   }
@@ -867,22 +860,24 @@ fn card_depth_label(config: Config(msg), depth: Int) -> String {
       candidate == depth
     })
   {
-    Ok(scope_view.DepthName(singular_name: singular, ..)) -> "a " <> singular
-    Error(_) -> "a card at level " <> int.to_string(depth)
+    Ok(scope_view.DepthName(singular_name: singular, ..)) ->
+      t(config, i18n_text.RulePreviewCardLevel(singular))
+    Error(_) -> t(config, i18n_text.RulePreviewFallbackCardLevel(depth))
   }
 }
 
 fn task_subject_label(config: Config(msg)) -> String {
   case config.rules.rule_form_task_type_id {
-    "" -> "any task"
+    "" -> t(config, i18n_text.RulePreviewAnyTask)
     value ->
       case int.parse(value) {
         Ok(type_id) ->
           case find_task_type(config, type_id) {
-            opt.Some(task_type) -> "a " <> task_type.name <> " task"
-            opt.None -> "a selected task type"
+            opt.Some(task_type) ->
+              t(config, i18n_text.RulePreviewTaskType(task_type.name))
+            opt.None -> t(config, i18n_text.RulePreviewSelectedTaskType)
           }
-        Error(_) -> "a selected task type"
+        Error(_) -> t(config, i18n_text.RulePreviewSelectedTaskType)
       }
   }
 }
@@ -890,8 +885,16 @@ fn task_subject_label(config: Config(msg)) -> String {
 fn rule_template_preview(config: Config(msg)) -> String {
   case selected_rule_template(config) {
     opt.Some(template) ->
-      "It will create \"" <> template.name <> "\" as available work."
-    opt.None -> "Choose one template before saving this rule."
+      t(config, i18n_text.RulePreviewTemplateWillCreate(template.name))
+    opt.None -> t(config, i18n_text.RulePreviewChooseTemplate)
+  }
+}
+
+fn rule_noise_warning(config: Config(msg)) -> opt.Option(String) {
+  case config.rules.rule_form_subject, config.rules.rule_form_event {
+    "card", "card_activated" ->
+      opt.Some(t(config, i18n_text.RulePreviewCardActivationNoiseWarning))
+    _, _ -> opt.None
   }
 }
 

@@ -817,6 +817,23 @@ pub type Text {
   RuleBuilderCardActivatedEvent
   RuleBuilderCardClosedEvent
   RuleBuilderPreview
+  RulePreviewTaskCreated(subject: String)
+  RulePreviewTaskClaimed(subject: String)
+  RulePreviewTaskReleased(subject: String)
+  RulePreviewTaskCompleted(subject: String)
+  RulePreviewCardActivated(scope: String)
+  RulePreviewCardClosed(scope: String)
+  RulePreviewRequiresReview
+  RulePreviewAnyCard
+  RulePreviewCardLevel(level_name: String)
+  RulePreviewFallbackCardLevel(depth: Int)
+  RulePreviewSelectedCardLevel
+  RulePreviewAnyTask
+  RulePreviewTaskType(task_type_name: String)
+  RulePreviewSelectedTaskType
+  RulePreviewTemplateWillCreate(template_name: String)
+  RulePreviewChooseTemplate
+  RulePreviewCardActivationNoiseWarning
 
   ExpandRule
   CollapseRule

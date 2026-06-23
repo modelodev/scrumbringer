@@ -1007,6 +1007,34 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderCardActivatedEvent -> "se activa"
     text.RuleBuilderCardClosedEvent -> "se cierra"
     text.RuleBuilderPreview -> "Vista previa"
+    text.RulePreviewTaskCreated(subject) ->
+      "Cuando " <> subject <> " se cree, se creará trabajo en el Pool."
+    text.RulePreviewTaskClaimed(subject) ->
+      "Cuando " <> subject <> " se reclame, se creará trabajo en el Pool."
+    text.RulePreviewTaskReleased(subject) ->
+      "Cuando " <> subject <> " se libere, se creará trabajo en el Pool."
+    text.RulePreviewTaskCompleted(subject) ->
+      "Cuando " <> subject <> " se complete, se creará trabajo en el Pool."
+    text.RulePreviewCardActivated(scope) ->
+      "Cuando " <> scope <> " se active, se creará trabajo en el Pool."
+    text.RulePreviewCardClosed(scope) ->
+      "Cuando " <> scope <> " se cierre, se creará trabajo en el Pool."
+    text.RulePreviewRequiresReview ->
+      "Esta regla usa un objetivo que requiere revisión antes de ejecutarse."
+    text.RulePreviewAnyCard -> "cualquier card"
+    text.RulePreviewCardLevel(level_name) -> "una " <> level_name
+    text.RulePreviewFallbackCardLevel(depth) ->
+      "una card de nivel " <> int.to_string(depth)
+    text.RulePreviewSelectedCardLevel -> "un nivel de card seleccionado"
+    text.RulePreviewAnyTask -> "cualquier task"
+    text.RulePreviewTaskType(task_type_name) -> "una task " <> task_type_name
+    text.RulePreviewSelectedTaskType -> "un tipo de task seleccionado"
+    text.RulePreviewTemplateWillCreate(template_name) ->
+      "Creará \"" <> template_name <> "\" como trabajo disponible."
+    text.RulePreviewChooseTemplate ->
+      "Elige una plantilla antes de guardar esta regla."
+    text.RulePreviewCardActivationNoiseWarning ->
+      "Aviso: activar una card con muchas subcards puede crear mucho trabajo en el Pool."
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"

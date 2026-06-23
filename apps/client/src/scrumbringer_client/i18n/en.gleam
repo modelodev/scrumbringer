@@ -982,6 +982,35 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderCardActivatedEvent -> "is activated"
     text.RuleBuilderCardClosedEvent -> "is closed"
     text.RuleBuilderPreview -> "Preview"
+    text.RulePreviewTaskCreated(subject) ->
+      "When " <> subject <> " is created, work is created in the Pool."
+    text.RulePreviewTaskClaimed(subject) ->
+      "When " <> subject <> " is claimed, work is created in the Pool."
+    text.RulePreviewTaskReleased(subject) ->
+      "When " <> subject <> " is released, work is created in the Pool."
+    text.RulePreviewTaskCompleted(subject) ->
+      "When " <> subject <> " is completed, work is created in the Pool."
+    text.RulePreviewCardActivated(scope) ->
+      "When " <> scope <> " is activated, work is created in the Pool."
+    text.RulePreviewCardClosed(scope) ->
+      "When " <> scope <> " is closed, work is created in the Pool."
+    text.RulePreviewRequiresReview ->
+      "This rule uses a target that requires review before it can run."
+    text.RulePreviewAnyCard -> "any card"
+    text.RulePreviewCardLevel(level_name) -> "a " <> level_name
+    text.RulePreviewFallbackCardLevel(depth) ->
+      "a card at level " <> int.to_string(depth)
+    text.RulePreviewSelectedCardLevel -> "a selected card level"
+    text.RulePreviewAnyTask -> "any task"
+    text.RulePreviewTaskType(task_type_name) ->
+      "a " <> task_type_name <> " task"
+    text.RulePreviewSelectedTaskType -> "a selected task type"
+    text.RulePreviewTemplateWillCreate(template_name) ->
+      "It will create \"" <> template_name <> "\" as available work."
+    text.RulePreviewChooseTemplate ->
+      "Choose one template before saving this rule."
+    text.RulePreviewCardActivationNoiseWarning ->
+      "Warning: activating a card with many subcards can create a lot of Pool work."
 
     text.ExpandRule -> "Expand"
     text.CollapseRule -> "Collapse"

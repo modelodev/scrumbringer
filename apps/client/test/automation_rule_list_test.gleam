@@ -355,10 +355,24 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
   assert_contains(html, "aria-label=\"Plantilla de task de la regla\"")
   assert_contains(html, "Elige una plantilla")
   assert_contains(html, "Vista previa")
+  assert_contains(
+    html,
+    "Cuando cualquier card se active, se creará trabajo en el Pool.",
+  )
+  assert_contains(
+    html,
+    "Creará &quot;Follow-up task&quot; como trabajo disponible.",
+  )
+  assert_contains(
+    html,
+    "Aviso: activar una card con muchas subcards puede crear mucho trabajo en el Pool.",
+  )
   assert_not_contains(html, "Card automation scope")
   assert_not_contains(html, "Create task from")
   assert_not_contains(html, "Choose a template")
   assert_not_contains(html, ">Preview<")
+  assert_not_contains(html, "When any card is activated")
+  assert_not_contains(html, "It will create")
 }
 
 pub fn automation_rule_list_template_picker_filters_and_previews_test() {
