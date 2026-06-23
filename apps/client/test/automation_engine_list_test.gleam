@@ -158,6 +158,35 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
   assert_not_contains(html, "workflow-crud-dialog")
 }
 
+pub fn automation_engine_list_localizes_panel_actions_test() {
+  let html =
+    engine_list.view(
+      engine_list.Config(
+        ..config(),
+        locale: locale.Es,
+        dialog_mode: opt.Some(
+          admin_workflows.WorkflowDialogEdit(workflow(
+            3,
+            "Release automation",
+            True,
+          )),
+        ),
+        form_name: "Release automation",
+        form_description: "Creates follow-up work",
+        form_submitting: True,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Editar motor")
+  assert_contains(html, "aria-label=\"Cerrar\"")
+  assert_contains(html, ">Cancelar<")
+  assert_contains(html, "Guardando")
+  assert_not_contains(html, "aria-label=\"Close\"")
+  assert_not_contains(html, ">Cancel<")
+  assert_not_contains(html, "Saving...")
+}
+
 pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
   let html =
     engine_list.view(

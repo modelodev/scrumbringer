@@ -316,8 +316,8 @@ fn view_form_panel(
   }
   let submit_label = case mode {
     admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
-    admin_workflows.WorkflowDialogEdit(_) -> "Save changes"
-    admin_workflows.WorkflowDialogDelete(_) -> "Save"
+    admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.Save)
+    admin_workflows.WorkflowDialogDelete(_) -> t(config, i18n_text.Save)
   }
 
   div(
@@ -327,7 +327,7 @@ fn view_form_panel(
       attribute.attribute("aria-label", title),
     ],
     [
-      panel_header(title, config.on_closed),
+      panel_header(title, config.on_closed, t(config, i18n_text.Close)),
       view_form_error(config),
       form(
         [
@@ -375,6 +375,8 @@ fn view_form_panel(
         submit: config.on_submitted(config.selected_project_id),
         submit_label: submit_label,
         submitting: config.form_submitting,
+        cancel_label: t(config, i18n_text.Cancel),
+        submitting_label: t(config, i18n_text.Saving),
       ),
     ],
   )
@@ -388,7 +390,11 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
       attribute.attribute("aria-label", t(config, i18n_text.DeleteWorkflow)),
     ],
     [
-      panel_header(t(config, i18n_text.DeleteWorkflow), config.on_closed),
+      panel_header(
+        t(config, i18n_text.DeleteWorkflow),
+        config.on_closed,
+        t(config, i18n_text.Close),
+      ),
       view_form_error(config),
       p([], [text(t(config, i18n_text.WorkflowDeleteConfirm(workflow.name)))]),
       panel_actions(
@@ -396,19 +402,25 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
         submit: config.on_delete_confirmed,
         submit_label: t(config, i18n_text.DeleteWorkflow),
         submitting: config.form_submitting,
+        cancel_label: t(config, i18n_text.Cancel),
+        submitting_label: t(config, i18n_text.Saving),
       ),
     ],
   )
 }
 
-fn panel_header(title: String, on_closed: msg) -> Element(msg) {
+fn panel_header(
+  title: String,
+  on_closed: msg,
+  close_label: String,
+) -> Element(msg) {
   div([attribute.class("automation-engine-panel__header")], [
     h2([], [text(title)]),
     button(
       [
         attribute.type_("button"),
         attribute.class("icon-btn"),
-        attribute.attribute("aria-label", "Close"),
+        attribute.attribute("aria-label", close_label),
         event.on_click(on_closed),
       ],
       [text("x")],
@@ -432,6 +444,8 @@ fn panel_actions(
   submit submit: msg,
   submit_label submit_label: String,
   submitting submitting: Bool,
+  cancel_label cancel_label: String,
+  submitting_label submitting_label: String,
 ) -> Element(msg) {
   div([attribute.class("automation-engine-panel__actions")], [
     button(
@@ -440,7 +454,7 @@ fn panel_actions(
         attribute.class("btn secondary"),
         event.on_click(cancel),
       ],
-      [text("Cancel")],
+      [text(cancel_label)],
     ),
     button(
       [
@@ -451,7 +465,7 @@ fn panel_actions(
       ],
       [
         text(case submitting {
-          True -> "Saving..."
+          True -> submitting_label
           False -> submit_label
         }),
       ],
