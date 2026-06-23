@@ -275,6 +275,7 @@ pub fn build_seed(
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
   use state <- result.try(trigger_rule_executions(db, state, config))
+  use state <- result.try(build_automation_diagnostics(db, state, config))
 
   Ok(SeedResult(
     projects: list.length(state.project_ids),
@@ -2633,6 +2634,61 @@ fn trigger_rule_executions(
       )
     }
     _, _ -> Ok(state)
+  }
+}
+
+fn build_automation_diagnostics(
+  db: pog.Connection,
+  state: BuildState,
+  _config: SeedConfig,
+) -> Result(BuildState, String) {
+  let active_projects = active_project_ids(state)
+
+  case active_projects {
+    [_default_project_id, _healthy_project_id, stress_project_id, ..] ->
+      seed_ignored_duplicate_execution(db, state, stress_project_id)
+    _ -> Ok(state)
+  }
+}
+
+fn seed_ignored_duplicate_execution(
+  db: pog.Connection,
+  state: BuildState,
+  project_id: Int,
+) -> Result(BuildState, String) {
+  let rules = rule_ids_for_project(state.rule_ids_by_project, project_id)
+  let templates =
+    templates_for_project(state.template_ids_by_project, project_id)
+  let task_seeds =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.project_id == project_id })
+
+  case rules, templates, task_seeds {
+    [rule_id, ..], [template_id, ..], [TaskSeedInfo(task_id: task_id, ..), ..] -> {
+      let event_key = "seed:duplicate:stress:" <> int.to_string(task_id)
+      use inserted <- result.try(
+        seed_db.insert_ignored_duplicate_rule_execution(
+          db,
+          rule_id,
+          event_key,
+          task_id,
+          state.admin_id,
+          template_id,
+          1,
+        ),
+      )
+      let inserted_count = case inserted {
+        True -> 1
+        False -> 0
+      }
+      Ok(
+        BuildState(
+          ..state,
+          rule_executions_count: state.rule_executions_count + inserted_count,
+        ),
+      )
+    }
+    _, _, _ -> Ok(state)
   }
 }
 

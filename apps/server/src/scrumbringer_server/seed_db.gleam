@@ -30,6 +30,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/sql
 import scrumbringer_server/use_case/audit_events_db
 
 // =============================================================================
@@ -1544,6 +1545,45 @@ pub fn insert_task_position(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "insert_task_position: " <> string.inspect(e) })
+}
+
+// =============================================================================
+// Rule Execution Operations
+// =============================================================================
+
+/// Insert a diagnostic rule execution for a duplicate event ignored by idempotency.
+pub fn insert_ignored_duplicate_rule_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  event_key: String,
+  task_id: Int,
+  user_id: Int,
+  template_id: Int,
+  template_version: Int,
+) -> Result(Bool, String) {
+  sql.rule_executions_log(
+    db,
+    rule_id,
+    event_key,
+    task_id,
+    0,
+    "suppressed",
+    "idempotent",
+    user_id,
+    template_id,
+    template_version,
+    0,
+  )
+  |> result.map_error(fn(e) {
+    "insert_ignored_duplicate_rule_execution: " <> string.inspect(e)
+  })
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [_row] -> Ok(True)
+      [] -> Ok(False)
+      _ -> Error("insert_ignored_duplicate_rule_execution: unexpected rows")
+    }
+  })
 }
 
 // =============================================================================

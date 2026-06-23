@@ -91,11 +91,27 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
          and re.outcome = 'applied'",
       [],
     )
+  let assert Ok(ignored_duplicate_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from rule_executions re
+       join rules r on r.id = re.rule_id
+       join workflows w on w.id = r.workflow_id
+       join projects p on p.id = w.project_id
+       where p.name = 'Stress Validation Project'
+         and re.outcome = 'suppressed'
+         and re.suppression_reason = 'idempotent'
+         and re.event_key like 'seed:duplicate:stress:%'
+         and re.created_task_id is null",
+      [],
+    )
 
   { selected_rule_count > 0 } |> expect.is_true
   stress_missing_template_count |> expect.equal(1)
   { applied_execution_count > 0 } |> expect.is_true
   { created_task_trace_count > 0 } |> expect.is_true
+  ignored_duplicate_count |> expect.equal(1)
 }
 
 fn project_id_by_name(db: pog.Connection, name: String) -> Result(Int, String) {
