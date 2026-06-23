@@ -157,6 +157,13 @@ pub fn try_rules_update(
       #(admin_rules.Model(..state, rule_form_card_scope: value), effect.none())
       |> without_rules_auth_check
 
+    pool_messages.RuleTemplateSearchChanged(value) ->
+      #(
+        admin_rules.Model(..state, rule_form_template_search: value),
+        effect.none(),
+      )
+      |> without_rules_auth_check
+
     pool_messages.RuleTemplateChanged(value) ->
       #(admin_rules.Model(..state, rule_form_template_id: value), effect.none())
       |> without_rules_auth_check
@@ -1005,6 +1012,7 @@ fn open_rule_dialog(
         rule_form_task_type_id: "",
         rule_form_event: "task_completed",
         rule_form_card_scope: "",
+        rule_form_template_search: "",
         rule_form_template_id: "",
         rule_form_active: True,
         rule_form_submitting: False,
@@ -1023,6 +1031,7 @@ fn open_rule_dialog(
         rule_form_task_type_id: task_type_id,
         rule_form_event: event,
         rule_form_card_scope: card_scope,
+        rule_form_template_search: "",
         rule_form_template_id: template_id,
         rule_form_active: automation.status_to_active(rule.status),
         rule_form_submitting: False,

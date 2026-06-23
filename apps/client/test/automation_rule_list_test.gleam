@@ -71,10 +71,26 @@ fn task_template() -> TaskTemplate {
     org_id: 1,
     project_id: opt.Some(7),
     name: "Follow-up task",
-    description: opt.None,
+    description: opt.Some("Manual QA review"),
     type_id: 5,
     type_name: "Bug",
     priority: 3,
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    rules_count: 0,
+  )
+}
+
+fn docs_template() -> TaskTemplate {
+  TaskTemplate(
+    id: 13,
+    org_id: 1,
+    project_id: opt.Some(7),
+    name: "Docs sweep",
+    description: opt.None,
+    type_id: 5,
+    type_name: "Bug",
+    priority: 1,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     rules_count: 0,
@@ -143,6 +159,7 @@ fn config() -> rule_list.Config(String) {
     on_rule_task_type_changed: fn(value) { "task-type-" <> value },
     on_rule_event_changed: fn(value) { "event-" <> value },
     on_rule_card_scope_changed: fn(value) { "card-scope-" <> value },
+    on_rule_template_search_changed: fn(value) { "template-search-" <> value },
     on_rule_template_changed: fn(value) { "template-" <> value },
     on_rule_active_changed: fn(value) {
       "active-"
@@ -266,10 +283,64 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_contains(html, "Preview")
   assert_contains(html, "When a Bug task is completed")
   assert_contains(html, "Create task from")
+  assert_contains(html, "data-testid=\"automation-template-search\"")
   assert_contains(html, "data-testid=\"automation-template-picker\"")
   assert_contains(html, "Follow-up task")
+  assert_contains(html, "Manual QA review")
+  assert_contains(html, "Bug - P3")
   assert_contains(html, "It will create &quot;Follow-up task&quot;")
   assert_not_contains(html, "rule-crud-dialog")
   assert_not_contains(html, "Resource Type")
   assert_not_contains(html, "Target State")
+}
+
+pub fn automation_rule_list_template_picker_filters_and_previews_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        task_templates_project: Loaded([task_template(), docs_template()]),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "5",
+          rule_form_event: "task_completed",
+          rule_form_template_search: "Follow",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Search templates")
+  assert_contains(html, "value=\"Follow\"")
+  assert_contains(html, "Follow-up task")
+  assert_contains(html, "Manual QA review")
+  assert_not_contains(html, "Docs sweep")
+}
+
+pub fn automation_rule_list_template_picker_empty_filter_state_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        task_templates_project: Loaded([task_template(), docs_template()]),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "5",
+          rule_form_event: "task_completed",
+          rule_form_template_search: "Missing",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "No templates match this search.")
+  assert_not_contains(html, "Follow-up task")
+  assert_not_contains(html, "Docs sweep")
 }

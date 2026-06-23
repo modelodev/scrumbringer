@@ -73,6 +73,13 @@ pub fn css() -> List(String) {
     ".automation-rule-sentence__when { color: var(--sb-text-strong); font-weight: var(--sb-weight-medium); overflow-wrap: anywhere; }",
     ".automation-rule-sentence__effect { color: var(--sb-muted-strong); font-size: var(--sb-font-sm); overflow-wrap: anywhere; }",
     ".automation-rule-sentence__badge { white-space: nowrap; }",
+    ".rule-template-picker { display: flex; flex-direction: column; gap: 8px; min-width: 0; }",
+    ".rule-template-picker input, .rule-template-picker select { width: 100%; min-width: 0; }",
+    ".rule-template-picker__empty { margin: 0; color: var(--sb-muted); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
+    ".rule-template-picker__preview { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border: 1px solid color-mix(in oklab, var(--sb-primary) 26%, var(--sb-border)); border-radius: 8px; background: color-mix(in oklab, var(--sb-primary) 5%, var(--sb-surface)); }",
+    ".rule-template-picker__preview-title { color: var(--sb-text-strong); font-weight: var(--sb-weight-semibold); overflow-wrap: anywhere; }",
+    ".rule-template-picker__preview-meta { color: var(--sb-muted-strong); font-size: var(--sb-font-sm); }",
+    ".rule-template-picker__preview-description { margin: 2px 0 0; color: var(--sb-muted); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); overflow-wrap: anywhere; }",
     // Story 4.10: AC4 - Attached template row with icon and priority
     ".attached-template-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
     ".attached-template-info { display: flex; align-items: center; gap: 8px; }",

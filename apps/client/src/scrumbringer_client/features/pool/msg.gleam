@@ -226,6 +226,7 @@ pub type Msg {
   RuleTaskTypeChanged(String)
   RuleEventChanged(String)
   RuleCardScopeChanged(String)
+  RuleTemplateSearchChanged(String)
   RuleTemplateChanged(String)
   RuleActiveChanged(Bool)
   RuleFormSubmitted

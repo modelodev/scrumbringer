@@ -893,6 +893,8 @@ pub fn translate(text: Text) -> String {
     text.RuleDeleteConfirm(name) -> "Delete rule \"" <> name <> "\"?"
     text.RuleMetricsApplied -> "Created"
     text.RuleMetricsSuppressed -> "Ignored"
+    text.RuleTemplateSearchPlaceholder -> "Search templates"
+    text.RuleTemplateNoSearchResults -> "No templates match this search."
 
     text.ExpandRule -> "Expand"
     text.CollapseRule -> "Collapse"

@@ -915,6 +915,9 @@ pub fn translate(text: Text) -> String {
     text.RuleDeleteConfirm(name) -> "¿Eliminar la regla \"" <> name <> "\"?"
     text.RuleMetricsApplied -> "Creadas"
     text.RuleMetricsSuppressed -> "Ignoradas"
+    text.RuleTemplateSearchPlaceholder -> "Buscar plantillas"
+    text.RuleTemplateNoSearchResults ->
+      "Ninguna plantilla coincide con esta búsqueda."
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"

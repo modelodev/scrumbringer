@@ -1073,6 +1073,9 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
     on_rule_card_scope_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleCardScopeChanged(value))
     },
+    on_rule_template_search_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleTemplateSearchChanged(value))
+    },
     on_rule_template_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleTemplateChanged(value))
     },

@@ -360,6 +360,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
     create_opened.rules_dialog_mode
   let assert "" = create_opened.rule_form_name
   let assert "task_completed" = create_opened.rule_form_event
+  let assert "" = create_opened.rule_form_template_search
   let assert True = fx == effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 
@@ -378,6 +379,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
     )
   let assert "Created" = edit_opened.rule_form_name
   let assert "task_completed" = edit_opened.rule_form_event
+  let assert "" = edit_opened.rule_form_template_search
   let assert True = fx == effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 
@@ -609,6 +611,26 @@ pub fn try_rules_update_invalid_card_depth_blocks_submit_test() {
 
   let assert opt.Some("Choose a valid card level") = next.rule_form_error
   let assert False = next.rule_form_submitting
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+}
+
+pub fn try_rules_update_template_search_changed_updates_rule_form_test() {
+  let state =
+    admin_rules.Model(
+      ..admin_rules.default_model(),
+      rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+    )
+
+  let assert opt.Some(workflows_update.RulesUpdate(next, fx, auth_policy)) =
+    workflows_update.try_rules_update(
+      state,
+      pool_messages.RuleTemplateSearchChanged("Follow"),
+      rules_context(opt.None),
+      rule_feedback_context(),
+    )
+
+  let assert "Follow" = next.rule_form_template_search
   let assert True = fx == effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 }

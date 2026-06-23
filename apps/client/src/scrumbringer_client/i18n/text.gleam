@@ -759,6 +759,8 @@ pub type Text {
   RuleDeleteConfirm(rule_name: String)
   RuleMetricsApplied
   RuleMetricsSuppressed
+  RuleTemplateSearchPlaceholder
+  RuleTemplateNoSearchResults
 
   ExpandRule
   CollapseRule

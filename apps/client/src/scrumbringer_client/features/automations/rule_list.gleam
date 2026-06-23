@@ -82,6 +82,7 @@ pub type Config(msg) {
     on_rule_task_type_changed: fn(String) -> msg,
     on_rule_event_changed: fn(String) -> msg,
     on_rule_card_scope_changed: fn(String) -> msg,
+    on_rule_template_search_changed: fn(String) -> msg,
     on_rule_template_changed: fn(String) -> msg,
     on_rule_active_changed: fn(Bool) -> msg,
     on_rule_submitted: msg,
@@ -472,7 +473,7 @@ fn view_rule_form_panel(
           },
           form_field.view_required(
             "Create task from",
-            view_rule_template_select(config),
+            view_rule_template_picker(config),
           ),
           form_field.view_checkbox(
             t(config, i18n_text.RuleActive),
@@ -513,30 +514,56 @@ fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
   )
 }
 
-fn view_rule_template_select(config: Config(msg)) -> Element(msg) {
-  select(
-    [
-      attribute.value(config.rules.rule_form_template_id),
-      event.on_input(config.on_rule_template_changed),
-      event.on_change(config.on_rule_template_changed),
-      attribute.attribute("aria-label", "Rule task template"),
-      attribute.attribute("data-testid", "automation-template-picker"),
-    ],
-    [
-      option(
-        [
-          attribute.value(""),
-          attribute.selected(config.rules.rule_form_template_id == ""),
-        ],
-        "Choose a template",
+fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
+  let templates = filtered_templates_for_rule_builder(config)
+
+  div([attribute.class("rule-template-picker")], [
+    input([
+      attribute.type_("search"),
+      attribute.value(config.rules.rule_form_template_search),
+      attribute.placeholder(t(config, i18n_text.RuleTemplateSearchPlaceholder)),
+      attribute.attribute(
+        "aria-label",
+        t(config, i18n_text.RuleTemplateSearchPlaceholder),
       ),
-      ..task_template_options(config)
-    ],
-  )
+      attribute.attribute("data-testid", "automation-template-search"),
+      event.on_input(config.on_rule_template_search_changed),
+    ]),
+    select(
+      [
+        attribute.value(config.rules.rule_form_template_id),
+        event.on_input(config.on_rule_template_changed),
+        event.on_change(config.on_rule_template_changed),
+        attribute.attribute("aria-label", "Rule task template"),
+        attribute.attribute("data-testid", "automation-template-picker"),
+      ],
+      [
+        option(
+          [
+            attribute.value(""),
+            attribute.selected(config.rules.rule_form_template_id == ""),
+          ],
+          "Choose a template",
+        ),
+        ..task_template_options(config, templates)
+      ],
+    ),
+    case templates {
+      [] ->
+        p([attribute.class("rule-template-picker__empty")], [
+          text(t(config, i18n_text.RuleTemplateNoSearchResults)),
+        ])
+      _ -> element.none()
+    },
+    view_selected_template_preview(config),
+  ])
 }
 
-fn task_template_options(config: Config(msg)) -> List(Element(msg)) {
-  available_templates_for_rule_builder(config)
+fn task_template_options(
+  config: Config(msg),
+  templates: List(TaskTemplate),
+) -> List(Element(msg)) {
+  templates
   |> list.map(fn(tmpl) {
     let value = int.to_string(tmpl.id)
     option(
@@ -547,6 +574,50 @@ fn task_template_options(config: Config(msg)) -> List(Element(msg)) {
       tmpl.name,
     )
   })
+}
+
+fn filtered_templates_for_rule_builder(
+  config: Config(msg),
+) -> List(TaskTemplate) {
+  let query = string.trim(config.rules.rule_form_template_search)
+  case query {
+    "" -> available_templates_for_rule_builder(config)
+    _ ->
+      available_templates_for_rule_builder(config)
+      |> list.filter(fn(tmpl) { task_template_matches_query(tmpl, query) })
+  }
+}
+
+fn task_template_matches_query(tmpl: TaskTemplate, query: String) -> Bool {
+  string.contains(tmpl.name, query)
+  || string.contains(tmpl.type_name, query)
+  || string.contains(int.to_string(tmpl.priority), query)
+}
+
+fn view_selected_template_preview(config: Config(msg)) -> Element(msg) {
+  case selected_rule_template(config) {
+    opt.None -> element.none()
+    opt.Some(tmpl) ->
+      div([attribute.class("rule-template-picker__preview")], [
+        span([attribute.class("rule-template-picker__preview-title")], [
+          text(tmpl.name),
+        ]),
+        span([attribute.class("rule-template-picker__preview-meta")], [
+          text(
+            tmpl.type_name
+            <> " - "
+            <> t(config, i18n_text.PriorityShort(tmpl.priority)),
+          ),
+        ]),
+        case tmpl.description {
+          opt.Some(description) ->
+            p([attribute.class("rule-template-picker__preview-description")], [
+              text(description),
+            ])
+          opt.None -> element.none()
+        },
+      ])
+  }
 }
 
 fn available_templates_for_rule_builder(
@@ -734,18 +805,18 @@ fn task_subject_label(config: Config(msg)) -> String {
 }
 
 fn rule_template_preview(config: Config(msg)) -> String {
-  case selected_rule_template_name(config) {
-    opt.Some(name) -> "It will create \"" <> name <> "\" as available work."
+  case selected_rule_template(config) {
+    opt.Some(template) ->
+      "It will create \"" <> template.name <> "\" as available work."
     opt.None -> "Choose one template before saving this rule."
   }
 }
 
-fn selected_rule_template_name(config: Config(msg)) -> opt.Option(String) {
+fn selected_rule_template(config: Config(msg)) -> opt.Option(TaskTemplate) {
   case int.parse(config.rules.rule_form_template_id) {
     Ok(template_id) ->
       available_templates_for_rule_builder(config)
       |> list.find(fn(tmpl) { tmpl.id == template_id })
-      |> result.map(fn(tmpl) { tmpl.name })
       |> opt.from_result
     Error(_) -> opt.None
   }
