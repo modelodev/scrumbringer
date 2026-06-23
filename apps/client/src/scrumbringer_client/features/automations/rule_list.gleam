@@ -444,7 +444,8 @@ fn view_rule_form_panel(
   div(
     [
       attribute.class("automation-rule-panel"),
-      attribute.role("region"),
+      attribute.role("dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
       attribute.attribute("data-testid", "automation-rule-builder"),
     ],
@@ -1152,7 +1153,8 @@ fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {
   div(
     [
       attribute.class("automation-rule-panel automation-rule-panel-danger"),
-      attribute.role("region"),
+      attribute.role("dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(config, i18n_text.DeleteRule)),
       attribute.attribute("data-testid", "automation-rule-builder"),
     ],

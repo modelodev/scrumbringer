@@ -148,6 +148,8 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "Create engine")
   assert_contains(html, "data-testid=\"automation-engine-name\"")
   assert_contains(html, "Release automation")
@@ -203,6 +205,8 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "Delete engine")
   assert_contains(html, "Delete engine &quot;Release automation&quot;?")
   assert_not_contains(html, "workflow-crud-dialog")

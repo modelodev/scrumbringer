@@ -171,6 +171,7 @@ fn view_form_panel(
     [
       attribute.class("automation-template-panel"),
       attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
     ],
     [
@@ -315,6 +316,7 @@ fn view_delete_panel(
     [
       attribute.class("automation-template-panel"),
       attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(i18n_text.DeleteTaskTemplate)),
     ],
     [

@@ -192,6 +192,8 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-template-panel")
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "Create Template")
   assert_contains(html, "automation-template-name")
   assert_contains(html, "aria-label=\"Name\"")
@@ -234,6 +236,8 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "Delete Template")
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "Delete template &quot;Regression checklist&quot;?")
   assert_contains(html, "Regression checklist")
   assert_contains(

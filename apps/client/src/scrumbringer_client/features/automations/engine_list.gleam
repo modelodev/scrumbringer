@@ -316,6 +316,7 @@ fn view_form_panel(
     [
       attribute.class("automation-engine-panel"),
       attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
     ],
     [
@@ -379,6 +380,7 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
     [
       attribute.class("automation-engine-panel"),
       attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(config, i18n_text.DeleteWorkflow)),
     ],
     [
