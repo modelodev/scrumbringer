@@ -16,35 +16,32 @@
 //// - **features/automations/engine_list.gleam**: Delegates selected-engine rules here
 
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/result
 import gleam/set
+import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  a, div, input, label, p, span, table, td, text, th, thead, tr,
+  a, div, form, h2, input, label, option, p, select, span, table, td, text, th,
+  thead, tr,
 }
 import lustre/element/keyed
 import lustre/event
 
-import gleam/dynamic/decode
-
 import domain/remote.{type Remote, Loaded}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
-  type Rule, type TaskTemplate, type Workflow, rule_resource_type,
-  rule_task_type_id, rule_to_state_string,
+  type Rule, type TaskTemplate, type Workflow, rule_task_type_id,
 }
-import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/features/automations/rule_sentence
 import scrumbringer_client/i18n/i18n
-import scrumbringer_client/i18n/locale.{type Locale, serialize}
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -56,8 +53,8 @@ import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
-import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/expand_toggle
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/modal_header
@@ -90,10 +87,15 @@ pub type Config(msg) {
     on_template_detached: fn(Int, Int) -> msg,
     on_template_selected: fn(Int) -> msg,
     on_attach_submitted: msg,
-    on_rule_created: fn(Rule) -> msg,
-    on_rule_updated: fn(Rule) -> msg,
-    on_rule_deleted: fn(Int) -> msg,
-    on_rule_dialog_closed: msg,
+    on_rule_name_changed: fn(String) -> msg,
+    on_rule_goal_changed: fn(String) -> msg,
+    on_rule_subject_changed: fn(String) -> msg,
+    on_rule_task_type_changed: fn(String) -> msg,
+    on_rule_event_changed: fn(String) -> msg,
+    on_rule_active_changed: fn(Bool) -> msg,
+    on_rule_submitted: msg,
+    on_rule_delete_confirmed: msg,
+    on_rule_panel_closed: msg,
     on_noop: msg,
   )
 }
@@ -137,8 +139,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         ),
       ),
       view_rules_table(config, config.rules.rules, config.rules.rules_metrics),
-      // Rule CRUD dialog component (handles create/edit/delete internally)
-      view_rule_crud_dialog(config),
+      view_rule_builder_panel(config),
     ],
   )
 }
@@ -705,101 +706,302 @@ fn rule_metrics_for_loaded(
   }
 }
 
-/// Renders the rule-crud-dialog component.
-/// The component handles create/edit/delete internally and emits events.
-fn view_rule_crud_dialog(config: Config(msg)) -> Element(msg) {
-  // Build mode attribute based on dialog mode
-  let mode_attr = case config.rules.rules_dialog_mode {
-    opt.None -> "closed"
-    opt.Some(admin_rules.RuleDialogCreate) -> "create"
-    opt.Some(admin_rules.RuleDialogEdit(_)) -> "edit"
-    opt.Some(admin_rules.RuleDialogDelete(_)) -> "delete"
-  }
-
-  // Build rule property for edit/delete modes (includes _mode field for component)
-  let rule_prop = case config.rules.rules_dialog_mode {
-    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
-      attribute.property("rule", rule_to_json(rule, "edit"))
+fn view_rule_builder_panel(config: Config(msg)) -> Element(msg) {
+  case config.rules.rules_dialog_mode {
+    opt.None -> element.none()
     opt.Some(admin_rules.RuleDialogDelete(rule)) ->
-      attribute.property("rule", rule_to_json(rule, "delete"))
-    _ -> attribute.none()
+      view_rule_delete_panel(config, rule)
+    opt.Some(admin_rules.RuleDialogCreate) ->
+      view_rule_form_panel(config, "New rule", "Create rule")
+    opt.Some(admin_rules.RuleDialogEdit(_rule)) ->
+      view_rule_form_panel(config, "Edit rule", "Save rule")
   }
+}
 
-  // Build task types property (include icon for decoder)
-  let task_types_json = case config.task_types {
-    Loaded(types) ->
-      json.array(types, fn(tt) {
-        json.object([
-          #("id", json.int(tt.id)),
-          #("name", json.string(tt.name)),
-          #("icon", json.string(tt.icon)),
-        ])
-      })
-    _ -> json.array([], fn(_: Nil) { json.null() })
-  }
+fn view_rule_form_panel(
+  config: Config(msg),
+  title: String,
+  submit_label: String,
+) -> Element(msg) {
+  let form_disabled =
+    config.rules.rule_form_submitting || !rule_form_is_valid(config)
 
-  element.element(
-    "rule-crud-dialog",
+  div(
     [
-      attribute.attribute("locale", serialize(config.locale)),
-      attribute.attribute("workflow-id", int.to_string(config.workflow_id)),
-      attribute.attribute("mode", mode_attr),
-      rule_prop,
-      attribute.property("task-types", task_types_json),
-      // Event handlers
-      event.on(
-        "rule-created",
-        decode_rule_event(fn(rule) { config.on_rule_created(rule) }),
-      ),
-      event.on(
-        "rule-updated",
-        decode_rule_event(fn(rule) { config.on_rule_updated(rule) }),
-      ),
-      event.on(
-        "rule-deleted",
-        decode_rule_id_event(fn(rule_id) { config.on_rule_deleted(rule_id) }),
-      ),
-      event.on(
-        "close-requested",
-        decode_close_event(config.on_rule_dialog_closed),
+      attribute.class("automation-rule-panel"),
+      attribute.role("region"),
+      attribute.attribute("aria-label", title),
+      attribute.attribute("data-testid", "automation-rule-builder"),
+    ],
+    [
+      div([attribute.class("automation-rule-panel-header")], [
+        h2([], [text(title)]),
+        ui_button.text(
+          t(config, i18n_text.Cancel),
+          config.on_rule_panel_closed,
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.view,
+      ]),
+      form(
+        [
+          attribute.class("form automation-rule-form"),
+          event.on_submit(fn(_) { config.on_rule_submitted }),
+        ],
+        [
+          form_field.view_required(
+            t(config, i18n_text.RuleName),
+            input([
+              attribute.type_("text"),
+              attribute.value(config.rules.rule_form_name),
+              event.on_input(config.on_rule_name_changed),
+            ]),
+          ),
+          form_field.view(
+            t(config, i18n_text.RuleGoal),
+            input([
+              attribute.type_("text"),
+              attribute.value(config.rules.rule_form_goal),
+              event.on_input(config.on_rule_goal_changed),
+            ]),
+          ),
+          div([attribute.class("rule-builder-when")], [
+            form_field.view("When", view_rule_subject_select(config)),
+            case config.rules.rule_form_subject {
+              "task" -> view_rule_task_type_select(config)
+              _ -> element.none()
+            },
+            form_field.view("Event", view_rule_event_select(config)),
+          ]),
+          form_field.view_checkbox(
+            t(config, i18n_text.RuleActive),
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(config.rules.rule_form_active),
+              event.on_check(config.on_rule_active_changed),
+            ]),
+          ),
+          view_rule_preview(config),
+          view_rule_form_error(config),
+          div([attribute.class("automation-rule-panel-actions")], [
+            ui_button.submit(
+              submit_label,
+              ui_button.Primary,
+              ui_button.EntityAction,
+            )
+            |> ui_button.with_disabled(form_disabled)
+            |> ui_button.view,
+          ]),
+        ],
       ),
     ],
-    [],
   )
 }
 
-/// Convert a Rule to JSON for property passing to component.
-/// Includes _mode field to indicate edit or delete operation.
-fn rule_to_json(rule: Rule, mode: String) -> json.Json {
-  json.object([
-    #("id", json.int(rule.id)),
-    #("workflow_id", json.int(rule.workflow_id)),
-    #("name", json.string(rule.name)),
-    #("goal", json.nullable(rule.goal, json.string)),
-    #("resource_type", json.string(rule_resource_type(rule))),
-    #("task_type_id", json.nullable(rule_task_type_id(rule), json.int)),
-    #("to_state", json.string(rule_to_state_string(rule))),
-    #("active", json.bool(rule.active)),
-    #("created_at", json.string(rule.created_at)),
-    #("_mode", json.string(mode)),
-  ])
+fn view_rule_subject_select(config: Config(msg)) -> Element(msg) {
+  select(
+    [
+      attribute.value(config.rules.rule_form_subject),
+      event.on_input(config.on_rule_subject_changed),
+      event.on_change(config.on_rule_subject_changed),
+      attribute.attribute("aria-label", "Rule subject"),
+    ],
+    [
+      option(
+        [
+          attribute.value("task"),
+          attribute.selected(config.rules.rule_form_subject == "task"),
+        ],
+        "Task",
+      ),
+      option(
+        [
+          attribute.value("card"),
+          attribute.selected(config.rules.rule_form_subject == "card"),
+        ],
+        "Card",
+      ),
+    ],
+  )
 }
 
-/// Decode rule event from component custom event.
-/// Story 4.10: Added templates field (defaults to empty list from component events).
-fn decode_rule_event(to_msg: fn(Rule) -> msg) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(workflow_codec.rule_decoder(), fn(rule) {
-    decode.success(to_msg(rule))
-  })
+fn view_rule_task_type_select(config: Config(msg)) -> Element(msg) {
+  form_field.view(
+    t(config, i18n_text.RuleTaskType),
+    select(
+      [
+        attribute.value(config.rules.rule_form_task_type_id),
+        event.on_input(config.on_rule_task_type_changed),
+        event.on_change(config.on_rule_task_type_changed),
+        attribute.attribute("aria-label", t(config, i18n_text.RuleTaskType)),
+      ],
+      [
+        option(
+          [
+            attribute.value(""),
+            attribute.selected(config.rules.rule_form_task_type_id == ""),
+          ],
+          "Any task type",
+        ),
+        ..task_type_options(config)
+      ],
+    ),
+  )
 }
 
-/// Decode rule ID from delete event.
-fn decode_rule_id_event(to_msg: fn(Int) -> msg) -> decode.Decoder(msg) {
-  decode.at(["detail", "rule_id"], decode.int)
-  |> decode.map(to_msg)
+fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
+  case config.task_types {
+    Loaded(types) ->
+      list.map(types, fn(task_type) {
+        let value = int.to_string(task_type.id)
+        option(
+          [
+            attribute.value(value),
+            attribute.selected(config.rules.rule_form_task_type_id == value),
+          ],
+          task_type.name,
+        )
+      })
+    _ -> []
+  }
 }
 
-/// Decode close event (no payload).
-fn decode_close_event(msg: msg) -> decode.Decoder(msg) {
-  decode.success(msg)
+fn view_rule_event_select(config: Config(msg)) -> Element(msg) {
+  let options = case config.rules.rule_form_subject {
+    "card" -> [
+      #("card_activated", "is activated"),
+      #("card_closed", "is closed"),
+    ]
+    _ -> [
+      #("task_completed", "is completed"),
+      #("task_claimed", "is claimed"),
+    ]
+  }
+
+  select(
+    [
+      attribute.value(config.rules.rule_form_event),
+      event.on_input(config.on_rule_event_changed),
+      event.on_change(config.on_rule_event_changed),
+      attribute.attribute("aria-label", "Rule event"),
+    ],
+    list.map(options, fn(item) {
+      let #(value, label) = item
+      option(
+        [
+          attribute.value(value),
+          attribute.selected(config.rules.rule_form_event == value),
+        ],
+        label,
+      )
+    }),
+  )
+}
+
+fn view_rule_preview(config: Config(msg)) -> Element(msg) {
+  div(
+    [
+      attribute.class("rule-builder-preview"),
+      attribute.attribute("aria-live", "polite"),
+    ],
+    [
+      span([attribute.class("preview-label")], [text("Preview")]),
+      p([], [text(rule_preview_sentence(config))]),
+      p([attribute.class("hint")], [text(rule_template_preview(config))]),
+    ],
+  )
+}
+
+fn rule_preview_sentence(config: Config(msg)) -> String {
+  case config.rules.rule_form_event {
+    "task_claimed" ->
+      "When "
+      <> task_subject_label(config)
+      <> " is claimed, work is created in the Pool."
+    "task_completed" ->
+      "When "
+      <> task_subject_label(config)
+      <> " is completed, work is created in the Pool."
+    "card_activated" -> "When a card is activated, work is created in the Pool."
+    "card_closed" -> "When a card is closed, work is created in the Pool."
+    _ -> "This rule uses a target that requires review before it can run."
+  }
+}
+
+fn task_subject_label(config: Config(msg)) -> String {
+  case config.rules.rule_form_task_type_id {
+    "" -> "any task"
+    value ->
+      case int.parse(value) {
+        Ok(type_id) ->
+          case find_task_type(config, type_id) {
+            opt.Some(task_type) -> "a " <> task_type.name <> " task"
+            opt.None -> "a selected task type"
+          }
+        Error(_) -> "a selected task type"
+      }
+  }
+}
+
+fn rule_template_preview(config: Config(msg)) -> String {
+  case config.rules.rules_dialog_mode {
+    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
+      case rule.templates {
+        [template, ..] ->
+          "It will create \"" <> template.name <> "\" as available work."
+        [] -> "Attach exactly one template before enabling this rule."
+      }
+    _ -> "Create the rule, then attach exactly one template from this panel."
+  }
+}
+
+fn view_rule_form_error(config: Config(msg)) -> Element(msg) {
+  case config.rules.rule_form_error {
+    opt.Some(message) ->
+      div([attribute.class("field-error"), attribute.role("alert")], [
+        text(message),
+      ])
+    opt.None -> element.none()
+  }
+}
+
+fn rule_form_is_valid(config: Config(msg)) -> Bool {
+  string.trim(config.rules.rule_form_name) != ""
+  && config.rules.rule_form_event != "unsupported"
+}
+
+fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {
+  div(
+    [
+      attribute.class("automation-rule-panel automation-rule-panel-danger"),
+      attribute.role("region"),
+      attribute.attribute("aria-label", t(config, i18n_text.DeleteRule)),
+      attribute.attribute("data-testid", "automation-rule-builder"),
+    ],
+    [
+      div([attribute.class("automation-rule-panel-header")], [
+        h2([], [text(t(config, i18n_text.DeleteRule))]),
+        ui_button.text(
+          t(config, i18n_text.Cancel),
+          config.on_rule_panel_closed,
+          ui_button.Secondary,
+          ui_button.EntityAction,
+        )
+          |> ui_button.view,
+      ]),
+      p([], [text(t(config, i18n_text.RuleDeleteConfirm(rule.name)))]),
+      view_rule_form_error(config),
+      div([attribute.class("automation-rule-panel-actions")], [
+        ui_button.text(
+          t(config, i18n_text.DeleteRule),
+          config.on_rule_delete_confirmed,
+          ui_button.Danger,
+          ui_button.EntityAction,
+        )
+        |> ui_button.with_disabled(config.rules.rule_form_submitting)
+        |> ui_button.view,
+      ]),
+    ],
+  )
 }

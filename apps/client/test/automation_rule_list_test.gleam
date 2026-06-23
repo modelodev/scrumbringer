@@ -144,10 +144,21 @@ fn config() -> rule_list.Config(String) {
       "select-" <> int.to_string(template_id)
     },
     on_attach_submitted: "attach-submit",
-    on_rule_created: fn(rule) { "created-" <> rule.name },
-    on_rule_updated: fn(rule) { "updated-" <> rule.name },
-    on_rule_deleted: fn(rule_id) { "deleted-" <> int.to_string(rule_id) },
-    on_rule_dialog_closed: "closed",
+    on_rule_name_changed: fn(value) { "name-" <> value },
+    on_rule_goal_changed: fn(value) { "goal-" <> value },
+    on_rule_subject_changed: fn(value) { "subject-" <> value },
+    on_rule_task_type_changed: fn(value) { "task-type-" <> value },
+    on_rule_event_changed: fn(value) { "event-" <> value },
+    on_rule_active_changed: fn(value) {
+      "active-"
+      <> case value {
+        True -> "true"
+        False -> "false"
+      }
+    },
+    on_rule_submitted: "rule-submit",
+    on_rule_delete_confirmed: "rule-delete-confirmed",
+    on_rule_panel_closed: "closed",
     on_noop: "noop",
   )
 }
@@ -187,7 +198,7 @@ pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_t
   assert_contains(html, "No rules yet")
 }
 
-pub fn automation_rule_list_renders_crud_dialog_from_config_without_root_model_test() {
+pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_test() {
   let html =
     rule_list.view(
       rule_list.Config(
@@ -195,15 +206,27 @@ pub fn automation_rule_list_renders_crud_dialog_from_config_without_root_model_t
         rules: admin_rules.Model(
           ..rules_state(),
           rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "5",
+          rule_form_event: "task_completed",
         ),
       ),
     )
     |> element.to_document_string
 
-  assert_contains(html, "rule-crud-dialog")
-  assert_contains(html, "locale=\"en\"")
-  assert_contains(html, "workflow-id=\"3\"")
-  assert_contains(html, "mode=\"create\"")
+  assert_contains(html, "automation-rule-panel")
+  assert_contains(html, "data-testid=\"automation-rule-builder\"")
+  assert_contains(html, "New rule")
+  assert_contains(html, "When")
+  assert_contains(html, "Any task type")
+  assert_contains(html, "Bug")
+  assert_contains(html, "Preview")
+  assert_contains(html, "When a Bug task is completed")
+  assert_contains(html, "Create the rule, then attach exactly one template")
+  assert_not_contains(html, "rule-crud-dialog")
+  assert_not_contains(html, "Resource Type")
+  assert_not_contains(html, "Target State")
 }
 
 pub fn automation_rule_list_attach_modal_footer_uses_semantic_buttons_test() {

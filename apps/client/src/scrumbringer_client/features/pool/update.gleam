@@ -964,9 +964,16 @@ fn update_without_view_mode(
     | pool_messages.RuleMetricsFetched(_)
     | pool_messages.OpenRuleDialog(_)
     | pool_messages.CloseRuleDialog
-    | pool_messages.RuleCrudCreated(_)
-    | pool_messages.RuleCrudUpdated(_)
-    | pool_messages.RuleCrudDeleted(_) -> #(model, effect.none())
+    | pool_messages.RuleNameChanged(_)
+    | pool_messages.RuleGoalChanged(_)
+    | pool_messages.RuleSubjectChanged(_)
+    | pool_messages.RuleTaskTypeChanged(_)
+    | pool_messages.RuleEventChanged(_)
+    | pool_messages.RuleActiveChanged(_)
+    | pool_messages.RuleFormSubmitted
+    | pool_messages.RuleSaved(_)
+    | pool_messages.RuleDeleteConfirmed
+    | pool_messages.RuleDeleteFinished(_, _) -> #(model, effect.none())
 
     // Handled by workflows_workflow.try_template_attachment_update before this dispatch.
     pool_messages.RuleExpandToggled(_)

@@ -15,18 +15,23 @@
 //// - **update.gleam**: Main update module that delegates to handlers here
 //// - **view.gleam**: Renders the workflows UI using model state
 
+import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/result
 import gleam/set
 import gleam/string
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/card
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
+  type Rule, type RuleTarget, type RuleTemplate, type TaskTemplate,
+  type Workflow, CardRule, TaskRule,
 }
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
@@ -69,6 +74,8 @@ pub type RuleFeedbackContext(parent_msg) {
     rule_updated: String,
     rule_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
+    on_rule_saved: fn(ApiResult(Rule)) -> parent_msg,
+    on_rule_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
 
@@ -161,20 +168,62 @@ pub fn try_rules_update(
       #(close_rule_dialog(state), effect.none())
       |> without_rules_auth_check
 
-    pool_messages.RuleCrudCreated(rule) ->
-      #(rule_created(state, rule), rule_success_effect(RuleCreated, feedback))
+    pool_messages.RuleNameChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_name: value), effect.none())
       |> without_rules_auth_check
 
-    pool_messages.RuleCrudUpdated(rule) ->
-      #(rule_updated(state, rule), rule_success_effect(RuleUpdated, feedback))
+    pool_messages.RuleGoalChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_goal: value), effect.none())
       |> without_rules_auth_check
 
-    pool_messages.RuleCrudDeleted(rule_id) ->
+    pool_messages.RuleSubjectChanged(value) ->
+      #(rule_subject_changed(state, value), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleTaskTypeChanged(value) ->
+      #(
+        admin_rules.Model(..state, rule_form_task_type_id: value),
+        effect.none(),
+      )
+      |> without_rules_auth_check
+
+    pool_messages.RuleEventChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_event: value), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleActiveChanged(value) ->
+      #(admin_rules.Model(..state, rule_form_active: value), effect.none())
+      |> without_rules_auth_check
+
+    pool_messages.RuleFormSubmitted ->
+      submit_rule_form(state, feedback)
+      |> without_rules_auth_check
+
+    pool_messages.RuleSaved(Ok(rule)) ->
+      #(
+        rule_saved(state, rule),
+        rule_success_effect(success_for_rule_saved(state), feedback),
+      )
+      |> without_rules_auth_check
+
+    pool_messages.RuleSaved(Error(err)) ->
+      #(rule_form_error(state, err.message), effect.none())
+      |> with_rules_auth_check(err)
+
+    pool_messages.RuleDeleteConfirmed ->
+      confirm_rule_delete(state, feedback)
+      |> without_rules_auth_check
+
+    pool_messages.RuleDeleteFinished(rule_id, Ok(_)) ->
       #(
         rule_deleted(state, rule_id),
         rule_success_effect(RuleDeleted, feedback),
       )
       |> without_rules_auth_check
+
+    pool_messages.RuleDeleteFinished(_rule_id, Error(err)) ->
+      #(rule_form_error(state, err.message), effect.none())
+      |> with_rules_auth_check(err)
 
     _ -> opt.None
   }
@@ -908,13 +957,202 @@ fn workflow_deleted(
   )
 }
 
+fn rule_subject_changed(
+  state: admin_rules.Model,
+  subject: String,
+) -> admin_rules.Model {
+  let event = case subject, state.rule_form_event {
+    "task", "task_claimed" -> "task_claimed"
+    "task", _ -> "task_completed"
+    "card", "card_closed" -> "card_closed"
+    "card", _ -> "card_activated"
+    _, _ -> state.rule_form_event
+  }
+  let task_type_id = case subject {
+    "card" -> ""
+    _ -> state.rule_form_task_type_id
+  }
+
+  admin_rules.Model(
+    ..state,
+    rule_form_subject: subject,
+    rule_form_task_type_id: task_type_id,
+    rule_form_event: event,
+  )
+}
+
+fn submit_rule_form(
+  state: admin_rules.Model,
+  feedback: RuleFeedbackContext(parent_msg),
+) -> #(admin_rules.Model, Effect(parent_msg)) {
+  case state.rules_dialog_mode {
+    opt.Some(admin_rules.RuleDialogCreate) ->
+      submit_rule_create(state, feedback)
+    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
+      submit_rule_update(state, rule.id, feedback)
+    _ -> #(state, effect.none())
+  }
+}
+
+fn submit_rule_create(
+  state: admin_rules.Model,
+  feedback: RuleFeedbackContext(parent_msg),
+) -> #(admin_rules.Model, Effect(parent_msg)) {
+  case state.rules_workflow_id {
+    opt.None -> #(rule_form_error(state, "Open an engine first"), effect.none())
+    opt.Some(workflow_id) ->
+      case parse_rule_form(state) {
+        Error(message) -> #(rule_form_error(state, message), effect.none())
+        Ok(form) -> #(
+          rule_form_submitting(state),
+          api_rules.create_rule(
+            workflow_id,
+            form.name,
+            form.goal,
+            form.target,
+            form.active,
+            feedback.on_rule_saved,
+          ),
+        )
+      }
+  }
+}
+
+fn submit_rule_update(
+  state: admin_rules.Model,
+  rule_id: Int,
+  feedback: RuleFeedbackContext(parent_msg),
+) -> #(admin_rules.Model, Effect(parent_msg)) {
+  case parse_rule_form(state) {
+    Error(message) -> #(rule_form_error(state, message), effect.none())
+    Ok(form) -> #(
+      rule_form_submitting(state),
+      api_rules.update_rule(
+        rule_id,
+        form.name,
+        form.goal,
+        form.target,
+        form.active,
+        feedback.on_rule_saved,
+      ),
+    )
+  }
+}
+
+fn confirm_rule_delete(
+  state: admin_rules.Model,
+  feedback: RuleFeedbackContext(parent_msg),
+) -> #(admin_rules.Model, Effect(parent_msg)) {
+  case state.rules_dialog_mode {
+    opt.Some(admin_rules.RuleDialogDelete(rule)) -> #(
+      rule_form_submitting(state),
+      api_rules.delete_rule(rule.id, fn(result) {
+        feedback.on_rule_deleted(rule.id, result)
+      }),
+    )
+    _ -> #(state, effect.none())
+  }
+}
+
+type RuleForm {
+  RuleForm(name: String, goal: String, target: RuleTarget, active: Bool)
+}
+
+fn parse_rule_form(state: admin_rules.Model) -> Result(RuleForm, String) {
+  let name = string.trim(state.rule_form_name)
+  case name {
+    "" -> Error("Rule name is required")
+    _ -> {
+      use target <- result.try(parse_rule_target_form(state))
+      Ok(RuleForm(
+        name: name,
+        goal: state.rule_form_goal,
+        target: target,
+        active: state.rule_form_active,
+      ))
+    }
+  }
+}
+
+fn parse_rule_target_form(
+  state: admin_rules.Model,
+) -> Result(RuleTarget, String) {
+  case state.rule_form_event {
+    "task_completed" -> {
+      use task_type_id <- result.try(parse_rule_task_type_id(
+        state.rule_form_task_type_id,
+      ))
+      Ok(TaskRule(task_status.Done, task_type_id))
+    }
+    "task_claimed" -> {
+      use task_type_id <- result.try(parse_rule_task_type_id(
+        state.rule_form_task_type_id,
+      ))
+      Ok(TaskRule(task_status.Claimed(task_status.Taken), task_type_id))
+    }
+    "card_activated" -> Ok(CardRule(card.Active))
+    "card_closed" -> Ok(CardRule(card.Closed))
+    _ -> Error("Choose a supported automation event")
+  }
+}
+
+fn parse_rule_task_type_id(value: String) -> Result(opt.Option(Int), String) {
+  case string.trim(value) {
+    "" -> Ok(opt.None)
+    trimmed ->
+      case int.parse(trimmed) {
+        Ok(id) -> Ok(opt.Some(id))
+        Error(_) -> Error("Choose a valid task type")
+      }
+  }
+}
+
+fn rule_form_submitting(state: admin_rules.Model) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    rule_form_submitting: True,
+    rule_form_error: opt.None,
+  )
+}
+
+fn rule_form_error(
+  state: admin_rules.Model,
+  message: String,
+) -> admin_rules.Model {
+  admin_rules.Model(
+    ..state,
+    rule_form_submitting: False,
+    rule_form_error: opt.Some(message),
+  )
+}
+
+fn success_for_rule_saved(state: admin_rules.Model) -> RuleSuccess {
+  case state.rules_dialog_mode {
+    opt.Some(admin_rules.RuleDialogEdit(_)) -> RuleUpdated
+    _ -> RuleCreated
+  }
+}
+
+fn rule_saved(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
+  case state.rules_dialog_mode {
+    opt.Some(admin_rules.RuleDialogEdit(_)) -> rule_updated(state, rule)
+    _ -> rule_created(state, rule)
+  }
+}
+
 fn rule_created(state: admin_rules.Model, rule: Rule) -> admin_rules.Model {
   let rules = case state.rules {
     Loaded(existing) -> Loaded([rule, ..existing])
     _ -> Loaded([rule])
   }
 
-  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+  admin_rules.Model(
+    ..state,
+    rules: rules,
+    rules_dialog_mode: opt.None,
+    rule_form_submitting: False,
+    rule_form_error: opt.None,
+  )
 }
 
 fn rule_updated(
@@ -926,7 +1164,13 @@ fn rule_updated(
       rule.id
     })
 
-  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+  admin_rules.Model(
+    ..state,
+    rules: rules,
+    rules_dialog_mode: opt.None,
+    rule_form_submitting: False,
+    rule_form_error: opt.None,
+  )
 }
 
 fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
@@ -935,7 +1179,13 @@ fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
       rule.id
     })
 
-  admin_rules.Model(..state, rules: rules, rules_dialog_mode: opt.None)
+  admin_rules.Model(
+    ..state,
+    rules: rules,
+    rules_dialog_mode: opt.None,
+    rule_form_submitting: False,
+    rule_form_error: opt.None,
+  )
 }
 
 fn workflow_rules_opened(
@@ -991,11 +1241,82 @@ fn open_rule_dialog(
   state: admin_rules.Model,
   mode: admin_rules.RuleDialogMode,
 ) -> admin_rules.Model {
-  admin_rules.Model(..state, rules_dialog_mode: opt.Some(mode))
+  case mode {
+    admin_rules.RuleDialogCreate ->
+      admin_rules.Model(
+        ..state,
+        rules_dialog_mode: opt.Some(mode),
+        rule_form_name: "",
+        rule_form_goal: "",
+        rule_form_subject: "task",
+        rule_form_task_type_id: "",
+        rule_form_event: "task_completed",
+        rule_form_active: True,
+        rule_form_submitting: False,
+        rule_form_error: opt.None,
+      )
+    admin_rules.RuleDialogEdit(rule) -> {
+      let #(subject, task_type_id, event) = rule_target_form_values(rule.target)
+      admin_rules.Model(
+        ..state,
+        rules_dialog_mode: opt.Some(mode),
+        rule_form_name: rule.name,
+        rule_form_goal: optional_text(rule.goal),
+        rule_form_subject: subject,
+        rule_form_task_type_id: task_type_id,
+        rule_form_event: event,
+        rule_form_active: rule.active,
+        rule_form_submitting: False,
+        rule_form_error: opt.None,
+      )
+    }
+    admin_rules.RuleDialogDelete(_) ->
+      admin_rules.Model(
+        ..state,
+        rules_dialog_mode: opt.Some(mode),
+        rule_form_submitting: False,
+        rule_form_error: opt.None,
+      )
+  }
 }
 
 fn close_rule_dialog(state: admin_rules.Model) -> admin_rules.Model {
-  admin_rules.Model(..state, rules_dialog_mode: opt.None)
+  admin_rules.Model(
+    ..state,
+    rules_dialog_mode: opt.None,
+    rule_form_submitting: False,
+    rule_form_error: opt.None,
+  )
+}
+
+fn rule_target_form_values(target: RuleTarget) -> #(String, String, String) {
+  case target {
+    TaskRule(task_status.Done, task_type_id) -> #(
+      "task",
+      optional_int_text(task_type_id),
+      "task_completed",
+    )
+    TaskRule(task_status.Claimed(_), task_type_id) -> #(
+      "task",
+      optional_int_text(task_type_id),
+      "task_claimed",
+    )
+    TaskRule(_, task_type_id) -> #(
+      "task",
+      optional_int_text(task_type_id),
+      "unsupported",
+    )
+    CardRule(card.Active) -> #("card", "", "card_activated")
+    CardRule(card.Closed) -> #("card", "", "card_closed")
+    CardRule(_) -> #("card", "", "unsupported")
+  }
+}
+
+fn optional_int_text(value: opt.Option(Int)) -> String {
+  case value {
+    opt.Some(id) -> int.to_string(id)
+    opt.None -> ""
+  }
 }
 
 fn attach_template_succeeded(

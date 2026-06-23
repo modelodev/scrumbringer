@@ -1062,16 +1062,29 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
     on_attach_submitted: client_state.pool_msg(
       pool_messages.AttachTemplateSubmitted,
     ),
-    on_rule_created: fn(rule) {
-      client_state.pool_msg(pool_messages.RuleCrudCreated(rule))
+    on_rule_name_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleNameChanged(value))
     },
-    on_rule_updated: fn(rule) {
-      client_state.pool_msg(pool_messages.RuleCrudUpdated(rule))
+    on_rule_goal_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleGoalChanged(value))
     },
-    on_rule_deleted: fn(rule_id) {
-      client_state.pool_msg(pool_messages.RuleCrudDeleted(rule_id))
+    on_rule_subject_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleSubjectChanged(value))
     },
-    on_rule_dialog_closed: client_state.pool_msg(pool_messages.CloseRuleDialog),
+    on_rule_task_type_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleTaskTypeChanged(value))
+    },
+    on_rule_event_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleEventChanged(value))
+    },
+    on_rule_active_changed: fn(value) {
+      client_state.pool_msg(pool_messages.RuleActiveChanged(value))
+    },
+    on_rule_submitted: client_state.pool_msg(pool_messages.RuleFormSubmitted),
+    on_rule_delete_confirmed: client_state.pool_msg(
+      pool_messages.RuleDeleteConfirmed,
+    ),
+    on_rule_panel_closed: client_state.pool_msg(pool_messages.CloseRuleDialog),
     on_noop: client_state.NoOp,
   )
 }

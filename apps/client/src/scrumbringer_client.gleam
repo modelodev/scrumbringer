@@ -92,7 +92,6 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
-import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/features/auth/update as auth_workflow
 
@@ -124,10 +123,6 @@ pub fn app() -> lustre.App(Flags, Model, Msg) {
 pub fn main() {
   // Register dialog custom element components
   case card_crud_dialog.register() {
-    Ok(_) -> Nil
-    Error(_) -> Nil
-  }
-  case rule_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }

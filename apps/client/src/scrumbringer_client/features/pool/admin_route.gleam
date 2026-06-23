@@ -42,7 +42,7 @@ fn try_rules_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case try_rule_crud_update(model, inner) {
+  case try_rule_update(model, inner) {
     opt.Some(result) -> opt.Some(result)
     opt.None -> try_template_attachment_update(model, inner)
   }
@@ -144,7 +144,7 @@ fn apply_workflows_update(
   )
 }
 
-fn try_rule_crud_update(
+fn try_rule_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
@@ -153,7 +153,7 @@ fn try_rule_crud_update(
       model.admin.rules,
       inner,
       rules_context(model),
-      rule_crud_feedback_context(model),
+      rule_feedback_context(model),
     )
   {
     opt.Some(update) -> opt.Some(apply_rules_update(model, update))
@@ -343,7 +343,7 @@ fn workflow_crud_feedback_context(
   )
 }
 
-fn rule_crud_feedback_context(
+fn rule_feedback_context(
   model: client_state.Model,
 ) -> workflows_workflow.RuleFeedbackContext(client_state.Msg) {
   workflows_workflow.RuleFeedbackContext(
@@ -351,6 +351,12 @@ fn rule_crud_feedback_context(
     rule_updated: i18n.t(model.ui.locale, i18n_text.RuleUpdated),
     rule_deleted: i18n.t(model.ui.locale, i18n_text.RuleDeleted),
     on_success_toast: app_effects.toast_success,
+    on_rule_saved: fn(result) {
+      client_state.pool_msg(pool_messages.RuleSaved(result))
+    },
+    on_rule_deleted: fn(rule_id, result) {
+      client_state.pool_msg(pool_messages.RuleDeleteFinished(rule_id, result))
+    },
   )
 }
 

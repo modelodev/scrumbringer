@@ -218,9 +218,16 @@ pub type Msg {
   RulesBackClicked
   OpenRuleDialog(admin_rules.RuleDialogMode)
   CloseRuleDialog
-  RuleCrudCreated(Rule)
-  RuleCrudUpdated(Rule)
-  RuleCrudDeleted(Int)
+  RuleNameChanged(String)
+  RuleGoalChanged(String)
+  RuleSubjectChanged(String)
+  RuleTaskTypeChanged(String)
+  RuleEventChanged(String)
+  RuleActiveChanged(Bool)
+  RuleFormSubmitted
+  RuleSaved(ApiResult(Rule))
+  RuleDeleteConfirmed
+  RuleDeleteFinished(Int, ApiResult(Nil))
   RuleExpandToggled(Int)
   AttachTemplateModalOpened(Int)
   AttachTemplateModalClosed

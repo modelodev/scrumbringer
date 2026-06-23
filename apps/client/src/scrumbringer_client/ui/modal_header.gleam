@@ -23,7 +23,6 @@
 //// ## Adoption
 ////
 //// - `task_type_crud_dialog.gleam` - uses `view_dialog()`
-//// - `rule_crud_dialog.gleam` - uses `view_dialog_with_icon()`
 //// - `card_crud_dialog.gleam` - uses `view_dialog_with_icon()`
 ////
 //// ## Usage
@@ -294,7 +293,7 @@ pub fn view_dialog_with_close_label(
 
 /// Render a CRUD dialog header with icon wrapped in dialog-title div.
 /// Structure: div.dialog-header > [div.dialog-title > [span.dialog-icon, h3], button]
-/// Use this for rule_crud_dialog and card_crud_dialog.
+/// Use this for card_crud_dialog.
 pub fn view_dialog_with_icon(
   title: String,
   icon: Element(msg),

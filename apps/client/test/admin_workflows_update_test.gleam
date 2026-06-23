@@ -97,6 +97,12 @@ fn rule_feedback_context() -> workflows_update.RuleFeedbackContext(
     rule_updated: "Rule updated",
     rule_deleted: "Rule deleted",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+    on_rule_saved: fn(result) {
+      client_state.pool_msg(pool_messages.RuleSaved(result))
+    },
+    on_rule_deleted: fn(rule_id, result) {
+      client_state.pool_msg(pool_messages.RuleDeleteFinished(rule_id, result))
+    },
   )
 }
 
@@ -413,7 +419,7 @@ pub fn try_workflows_update_ignores_non_workflow_messages_test() {
     )
 }
 
-pub fn local_rule_crud_transitions_update_loaded_rules_test() {
+pub fn local_rule_form_transitions_update_loaded_rules_test() {
   let existing = rule(1, "Existing", [])
   let created = rule(2, "Created", [])
   let updated = rule(2, "Updated", [])
@@ -421,24 +427,63 @@ pub fn local_rule_crud_transitions_update_loaded_rules_test() {
     admin_rules.Model(
       ..admin_rules.default_model(),
       rules: Loaded([existing]),
-      rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+      rules_workflow_id: opt.Some(3),
     )
 
+  let #(create_opened, fx, auth_policy) =
+    rules_update(
+      state,
+      pool_messages.OpenRuleDialog(admin_rules.RuleDialogCreate),
+      opt.None,
+    )
+  let assert opt.Some(admin_rules.RuleDialogCreate) =
+    create_opened.rules_dialog_mode
+  let assert "" = create_opened.rule_form_name
+  let assert "task_completed" = create_opened.rule_form_event
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+
   let #(after_create, fx, auth_policy) =
-    rules_update(state, pool_messages.RuleCrudCreated(created), opt.None)
+    rules_update(create_opened, pool_messages.RuleSaved(Ok(created)), opt.None)
   let assert True = after_create.rules == Loaded([created, existing])
   let assert opt.None = after_create.rules_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 
+  let #(edit_opened, fx, auth_policy) =
+    rules_update(
+      after_create,
+      pool_messages.OpenRuleDialog(admin_rules.RuleDialogEdit(created)),
+      opt.None,
+    )
+  let assert "Created" = edit_opened.rule_form_name
+  let assert "task_completed" = edit_opened.rule_form_event
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+
   let #(after_update, fx, auth_policy) =
-    rules_update(after_create, pool_messages.RuleCrudUpdated(updated), opt.None)
+    rules_update(edit_opened, pool_messages.RuleSaved(Ok(updated)), opt.None)
   let assert True = after_update.rules == Loaded([updated, existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 
+  let #(delete_opened, fx, auth_policy) =
+    rules_update(
+      after_update,
+      pool_messages.OpenRuleDialog(admin_rules.RuleDialogDelete(updated)),
+      opt.None,
+    )
+  let assert opt.Some(admin_rules.RuleDialogDelete(_updated)) =
+    delete_opened.rules_dialog_mode
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoRulesAuthCheck = auth_policy
+
   let #(after_delete, fx, auth_policy) =
-    rules_update(after_update, pool_messages.RuleCrudDeleted(2), opt.None)
+    rules_update(
+      delete_opened,
+      pool_messages.RuleDeleteFinished(2, Ok(Nil)),
+      opt.None,
+    )
   let assert True = after_delete.rules == Loaded([existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
@@ -593,7 +638,7 @@ pub fn try_rules_update_ignores_non_rule_messages_test() {
     )
 }
 
-pub fn try_rules_update_rule_crud_created_updates_rules_and_emits_feedback_test() {
+pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
   let existing = rule(1, "Existing", [])
   let created = rule(2, "Created", [])
   let state =
@@ -606,7 +651,7 @@ pub fn try_rules_update_rule_crud_created_updates_rules_and_emits_feedback_test(
   let assert opt.Some(workflows_update.RulesUpdate(next, fx, auth_policy)) =
     workflows_update.try_rules_update(
       state,
-      pool_messages.RuleCrudCreated(created),
+      pool_messages.RuleSaved(Ok(created)),
       rules_context(opt.None),
       rule_feedback_context(),
     )
@@ -831,7 +876,7 @@ pub fn try_rules_update_updated_replaces_loaded_rule_and_emits_feedback_test() {
     )
 
   let #(next, fx, auth_policy) =
-    rules_update(rules, pool_messages.RuleCrudUpdated(updated), opt.None)
+    rules_update(rules, pool_messages.RuleSaved(Ok(updated)), opt.None)
 
   let assert True = next.rules == Loaded([updated, other])
   let assert opt.None = next.rules_dialog_mode
