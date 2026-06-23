@@ -77,6 +77,15 @@ fn workflow_feedback_context() -> workflows_update.WorkflowFeedbackContext(
     workflow_updated: "Workflow updated",
     workflow_deleted: "Workflow deleted",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+    on_workflow_saved: fn(result) {
+      client_state.pool_msg(pool_messages.WorkflowSaved(result))
+    },
+    on_workflow_deleted: fn(workflow_id, result) {
+      client_state.pool_msg(pool_messages.WorkflowDeleteFinished(
+        workflow_id,
+        result,
+      ))
+    },
   )
 }
 
@@ -162,6 +171,11 @@ fn workflows_state(
     workflows_search: "",
     workflows_status_filter: "all",
     workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
+    workflow_form_name: "",
+    workflow_form_description: "",
+    workflow_form_active: True,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.None,
   )
 }
 
@@ -234,22 +248,42 @@ pub fn local_workflow_crud_transitions_update_scopes_test() {
   let state = workflows_state(Loaded([]), Loaded([existing]))
 
   let #(after_create, fx, auth_policy) =
-    workflow_update(state, pool_messages.WorkflowCrudCreated(created))
+    workflow_update(state, pool_messages.WorkflowSaved(Ok(created)))
   let assert True =
     after_create.workflows_project == Loaded([created, existing])
   let assert opt.None = after_create.workflows_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
+  let #(editing, fx, auth_policy) =
+    workflow_update(
+      after_create,
+      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
+        created,
+      )),
+    )
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+
   let #(after_update, fx, auth_policy) =
-    workflow_update(after_create, pool_messages.WorkflowCrudUpdated(updated))
+    workflow_update(editing, pool_messages.WorkflowSaved(Ok(updated)))
   let assert True =
     after_update.workflows_project == Loaded([updated, existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
+  let #(deleting, fx, auth_policy) =
+    workflow_update(
+      after_update,
+      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
+        updated,
+      )),
+    )
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+
   let #(after_delete, fx, auth_policy) =
-    workflow_update(after_update, pool_messages.WorkflowCrudDeleted(2))
+    workflow_update(deleting, pool_messages.WorkflowDeleteFinished(2, Ok(Nil)))
   let assert True = after_delete.workflows_project == Loaded([existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
@@ -336,7 +370,7 @@ pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
   let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
     workflows_update.try_workflows_update(
       state,
-      pool_messages.WorkflowCrudCreated(created),
+      pool_messages.WorkflowSaved(Ok(created)),
       workflow_feedback_context(),
     )
 
@@ -768,10 +802,15 @@ pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_tes
       workflows_search: "",
       workflows_status_filter: "all",
       workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
+      workflow_form_name: "",
+      workflow_form_description: "",
+      workflow_form_active: True,
+      workflow_form_submitting: False,
+      workflow_form_error: opt.None,
     )
 
   let #(next, fx, auth_policy) =
-    workflow_update(workflows, pool_messages.WorkflowCrudCreated(created))
+    workflow_update(workflows, pool_messages.WorkflowSaved(Ok(created)))
 
   let assert True = next.workflows_project == Loaded([created, existing])
   let assert True = next.workflows_org == Loaded([])

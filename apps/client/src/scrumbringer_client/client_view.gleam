@@ -914,15 +914,21 @@ fn admin_workflow_callbacks() -> engine_list_config.Callbacks(client_state.Msg) 
         )),
       )
     },
-    on_created: fn(workflow) {
-      client_state.pool_msg(pool_messages.WorkflowCrudCreated(workflow))
+    on_name_changed: fn(value) {
+      client_state.pool_msg(pool_messages.WorkflowNameChanged(value))
     },
-    on_updated: fn(workflow) {
-      client_state.pool_msg(pool_messages.WorkflowCrudUpdated(workflow))
+    on_description_changed: fn(value) {
+      client_state.pool_msg(pool_messages.WorkflowDescriptionChanged(value))
     },
-    on_deleted: fn(id) {
-      client_state.pool_msg(pool_messages.WorkflowCrudDeleted(id))
+    on_active_changed: fn(value) {
+      client_state.pool_msg(pool_messages.WorkflowActiveChanged(value))
     },
+    on_submitted: fn(project_id) {
+      client_state.pool_msg(pool_messages.WorkflowFormSubmitted(project_id))
+    },
+    on_delete_confirmed: client_state.pool_msg(
+      pool_messages.WorkflowDeleteConfirmed,
+    ),
     on_closed: client_state.pool_msg(pool_messages.CloseWorkflowDialog),
     rules: admin_workflow_rule_callbacks(),
   )

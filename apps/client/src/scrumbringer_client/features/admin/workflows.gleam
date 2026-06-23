@@ -18,6 +18,7 @@
 import gleam/list
 import gleam/option as opt
 import gleam/set
+import gleam/string
 
 import lustre/effect.{type Effect}
 
@@ -34,6 +35,7 @@ import scrumbringer_client/features/admin/scoped_remote_list
 import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/api/tasks/task_types as task_types_api
+import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 import scrumbringer_client/api/workflows/task_templates as api_task_templates
@@ -50,6 +52,8 @@ pub type WorkflowFeedbackContext(parent_msg) {
     workflow_updated: String,
     workflow_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
+    on_workflow_saved: fn(ApiResult(Workflow)) -> parent_msg,
+    on_workflow_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
 
@@ -556,17 +560,44 @@ pub fn try_workflows_update(
       close_workflow_dialog(state)
       |> without_workflow_auth_check
 
-    pool_messages.WorkflowCrudCreated(workflow) ->
-      workflow_created(state, workflow)
-      |> with_workflow_effect(workflow_success_effect(WorkflowCreated, feedback))
+    pool_messages.WorkflowNameChanged(value) ->
+      admin_workflows.Model(..state, workflow_form_name: value)
+      |> without_workflow_auth_check
 
-    pool_messages.WorkflowCrudUpdated(workflow) ->
-      workflow_updated(state, workflow)
-      |> with_workflow_effect(workflow_success_effect(WorkflowUpdated, feedback))
+    pool_messages.WorkflowDescriptionChanged(value) ->
+      admin_workflows.Model(..state, workflow_form_description: value)
+      |> without_workflow_auth_check
 
-    pool_messages.WorkflowCrudDeleted(workflow_id) ->
+    pool_messages.WorkflowActiveChanged(value) ->
+      admin_workflows.Model(..state, workflow_form_active: value)
+      |> without_workflow_auth_check
+
+    pool_messages.WorkflowFormSubmitted(project_id) ->
+      submit_workflow_form(state, project_id, feedback)
+      |> without_workflow_tuple_auth_check
+
+    pool_messages.WorkflowSaved(Ok(workflow)) ->
+      workflow_saved(state, workflow)
+      |> with_workflow_effect(workflow_success_effect(
+        success_for_workflow_saved(state),
+        feedback,
+      ))
+
+    pool_messages.WorkflowSaved(Error(err)) ->
+      workflow_form_error(state, err.message)
+      |> with_workflow_auth_check(err)
+
+    pool_messages.WorkflowDeleteConfirmed ->
+      confirm_workflow_delete(state, feedback)
+      |> without_workflow_tuple_auth_check
+
+    pool_messages.WorkflowDeleteFinished(workflow_id, Ok(_)) ->
       workflow_deleted(state, workflow_id)
       |> with_workflow_effect(workflow_success_effect(WorkflowDeleted, feedback))
+
+    pool_messages.WorkflowDeleteFinished(_workflow_id, Error(err)) ->
+      workflow_form_error(state, err.message)
+      |> with_workflow_auth_check(err)
 
     _ -> opt.None
   }
@@ -576,6 +607,13 @@ fn without_workflow_auth_check(
   state: admin_workflows.Model,
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   with_workflow_effect(state, effect.none())
+}
+
+fn without_workflow_tuple_auth_check(
+  result: #(admin_workflows.Model, Effect(parent_msg)),
+) -> opt.Option(WorkflowUpdate(parent_msg)) {
+  let #(state, fx) = result
+  with_workflow_effect(state, fx)
 }
 
 fn with_workflow_auth_check(
@@ -610,11 +648,185 @@ fn open_workflow_dialog(
   state: admin_workflows.Model,
   mode: admin_workflows.WorkflowDialogMode,
 ) -> admin_workflows.Model {
-  admin_workflows.Model(..state, workflows_dialog_mode: opt.Some(mode))
+  case mode {
+    admin_workflows.WorkflowDialogCreate ->
+      admin_workflows.Model(
+        ..state,
+        workflows_dialog_mode: opt.Some(mode),
+        workflow_form_name: "",
+        workflow_form_description: "",
+        workflow_form_active: True,
+        workflow_form_submitting: False,
+        workflow_form_error: opt.None,
+      )
+    admin_workflows.WorkflowDialogEdit(workflow) ->
+      admin_workflows.Model(
+        ..state,
+        workflows_dialog_mode: opt.Some(mode),
+        workflow_form_name: workflow.name,
+        workflow_form_description: optional_text(workflow.description),
+        workflow_form_active: workflow.active,
+        workflow_form_submitting: False,
+        workflow_form_error: opt.None,
+      )
+    admin_workflows.WorkflowDialogDelete(_) ->
+      admin_workflows.Model(
+        ..state,
+        workflows_dialog_mode: opt.Some(mode),
+        workflow_form_submitting: False,
+        workflow_form_error: opt.None,
+      )
+  }
 }
 
 fn close_workflow_dialog(state: admin_workflows.Model) -> admin_workflows.Model {
-  admin_workflows.Model(..state, workflows_dialog_mode: opt.None)
+  admin_workflows.Model(
+    ..state,
+    workflows_dialog_mode: opt.None,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.None,
+  )
+}
+
+fn optional_text(value: opt.Option(String)) -> String {
+  case value {
+    opt.Some(text) -> text
+    opt.None -> ""
+  }
+}
+
+fn submit_workflow_form(
+  state: admin_workflows.Model,
+  selected_project_id: opt.Option(Int),
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> #(admin_workflows.Model, Effect(parent_msg)) {
+  case state.workflows_dialog_mode {
+    opt.Some(admin_workflows.WorkflowDialogCreate) ->
+      submit_workflow_create(state, selected_project_id, feedback)
+    opt.Some(admin_workflows.WorkflowDialogEdit(workflow)) ->
+      submit_workflow_update(state, workflow.id, feedback)
+    _ -> #(state, effect.none())
+  }
+}
+
+fn submit_workflow_create(
+  state: admin_workflows.Model,
+  selected_project_id: opt.Option(Int),
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> #(admin_workflows.Model, Effect(parent_msg)) {
+  case selected_project_id {
+    opt.None -> #(
+      workflow_form_error(state, "Select a project first"),
+      effect.none(),
+    )
+    opt.Some(project_id) ->
+      case parse_workflow_form(state) {
+        Error(message) -> #(workflow_form_error(state, message), effect.none())
+        Ok(form) -> #(
+          workflow_form_submitting(state),
+          api_workflows.create_project_workflow(
+            project_id,
+            form.name,
+            form.description,
+            form.active,
+            feedback.on_workflow_saved,
+          ),
+        )
+      }
+  }
+}
+
+fn submit_workflow_update(
+  state: admin_workflows.Model,
+  workflow_id: Int,
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> #(admin_workflows.Model, Effect(parent_msg)) {
+  case parse_workflow_form(state) {
+    Error(message) -> #(workflow_form_error(state, message), effect.none())
+    Ok(form) -> #(
+      workflow_form_submitting(state),
+      api_workflows.update_workflow(
+        workflow_id,
+        form.name,
+        form.description,
+        form.active,
+        feedback.on_workflow_saved,
+      ),
+    )
+  }
+}
+
+fn confirm_workflow_delete(
+  state: admin_workflows.Model,
+  feedback: WorkflowFeedbackContext(parent_msg),
+) -> #(admin_workflows.Model, Effect(parent_msg)) {
+  case state.workflows_dialog_mode {
+    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) -> #(
+      workflow_form_submitting(state),
+      api_workflows.delete_workflow(workflow.id, fn(result) {
+        feedback.on_workflow_deleted(workflow.id, result)
+      }),
+    )
+    _ -> #(state, effect.none())
+  }
+}
+
+type WorkflowForm {
+  WorkflowForm(name: String, description: String, active: Bool)
+}
+
+fn parse_workflow_form(
+  state: admin_workflows.Model,
+) -> Result(WorkflowForm, String) {
+  let name = string.trim(state.workflow_form_name)
+  case name {
+    "" -> Error("Engine name is required")
+    _ ->
+      Ok(WorkflowForm(
+        name: name,
+        description: state.workflow_form_description,
+        active: state.workflow_form_active,
+      ))
+  }
+}
+
+fn workflow_form_submitting(
+  state: admin_workflows.Model,
+) -> admin_workflows.Model {
+  admin_workflows.Model(
+    ..state,
+    workflow_form_submitting: True,
+    workflow_form_error: opt.None,
+  )
+}
+
+fn workflow_form_error(
+  state: admin_workflows.Model,
+  message: String,
+) -> admin_workflows.Model {
+  admin_workflows.Model(
+    ..state,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.Some(message),
+  )
+}
+
+fn success_for_workflow_saved(state: admin_workflows.Model) -> WorkflowSuccess {
+  case state.workflows_dialog_mode {
+    opt.Some(admin_workflows.WorkflowDialogEdit(_)) -> WorkflowUpdated
+    _ -> WorkflowCreated
+  }
+}
+
+fn workflow_saved(
+  state: admin_workflows.Model,
+  workflow: Workflow,
+) -> admin_workflows.Model {
+  case state.workflows_dialog_mode {
+    opt.Some(admin_workflows.WorkflowDialogEdit(_)) ->
+      workflow_updated(state, workflow)
+    _ -> workflow_created(state, workflow)
+  }
 }
 
 fn workflow_created(
@@ -630,11 +842,15 @@ fn workflow_created(
     )
 
   admin_workflows.Model(
+    ..state,
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
-    workflows_search: state.workflows_search,
-    workflows_status_filter: state.workflows_status_filter,
+    workflow_form_name: "",
+    workflow_form_description: "",
+    workflow_form_active: True,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.None,
   )
 }
 
@@ -656,11 +872,12 @@ fn workflow_updated(
     )
 
   admin_workflows.Model(
+    ..state,
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
-    workflows_search: state.workflows_search,
-    workflows_status_filter: state.workflows_status_filter,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.None,
   )
 }
 
@@ -682,11 +899,12 @@ fn workflow_deleted(
     )
 
   admin_workflows.Model(
+    ..state,
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
-    workflows_search: state.workflows_search,
-    workflows_status_filter: state.workflows_status_filter,
+    workflow_form_submitting: False,
+    workflow_form_error: opt.None,
   )
 }
 

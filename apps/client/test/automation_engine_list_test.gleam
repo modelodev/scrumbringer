@@ -55,15 +55,32 @@ fn config() -> engine_list.Config(String) {
     search_query: "",
     status_filter: "all",
     dialog_mode: opt.None,
+    form_name: "",
+    form_description: "",
+    form_active: True,
+    form_submitting: False,
+    form_error: opt.None,
     on_create_clicked: "create",
     on_search_changed: fn(value) { "search-" <> value },
     on_status_filter_changed: fn(value) { "status-" <> value },
     on_rules_clicked: fn(id) { "rules-" <> int.to_string(id) },
     on_edit_clicked: fn(workflow) { "edit-" <> workflow.name },
     on_delete_clicked: fn(workflow) { "delete-" <> workflow.name },
-    on_created: fn(workflow) { "created-" <> workflow.name },
-    on_updated: fn(workflow) { "updated-" <> workflow.name },
-    on_deleted: fn(id) { "deleted-" <> int.to_string(id) },
+    on_name_changed: fn(value) { "name-" <> value },
+    on_description_changed: fn(value) { "description-" <> value },
+    on_active_changed: fn(value) {
+      case value {
+        True -> "active-true"
+        False -> "active-false"
+      }
+    },
+    on_submitted: fn(project_id) {
+      case project_id {
+        opt.Some(id) -> "submit-" <> int.to_string(id)
+        opt.None -> "submit-none"
+      }
+    },
+    on_delete_confirmed: "delete-confirmed",
     on_closed: "closed",
   )
 }
@@ -105,18 +122,46 @@ pub fn automation_engine_list_filters_by_status_test() {
   assert_not_contains(html, "Release automation")
 }
 
-pub fn automation_engine_list_renders_crud_dialog_test() {
+pub fn automation_engine_list_renders_feature_local_create_panel_test() {
   let html =
     engine_list.view(
       engine_list.Config(
         ..config(),
         dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
+        form_name: "Release automation",
+        form_description: "Creates follow-up work",
       ),
     )
     |> element.to_document_string
 
-  assert_contains(html, "workflow-crud-dialog")
-  assert_contains(html, "locale=\"en\"")
-  assert_contains(html, "project-id=\"7\"")
-  assert_contains(html, "mode=\"create\"")
+  assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "Create engine")
+  assert_contains(html, "data-testid=\"automation-engine-name\"")
+  assert_contains(html, "Release automation")
+  assert_contains(html, "data-testid=\"automation-engine-description\"")
+  assert_contains(html, "Creates follow-up work")
+  assert_contains(html, "data-testid=\"automation-engine-active\"")
+  assert_not_contains(html, "workflow-crud-dialog")
+}
+
+pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
+  let html =
+    engine_list.view(
+      engine_list.Config(
+        ..config(),
+        dialog_mode: opt.Some(
+          admin_workflows.WorkflowDialogDelete(workflow(
+            3,
+            "Release automation",
+            True,
+          )),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "Delete engine")
+  assert_contains(html, "Delete engine &quot;Release automation&quot;?")
+  assert_not_contains(html, "workflow-crud-dialog")
 }

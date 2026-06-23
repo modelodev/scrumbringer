@@ -949,9 +949,13 @@ fn update_without_view_mode(
     | pool_messages.WorkflowsStatusFilterChanged(_)
     | pool_messages.OpenWorkflowDialog(_)
     | pool_messages.CloseWorkflowDialog
-    | pool_messages.WorkflowCrudCreated(_)
-    | pool_messages.WorkflowCrudUpdated(_)
-    | pool_messages.WorkflowCrudDeleted(_) -> #(model, effect.none())
+    | pool_messages.WorkflowNameChanged(_)
+    | pool_messages.WorkflowDescriptionChanged(_)
+    | pool_messages.WorkflowActiveChanged(_)
+    | pool_messages.WorkflowFormSubmitted(_)
+    | pool_messages.WorkflowSaved(_)
+    | pool_messages.WorkflowDeleteConfirmed
+    | pool_messages.WorkflowDeleteFinished(_, _) -> #(model, effect.none())
 
     // Handled by workflows_workflow.try_rules_update before this dispatch.
     pool_messages.WorkflowRulesClicked(_)

@@ -206,9 +206,13 @@ pub type Msg {
   WorkflowsStatusFilterChanged(String)
   OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
   CloseWorkflowDialog
-  WorkflowCrudCreated(Workflow)
-  WorkflowCrudUpdated(Workflow)
-  WorkflowCrudDeleted(Int)
+  WorkflowNameChanged(String)
+  WorkflowDescriptionChanged(String)
+  WorkflowActiveChanged(Bool)
+  WorkflowFormSubmitted(Option(Int))
+  WorkflowSaved(ApiResult(Workflow))
+  WorkflowDeleteConfirmed
+  WorkflowDeleteFinished(Int, ApiResult(Nil))
   WorkflowRulesClicked(Int)
   RulesFetched(ApiResult(List(Rule)))
   RulesBackClicked

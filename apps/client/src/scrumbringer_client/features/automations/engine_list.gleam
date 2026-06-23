@@ -1,33 +1,29 @@
 //// Automation engines list for the unified automations console.
 
-import gleam/dynamic/decode
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/string
 
-import lustre/attribute.{type Attribute}
+import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h2, input, p, span, text}
+import lustre/element/html.{button, div, form, h2, input, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
 import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/workflow.{type Workflow}
-import domain/workflow/workflow_codec
 
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/i18n/i18n
-import scrumbringer_client/i18n/locale.{type Locale, serialize}
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
-import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/skeleton
@@ -42,15 +38,22 @@ pub type Config(msg) {
     search_query: String,
     status_filter: String,
     dialog_mode: opt.Option(admin_workflows.WorkflowDialogMode),
+    form_name: String,
+    form_description: String,
+    form_active: Bool,
+    form_submitting: Bool,
+    form_error: opt.Option(String),
     on_create_clicked: msg,
     on_search_changed: fn(String) -> msg,
     on_status_filter_changed: fn(String) -> msg,
     on_rules_clicked: fn(Int) -> msg,
     on_edit_clicked: fn(Workflow) -> msg,
     on_delete_clicked: fn(Workflow) -> msg,
-    on_created: fn(Workflow) -> msg,
-    on_updated: fn(Workflow) -> msg,
-    on_deleted: fn(Int) -> msg,
+    on_name_changed: fn(String) -> msg,
+    on_description_changed: fn(String) -> msg,
+    on_active_changed: fn(Bool) -> msg,
+    on_submitted: fn(opt.Option(Int)) -> msg,
+    on_delete_confirmed: msg,
     on_closed: msg,
   )
 }
@@ -84,7 +87,7 @@ fn view_list(config: Config(msg)) -> Element(msg) {
         ]),
         view_filters(config),
         view_content(config, config.workflows),
-        view_workflow_crud_dialog(config),
+        view_engine_panel(config),
       ])
   }
 }
@@ -282,122 +285,165 @@ fn workflow_matches_query(workflow: Workflow, needle: String) -> Bool {
   }
 }
 
-fn view_workflow_crud_dialog(config: Config(msg)) -> Element(msg) {
+fn view_engine_panel(config: Config(msg)) -> Element(msg) {
   case config.dialog_mode {
     opt.None -> element.none()
-    opt.Some(mode) -> {
-      let #(mode_str, workflow_json, project_id_attr) = case mode {
-        admin_workflows.WorkflowDialogCreate ->
-          create_dialog_parts(config.selected_project_id)
-        admin_workflows.WorkflowDialogEdit(workflow) ->
-          entity_dialog_parts(
-            "edit",
-            "workflow",
-            workflow_to_property_json(workflow, "edit"),
-            workflow.project_id,
-          )
-        admin_workflows.WorkflowDialogDelete(workflow) ->
-          entity_dialog_parts(
-            "delete",
-            "workflow",
-            workflow_to_property_json(workflow, "delete"),
-            workflow.project_id,
-          )
-      }
-
-      element.element(
-        "workflow-crud-dialog",
-        [
-          attribute.attribute("locale", serialize(config.locale)),
-          project_id_attr,
-          attribute.attribute("mode", mode_str),
-          workflow_json,
-          event.on("workflow-created", decode_workflow_created_event(config)),
-          event.on("workflow-updated", decode_workflow_updated_event(config)),
-          event.on("workflow-deleted", decode_workflow_deleted_event(config)),
-          event.on(
-            "close-requested",
-            decode_workflow_close_requested_event(config),
-          ),
-        ],
-        [],
-      )
-    }
+    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) ->
+      view_delete_panel(config, workflow)
+    opt.Some(mode) -> view_form_panel(config, mode)
   }
 }
 
-fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
-  json.object([
-    #("id", json.int(workflow.id)),
-    #("org_id", json.int(workflow.org_id)),
-    #("project_id", case workflow.project_id {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
-    #("name", json.string(workflow.name)),
-    #("description", case workflow.description {
-      opt.Some(desc) -> json.string(desc)
-      opt.None -> json.null()
-    }),
-    #("active", json.bool(workflow.active)),
-    #("rule_count", json.int(workflow.rule_count)),
-    #("created_by", json.int(workflow.created_by)),
-    #("created_at", json.string(workflow.created_at)),
-    #("_mode", json.string(mode)),
+fn view_form_panel(
+  config: Config(msg),
+  mode: admin_workflows.WorkflowDialogMode,
+) -> Element(msg) {
+  let title = case mode {
+    admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
+    admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.EditWorkflow)
+    admin_workflows.WorkflowDialogDelete(_) -> t(config, i18n_text.EditWorkflow)
+  }
+  let submit_label = case mode {
+    admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
+    admin_workflows.WorkflowDialogEdit(_) -> "Save changes"
+    admin_workflows.WorkflowDialogDelete(_) -> "Save"
+  }
+
+  div(
+    [
+      attribute.class("automation-engine-panel"),
+      attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-label", title),
+    ],
+    [
+      panel_header(title, config.on_closed),
+      view_form_error(config),
+      form(
+        [
+          attribute.id("automation-engine-form"),
+          event.on_submit(fn(_) {
+            config.on_submitted(config.selected_project_id)
+          }),
+        ],
+        [
+          form_field.view(
+            t(config, i18n_text.WorkflowName),
+            input([
+              attribute.type_("text"),
+              attribute.required(True),
+              attribute.value(config.form_name),
+              attribute.attribute("data-testid", "automation-engine-name"),
+              event.on_input(config.on_name_changed),
+            ]),
+          ),
+          form_field.view(
+            t(config, i18n_text.WorkflowDescription),
+            input([
+              attribute.type_("text"),
+              attribute.value(config.form_description),
+              attribute.attribute(
+                "data-testid",
+                "automation-engine-description",
+              ),
+              event.on_input(config.on_description_changed),
+            ]),
+          ),
+          form_field.view_checkbox(
+            t(config, i18n_text.WorkflowActive),
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(config.form_active),
+              attribute.attribute("data-testid", "automation-engine-active"),
+              event.on_check(config.on_active_changed),
+            ]),
+          ),
+        ],
+      ),
+      panel_actions(
+        cancel: config.on_closed,
+        submit: config.on_submitted(config.selected_project_id),
+        submit_label: submit_label,
+        submitting: config.form_submitting,
+      ),
+    ],
+  )
+}
+
+fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
+  div(
+    [
+      attribute.class("automation-engine-panel"),
+      attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-label", t(config, i18n_text.DeleteWorkflow)),
+    ],
+    [
+      panel_header(t(config, i18n_text.DeleteWorkflow), config.on_closed),
+      view_form_error(config),
+      p([], [text(t(config, i18n_text.WorkflowDeleteConfirm(workflow.name)))]),
+      panel_actions(
+        cancel: config.on_closed,
+        submit: config.on_delete_confirmed,
+        submit_label: t(config, i18n_text.DeleteWorkflow),
+        submitting: config.form_submitting,
+      ),
+    ],
+  )
+}
+
+fn panel_header(title: String, on_closed: msg) -> Element(msg) {
+  div([attribute.class("automation-engine-panel__header")], [
+    h2([], [text(title)]),
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("icon-btn"),
+        attribute.attribute("aria-label", "Close"),
+        event.on_click(on_closed),
+      ],
+      [text("x")],
+    ),
   ])
 }
 
-fn create_dialog_parts(
-  selected_project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #("create", attribute.none(), project_id_attribute(selected_project_id))
-}
-
-fn entity_dialog_parts(
-  mode: String,
-  property_name: String,
-  property_json: json.Json,
-  project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #(
-    mode,
-    attribute.property(property_name, property_json),
-    project_id_attribute(project_id),
-  )
-}
-
-fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
-  case project_id {
-    opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
-    opt.None -> attribute.none()
+fn view_form_error(config: Config(msg)) -> Element(msg) {
+  case config.form_error {
+    opt.None -> element.none()
+    opt.Some(message) ->
+      div(
+        [attribute.class("form-error"), attribute.attribute("role", "alert")],
+        [text(message)],
+      )
   }
 }
 
-fn decode_workflow_created_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(config.on_created(workflow))
-  })
-}
-
-fn decode_workflow_updated_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(config.on_updated(workflow))
-  })
-}
-
-fn decode_workflow_deleted_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(
-    decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(config.on_deleted(id)) },
-  )
-}
-
-fn decode_workflow_close_requested_event(
-  config: Config(msg),
-) -> decode.Decoder(msg) {
-  decode.success(config.on_closed)
-}
-
-fn workflow_decoder() -> decode.Decoder(Workflow) {
-  workflow_codec.workflow_decoder()
+fn panel_actions(
+  cancel cancel: msg,
+  submit submit: msg,
+  submit_label submit_label: String,
+  submitting submitting: Bool,
+) -> Element(msg) {
+  div([attribute.class("automation-engine-panel__actions")], [
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("btn secondary"),
+        event.on_click(cancel),
+      ],
+      [text("Cancel")],
+    ),
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("btn primary"),
+        attribute.disabled(submitting),
+        event.on_click(submit),
+      ],
+      [
+        text(case submitting {
+          True -> "Saving..."
+          False -> submit_label
+        }),
+      ],
+    ),
+  ])
 }

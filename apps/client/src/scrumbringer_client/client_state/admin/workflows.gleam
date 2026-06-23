@@ -20,6 +20,11 @@ pub type Model {
     workflows_dialog_mode: Option(WorkflowDialogMode),
     workflows_search: String,
     workflows_status_filter: String,
+    workflow_form_name: String,
+    workflow_form_description: String,
+    workflow_form_active: Bool,
+    workflow_form_submitting: Bool,
+    workflow_form_error: Option(String),
   )
 }
 
@@ -31,5 +36,10 @@ pub fn default_model() -> Model {
     workflows_dialog_mode: option.None,
     workflows_search: "",
     workflows_status_filter: "all",
+    workflow_form_name: "",
+    workflow_form_description: "",
+    workflow_form_active: True,
+    workflow_form_submitting: False,
+    workflow_form_error: option.None,
   )
 }
