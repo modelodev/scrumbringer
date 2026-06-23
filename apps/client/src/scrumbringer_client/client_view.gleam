@@ -99,6 +99,8 @@ import scrumbringer_client/theme
 import scrumbringer_client/url_state
 
 import scrumbringer_client/client_ffi
+import scrumbringer_client/ui/button
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/utils/card_queries
 
@@ -550,6 +552,19 @@ fn view_automations_console(
       model.admin.task_templates.task_templates_project,
     ),
     created_tasks_count: created_tasks_count(model),
+    primary_action: opt.Some(
+      button.icon_text(
+        i18n.t(model.ui.locale, i18n_text.CreateWorkflow),
+        client_state.pool_msg(pool_messages.OpenWorkflowDialog(
+          admin_workflows.WorkflowDialogCreate,
+        )),
+        icons.Plus,
+        button.Primary,
+        button.GlobalAction,
+      )
+      |> button.with_testid("automation-create-engine")
+      |> button.view,
+    ),
     engines_view: engine_list.view(engine_list_config.from_state(
       model.ui.locale,
       model.ui.theme,

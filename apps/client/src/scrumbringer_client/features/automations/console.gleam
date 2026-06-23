@@ -32,6 +32,7 @@ pub type Config(msg) {
     rules_count: Int,
     templates_count: Int,
     created_tasks_count: Int,
+    primary_action: opt.Option(Element(msg)),
     engines_view: Element(msg),
     templates_view: Element(msg),
     executions_view: Element(msg),
@@ -44,7 +45,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       title: t(config, i18n_text.AdminWorkflows),
       purpose: t(config, i18n_text.AutomationConsolePurpose),
       summary: summary(config),
-      actions: [],
+      actions: header_actions(config),
       extra_class: opt.Some("automations-console__header"),
       testid: opt.Some("automations-surface-header"),
     )
@@ -104,6 +105,13 @@ fn summary(config: Config(msg)) -> List(work_surface.SummaryChip) {
       tone.Warning,
     ),
   ]
+}
+
+fn header_actions(config: Config(msg)) -> List(Element(msg)) {
+  case config.primary_action {
+    opt.None -> []
+    opt.Some(action) -> [action]
+  }
 }
 
 fn view_modes(config: Config(msg)) -> Element(msg) {

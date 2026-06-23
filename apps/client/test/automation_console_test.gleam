@@ -1,7 +1,8 @@
 import gleam/option.{None, Some}
 import gleam/string
+import lustre/attribute
 import lustre/element
-import lustre/element/html.{div, text}
+import lustre/element/html.{button, div, text}
 
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/automations/console as automations_console
@@ -32,6 +33,7 @@ fn render_with_locale(
     rules_count: 4,
     templates_count: 3,
     created_tasks_count: 12,
+    primary_action: Some(primary_action()),
     engines_view: div([], [text("engines body")]),
     templates_view: div([], [text("templates body")]),
     executions_view: div([], [text("executions body")]),
@@ -59,6 +61,8 @@ pub fn automations_console_uses_work_surface_contract_test() {
   assert_contains(html, ">4<")
   assert_contains(html, ">3<")
   assert_contains(html, ">12<")
+  assert_contains(html, "data-testid=\"automation-create-engine\"")
+  assert_contains(html, "Create engine")
   assert_contains(html, "engines body")
 }
 
@@ -100,6 +104,7 @@ pub fn automations_console_renders_selected_entity_context_test() {
       rules_count: 4,
       templates_count: 3,
       created_tasks_count: 12,
+      primary_action: None,
       engines_view: div([], [text("engines body")]),
       templates_view: div([], [text("templates body")]),
       executions_view: div([], [text("executions body")]),
@@ -123,6 +128,7 @@ pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
       rules_count: 4,
       templates_count: 3,
       created_tasks_count: 12,
+      primary_action: None,
       engines_view: div([], [text("engines body")]),
       templates_view: div([], [text("templates body")]),
       executions_view: div([], [text("executions body")]),
@@ -137,4 +143,10 @@ pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
   assert_contains(html, ">Plantillas<")
   assert_contains(html, ">Ejecuciones<")
   assert_not_contains(html, "Rule #8 selected")
+}
+
+fn primary_action() -> element.Element(msg) {
+  button([attribute.attribute("data-testid", "automation-create-engine")], [
+    text("Create engine"),
+  ])
 }
