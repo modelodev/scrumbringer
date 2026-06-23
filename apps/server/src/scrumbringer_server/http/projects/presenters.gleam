@@ -62,6 +62,7 @@ pub fn depth_reduction_impact_response(
     affected_cards_count: affected_cards_count,
     available_tasks_count: available_tasks_count,
     claimed_tasks_count: claimed_tasks_count,
+    affected_cards: affected_cards,
   ) = impact
 
   json.object([
@@ -69,6 +70,23 @@ pub fn depth_reduction_impact_response(
     #("available_tasks_count", json.int(available_tasks_count)),
     #("claimed_tasks_count", json.int(claimed_tasks_count)),
     #("blocked", json.bool(claimed_tasks_count > 0)),
+    #(
+      "affected_cards",
+      json.array(affected_cards, of: depth_reduction_affected_card),
+    ),
+  ])
+}
+
+fn depth_reduction_affected_card(
+  affected_card: projects_db.DepthReductionAffectedCard,
+) -> json.Json {
+  let projects_db.DepthReductionAffectedCard(id: id, title: title, depth: depth) =
+    affected_card
+
+  json.object([
+    #("id", json.int(id)),
+    #("title", json.string(title)),
+    #("depth", json.int(depth)),
   ])
 }
 

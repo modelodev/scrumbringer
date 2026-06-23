@@ -670,6 +670,7 @@ pub type Text {
   ProjectDepthReductionLoading(new_max_depth: Int)
   ProjectDepthReductionBlocked(cards_count: Int, claimed_tasks_count: Int)
   ProjectDepthReductionReady(cards_count: Int, available_tasks_count: Int)
+  ProjectDepthReductionAffectedCards
   ProjectDepthReductionConfirm
   ProjectDepthReductionConfirmed(new_max_depth: Int)
 

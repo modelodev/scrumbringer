@@ -201,6 +201,67 @@ pub fn project_create_persists_default_task_type_test() {
   expect.expect_status(create_task_res, 200)
 }
 
+pub fn depth_reduction_preview_returns_affected_cards_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Depth Preview")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Depth Preview'", [])
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let root_id = insert_card(db, project_id, admin_id, "Root", 0)
+  let middle_id = insert_card(db, project_id, admin_id, "Middle", root_id)
+  insert_card(db, project_id, admin_id, "Leaf", middle_id)
+
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/depth-reduction-preview",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("new_max_depth", json.int(1))]))
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
+
+  let assert Ok(dynamic) = json.parse(simulate.read_body(res), decode.dynamic)
+
+  let affected_card_decoder = {
+    use title <- decode.field("title", decode.string)
+    use depth <- decode.field("depth", decode.int)
+    decode.success(#(title, depth))
+  }
+  let data_decoder = {
+    use affected_cards_count <- decode.field("affected_cards_count", decode.int)
+    use affected_cards <- decode.field(
+      "affected_cards",
+      decode.list(affected_card_decoder),
+    )
+    decode.success(#(affected_cards_count, affected_cards))
+  }
+  let response_decoder = {
+    use data <- decode.field("data", data_decoder)
+    decode.success(data)
+  }
+
+  let assert Ok(#(affected_cards_count, affected_cards)) =
+    decode.run(dynamic, response_decoder)
+  affected_cards_count |> expect.equal(2)
+  affected_cards |> expect.equal([#("Middle", 2), #("Leaf", 3)])
+}
+
 pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1280,6 +1341,25 @@ fn single_string(
     |> pog.execute(db)
 
   value
+}
+
+fn insert_card(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  title: String,
+  parent_card_id: Int,
+) -> Int {
+  single_int(
+    db,
+    "insert into cards (project_id, title, description, created_by, parent_card_id) values ($1, $2, '', $3, case when $4 <= 0 then null else $4 end) returning id",
+    [
+      pog.int(project_id),
+      pog.text(title),
+      pog.int(user_id),
+      pog.int(parent_card_id),
+    ],
+  )
 }
 
 fn int_to_string(value: Int) -> String {

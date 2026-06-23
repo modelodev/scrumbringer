@@ -285,6 +285,13 @@ pub fn depth_reduction_previewed_sets_ready_state_test() {
       available_tasks_count: 3,
       claimed_tasks_count: 1,
       blocked: True,
+      affected_cards: [
+        api_projects.DepthReductionAffectedCard(
+          id: 42,
+          title: "Deep card",
+          depth: 3,
+        ),
+      ],
     )
 
   let #(next, fx, auth_policy, core_policy) =

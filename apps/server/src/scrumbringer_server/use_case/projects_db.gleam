@@ -62,7 +62,12 @@ pub type DepthReductionImpact {
     affected_cards_count: Int,
     available_tasks_count: Int,
     claimed_tasks_count: Int,
+    affected_cards: List(DepthReductionAffectedCard),
   )
+}
+
+pub type DepthReductionAffectedCard {
+  DepthReductionAffectedCard(id: Int, title: String, depth: Int)
 }
 
 /// Errors returned when removing a project member.
@@ -793,11 +798,14 @@ fn do_preview_depth_reduction(
         use affected_cards_count <- decode.field(0, decode.int)
         use available_tasks_count <- decode.field(1, decode.int)
         use claimed_tasks_count <- decode.field(2, decode.int)
-        decode.success(DepthReductionImpact(
-          affected_cards_count: affected_cards_count,
-          available_tasks_count: available_tasks_count,
-          claimed_tasks_count: claimed_tasks_count,
-        ))
+        decode.success(
+          DepthReductionImpact(
+            affected_cards_count: affected_cards_count,
+            available_tasks_count: available_tasks_count,
+            claimed_tasks_count: claimed_tasks_count,
+            affected_cards: [],
+          ),
+        )
       }
 
       use returned <- result.try(
@@ -811,12 +819,59 @@ fn do_preview_depth_reduction(
         |> result.map_error(DepthReductionDbError),
       )
 
+      use affected_cards <- result.try(list_depth_reduction_affected_cards(
+        db,
+        project_id,
+        new_max_depth,
+      ))
+
       case returned.rows {
-        [impact, ..] -> Ok(impact)
-        [] -> Ok(DepthReductionImpact(0, 0, 0))
+        [
+          DepthReductionImpact(
+            affected_cards_count,
+            available_tasks_count,
+            claimed_tasks_count,
+            _,
+          ),
+          ..
+        ] ->
+          Ok(DepthReductionImpact(
+            affected_cards_count,
+            available_tasks_count,
+            claimed_tasks_count,
+            affected_cards,
+          ))
+        [] -> Ok(DepthReductionImpact(0, 0, 0, affected_cards))
       }
     }
   }
+}
+
+fn list_depth_reduction_affected_cards(
+  db: pog.Connection,
+  project_id: Int,
+  new_max_depth: Int,
+) -> Result(List(DepthReductionAffectedCard), DepthReductionPreviewError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use title <- decode.field(1, decode.string)
+    use depth <- decode.field(2, decode.int)
+    decode.success(DepthReductionAffectedCard(
+      id: id,
+      title: title,
+      depth: depth,
+    ))
+  }
+
+  pog.query(
+    "\nwith recursive card_depths as (\n  select c.id, c.title, c.parent_card_id, 1::int as depth\n  from cards c\n  where c.project_id = $1\n    and c.parent_card_id is null\n  union all\n  select child.id, child.title, child.parent_card_id, parent.depth + 1\n  from cards child\n  join card_depths parent on child.parent_card_id = parent.id\n  where child.project_id = $1\n)\nselect id, title, depth\nfrom card_depths\nwhere depth > $2\norder by depth asc, title asc, id asc\nlimit 8",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(new_max_depth))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+  |> result.map(fn(returned) { returned.rows })
+  |> result.map_error(DepthReductionDbError)
 }
 
 fn do_update_project(

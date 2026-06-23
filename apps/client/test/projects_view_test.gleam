@@ -238,6 +238,13 @@ pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
             available_tasks_count: 3,
             claimed_tasks_count: 0,
             blocked: False,
+            affected_cards: [
+              api_projects.DepthReductionAffectedCard(
+                id: 42,
+                title: "Historia profunda",
+                depth: 3,
+              ),
+            ],
           ),
         ),
       ),
@@ -256,6 +263,9 @@ pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
 
   assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
   assert_contains(html, "4 cards y 3 tasks disponibles")
+  assert_contains(html, "Cards afectadas")
+  assert_contains(html, "Historia profunda")
+  assert_contains(html, "Nivel 3")
   assert_contains(html, "Confirmar reduccion de profundidad")
   assert_contains(html, "btn-danger")
   assert_not_contains(html, "Confirm depth reduction")

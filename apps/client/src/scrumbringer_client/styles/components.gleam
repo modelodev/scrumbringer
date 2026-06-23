@@ -67,6 +67,12 @@ pub fn css() -> List(String) {
     ".project-structure-settings__level { min-height: 30px; display: grid; grid-template-columns: minmax(58px, auto) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
     ".project-structure-settings__level-label { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); white-space: nowrap; }",
     ".project-structure-settings__level input { min-width: 0; width: 100%; min-height: 30px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface-1); color: var(--sb-text); padding: 4px 7px; font: inherit; }",
+    ".project-depth-reduction-confirmation__cards { display: grid; gap: 6px; margin-top: 8px; }",
+    ".project-depth-reduction-confirmation__cards-title { margin: 0; color: var(--sb-text); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); }",
+    ".project-depth-reduction-confirmation__cards ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }",
+    ".project-depth-reduction-confirmation__cards li { display: flex; justify-content: space-between; gap: 8px; min-width: 0; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); font-size: var(--sb-font-sm); }",
+    ".project-depth-reduction-confirmation__card-title { min-width: 0; color: var(--sb-text); overflow-wrap: anywhere; }",
+    ".project-depth-reduction-confirmation__card-depth { flex: 0 0 auto; color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); }",
     "@media (max-width: 640px) { .automations-console__modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } .automations-console__mode { min-width: 0; padding-inline: 6px; } .automation-rules-heading { flex-direction: column; align-items: stretch; } .automation-engine-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; } .automation-engine-row .btn-group { justify-content: flex-start; } }",
   ]
 }

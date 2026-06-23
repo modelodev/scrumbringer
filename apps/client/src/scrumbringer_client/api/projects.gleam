@@ -161,7 +161,12 @@ pub type DepthReductionImpact {
     available_tasks_count: Int,
     claimed_tasks_count: Int,
     blocked: Bool,
+    affected_cards: List(DepthReductionAffectedCard),
   )
+}
+
+pub type DepthReductionAffectedCard {
+  DepthReductionAffectedCard(id: Int, title: String, depth: Int)
 }
 
 fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
@@ -178,12 +183,27 @@ fn depth_reduction_impact_decoder() -> decode.Decoder(DepthReductionImpact) {
   use available_tasks_count <- decode.field("available_tasks_count", decode.int)
   use claimed_tasks_count <- decode.field("claimed_tasks_count", decode.int)
   use blocked <- decode.field("blocked", decode.bool)
+  use affected_cards <- decode.optional_field(
+    "affected_cards",
+    [],
+    decode.list(depth_reduction_affected_card_decoder()),
+  )
   decode.success(DepthReductionImpact(
     affected_cards_count: affected_cards_count,
     available_tasks_count: available_tasks_count,
     claimed_tasks_count: claimed_tasks_count,
     blocked: blocked,
+    affected_cards: affected_cards,
   ))
+}
+
+fn depth_reduction_affected_card_decoder() -> decode.Decoder(
+  DepthReductionAffectedCard,
+) {
+  use id <- decode.field("id", decode.int)
+  use title <- decode.field("title", decode.string)
+  use depth <- decode.field("depth", decode.int)
+  decode.success(DepthReductionAffectedCard(id: id, title: title, depth: depth))
 }
 
 pub fn preview_depth_reduction(

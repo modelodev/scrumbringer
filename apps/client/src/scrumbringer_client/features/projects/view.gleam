@@ -22,7 +22,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{div, form, input, label, p, text}
+import lustre/element/html.{div, form, input, label, li, p, span, text, ul}
 import lustre/event
 
 import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
@@ -453,6 +453,7 @@ fn view_depth_reduction_ready(
             ),
           )),
         ]),
+        view_depth_reduction_affected_cards(impact.affected_cards, config),
       ])
     False ->
       div(attrs, [
@@ -465,6 +466,7 @@ fn view_depth_reduction_ready(
             ),
           )),
         ]),
+        view_depth_reduction_affected_cards(impact.affected_cards, config),
         ui_button.text(
           t(config, i18n_text.ProjectDepthReductionConfirm),
           config.on_edit_depth_reduction_confirmed,
@@ -474,6 +476,47 @@ fn view_depth_reduction_ready(
           |> ui_button.view,
       ])
   }
+}
+
+fn view_depth_reduction_affected_cards(
+  affected_cards: List(api_projects.DepthReductionAffectedCard),
+  config: Config(msg),
+) -> element.Element(msg) {
+  case affected_cards {
+    [] -> element.none()
+    _ ->
+      div([attribute.class("project-depth-reduction-confirmation__cards")], [
+        p(
+          [
+            attribute.class("project-depth-reduction-confirmation__cards-title"),
+          ],
+          [text(t(config, i18n_text.ProjectDepthReductionAffectedCards))],
+        ),
+        ul(
+          [],
+          list.map(affected_cards, fn(affected_card) {
+            view_depth_reduction_affected_card(affected_card, config)
+          }),
+        ),
+      ])
+  }
+}
+
+fn view_depth_reduction_affected_card(
+  affected_card: api_projects.DepthReductionAffectedCard,
+  config: Config(msg),
+) -> element.Element(msg) {
+  let api_projects.DepthReductionAffectedCard(id: _, title: title, depth: depth) =
+    affected_card
+
+  li([], [
+    span([attribute.class("project-depth-reduction-confirmation__card-title")], [
+      text(title),
+    ]),
+    span([attribute.class("project-depth-reduction-confirmation__card-depth")], [
+      text(t(config, i18n_text.ProjectDepthLevel(depth))),
+    ]),
+  ])
 }
 
 fn normalize_depth_names(

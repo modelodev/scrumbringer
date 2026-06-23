@@ -830,6 +830,7 @@ pub fn translate(text: Text) -> String {
       <> " cards y "
       <> int.to_string(available_tasks_count)
       <> " tasks disponibles quedan por debajo del nuevo limite."
+    text.ProjectDepthReductionAffectedCards -> "Cards afectadas"
     text.ProjectDepthReductionConfirm -> "Confirmar reduccion de profundidad"
     text.ProjectDepthReductionConfirmed(new_max_depth) ->
       "Reduccion de profundidad a "
