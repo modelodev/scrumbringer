@@ -746,10 +746,6 @@ pub type Text {
   RulesTitle(workflow_name: String)
   RuleName
   RuleGoal
-  RuleResourceType
-  RuleResourceTypeTask
-  RuleResourceTypeCard
-  RuleToState
   RuleTaskType
   RuleActive
   RuleTemplates

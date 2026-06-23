@@ -880,10 +880,6 @@ pub fn translate(text: Text) -> String {
     text.RulesTitle(workflow_name) -> "Rules - " <> workflow_name
     text.RuleName -> "Name"
     text.RuleGoal -> "Goal"
-    text.RuleResourceType -> "Resource Type"
-    text.RuleResourceTypeTask -> "Task"
-    text.RuleResourceTypeCard -> "Card"
-    text.RuleToState -> "Target State"
     text.RuleTaskType -> "Task Type"
     text.RuleActive -> "Active"
     text.RuleTemplates -> "Templates"
