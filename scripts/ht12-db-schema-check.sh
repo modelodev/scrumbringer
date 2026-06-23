@@ -21,6 +21,7 @@ EXPECTED_MIGRATIONS=(
   "20260620107000"
   "20260620108000"
   "20260623121000"
+  "20260623122000"
 )
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -43,6 +44,7 @@ psql "$DATABASE_URL" --no-align --tuples-only --quiet --set ON_ERROR_STOP=1 >"$r
 WITH expected_tables(name) AS (
   VALUES
     ('audit_events'),
+    ('automation_config_events'),
     ('cards'),
     ('project_card_depth_names'),
     ('project_settings'),
@@ -59,6 +61,14 @@ expected_columns(table_name, column_name) AS (
     ('audit_events', 'payload_json'),
     ('audit_events', 'project_id'),
     ('audit_events', 'task_id'),
+    ('automation_config_events', 'actor_user_id'),
+    ('automation_config_events', 'change_type'),
+    ('automation_config_events', 'created_at'),
+    ('automation_config_events', 'entity_id'),
+    ('automation_config_events', 'entity_type'),
+    ('automation_config_events', 'org_id'),
+    ('automation_config_events', 'payload_json'),
+    ('automation_config_events', 'project_id'),
     ('cards', 'activation_source_card_id'),
     ('cards', 'activated_at'),
     ('cards', 'activated_by'),

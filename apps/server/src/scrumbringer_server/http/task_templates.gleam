@@ -22,6 +22,7 @@
 //// - Uses `http/csrf.gleam` for mutation protection
 
 import gleam/http
+import gleam/json
 import gleam/result
 import pog
 import scrumbringer_server/http/api
@@ -31,6 +32,7 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/task_templates/payloads as template_payloads
 import scrumbringer_server/http/task_templates/presenters as template_presenters
+import scrumbringer_server/use_case/automation_config_audit_db as config_audit
 import scrumbringer_server/use_case/projects_db
 import scrumbringer_server/use_case/service_error
 import scrumbringer_server/use_case/store_state.{type StoredUser}
@@ -182,7 +184,7 @@ fn create_template_for_project(
 ) -> wisp.Response {
   case ensure_project_manager(ctx, project_id, user.id) {
     Error(resp) -> resp
-    Ok(Nil) -> create_template(req, ctx, user.org_id, project_id, user.id)
+    Ok(Nil) -> create_template(req, ctx, user, project_id)
   }
 }
 
@@ -209,7 +211,7 @@ fn update_template_for_id(
   case require_template_project_manager(db, user, template_id) {
     Error(resp) -> resp
     Ok(#(org_id, project_id)) ->
-      update_template(req, ctx, template_id, org_id, project_id)
+      update_template(req, ctx, user, template_id, org_id, project_id)
   }
 }
 
@@ -235,7 +237,8 @@ fn delete_template_for_id(
 
   case require_template_project_manager(db, user, template_id) {
     Error(resp) -> resp
-    Ok(#(org_id, _project_id)) -> delete_template(req, ctx, template_id, org_id)
+    Ok(#(org_id, project_id)) ->
+      delete_template(req, ctx, user, template_id, org_id, project_id)
   }
 }
 
@@ -292,56 +295,70 @@ fn fetch_template(
 fn create_template(
   req: wisp.Request,
   ctx: auth.Ctx,
-  org_id: Int,
+  user: StoredUser,
   project_id: Int,
-  user_id: Int,
 ) -> wisp.Response {
   with_mutation_payload(req, decode_create_payload, fn(payload) {
-    create_template_db(ctx, org_id, project_id, payload, user_id)
+    create_template_db(ctx, user, project_id, payload)
   })
 }
 
 fn create_template_db(
   ctx: auth.Ctx,
-  org_id: Int,
+  user: StoredUser,
   project_id: Int,
   payload: template_payloads.CreatePayload,
-  user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case
-    task_templates_db.create_template(
-      db,
-      org_id,
-      project_id,
-      payload.name,
-      payload.description,
-      payload.type_id,
-      payload.priority,
-      user_id,
-    )
+    run_config_transaction(db, fn(tx) {
+      use template <- result.try(
+        task_templates_db.create_template(
+          tx,
+          user.org_id,
+          project_id,
+          payload.name,
+          payload.description,
+          payload.type_id,
+          payload.priority,
+          user.id,
+        )
+        |> result.map_error(template_error_response),
+      )
+      use _ <- result.try(record_config_change(
+        tx,
+        user,
+        project_id,
+        config_audit.Template,
+        template.id,
+        config_audit.Created,
+        json.object([#("name", json.string(template.name))]),
+      ))
+      Ok(api.ok(template_presenters.template_response(template)))
+    })
   {
-    Ok(template) -> api.ok(template_presenters.template_response(template))
-
-    Error(error) -> template_error_response(error)
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
 fn update_template(
   req: wisp.Request,
   ctx: auth.Ctx,
+  user: StoredUser,
   template_id: Int,
   org_id: Int,
   project_id: Int,
 ) -> wisp.Response {
   with_mutation_payload(req, decode_update_payload, fn(payload) {
-    update_template_db(ctx, template_id, org_id, project_id, payload)
+    update_template_db(ctx, user, template_id, org_id, project_id, payload)
   })
 }
 
 fn update_template_db(
   ctx: auth.Ctx,
+  user: StoredUser,
   template_id: Int,
   org_id: Int,
   project_id: Int,
@@ -350,46 +367,85 @@ fn update_template_db(
   let auth.Ctx(db: db, ..) = ctx
 
   case
-    task_templates_db.update_template(
-      db,
-      template_id,
-      org_id,
-      project_id,
-      payload.name,
-      payload.description,
-      payload.type_id,
-      payload.priority,
-    )
+    run_config_transaction(db, fn(tx) {
+      use template <- result.try(
+        task_templates_db.update_template(
+          tx,
+          template_id,
+          org_id,
+          project_id,
+          payload.name,
+          payload.description,
+          payload.type_id,
+          payload.priority,
+        )
+        |> result.map_error(template_error_response),
+      )
+      use _ <- result.try(record_config_change(
+        tx,
+        user,
+        project_id,
+        config_audit.Template,
+        template.id,
+        config_audit.Updated,
+        json.object([#("name", json.string(template.name))]),
+      ))
+      Ok(api.ok(template_presenters.template_response(template)))
+    })
   {
-    Ok(template) -> api.ok(template_presenters.template_response(template))
-
-    Error(error) -> template_error_response(error)
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
 fn delete_template(
   req: wisp.Request,
   ctx: auth.Ctx,
+  user: StoredUser,
   template_id: Int,
   org_id: Int,
+  project_id: Int,
 ) -> wisp.Response {
   case csrf.require_csrf(req) {
     Error(resp) -> resp
 
-    Ok(Nil) -> delete_template_db(ctx, template_id, org_id)
+    Ok(Nil) -> delete_template_db(ctx, user, template_id, org_id, project_id)
   }
 }
 
 fn delete_template_db(
   ctx: auth.Ctx,
+  user: StoredUser,
   template_id: Int,
   org_id: Int,
+  project_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case task_templates_db.delete_template(db, template_id, org_id) {
-    Ok(Nil) -> api.no_content()
-    Error(error) -> template_error_response(error)
+  case
+    run_config_transaction(db, fn(tx) {
+      use template <- result.try(
+        task_templates_db.get_template(tx, template_id)
+        |> result.map_error(template_error_response),
+      )
+      use _ <- result.try(
+        task_templates_db.delete_template(tx, template_id, org_id)
+        |> result.map_error(template_error_response),
+      )
+      use _ <- result.try(record_config_change(
+        tx,
+        user,
+        project_id,
+        config_audit.Template,
+        template.id,
+        config_audit.Deleted,
+        json.object([#("name", json.string(template.name))]),
+      ))
+      Ok(api.no_content())
+    })
+  {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -404,6 +460,39 @@ fn template_error_response(error: service_error.ServiceError) -> wisp.Response {
 
 fn database_error_response() -> wisp.Response {
   api.error(500, "INTERNAL", "Database error")
+}
+
+fn record_config_change(
+  db: pog.Connection,
+  user: StoredUser,
+  project_id: Int,
+  entity_type: config_audit.EntityType,
+  entity_id: Int,
+  change_type: config_audit.ChangeType,
+  payload: json.Json,
+) -> Result(Nil, wisp.Response) {
+  config_audit.insert(
+    db,
+    user.org_id,
+    project_id,
+    user.id,
+    entity_type,
+    entity_id,
+    change_type,
+    payload,
+  )
+  |> result.map_error(service_error_response.to_response)
+}
+
+fn run_config_transaction(
+  db: pog.Connection,
+  callback: fn(pog.Connection) -> Result(a, wisp.Response),
+) -> Result(a, wisp.Response) {
+  case pog.transaction(db, callback) {
+    Ok(value) -> Ok(value)
+    Error(pog.TransactionRolledBack(resp)) -> Error(resp)
+    Error(pog.TransactionQueryError(_)) -> Error(database_error_response())
+  }
 }
 
 fn with_mutation_payload(

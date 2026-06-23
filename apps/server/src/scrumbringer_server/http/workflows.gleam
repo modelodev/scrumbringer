@@ -21,6 +21,7 @@
 //// - Uses `use_case/workflows_db` for repository
 
 import gleam/http
+import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
@@ -32,6 +33,7 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/http/workflows/payloads as workflow_payloads
 import scrumbringer_server/http/workflows/presenters as workflow_presenters
+import scrumbringer_server/use_case/automation_config_audit_db as config_audit
 import scrumbringer_server/use_case/projects_db
 import scrumbringer_server/use_case/service_error
 import scrumbringer_server/use_case/store_state.{type StoredUser}
@@ -109,10 +111,11 @@ fn handle_update(
 ) -> wisp.Response {
   case require_workflow_update_access(req, ctx, workflow_id) {
     Error(resp) -> resp
-    Ok(#(db, workflow_id, workflow)) ->
+    Ok(#(db, user, workflow_id, workflow)) ->
       json_payload.with_response(req, decode_update_payload, fn(payload) {
         response_from_result(update_project_workflow(
           db,
+          user,
           workflow_id,
           workflow,
           payload,
@@ -171,27 +174,40 @@ fn create_project_workflow(
   project_id: Int,
   payload: workflow_payloads.CreatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  case
-    workflows_db.create_workflow(
-      db,
-      user.org_id,
-      project_id,
-      payload.name,
-      payload.description,
-      payload.active,
-      user.id,
+  run_config_transaction(db, fn(tx) {
+    use workflow <- result.try(
+      workflows_db.create_workflow(
+        tx,
+        user.org_id,
+        project_id,
+        payload.name,
+        payload.description,
+        payload.active,
+        user.id,
+      )
+      |> result.map_error(workflow_error_response),
     )
-  {
-    Ok(workflow) -> Ok(api.ok(workflow_presenters.workflow_response(workflow)))
-    Error(error) -> Error(workflow_error_response(error))
-  }
+    use _ <- result.try(record_config_change(
+      tx,
+      user,
+      project_id,
+      config_audit.Engine,
+      workflow.id,
+      config_audit.Created,
+      json.object([#("name", json.string(workflow.name))]),
+    ))
+    Ok(api.ok(workflow_presenters.workflow_response(workflow)))
+  })
 }
 
 fn require_workflow_update_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-) -> Result(#(pog.Connection, Int, workflows_db.WorkflowRecord), wisp.Response) {
+) -> Result(
+  #(pog.Connection, StoredUser, Int, workflows_db.WorkflowRecord),
+  wisp.Response,
+) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
   use workflow_id <- result.try(api.parse_id(workflow_id_str))
   let auth.Ctx(db: db, ..) = ctx
@@ -201,31 +217,36 @@ fn require_workflow_update_access(
     workflow_id,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  Ok(#(db, workflow_id, workflow))
+  Ok(#(db, user, workflow_id, workflow))
 }
 
 fn update_project_workflow(
   db: pog.Connection,
+  user: StoredUser,
   workflow_id: Int,
   workflow: workflows_db.WorkflowRecord,
   payload: workflow_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
-  use _ <- result.try(update_metadata_if_needed(
-    db,
-    workflow_id,
-    workflow.org_id,
-    workflow.project_id,
-    payload,
-  ))
-  use _ <- result.try(update_active_if_needed(
-    db,
-    workflow_id,
-    workflow.org_id,
-    workflow.project_id,
-    payload.active,
-  ))
+  run_config_transaction(db, fn(tx) {
+    use _ <- result.try(update_metadata_if_needed(
+      tx,
+      user,
+      workflow_id,
+      workflow.org_id,
+      workflow.project_id,
+      payload,
+    ))
+    use _ <- result.try(update_active_if_needed(
+      tx,
+      user,
+      workflow_id,
+      workflow.org_id,
+      workflow.project_id,
+      payload.active,
+    ))
 
-  get_workflow_response(db, workflow_id)
+    get_workflow_response(tx, workflow_id)
+  })
 }
 
 fn delete_project_workflow(
@@ -242,12 +263,7 @@ fn delete_project_workflow(
     workflow_id,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  use _ <- result.try(delete_workflow_db(
-    db,
-    workflow_id,
-    workflow.org_id,
-    workflow.project_id,
-  ))
+  use _ <- result.try(delete_workflow_db(db, user, workflow))
 
   Ok(api.no_content())
 }
@@ -332,6 +348,7 @@ fn decode_update_payload(
 
 fn update_metadata_if_needed(
   db: pog.Connection,
+  user: StoredUser,
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
@@ -344,8 +361,8 @@ fn update_metadata_if_needed(
 
   case has_updates {
     False -> Ok(Nil)
-    True ->
-      case
+    True -> {
+      use workflow <- result.try(
         workflows_db.update_workflow(
           db,
           workflow_id,
@@ -354,15 +371,24 @@ fn update_metadata_if_needed(
           payload.name,
           payload.description,
         )
-      {
-        Ok(_) -> Ok(Nil)
-        Error(error) -> Error(workflow_error_response(error))
-      }
+        |> result.map_error(workflow_error_response),
+      )
+      record_config_change(
+        db,
+        user,
+        project_id,
+        config_audit.Engine,
+        workflow.id,
+        config_audit.Updated,
+        json.object([#("name", json.string(workflow.name))]),
+      )
+    }
   }
 }
 
 fn update_active_if_needed(
   db: pog.Connection,
+  user: StoredUser,
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
@@ -380,7 +406,19 @@ fn update_active_if_needed(
           active,
         )
       {
-        Ok(Nil) -> Ok(Nil)
+        Ok(Nil) ->
+          record_config_change(
+            db,
+            user,
+            project_id,
+            config_audit.Engine,
+            workflow_id,
+            case active {
+              True -> config_audit.Reactivated
+              False -> config_audit.Paused
+            },
+            json.object([#("active", json.bool(active))]),
+          )
         Error(error) -> Error(workflow_error_response(error))
       }
   }
@@ -388,14 +426,33 @@ fn update_active_if_needed(
 
 fn delete_workflow_db(
   db: pog.Connection,
-  workflow_id: Int,
-  org_id: Int,
-  project_id: Int,
+  user: StoredUser,
+  workflow: workflows_db.WorkflowRecord,
 ) -> Result(Nil, wisp.Response) {
-  case workflows_db.delete_workflow(db, workflow_id, org_id, project_id) {
-    Ok(Nil) -> Ok(Nil)
-    Error(error) -> Error(service_error_response.to_response(error))
-  }
+  run_config_transaction(db, fn(tx) {
+    use disposition <- result.try(
+      workflows_db.delete_workflow_with_disposition(
+        tx,
+        workflow.id,
+        workflow.org_id,
+        workflow.project_id,
+      )
+      |> result.map_error(service_error_response.to_response),
+    )
+    use _ <- result.try(record_config_change(
+      tx,
+      user,
+      workflow.project_id,
+      config_audit.Engine,
+      workflow.id,
+      case disposition {
+        workflows_db.PhysicallyDeleted -> config_audit.Deleted
+        workflows_db.Archived -> config_audit.Archived
+      },
+      json.object([#("name", json.string(workflow.name))]),
+    ))
+    Ok(Nil)
+  })
 }
 
 fn get_workflow_response(
@@ -418,4 +475,37 @@ fn workflow_error_response(error: service_error.ServiceError) -> wisp.Response {
 
 fn database_error_response() -> wisp.Response {
   api.error(500, "INTERNAL", "Database error")
+}
+
+fn record_config_change(
+  db: pog.Connection,
+  user: StoredUser,
+  project_id: Int,
+  entity_type: config_audit.EntityType,
+  entity_id: Int,
+  change_type: config_audit.ChangeType,
+  payload: json.Json,
+) -> Result(Nil, wisp.Response) {
+  config_audit.insert(
+    db,
+    user.org_id,
+    project_id,
+    user.id,
+    entity_type,
+    entity_id,
+    change_type,
+    payload,
+  )
+  |> result.map_error(service_error_response.to_response)
+}
+
+fn run_config_transaction(
+  db: pog.Connection,
+  callback: fn(pog.Connection) -> Result(a, wisp.Response),
+) -> Result(a, wisp.Response) {
+  case pog.transaction(db, callback) {
+    Ok(value) -> Ok(value)
+    Error(pog.TransactionRolledBack(resp)) -> Error(resp)
+    Error(pog.TransactionQueryError(_)) -> Error(database_error_response())
+  }
 }

@@ -48,6 +48,11 @@ pub type WorkflowRecord {
   )
 }
 
+pub type DeleteDisposition {
+  PhysicallyDeleted
+  Archived
+}
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -279,6 +284,16 @@ pub fn delete_workflow(
   org_id: Int,
   project_id: Int,
 ) -> Result(Nil, ServiceError) {
+  delete_workflow_with_disposition(db, workflow_id, org_id, project_id)
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_workflow_with_disposition(
+  db: pog.Connection,
+  workflow_id: Int,
+  org_id: Int,
+  project_id: Int,
+) -> Result(DeleteDisposition, ServiceError) {
   case sql.workflows_delete(db, workflow_id, org_id, project_id) {
     Ok(pog.Returned(
       rows: [
@@ -292,9 +307,9 @@ pub fn delete_workflow(
       ],
       ..,
     )) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..))
-      if row.paused_id > 0 || row.deleted_id > 0
-    -> Ok(Nil)
+    Ok(pog.Returned(rows: [row, ..], ..)) if row.paused_id > 0 -> Ok(Archived)
+    Ok(pog.Returned(rows: [row, ..], ..)) if row.deleted_id > 0 ->
+      Ok(PhysicallyDeleted)
     Ok(pog.Returned(rows: [_row, ..], ..)) ->
       Error(Unexpected("delete_workflow returned no paused or deleted row"))
     Ok(pog.Returned(rows: [], ..)) ->

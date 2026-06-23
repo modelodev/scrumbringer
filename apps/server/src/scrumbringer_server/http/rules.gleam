@@ -23,6 +23,7 @@
 import domain/automation
 import domain/workflow
 import gleam/http
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -35,6 +36,7 @@ import scrumbringer_server/http/json_payload
 import scrumbringer_server/http/rules/payloads as rule_payloads
 import scrumbringer_server/http/rules/presenters as rule_presenters
 import scrumbringer_server/http/service_error_response
+import scrumbringer_server/use_case/automation_config_audit_db as config_audit
 import scrumbringer_server/use_case/rules_db
 import scrumbringer_server/use_case/service_error
 import scrumbringer_server/use_case/store_state.{type StoredUser}
@@ -90,9 +92,9 @@ fn handle_create(
 ) -> wisp.Response {
   case require_create_rule_access(req, ctx, workflow_id) {
     Error(resp) -> resp
-    Ok(#(workflow, db)) ->
+    Ok(#(user, workflow, db)) ->
       json_payload.with_response(req, decode_create_payload, fn(payload) {
-        response_from_result(create_rule_flow(workflow, db, payload))
+        response_from_result(create_rule_flow(user, workflow, db, payload))
       })
   }
 }
@@ -104,9 +106,9 @@ fn handle_update(
 ) -> wisp.Response {
   case require_update_rule_access(req, ctx, rule_id) {
     Error(resp) -> resp
-    Ok(#(rule, workflow, db)) ->
+    Ok(#(user, rule, workflow, db)) ->
       json_payload.with_response(req, decode_update_payload, fn(payload) {
-        response_from_result(update_rule_flow(rule, workflow, db, payload))
+        response_from_result(update_rule_flow(user, rule, workflow, db, payload))
       })
   }
 }
@@ -148,17 +150,21 @@ fn require_create_rule_access(
   req: wisp.Request,
   ctx: auth.Ctx,
   workflow_id_str: String,
-) -> Result(#(workflows_db.WorkflowRecord, pog.Connection), wisp.Response) {
-  use #(_, workflow, db) <- result.try(load_workflow_access(
+) -> Result(
+  #(StoredUser, workflows_db.WorkflowRecord, pog.Connection),
+  wisp.Response,
+) {
+  use #(user, workflow, db) <- result.try(load_workflow_access(
     req,
     ctx,
     workflow_id_str,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  Ok(#(workflow, db))
+  Ok(#(user, workflow, db))
 }
 
 fn create_rule_flow(
+  user: StoredUser,
   workflow: workflows_db.WorkflowRecord,
   db: pog.Connection,
   payload: rule_payloads.CreatePayload,
@@ -166,27 +172,35 @@ fn create_rule_flow(
   let template_id = automation.action_template_id(payload.action)
   use _ <- result.try(validate_required_rule_template(db, workflow, template_id))
 
-  case
-    rules_db.create_rule(
-      db,
-      workflow.id,
-      payload.name,
-      payload.goal,
-      payload.trigger,
-      payload.action,
-      payload.status,
+  run_config_transaction(db, fn(tx) {
+    use rule <- result.try(
+      rules_db.create_rule(
+        tx,
+        workflow.id,
+        payload.name,
+        payload.goal,
+        payload.trigger,
+        payload.action,
+        payload.status,
+      )
+      |> result.map_error(create_rule_error_response),
     )
-  {
-    Ok(rule) -> {
-      use template <- result.try(sync_rule_template(
-        db,
-        rule.id,
-        Some(template_id),
-      ))
-      Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
-    }
-    Error(error) -> Error(create_rule_error_response(error))
-  }
+    use template <- result.try(sync_rule_template(
+      tx,
+      rule.id,
+      Some(template_id),
+    ))
+    use _ <- result.try(record_config_change(
+      tx,
+      user,
+      workflow.project_id,
+      config_audit.Rule,
+      rule.id,
+      config_audit.Created,
+      json.object([#("name", json.string(rule.name))]),
+    ))
+    Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
+  })
 }
 
 fn require_update_rule_access(
@@ -194,19 +208,25 @@ fn require_update_rule_access(
   ctx: auth.Ctx,
   rule_id_str: String,
 ) -> Result(
-  #(rules_db.RuleRecord, workflows_db.WorkflowRecord, pog.Connection),
+  #(
+    StoredUser,
+    rules_db.RuleRecord,
+    workflows_db.WorkflowRecord,
+    pog.Connection,
+  ),
   wisp.Response,
 ) {
-  use #(rule, workflow, db) <- result.try(load_rule_access(
+  use #(user, rule, workflow, db) <- result.try(load_rule_access(
     req,
     ctx,
     rule_id_str,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  Ok(#(rule, workflow, db))
+  Ok(#(user, rule, workflow, db))
 }
 
 fn update_rule_flow(
+  user: StoredUser,
   rule: rules_db.RuleRecord,
   workflow: workflows_db.WorkflowRecord,
   db: pog.Connection,
@@ -220,23 +240,33 @@ fn update_rule_flow(
     template_id,
   ))
 
-  case
-    rules_db.update_rule(
-      db,
-      rule.id,
-      payload.name,
-      payload.goal,
-      payload.trigger,
-      payload.action,
-      payload.status,
+  run_config_transaction(db, fn(tx) {
+    use updated_rule <- result.try(
+      rules_db.update_rule(
+        tx,
+        rule.id,
+        payload.name,
+        payload.goal,
+        payload.trigger,
+        payload.action,
+        payload.status,
+      )
+      |> result.map_error(rule_write_error_response),
     )
-  {
-    Ok(rule) -> {
-      use template <- result.try(sync_rule_template(db, rule.id, template_id))
-      Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
-    }
-    Error(error) -> Error(rule_write_error_response(error))
-  }
+    use template <- result.try(sync_rule_template(tx, rule.id, template_id))
+    use _ <- result.try(record_config_change(
+      tx,
+      user,
+      workflow.project_id,
+      config_audit.Rule,
+      rule.id,
+      rule_update_change_type(payload.status),
+      json.object([#("name", json.string(updated_rule.name))]),
+    ))
+    Ok(
+      api.ok(rule_presenters.rule_response_with_template(updated_rule, template)),
+    )
+  })
 }
 
 fn delete_rule_flow(
@@ -244,13 +274,13 @@ fn delete_rule_flow(
   ctx: auth.Ctx,
   rule_id_str: String,
 ) -> Result(wisp.Response, wisp.Response) {
-  use #(rule, _workflow, db) <- result.try(load_rule_access(
+  use #(user, rule, workflow, db) <- result.try(load_rule_access(
     req,
     ctx,
     rule_id_str,
   ))
   use _ <- result.try(csrf.require_csrf(req))
-  use _ <- result.try(delete_rule_db(db, rule.id))
+  use _ <- result.try(delete_rule_db(db, user, rule, workflow))
   Ok(api.no_content())
 }
 
@@ -275,7 +305,12 @@ fn load_rule_access(
   ctx: auth.Ctx,
   rule_id_str: String,
 ) -> Result(
-  #(rules_db.RuleRecord, workflows_db.WorkflowRecord, pog.Connection),
+  #(
+    StoredUser,
+    rules_db.RuleRecord,
+    workflows_db.WorkflowRecord,
+    pog.Connection,
+  ),
   wisp.Response,
 ) {
   use user <- result.try(auth.require_current_user_response(req, ctx))
@@ -284,7 +319,7 @@ fn load_rule_access(
   use rule <- result.try(get_rule(db, rule_id))
   use workflow <- result.try(workflow_from_rule(db, rule))
   use _ <- result.try(require_project_manager(db, user, workflow))
-  Ok(#(rule, workflow, db))
+  Ok(#(user, rule, workflow, db))
 }
 
 fn require_project_manager(
@@ -363,12 +398,29 @@ fn decode_update_payload(
 
 fn delete_rule_db(
   db: pog.Connection,
-  rule_id: Int,
+  user: StoredUser,
+  rule: rules_db.RuleRecord,
+  workflow: workflows_db.WorkflowRecord,
 ) -> Result(Nil, wisp.Response) {
-  case rules_db.delete_rule(db, rule_id) {
-    Ok(Nil) -> Ok(Nil)
-    Error(error) -> Error(rule_write_error_response(error))
-  }
+  run_config_transaction(db, fn(tx) {
+    use disposition <- result.try(
+      rules_db.delete_rule_with_disposition(tx, rule.id)
+      |> result.map_error(rule_write_error_response),
+    )
+    use _ <- result.try(record_config_change(
+      tx,
+      user,
+      workflow.project_id,
+      config_audit.Rule,
+      rule.id,
+      case disposition {
+        rules_db.PhysicallyDeleted -> config_audit.Deleted
+        rules_db.Archived -> config_audit.Archived
+      },
+      json.object([#("name", json.string(rule.name))]),
+    ))
+    Ok(Nil)
+  })
 }
 
 fn option_action_template_id(
@@ -528,4 +580,48 @@ fn template_org_matches(
 
   // Both workflows and templates are now project-scoped, so they must match
   org_id == workflow_org_id && project_id == workflow_project_id
+}
+
+fn record_config_change(
+  db: pog.Connection,
+  user: StoredUser,
+  project_id: Int,
+  entity_type: config_audit.EntityType,
+  entity_id: Int,
+  change_type: config_audit.ChangeType,
+  payload: json.Json,
+) -> Result(Nil, wisp.Response) {
+  config_audit.insert(
+    db,
+    user.org_id,
+    project_id,
+    user.id,
+    entity_type,
+    entity_id,
+    change_type,
+    payload,
+  )
+  |> result.map_error(service_error_response.to_response)
+}
+
+fn rule_update_change_type(
+  status: Option(automation.AutomationRuleStatus),
+) -> config_audit.ChangeType {
+  case status {
+    Some(automation.Paused) -> config_audit.Paused
+    Some(automation.Active) -> config_audit.Reactivated
+    Some(automation.RequiresReview(_)) -> config_audit.Updated
+    None -> config_audit.Updated
+  }
+}
+
+fn run_config_transaction(
+  db: pog.Connection,
+  callback: fn(pog.Connection) -> Result(a, wisp.Response),
+) -> Result(a, wisp.Response) {
+  case pog.transaction(db, callback) {
+    Ok(value) -> Ok(value)
+    Error(pog.TransactionRolledBack(resp)) -> Error(resp)
+    Error(pog.TransactionQueryError(_)) -> Error(database_error_response())
+  }
 }

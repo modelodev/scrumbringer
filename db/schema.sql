@@ -434,6 +434,44 @@ ALTER SEQUENCE public.audit_events_id_seq OWNED BY public.audit_events.id;
 
 
 --
+-- Name: automation_config_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_config_events (
+    id bigint NOT NULL,
+    org_id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    actor_user_id bigint NOT NULL,
+    entity_type text NOT NULL,
+    entity_id bigint NOT NULL,
+    change_type text NOT NULL,
+    payload_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT automation_config_events_change_type_check CHECK ((change_type = ANY (ARRAY['created'::text, 'updated'::text, 'paused'::text, 'reactivated'::text, 'deleted'::text, 'archived'::text]))),
+    CONSTRAINT automation_config_events_entity_type_check CHECK ((entity_type = ANY (ARRAY['engine'::text, 'rule'::text, 'template'::text])))
+);
+
+
+--
+-- Name: automation_config_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_config_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_config_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_config_events_id_seq OWNED BY public.automation_config_events.id;
+
+
+--
 -- Name: capabilities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1164,6 +1202,13 @@ ALTER TABLE ONLY public.audit_events ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: automation_config_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_config_events ALTER COLUMN id SET DEFAULT nextval('public.automation_config_events_id_seq'::regclass);
+
+
+--
 -- Name: capabilities id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1307,6 +1352,14 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.audit_events
     ADD CONSTRAINT audit_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_config_events automation_config_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_config_events
+    ADD CONSTRAINT automation_config_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -1654,6 +1707,27 @@ CREATE INDEX idx_audit_events_project_created_at ON public.audit_events USING bt
 --
 
 CREATE INDEX idx_audit_events_task_created_at ON public.audit_events USING btree (task_id, created_at);
+
+
+--
+-- Name: idx_automation_config_events_actor_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_config_events_actor_created_at ON public.automation_config_events USING btree (actor_user_id, created_at);
+
+
+--
+-- Name: idx_automation_config_events_entity_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_config_events_entity_created_at ON public.automation_config_events USING btree (entity_type, entity_id, created_at);
+
+
+--
+-- Name: idx_automation_config_events_project_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_config_events_project_created_at ON public.automation_config_events USING btree (project_id, created_at);
 
 
 --
@@ -2148,6 +2222,30 @@ ALTER TABLE ONLY public.audit_events
 
 ALTER TABLE ONLY public.audit_events
     ADD CONSTRAINT audit_events_task_project_fk FOREIGN KEY (project_id, task_id) REFERENCES public.tasks(project_id, id);
+
+
+--
+-- Name: automation_config_events automation_config_events_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_config_events
+    ADD CONSTRAINT automation_config_events_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: automation_config_events automation_config_events_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_config_events
+    ADD CONSTRAINT automation_config_events_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: automation_config_events automation_config_events_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_config_events
+    ADD CONSTRAINT automation_config_events_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -2754,4 +2852,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260622134000'),
     ('20260622135000'),
     ('20260623120000'),
-    ('20260623121000');
+    ('20260623121000'),
+    ('20260623122000');

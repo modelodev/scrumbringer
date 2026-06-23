@@ -5,6 +5,7 @@
 ////
 
 import gleam/dynamic/decode
+import gleam/json.{type Json}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -104,6 +105,62 @@ returning id;
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
   |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `automation_config_events_insert` query
+/// defined in `./src/scrumbringer_server/sql/automation_config_events_insert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AutomationConfigEventsInsertRow {
+  AutomationConfigEventsInsertRow(id: Int)
+}
+
+/// name: automation_config_events_insert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn automation_config_events_insert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: String,
+  arg_7: Json,
+) -> Result(pog.Returned(AutomationConfigEventsInsertRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(AutomationConfigEventsInsertRow(id:))
+  }
+
+  "-- name: automation_config_events_insert
+insert into automation_config_events (
+  org_id,
+  project_id,
+  actor_user_id,
+  entity_type,
+  entity_id,
+  change_type,
+  payload_json,
+  created_at
+)
+values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
+  |> pog.parameter(pog.text(json.to_string(arg_7)))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

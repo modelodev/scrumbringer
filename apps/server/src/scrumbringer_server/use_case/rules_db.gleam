@@ -47,6 +47,11 @@ pub type RuleRecord {
   )
 }
 
+pub type DeleteDisposition {
+  PhysicallyDeleted
+  Archived
+}
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -556,6 +561,14 @@ pub fn delete_rule(
   db: pog.Connection,
   rule_id: Int,
 ) -> Result(Nil, ServiceError) {
+  delete_rule_with_disposition(db, rule_id)
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_rule_with_disposition(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(DeleteDisposition, ServiceError) {
   case sql.rules_delete(db, rule_id) {
     Ok(pog.Returned(
       rows: [
@@ -569,9 +582,9 @@ pub fn delete_rule(
       ],
       ..,
     )) -> Error(NotFound)
-    Ok(pog.Returned(rows: [row, ..], ..))
-      if row.paused_id > 0 || row.deleted_id > 0
-    -> Ok(Nil)
+    Ok(pog.Returned(rows: [row, ..], ..)) if row.paused_id > 0 -> Ok(Archived)
+    Ok(pog.Returned(rows: [row, ..], ..)) if row.deleted_id > 0 ->
+      Ok(PhysicallyDeleted)
     Ok(pog.Returned(rows: [_row, ..], ..)) ->
       Error(Unexpected("delete_rule returned no paused or deleted row"))
     Ok(pog.Returned(rows: [], ..)) ->
