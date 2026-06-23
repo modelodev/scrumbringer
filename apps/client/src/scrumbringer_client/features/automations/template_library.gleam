@@ -32,6 +32,7 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/info_callout
+import scrumbringer_client/ui/modal_close_button
 
 // =============================================================================
 // Template Library Views
@@ -149,15 +150,20 @@ fn view_form_panel(
   config: Config(msg),
   mode: admin_task_templates.TaskTemplateDialogMode,
 ) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   let title = case mode {
-    admin_task_templates.TaskTemplateDialogCreate -> "New template"
-    admin_task_templates.TaskTemplateDialogEdit(_) -> "Edit template"
-    admin_task_templates.TaskTemplateDialogDelete(_) -> "Template"
+    admin_task_templates.TaskTemplateDialogCreate ->
+      t(i18n_text.CreateTaskTemplate)
+    admin_task_templates.TaskTemplateDialogEdit(_) ->
+      t(i18n_text.EditTaskTemplate)
+    admin_task_templates.TaskTemplateDialogDelete(_) ->
+      t(i18n_text.AdminTaskTemplates)
   }
   let action = case mode {
-    admin_task_templates.TaskTemplateDialogCreate -> "Create template"
-    admin_task_templates.TaskTemplateDialogEdit(_) -> "Save changes"
-    admin_task_templates.TaskTemplateDialogDelete(_) -> "Save"
+    admin_task_templates.TaskTemplateDialogCreate ->
+      t(i18n_text.CreateTaskTemplate)
+    admin_task_templates.TaskTemplateDialogEdit(_) -> t(i18n_text.Save)
+    admin_task_templates.TaskTemplateDialogDelete(_) -> t(i18n_text.Save)
   }
 
   div(
@@ -167,10 +173,10 @@ fn view_form_panel(
       attribute.attribute("aria-label", title),
     ],
     [
-      panel_header(title, config.on_closed),
+      panel_header(title, config.locale, config.on_closed),
       view_form_error(config),
       form_field.view(
-        "Template name",
+        t(i18n_text.TaskTemplateName),
         input([
           attribute.value(config.form_name),
           attribute.attribute("data-testid", "automation-template-name"),
@@ -178,7 +184,7 @@ fn view_form_panel(
         ]),
       ),
       form_field.view(
-        "Template description",
+        t(i18n_text.TaskTemplateDescription),
         textarea(
           [
             attribute.value(config.form_description),
@@ -192,7 +198,7 @@ fn view_form_panel(
         ),
       ),
       form_field.view(
-        "Task type",
+        t(i18n_text.TaskTemplateType),
         select(
           [
             attribute.value(config.form_type_id),
@@ -203,7 +209,7 @@ fn view_form_panel(
         ),
       ),
       form_field.view(
-        "Priority",
+        t(i18n_text.TaskTemplatePriority),
         select(
           [
             attribute.value(config.form_priority),
@@ -214,11 +220,11 @@ fn view_form_panel(
         ),
       ),
       div([attribute.class("automation-template-panel__hint")], [
-        text(
-          "Available variables: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}",
-        ),
+        text(t(i18n_text.AvailableVariables) <> ": "),
+        text(t(i18n_text.TaskTemplateDescriptionHint)),
       ]),
       panel_actions(
+        locale: config.locale,
         cancel: config.on_closed,
         submit: config.on_submitted(config.selected_project_id),
         submit_label: action,
@@ -232,41 +238,44 @@ fn view_delete_panel(
   config: Config(msg),
   template: TaskTemplate,
 ) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
   div(
     [
       attribute.class("automation-template-panel"),
       attribute.attribute("role", "dialog"),
-      attribute.attribute("aria-label", "Delete template"),
+      attribute.attribute("aria-label", t(i18n_text.DeleteTaskTemplate)),
     ],
     [
-      panel_header("Delete template", config.on_closed),
+      panel_header(
+        t(i18n_text.DeleteTaskTemplate),
+        config.locale,
+        config.on_closed,
+      ),
       view_form_error(config),
       p([], [
-        text("Delete "),
-        span([attribute.class("strong")], [text(template.name)]),
-        text("? Rules using this template should be paused or updated first."),
+        text(t(i18n_text.TaskTemplateDeleteConfirm(template.name))),
+      ]),
+      p([], [
+        text(t(i18n_text.TaskTemplateDeleteRulesWarning)),
       ]),
       panel_actions(
+        locale: config.locale,
         cancel: config.on_closed,
         submit: config.on_delete_confirmed,
-        submit_label: "Delete template",
+        submit_label: t(i18n_text.DeleteTaskTemplate),
         submitting: config.form_submitting,
       ),
     ],
   )
 }
 
-fn panel_header(title: String, on_closed: msg) -> Element(msg) {
+fn panel_header(title: String, locale: Locale, on_closed: msg) -> Element(msg) {
   div([attribute.class("automation-template-panel__header")], [
     h2([], [text(title)]),
-    button(
-      [
-        attribute.type_("button"),
-        attribute.class("icon-btn"),
-        attribute.attribute("aria-label", "Close"),
-        event.on_click(on_closed),
-      ],
-      [text("x")],
+    modal_close_button.view_with_label_and_class(
+      i18n.t(locale, i18n_text.Close),
+      "icon-btn",
+      on_closed,
     ),
   ])
 }
@@ -285,6 +294,7 @@ fn view_form_error(config: Config(msg)) -> Element(msg) {
 }
 
 fn panel_actions(
+  locale locale: Locale,
   cancel cancel: msg,
   submit submit: msg,
   submit_label submit_label: String,
@@ -297,7 +307,7 @@ fn panel_actions(
         attribute.class("btn secondary"),
         event.on_click(cancel),
       ],
-      [text("Cancel")],
+      [text(i18n.t(locale, i18n_text.Cancel))],
     ),
     button(
       [
@@ -308,7 +318,7 @@ fn panel_actions(
       ],
       [
         text(case submitting {
-          True -> "Saving..."
+          True -> i18n.t(locale, i18n_text.Saving)
           False -> submit_label
         }),
       ],
@@ -317,7 +327,11 @@ fn panel_actions(
 }
 
 fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
-  let empty = option([attribute.value("")], "Select task type")
+  let empty =
+    option(
+      [attribute.value("")],
+      i18n.t(config.locale, i18n_text.SelectTaskType),
+    )
   case config.task_types {
     remote_state.Loaded(types) -> [
       empty,

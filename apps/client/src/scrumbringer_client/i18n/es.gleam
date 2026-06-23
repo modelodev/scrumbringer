@@ -966,6 +966,8 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleted -> "Plantilla eliminada"
     text.TaskTemplateDeleteConfirm(name) ->
       "¿Eliminar la plantilla \"" <> name <> "\"?"
+    text.TaskTemplateDeleteRulesWarning ->
+      "Las reglas que usan esta plantilla deben pausarse o actualizarse primero."
     text.TaskTemplateVariablesHelp ->
       "Variables: {{origin}} (tarea/tarjeta origen), {{trigger}} (evento), {{project}} (nombre del proyecto), {{user}} (usuario que disparó), {{task_title}} y {{task_type}} para eventos de task, {{card_title}} y {{card_level}} para eventos de card"
     text.TaskTemplateDescriptionHint ->

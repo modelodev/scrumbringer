@@ -147,12 +147,16 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-template-panel")
-  assert_contains(html, "New template")
+  assert_contains(html, "Create Template")
   assert_contains(html, "automation-template-name")
   assert_contains(html, "QA checklist")
   assert_contains(html, "Check {{project}}")
   assert_contains(html, "Available variables")
-  assert_contains(html, "Create template")
+  assert_contains(html, "Use variables in the description")
+  assert_contains(html, "Select type")
+  assert_contains(html, "Cancel")
+  assert_not_contains(html, "New template")
+  assert_not_contains(html, "Select task type")
   assert_not_contains(html, "task-template-crud-dialog")
 }
 
@@ -168,7 +172,12 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Delete template")
+  assert_contains(html, "Delete Template")
+  assert_contains(html, "Delete template &quot;Regression checklist&quot;?")
   assert_contains(html, "Regression checklist")
+  assert_contains(
+    html,
+    "Rules using this template should be paused or updated first.",
+  )
   assert_not_contains(html, "task-template-crud-dialog")
 }

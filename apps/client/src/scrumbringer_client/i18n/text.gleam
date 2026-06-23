@@ -805,6 +805,7 @@ pub type Text {
   NoTaskTemplatesYet
   TaskTemplateDeleted
   TaskTemplateDeleteConfirm(template_name: String)
+  TaskTemplateDeleteRulesWarning
   TaskTemplateVariablesHelp
   TaskTemplateDescriptionHint
   AvailableVariables
