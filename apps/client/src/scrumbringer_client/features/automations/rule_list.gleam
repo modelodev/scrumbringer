@@ -52,7 +52,6 @@ import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/remote as ui_remote
-import scrumbringer_client/ui/section_header
 
 // =============================================================================
 // Rules Views
@@ -120,20 +119,25 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         ui_button.ViewAction,
       )
         |> ui_button.view,
-      // Section header with add button (Story 4.8: consistent icons)
-      section_header.view_with_action(
-        icons.Rules,
-        t(config, i18n_text.RulesTitle(config.workflow_name)),
-        dialog.add_button_with_locale(
-          config.locale,
-          i18n_text.CreateRule,
-          config.on_create_clicked,
-        ),
-      ),
+      view_rules_heading(config),
       view_rules_list(config, config.rules.rules, config.rules.rules_metrics),
       view_rule_builder_panel(config),
     ],
   )
+}
+
+fn view_rules_heading(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("automation-rules-heading")], [
+    div([attribute.class("automation-rules-heading__copy")], [
+      h2([], [text(t(config, i18n_text.RulesTitle(config.workflow_name)))]),
+      p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
+    ]),
+    dialog.add_button_with_locale(
+      config.locale,
+      i18n_text.CreateRule,
+      config.on_create_clicked,
+    ),
+  ])
 }
 
 fn find_engine_name(

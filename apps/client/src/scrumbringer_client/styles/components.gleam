@@ -48,6 +48,10 @@ pub fn css() -> List(String) {
     ".automation-engines-heading { display: flex; flex-direction: column; gap: 4px; }",
     ".automation-engines-heading h2 { margin: 0; font-size: var(--sb-font-xl); line-height: var(--sb-line-title); }",
     ".automation-engines-heading p { margin: 0; color: var(--sb-muted-strong); max-width: var(--sb-measure-prose); }",
+    ".automation-rules-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sb-gap-group); }",
+    ".automation-rules-heading__copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }",
+    ".automation-rules-heading h2 { margin: 0; font-size: var(--sb-font-xl); line-height: var(--sb-line-title); }",
+    ".automation-rules-heading p { margin: 0; color: var(--sb-muted-strong); max-width: var(--sb-measure-prose); }",
     ".automation-engine-list { display: grid; gap: 8px; }",
     ".automation-engine-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--sb-gap-group); padding: 12px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-surface); }",
     ".automation-engine-row.is-selected, .automation-template-row.is-selected, .automation-execution-row.is-selected, .rule-row.is-selected { border-color: color-mix(in oklab, var(--sb-primary) 44%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 7%, var(--sb-surface)); }",
@@ -63,6 +67,6 @@ pub fn css() -> List(String) {
     ".project-structure-settings__level { min-height: 30px; display: grid; grid-template-columns: minmax(58px, auto) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
     ".project-structure-settings__level-label { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); white-space: nowrap; }",
     ".project-structure-settings__level input { min-width: 0; width: 100%; min-height: 30px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface-1); color: var(--sb-text); padding: 4px 7px; font: inherit; }",
-    "@media (max-width: 640px) { .automations-console__modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } .automations-console__mode { min-width: 0; padding-inline: 6px; } .automation-engine-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; } .automation-engine-row .btn-group { justify-content: flex-start; } }",
+    "@media (max-width: 640px) { .automations-console__modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } .automations-console__mode { min-width: 0; padding-inline: 6px; } .automation-rules-heading { flex-direction: column; align-items: stretch; } .automation-engine-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; } .automation-engine-row .btn-group { justify-content: flex-start; } }",
   ]
 }
