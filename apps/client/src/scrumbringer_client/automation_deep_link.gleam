@@ -61,20 +61,3 @@ pub fn execution_id(selection: opt.Option(Selection)) -> opt.Option(Int) {
     _ -> opt.None
   }
 }
-
-pub fn label(selection: Selection) -> String {
-  case selection {
-    SelectedEngine(id) -> "Motor #" <> int.to_string(id) <> " seleccionado"
-    SelectedRule(id, opt.Some(engine_id)) ->
-      "Regla #"
-      <> int.to_string(id)
-      <> " seleccionada en motor #"
-      <> int.to_string(engine_id)
-    SelectedRule(id, opt.None) ->
-      "Regla #" <> int.to_string(id) <> " seleccionada"
-    SelectedTemplate(id) ->
-      "Plantilla #" <> int.to_string(id) <> " seleccionada"
-    SelectedExecution(id) ->
-      "Ejecucion #" <> int.to_string(id) <> " seleccionada"
-  }
-}

@@ -917,6 +917,29 @@ pub fn translate(text: Text) -> String {
     text.AutomationEngineStatusAll -> "All statuses"
     text.AutomationEngineStatusActive -> "Active"
     text.AutomationEngineStatusPaused -> "Paused"
+    text.AutomationConsolePurpose ->
+      "Create work automatically in the Pool without assigning it to anyone."
+    text.AutomationSummaryActiveEngines -> "active engines"
+    text.AutomationSummaryRules -> "rules"
+    text.AutomationSummaryTemplates -> "templates"
+    text.AutomationSummaryCreatedTasks -> "created tasks"
+    text.AutomationModeAriaLabel -> "Automation mode"
+    text.AutomationModeEngines -> "Engines"
+    text.AutomationModeTemplates -> "Templates"
+    text.AutomationModeExecutions -> "Executions"
+    text.AutomationSelectedEngine(id) ->
+      "Engine #" <> int.to_string(id) <> " selected"
+    text.AutomationSelectedRule(id) ->
+      "Rule #" <> int.to_string(id) <> " selected"
+    text.AutomationSelectedRuleInEngine(rule_id, engine_id) ->
+      "Rule #"
+      <> int.to_string(rule_id)
+      <> " selected in engine #"
+      <> int.to_string(engine_id)
+    text.AutomationSelectedTemplate(id) ->
+      "Template #" <> int.to_string(id) <> " selected"
+    text.AutomationSelectedExecution(id) ->
+      "Execution #" <> int.to_string(id) <> " selected"
 
     // Rules
     text.RulesTitle(workflow_name) -> "Rules - " <> workflow_name

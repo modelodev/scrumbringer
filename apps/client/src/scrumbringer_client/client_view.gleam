@@ -529,6 +529,7 @@ fn view_automations_console(
   mode: automations_console.Mode,
 ) -> Element(client_state.Msg) {
   automations_console.view(automations_console.Config(
+    locale: model.ui.locale,
     selected_project_id: model.core.selected_project_id,
     mode: mode,
     selected_entity: model.core.automation_selection,

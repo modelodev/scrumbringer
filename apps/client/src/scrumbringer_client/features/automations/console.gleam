@@ -9,6 +9,9 @@ import lustre/element/html.{a, div, text}
 
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/layout/work_surface
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/ui/tone
@@ -21,6 +24,7 @@ pub type Mode {
 
 pub type Config(msg) {
   Config(
+    locale: Locale,
     selected_project_id: opt.Option(Int),
     mode: Mode,
     selected_entity: opt.Option(automation_deep_link.Selection),
@@ -37,8 +41,8 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   let header =
     work_surface.HeaderConfig(
-      title: "Automatizaciones",
-      purpose: "Crea trabajo automatico en el Pool sin asignarlo a nadie.",
+      title: t(config, i18n_text.AdminWorkflows),
+      purpose: t(config, i18n_text.AutomationConsolePurpose),
       summary: summary(config),
       actions: [],
       extra_class: opt.Some("automations-console__header"),
@@ -72,7 +76,7 @@ fn view_selected_entity(config: Config(msg)) -> Element(msg) {
           attribute.class("automations-console__selected-entity"),
           attribute.attribute("data-testid", "automation-selected-entity"),
         ],
-        [text(automation_deep_link.label(selection))],
+        [text(selected_entity_label(config, selection))],
       )
   }
 }
@@ -80,22 +84,22 @@ fn view_selected_entity(config: Config(msg)) -> Element(msg) {
 fn summary(config: Config(msg)) -> List(work_surface.SummaryChip) {
   [
     work_surface.summary_chip(
-      "motores activos",
+      t(config, i18n_text.AutomationSummaryActiveEngines),
       int_to_string(config.active_engines_count),
       tone.Success,
     ),
     work_surface.summary_chip(
-      "reglas",
+      t(config, i18n_text.AutomationSummaryRules),
       int_to_string(config.rules_count),
       tone.Primary,
     ),
     work_surface.summary_chip(
-      "plantillas",
+      t(config, i18n_text.AutomationSummaryTemplates),
       int_to_string(config.templates_count),
       tone.Info,
     ),
     work_surface.summary_chip(
-      "tasks creadas",
+      t(config, i18n_text.AutomationSummaryCreatedTasks),
       int_to_string(config.created_tasks_count),
       tone.Warning,
     ),
@@ -107,7 +111,10 @@ fn view_modes(config: Config(msg)) -> Element(msg) {
     [
       attribute.class("automations-console__modes"),
       attribute.attribute("role", "tablist"),
-      attribute.attribute("aria-label", "Modo de automatizaciones"),
+      attribute.attribute(
+        "aria-label",
+        t(config, i18n_text.AutomationModeAriaLabel),
+      ),
     ],
     [
       view_mode_link(
@@ -115,21 +122,21 @@ fn view_modes(config: Config(msg)) -> Element(msg) {
         Engines,
         permissions.Workflows,
         "automations-mode-engines",
-        "Motores",
+        t(config, i18n_text.AutomationModeEngines),
       ),
       view_mode_link(
         config,
         Templates,
         permissions.TaskTemplates,
         "automations-mode-templates",
-        "Plantillas",
+        t(config, i18n_text.AutomationModeTemplates),
       ),
       view_mode_link(
         config,
         Executions,
         permissions.RuleMetrics,
         "automations-mode-executions",
-        "Ejecuciones",
+        t(config, i18n_text.AutomationModeExecutions),
       ),
     ],
   )
@@ -177,4 +184,26 @@ fn bool_to_string(value: Bool) -> String {
     True -> "true"
     False -> "false"
   }
+}
+
+fn selected_entity_label(
+  config: Config(msg),
+  selection: automation_deep_link.Selection,
+) -> String {
+  case selection {
+    automation_deep_link.SelectedEngine(id) ->
+      t(config, i18n_text.AutomationSelectedEngine(id))
+    automation_deep_link.SelectedRule(id, opt.Some(engine_id)) ->
+      t(config, i18n_text.AutomationSelectedRuleInEngine(id, engine_id))
+    automation_deep_link.SelectedRule(id, opt.None) ->
+      t(config, i18n_text.AutomationSelectedRule(id))
+    automation_deep_link.SelectedTemplate(id) ->
+      t(config, i18n_text.AutomationSelectedTemplate(id))
+    automation_deep_link.SelectedExecution(id) ->
+      t(config, i18n_text.AutomationSelectedExecution(id))
+  }
+}
+
+fn t(config: Config(msg), key: i18n_text.Text) -> String {
+  i18n.t(config.locale, key)
 }

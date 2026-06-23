@@ -761,6 +761,20 @@ pub type Text {
   AutomationEngineStatusAll
   AutomationEngineStatusActive
   AutomationEngineStatusPaused
+  AutomationConsolePurpose
+  AutomationSummaryActiveEngines
+  AutomationSummaryRules
+  AutomationSummaryTemplates
+  AutomationSummaryCreatedTasks
+  AutomationModeAriaLabel
+  AutomationModeEngines
+  AutomationModeTemplates
+  AutomationModeExecutions
+  AutomationSelectedEngine(id: Int)
+  AutomationSelectedRule(id: Int)
+  AutomationSelectedRuleInEngine(rule_id: Int, engine_id: Int)
+  AutomationSelectedTemplate(id: Int)
+  AutomationSelectedExecution(id: Int)
 
   // Rules
   RulesTitle(workflow_name: String)
