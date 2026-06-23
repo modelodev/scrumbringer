@@ -57,6 +57,11 @@ pub fn task_templates_project_crud_test() {
 
   expect.expect_status(create_res, 200)
   let template_id = decode_template_id(simulate.read_body(create_res))
+  let created_version =
+    single_int(db, "select version from task_templates where id = $1", [
+      pog.int(template_id),
+    ])
+  created_version |> expect.equal(1)
 
   let list_res =
     handler(
@@ -92,6 +97,11 @@ pub fn task_templates_project_crud_test() {
   expect.expect_status(patch_res, 200)
   decode_template_name(simulate.read_body(patch_res))
   |> expect.equal("Project Updated")
+  let updated_version =
+    single_int(db, "select version from task_templates where id = $1", [
+      pog.int(template_id),
+    ])
+  updated_version |> expect.equal(2)
 
   let delete_res =
     handler(

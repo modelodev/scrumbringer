@@ -41,7 +41,13 @@ pub type Session {
 
 /// Rule execution record for verification.
 pub type RuleExecution {
-  RuleExecution(outcome: String, suppression_reason: String)
+  RuleExecution(
+    outcome: String,
+    suppression_reason: String,
+    template_id: Int,
+    template_version: Int,
+    created_task_id: Int,
+  )
 }
 
 /// Handler function type alias.
@@ -988,15 +994,21 @@ pub fn fetch_rule_execution(
   let decoder = {
     use outcome <- decode.field(0, decode.string)
     use suppression_reason <- decode.field(1, decode.string)
+    use template_id <- decode.field(2, decode.int)
+    use template_version <- decode.field(3, decode.int)
+    use created_task_id <- decode.field(4, decode.int)
     decode.success(RuleExecution(
       outcome: outcome,
       suppression_reason: suppression_reason,
+      template_id: template_id,
+      template_version: template_version,
+      created_task_id: created_task_id,
     ))
   }
 
   case
     pog.query(
-      "select outcome, coalesce(suppression_reason, '') from rule_executions where rule_id = $1 and (($2 = 'task' and task_id = $3) or ($2 = 'card' and card_id = $3))",
+      "select outcome, coalesce(suppression_reason, ''), coalesce(template_id, 0), coalesce(template_version, 0), coalesce(created_task_id, 0) from rule_executions where rule_id = $1 and (($2 = 'task' and task_id = $3) or ($2 = 'card' and card_id = $3))",
     )
     |> pog.parameter(pog.int(rule_id))
     |> pog.parameter(pog.text(target_type))

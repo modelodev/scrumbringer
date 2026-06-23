@@ -1599,6 +1599,17 @@ pub fn rule_execution_applied_is_persisted_test() {
 
   execution.outcome |> expect.equal("applied")
   execution.suppression_reason |> expect.equal("")
+  execution.template_id |> expect.equal(template_id)
+  execution.template_version |> expect.equal(1)
+  { execution.created_task_id > 0 } |> expect.is_true
+
+  let assert Ok(traced_task_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
+      [pog.int(execution.created_task_id), pog.int(rule_id)],
+    )
+  traced_task_count |> expect.equal(1)
 }
 
 /// Verify that idempotency is enforced via rule_executions table.
