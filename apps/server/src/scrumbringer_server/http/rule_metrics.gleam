@@ -569,7 +569,7 @@ fn parse_calendar_date(
 fn calendar_boundary(value: String, boundary: RangeBoundary) -> String {
   case boundary {
     RangeStart -> value <> "T00:00:00Z"
-    RangeEnd -> value <> "T00:00:00Z"
+    RangeEnd -> value <> "T23:59:59Z"
   }
 }
 
@@ -595,7 +595,7 @@ fn validate_range_limit(
   from: Timestamp,
   to: Timestamp,
 ) -> Result(#(Timestamp, Timestamp), wisp.Response) {
-  let max_range = duration.seconds({ max_days - 1 } * 86_400)
+  let max_range = duration.seconds(max_days * 86_400)
   case duration.compare(range, max_range) {
     order.Gt ->
       Error(api.error(

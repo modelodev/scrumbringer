@@ -43,11 +43,27 @@ pub fn parse_date_range_query_accepts_calendar_dates_test() {
   let default_from = timestamp("2026-01-01T00:00:00Z")
   let default_to = timestamp("2026-01-31T00:00:00Z")
   let from = timestamp("2026-01-10T00:00:00Z")
-  let to = timestamp("2026-01-20T00:00:00Z")
+  let to = timestamp("2026-01-20T23:59:59Z")
 
   let assert Ok(#(parsed_from, parsed_to)) =
     rule_metrics.parse_date_range_query(
       [#("from", "2026-01-10"), #("to", "2026-01-20")],
+      default_from,
+      default_to,
+    )
+  let assert True = parsed_from == from
+  let assert True = parsed_to == to
+}
+
+pub fn parse_date_range_query_converts_to_inclusive_utc_day_test() {
+  let default_from = timestamp("2026-01-01T00:00:00Z")
+  let default_to = timestamp("2026-01-31T00:00:00Z")
+  let from = timestamp("2026-02-03T00:00:00Z")
+  let to = timestamp("2026-02-03T23:59:59Z")
+
+  let assert Ok(#(parsed_from, parsed_to)) =
+    rule_metrics.parse_date_range_query(
+      [#("from", "2026-02-03"), #("to", "2026-02-03")],
       default_from,
       default_to,
     )
