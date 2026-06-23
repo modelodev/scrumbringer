@@ -112,6 +112,40 @@ pub fn projects_view_delete_dialog_uses_shared_danger_button_test() {
   assert_not_contains(html, "class=\"btn-danger\"")
 }
 
+pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
+  let dialog =
+    projects_state.Model(projects_dialog: DialogOpen(
+      form: projects_state.ProjectDialogCreate(
+        name: "Project Alpha",
+        max_depth: "3",
+        healthy_pool_limit: "20",
+        card_depth_names: [
+          ProjectDepthName(1, "Hito", "Hitos"),
+          ProjectDepthName(2, "Entrega", "Entregas"),
+          ProjectDepthName(3, "Historia", "Historias"),
+        ],
+      ),
+      operation: InFlight,
+    ))
+
+  let html =
+    projects_view.view_project_dialogs(
+      projects_view.Config(
+        ..config(remote.Loaded([project()])),
+        locale: locale.Es,
+        project_dialog: dialog,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"project-structure-settings\"")
+  assert_contains(html, "Elige cuanta profundidad")
+  assert_contains(html, "Ejemplos: Card -&gt; Task")
+  assert_contains(html, "Este limite nunca bloquea")
+  assert_contains(html, "aria-label=\"Profundidad maxima\"")
+  assert_contains(html, "aria-label=\"Limite blando del Pool\"")
+}
+
 pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() {
   let dialog =
     projects_state.Model(projects_dialog: DialogOpen(
@@ -143,6 +177,8 @@ pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() 
   assert_contains(html, "value=\"12\"")
   assert_contains(html, "value=\"Hito\"")
   assert_contains(html, "value=\"Entregas\"")
+  assert_contains(html, "aria-label=\"Maximum depth\"")
+  assert_contains(html, "aria-label=\"Pool soft limit\"")
   assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
 }
 

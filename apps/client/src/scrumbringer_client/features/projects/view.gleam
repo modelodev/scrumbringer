@@ -232,6 +232,10 @@ fn view_project_create_structure_settings(
           attribute.type_("number"),
           attribute.min("1"),
           attribute.value(max_depth),
+          attribute.attribute(
+            "aria-label",
+            t(config, i18n_text.ProjectMaximumDepth),
+          ),
           event.on_input(config.on_create_max_depth_changed),
           attribute.required(True),
         ]),
@@ -253,10 +257,17 @@ fn view_project_create_structure_settings(
           attribute.type_("number"),
           attribute.min("1"),
           attribute.value(healthy_pool_limit),
+          attribute.attribute(
+            "aria-label",
+            t(config, i18n_text.ProjectPoolSoftLimit),
+          ),
           event.on_input(config.on_create_healthy_pool_limit_changed),
           attribute.required(True),
         ]),
       ),
+      p([attribute.class("project-structure-settings__hint")], [
+        text(t(config, i18n_text.ProjectPoolSoftLimitHint)),
+      ]),
       p([attribute.class("project-structure-settings__hint")], [
         text(t(config, i18n_text.ProjectStructureExamples)),
       ]),
@@ -324,6 +335,10 @@ fn view_project_structure_settings(
           attribute.type_("number"),
           attribute.min("1"),
           attribute.value(max_depth),
+          attribute.attribute(
+            "aria-label",
+            t(config, i18n_text.ProjectMaximumDepth),
+          ),
           event.on_input(config.on_edit_max_depth_changed),
           attribute.required(True),
         ]),
@@ -345,6 +360,10 @@ fn view_project_structure_settings(
           attribute.type_("number"),
           attribute.min("1"),
           attribute.value(healthy_pool_limit),
+          attribute.attribute(
+            "aria-label",
+            t(config, i18n_text.ProjectPoolSoftLimit),
+          ),
           event.on_input(config.on_edit_healthy_pool_limit_changed),
           attribute.required(True),
         ]),
