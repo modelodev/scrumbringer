@@ -80,8 +80,12 @@ pub type Task {
 pub type AutomationOrigin {
   AutomationOrigin(
     rule_id: Int,
+    workflow_id: Option(Int),
+    workflow_name: Option(String),
+    rule_name: Option(String),
     execution_id: Option(Int),
     template_id: Option(Int),
+    template_name: Option(String),
     template_version: Option(Int),
   )
 }

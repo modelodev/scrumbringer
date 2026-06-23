@@ -59,8 +59,12 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
         ..task(),
         automation_origin: Some(AutomationOrigin(
           rule_id: 8,
+          workflow_id: Some(3),
+          workflow_name: Some("Release flow"),
+          rule_name: Some("Development completed"),
           execution_id: Some(101),
           template_id: Some(12),
+          template_name: Some("QA Verification"),
           template_version: Some(3),
         )),
       ),
@@ -70,7 +74,10 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
     |> element.to_document_string
 
   assert_contains(html, "Automation")
-  assert_contains(html, "Execution #101")
+  assert_contains(
+    html,
+    "Release flow -&gt; Development completed -&gt; QA Verification v3",
+  )
   assert_contains(html, "data-testid=\"automation-created-task-origin\"")
   assert_contains(
     html,

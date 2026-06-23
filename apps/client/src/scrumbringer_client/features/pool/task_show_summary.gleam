@@ -1,7 +1,9 @@
 //// Operational summary for a Task Show view.
 
+import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -125,10 +127,42 @@ fn automation_origin_label(
   locale: Locale,
   origin: domain_task.AutomationOrigin,
 ) -> String {
-  case origin.execution_id {
-    opt.Some(execution_id) ->
-      t(locale, i18n_text.TaskAutomationExecutionLabel(execution_id))
+  [
+    workflow_label(locale, origin),
+    rule_label(locale, origin),
+    template_label(origin),
+  ]
+  |> string.join(" -> ")
+}
+
+fn workflow_label(
+  locale: Locale,
+  origin: domain_task.AutomationOrigin,
+) -> String {
+  case origin.workflow_name, origin.workflow_id {
+    opt.Some(name), _ -> name
+    _, opt.Some(id) -> "Motor #" <> int.to_string(id)
+    _, _ -> t(locale, i18n_text.TaskAutomationOrigin)
+  }
+}
+
+fn rule_label(locale: Locale, origin: domain_task.AutomationOrigin) -> String {
+  case origin.rule_name {
+    opt.Some(name) -> name
     opt.None -> t(locale, i18n_text.TaskAutomationRuleLabel(origin.rule_id))
+  }
+}
+
+fn template_label(origin: domain_task.AutomationOrigin) -> String {
+  let base = case origin.template_name, origin.template_id {
+    opt.Some(name), _ -> name
+    _, opt.Some(id) -> "Plantilla #" <> int.to_string(id)
+    _, _ -> "Plantilla"
+  }
+
+  case origin.template_version {
+    opt.Some(version) -> base <> " v" <> int.to_string(version)
+    opt.None -> base
   }
 }
 

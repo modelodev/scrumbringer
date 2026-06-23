@@ -776,13 +776,13 @@ CREATE TABLE public.rules (
     name text NOT NULL,
     goal text,
     resource_type text NOT NULL,
-    trigger_kind text NOT NULL,
     task_type_id bigint,
     to_state text NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text, 'invalid_migrated_rule'::text]))),
-    CONSTRAINT rules_resource_type_check CHECK ((resource_type = ANY (ARRAY['task'::text, 'card'::text])))
+    trigger_kind text NOT NULL,
+    CONSTRAINT rules_resource_type_check CHECK ((resource_type = ANY (ARRAY['task'::text, 'card'::text]))),
+    CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text, 'invalid_migrated_rule'::text])))
 );
 
 
@@ -2741,4 +2741,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260622120000'),
     ('20260622130000'),
     ('20260622132000'),
-    ('20260622133000');
+    ('20260622133000'),
+    ('20260622134000'),
+    ('20260622135000');

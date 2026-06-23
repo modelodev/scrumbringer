@@ -246,14 +246,8 @@ pub fn evaluate_rules_card_resource_type_test() {
 
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
-  let assert Ok([
-    RuleResult(
-      rule_id: _,
-      outcome: automation.Skipped(automation.RuleRequiresReview(
-        automation.TemplateMissing,
-      )),
-    ),
-  ]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result
 }
 
 // =============================================================================
@@ -1205,10 +1199,17 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
   let assert Ok(Nil) = select_template(db, created_rule_id, template_id)
   let assert Ok(Nil) = select_template(db, released_rule_id, template_id)
 
-  let assert Ok(task_id) =
-    fixtures.create_task(handler, session, project_id, type_id, "Source Task")
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+  let assert Ok(task_id) =
+    fixtures.insert_task_db_simple(
+      db,
+      project_id,
+      type_id,
+      "Source Task",
+      user_id,
+      None,
+    )
 
   let created_event =
     fixtures.task_event_status(

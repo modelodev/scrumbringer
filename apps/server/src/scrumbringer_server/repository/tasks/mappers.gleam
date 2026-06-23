@@ -68,8 +68,12 @@ pub fn from_list_row(row: sql.TasksListRow) -> Result(Task, ServiceError) {
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -105,8 +109,12 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Result(Task, ServiceError) {
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -142,8 +150,12 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Result(Task, ServiceError) {
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -179,8 +191,12 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Result(Task, ServiceError) {
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -216,8 +232,12 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Result(Task, ServiceError) {
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -253,8 +273,12 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Result(Task, ServiceError) 
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -292,8 +316,12 @@ pub fn from_complete_row(
     dependencies: row.dependencies,
     automation_origin: automation_origin_from_fields(
       row.created_from_rule_id,
+      row.automation_workflow_id,
+      row.automation_workflow_name,
+      row.automation_rule_name,
       row.automation_execution_id,
       row.automation_template_id,
+      row.automation_template_name,
       row.automation_template_version,
     ),
   )
@@ -372,16 +400,24 @@ fn from_fields(
 
 fn automation_origin_from_fields(
   rule_id: Int,
+  workflow_id: Int,
+  workflow_name: String,
+  rule_name: String,
   execution_id: Int,
   template_id: Int,
+  template_name: String,
   template_version: Int,
 ) -> Option(AutomationOrigin) {
   case option_helpers.int_to_option(rule_id) {
     Some(id) ->
       Some(AutomationOrigin(
         rule_id: id,
+        workflow_id: option_helpers.int_to_option(workflow_id),
+        workflow_name: option_helpers.string_to_option(workflow_name),
+        rule_name: option_helpers.string_to_option(rule_name),
         execution_id: option_helpers.int_to_option(execution_id),
         template_id: option_helpers.int_to_option(template_id),
+        template_name: option_helpers.string_to_option(template_name),
         template_version: option_helpers.int_to_option(template_version),
       ))
     None -> None

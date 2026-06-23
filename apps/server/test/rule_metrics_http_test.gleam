@@ -929,12 +929,22 @@ fn insert_execution(
   suppression_reason: String,
   created_at: timestamp.Timestamp,
 ) -> Result(Nil, String) {
+  let event_key =
+    target_type
+    <> ":"
+    <> int.to_string(target_id)
+    <> ":"
+    <> outcome
+    <> ":"
+    <> suppression_reason
+
   let sql =
-    "INSERT INTO rule_executions (rule_id, task_id, card_id, outcome, suppression_reason, user_id, created_at) "
-    <> "VALUES ($1, CASE WHEN $2 = 'task' THEN $3::bigint ELSE NULL END, CASE WHEN $2 = 'card' THEN $3::bigint ELSE NULL END, $4, NULLIF($5, ''), $6, $7)"
+    "INSERT INTO rule_executions (rule_id, event_key, task_id, card_id, outcome, suppression_reason, user_id, created_at) "
+    <> "VALUES ($1, $2, CASE WHEN $3 = 'task' THEN $4::bigint ELSE NULL END, CASE WHEN $3 = 'card' THEN $4::bigint ELSE NULL END, $5, NULLIF($6, ''), $7, $8)"
 
   pog.query(sql)
   |> pog.parameter(pog.int(rule_id))
+  |> pog.parameter(pog.text(event_key))
   |> pog.parameter(pog.text(target_type))
   |> pog.parameter(pog.int(target_id))
   |> pog.parameter(pog.text(outcome))

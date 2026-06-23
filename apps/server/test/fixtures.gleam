@@ -722,7 +722,15 @@ pub fn select_rule_template(
       simulate.request(http.Patch, "/api/v1/rules/" <> int.to_string(rule_id))
       |> with_auth(session)
       |> simulate.json_body(
-        json.object([#("template_id", json.int(template_id))]),
+        json.object([
+          #(
+            "action",
+            json.object([
+              #("type", json.string("create_task")),
+              #("template_id", json.int(template_id)),
+            ]),
+          ),
+        ]),
       ),
     )
 

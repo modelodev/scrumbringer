@@ -72,7 +72,11 @@ with type_ok as (
     coalesce(created_from_rule_id, 0) as created_from_rule_id,
     0 as automation_execution_id,
     0 as automation_template_id,
-    0 as automation_template_version
+    0 as automation_template_version,
+    0 as automation_workflow_id,
+    '' as automation_workflow_name,
+    '' as automation_rule_name,
+    '' as automation_template_name
 )
 select
   inserted.*,

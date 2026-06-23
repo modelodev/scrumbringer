@@ -207,6 +207,21 @@ pub fn task_decoder() -> decode.Decoder(Task) {
 
 fn automation_origin_decoder() -> decode.Decoder(AutomationOrigin) {
   use rule_id <- decode.field("rule_id", decode.int)
+  use workflow_id <- decode.optional_field(
+    "workflow_id",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use workflow_name <- decode.optional_field(
+    "workflow_name",
+    option.None,
+    decode.optional(decode.string),
+  )
+  use rule_name <- decode.optional_field(
+    "rule_name",
+    option.None,
+    decode.optional(decode.string),
+  )
   use execution_id <- decode.optional_field(
     "execution_id",
     option.None,
@@ -217,6 +232,11 @@ fn automation_origin_decoder() -> decode.Decoder(AutomationOrigin) {
     option.None,
     decode.optional(decode.int),
   )
+  use template_name <- decode.optional_field(
+    "template_name",
+    option.None,
+    decode.optional(decode.string),
+  )
   use template_version <- decode.optional_field(
     "template_version",
     option.None,
@@ -224,8 +244,12 @@ fn automation_origin_decoder() -> decode.Decoder(AutomationOrigin) {
   )
   decode.success(AutomationOrigin(
     rule_id: rule_id,
+    workflow_id: workflow_id,
+    workflow_name: workflow_name,
+    rule_name: rule_name,
     execution_id: execution_id,
     template_id: template_id,
+    template_name: template_name,
     template_version: template_version,
   ))
 }

@@ -44,14 +44,28 @@ select
   coalesce(automation.id, 0) as automation_execution_id,
   coalesce(automation.template_id, 0) as automation_template_id,
   coalesce(automation.template_version, 0) as automation_template_version,
+  coalesce(automation.workflow_id, 0) as automation_workflow_id,
+  coalesce(automation.workflow_name, '') as automation_workflow_name,
+  coalesce(automation.rule_name, '') as automation_rule_name,
+  coalesce(automation.template_name, '') as automation_template_name,
   deps.dependencies::text as dependencies,
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
 left join lateral (
-  select re.id, re.template_id, re.template_version
+  select
+    re.id,
+    re.template_id,
+    re.template_version,
+    r.workflow_id,
+    w.name as workflow_name,
+    r.name as rule_name,
+    template.name as template_name
   from rule_executions re
+  join rules r on r.id = re.rule_id
+  join workflows w on w.id = r.workflow_id
+  left join task_templates template on template.id = re.template_id
   where re.created_task_id = t.id
     and re.outcome = 'applied'
   order by re.created_at desc, re.id desc

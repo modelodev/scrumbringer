@@ -154,14 +154,22 @@ fn automation_origin_json(origin) -> json.Json {
     None -> json.null()
     Some(AutomationOrigin(
       rule_id: rule_id,
+      workflow_id: workflow_id,
+      workflow_name: workflow_name,
+      rule_name: rule_name,
       execution_id: execution_id,
       template_id: template_id,
+      template_name: template_name,
       template_version: template_version,
     )) ->
       json.object([
         #("rule_id", json.int(rule_id)),
+        #("workflow_id", json_helpers.option_int_json(workflow_id)),
+        #("workflow_name", json_helpers.option_string_json(workflow_name)),
+        #("rule_name", json_helpers.option_string_json(rule_name)),
         #("execution_id", json_helpers.option_int_json(execution_id)),
         #("template_id", json_helpers.option_int_json(template_id)),
+        #("template_name", json_helpers.option_string_json(template_name)),
         #("template_version", json_helpers.option_int_json(template_version)),
       ])
   }
