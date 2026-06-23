@@ -1,4 +1,4 @@
-//// Root-state adapter for admin workflow views.
+//// Root-state adapter for the automation engines list.
 
 import gleam/option as opt
 
@@ -9,9 +9,9 @@ import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
 import scrumbringer_client/client_state/admin/workflows as workflows_state
-import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/features/admin/workflow_rules_view
 import scrumbringer_client/features/admin/workflow_rules_view_config
+import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 
@@ -41,7 +41,7 @@ pub fn from_state(
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
   callbacks: Callbacks(msg),
-) -> workflows_view.Config(msg) {
+) -> engine_list.Config(msg) {
   let selected_rules_view = case rules.rules_workflow_id {
     opt.Some(workflow_id) ->
       opt.Some(
@@ -61,7 +61,7 @@ pub fn from_state(
     opt.None -> opt.None
   }
 
-  workflows_view.Config(
+  engine_list.Config(
     locale: locale,
     selected_project: selected_project,
     selected_project_id: selected_project_id,

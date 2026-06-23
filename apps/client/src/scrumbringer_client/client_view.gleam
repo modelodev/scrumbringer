@@ -66,13 +66,13 @@ import scrumbringer_client/features/admin/rule_metrics_view_config as admin_rule
 import scrumbringer_client/features/admin/task_templates_view as admin_task_templates_view
 import scrumbringer_client/features/admin/task_templates_view_config as admin_task_templates_view_config
 import scrumbringer_client/features/admin/view as admin_view
-import scrumbringer_client/features/admin/views/workflows as admin_workflows_view
-import scrumbringer_client/features/admin/views/workflows_config as admin_workflows_config
 import scrumbringer_client/features/admin/workflow_rules_view_config as admin_workflow_rules_config
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
+import scrumbringer_client/features/automations/engine_list
+import scrumbringer_client/features/automations/engine_list_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
@@ -539,19 +539,17 @@ fn view_automations_console(
       model.admin.task_templates.task_templates_project,
     ),
     created_tasks_count: created_tasks_count(model),
-    engines_view: admin_workflows_view.view_workflows(
-      admin_workflows_config.from_state(
-        model.ui.locale,
-        model.ui.theme,
-        selected,
-        model.core.selected_project_id,
-        model.admin.workflows,
-        model.admin.rules,
-        model.admin.task_templates,
-        model.admin.task_types,
-        admin_workflow_callbacks(),
-      ),
-    ),
+    engines_view: engine_list.view(engine_list_config.from_state(
+      model.ui.locale,
+      model.ui.theme,
+      selected,
+      model.core.selected_project_id,
+      model.admin.workflows,
+      model.admin.rules,
+      model.admin.task_templates,
+      model.admin.task_types,
+      admin_workflow_callbacks(),
+    )),
     templates_view: admin_task_templates_view.view_task_templates(
       admin_task_templates_view_config.from_state(
         model.ui.locale,
@@ -892,10 +890,8 @@ fn admin_assignments_user_card(
   )
 }
 
-fn admin_workflow_callbacks() -> admin_workflows_config.Callbacks(
-  client_state.Msg,
-) {
-  admin_workflows_config.Callbacks(
+fn admin_workflow_callbacks() -> engine_list_config.Callbacks(client_state.Msg) {
+  engine_list_config.Callbacks(
     on_create_clicked: client_state.pool_msg(pool_messages.OpenWorkflowDialog(
       admin_workflows.WorkflowDialogCreate,
     )),

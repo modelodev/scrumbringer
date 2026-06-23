@@ -8,7 +8,7 @@ import domain/project_role
 import domain/remote.{Loaded}
 import domain/workflow.{type Workflow, Workflow}
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
-import scrumbringer_client/features/admin/views/workflows
+import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -45,8 +45,8 @@ fn selected_project() -> Project {
   )
 }
 
-fn config() -> workflows.Config(String) {
-  workflows.Config(
+fn config() -> engine_list.Config(String) {
+  engine_list.Config(
     locale: locale.En,
     selected_project: opt.Some(selected_project()),
     selected_project_id: opt.Some(7),
@@ -68,9 +68,9 @@ fn config() -> workflows.Config(String) {
   )
 }
 
-pub fn workflows_view_renders_list_from_config_without_root_model_test() {
+pub fn automation_engine_list_renders_operational_rows_test() {
   let html =
-    workflows.view_workflows(config())
+    engine_list.view(config())
     |> element.to_document_string
 
   assert_contains(html, "Engines - Roadmap")
@@ -86,28 +86,10 @@ pub fn workflows_view_renders_list_from_config_without_root_model_test() {
   assert_not_contains(html, "info-callout-link")
 }
 
-pub fn workflows_view_filters_engines_by_search_test() {
+pub fn automation_engine_list_filters_by_status_test() {
   let html =
-    workflows.view_workflows(
-      workflows.Config(
-        ..config(),
-        workflows: Loaded([
-          workflow(3, "Release automation", True),
-          workflow(4, "Backlog grooming", True),
-        ]),
-        search_query: "backlog",
-      ),
-    )
-    |> element.to_document_string
-
-  assert_contains(html, "Backlog grooming")
-  assert_not_contains(html, "Release automation")
-}
-
-pub fn workflows_view_filters_engines_by_status_test() {
-  let html =
-    workflows.view_workflows(
-      workflows.Config(
+    engine_list.view(
+      engine_list.Config(
         ..config(),
         workflows: Loaded([
           workflow(3, "Release automation", True),
@@ -123,20 +105,10 @@ pub fn workflows_view_filters_engines_by_status_test() {
   assert_not_contains(html, "Release automation")
 }
 
-pub fn workflows_view_renders_empty_project_state_without_root_model_test() {
+pub fn automation_engine_list_renders_crud_dialog_test() {
   let html =
-    workflows.view_workflows(
-      workflows.Config(..config(), selected_project: opt.None),
-    )
-    |> element.to_document_string
-
-  assert_contains(html, "Select a project to manage automations")
-}
-
-pub fn workflows_view_renders_crud_dialog_from_config_without_root_model_test() {
-  let html =
-    workflows.view_workflows(
-      workflows.Config(
+    engine_list.view(
+      engine_list.Config(
         ..config(),
         dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
       ),

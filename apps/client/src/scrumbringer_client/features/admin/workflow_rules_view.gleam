@@ -13,7 +13,7 @@
 ////
 //// ## Relations
 ////
-//// - **features/admin/views/workflows.gleam**: Delegates selected-workflow rules here
+//// - **features/automations/engine_list.gleam**: Delegates selected-engine rules here
 //// - **features/admin/workflows.gleam**: Owns workflow/rule update transitions
 
 import gleam/int

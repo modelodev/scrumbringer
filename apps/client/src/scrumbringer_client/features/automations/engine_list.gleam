@@ -1,20 +1,6 @@
-//// Admin workflows view.
-////
-//// ## Mission
-////
-//// Render the workflow admin entry view and workflow dialog component.
-////
-//// ## Responsibilities
-////
-//// - Workflows list
-//// - Selected-workflow dispatch to rules view
-//// - Workflow CRUD custom element wiring
-////
-//// ## Relations
-////
-//// - **features/admin/view.gleam**: Delegates to this module
-//// - **features/admin/update.gleam**: Handles workflow-related messages
+//// Automation engines list for the unified automations console.
 
+import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
@@ -26,8 +12,6 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, h2, input, p, span, text}
 import lustre/element/keyed
 import lustre/event
-
-import gleam/dynamic/decode
 
 import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
@@ -47,10 +31,6 @@ import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/skeleton
-
-// =============================================================================
-// Workflows Views
-// =============================================================================
 
 pub type Config(msg) {
   Config(
@@ -79,17 +59,14 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
   i18n.t(config.locale, key)
 }
 
-/// Workflows management view.
-pub fn view_workflows(config: Config(msg)) -> Element(msg) {
-  // If we're viewing rules for a specific workflow, show rules view
+pub fn view(config: Config(msg)) -> Element(msg) {
   case config.selected_rules_view {
     opt.Some(rules_view) -> rules_view
-    opt.None -> view_workflows_list(config)
+    opt.None -> view_list(config)
   }
 }
 
-fn view_workflows_list(config: Config(msg)) -> Element(msg) {
-  // Workflows are project-scoped, so require a project to be selected (AC22)
+fn view_list(config: Config(msg)) -> Element(msg) {
   case config.selected_project {
     opt.None ->
       div([attribute.class("automation-engines-mode")], [
@@ -105,14 +82,14 @@ fn view_workflows_list(config: Config(msg)) -> Element(msg) {
           ]),
           p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
         ]),
-        view_engine_filters(config),
-        view_engines_content(config, config.workflows),
+        view_filters(config),
+        view_content(config, config.workflows),
         view_workflow_crud_dialog(config),
       ])
   }
 }
 
-fn view_engine_filters(config: Config(msg)) -> Element(msg) {
+fn view_filters(config: Config(msg)) -> Element(msg) {
   filter_bar.new([
     form_field.view(
       t(config, i18n_text.SearchLabel),
@@ -167,139 +144,7 @@ fn view_engine_filters(config: Config(msg)) -> Element(msg) {
   |> filter_bar.view
 }
 
-// Justification: nested case keeps dialog mode and project scoping logic colocated.
-
-/// Render the workflow-crud-dialog Lustre component.
-fn view_workflow_crud_dialog(config: Config(msg)) -> Element(msg) {
-  case config.dialog_mode {
-    opt.None -> element.none()
-    opt.Some(mode) -> {
-      let #(mode_str, workflow_json, project_id_attr) = case mode {
-        admin_workflows.WorkflowDialogCreate ->
-          create_dialog_parts(config.selected_project_id)
-        admin_workflows.WorkflowDialogEdit(workflow) ->
-          entity_dialog_parts(
-            "edit",
-            "workflow",
-            workflow_to_property_json(workflow, "edit"),
-            workflow.project_id,
-          )
-        admin_workflows.WorkflowDialogDelete(workflow) ->
-          entity_dialog_parts(
-            "delete",
-            "workflow",
-            workflow_to_property_json(workflow, "delete"),
-            workflow.project_id,
-          )
-      }
-
-      element.element(
-        "workflow-crud-dialog",
-        [
-          // Attributes (strings)
-          attribute.attribute("locale", serialize(config.locale)),
-          project_id_attr,
-          attribute.attribute("mode", mode_str),
-          // Property for workflow data (edit/delete modes)
-          workflow_json,
-          // Event listeners for component events
-          event.on("workflow-created", decode_workflow_created_event(config)),
-          event.on("workflow-updated", decode_workflow_updated_event(config)),
-          event.on("workflow-deleted", decode_workflow_deleted_event(config)),
-          event.on(
-            "close-requested",
-            decode_workflow_close_requested_event(config),
-          ),
-        ],
-        [],
-      )
-    }
-  }
-}
-
-/// Convert workflow to JSON for property passing to component.
-fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
-  json.object([
-    #("id", json.int(workflow.id)),
-    #("org_id", json.int(workflow.org_id)),
-    #("project_id", case workflow.project_id {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
-    #("name", json.string(workflow.name)),
-    #("description", case workflow.description {
-      opt.Some(desc) -> json.string(desc)
-      opt.None -> json.null()
-    }),
-    #("active", json.bool(workflow.active)),
-    #("rule_count", json.int(workflow.rule_count)),
-    #("created_by", json.int(workflow.created_by)),
-    #("created_at", json.string(workflow.created_at)),
-    #("_mode", json.string(mode)),
-  ])
-}
-
-fn create_dialog_parts(
-  selected_project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #("create", attribute.none(), project_id_attribute(selected_project_id))
-}
-
-fn entity_dialog_parts(
-  mode: String,
-  property_name: String,
-  property_json: json.Json,
-  project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #(
-    mode,
-    attribute.property(property_name, property_json),
-    project_id_attribute(project_id),
-  )
-}
-
-fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
-  case project_id {
-    opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
-    opt.None -> attribute.none()
-  }
-}
-
-/// Decoder for workflow-created event.
-fn decode_workflow_created_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(config.on_created(workflow))
-  })
-}
-
-/// Decoder for workflow-updated event.
-fn decode_workflow_updated_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(config.on_updated(workflow))
-  })
-}
-
-/// Decoder for workflow-deleted event.
-fn decode_workflow_deleted_event(config: Config(msg)) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(
-    decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(config.on_deleted(id)) },
-  )
-}
-
-/// Decoder for Workflow from JSON (used in custom events).
-fn workflow_decoder() -> decode.Decoder(Workflow) {
-  workflow_codec.workflow_decoder()
-}
-
-/// Decoder for close-requested event from workflow dialog.
-fn decode_workflow_close_requested_event(
-  config: Config(msg),
-) -> decode.Decoder(msg) {
-  decode.success(config.on_closed)
-}
-
-fn view_engines_content(
+fn view_content(
   config: Config(msg),
   workflows: Remote(List(Workflow)),
 ) -> Element(msg) {
@@ -358,7 +203,7 @@ fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
           ),
         ]),
       ]),
-      view_workflow_actions(config, workflow),
+      view_actions(config, workflow),
     ],
   )
 }
@@ -381,6 +226,24 @@ fn workflow_status_badge(
       )
       |> badge.view
   }
+}
+
+fn view_actions(config: Config(msg), workflow: Workflow) -> Element(msg) {
+  div([attribute.class("btn-group")], [
+    action_buttons.settings_button_with_testid(
+      t(config, i18n_text.WorkflowRules),
+      config.on_rules_clicked(workflow.id),
+      "workflow-rules-btn",
+    ),
+    action_buttons.edit_button(
+      t(config, i18n_text.EditWorkflow),
+      config.on_edit_clicked(workflow),
+    ),
+    action_buttons.delete_button(
+      t(config, i18n_text.DeleteWorkflow),
+      config.on_delete_clicked(workflow),
+    ),
+  ])
 }
 
 fn filter_workflows(
@@ -419,20 +282,122 @@ fn workflow_matches_query(workflow: Workflow, needle: String) -> Bool {
   }
 }
 
-fn view_workflow_actions(config: Config(msg), w: Workflow) -> Element(msg) {
-  div([attribute.class("btn-group")], [
-    action_buttons.settings_button_with_testid(
-      t(config, i18n_text.WorkflowRules),
-      config.on_rules_clicked(w.id),
-      "workflow-rules-btn",
-    ),
-    action_buttons.edit_button(
-      t(config, i18n_text.EditWorkflow),
-      config.on_edit_clicked(w),
-    ),
-    action_buttons.delete_button(
-      t(config, i18n_text.DeleteWorkflow),
-      config.on_delete_clicked(w),
-    ),
+fn view_workflow_crud_dialog(config: Config(msg)) -> Element(msg) {
+  case config.dialog_mode {
+    opt.None -> element.none()
+    opt.Some(mode) -> {
+      let #(mode_str, workflow_json, project_id_attr) = case mode {
+        admin_workflows.WorkflowDialogCreate ->
+          create_dialog_parts(config.selected_project_id)
+        admin_workflows.WorkflowDialogEdit(workflow) ->
+          entity_dialog_parts(
+            "edit",
+            "workflow",
+            workflow_to_property_json(workflow, "edit"),
+            workflow.project_id,
+          )
+        admin_workflows.WorkflowDialogDelete(workflow) ->
+          entity_dialog_parts(
+            "delete",
+            "workflow",
+            workflow_to_property_json(workflow, "delete"),
+            workflow.project_id,
+          )
+      }
+
+      element.element(
+        "workflow-crud-dialog",
+        [
+          attribute.attribute("locale", serialize(config.locale)),
+          project_id_attr,
+          attribute.attribute("mode", mode_str),
+          workflow_json,
+          event.on("workflow-created", decode_workflow_created_event(config)),
+          event.on("workflow-updated", decode_workflow_updated_event(config)),
+          event.on("workflow-deleted", decode_workflow_deleted_event(config)),
+          event.on(
+            "close-requested",
+            decode_workflow_close_requested_event(config),
+          ),
+        ],
+        [],
+      )
+    }
+  }
+}
+
+fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
+  json.object([
+    #("id", json.int(workflow.id)),
+    #("org_id", json.int(workflow.org_id)),
+    #("project_id", case workflow.project_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("name", json.string(workflow.name)),
+    #("description", case workflow.description {
+      opt.Some(desc) -> json.string(desc)
+      opt.None -> json.null()
+    }),
+    #("active", json.bool(workflow.active)),
+    #("rule_count", json.int(workflow.rule_count)),
+    #("created_by", json.int(workflow.created_by)),
+    #("created_at", json.string(workflow.created_at)),
+    #("_mode", json.string(mode)),
   ])
+}
+
+fn create_dialog_parts(
+  selected_project_id: opt.Option(Int),
+) -> #(String, Attribute(msg), Attribute(msg)) {
+  #("create", attribute.none(), project_id_attribute(selected_project_id))
+}
+
+fn entity_dialog_parts(
+  mode: String,
+  property_name: String,
+  property_json: json.Json,
+  project_id: opt.Option(Int),
+) -> #(String, Attribute(msg), Attribute(msg)) {
+  #(
+    mode,
+    attribute.property(property_name, property_json),
+    project_id_attribute(project_id),
+  )
+}
+
+fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
+  case project_id {
+    opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+    opt.None -> attribute.none()
+  }
+}
+
+fn decode_workflow_created_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
+    decode.success(config.on_created(workflow))
+  })
+}
+
+fn decode_workflow_updated_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
+    decode.success(config.on_updated(workflow))
+  })
+}
+
+fn decode_workflow_deleted_event(config: Config(msg)) -> decode.Decoder(msg) {
+  event_decoders.custom_detail(
+    decode.field("id", decode.int, decode.success),
+    fn(id) { decode.success(config.on_deleted(id)) },
+  )
+}
+
+fn decode_workflow_close_requested_event(
+  config: Config(msg),
+) -> decode.Decoder(msg) {
+  decode.success(config.on_closed)
+}
+
+fn workflow_decoder() -> decode.Decoder(Workflow) {
+  workflow_codec.workflow_decoder()
 }

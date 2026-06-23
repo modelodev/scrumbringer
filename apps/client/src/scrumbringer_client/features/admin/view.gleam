@@ -52,9 +52,9 @@ import scrumbringer_client/features/admin/task_templates_view
 import scrumbringer_client/features/admin/task_templates_view_config
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/features/admin/views/members as members_view
-import scrumbringer_client/features/admin/views/workflows as workflows_view
-import scrumbringer_client/features/admin/views/workflows_config
 import scrumbringer_client/features/admin/workflow_rules_view_config
+import scrumbringer_client/features/automations/engine_list
+import scrumbringer_client/features/automations/engine_list_config
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/utils/card_queries
@@ -468,7 +468,7 @@ pub fn view_workflows(
   model: Model,
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
-  workflows_view.view_workflows(workflows_config.from_state(
+  engine_list.view(engine_list_config.from_state(
     model.ui.locale,
     model.ui.theme,
     selected_project,
@@ -481,8 +481,8 @@ pub fn view_workflows(
   ))
 }
 
-fn workflow_callbacks() -> workflows_config.Callbacks(Msg) {
-  workflows_config.Callbacks(
+fn workflow_callbacks() -> engine_list_config.Callbacks(Msg) {
+  engine_list_config.Callbacks(
     on_create_clicked: pool_msg(pool_messages.OpenWorkflowDialog(
       admin_workflows.WorkflowDialogCreate,
     )),
