@@ -689,6 +689,97 @@ pub fn executions_list_empty_returns_empty_array_test() {
 // Date Range Filtering Tests
 // =============================================================================
 
+pub fn calendar_date_range_includes_full_to_day_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "InclusiveDateRangeTest")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Inclusive Dates")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Inclusive Metric",
+    )
+  let assert Ok(rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      workflow_id,
+      Some(type_id),
+      "Inclusive Rule",
+      task_status.Done,
+      template_id,
+    )
+  let assert Ok(start_task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Start Day")
+  let assert Ok(end_task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "End Day")
+  let assert Ok(next_task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Next Day")
+
+  let assert Ok(day_start) = timestamp.parse_rfc3339("2026-01-10T00:00:00Z")
+  let assert Ok(day_end) = timestamp.parse_rfc3339("2026-01-10T23:59:59Z")
+  let assert Ok(next_day) = timestamp.parse_rfc3339("2026-01-11T00:00:00Z")
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      start_task_id,
+      "applied",
+      "",
+      day_start,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      end_task_id,
+      "applied",
+      "",
+      day_end,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      next_task_id,
+      "applied",
+      "",
+      next_day,
+    )
+
+  let res =
+    get_rule_metrics_with_dates(
+      handler,
+      session,
+      rule_id,
+      "2026-01-10",
+      "2026-01-10",
+    )
+  expect.expect_status(res, 200)
+
+  let body = simulate.read_body(res)
+  expect.expect_json_field_int(body, ["data", "evaluated_count"], 2)
+  expect.expect_json_field_int(body, ["data", "applied_count"], 2)
+  expect.expect_json_field_int(body, ["data", "suppressed_count"], 0)
+
+  Nil
+}
+
 pub fn date_range_exceeds_90_days_returns_error_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
@@ -707,6 +798,31 @@ pub fn date_range_exceeds_90_days_returns_error_test() {
     )
 
   expect.expect_status(res, 400)
+
+  Nil
+}
+
+pub fn rfc3339_metrics_date_returns_validation_error_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "TimestampDateTest")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Timestamp Date")
+
+  let res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/workflows/"
+          <> int.to_string(workflow_id)
+          <> "/metrics?from=2026-01-01T00:00:00Z&to=2026-01-02",
+      )
+      |> fixtures.with_auth(session),
+    )
+
+  expect.expect_status(res, 422)
+  let assert True = string.contains(simulate.read_body(res), "Invalid from")
 
   Nil
 }

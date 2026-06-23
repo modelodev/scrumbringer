@@ -14,5 +14,5 @@ where re.outcome = 'applied'
         or origin_card.project_id = $1
         or created_task.project_id = $1
     )
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day');
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day');

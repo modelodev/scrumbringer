@@ -3440,8 +3440,8 @@ select count(*)::int as total
 from rule_executions
 where rule_id = $1
     and outcome = 'applied'
-    and created_at >= ($2::timestamp)::date
-    and created_at < (($3::timestamp)::date + interval '1 day');
+    and (created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day');
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -3494,8 +3494,8 @@ where re.outcome = 'applied'
         or origin_card.project_id = $1
         or created_task.project_id = $1
     )
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day');
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day');
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -3586,8 +3586,8 @@ from rule_executions re
 left join users u on u.id = re.user_id
 where re.rule_id = $1
     and re.outcome = 'applied'
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 order by re.created_at desc
 limit $4 offset $5;
 "
@@ -3725,8 +3725,8 @@ where re.outcome = 'applied'
         or origin_card.project_id = $1
         or created_task.project_id = $1
     )
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 order by re.created_at desc
 limit $4 offset $5;
 "
@@ -3976,8 +3976,8 @@ select
     count(re.id) filter (where re.suppression_reason = 'inactive')::int as suppressed_inactive
 from rules r
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 where r.id = $1
 group by r.id;
 "
@@ -4046,8 +4046,8 @@ select
     count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
 from rules r
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 where r.workflow_id = $1
 group by r.id
 order by r.name;
@@ -4122,8 +4122,8 @@ select
 from workflows w
 left join rules r on r.workflow_id = w.id
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 where w.org_id = $1
 group by w.id
 order by w.name;
@@ -4194,8 +4194,8 @@ select
 from workflows w
 left join rules r on r.workflow_id = w.id
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= ($2::timestamp)::date
-    and re.created_at < (($3::timestamp)::date + interval '1 day')
+    and (re.created_at at time zone 'utc') >= ($2::timestamp)::date
+    and (re.created_at at time zone 'utc') < (($3::timestamp)::date + interval '1 day')
 where w.project_id = $1
 group by w.id
 order by w.name;
