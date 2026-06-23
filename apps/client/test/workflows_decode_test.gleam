@@ -82,7 +82,7 @@ pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
 
 pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"trigger\":{\"type\":\"task_claimed\",\"task_type_id\":null},\"action\":null,\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"trigger\":{\"type\":\"task_claimed\",\"task_type_id\":null},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -116,7 +116,7 @@ pub fn rule_payload_decoder_rejects_missing_trigger_test() {
 
 pub fn rules_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":1},\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":null,\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
+    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":1},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":{\"type\":\"create_task\",\"template_id\":12},\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
 
   let decoder =
     decode.field("data", api_rules.rules_payload_decoder(), decode.success)

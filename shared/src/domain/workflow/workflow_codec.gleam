@@ -3,6 +3,7 @@
 import gleam/dynamic/decode
 import gleam/option
 
+import domain/automation
 import domain/automation/automation_codec
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
@@ -55,7 +56,7 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     "template",
     decode.optional(rule_template_decoder()),
   )
-  decode.success(Rule(
+  validate_rule_action(Rule(
     id: id,
     workflow_id: workflow_id,
     name: name,
@@ -66,6 +67,14 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     created_at: created_at,
     template: template,
   ))
+}
+
+fn validate_rule_action(rule: Rule) -> decode.Decoder(Rule) {
+  case rule.action, rule.status {
+    option.None, automation.RequiresReview(_) -> decode.success(rule)
+    option.Some(_), _ -> decode.success(rule)
+    option.None, _ -> decode.failure(rule, "RuleAction")
+  }
 }
 
 /// Decoder for TaskTemplate.
