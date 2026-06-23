@@ -67,9 +67,7 @@ fn base_config(
     on_navigate_config_capabilities: "msg",
     on_navigate_config_cards: "msg",
     on_navigate_config_task_types: "msg",
-    on_navigate_config_templates: "msg",
     on_navigate_config_rules: "msg",
-    on_navigate_config_metrics: "msg",
     on_navigate_org_invites: "msg",
     on_navigate_org_users: "msg",
     on_navigate_org_projects: "msg",
@@ -195,6 +193,23 @@ pub fn left_panel_config_section_active_test() {
 
   // Should have active class on the Team nav item
   assert_contains(html, "nav-link active")
+}
+
+pub fn left_panel_config_has_single_automations_entry_test() {
+  let config =
+    left_panel.LeftPanelConfig(
+      ..base_config(opt.Some(config_route(permissions.Workflows))),
+      is_pm: True,
+      config_collapsed: False,
+    )
+  let html = left_panel.view(config) |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"nav-automations\"")
+  assert_contains(html, "<span class=\"nav-label\">Automations</span>")
+  assert_not_contains(html, "data-testid=\"nav-templates\"")
+  assert_not_contains(html, "data-testid=\"nav-rule-metrics\"")
+  assert_not_contains(html, "<span class=\"nav-label\">Templates</span>")
+  assert_not_contains(html, "<span class=\"nav-label\">Executions</span>")
 }
 
 pub fn left_panel_org_section_active_test() {

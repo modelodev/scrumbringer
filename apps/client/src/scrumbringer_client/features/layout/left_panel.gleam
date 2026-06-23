@@ -78,9 +78,7 @@ pub type LeftPanelConfig(msg) {
     // Story 4.9: New config section navigation
     on_navigate_config_cards: msg,
     on_navigate_config_task_types: msg,
-    on_navigate_config_templates: msg,
     on_navigate_config_rules: msg,
-    on_navigate_config_metrics: msg,
     on_navigate_org_invites: msg,
     on_navigate_org_users: msg,
     on_navigate_org_projects: msg,

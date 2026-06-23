@@ -1375,16 +1375,8 @@ fn build_left_panel(
       router.Config(permissions.TaskTypes, model.core.selected_project_id),
       client_state.Push,
     ),
-    on_navigate_config_templates: client_state.NavigateTo(
-      router.Config(permissions.TaskTemplates, model.core.selected_project_id),
-      client_state.Push,
-    ),
     on_navigate_config_rules: client_state.NavigateTo(
       router.Config(permissions.Workflows, model.core.selected_project_id),
-      client_state.Push,
-    ),
-    on_navigate_config_metrics: client_state.NavigateTo(
-      router.Config(permissions.RuleMetrics, model.core.selected_project_id),
       client_state.Push,
     ),
     on_navigate_org_invites: client_state.NavigateTo(
