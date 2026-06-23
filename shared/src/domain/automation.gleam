@@ -393,9 +393,19 @@ pub fn template_uses_unknown_variables(
   text: String,
   trigger: AutomationTrigger,
 ) -> Bool {
+  case unknown_template_variables(text, trigger) {
+    [] -> False
+    _ -> True
+  }
+}
+
+pub fn unknown_template_variables(
+  text: String,
+  trigger: AutomationTrigger,
+) -> List(String) {
   let allowed = available_template_variables(trigger)
   extract_variables(text)
-  |> list.any(fn(variable) { !list.contains(allowed, variable) })
+  |> list.filter(fn(variable) { !list.contains(allowed, variable) })
 }
 
 fn extract_variables(text: String) -> List(String) {

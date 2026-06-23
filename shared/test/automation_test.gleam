@@ -129,6 +129,16 @@ pub fn template_variables_depend_on_trigger_family_test() {
     automation.template_uses_unknown_variables("{{task_title}}", card_trigger)
 }
 
+pub fn unknown_template_variables_returns_concrete_blocking_variables_test() {
+  let task_trigger = automation.TaskCompleted(None)
+
+  let assert ["card_title", "card_level", "due_date"] =
+    automation.unknown_template_variables(
+      "{{origin}} {{card_title}} {{card_level}} {{due_date}}",
+      task_trigger,
+    )
+}
+
 pub fn rule_draft_requires_engine_trigger_and_template_test() {
   let empty =
     automation.RuleDraft(engine_id: None, trigger: None, template_id: None)

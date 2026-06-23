@@ -834,6 +834,7 @@ pub type Text {
   RulePreviewTemplateWillCreate(template_name: String)
   RulePreviewChooseTemplate
   RulePreviewCardActivationNoiseWarning
+  RuleBuilderTemplateVariablesUnavailable(variables: String)
 
   ExpandRule
   CollapseRule

@@ -1035,6 +1035,10 @@ pub fn translate(text: Text) -> String {
       "Elige una plantilla antes de guardar esta regla."
     text.RulePreviewCardActivationNoiseWarning ->
       "Aviso: activar una card con muchas subcards puede crear mucho trabajo en el Pool."
+    text.RuleBuilderTemplateVariablesUnavailable(variables) ->
+      "Esta plantilla usa variables no disponibles para el trigger seleccionado: "
+      <> variables
+      <> ". Cambia el trigger o elige otra plantilla."
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"

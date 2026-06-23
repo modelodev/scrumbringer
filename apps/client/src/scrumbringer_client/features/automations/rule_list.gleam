@@ -518,6 +518,7 @@ fn view_rule_form_panel(
           ),
           view_rule_preview(config),
           view_rule_form_error(config),
+          view_rule_validation_summary(config),
           div([attribute.class("automation-rule-panel-actions")], [
             ui_button.submit(
               submit_label,
@@ -621,6 +622,7 @@ fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
       _ -> element.none()
     },
     view_selected_template_preview(config),
+    view_selected_template_variable_error(config),
   ])
 }
 
@@ -682,6 +684,20 @@ fn view_selected_template_preview(config: Config(msg)) -> Element(msg) {
           opt.None -> element.none()
         },
       ])
+  }
+}
+
+fn view_selected_template_variable_error(config: Config(msg)) -> Element(msg) {
+  case selected_template_variable_error(config) {
+    opt.Some(message) ->
+      p(
+        [
+          attribute.class("field-error rule-template-picker__validation"),
+          attribute.role("alert"),
+        ],
+        [text(message)],
+      )
+    opt.None -> element.none()
   }
 }
 
@@ -919,6 +935,20 @@ fn view_rule_form_error(config: Config(msg)) -> Element(msg) {
   }
 }
 
+fn view_rule_validation_summary(config: Config(msg)) -> Element(msg) {
+  case selected_template_variable_error(config) {
+    opt.Some(message) ->
+      div(
+        [
+          attribute.class("field-error automation-rule-form__summary"),
+          attribute.role("alert"),
+        ],
+        [text(message)],
+      )
+    opt.None -> element.none()
+  }
+}
+
 fn rule_form_is_valid(config: Config(msg)) -> Bool {
   string.trim(config.rules.rule_form_name) != ""
   && config.rules.rule_form_event != "unsupported"
@@ -961,6 +991,48 @@ fn description_uses_unknown_variables(
       automation.template_uses_unknown_variables(value, trigger)
     opt.None -> False
   }
+}
+
+fn selected_template_variable_error(config: Config(msg)) -> opt.Option(String) {
+  case selected_rule_template(config), current_rule_trigger(config) {
+    opt.Some(template), opt.Some(trigger) -> {
+      let variables = selected_template_unknown_variables(template, trigger)
+      case variables {
+        [] -> opt.None
+        _ -> {
+          let variables_label = format_template_variables(variables)
+          t(
+            config,
+            i18n_text.RuleBuilderTemplateVariablesUnavailable(variables_label),
+          )
+          |> opt.Some
+        }
+      }
+    }
+    _, _ -> opt.None
+  }
+}
+
+fn selected_template_unknown_variables(
+  template: TaskTemplate,
+  trigger: automation.AutomationTrigger,
+) -> List(String) {
+  let name_variables =
+    automation.unknown_template_variables(template.name, trigger)
+
+  let description_variables = case template.description {
+    opt.Some(description) ->
+      automation.unknown_template_variables(description, trigger)
+    opt.None -> []
+  }
+
+  list.append(name_variables, description_variables)
+}
+
+fn format_template_variables(variables: List(String)) -> String {
+  variables
+  |> list.map(fn(variable) { "{{" <> variable <> "}}" })
+  |> string.join(", ")
 }
 
 fn current_rule_trigger(

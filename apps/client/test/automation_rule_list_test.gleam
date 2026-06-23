@@ -363,6 +363,11 @@ pub fn automation_rule_builder_disables_save_for_incompatible_template_variables
 
   assert_contains(html, "Card follow-up")
   assert_contains(html, "Review {{card_title}}")
+  assert_contains(
+    html,
+    "This template uses variables unavailable for the selected trigger: {{card_title}}.",
+  )
+  assert_contains(html, "role=\"alert\"")
   assert_contains(html, "disabled")
 }
 

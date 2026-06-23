@@ -1011,6 +1011,10 @@ pub fn translate(text: Text) -> String {
       "Choose one template before saving this rule."
     text.RulePreviewCardActivationNoiseWarning ->
       "Warning: activating a card with many subcards can create a lot of Pool work."
+    text.RuleBuilderTemplateVariablesUnavailable(variables) ->
+      "This template uses variables unavailable for the selected trigger: "
+      <> variables
+      <> ". Change the trigger or choose another template."
 
     text.ExpandRule -> "Expand"
     text.CollapseRule -> "Collapse"
