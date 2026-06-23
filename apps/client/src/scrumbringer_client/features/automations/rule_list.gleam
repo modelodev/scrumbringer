@@ -475,6 +475,7 @@ fn view_rule_form_panel(
             input([
               attribute.type_("text"),
               attribute.value(config.rules.rule_form_name),
+              attribute.attribute("aria-label", t(config, i18n_text.RuleName)),
               event.on_input(config.on_rule_name_changed),
             ]),
           ),
@@ -483,6 +484,7 @@ fn view_rule_form_panel(
             input([
               attribute.type_("text"),
               attribute.value(config.rules.rule_form_goal),
+              attribute.attribute("aria-label", t(config, i18n_text.RuleGoal)),
               event.on_input(config.on_rule_goal_changed),
             ]),
           ),

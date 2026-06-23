@@ -180,6 +180,7 @@ fn view_form_panel(
         t(i18n_text.TaskTemplateName),
         input([
           attribute.value(config.form_name),
+          attribute.attribute("aria-label", t(i18n_text.TaskTemplateName)),
           attribute.attribute("data-testid", "automation-template-name"),
           event.on_input(config.on_name_changed),
         ]),
@@ -189,6 +190,10 @@ fn view_form_panel(
         textarea(
           [
             attribute.value(config.form_description),
+            attribute.attribute(
+              "aria-label",
+              t(i18n_text.TaskTemplateDescription),
+            ),
             attribute.attribute(
               "data-testid",
               "automation-template-description",
@@ -203,6 +208,7 @@ fn view_form_panel(
         select(
           [
             attribute.value(config.form_type_id),
+            attribute.attribute("aria-label", t(i18n_text.TaskTemplateType)),
             attribute.attribute("data-testid", "automation-template-type"),
             event.on_input(config.on_type_changed),
           ],
@@ -214,6 +220,7 @@ fn view_form_panel(
         select(
           [
             attribute.value(config.form_priority),
+            attribute.attribute("aria-label", t(i18n_text.TaskTemplatePriority)),
             attribute.attribute("data-testid", "automation-template-priority"),
             event.on_input(config.on_priority_changed),
           ],
