@@ -278,17 +278,17 @@ fn view_workflow_row(
 
   case is_expanded {
     False -> [main_row]
-    True -> [main_row, view_workflow_rules_expansion(config, w.workflow_id)]
+    True -> [main_row, view_engine_rules_expansion(config, w.workflow_id)]
   }
 }
 
 /// Render the expansion row with per-rule metrics.
-fn view_workflow_rules_expansion(
+fn view_engine_rules_expansion(
   config: Config(msg),
   _workflow_id: Int,
 ) -> #(String, Element(msg)) {
   let content =
-    view_workflow_rules_expansion_content(
+    view_engine_rules_expansion_content(
       config,
       config.model.admin_rule_metrics_workflow_details,
     )
@@ -303,18 +303,18 @@ fn view_workflow_rules_expansion(
   )
 }
 
-fn view_workflow_rules_expansion_content(
+fn view_engine_rules_expansion_content(
   config: Config(msg),
   details: Remote(api_rule_metrics.WorkflowMetrics),
 ) -> Element(msg) {
   case details {
     NotAsked | Loading -> skeleton.skeleton_list(2)
     Failed(err) -> error_notice.view(err.message)
-    Loaded(loaded) -> view_workflow_rules_expansion_loaded(config, loaded)
+    Loaded(loaded) -> view_engine_rules_expansion_loaded(config, loaded)
   }
 }
 
-fn view_workflow_rules_expansion_loaded(
+fn view_engine_rules_expansion_loaded(
   config: Config(msg),
   details: api_rule_metrics.WorkflowMetrics,
 ) -> Element(msg) {

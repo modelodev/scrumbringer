@@ -13,7 +13,7 @@ import domain/workflow.{
 }
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/features/admin/workflow_rules_view
+import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 
@@ -118,8 +118,8 @@ fn rules_state() -> admin_rules.Model {
   )
 }
 
-fn config() -> workflow_rules_view.Config(String) {
-  workflow_rules_view.Config(
+fn config() -> rule_list.Config(String) {
+  rule_list.Config(
     locale: locale.En,
     theme: theme.Default,
     workflow_id: 3,
@@ -152,9 +152,9 @@ fn config() -> workflow_rules_view.Config(String) {
   )
 }
 
-pub fn workflow_rules_view_renders_rules_from_config_without_root_model_test() {
+pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
   let html =
-    workflow_rules_view.view_workflow_rules(config())
+    rule_list.view(config())
     |> element.to_document_string
 
   assert_contains(html, "Rules - Release automation")
@@ -174,10 +174,10 @@ pub fn workflow_rules_view_renders_rules_from_config_without_root_model_test() {
   assert_not_contains(html, "btn btn-sm btn-primary")
 }
 
-pub fn workflow_rules_view_renders_empty_state_from_config_without_root_model_test() {
+pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_test() {
   let html =
-    workflow_rules_view.view_workflow_rules(
-      workflow_rules_view.Config(
+    rule_list.view(
+      rule_list.Config(
         ..config(),
         rules: admin_rules.Model(..rules_state(), rules: Loaded([])),
       ),
@@ -187,10 +187,10 @@ pub fn workflow_rules_view_renders_empty_state_from_config_without_root_model_te
   assert_contains(html, "No rules yet")
 }
 
-pub fn workflow_rules_view_renders_crud_dialog_from_config_without_root_model_test() {
+pub fn automation_rule_list_renders_crud_dialog_from_config_without_root_model_test() {
   let html =
-    workflow_rules_view.view_workflow_rules(
-      workflow_rules_view.Config(
+    rule_list.view(
+      rule_list.Config(
         ..config(),
         rules: admin_rules.Model(
           ..rules_state(),
@@ -206,10 +206,10 @@ pub fn workflow_rules_view_renders_crud_dialog_from_config_without_root_model_te
   assert_contains(html, "mode=\"create\"")
 }
 
-pub fn workflow_rules_attach_modal_footer_uses_semantic_buttons_test() {
+pub fn automation_rule_list_attach_modal_footer_uses_semantic_buttons_test() {
   let html =
-    workflow_rules_view.view_workflow_rules(
-      workflow_rules_view.Config(
+    rule_list.view(
+      rule_list.Config(
         ..config(),
         rules: admin_rules.Model(
           ..rules_state(),

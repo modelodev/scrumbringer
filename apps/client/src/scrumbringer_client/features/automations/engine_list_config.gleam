@@ -9,9 +9,9 @@ import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
 import scrumbringer_client/client_state/admin/workflows as workflows_state
-import scrumbringer_client/features/admin/workflow_rules_view
-import scrumbringer_client/features/admin/workflow_rules_view_config
 import scrumbringer_client/features/automations/engine_list
+import scrumbringer_client/features/automations/rule_list
+import scrumbringer_client/features/automations/rule_list_config
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 
@@ -27,7 +27,7 @@ pub type Callbacks(msg) {
     on_updated: fn(Workflow) -> msg,
     on_deleted: fn(Int) -> msg,
     on_closed: msg,
-    rules: workflow_rules_view_config.Callbacks(msg),
+    rules: rule_list_config.Callbacks(msg),
   )
 }
 
@@ -45,18 +45,16 @@ pub fn from_state(
   let selected_rules_view = case rules.rules_workflow_id {
     opt.Some(workflow_id) ->
       opt.Some(
-        workflow_rules_view.view_workflow_rules(
-          workflow_rules_view_config.from_state(
-            locale,
-            theme,
-            workflow_id,
-            rules,
-            workflows,
-            task_templates,
-            task_types,
-            callbacks.rules,
-          ),
-        ),
+        rule_list.view(rule_list_config.from_state(
+          locale,
+          theme,
+          workflow_id,
+          rules,
+          workflows,
+          task_templates,
+          task_types,
+          callbacks.rules,
+        )),
       )
     opt.None -> opt.None
   }

@@ -1,12 +1,12 @@
-//// Admin workflow rules view.
+//// Automation rule list view.
 ////
 //// ## Mission
 ////
-//// Render workflow rule drill-down, attached templates, and rule dialogs.
+//// Render engine rule drill-down, attached templates, and rule dialogs.
 ////
 //// ## Responsibilities
 ////
-//// - Rules table for a selected workflow
+//// - Rule list for a selected engine
 //// - Rule row expansion and attached template list
 //// - Attach-template modal
 //// - Rule CRUD custom element wiring
@@ -14,7 +14,6 @@
 //// ## Relations
 ////
 //// - **features/automations/engine_list.gleam**: Delegates selected-engine rules here
-//// - **features/admin/workflows.gleam**: Owns workflow/rule update transitions
 
 import gleam/int
 import gleam/json
@@ -99,21 +98,21 @@ pub type Config(msg) {
   )
 }
 
-pub fn workflow_name_from_remotes(
+pub fn engine_name_from_remotes(
   workflows_org: Remote(List(Workflow)),
   workflows_project: Remote(List(Workflow)),
   workflow_id: Int,
 ) -> String {
-  find_workflow_name(workflows_org, workflow_id)
-  |> opt.lazy_or(fn() { find_workflow_name(workflows_project, workflow_id) })
-  |> workflow_name_or_id(workflow_id)
+  find_engine_name(workflows_org, workflow_id)
+  |> opt.lazy_or(fn() { find_engine_name(workflows_project, workflow_id) })
+  |> engine_name_or_id(workflow_id)
 }
 
 fn t(config: Config(msg), key: i18n_text.Text) -> String {
   i18n.t(config.locale, key)
 }
 
-pub fn view_workflow_rules(config: Config(msg)) -> Element(msg) {
+pub fn view(config: Config(msg)) -> Element(msg) {
   div(
     [
       attribute.class("section"),
@@ -144,7 +143,7 @@ pub fn view_workflow_rules(config: Config(msg)) -> Element(msg) {
   )
 }
 
-fn find_workflow_name(
+fn find_engine_name(
   workflows: Remote(List(Workflow)),
   workflow_id: Int,
 ) -> opt.Option(String) {
@@ -158,9 +157,9 @@ fn find_workflow_name(
   }
 }
 
-fn workflow_name_or_id(name: opt.Option(String), workflow_id: Int) -> String {
+fn engine_name_or_id(name: opt.Option(String), workflow_id: Int) -> String {
   case name {
-    opt.None -> "Workflow #" <> int.to_string(workflow_id)
+    opt.None -> "Motor #" <> int.to_string(workflow_id)
     opt.Some(value) -> value
   }
 }

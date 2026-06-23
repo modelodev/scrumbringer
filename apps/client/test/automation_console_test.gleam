@@ -3,7 +3,7 @@ import gleam/string
 import lustre/element
 import lustre/element/html.{div, text}
 
-import scrumbringer_client/features/admin/automations_console
+import scrumbringer_client/features/automations/console as automations_console
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)

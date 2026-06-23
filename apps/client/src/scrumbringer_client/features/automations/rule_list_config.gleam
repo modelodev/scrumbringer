@@ -1,4 +1,4 @@
-//// Root-state adapter for admin workflow rule views.
+//// Root-state adapter for automation rule lists.
 
 import domain/workflow.{type Rule}
 
@@ -6,7 +6,7 @@ import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
 import scrumbringer_client/client_state/admin/workflows as workflows_state
-import scrumbringer_client/features/admin/workflow_rules_view
+import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 
@@ -39,12 +39,12 @@ pub fn from_state(
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
   callbacks: Callbacks(msg),
-) -> workflow_rules_view.Config(msg) {
-  workflow_rules_view.Config(
+) -> rule_list.Config(msg) {
+  rule_list.Config(
     locale: locale,
     theme: theme,
     workflow_id: workflow_id,
-    workflow_name: workflow_rules_view.workflow_name_from_remotes(
+    workflow_name: rule_list.engine_name_from_remotes(
       workflows.workflows_org,
       workflows.workflows_project,
       workflow_id,

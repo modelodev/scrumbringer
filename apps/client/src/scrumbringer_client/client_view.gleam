@@ -59,18 +59,18 @@ import scrumbringer_client/features/i18n/msg as i18n_messages
 import scrumbringer_client/features/layout/msg as layout_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 
-import scrumbringer_client/features/admin/automations_console
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/view as admin_view
-import scrumbringer_client/features/admin/workflow_rules_view_config as admin_workflow_rules_config
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
+import scrumbringer_client/features/automations/console as automations_console
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/engine_list_config
 import scrumbringer_client/features/automations/execution_history
 import scrumbringer_client/features/automations/execution_history_config
+import scrumbringer_client/features/automations/rule_list_config as automation_rule_list_config
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
@@ -1008,10 +1008,10 @@ fn admin_task_template_callbacks() -> template_library_config.Callbacks(
   )
 }
 
-fn admin_workflow_rule_callbacks() -> admin_workflow_rules_config.Callbacks(
+fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
   client_state.Msg,
 ) {
-  admin_workflow_rules_config.Callbacks(
+  automation_rule_list_config.Callbacks(
     on_back_clicked: client_state.pool_msg(pool_messages.RulesBackClicked),
     on_create_clicked: client_state.pool_msg(pool_messages.OpenRuleDialog(
       admin_rules.RuleDialogCreate,

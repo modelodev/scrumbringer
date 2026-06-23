@@ -1,4 +1,4 @@
-//// Unified automations admin console.
+//// Unified automations console.
 
 import gleam/int
 import gleam/option as opt
