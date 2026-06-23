@@ -115,6 +115,7 @@ pub type RuleInsertOptions {
     name: String,
     goal: Option(String),
     resource_type: String,
+    trigger_kind: String,
     task_type_id: Option(Int),
     to_state: String,
     active: Bool,
@@ -1168,9 +1169,9 @@ pub fn insert_rule(
   opts: RuleInsertOptions,
 ) -> Result(Int, String) {
   let base_cols =
-    "workflow_id, name, goal, resource_type, task_type_id, to_state, active"
-  let base_vals = "$1, $2, $3, $4, $5, $6, $7"
-  let base_idx = 8
+    "workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8"
+  let base_idx = 9
 
   let #(cols, vals, _, params) =
     append_optional_timestamp(
@@ -1191,6 +1192,7 @@ pub fn insert_rule(
     |> pog.parameter(pog.text(opts.name))
     |> pog.parameter(pog.nullable(pog.text, opts.goal))
     |> pog.parameter(pog.text(opts.resource_type))
+    |> pog.parameter(pog.text(opts.trigger_kind))
     |> pog.parameter(pog.nullable(pog.int, opts.task_type_id))
     |> pog.parameter(pog.text(opts.to_state))
     |> pog.parameter(pog.bool(opts.active))
@@ -1223,12 +1225,27 @@ pub fn insert_rule_simple(
       name: name,
       goal: None,
       resource_type: resource_type,
+      trigger_kind: trigger_kind_from_rule_values(resource_type, to_state),
       task_type_id: task_type_id,
       to_state: to_state,
       active: True,
       created_at: None,
     ),
   )
+}
+
+fn trigger_kind_from_rule_values(
+  resource_type: String,
+  to_state: String,
+) -> String {
+  case resource_type, to_state {
+    "task", "available" -> "task_created"
+    "task", "claimed" -> "task_claimed"
+    "task", "completed" | "task", "done" -> "task_completed"
+    "card", "en_curso" -> "card_activated"
+    "card", "cerrada" -> "card_closed"
+    _, _ -> "invalid_migrated_rule"
+  }
 }
 
 /// Select the template used by a rule.

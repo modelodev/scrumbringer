@@ -21,6 +21,7 @@
 //// - Direct SQL operations (see seed_db.gleam)
 //// - CLI or output (see seed.gleam)
 
+import domain/automation
 import domain/card
 import domain/org_role
 import domain/project_role
@@ -769,6 +770,9 @@ fn seed_rule_options(
     name: name,
     goal: goal,
     resource_type: workflow.rule_target_resource_type(target),
+    trigger_kind: workflow.rule_target_to_automation_trigger(target)
+      |> result.map(automation.trigger_kind)
+      |> result.unwrap("invalid_migrated_rule"),
     task_type_id: workflow.rule_target_task_type_id(target),
     to_state: workflow.rule_target_to_state_string(target),
     active: active,

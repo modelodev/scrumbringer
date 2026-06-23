@@ -4,6 +4,7 @@ INSERT INTO rules (
   name,
   goal,
   resource_type,
+  trigger_kind,
   task_type_id,
   to_state,
   active
@@ -13,9 +14,10 @@ VALUES (
   $2,
   nullif($3, ''),
   $4,
-  CASE WHEN $5 <= 0 THEN null ELSE $5 END,
-  $6,
-  $7
+  $5,
+  CASE WHEN $6 <= 0 THEN null ELSE $6 END,
+  $7,
+  $8
 )
 RETURNING
   id,
@@ -23,6 +25,7 @@ RETURNING
   name,
   coalesce(goal, '') as goal,
   resource_type,
+  trigger_kind,
   coalesce(task_type_id, 0) as task_type_id,
   to_state,
   active,

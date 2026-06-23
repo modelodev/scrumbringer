@@ -776,10 +776,12 @@ CREATE TABLE public.rules (
     name text NOT NULL,
     goal text,
     resource_type text NOT NULL,
+    trigger_kind text NOT NULL,
     task_type_id bigint,
     to_state text NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text, 'invalid_migrated_rule'::text]))),
     CONSTRAINT rules_resource_type_check CHECK ((resource_type = ANY (ARRAY['task'::text, 'card'::text])))
 );
 
@@ -1818,6 +1820,13 @@ CREATE INDEX idx_rule_executions_task ON public.rule_executions USING btree (tas
 --
 
 CREATE INDEX idx_rules_active ON public.rules USING btree (active) WHERE (active = true);
+
+
+--
+-- Name: idx_rules_trigger_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rules_trigger_kind ON public.rules USING btree (trigger_kind);
 
 
 --

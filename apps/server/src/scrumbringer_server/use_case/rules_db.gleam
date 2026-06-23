@@ -20,6 +20,7 @@
 //// - Uses `domain/workflow.gleam` for typed rule targets
 //// - Executes queries from `sql.gleam`
 
+import domain/automation
 import domain/workflow
 import gleam/int
 import gleam/list
@@ -40,6 +41,7 @@ pub type RuleRecord {
     workflow_id: Int,
     name: String,
     goal: Option(String),
+    trigger: automation.AutomationTrigger,
     target: workflow.RuleTarget,
     active: Bool,
     created_at: String,
@@ -58,6 +60,7 @@ fn rule_from_list_row(
     workflow_id: row.workflow_id,
     name: row.name,
     goal: option_helpers.string_to_option(row.goal),
+    trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
     to_state: row.to_state,
@@ -72,6 +75,7 @@ fn rule_from_get_row(row: sql.RulesGetRow) -> Result(RuleRecord, ServiceError) {
     workflow_id: row.workflow_id,
     name: row.name,
     goal: option_helpers.string_to_option(row.goal),
+    trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
     to_state: row.to_state,
@@ -88,6 +92,7 @@ fn rule_from_create_row(
     workflow_id: row.workflow_id,
     name: row.name,
     goal: option_helpers.string_to_option(row.goal),
+    trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
     to_state: row.to_state,
@@ -104,6 +109,7 @@ fn rule_from_update_row(
     workflow_id: row.workflow_id,
     name: row.name,
     goal: option_helpers.string_to_option(row.goal),
+    trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
     to_state: row.to_state,
@@ -117,6 +123,7 @@ fn rule_from_fields(
   workflow_id workflow_id: Int,
   name name: String,
   goal goal: Option(String),
+  trigger_kind trigger_kind: String,
   resource_type resource_type: String,
   task_type_id task_type_id: Int,
   to_state to_state: String,
@@ -128,12 +135,14 @@ fn rule_from_fields(
     task_type_id,
     to_state,
   ))
+  use trigger <- result.try(parse_stored_trigger(trigger_kind, task_type_id))
 
   Ok(RuleRecord(
     id: id,
     workflow_id: workflow_id,
     name: name,
     goal: goal,
+    trigger: trigger,
     target: target,
     active: active,
     created_at: created_at,
@@ -177,11 +186,31 @@ fn target_error_to_stored_error(
   )
 }
 
+fn trigger_error_to_stored_error(
+  error: automation.TriggerKindParseError,
+  trigger_kind: String,
+) -> ServiceError {
+  case error {
+    automation.UnknownTriggerKind(_) ->
+      Unexpected("Invalid persisted rule trigger_kind: " <> trigger_kind)
+  }
+}
+
 fn db_task_type_id(value: Int) -> Option(Int) {
   case value {
     id if id > 0 -> Some(id)
     _ -> None
   }
+}
+
+fn parse_stored_trigger(
+  trigger_kind: String,
+  task_type_id: Int,
+) -> Result(automation.AutomationTrigger, ServiceError) {
+  automation.trigger_from_kind(trigger_kind, db_task_type_id(task_type_id))
+  |> result.map_error(fn(error) {
+    trigger_error_to_stored_error(error, trigger_kind)
+  })
 }
 
 fn parse_stored_target(
@@ -248,6 +277,8 @@ pub fn create_rule(
 ) -> Result(RuleRecord, ServiceError) {
   let #(resource_type_value, task_type_value, to_state_value) =
     workflow.rule_target_to_db_values(target)
+  use trigger <- result.try(rule_target_to_trigger(target))
+  let trigger_kind_value = automation.trigger_kind(trigger)
 
   create_rule_in_db(
     db,
@@ -255,6 +286,7 @@ pub fn create_rule(
     name,
     goal,
     resource_type_value,
+    trigger_kind_value,
     task_type_value,
     to_state_value,
     active,
@@ -267,6 +299,7 @@ fn create_rule_in_db(
   name: String,
   goal: String,
   resource_type_value: String,
+  trigger_kind_value: String,
   task_type_value: Int,
   to_state_value: String,
   active: Bool,
@@ -278,6 +311,7 @@ fn create_rule_in_db(
       name,
       goal,
       resource_type_value,
+      trigger_kind_value,
       task_type_value,
       to_state_value,
       active,
@@ -346,8 +380,10 @@ fn update_rule_with_row(
     row.to_state,
   ))
   let target_value = option_helpers.option_to_value(target, stored_target)
+  use trigger <- result.try(rule_target_to_trigger(target_value))
   let #(resource_type_param, task_type_param, to_state_param) =
     workflow.rule_target_to_db_values(target_value)
+  let trigger_kind_param = automation.trigger_kind(trigger)
   let active_flag = case active_value {
     True -> 1
     False -> 0
@@ -359,6 +395,7 @@ fn update_rule_with_row(
     name_value,
     goal_value,
     resource_type_param,
+    trigger_kind_param,
     task_type_param,
     to_state_param,
     active_flag,
@@ -371,6 +408,7 @@ fn update_rule_in_db(
   name_value: String,
   goal_value: String,
   resource_type_param: String,
+  trigger_kind_param: String,
   task_type_param: Int,
   to_state_param: String,
   active_flag: Int,
@@ -382,6 +420,7 @@ fn update_rule_in_db(
       name_value,
       goal_value,
       resource_type_param,
+      trigger_kind_param,
       task_type_param,
       to_state_param,
       active_flag,
@@ -391,6 +430,26 @@ fn update_rule_in_db(
       rule_from_update_row(updated_row)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(map_update_rule_error(error))
+  }
+}
+
+fn rule_target_to_trigger(
+  target: workflow.RuleTarget,
+) -> Result(automation.AutomationTrigger, ServiceError) {
+  workflow.rule_target_to_automation_trigger(target)
+  |> result.map_error(fn(error) {
+    Unexpected(rule_target_trigger_error_label(error))
+  })
+}
+
+fn rule_target_trigger_error_label(
+  error: workflow.RuleTargetTriggerError,
+) -> String {
+  case error {
+    workflow.AmbiguousTaskAvailableTrigger ->
+      "Task available target must be represented as TaskCreated or TaskReleased"
+    workflow.UnsupportedCardDraftTrigger ->
+      "Draft cards are not automation triggers"
   }
 }
 

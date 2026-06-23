@@ -30,6 +30,7 @@ CREATE TABLE rules (
     name TEXT NOT NULL,
     goal TEXT,
     resource_type TEXT NOT NULL CHECK (resource_type IN ('task', 'card')),
+    trigger_kind TEXT NOT NULL CHECK (trigger_kind IN ('task_created', 'task_claimed', 'task_released', 'task_completed', 'card_activated', 'card_closed', 'invalid_migrated_rule')),
     task_type_id BIGINT REFERENCES task_types(id),
     to_state TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
@@ -38,6 +39,7 @@ CREATE TABLE rules (
 
 CREATE INDEX idx_rules_workflow ON rules(workflow_id);
 CREATE INDEX idx_rules_active ON rules(active) WHERE active = true;
+CREATE INDEX idx_rules_trigger_kind ON rules(trigger_kind);
 
 --------------------------------------------------------------------------------
 -- 3. Task templates
@@ -101,6 +103,7 @@ DROP INDEX idx_task_templates_org;
 DROP TABLE task_templates;
 
 DROP INDEX idx_rules_active;
+DROP INDEX idx_rules_trigger_kind;
 DROP INDEX idx_rules_workflow;
 DROP TABLE rules;
 

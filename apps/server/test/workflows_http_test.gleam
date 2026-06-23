@@ -350,7 +350,7 @@ fn decode_workflow_names(body: String) -> List(String) {
 fn insert_rule(db: pog.Connection, workflow_id: Int) {
   let assert Ok(_) =
     pog.query(
-      "insert into rules (workflow_id, name, goal, resource_type, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', null, 'completed', true)",
+      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_completed', null, 'completed', true)",
     )
     |> pog.parameter(pog.int(workflow_id))
     |> pog.execute(db)

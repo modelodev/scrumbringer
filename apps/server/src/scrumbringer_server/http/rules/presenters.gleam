@@ -1,5 +1,6 @@
 //// JSON presenters for workflow rule endpoints.
 
+import domain/automation/automation_codec
 import domain/workflow
 import gleam/json
 import gleam/option.{type Option, None, Some}
@@ -34,6 +35,7 @@ pub fn rule_with_template(
     workflow_id: workflow_id,
     name: name,
     goal: goal,
+    trigger: trigger,
     target: target,
     active: active,
     created_at: created_at,
@@ -48,6 +50,7 @@ pub fn rule_with_template(
     #("name", json.string(name)),
     #("goal", json_helpers.option_string_json(goal)),
     #("resource_type", json.string(resource_type)),
+    #("trigger", automation_codec.trigger_to_json(trigger)),
     #("task_type_id", json_helpers.option_int_json(task_type_id)),
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),

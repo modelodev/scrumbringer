@@ -187,6 +187,7 @@ schema_canonical_data_model_violations(Root) ->
     end.
 
 forbidden_schema_terms(Text) ->
+    LegacyStateText = schema_text_without_rule_trigger_kinds(Text),
     Forbidden = [
         <<"status text DEFAULT 'available'::text NOT NULL">>,
         <<"tasks_status_check">>,
@@ -200,7 +201,18 @@ forbidden_schema_terms(Text) ->
     ],
     [bin(["db/schema.sql contains forbidden final-schema term: ", Term])
      || Term <- Forbidden,
-        binary:match(Text, Term) =/= nomatch].
+        binary:match(LegacyStateText, Term) =/= nomatch].
+
+schema_text_without_rule_trigger_kinds(Text) ->
+    Lines = binary:split(Text, <<"\n">>, [global]),
+    Kept = [Line || Line <- Lines,
+                    binary:match(Line, <<"rules_trigger_kind_check">>) =:= nomatch],
+    join_binary_lines(Kept).
+
+join_binary_lines([]) ->
+    <<>>;
+join_binary_lines([Line | Lines]) ->
+    lists:foldl(fun(Next, Acc) -> <<Acc/binary, "\n", Next/binary>> end, Line, Lines).
 
 required_schema_terms(Text) ->
     Required = [
@@ -221,6 +233,8 @@ required_schema_terms(Text) ->
         <<"task_closed">>,
         <<"rule_executions_task_id_fkey">>,
         <<"rule_executions_card_id_fkey">>,
+        <<"rules_trigger_kind_check">>,
+        <<"idx_rules_trigger_kind">>,
         <<"project_settings_increment_version">>,
         <<"trg_project_settings_increment_version">>
     ],

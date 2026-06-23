@@ -5,6 +5,7 @@ SELECT
   r.name,
   coalesce(r.goal, '') as goal,
   r.resource_type,
+  r.trigger_kind,
   coalesce(r.task_type_id, 0) as task_type_id,
   r.to_state,
   r.active,

@@ -221,6 +221,10 @@ pub type TriggerParseError {
   UnsupportedTransition
 }
 
+pub type TriggerKindParseError {
+  UnknownTriggerKind(String)
+}
+
 pub fn task_transition_trigger(
   from_state: Option(task_status.TaskPhase),
   to_state: task_status.TaskPhase,
@@ -262,6 +266,21 @@ pub fn trigger_kind(trigger: AutomationTrigger) -> String {
     TaskCompleted(_) -> "task_completed"
     CardActivated(_) -> "card_activated"
     CardClosed(_) -> "card_closed"
+  }
+}
+
+pub fn trigger_from_kind(
+  kind: String,
+  task_type_id: Option(Int),
+) -> Result(AutomationTrigger, TriggerKindParseError) {
+  case kind {
+    "task_created" -> Ok(TaskCreated(task_type_id))
+    "task_claimed" -> Ok(TaskClaimed(task_type_id))
+    "task_released" -> Ok(TaskReleased(task_type_id))
+    "task_completed" -> Ok(TaskCompleted(task_type_id))
+    "card_activated" -> Ok(CardActivated(AnyCard))
+    "card_closed" -> Ok(CardClosed(AnyCard))
+    other -> Error(UnknownTriggerKind(other))
   }
 }
 

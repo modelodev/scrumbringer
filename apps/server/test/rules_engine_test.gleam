@@ -7,8 +7,10 @@ import domain/automation
 import domain/card as domain_card
 import domain/task_status
 import fixtures
+import gleam/dynamic/decode
 import gleam/int
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server
@@ -1183,6 +1185,62 @@ pub fn wrong_to_state_does_not_match_test() {
   let assert Ok([]) = result
 }
 
+pub fn task_created_and_released_rules_do_not_collide_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "AvailableTriggers")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Available WF")
+
+  let assert Ok(created_rule_id) =
+    insert_available_rule(db, workflow_id, "Created Rule", "task_created")
+  let assert Ok(released_rule_id) =
+    insert_available_rule(db, workflow_id, "Released Rule", "task_released")
+  let assert Ok(Nil) = select_template(db, created_rule_id, template_id)
+  let assert Ok(Nil) = select_template(db, released_rule_id, template_id)
+
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Source Task")
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  let created_event =
+    fixtures.task_event_status(
+      task_id,
+      project_id,
+      org_id,
+      user_id,
+      None,
+      task_status.Available,
+      type_id,
+    )
+  let assert Ok([
+    RuleResult(rule_id: created_matched, outcome: automation.Executed(_)),
+  ]) = rules_engine.evaluate_rules(db, created_event)
+  created_matched |> expect.equal(created_rule_id)
+
+  let released_event =
+    fixtures.task_event_status(
+      task_id,
+      project_id,
+      org_id,
+      user_id,
+      Some(task_status.Claimed(task_status.Taken)),
+      task_status.Available,
+      type_id,
+    )
+  let assert Ok([
+    RuleResult(rule_id: released_matched, outcome: automation.Executed(_)),
+  ]) = rules_engine.evaluate_rules(db, released_event)
+  released_matched |> expect.equal(released_rule_id)
+}
+
 pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1304,6 +1362,53 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
   let assert Ok(final_count) =
     fixtures.query_int(db, "select count(*)::int from tasks", [])
   final_count |> expect.equal(initial_count)
+}
+
+fn insert_available_rule(
+  db: pog.Connection,
+  workflow_id: Int,
+  name: String,
+  trigger_kind: String,
+) -> Result(Int, String) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(id)
+  }
+
+  pog.query(
+    "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active)
+     values ($1, $2, 'Available trigger test', 'task', $3, null, 'available', true)
+     returning id",
+  )
+  |> pog.parameter(pog.int(workflow_id))
+  |> pog.parameter(pog.text(name))
+  |> pog.parameter(pog.text(trigger_kind))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+  |> result.map_error(fn(error) { string.inspect(error) })
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [id] -> Ok(id)
+      [] -> Error("rule insert returned no id")
+      [_, _, ..] -> Error("rule insert returned multiple ids")
+    }
+  })
+}
+
+fn select_template(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "insert into rule_templates (rule_id, template_id, execution_order)
+     values ($1, $2, 1)",
+  )
+  |> pog.parameter(pog.int(rule_id))
+  |> pog.parameter(pog.int(template_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(error) { string.inspect(error) })
 }
 
 // =============================================================================

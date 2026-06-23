@@ -282,15 +282,15 @@ fn find_matching_rules(
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
   use trigger <- result.try(event_trigger(event))
+  let trigger_kind = automation.trigger_kind(trigger)
   let resource_type_str = automation.trigger_resource_type(trigger)
   let task_type_param = task_type_filter_value(trigger)
-  let to_state_value = automation.trigger_to_state_string(trigger)
 
   case
     sql.rules_find_matching(
       db,
+      trigger_kind,
       resource_type_str,
-      to_state_value,
       event_project_id(event),
       event_org_id(event),
       task_type_param,

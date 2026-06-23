@@ -67,6 +67,17 @@ pub fn event_keys_separate_different_facts_on_same_task_test() {
     automation.trigger_to_event_key(done, task_id)
 }
 
+pub fn trigger_kind_round_trips_to_supported_trigger_test() {
+  let assert Ok(automation.TaskCreated(Some(7))) =
+    automation.trigger_from_kind("task_created", Some(7))
+  let assert Ok(automation.TaskReleased(Some(7))) =
+    automation.trigger_from_kind("task_released", Some(7))
+  let assert Ok(automation.CardActivated(automation.AnyCard)) =
+    automation.trigger_from_kind("card_activated", None)
+  let assert Error(automation.UnknownTriggerKind("task_due")) =
+    automation.trigger_from_kind("task_due", None)
+}
+
 pub fn available_variables_exclude_legacy_and_due_date_values_test() {
   let trigger = automation.TaskCompleted(None)
 
