@@ -44,6 +44,8 @@ fn config(
     on_create_dialog_opened: "create-open",
     on_create_dialog_closed: "create-close",
     on_create_submitted: "create-submit",
+    on_create_next_clicked: "create-next",
+    on_create_back_clicked: "create-back",
     on_create_name_changed: fn(value) { "create-name:" <> value },
     on_create_max_depth_changed: fn(value) { "create-depth:" <> value },
     on_create_healthy_pool_limit_changed: fn(value) { "create-limit:" <> value },
@@ -116,6 +118,7 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
   let dialog =
     projects_state.Model(projects_dialog: DialogOpen(
       form: projects_state.ProjectDialogCreate(
+        step: projects_state.ProjectCreateStructurePool,
         name: "Project Alpha",
         max_depth: "3",
         healthy_pool_limit: "20",
@@ -144,6 +147,74 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
   assert_contains(html, "Este limite nunca bloquea")
   assert_contains(html, "aria-label=\"Profundidad maxima\"")
   assert_contains(html, "aria-label=\"Limite blando del Pool\"")
+}
+
+pub fn projects_create_dialog_general_step_hides_structure_test() {
+  let dialog =
+    projects_state.Model(projects_dialog: DialogOpen(
+      form: projects_state.ProjectDialogCreate(
+        step: projects_state.ProjectCreateGeneral,
+        name: "",
+        max_depth: "3",
+        healthy_pool_limit: "20",
+        card_depth_names: [
+          ProjectDepthName(1, "Hito", "Hitos"),
+          ProjectDepthName(2, "Entrega", "Entregas"),
+          ProjectDepthName(3, "Historia", "Historias"),
+        ],
+      ),
+      operation: InFlight,
+    ))
+
+  let html =
+    projects_view.view_project_dialogs(
+      projects_view.Config(
+        ..config(remote.Loaded([project()])),
+        project_dialog: dialog,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Step 1 of 5")
+  assert_contains(html, "General")
+  assert_contains(html, "Continue")
+  assert_contains(html, "aria-label=\"Name\"")
+  assert_not_contains(html, "data-testid=\"project-structure-settings\"")
+}
+
+pub fn projects_create_dialog_review_step_summarizes_configuration_test() {
+  let dialog =
+    projects_state.Model(projects_dialog: DialogOpen(
+      form: projects_state.ProjectDialogCreate(
+        step: projects_state.ProjectCreateReview,
+        name: "Project Alpha",
+        max_depth: "3",
+        healthy_pool_limit: "20",
+        card_depth_names: [
+          ProjectDepthName(1, "Hito", "Hitos"),
+          ProjectDepthName(2, "Entrega", "Entregas"),
+          ProjectDepthName(3, "Historia", "Historias"),
+        ],
+      ),
+      operation: InFlight,
+    ))
+
+  let html =
+    projects_view.view_project_dialogs(
+      projects_view.Config(
+        ..config(remote.Loaded([project()])),
+        project_dialog: dialog,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Step 5 of 5")
+  assert_contains(html, "Review")
+  assert_contains(html, "Project Alpha")
+  assert_contains(html, "Hito / Hitos")
+  assert_contains(html, "Configured after creation")
+  assert_contains(html, "Creating")
+  assert_contains(html, "Back")
 }
 
 pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() {

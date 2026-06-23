@@ -58,6 +58,8 @@ pub type Config(msg) {
     on_create_dialog_opened: msg,
     on_create_dialog_closed: msg,
     on_create_submitted: msg,
+    on_create_next_clicked: msg,
+    on_create_back_clicked: msg,
     on_create_name_changed: fn(String) -> msg,
     on_create_max_depth_changed: fn(String) -> msg,
     on_create_healthy_pool_limit_changed: fn(String) -> msg,
@@ -114,14 +116,14 @@ pub fn view_project_dialogs(config: Config(msg)) -> element.Element(msg) {
 
 /// Dialog for creating a new project.
 fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
-  let #(is_open, name, in_flight, error) = case
+  let #(is_open, step, name, in_flight, error) = case
     config.project_dialog.projects_dialog
   {
     DialogOpen(
-      form: projects_state.ProjectDialogCreate(name: name, ..),
+      form: projects_state.ProjectDialogCreate(step: step, name: name, ..),
       operation: op,
-    ) -> #(True, name, operation_in_flight(op), operation_error(op))
-    _ -> #(False, "", False, opt.None)
+    ) -> #(True, step, name, operation_in_flight(op), operation_error(op))
+    _ -> #(False, projects_state.ProjectCreateGeneral, "", False, opt.None)
   }
 
   let #(max_depth, healthy_pool_limit, depth_names) =
@@ -144,17 +146,10 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
           attribute.id("project-create-form"),
         ],
         [
-          form_field.view(
-            t(config, i18n_text.Name),
-            input([
-              attribute.type_("text"),
-              attribute.value(name),
-              event.on_input(fn(value) { config.on_create_name_changed(value) }),
-              attribute.required(True),
-              attribute.autofocus(True),
-            ]),
-          ),
-          view_project_create_structure_settings(
+          view_project_create_progress(step, config),
+          view_project_create_step(
+            step,
+            name,
             depth_names,
             max_depth,
             healthy_pool_limit,
@@ -164,11 +159,280 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
       ),
     ],
     // Footer buttons
+    view_project_create_footer(step, in_flight, config),
+  )
+}
+
+fn view_project_create_progress(
+  step: projects_state.ProjectCreateStep,
+  config: Config(msg),
+) -> element.Element(msg) {
+  div(
     [
+      attribute.class("project-create-wizard__progress"),
+      attribute.attribute(
+        "aria-label",
+        t(
+          config,
+          i18n_text.ProjectCreateStepLabel(
+            project_create_step_number(step),
+            project_create_total_steps(),
+          ),
+        ),
+      ),
+    ],
+    [
+      view_project_create_progress_step(
+        projects_state.ProjectCreateGeneral,
+        step,
+        config,
+      ),
+      view_project_create_progress_step(
+        projects_state.ProjectCreateStructurePool,
+        step,
+        config,
+      ),
+      view_project_create_progress_step(
+        projects_state.ProjectCreateCapabilities,
+        step,
+        config,
+      ),
+      view_project_create_progress_step(
+        projects_state.ProjectCreateTeam,
+        step,
+        config,
+      ),
+      view_project_create_progress_step(
+        projects_state.ProjectCreateReview,
+        step,
+        config,
+      ),
+    ],
+  )
+}
+
+fn view_project_create_progress_step(
+  step: projects_state.ProjectCreateStep,
+  current: projects_state.ProjectCreateStep,
+  config: Config(msg),
+) -> element.Element(msg) {
+  let selected = step == current
+  let class_name = case selected {
+    True -> "project-create-wizard__step is-active"
+    False -> "project-create-wizard__step"
+  }
+
+  let attrs = [
+    attribute.class(class_name),
+  ]
+
+  let attrs = case selected {
+    True -> list.append(attrs, [attribute.attribute("aria-current", "step")])
+    False -> attrs
+  }
+
+  span(attrs, [
+    span([attribute.class("project-create-wizard__step-index")], [
+      text(int.to_string(project_create_step_number(step))),
+    ]),
+    span([attribute.class("project-create-wizard__step-label")], [
+      text(project_create_step_title(step, config)),
+    ]),
+  ])
+}
+
+fn view_project_create_step(
+  step: projects_state.ProjectCreateStep,
+  name: String,
+  depth_names: List(ProjectDepthName),
+  max_depth: String,
+  healthy_pool_limit: String,
+  config: Config(msg),
+) -> element.Element(msg) {
+  case step {
+    projects_state.ProjectCreateGeneral ->
+      view_project_create_general(name, config)
+
+    projects_state.ProjectCreateStructurePool ->
+      div([attribute.class("project-create-wizard__panel")], [
+        view_project_create_structure_settings(
+          depth_names,
+          max_depth,
+          healthy_pool_limit,
+          config,
+        ),
+      ])
+
+    projects_state.ProjectCreateCapabilities ->
+      view_project_create_optional_step(
+        t(config, i18n_text.ProjectCreateCapabilitiesTitle),
+        t(config, i18n_text.ProjectCreateCapabilitiesHint),
+      )
+
+    projects_state.ProjectCreateTeam ->
+      view_project_create_optional_step(
+        t(config, i18n_text.ProjectCreateTeamTitle),
+        t(config, i18n_text.ProjectCreateTeamHint),
+      )
+
+    projects_state.ProjectCreateReview ->
+      view_project_create_review(
+        name,
+        depth_names,
+        max_depth,
+        healthy_pool_limit,
+        config,
+      )
+  }
+}
+
+fn view_project_create_general(
+  name: String,
+  config: Config(msg),
+) -> element.Element(msg) {
+  div([attribute.class("project-create-wizard__panel")], [
+    view_project_create_step_heading(
+      t(config, i18n_text.ProjectCreateGeneralTitle),
+      t(config, i18n_text.ProjectCreateGeneralHint),
+    ),
+    form_field.view(
+      t(config, i18n_text.Name),
+      input([
+        attribute.type_("text"),
+        attribute.value(name),
+        attribute.attribute("aria-label", t(config, i18n_text.Name)),
+        event.on_input(fn(value) { config.on_create_name_changed(value) }),
+        attribute.required(True),
+        attribute.autofocus(True),
+      ]),
+    ),
+  ])
+}
+
+fn view_project_create_optional_step(
+  title: String,
+  hint: String,
+) -> element.Element(msg) {
+  div([attribute.class("project-create-wizard__panel")], [
+    view_project_create_step_heading(title, hint),
+  ])
+}
+
+fn view_project_create_review(
+  name: String,
+  depth_names: List(ProjectDepthName),
+  max_depth: String,
+  healthy_pool_limit: String,
+  config: Config(msg),
+) -> element.Element(msg) {
+  div([attribute.class("project-create-wizard__panel")], [
+    view_project_create_step_heading(
+      t(config, i18n_text.ProjectCreateReviewTitle),
+      t(config, i18n_text.ProjectCreateReviewHint),
+    ),
+    div([attribute.class("project-create-wizard__review")], [
+      view_project_create_review_row(t(config, i18n_text.Name), name),
+      view_project_create_review_row(
+        t(config, i18n_text.ProjectMaximumDepth),
+        max_depth,
+      ),
+      view_project_create_review_row(
+        t(config, i18n_text.ProjectPoolSoftLimit),
+        healthy_pool_limit,
+      ),
+      div([attribute.class("project-create-wizard__review-group")], [
+        p([attribute.class("project-create-wizard__review-label")], [
+          text(t(config, i18n_text.ProjectStructureAndPool)),
+        ]),
+        ul([], {
+          depth_names
+          |> normalize_depth_names
+          |> list.map(fn(depth_name) {
+            li([], [
+              text(
+                int.to_string(depth_name.depth)
+                <> ". "
+                <> depth_name.singular_name
+                <> " / "
+                <> depth_name.plural_name,
+              ),
+            ])
+          })
+        }),
+      ]),
+      view_project_create_review_row(
+        t(config, i18n_text.ProjectCreateCapabilitiesTitle),
+        t(config, i18n_text.ProjectCreateReviewSkipped),
+      ),
+      view_project_create_review_row(
+        t(config, i18n_text.ProjectCreateTeamTitle),
+        t(config, i18n_text.ProjectCreateReviewSkipped),
+      ),
+    ]),
+  ])
+}
+
+fn view_project_create_step_heading(
+  title: String,
+  hint: String,
+) -> element.Element(msg) {
+  div([attribute.class("project-create-wizard__heading")], [
+    p([attribute.class("project-create-wizard__title")], [text(title)]),
+    p([attribute.class("project-create-wizard__hint")], [text(hint)]),
+  ])
+}
+
+fn view_project_create_review_row(
+  label_text: String,
+  value: String,
+) -> element.Element(msg) {
+  div([attribute.class("project-create-wizard__review-row")], [
+    span([attribute.class("project-create-wizard__review-label")], [
+      text(label_text),
+    ]),
+    span([attribute.class("project-create-wizard__review-value")], [
+      text(value),
+    ]),
+  ])
+}
+
+fn view_project_create_footer(
+  step: projects_state.ProjectCreateStep,
+  in_flight: Bool,
+  config: Config(msg),
+) -> List(element.Element(msg)) {
+  case step {
+    projects_state.ProjectCreateGeneral -> [
       dialog.cancel_button_with_locale(
         config.locale,
         config.on_create_dialog_closed,
       ),
+      ui_button.text(
+        t(config, i18n_text.Continue),
+        config.on_create_next_clicked,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+        |> ui_button.view,
+    ]
+
+    projects_state.ProjectCreateStructurePool -> [
+      project_create_back_button(config),
+      project_create_next_button(config, i18n_text.Continue),
+    ]
+
+    projects_state.ProjectCreateCapabilities -> [
+      project_create_back_button(config),
+      project_create_next_button(config, i18n_text.Skip),
+    ]
+
+    projects_state.ProjectCreateTeam -> [
+      project_create_back_button(config),
+      project_create_next_button(config, i18n_text.Skip),
+    ]
+
+    projects_state.ProjectCreateReview -> [
+      project_create_back_button(config),
       dialog.submit_button_with_locale_form(
         config.locale,
         "project-create-form",
@@ -177,8 +441,63 @@ fn view_projects_create_dialog(config: Config(msg)) -> element.Element(msg) {
         i18n_text.Create,
         i18n_text.Creating,
       ),
-    ],
+    ]
+  }
+}
+
+fn project_create_back_button(config: Config(msg)) -> element.Element(msg) {
+  ui_button.text(
+    t(config, i18n_text.Back),
+    config.on_create_back_clicked,
+    ui_button.Secondary,
+    ui_button.EntityAction,
   )
+  |> ui_button.view
+}
+
+fn project_create_next_button(
+  config: Config(msg),
+  label: i18n_text.Text,
+) -> element.Element(msg) {
+  ui_button.text(
+    t(config, label),
+    config.on_create_next_clicked,
+    ui_button.Primary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.view
+}
+
+fn project_create_total_steps() -> Int {
+  5
+}
+
+fn project_create_step_number(step: projects_state.ProjectCreateStep) -> Int {
+  case step {
+    projects_state.ProjectCreateGeneral -> 1
+    projects_state.ProjectCreateStructurePool -> 2
+    projects_state.ProjectCreateCapabilities -> 3
+    projects_state.ProjectCreateTeam -> 4
+    projects_state.ProjectCreateReview -> 5
+  }
+}
+
+fn project_create_step_title(
+  step: projects_state.ProjectCreateStep,
+  config: Config(msg),
+) -> String {
+  case step {
+    projects_state.ProjectCreateGeneral ->
+      t(config, i18n_text.ProjectCreateGeneralTitle)
+    projects_state.ProjectCreateStructurePool ->
+      t(config, i18n_text.ProjectStructureAndPool)
+    projects_state.ProjectCreateCapabilities ->
+      t(config, i18n_text.ProjectCreateCapabilitiesTitle)
+    projects_state.ProjectCreateTeam ->
+      t(config, i18n_text.ProjectCreateTeamTitle)
+    projects_state.ProjectCreateReview ->
+      t(config, i18n_text.ProjectCreateReviewTitle)
+  }
 }
 
 fn create_project_structure(

@@ -30,7 +30,15 @@ fn edit_form(id: Int, name: String) -> admin_projects.ProjectDialogForm {
 }
 
 fn create_form(name: String) -> admin_projects.ProjectDialogForm {
+  create_form_at_step(name, admin_projects.ProjectCreateGeneral)
+}
+
+fn create_form_at_step(
+  name: String,
+  step: admin_projects.ProjectCreateStep,
+) -> admin_projects.ProjectDialogForm {
   admin_projects.ProjectDialogCreate(
+    step: step,
     name: name,
     max_depth: "3",
     healthy_pool_limit: "20",
@@ -145,10 +153,76 @@ pub fn create_submit_requires_name_test() {
   let assert projects_update.NoCoreChange = core_policy
 }
 
-pub fn create_submit_sets_in_flight_for_valid_name_test() {
+pub fn create_submit_advances_general_step_for_valid_name_test() {
   let model =
     admin_projects.Model(projects_dialog: DialogOpen(
       form: create_form(" New project "),
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectCreateSubmitted)
+
+  let assert DialogOpen(form: form, operation: Idle) = next.projects_dialog
+  let assert True =
+    form
+    == create_form_at_step(
+      " New project ",
+      admin_projects.ProjectCreateStructurePool,
+    )
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn create_next_valid_structure_advances_to_capabilities_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: create_form_at_step(
+        "Project",
+        admin_projects.ProjectCreateStructurePool,
+      ),
+      operation: Idle,
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectCreateNextClicked)
+
+  let assert DialogOpen(form: form, operation: Idle) = next.projects_dialog
+  let assert True =
+    form
+    == create_form_at_step("Project", admin_projects.ProjectCreateCapabilities)
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn create_back_returns_to_previous_step_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: create_form_at_step("Project", admin_projects.ProjectCreateTeam),
+      operation: OpError("stale"),
+    ))
+
+  let #(next, fx, auth_policy, core_policy) =
+    update(model, admin_messages.ProjectCreateBackClicked)
+
+  let assert DialogOpen(form: form, operation: Idle) = next.projects_dialog
+  let assert True =
+    form
+    == create_form_at_step("Project", admin_projects.ProjectCreateCapabilities)
+  let assert True = fx == effect.none()
+  let assert projects_update.NoAuthCheck = auth_policy
+  let assert projects_update.NoCoreChange = core_policy
+}
+
+pub fn create_submit_sets_in_flight_on_review_step_test() {
+  let model =
+    admin_projects.Model(projects_dialog: DialogOpen(
+      form: create_form_at_step(
+        " New project ",
+        admin_projects.ProjectCreateReview,
+      ),
       operation: Idle,
     ))
 
@@ -156,7 +230,9 @@ pub fn create_submit_sets_in_flight_for_valid_name_test() {
     update(model, admin_messages.ProjectCreateSubmitted)
 
   let assert DialogOpen(form: form, operation: InFlight) = next.projects_dialog
-  let assert True = form == create_form(" New project ")
+  let assert True =
+    form
+    == create_form_at_step(" New project ", admin_projects.ProjectCreateReview)
   let assert projects_update.NoAuthCheck = auth_policy
   let assert projects_update.NoCoreChange = core_policy
 }

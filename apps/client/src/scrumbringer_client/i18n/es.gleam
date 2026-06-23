@@ -122,6 +122,9 @@ pub fn translate(text: Text) -> String {
     text.Dismiss -> "Cerrar"
     text.Cancel -> "Cancelar"
     text.Close -> "Cerrar"
+    text.Back -> "Atrás"
+    text.Continue -> "Continuar"
+    text.Skip -> "Saltar"
     text.Create -> "Crear"
     text.Creating -> "Creando…"
     text.Copy -> "Copiar"
@@ -694,6 +697,21 @@ pub fn translate(text: Text) -> String {
     text.DeleteProjectWarning ->
       "Esta acción no se puede deshacer. Se eliminarán todas las tareas, tarjetas y miembros asociados."
     text.MembersCount -> "Miembros"
+    text.ProjectCreateStepLabel(current, total) ->
+      "Paso " <> int.to_string(current) <> " de " <> int.to_string(total)
+    text.ProjectCreateGeneralTitle -> "General"
+    text.ProjectCreateGeneralHint ->
+      "Nombra el proyecto para que el equipo reconozca dónde vive este trabajo."
+    text.ProjectCreateCapabilitiesTitle -> "Capacidades"
+    text.ProjectCreateCapabilitiesHint ->
+      "Las capacidades iniciales se pueden configurar después de crear el proyecto, antes de invitar o asignar equipo."
+    text.ProjectCreateTeamTitle -> "Equipo"
+    text.ProjectCreateTeamHint ->
+      "Invita miembros cuando el proyecto exista para ajustar roles y capacidades con contexto."
+    text.ProjectCreateReviewTitle -> "Revisión"
+    text.ProjectCreateReviewHint ->
+      "Confirma la estructura obligatoria. Capacidades y equipo pueden seguir después de crear el proyecto."
+    text.ProjectCreateReviewSkipped -> "Se configura después de crear"
 
     // Capabilities
     text.Capabilities -> "Capacidades"

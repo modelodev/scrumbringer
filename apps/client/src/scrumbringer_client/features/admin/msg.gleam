@@ -25,6 +25,8 @@ pub type Msg {
   ProjectCreateHealthyPoolLimitChanged(String)
   ProjectCreateDepthSingularChanged(Int, String)
   ProjectCreateDepthPluralChanged(Int, String)
+  ProjectCreateNextClicked
+  ProjectCreateBackClicked
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
   ProjectEditDialogOpened(Int, String, Int, List(ProjectDepthName))

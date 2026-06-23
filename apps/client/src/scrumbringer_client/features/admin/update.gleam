@@ -159,6 +159,8 @@ fn update_without_api_tokens(
     | admin_messages.ProjectCreateHealthyPoolLimitChanged(_)
     | admin_messages.ProjectCreateDepthSingularChanged(_, _)
     | admin_messages.ProjectCreateDepthPluralChanged(_, _)
+    | admin_messages.ProjectCreateNextClicked
+    | admin_messages.ProjectCreateBackClicked
     | admin_messages.ProjectCreateSubmitted
     | admin_messages.ProjectCreated(_)
     | admin_messages.ProjectEditDialogOpened(_, _, _, _)

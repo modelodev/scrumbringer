@@ -15,9 +15,18 @@ pub type DepthReductionState {
   DepthReductionConfirmed(new_max_depth: Int)
 }
 
+pub type ProjectCreateStep {
+  ProjectCreateGeneral
+  ProjectCreateStructurePool
+  ProjectCreateCapabilities
+  ProjectCreateTeam
+  ProjectCreateReview
+}
+
 /// Represents the form payload for the projects dialog.
 pub type ProjectDialogForm {
   ProjectDialogCreate(
+    step: ProjectCreateStep,
     name: String,
     max_depth: String,
     healthy_pool_limit: String,

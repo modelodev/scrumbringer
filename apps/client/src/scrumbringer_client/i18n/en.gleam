@@ -119,6 +119,9 @@ pub fn translate(text: Text) -> String {
     text.Dismiss -> "Dismiss"
     text.Cancel -> "Cancel"
     text.Close -> "Close"
+    text.Back -> "Back"
+    text.Continue -> "Continue"
+    text.Skip -> "Skip"
     text.Create -> "Create"
     text.Creating -> "Creating…"
     text.Copy -> "Copy"
@@ -679,6 +682,21 @@ pub fn translate(text: Text) -> String {
     text.DeleteProjectWarning ->
       "This action cannot be undone. All tasks, cards and members will be deleted."
     text.MembersCount -> "Members"
+    text.ProjectCreateStepLabel(current, total) ->
+      "Step " <> int.to_string(current) <> " of " <> int.to_string(total)
+    text.ProjectCreateGeneralTitle -> "General"
+    text.ProjectCreateGeneralHint ->
+      "Name the project so the team can recognize where this work belongs."
+    text.ProjectCreateCapabilitiesTitle -> "Capabilities"
+    text.ProjectCreateCapabilitiesHint ->
+      "Initial capabilities can be configured after creation, before inviting or assigning the team."
+    text.ProjectCreateTeamTitle -> "Team"
+    text.ProjectCreateTeamHint ->
+      "Invite members after the project exists so roles and capabilities can be adjusted in context."
+    text.ProjectCreateReviewTitle -> "Review"
+    text.ProjectCreateReviewHint ->
+      "Confirm the required structure. Capabilities and team setup can continue after creation."
+    text.ProjectCreateReviewSkipped -> "Configured after creation"
 
     // Capabilities
     text.Capabilities -> "Capabilities"

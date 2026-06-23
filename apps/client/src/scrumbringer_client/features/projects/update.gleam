@@ -128,6 +128,14 @@ pub fn try_update(
       handle_project_create_depth_plural_changed(model, depth, value)
       |> without_policies
 
+    admin_messages.ProjectCreateNextClicked ->
+      handle_project_create_next_clicked(model, context)
+      |> without_policies
+
+    admin_messages.ProjectCreateBackClicked ->
+      handle_project_create_back_clicked(model)
+      |> without_policies
+
     admin_messages.ProjectCreateSubmitted ->
       handle_project_create_submitted(model, context)
       |> without_policies
@@ -290,6 +298,7 @@ fn handle_project_create_name_changed(
   let next_state = case model.projects_dialog {
     DialogOpen(
       form: admin_projects.ProjectDialogCreate(
+        step: step,
         max_depth: max_depth,
         healthy_pool_limit: healthy_pool_limit,
         card_depth_names: card_depth_names,
@@ -299,6 +308,7 @@ fn handle_project_create_name_changed(
     ) ->
       DialogOpen(
         form: admin_projects.ProjectDialogCreate(
+          step: step,
           name: name,
           max_depth: max_depth,
           healthy_pool_limit: healthy_pool_limit,
@@ -319,6 +329,7 @@ fn handle_project_create_healthy_pool_limit_changed(
   let next_state = case model.projects_dialog {
     DialogOpen(
       form: admin_projects.ProjectDialogCreate(
+        step: step,
         name: name,
         max_depth: max_depth,
         card_depth_names: card_depth_names,
@@ -328,6 +339,7 @@ fn handle_project_create_healthy_pool_limit_changed(
     ) ->
       DialogOpen(
         form: admin_projects.ProjectDialogCreate(
+          step: step,
           name: name,
           max_depth: max_depth,
           healthy_pool_limit: value,
@@ -348,6 +360,7 @@ fn handle_project_create_max_depth_changed(
   let next_state = case model.projects_dialog {
     DialogOpen(
       form: admin_projects.ProjectDialogCreate(
+        step: step,
         name: name,
         healthy_pool_limit: healthy_pool_limit,
         card_depth_names: card_depth_names,
@@ -357,6 +370,7 @@ fn handle_project_create_max_depth_changed(
     ) ->
       DialogOpen(
         form: admin_projects.ProjectDialogCreate(
+          step: step,
           name: name,
           max_depth: value,
           healthy_pool_limit: healthy_pool_limit,
@@ -398,6 +412,7 @@ fn update_project_create_depth_name(
   let next_state = case model.projects_dialog {
     DialogOpen(
       form: admin_projects.ProjectDialogCreate(
+        step: step,
         name: name,
         max_depth: max_depth,
         healthy_pool_limit: healthy_pool_limit,
@@ -407,6 +422,7 @@ fn update_project_create_depth_name(
     ) ->
       DialogOpen(
         form: admin_projects.ProjectDialogCreate(
+          step: step,
           name: name,
           max_depth: max_depth,
           healthy_pool_limit: healthy_pool_limit,
@@ -424,31 +440,198 @@ fn update_project_create_depth_name(
   #(set_projects_dialog(model, next_state), effect.none())
 }
 
+fn handle_project_create_next_clicked(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  advance_project_create(model, context)
+}
+
+fn handle_project_create_back_clicked(
+  model: admin_projects.Model,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(step: step, ..) as form,
+      operation: _,
+    ) -> #(
+      set_projects_dialog(
+        model,
+        DialogOpen(
+          form: admin_projects.ProjectDialogCreate(
+            ..form,
+            step: previous_create_step(step),
+          ),
+          operation: Idle,
+        ),
+      ),
+      effect.none(),
+    )
+    _ -> #(model, effect.none())
+  }
+}
+
 /// Handle project create form submission.
 fn handle_project_create_submitted(
+  model: admin_projects.Model,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  advance_project_create(model, context)
+}
+
+fn advance_project_create(
   model: admin_projects.Model,
   context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case model.projects_dialog {
     DialogOpen(
       form: admin_projects.ProjectDialogCreate(
+        step: step,
         name: name,
         max_depth: max_depth,
         healthy_pool_limit: healthy_pool_limit,
         card_depth_names: card_depth_names,
       ),
       operation: op,
-    ) ->
+    ) -> {
+      case operation_in_flight(op) {
+        True -> #(model, effect.none())
+        False ->
+          advance_project_create_step(
+            model,
+            step,
+            name,
+            max_depth,
+            healthy_pool_limit,
+            card_depth_names,
+            context,
+          )
+      }
+    }
+    _ -> #(model, effect.none())
+  }
+}
+
+fn advance_project_create_step(
+  model: admin_projects.Model,
+  step: admin_projects.ProjectCreateStep,
+  name: String,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case step {
+    admin_projects.ProjectCreateGeneral ->
+      advance_project_create_general(model, name, context)
+
+    admin_projects.ProjectCreateStructurePool ->
+      advance_project_create_structure(
+        model,
+        max_depth,
+        healthy_pool_limit,
+        card_depth_names,
+      )
+
+    admin_projects.ProjectCreateCapabilities ->
+      set_project_create_step(model, admin_projects.ProjectCreateTeam)
+
+    admin_projects.ProjectCreateTeam ->
+      set_project_create_step(model, admin_projects.ProjectCreateReview)
+
+    admin_projects.ProjectCreateReview ->
       submit_project_create(
         model,
         name,
         max_depth,
         healthy_pool_limit,
         card_depth_names,
-        operation_in_flight(op),
+        False,
         context,
       )
+  }
+}
+
+fn advance_project_create_general(
+  model: admin_projects.Model,
+  name: String,
+  context: Context(parent_msg),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case string.trim(name) == "" {
+    True -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(
+          model.projects_dialog,
+          context.name_required,
+        ),
+      ),
+      effect.none(),
+    )
+    False ->
+      set_project_create_step(model, admin_projects.ProjectCreateStructurePool)
+  }
+}
+
+fn advance_project_create_structure(
+  model: admin_projects.Model,
+  max_depth: String,
+  healthy_pool_limit: String,
+  card_depth_names: List(ProjectDepthName),
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case
+    validate_project_settings(
+      max_depth,
+      healthy_pool_limit,
+      card_depth_names,
+      admin_projects.NoDepthReduction,
+    )
+  {
+    Error(message) -> #(
+      set_projects_dialog(
+        model,
+        update_project_dialog_error(model.projects_dialog, message),
+      ),
+      effect.none(),
+    )
+    Ok(_) ->
+      set_project_create_step(model, admin_projects.ProjectCreateCapabilities)
+  }
+}
+
+fn set_project_create_step(
+  model: admin_projects.Model,
+  step: admin_projects.ProjectCreateStep,
+) -> #(admin_projects.Model, Effect(parent_msg)) {
+  case model.projects_dialog {
+    DialogOpen(
+      form: admin_projects.ProjectDialogCreate(..) as form,
+      operation: _,
+    ) -> #(
+      set_projects_dialog(
+        model,
+        DialogOpen(
+          form: admin_projects.ProjectDialogCreate(..form, step: step),
+          operation: Idle,
+        ),
+      ),
+      effect.none(),
+    )
     _ -> #(model, effect.none())
+  }
+}
+
+fn previous_create_step(
+  step: admin_projects.ProjectCreateStep,
+) -> admin_projects.ProjectCreateStep {
+  case step {
+    admin_projects.ProjectCreateGeneral -> admin_projects.ProjectCreateGeneral
+    admin_projects.ProjectCreateStructurePool ->
+      admin_projects.ProjectCreateGeneral
+    admin_projects.ProjectCreateCapabilities ->
+      admin_projects.ProjectCreateStructurePool
+    admin_projects.ProjectCreateTeam -> admin_projects.ProjectCreateCapabilities
+    admin_projects.ProjectCreateReview -> admin_projects.ProjectCreateTeam
   }
 }
 
@@ -1123,6 +1306,7 @@ fn normalize_depth_names(
 fn create_form(name: String) -> admin_projects.ProjectDialogForm {
   let depth_names = project_codec.default_card_depth_names()
   admin_projects.ProjectDialogCreate(
+    step: admin_projects.ProjectCreateGeneral,
     name: name,
     max_depth: int.to_string(list.length(depth_names)),
     healthy_pool_limit: "20",

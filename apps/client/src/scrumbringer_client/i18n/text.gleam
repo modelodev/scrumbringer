@@ -95,6 +95,9 @@ pub type Text {
   Dismiss
   Cancel
   Close
+  Back
+  Continue
+  Skip
   Create
   Creating
   Copy
@@ -655,6 +658,16 @@ pub type Text {
 
   // Project structure and Pool settings
   ProjectStructureAndPool
+  ProjectCreateStepLabel(current: Int, total: Int)
+  ProjectCreateGeneralTitle
+  ProjectCreateGeneralHint
+  ProjectCreateCapabilitiesTitle
+  ProjectCreateCapabilitiesHint
+  ProjectCreateTeamTitle
+  ProjectCreateTeamHint
+  ProjectCreateReviewTitle
+  ProjectCreateReviewHint
+  ProjectCreateReviewSkipped
   ProjectStructureCreateHint
   ProjectStructureEditHint
   ProjectMaximumDepth

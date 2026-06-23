@@ -677,6 +677,12 @@ fn admin_projects_config(
     on_create_submitted: client_state.admin_msg(
       admin_messages.ProjectCreateSubmitted,
     ),
+    on_create_next_clicked: client_state.admin_msg(
+      admin_messages.ProjectCreateNextClicked,
+    ),
+    on_create_back_clicked: client_state.admin_msg(
+      admin_messages.ProjectCreateBackClicked,
+    ),
     on_create_name_changed: fn(value) {
       client_state.admin_msg(admin_messages.ProjectCreateNameChanged(value))
     },

@@ -59,6 +59,8 @@ fn projects_dialogs_config(
     on_create_dialog_opened: "project-create-open",
     on_create_dialog_closed: "project-create-close",
     on_create_submitted: "project-create-submit",
+    on_create_next_clicked: "project-create-next",
+    on_create_back_clicked: "project-create-back",
     on_create_name_changed: fn(value) { "project-create-name:" <> value },
     on_create_max_depth_changed: fn(value) { "project-create-depth:" <> value },
     on_create_healthy_pool_limit_changed: fn(value) {
