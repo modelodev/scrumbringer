@@ -416,9 +416,17 @@ fn view_rule_builder_panel(config: Config(msg)) -> Element(msg) {
     opt.Some(admin_rules.RuleDialogDelete(rule)) ->
       view_rule_delete_panel(config, rule)
     opt.Some(admin_rules.RuleDialogCreate) ->
-      view_rule_form_panel(config, "New rule", "Create rule")
+      view_rule_form_panel(
+        config,
+        t(config, i18n_text.RuleBuilderNewRule),
+        t(config, i18n_text.CreateRule),
+      )
     opt.Some(admin_rules.RuleDialogEdit(_rule)) ->
-      view_rule_form_panel(config, "Edit rule", "Save rule")
+      view_rule_form_panel(
+        config,
+        t(config, i18n_text.RuleBuilderEditRule),
+        t(config, i18n_text.RuleBuilderSaveRule),
+      )
   }
 }
 
@@ -476,19 +484,25 @@ fn view_rule_form_panel(
             ]),
           ),
           div([attribute.class("rule-builder-when")], [
-            form_field.view("When", view_rule_subject_select(config)),
+            form_field.view(
+              t(config, i18n_text.RuleBuilderWhen),
+              view_rule_subject_select(config),
+            ),
             case config.rules.rule_form_subject {
               "task" -> view_rule_task_type_select(config)
               _ -> element.none()
             },
-            form_field.view("Event", view_rule_event_select(config)),
+            form_field.view(
+              t(config, i18n_text.RuleBuilderEvent),
+              view_rule_event_select(config),
+            ),
           ]),
           case config.rules.rule_form_subject {
             "card" -> view_rule_card_scope_select(config)
             _ -> element.none()
           },
           form_field.view_required(
-            "Create task from",
+            t(config, i18n_text.RuleBuilderCreateTaskFrom),
             view_rule_template_picker(config),
           ),
           form_field.view_checkbox(
@@ -518,14 +532,17 @@ fn view_rule_form_panel(
 
 fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
   form_field.view(
-    "Card level",
+    t(config, i18n_text.RuleBuilderCardLevel),
     input([
       attribute.type_("number"),
       attribute.attribute("min", "1"),
       attribute.value(config.rules.rule_form_card_scope),
       event.on_input(config.on_rule_card_scope_changed),
-      attribute.attribute("aria-label", "Card automation scope"),
-      attribute.placeholder("Any card"),
+      attribute.attribute(
+        "aria-label",
+        t(config, i18n_text.RuleBuilderCardScope),
+      ),
+      attribute.placeholder(t(config, i18n_text.RuleBuilderAnyCard)),
     ]),
   )
 }
@@ -550,7 +567,10 @@ fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
         attribute.value(config.rules.rule_form_template_id),
         event.on_input(config.on_rule_template_changed),
         event.on_change(config.on_rule_template_changed),
-        attribute.attribute("aria-label", "Rule task template"),
+        attribute.attribute(
+          "aria-label",
+          t(config, i18n_text.RuleBuilderTaskTemplate),
+        ),
         attribute.attribute("data-testid", "automation-template-picker"),
       ],
       [
@@ -559,7 +579,7 @@ fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
             attribute.value(""),
             attribute.selected(config.rules.rule_form_template_id == ""),
           ],
-          "Choose a template",
+          t(config, i18n_text.RuleBuilderChooseTemplate),
         ),
         ..task_template_options(config, templates)
       ],
@@ -658,7 +678,7 @@ fn view_rule_subject_select(config: Config(msg)) -> Element(msg) {
       attribute.value(config.rules.rule_form_subject),
       event.on_input(config.on_rule_subject_changed),
       event.on_change(config.on_rule_subject_changed),
-      attribute.attribute("aria-label", "Rule subject"),
+      attribute.attribute("aria-label", t(config, i18n_text.RuleBuilderSubject)),
     ],
     [
       option(
@@ -666,14 +686,14 @@ fn view_rule_subject_select(config: Config(msg)) -> Element(msg) {
           attribute.value("task"),
           attribute.selected(config.rules.rule_form_subject == "task"),
         ],
-        "Task",
+        t(config, i18n_text.RuleBuilderTask),
       ),
       option(
         [
           attribute.value("card"),
           attribute.selected(config.rules.rule_form_subject == "card"),
         ],
-        "Card",
+        t(config, i18n_text.RuleBuilderCard),
       ),
     ],
   )
@@ -695,7 +715,7 @@ fn view_rule_task_type_select(config: Config(msg)) -> Element(msg) {
             attribute.value(""),
             attribute.selected(config.rules.rule_form_task_type_id == ""),
           ],
-          "Any task type",
+          t(config, i18n_text.RuleBuilderAnyTaskType),
         ),
         ..task_type_options(config)
       ],
@@ -723,14 +743,14 @@ fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
 fn view_rule_event_select(config: Config(msg)) -> Element(msg) {
   let options = case config.rules.rule_form_subject {
     "card" -> [
-      #("card_activated", "is activated"),
-      #("card_closed", "is closed"),
+      #("card_activated", t(config, i18n_text.RuleBuilderCardActivatedEvent)),
+      #("card_closed", t(config, i18n_text.RuleBuilderCardClosedEvent)),
     ]
     _ -> [
-      #("task_created", "is created"),
-      #("task_completed", "is completed"),
-      #("task_claimed", "is claimed"),
-      #("task_released", "is released"),
+      #("task_created", t(config, i18n_text.RuleBuilderTaskCreatedEvent)),
+      #("task_completed", t(config, i18n_text.RuleBuilderTaskCompletedEvent)),
+      #("task_claimed", t(config, i18n_text.RuleBuilderTaskClaimedEvent)),
+      #("task_released", t(config, i18n_text.RuleBuilderTaskReleasedEvent)),
     ]
   }
 
@@ -739,7 +759,7 @@ fn view_rule_event_select(config: Config(msg)) -> Element(msg) {
       attribute.value(config.rules.rule_form_event),
       event.on_input(config.on_rule_event_changed),
       event.on_change(config.on_rule_event_changed),
-      attribute.attribute("aria-label", "Rule event"),
+      attribute.attribute("aria-label", t(config, i18n_text.RuleBuilderEvent)),
     ],
     list.map(options, fn(item) {
       let #(value, label) = item
@@ -761,7 +781,9 @@ fn view_rule_preview(config: Config(msg)) -> Element(msg) {
       attribute.attribute("aria-live", "polite"),
     ],
     [
-      span([attribute.class("preview-label")], [text("Preview")]),
+      span([attribute.class("preview-label")], [
+        text(t(config, i18n_text.RuleBuilderPreview)),
+      ]),
       p([], [text(rule_preview_sentence(config))]),
       p([attribute.class("hint")], [text(rule_template_preview(config))]),
     ],

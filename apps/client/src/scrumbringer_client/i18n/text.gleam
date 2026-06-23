@@ -761,6 +761,28 @@ pub type Text {
   RuleMetricsSuppressed
   RuleTemplateSearchPlaceholder
   RuleTemplateNoSearchResults
+  RuleBuilderNewRule
+  RuleBuilderEditRule
+  RuleBuilderSaveRule
+  RuleBuilderWhen
+  RuleBuilderEvent
+  RuleBuilderCreateTaskFrom
+  RuleBuilderCardLevel
+  RuleBuilderCardScope
+  RuleBuilderAnyCard
+  RuleBuilderSubject
+  RuleBuilderTask
+  RuleBuilderCard
+  RuleBuilderAnyTaskType
+  RuleBuilderTaskTemplate
+  RuleBuilderChooseTemplate
+  RuleBuilderTaskCreatedEvent
+  RuleBuilderTaskCompletedEvent
+  RuleBuilderTaskClaimedEvent
+  RuleBuilderTaskReleasedEvent
+  RuleBuilderCardActivatedEvent
+  RuleBuilderCardClosedEvent
+  RuleBuilderPreview
 
   ExpandRule
   CollapseRule

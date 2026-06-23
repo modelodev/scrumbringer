@@ -311,6 +311,42 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_not_contains(html, "Target State")
 }
 
+pub fn automation_rule_list_localizes_rule_builder_controls_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        locale: locale.Es,
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "card",
+          rule_form_event: "card_activated",
+          rule_form_card_scope: "",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Nueva regla")
+  assert_contains(html, "Cuando")
+  assert_contains(html, "Evento")
+  assert_contains(html, "se activa")
+  assert_contains(html, "Nivel de card")
+  assert_contains(html, "aria-label=\"Alcance de automatización de card\"")
+  assert_contains(html, "placeholder=\"Cualquier card\"")
+  assert_contains(html, "Crear task desde")
+  assert_contains(html, "aria-label=\"Plantilla de task de la regla\"")
+  assert_contains(html, "Elige una plantilla")
+  assert_contains(html, "Vista previa")
+  assert_not_contains(html, "Card automation scope")
+  assert_not_contains(html, "Create task from")
+  assert_not_contains(html, "Choose a template")
+  assert_not_contains(html, ">Preview<")
+}
+
 pub fn automation_rule_list_template_picker_filters_and_previews_test() {
   let html =
     rule_list.view(
