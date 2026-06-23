@@ -70,8 +70,12 @@ pub fn event_keys_separate_different_facts_on_same_task_test() {
 pub fn trigger_kind_round_trips_to_supported_trigger_test() {
   let assert Ok(automation.TaskCreated(Some(7))) =
     automation.trigger_from_kind("task_created", Some(7), None)
+  let assert Ok(automation.TaskClaimed(Some(7))) =
+    automation.trigger_from_kind("task_claimed", Some(7), None)
   let assert Ok(automation.TaskReleased(Some(7))) =
     automation.trigger_from_kind("task_released", Some(7), None)
+  let assert Ok(automation.TaskCompleted(Some(7))) =
+    automation.trigger_from_kind("task_completed", Some(7), None)
   let assert Ok(automation.CardActivated(automation.AnyCard)) =
     automation.trigger_from_kind("card_activated", None, None)
   let assert Ok(automation.CardClosed(automation.AtDepth(depth))) =

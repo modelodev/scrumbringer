@@ -21,6 +21,51 @@ pub fn decode_create_payload_test() {
   )) = payloads.decode_create(dynamic)
 }
 
+pub fn decode_create_payload_accepts_all_supported_triggers_test() {
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.TaskCreated(None),
+    ..,
+  )) =
+    decode_create_trigger("{\"type\":\"task_created\",\"task_type_id\":null}")
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.TaskClaimed(Some(7)),
+    ..,
+  )) = decode_create_trigger("{\"type\":\"task_claimed\",\"task_type_id\":7}")
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.TaskReleased(None),
+    ..,
+  )) =
+    decode_create_trigger("{\"type\":\"task_released\",\"task_type_id\":null}")
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.TaskCompleted(Some(9)),
+    ..,
+  )) = decode_create_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.CardActivated(automation.AnyCard),
+    ..,
+  )) =
+    decode_create_trigger(
+      "{\"type\":\"card_activated\",\"scope\":{\"type\":\"any_card\"}}",
+    )
+  let assert Ok(payloads.CreatePayload(
+    trigger: automation.CardClosed(automation.AtDepth(depth)),
+    ..,
+  )) =
+    decode_create_trigger(
+      "{\"type\":\"card_closed\",\"scope\":{\"type\":\"at_depth\",\"depth\":2}}",
+    )
+  let assert 2 = automation.card_depth_to_int(depth)
+}
+
+pub fn decode_create_payload_rejects_parked_and_due_date_triggers_test() {
+  let assert Error(Nil) =
+    decode_create_trigger("{\"type\":\"task_blocked\",\"task_type_id\":null}")
+  let assert Error(Nil) =
+    decode_create_trigger("{\"type\":\"task_unblocked\",\"task_type_id\":null}")
+  let assert Error(Nil) =
+    decode_create_trigger("{\"type\":\"task_due_date_overdue\"}")
+}
+
 pub fn decode_create_payload_requires_template_test() {
   let assert Ok(dynamic) =
     json.parse(
@@ -65,4 +110,18 @@ pub fn decode_update_payload_rejects_unknown_status_test() {
     json.parse("{\"status\":{\"type\":\"archived\"}}", decode.dynamic)
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
+}
+
+fn decode_create_trigger(
+  trigger_json: String,
+) -> Result(payloads.CreatePayload, Nil) {
+  let assert Ok(dynamic) =
+    json.parse(
+      "{\"name\":\"Rule\",\"trigger\":"
+        <> trigger_json
+        <> ",\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"}}",
+      decode.dynamic,
+    )
+
+  payloads.decode_create(dynamic)
 }
