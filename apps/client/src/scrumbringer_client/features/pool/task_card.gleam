@@ -17,7 +17,9 @@ import scrumbringer_client/features/pool/labels as pool_labels
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/features/pool/urgency
 import scrumbringer_client/features/tasks/claimability
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/event_decoders
@@ -111,7 +113,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         div([attribute.class("task-card-actions-left")], [
           claim_action,
           due_signal(config),
-          automation_origin_signal(config.task.automation_origin),
+          automation_origin_signal(config.locale, config.task.automation_origin),
           top_left_action,
         ]),
         div([attribute.class("task-card-actions-right")], [
@@ -217,11 +219,12 @@ fn due_signal(config: Config(msg)) -> Element(msg) {
 }
 
 fn automation_origin_signal(
+  locale: Locale,
   origin: Option(domain_task.AutomationOrigin),
 ) -> Element(msg) {
   case origin {
     option.Some(domain_task.AutomationOrigin(rule_id: rule_id, ..)) -> {
-      let label = "Created by automation rule #" <> int.to_string(rule_id)
+      let label = i18n.t(locale, i18n_text.TaskAutomationRuleSignal(rule_id))
       span(
         [
           attribute.class("task-card-signal task-card-signal-automation"),

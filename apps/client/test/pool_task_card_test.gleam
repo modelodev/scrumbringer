@@ -2,7 +2,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 
-import domain/task.{type Task, Task, TaskDependency}
+import domain/task.{type Task, AutomationOrigin, Task, TaskDependency}
 import domain/task_state
 import domain/task_status.{Available, Done, Taken}
 import domain/task_type.{TaskTypeInline}
@@ -100,6 +100,40 @@ pub fn task_card_renders_due_soon_signal_without_long_date_text_test() {
   assert_contains(html, "is-due-soon")
   assert_contains(html, "Due soon: 2026-06-24")
   assert_not_contains(html, ">2026-06-24<")
+}
+
+pub fn task_card_localizes_automation_signal_test() {
+  let html =
+    task_card.view(
+      task_card.Config(
+        ..config(
+          Task(
+            ..sample_task(),
+            automation_origin: Some(AutomationOrigin(
+              rule_id: 8,
+              workflow_id: Some(3),
+              workflow_name: Some("Release flow"),
+              rule_name: Some("Development completed"),
+              execution_id: Some(101),
+              template_id: Some(12),
+              template_name: Some("QA Verification"),
+              template_version: Some(3),
+            )),
+          ),
+          x: 100,
+          age_days: 1,
+          touch_preview: False,
+          highlight_class: "",
+        ),
+        locale: locale.Es,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "task-card-signal-automation")
+  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
+  assert_contains(html, "aria-label=\"Creada por regla de automatización #8\"")
+  assert_not_contains(html, "Created by automation")
 }
 
 pub fn task_card_renders_claimed_owner_actions_test() {

@@ -16,6 +16,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 pub fn task_show_summary_renders_operational_context_test() {
   let html =
     task_show_summary.view(task_show_summary.Config(
@@ -73,7 +77,8 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Automation")
+  assert_contains(html, "Origin")
+  assert_contains(html, "Created by automation")
   assert_contains(
     html,
     "Release flow -&gt; Development completed -&gt; QA Verification v3",
@@ -98,6 +103,62 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
     html,
     "href=\"/config/workflows?project=1&amp;mode=templates&amp;template=12\"",
   )
+}
+
+pub fn task_show_summary_localizes_automation_origin_test() {
+  let html =
+    task_show_summary.view(task_show_summary.Config(
+      locale: locale.Es,
+      task: Task(
+        ..task(),
+        automation_origin: Some(AutomationOrigin(
+          rule_id: 8,
+          workflow_id: Some(3),
+          workflow_name: Some("Release flow"),
+          rule_name: Some("Development completed"),
+          execution_id: Some(101),
+          template_id: Some(12),
+          template_name: Some("QA Verification"),
+          template_version: Some(3),
+        )),
+      ),
+      dependencies: Loaded([]),
+      parent_card_title: None,
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Origen")
+  assert_contains(html, "Creada por automatización")
+  assert_contains(html, ">Ver motor<")
+  assert_contains(html, ">Ver regla<")
+  assert_contains(html, ">Ver plantilla<")
+}
+
+pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
+  let html =
+    task_show_summary.view(task_show_summary.Config(
+      locale: locale.En,
+      task: Task(
+        ..task(),
+        automation_origin: Some(AutomationOrigin(
+          rule_id: 8,
+          workflow_id: Some(3),
+          workflow_name: None,
+          rule_name: None,
+          execution_id: None,
+          template_id: Some(12),
+          template_name: None,
+          template_version: Some(3),
+        )),
+      ),
+      dependencies: Loaded([]),
+      parent_card_title: None,
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "Engine #3 -&gt; Rule #8 -&gt; Template #12 v3")
+  assert_not_contains(html, "Motor #3")
+  assert_not_contains(html, "Plantilla #12")
 }
 
 fn task() -> Task {

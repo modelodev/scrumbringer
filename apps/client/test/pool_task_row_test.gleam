@@ -3,7 +3,7 @@ import gleam/string
 import lustre/element
 
 import domain/card
-import domain/task.{Task}
+import domain/task.{AutomationOrigin, Task}
 import domain/task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_row
@@ -55,6 +55,38 @@ pub fn task_row_hides_claim_action_when_blocked_test() {
   assert_contains(html, "task-blocked")
   assert_contains(html, "task-blocked-count")
   assert_not_contains(html, "title=\"Claim this task and move it to My Tasks\"")
+}
+
+pub fn task_row_localizes_automation_origin_chip_test() {
+  let html =
+    task_row.view(task_row.Config(
+      locale: locale.Es,
+      theme: theme.Default,
+      task: Task(
+        ..sample_task(),
+        automation_origin: Some(AutomationOrigin(
+          rule_id: 8,
+          workflow_id: Some(3),
+          workflow_name: Some("Release flow"),
+          rule_name: Some("Development completed"),
+          execution_id: Some(101),
+          template_id: Some(12),
+          template_name: Some("QA Verification"),
+          template_version: Some(3),
+        )),
+      ),
+      card_color: None,
+      highlight_class: "",
+      disable_actions: False,
+      on_claim: "claim",
+      on_open: "open",
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
+  assert_contains(html, "Automatización #8")
+  assert_contains(html, "title=\"Creada por regla de automatización #8\"")
+  assert_not_contains(html, "Created by automation")
 }
 
 fn sample_task() {

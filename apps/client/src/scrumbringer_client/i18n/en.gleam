@@ -1253,10 +1253,20 @@ pub fn translate(text: Text) -> String {
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"
-    text.TaskAutomationOrigin -> "Automation"
+    text.TaskAutomationOrigin -> "Origin"
+    text.TaskAutomationCreatedBy -> "Created by automation"
+    text.TaskAutomationEngineLabel(engine_id) ->
+      "Engine #" <> int.to_string(engine_id)
     text.TaskAutomationExecutionLabel(execution_id) ->
       "Execution #" <> int.to_string(execution_id)
     text.TaskAutomationRuleLabel(rule_id) -> "Rule #" <> int.to_string(rule_id)
+    text.TaskAutomationRuleChip(rule_id) ->
+      "Automation #" <> int.to_string(rule_id)
+    text.TaskAutomationRuleSignal(rule_id) ->
+      "Created by automation rule #" <> int.to_string(rule_id)
+    text.TaskAutomationTemplateLabel(template_id) ->
+      "Template #" <> int.to_string(template_id)
+    text.TaskAutomationTemplateFallback -> "Template"
     text.TaskAutomationViewEngine -> "View engine"
     text.TaskAutomationViewRule -> "View rule"
     text.TaskAutomationViewTemplate -> "View template"

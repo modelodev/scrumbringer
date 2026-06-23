@@ -108,6 +108,9 @@ fn automation_origin_item(
       text(t(config.locale, i18n_text.TaskAutomationOrigin)),
     ]),
     div([attribute.class("task-show-summary-value")], [
+      div([attribute.class("task-show-summary-origin-kind")], [
+        text(t(config.locale, i18n_text.TaskAutomationCreatedBy)),
+      ]),
       a(
         [
           attribute.href(automation_execution_href(config, origin)),
@@ -231,7 +234,7 @@ fn automation_origin_label(
   [
     workflow_label(locale, origin),
     rule_label(locale, origin),
-    template_label(origin),
+    template_label(locale, origin),
   ]
   |> string.join(" -> ")
 }
@@ -242,8 +245,8 @@ fn workflow_label(
 ) -> String {
   case origin.workflow_name, origin.workflow_id {
     opt.Some(name), _ -> name
-    _, opt.Some(id) -> "Motor #" <> int.to_string(id)
-    _, _ -> t(locale, i18n_text.TaskAutomationOrigin)
+    _, opt.Some(id) -> t(locale, i18n_text.TaskAutomationEngineLabel(id))
+    _, _ -> t(locale, i18n_text.TaskAutomationCreatedBy)
   }
 }
 
@@ -254,11 +257,14 @@ fn rule_label(locale: Locale, origin: domain_task.AutomationOrigin) -> String {
   }
 }
 
-fn template_label(origin: domain_task.AutomationOrigin) -> String {
+fn template_label(
+  locale: Locale,
+  origin: domain_task.AutomationOrigin,
+) -> String {
   let base = case origin.template_name, origin.template_id {
     opt.Some(name), _ -> name
-    _, opt.Some(id) -> "Plantilla #" <> int.to_string(id)
-    _, _ -> "Plantilla"
+    _, opt.Some(id) -> t(locale, i18n_text.TaskAutomationTemplateLabel(id))
+    _, _ -> t(locale, i18n_text.TaskAutomationTemplateFallback)
   }
 
   case origin.template_version {

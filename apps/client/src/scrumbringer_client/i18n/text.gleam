@@ -1056,8 +1056,14 @@ pub type Text {
   TaskOperationalSummary
   TaskOwner
   TaskAutomationOrigin
+  TaskAutomationCreatedBy
+  TaskAutomationEngineLabel(engine_id: Int)
   TaskAutomationExecutionLabel(execution_id: Int)
   TaskAutomationRuleLabel(rule_id: Int)
+  TaskAutomationRuleChip(rule_id: Int)
+  TaskAutomationRuleSignal(rule_id: Int)
+  TaskAutomationTemplateLabel(template_id: Int)
+  TaskAutomationTemplateFallback
   TaskAutomationViewEngine
   TaskAutomationViewRule
   TaskAutomationViewTemplate
