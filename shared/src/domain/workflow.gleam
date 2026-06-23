@@ -68,14 +68,6 @@ pub type RuleTemplate {
   )
 }
 
-pub fn rule_resource_type(rule: Rule) -> String {
-  automation.trigger_resource_type(rule.trigger)
-}
-
 pub fn rule_task_type_id(rule: Rule) -> Option(Int) {
   automation.trigger_task_type_id(rule.trigger)
-}
-
-pub fn rule_to_state_string(rule: Rule) -> String {
-  automation.trigger_to_state_string(rule.trigger)
 }

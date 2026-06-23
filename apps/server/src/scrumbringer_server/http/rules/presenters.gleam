@@ -40,9 +40,6 @@ pub fn rule_with_template(
     status: status,
     created_at: created_at,
   ) = rule
-  let resource_type = automation.trigger_resource_type(trigger)
-  let task_type_id = automation.trigger_task_type_id(trigger)
-  let to_state = automation.trigger_to_state_string(trigger)
   let action = action_json(template)
   let status_json = status_json(template, status)
 
@@ -51,12 +48,9 @@ pub fn rule_with_template(
     #("workflow_id", json.int(workflow_id)),
     #("name", json.string(name)),
     #("goal", json_helpers.option_string_json(goal)),
-    #("resource_type", json.string(resource_type)),
     #("trigger", automation_codec.trigger_to_json(trigger)),
     #("action", action),
     #("status", status_json),
-    #("task_type_id", json_helpers.option_int_json(task_type_id)),
-    #("to_state", json.string(to_state)),
     #("created_at", json.string(created_at)),
     #("template", option_template_json(template)),
   ])

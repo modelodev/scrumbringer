@@ -75,7 +75,7 @@ pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
   let assert option.Some(5) = workflow.rule_task_type_id(rule)
-  let assert "completed" = workflow.rule_to_state_string(rule)
+  let assert automation.TaskCompleted(option.Some(5)) = rule.trigger
   let assert option.Some(template) = rule.template
   let assert "Review {{origin}}" = template.name
 }
