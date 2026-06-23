@@ -42,7 +42,7 @@ pub type RuleRecord {
     name: String,
     goal: Option(String),
     trigger: automation.AutomationTrigger,
-    active: Bool,
+    status: automation.AutomationRuleStatus,
     created_at: String,
   )
 }
@@ -143,7 +143,7 @@ fn rule_from_fields(
     name: name,
     goal: goal,
     trigger: trigger,
-    active: active,
+    status: automation.active_to_rule_status(active),
     created_at: created_at,
   ))
 }

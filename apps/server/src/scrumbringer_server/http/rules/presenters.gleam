@@ -37,14 +37,15 @@ pub fn rule_with_template(
     name: name,
     goal: goal,
     trigger: trigger,
-    active: active,
+    status: status,
     created_at: created_at,
   ) = rule
   let resource_type = automation.trigger_resource_type(trigger)
   let task_type_id = automation.trigger_task_type_id(trigger)
   let to_state = automation.trigger_to_state_string(trigger)
   let action = action_json(template)
-  let status = status_json(template, active)
+  let status_json = status_json(template, status)
+  let active = automation.status_to_active(status)
 
   json.object([
     #("id", json.int(id)),
@@ -54,7 +55,7 @@ pub fn rule_with_template(
     #("resource_type", json.string(resource_type)),
     #("trigger", automation_codec.trigger_to_json(trigger)),
     #("action", action),
-    #("status", status),
+    #("status", status_json),
     #("task_type_id", json_helpers.option_int_json(task_type_id)),
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),
@@ -73,15 +74,14 @@ fn action_json(template: Option(workflow.RuleTemplate)) -> json.Json {
 
 fn status_json(
   template: Option(workflow.RuleTemplate),
-  active: Bool,
+  status: automation.AutomationRuleStatus,
 ) -> json.Json {
-  case template, active {
+  case template, status {
     None, _ ->
       automation_codec.rule_status_to_json(automation.RequiresReview(
         automation.TemplateMissing,
       ))
-    Some(_), True -> automation_codec.rule_status_to_json(automation.Active)
-    Some(_), False -> automation_codec.rule_status_to_json(automation.Paused)
+    Some(_), _ -> automation_codec.rule_status_to_json(status)
   }
 }
 
