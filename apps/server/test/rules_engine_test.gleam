@@ -970,6 +970,11 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
     )
   selected_template_id |> expect.equal(template3_id)
 
+  case select_template(db, rule_id, template1_id) {
+    Ok(_) -> panic as "expected rule_templates to reject a second template"
+    Error(_) -> Nil
+  }
+
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
 

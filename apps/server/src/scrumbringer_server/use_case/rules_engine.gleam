@@ -332,7 +332,8 @@ fn evaluate_rule_templates(
 
   case templates {
     [] -> apply_rule_without_templates(db, rule, event)
-    [template, ..] -> apply_rule_with_template(db, rule, template, event)
+    [template] -> apply_rule_with_template(db, rule, template, event)
+    [_, _, ..] -> apply_rule_with_invalid_template_selection(rule)
   }
 }
 
@@ -346,6 +347,19 @@ fn apply_rule_without_templates(
   Ok(RuleResult(
     rule.id,
     automation.Skipped(automation.RuleRequiresReview(automation.TemplateMissing)),
+  ))
+}
+
+fn apply_rule_with_invalid_template_selection(
+  rule: MatchingRule,
+) -> Result(RuleResult, RuleEngineError) {
+  log("  Suppressed: rule has multiple selected templates")
+
+  Ok(RuleResult(
+    rule.id,
+    automation.Skipped(automation.RuleRequiresReview(
+      automation.InvalidMigratedData,
+    )),
   ))
 }
 
