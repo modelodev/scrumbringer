@@ -27,6 +27,7 @@ import lustre/element/html.{div, form, h2, input, option, p, select, span, text}
 import lustre/element/keyed
 import lustre/event
 
+import domain/automation
 import domain/remote.{type Remote, Loaded}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
@@ -923,6 +924,7 @@ fn rule_form_is_valid(config: Config(msg)) -> Bool {
   && config.rules.rule_form_event != "unsupported"
   && config.rules.rule_form_template_id != ""
   && rule_card_scope_is_valid(config)
+  && selected_template_matches_trigger(config)
 }
 
 fn rule_card_scope_is_valid(config: Config(msg)) -> Bool {
@@ -937,6 +939,67 @@ fn rule_card_scope_is_valid(config: Config(msg)) -> Bool {
         Error(_) -> False
       }
     _, _ -> True
+  }
+}
+
+fn selected_template_matches_trigger(config: Config(msg)) -> Bool {
+  case selected_rule_template(config), current_rule_trigger(config) {
+    opt.Some(template), opt.Some(trigger) ->
+      !automation.template_uses_unknown_variables(template.name, trigger)
+      && !description_uses_unknown_variables(template.description, trigger)
+    opt.Some(_), opt.None -> False
+    opt.None, _ -> False
+  }
+}
+
+fn description_uses_unknown_variables(
+  description: opt.Option(String),
+  trigger: automation.AutomationTrigger,
+) -> Bool {
+  case description {
+    opt.Some(value) ->
+      automation.template_uses_unknown_variables(value, trigger)
+    opt.None -> False
+  }
+}
+
+fn current_rule_trigger(
+  config: Config(msg),
+) -> opt.Option(automation.AutomationTrigger) {
+  case config.rules.rule_form_event {
+    "task_created" ->
+      opt.Some(automation.TaskCreated(current_rule_task_type_id(config)))
+    "task_completed" ->
+      opt.Some(automation.TaskCompleted(current_rule_task_type_id(config)))
+    "task_claimed" ->
+      opt.Some(automation.TaskClaimed(current_rule_task_type_id(config)))
+    "task_released" ->
+      opt.Some(automation.TaskReleased(current_rule_task_type_id(config)))
+    "card_activated" ->
+      opt.Some(automation.CardActivated(current_rule_card_scope(config)))
+    "card_closed" ->
+      opt.Some(automation.CardClosed(current_rule_card_scope(config)))
+    _ -> opt.None
+  }
+}
+
+fn current_rule_task_type_id(config: Config(msg)) -> opt.Option(Int) {
+  case int.parse(config.rules.rule_form_task_type_id) {
+    Ok(id) if id > 0 -> opt.Some(id)
+    _ -> opt.None
+  }
+}
+
+fn current_rule_card_scope(
+  config: Config(msg),
+) -> automation.CardAutomationScope {
+  case int.parse(config.rules.rule_form_card_scope) {
+    Ok(depth) ->
+      case automation.card_depth_from_int(depth) {
+        Ok(card_depth) -> automation.AtDepth(card_depth)
+        Error(_) -> automation.AnyCard
+      }
+    Error(_) -> automation.AnyCard
   }
 }
 

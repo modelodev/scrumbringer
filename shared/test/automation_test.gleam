@@ -108,6 +108,27 @@ pub fn available_variables_exclude_legacy_and_due_date_values_test() {
     automation.template_uses_unknown_variables("{{due_date}}", trigger)
 }
 
+pub fn template_variables_depend_on_trigger_family_test() {
+  let task_trigger = automation.TaskCompleted(None)
+  let card_trigger = automation.CardActivated(automation.AnyCard)
+
+  let assert False =
+    automation.template_uses_unknown_variables(
+      "{{origin}} {{task_title}} {{task_type}}",
+      task_trigger,
+    )
+  let assert True =
+    automation.template_uses_unknown_variables("{{card_title}}", task_trigger)
+
+  let assert False =
+    automation.template_uses_unknown_variables(
+      "{{origin}} {{card_title}} {{card_level}}",
+      card_trigger,
+    )
+  let assert True =
+    automation.template_uses_unknown_variables("{{task_title}}", card_trigger)
+}
+
 pub fn rule_draft_requires_engine_trigger_and_template_test() {
   let empty =
     automation.RuleDraft(engine_id: None, trigger: None, template_id: None)

@@ -170,7 +170,12 @@ fn create_rule_flow(
   payload: rule_payloads.CreatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
   let template_id = automation.action_template_id(payload.action)
-  use _ <- result.try(validate_required_rule_template(db, workflow, template_id))
+  use _ <- result.try(validate_required_rule_template(
+    db,
+    workflow,
+    template_id,
+    payload.trigger,
+  ))
 
   run_config_transaction(db, fn(tx) {
     use rule <- result.try(
@@ -233,11 +238,13 @@ fn update_rule_flow(
   payload: rule_payloads.UpdatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
   let template_id = option_action_template_id(payload.action)
+  let trigger = option_value(payload.trigger, rule.trigger)
   use _ <- result.try(validate_update_rule_template(
     db,
     workflow,
     rule.id,
     template_id,
+    trigger,
   ))
 
   run_config_transaction(db, fn(tx) {
@@ -431,15 +438,23 @@ fn option_action_template_id(
   }
 }
 
+fn option_value(value: Option(a), fallback: a) -> a {
+  case value {
+    Some(inner) -> inner
+    None -> fallback
+  }
+}
+
 fn validate_required_rule_template(
   db: pog.Connection,
   workflow: workflows_db.WorkflowRecord,
   template_id: Int,
+  trigger: automation.AutomationTrigger,
 ) -> Result(Nil, wisp.Response) {
   case template_id {
     value if value <= 0 ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid template_id"))
-    value -> validate_template_scope(db, workflow, value)
+    value -> validate_template_for_trigger(db, workflow, value, trigger)
   }
 }
 
@@ -448,13 +463,19 @@ fn validate_update_rule_template(
   workflow: workflows_db.WorkflowRecord,
   rule_id: Int,
   template_id: Option(Int),
+  trigger: automation.AutomationTrigger,
 ) -> Result(Nil, wisp.Response) {
   case template_id {
-    Some(value) -> validate_required_rule_template(db, workflow, value)
+    Some(value) -> validate_required_rule_template(db, workflow, value, trigger)
     None -> {
       use template <- result.try(list_rule_template_response(db, rule_id))
       case template {
-        Some(_) -> Ok(Nil)
+        Some(template) ->
+          validate_rule_template_variables(
+            template.name,
+            template.description,
+            trigger,
+          )
         None -> Error(api.error(422, "VALIDATION_ERROR", "Missing template_id"))
       }
     }
@@ -506,10 +527,11 @@ fn workflow_from_rule(
   }
 }
 
-fn validate_template_scope(
+fn validate_template_for_trigger(
   db: pog.Connection,
   workflow: workflows_db.WorkflowRecord,
   template_id: Int,
+  trigger: automation.AutomationTrigger,
 ) -> Result(Nil, wisp.Response) {
   let workflows_db.WorkflowRecord(org_id: org_id, project_id: project_id, ..) =
     workflow
@@ -517,11 +539,45 @@ fn validate_template_scope(
   case task_templates_db.get_template(db, template_id) {
     Ok(template) ->
       case template_org_matches(template, org_id, project_id) {
-        True -> Ok(Nil)
+        True ->
+          validate_rule_template_variables(
+            template.name,
+            template.description,
+            trigger,
+          )
         False ->
           Error(api.error(422, "VALIDATION_ERROR", "Invalid template scope"))
       }
     Error(error) -> Error(template_scope_error_response(error))
+  }
+}
+
+fn validate_rule_template_variables(
+  name: String,
+  description: Option(String),
+  trigger: automation.AutomationTrigger,
+) -> Result(Nil, wisp.Response) {
+  case
+    automation.template_uses_unknown_variables(name, trigger)
+    || description_uses_unknown_variables(description, trigger)
+  {
+    True ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Template variables are not available for this trigger",
+      ))
+    False -> Ok(Nil)
+  }
+}
+
+fn description_uses_unknown_variables(
+  description: Option(String),
+  trigger: automation.AutomationTrigger,
+) -> Bool {
+  case description {
+    Some(value) -> automation.template_uses_unknown_variables(value, trigger)
+    None -> False
   }
 }
 

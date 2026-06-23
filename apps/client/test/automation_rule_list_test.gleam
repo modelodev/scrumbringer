@@ -102,6 +102,24 @@ fn docs_template() -> TaskTemplate {
   )
 }
 
+fn card_variable_template() -> TaskTemplate {
+  TaskTemplate(
+    id: 14,
+    org_id: 1,
+    project_id: opt.Some(7),
+    name: "Card follow-up",
+    description: opt.Some("Review {{card_title}}"),
+    type_id: 5,
+    type_name: "Bug",
+    priority: 3,
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    rules_count: 0,
+    created_tasks_count: 0,
+    last_execution_at: opt.None,
+  )
+}
+
 fn rule() -> Rule {
   Rule(
     id: 9,
@@ -322,6 +340,30 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_not_contains(html, "rule-crud-dialog")
   assert_not_contains(html, "Resource Type")
   assert_not_contains(html, "Target State")
+}
+
+pub fn automation_rule_builder_disables_save_for_incompatible_template_variables_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        task_templates_project: Loaded([card_variable_template()]),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "5",
+          rule_form_event: "task_completed",
+          rule_form_template_id: "14",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Card follow-up")
+  assert_contains(html, "Review {{card_title}}")
+  assert_contains(html, "disabled")
 }
 
 pub fn automation_rule_list_localizes_rule_builder_controls_test() {
