@@ -913,8 +913,8 @@ pub fn translate(text: Text) -> String {
     text.RuleUpdated -> "Regla actualizada"
     text.RuleDeleted -> "Regla eliminada"
     text.RuleDeleteConfirm(name) -> "¿Eliminar la regla \"" <> name <> "\"?"
-    text.RuleMetricsApplied -> "Aplicadas"
-    text.RuleMetricsSuppressed -> "Suprimidas"
+    text.RuleMetricsApplied -> "Creadas"
+    text.RuleMetricsSuppressed -> "Ignoradas"
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"
@@ -996,7 +996,7 @@ pub fn translate(text: Text) -> String {
     text.ParentCardLabel -> "Tarjeta"
     text.RuleMetricsDrilldown -> "Detalles de ejecución"
     text.SuppressionBreakdown -> "Eventos ignorados"
-    text.SuppressionIdempotent -> "Idempotente (ya aplicada)"
+    text.SuppressionIdempotent -> "Duplicado (ya procesado)"
     text.SuppressionNotUserTriggered -> "No disparada por usuario"
     text.SuppressionNotMatching -> "Condiciones no coinciden"
     text.SuppressionInactive -> "Regla inactiva"
@@ -1009,8 +1009,8 @@ pub fn translate(text: Text) -> String {
     text.Origin -> "Origen"
     text.Outcome -> "Resultado"
     text.Timestamp -> "Fecha/Hora"
-    text.OutcomeApplied -> "Aplicada"
-    text.OutcomeSuppressed -> "Suprimida"
+    text.OutcomeApplied -> "Creada"
+    text.OutcomeSuppressed -> "Ignorada"
 
     // Story 3.4 - Member Card Views
     text.MemberCards -> "Plan"

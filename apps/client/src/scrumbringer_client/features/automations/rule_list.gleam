@@ -274,13 +274,13 @@ fn view_rule_row_expandable(
               |> badge.view_with_class("table-badge table-badge-count")
           },
         ]),
-        // Applied metrics
+        // Created metrics
         td([attribute.class("metric-cell")], [
           span([attribute.class("metric applied")], [
             text(int.to_string(applied)),
           ]),
         ]),
-        // Suppressed metrics
+        // Ignored metrics
         td([attribute.class("metric-cell")], [
           span([attribute.class("metric suppressed")], [
             text(int.to_string(suppressed)),

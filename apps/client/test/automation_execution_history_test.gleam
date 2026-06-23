@@ -79,10 +79,26 @@ fn execution() -> api_rule_metrics.RuleExecution {
   )
 }
 
+fn ignored_execution() -> api_rule_metrics.RuleExecution {
+  api_rule_metrics.RuleExecution(
+    id: 102,
+    task_id: option.Some(42),
+    card_id: option.None,
+    outcome: "suppressed",
+    suppression_reason: "idempotent",
+    user_id: 7,
+    user_email: "member@example.com",
+    template_id: option.None,
+    template_version: option.None,
+    created_task_id: option.None,
+    created_at: "2026-06-08T10:01:00Z",
+  )
+}
+
 fn executions_response() -> api_rule_metrics.RuleExecutionsResponse {
   api_rule_metrics.RuleExecutionsResponse(
     rule_id: 22,
-    executions: [execution()],
+    executions: [execution(), ignored_execution()],
     pagination: api_rule_metrics.Pagination(limit: 20, offset: 20, total: 45),
   )
 }
@@ -122,10 +138,13 @@ pub fn automation_execution_history_renders_from_config_without_root_model_test(
   assert_contains(html, "filter-bar automation-executions-filters")
   assert_contains(html, "data-testid=\"automation-executions-filter-bar\"")
   assert_contains(html, "Escalation workflow")
+  assert_contains(html, "Created")
+  assert_contains(html, "Ignored")
   assert_contains(html, "9")
   assert_contains(html, "6")
   assert_contains(html, "3")
   assert_contains(html, "btn-chip-active")
+  assert_not_contains(html, "Suppressed")
   assert_not_contains(html, "admin-card")
   assert_not_contains(html, "section-header")
 }
@@ -192,4 +211,7 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
   assert_contains(html, "aria-label=\"Next page\"")
   assert_contains(html, "aria-label=\"Last page\"")
   assert_contains(html, "data-testid=\"automation-execution-row\"")
+  assert_contains(html, "Created")
+  assert_contains(html, "Ignored (idempotent)")
+  assert_not_contains(html, "Suppressed")
 }
