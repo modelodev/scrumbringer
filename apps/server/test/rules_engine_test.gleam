@@ -3,6 +3,7 @@
 //// Tests rule evaluation, idempotency, and task creation from templates.
 //// Uses shared fixtures for DRY and idiomatic Result handling.
 
+import domain/automation
 import domain/card as domain_card
 import domain/task_status
 import fixtures
@@ -11,9 +12,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import pog
 import scrumbringer_server
-import scrumbringer_server/use_case/rules_engine.{
-  Applied, RuleResult, Suppressed,
-}
+import scrumbringer_server/use_case/rules_engine.{RuleResult}
 import support/assertions as expect
 
 // =============================================================================
@@ -89,7 +88,8 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
 
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(1))]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result
 
   // Verify the Review task was created
   let assert Ok(count) =
@@ -147,11 +147,12 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
 
   // First evaluation
   let result1 = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = result1
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result1
 
   // Second evaluation - should be suppressed
   let result2 = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(rule_id: rid, outcome: Suppressed("idempotent"))]) =
+  let assert Ok([RuleResult(rule_id: rid, outcome: automation.DuplicateEvent)]) =
     result2
   rid |> expect.equal(rule_id)
 }
@@ -233,7 +234,14 @@ pub fn evaluate_rules_card_resource_type_test() {
 
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(0))]) = result
+  let assert Ok([
+    RuleResult(
+      rule_id: _,
+      outcome: automation.Skipped(automation.RuleRequiresReview(
+        automation.TemplateMissing,
+      )),
+    ),
+  ]) = result
 }
 
 // =============================================================================
@@ -725,7 +733,8 @@ pub fn all_five_variables_combined_test() {
 
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(1))]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result
 
   // Verify the Review task was created (query by type_id to avoid flakiness)
   let assert Ok(count) =
@@ -861,7 +870,8 @@ pub fn attaching_template_replaces_previous_rule_template_test() {
     )
 
   let result = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(1))]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result
 
   // Verify one Review task was created from the selected template.
   let assert Ok(count) =
@@ -922,7 +932,8 @@ pub fn rule_without_task_type_matches_all_types_test() {
     )
 
   let bug_result = rules_engine.evaluate_rules(db, bug_event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = bug_result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    bug_result
 
   // Create and trigger Feature task
   let assert Ok(feature_task_id) =
@@ -946,7 +957,8 @@ pub fn rule_without_task_type_matches_all_types_test() {
     )
 
   let feature_result = rules_engine.evaluate_rules(db, feature_event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = feature_result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    feature_result
 }
 
 // =============================================================================
@@ -1303,7 +1315,7 @@ pub fn rule_execution_applied_is_persisted_test() {
     )
 
   let result = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(_, Applied(_))]) = result
+  let assert Ok([RuleResult(_, automation.Executed(_))]) = result
 
   // Verify execution was persisted
   let assert Ok(final_count) =
@@ -1362,7 +1374,7 @@ pub fn rule_execution_idempotency_enforced_test() {
 
   // First fire (applied)
   let result1 = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(_, Applied(_))]) = result1
+  let assert Ok([RuleResult(_, automation.Executed(_))]) = result1
 
   let assert Ok(execution_count) =
     fixtures.query_int(
@@ -1374,7 +1386,7 @@ pub fn rule_execution_idempotency_enforced_test() {
 
   // Second fire (suppressed)
   let result2 = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(_, Suppressed("idempotent"))]) = result2
+  let assert Ok([RuleResult(_, automation.DuplicateEvent)]) = result2
 
   // Count remains 1 (unique constraint)
   let assert Ok(execution_count_after) =

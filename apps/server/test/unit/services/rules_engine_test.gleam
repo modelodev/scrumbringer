@@ -3,14 +3,13 @@
 //// Tests rule evaluation including matching, inactive rules, and idempotency.
 //// Uses fixtures.gleam for test setup.
 
+import domain/automation
 import domain/task_status
 import fixtures
 import gleam/option.{None, Some}
 import gleeunit
 import scrumbringer_server
-import scrumbringer_server/use_case/rules_engine.{
-  Applied, RuleResult, Suppressed,
-}
+import scrumbringer_server/use_case/rules_engine.{RuleResult}
 import support/assertions as expect
 
 pub fn main() {
@@ -62,7 +61,8 @@ pub fn evaluate_rule_applies_matching_rule_test() {
   let result = rules_engine.evaluate_rules(db, event)
 
   // Then: Rule is applied
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result
 }
 
 // =============================================================================
@@ -160,13 +160,14 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
 
   // First evaluation - should apply
   let result1 = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(_))]) = result1
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    result1
 
   // When: Same event fires again
   let result2 = rules_engine.evaluate_rules(db, event)
 
   // Then: Rule is suppressed as idempotent
-  let assert Ok([RuleResult(rule_id: rid, outcome: Suppressed("idempotent"))]) =
+  let assert Ok([RuleResult(rule_id: rid, outcome: automation.DuplicateEvent)]) =
     result2
   rid |> expect.equal(rule_id)
 }

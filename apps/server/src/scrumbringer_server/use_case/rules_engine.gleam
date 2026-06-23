@@ -108,13 +108,7 @@ pub type StateChange {
 
 /// Result of evaluating a single rule.
 pub type RuleResult {
-  RuleResult(rule_id: Int, outcome: RuleOutcome)
-}
-
-/// Outcome of a rule evaluation.
-pub type RuleOutcome {
-  Applied(tasks_created: Int)
-  Suppressed(reason: String)
+  RuleResult(rule_id: Int, outcome: automation.AutomationProcessResult)
 }
 
 /// Error during rule evaluation.
@@ -236,8 +230,10 @@ fn log_applied_results(results: List(RuleResult)) -> Nil {
 
 fn is_rule_applied(result: RuleResult) -> Bool {
   case result.outcome {
-    Applied(_) -> True
-    Suppressed(_) -> False
+    automation.Executed(_) -> True
+    automation.NoMatchingRule
+    | automation.Skipped(_)
+    | automation.DuplicateEvent -> False
   }
 }
 
@@ -388,7 +384,7 @@ fn suppress_idempotent_execution(
 ) -> Result(RuleResult, RuleEngineError) {
   log("  Suppressed: already executed for this resource")
 
-  Ok(RuleResult(rule.id, Suppressed("idempotent")))
+  Ok(RuleResult(rule.id, automation.DuplicateEvent))
 }
 
 fn evaluate_rule_templates(
@@ -413,7 +409,10 @@ fn apply_rule_without_templates(
 ) -> Result(RuleResult, RuleEngineError) {
   log("  Suppressed: rule has no template")
 
-  Ok(RuleResult(rule.id, Suppressed("template_missing")))
+  Ok(RuleResult(
+    rule.id,
+    automation.Skipped(automation.RuleRequiresReview(automation.TemplateMissing)),
+  ))
 }
 
 fn apply_rule_with_template(
@@ -436,21 +435,20 @@ fn apply_rule_with_template(
 
   log("  Applied: created task #" <> int.to_string(task_id))
 
-  let _ =
-    log_execution(
-      db,
-      rule.id,
-      event_key,
-      event,
-      "applied",
-      "",
-      event_user_id(event),
-      template.id,
-      template.version,
-      task_id,
-    )
+  use execution_id <- result.try(log_execution(
+    db,
+    rule.id,
+    event_key,
+    event,
+    "applied",
+    "",
+    event_user_id(event),
+    template.id,
+    template.version,
+    task_id,
+  ))
 
-  Ok(RuleResult(rule.id, Applied(1)))
+  Ok(RuleResult(rule.id, automation.Executed(execution_id)))
 }
 
 fn check_already_executed(
@@ -697,7 +695,7 @@ fn log_execution(
   template_id: Int,
   template_version: Int,
   created_task_id: Int,
-) -> Result(Nil, RuleEngineError) {
+) -> Result(Int, RuleEngineError) {
   case
     sql.rule_executions_log(
       db,
@@ -713,7 +711,11 @@ fn log_execution(
       created_task_id,
     )
   {
-    Ok(_) -> Ok(Nil)
+    Ok(pog.Returned(rows: rows, ..)) ->
+      case persisted_field.query_row(rows) {
+        Ok(row) -> Ok(row.id)
+        Error(e) -> Error(DbError(e))
+      }
     Error(e) -> Error(DbError(e))
   }
 }
