@@ -656,8 +656,14 @@ fn view_drilldown_executions_loaded(
             |> data_table.with_columns([
               data_table.column(t(config, i18n_text.Origin), origin_cell),
               data_table.column(t(config, i18n_text.Outcome), outcome_cell),
-              data_table.column("Created task", created_task_cell),
-              data_table.column("Template", template_cell),
+              data_table.column(
+                t(config, i18n_text.ProjectExecutionsTaskColumn),
+                created_task_cell,
+              ),
+              data_table.column(
+                t(config, i18n_text.ProjectExecutionsTemplateColumn),
+                template_cell,
+              ),
               data_table.column(t(config, i18n_text.User), user_cell),
               data_table.column(t(config, i18n_text.Timestamp), timestamp_cell),
             ])

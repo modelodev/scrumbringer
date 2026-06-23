@@ -265,6 +265,30 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
   assert_not_contains(html, "Suppressed")
 }
 
+pub fn automation_execution_history_localizes_drilldown_table_columns_test() {
+  let html =
+    execution_history.view(
+      execution_history.Config(
+        ..config(),
+        locale: locale.Es,
+        model: admin_metrics.Model(
+          ..config().model,
+          admin_rule_metrics_drilldown_rule_id: option.Some(22),
+          admin_rule_metrics_rule_details: Loaded(rule_details()),
+          admin_rule_metrics_executions: Loaded(executions_response()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Origen")
+  assert_contains(html, "Resultado")
+  assert_contains(html, ">Task<")
+  assert_contains(html, "Plantilla")
+  assert_not_contains(html, "Created task")
+  assert_not_contains(html, ">Template<")
+}
+
 pub fn automation_execution_history_marks_selected_execution_test() {
   let html =
     execution_history.view(
