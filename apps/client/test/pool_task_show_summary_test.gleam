@@ -81,7 +81,19 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
   assert_contains(html, "data-testid=\"automation-created-task-origin\"")
   assert_contains(
     html,
-    "href=\"/config/workflows?project=1&amp;mode=executions\"",
+    "href=\"/config/workflows?project=1&amp;mode=executions&amp;execution=101\"",
+  )
+  assert_contains(html, "data-testid=\"automation-origin-engine-link\"")
+  assert_contains(html, "data-testid=\"automation-origin-rule-link\"")
+  assert_contains(html, "data-testid=\"automation-origin-template-link\"")
+  assert_contains(html, ">View engine<")
+  assert_contains(html, ">View rule<")
+  assert_contains(html, ">View template<")
+  assert_contains(html, "href=\"/config/workflows?project=1&amp;engine=3\"")
+  assert_contains(html, "href=\"/config/workflows?project=1&amp;rule=8\"")
+  assert_contains(
+    html,
+    "href=\"/config/workflows?project=1&amp;mode=templates&amp;template=12\"",
   )
 }
 

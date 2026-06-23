@@ -967,6 +967,9 @@ pub type Text {
   TaskAutomationOrigin
   TaskAutomationExecutionLabel(execution_id: Int)
   TaskAutomationRuleLabel(rule_id: Int)
+  TaskAutomationViewEngine
+  TaskAutomationViewRule
+  TaskAutomationViewTemplate
   TaskDueDateLabel
   NoDueDate
   TaskBlockingClear

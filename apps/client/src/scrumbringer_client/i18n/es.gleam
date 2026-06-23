@@ -1142,6 +1142,9 @@ pub fn translate(text: Text) -> String {
     text.TaskAutomationExecutionLabel(execution_id) ->
       "Ejecución #" <> int.to_string(execution_id)
     text.TaskAutomationRuleLabel(rule_id) -> "Regla #" <> int.to_string(rule_id)
+    text.TaskAutomationViewEngine -> "Ver motor"
+    text.TaskAutomationViewRule -> "Ver regla"
+    text.TaskAutomationViewTemplate -> "Ver plantilla"
     text.TaskDueDateLabel -> "Vence"
     text.NoDueDate -> "Sin vencimiento"
     text.TaskBlockingClear -> "Sin bloqueos activos"

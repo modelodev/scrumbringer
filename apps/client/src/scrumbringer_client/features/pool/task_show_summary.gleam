@@ -109,18 +109,127 @@ fn automation_origin_item(
     div([attribute.class("task-show-summary-value")], [
       a(
         [
-          attribute.href(
-            router.format(router.Config(
-              permissions.RuleMetrics,
-              opt.Some(config.task.project_id),
-            )),
-          ),
+          attribute.href(automation_execution_href(config, origin)),
           attribute.attribute("data-testid", "automation-created-task-origin"),
         ],
         [text(automation_origin_label(config.locale, origin))],
       ),
+      div(
+        [attribute.class("task-show-summary-actions")],
+        automation_origin_links(config, origin),
+      ),
     ]),
   ])
+}
+
+fn automation_origin_links(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> List(Element(msg)) {
+  let engine_link = case origin.workflow_id {
+    opt.Some(id) -> [
+      automation_link(
+        config.locale,
+        automation_route(
+          config.task.project_id,
+          permissions.Workflows,
+          "engine",
+          id,
+        ),
+        i18n_text.TaskAutomationViewEngine,
+        "automation-origin-engine-link",
+      ),
+    ]
+    opt.None -> []
+  }
+
+  let rule_link = [
+    automation_link(
+      config.locale,
+      automation_route(
+        config.task.project_id,
+        permissions.Workflows,
+        "rule",
+        origin.rule_id,
+      ),
+      i18n_text.TaskAutomationViewRule,
+      "automation-origin-rule-link",
+    ),
+  ]
+
+  let template_link = case origin.template_id {
+    opt.Some(id) -> [
+      automation_link(
+        config.locale,
+        automation_route(
+          config.task.project_id,
+          permissions.TaskTemplates,
+          "template",
+          id,
+        ),
+        i18n_text.TaskAutomationViewTemplate,
+        "automation-origin-template-link",
+      ),
+    ]
+    opt.None -> []
+  }
+
+  engine_link
+  |> list.append(rule_link)
+  |> list.append(template_link)
+}
+
+fn automation_link(
+  locale: Locale,
+  href: String,
+  label: i18n_text.Text,
+  testid: String,
+) -> Element(msg) {
+  a(
+    [
+      attribute.href(href),
+      attribute.class("task-show-summary-action"),
+      attribute.attribute("data-testid", testid),
+    ],
+    [text(t(locale, label))],
+  )
+}
+
+fn automation_execution_href(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> String {
+  case origin.execution_id {
+    opt.Some(id) ->
+      automation_route(
+        config.task.project_id,
+        permissions.RuleMetrics,
+        "execution",
+        id,
+      )
+    opt.None ->
+      router.format(router.Config(
+        permissions.RuleMetrics,
+        opt.Some(config.task.project_id),
+      ))
+  }
+}
+
+fn automation_route(
+  project_id: Int,
+  section: permissions.AdminSection,
+  entity_key: String,
+  entity_id: Int,
+) -> String {
+  router.format(router.Config(section, opt.Some(project_id)))
+  |> append_query_param(entity_key, int.to_string(entity_id))
+}
+
+fn append_query_param(href: String, key: String, value: String) -> String {
+  case string.contains(href, "?") {
+    True -> href <> "&" <> key <> "=" <> value
+    False -> href <> "?" <> key <> "=" <> value
+  }
 }
 
 fn automation_origin_label(
