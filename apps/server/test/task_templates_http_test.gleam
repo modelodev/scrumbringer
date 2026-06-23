@@ -121,6 +121,80 @@ pub fn task_templates_project_crud_test() {
   |> expect.equal([])
 }
 
+pub fn task_template_used_by_rule_cannot_be_deleted_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'QA'",
+      [pog.int(project_id)],
+    )
+
+  let template_id =
+    create_template(
+      handler,
+      session,
+      csrf,
+      project_id,
+      type_id,
+      "Protected Template",
+    )
+  let workflow_id =
+    create_workflow(handler, session, csrf, project_id, "Release flow")
+
+  create_rule(
+    handler,
+    session,
+    csrf,
+    workflow_id,
+    type_id,
+    template_id,
+    "Development done",
+  )
+
+  let delete_res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/task-templates/" <> int.to_string(template_id),
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
+    )
+
+  expect.expect_status(delete_res, 409)
+  let body = simulate.read_body(delete_res)
+  expect.expect_json_contains_code(body, "CONFLICT")
+  let assert True = string.contains(body, "Pause or update")
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf),
+    )
+
+  expect.expect_status(list_res, 200)
+  decode_template_names(simulate.read_body(list_res))
+  |> expect.equal(["Protected Template"])
+}
+
 pub fn task_templates_project_scope_requires_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -397,6 +471,131 @@ fn decode_template_names(body: String) -> List(String) {
 
   let assert Ok(templates) = decode.run(dynamic, response_decoder)
   templates
+}
+
+fn create_template(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  type_id: Int,
+  name: String,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string(name)),
+          #("description", json.string("Template desc")),
+          #("type_id", json.int(type_id)),
+          #("priority", json.int(3)),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 200)
+  decode_template_id(simulate.read_body(res))
+}
+
+fn create_workflow(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  name: String,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string(name)),
+          #("description", json.string("Rules")),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 200)
+  decode_workflow_id(simulate.read_body(res))
+}
+
+fn create_rule(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  workflow_id: Int,
+  type_id: Int,
+  template_id: Int,
+  name: String,
+) -> Nil {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string(name)),
+          #("goal", json.string("Create QA work")),
+          #(
+            "trigger",
+            json.object([
+              #("type", json.string("task_completed")),
+              #("task_type_id", json.int(type_id)),
+            ]),
+          ),
+          #(
+            "action",
+            json.object([
+              #("type", json.string("create_task")),
+              #("template_id", json.int(template_id)),
+            ]),
+          ),
+          #("status", json.object([#("type", json.string("active"))])),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 200)
+}
+
+fn decode_workflow_id(body: String) -> Int {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let workflow_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+
+  let data_decoder = {
+    use workflow <- decode.field("workflow", workflow_decoder)
+    decode.success(workflow)
+  }
+
+  let response_decoder = {
+    use workflow_id <- decode.field("data", data_decoder)
+    decode.success(workflow_id)
+  }
+
+  let assert Ok(workflow_id) = decode.run(dynamic, response_decoder)
+  workflow_id
 }
 
 fn create_project(

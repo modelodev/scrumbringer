@@ -2479,7 +2479,9 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(
+  db: pog.Connection,
+) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -5851,7 +5853,12 @@ JOIN task_types tt on tt.id = inserted.type_id;
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type TaskTemplatesDeleteRow {
-  TaskTemplatesDeleteRow(id: Int)
+  TaskTemplatesDeleteRow(
+    template_found: Bool,
+    has_rules: Bool,
+    has_executions: Bool,
+    deleted_id: Int,
+  )
 }
 
 /// name: delete_task_template
@@ -5865,15 +5872,47 @@ pub fn task_templates_delete(
   arg_2: Int,
 ) -> Result(pog.Returned(TaskTemplatesDeleteRow), pog.QueryError) {
   let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(TaskTemplatesDeleteRow(id:))
+    use template_found <- decode.field(0, decode.bool)
+    use has_rules <- decode.field(1, decode.bool)
+    use has_executions <- decode.field(2, decode.bool)
+    use deleted_id <- decode.field(3, decode.int)
+    decode.success(TaskTemplatesDeleteRow(
+      template_found:,
+      has_rules:,
+      has_executions:,
+      deleted_id:,
+    ))
   }
 
   "-- name: delete_task_template
-DELETE FROM task_templates
-WHERE id = $1
-  AND org_id = $2
-RETURNING id;
+WITH matched AS (
+  SELECT id
+  FROM task_templates
+  WHERE id = $1
+    AND org_id = $2
+), usage AS (
+  SELECT
+    EXISTS (
+      SELECT 1
+      FROM rule_templates rt
+      JOIN matched m ON m.id = rt.template_id
+    ) as has_rules,
+    EXISTS (
+      SELECT 1
+      FROM rule_executions re
+      JOIN matched m ON m.id = re.template_id
+    ) as has_executions
+), deleted AS (
+  DELETE FROM task_templates
+  WHERE id IN (SELECT id FROM matched)
+    AND NOT (SELECT has_rules OR has_executions FROM usage)
+  RETURNING id
+)
+SELECT
+  EXISTS (SELECT 1 FROM matched) as template_found,
+  COALESCE((SELECT has_rules FROM usage), false) as has_rules,
+  COALESCE((SELECT has_executions FROM usage), false) as has_executions,
+  COALESCE((SELECT id FROM deleted), 0) as deleted_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))

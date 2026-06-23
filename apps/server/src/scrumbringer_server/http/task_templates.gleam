@@ -397,6 +397,7 @@ fn template_error_response(error: service_error.ServiceError) -> wisp.Response {
   case error {
     service_error.InvalidReference(_) ->
       api.error(422, "VALIDATION_ERROR", "Invalid type_id")
+    service_error.Conflict(message) -> api.error(409, "CONFLICT", message)
     _ -> service_error_response.to_response(error)
   }
 }
