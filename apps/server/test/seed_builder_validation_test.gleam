@@ -1,22 +1,12 @@
 import fixtures
+import gleam/result
 import pog
 import scrumbringer_server
 import scrumbringer_server/seed_builder
 import support/assertions as expect
 
 pub fn realistic_seed_marks_healthy_and_stress_pool_projects_test() {
-  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(_stats) =
-    seed_builder.build_seed(
-      db,
-      org_id,
-      admin_id,
-      seed_builder.realistic_config(),
-    )
+  let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(healthy_project_id) =
     project_id_by_name(db, "Healthy Validation Project")
@@ -35,18 +25,7 @@ pub fn realistic_seed_marks_healthy_and_stress_pool_projects_test() {
 }
 
 pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
-  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(_stats) =
-    seed_builder.build_seed(
-      db,
-      org_id,
-      admin_id,
-      seed_builder.realistic_config(),
-    )
+  let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(selected_rule_count) =
     fixtures.query_int(
@@ -55,6 +34,15 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
        from rules r
        join rule_templates rt on rt.rule_id = r.id
        where r.name like 'On Task Done%'",
+      [],
+    )
+  let assert Ok(unused_template_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from task_templates tt
+       left join rule_templates rt on rt.template_id = tt.id
+       where rt.template_id is null",
       [],
     )
   let assert Ok(stress_missing_template_count) =
@@ -126,11 +114,155 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
     )
 
   { selected_rule_count > 0 } |> expect.is_true
+  { unused_template_count > 0 } |> expect.is_true
   stress_missing_template_count |> expect.equal(1)
   { applied_execution_count > 0 } |> expect.is_true
   { created_task_trace_count > 0 } |> expect.is_true
   ignored_duplicate_count |> expect.equal(1)
   noisy_engine_execution_count |> expect.equal(8)
+}
+
+pub fn realistic_seed_covers_cards_tasks_and_due_dates_test() {
+  let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
+
+  let assert Ok(card_state_count) =
+    fixtures.query_int(
+      db,
+      "select count(distinct execution_state)::int
+       from cards
+       where execution_state in ('draft', 'active', 'closed')",
+      [],
+    )
+  let assert Ok(loose_task_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where card_id is null",
+      [],
+    )
+  let assert Ok(card_task_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where card_id is not null",
+      [],
+    )
+  let assert Ok(closed_task_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where execution_state = 'closed'
+         and closed_at is not null",
+      [],
+    )
+  let assert Ok(overdue_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where due_date < CURRENT_DATE
+         and execution_state <> 'closed'",
+      [],
+    )
+  let assert Ok(due_today_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where due_date = CURRENT_DATE
+         and execution_state <> 'closed'",
+      [],
+    )
+  let assert Ok(due_soon_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from tasks
+       where due_date > CURRENT_DATE
+         and due_date <= CURRENT_DATE + 7
+         and execution_state <> 'closed'",
+      [],
+    )
+  let assert Ok(blocked_task_count) =
+    fixtures.query_int(
+      db,
+      "select count(distinct task_id)::int
+       from task_dependencies",
+      [],
+    )
+
+  card_state_count |> expect.equal(3)
+  { loose_task_count > 0 } |> expect.is_true
+  { card_task_count > 0 } |> expect.is_true
+  { closed_task_count > 0 } |> expect.is_true
+  { overdue_count > 0 } |> expect.is_true
+  { due_today_count > 0 } |> expect.is_true
+  { due_soon_count > 0 } |> expect.is_true
+  { blocked_task_count > 0 } |> expect.is_true
+}
+
+pub fn realistic_seed_covers_people_capabilities_notes_and_activity_test() {
+  let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
+
+  let assert Ok(active_user_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from users
+       where first_login_at is not null",
+      [],
+    )
+  let assert Ok(capability_count) =
+    fixtures.query_int(db, "select count(*)::int from capabilities", [])
+  let assert Ok(member_capability_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from project_member_capabilities",
+      [],
+    )
+  let assert Ok(seed_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join task_notes tn on tn.note_id = n.id
+       where n.content like 'Seed note:%'",
+      [],
+    )
+  let assert Ok(activity_count) =
+    fixtures.query_int(db, "select count(*)::int from audit_events", [])
+  let assert Ok(work_session_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from user_task_work_session",
+      [],
+    )
+
+  { active_user_count > 1 } |> expect.is_true
+  { capability_count > 0 } |> expect.is_true
+  { member_capability_count > 0 } |> expect.is_true
+  seed_note_count |> expect.equal(5)
+  { activity_count > 0 } |> expect.is_true
+  { work_session_count > 0 } |> expect.is_true
+}
+
+fn build_realistic_seed() -> Result(#(pog.Connection, Int, Int), String) {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  use _stats <- result.try(seed_builder.build_seed(
+    db,
+    org_id,
+    admin_id,
+    seed_builder.realistic_config(),
+  ))
+
+  Ok(#(db, org_id, admin_id))
 }
 
 fn project_id_by_name(db: pog.Connection, name: String) -> Result(Int, String) {

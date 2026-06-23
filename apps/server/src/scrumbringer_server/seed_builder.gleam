@@ -272,6 +272,7 @@ pub fn build_seed(
   use state <- result.try(build_people_qa_scenarios(db, state, config))
   use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
+  use state <- result.try(build_task_notes(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
   use state <- result.try(trigger_rule_executions(db, state, config))
@@ -1924,6 +1925,44 @@ fn build_audit_events(
   }
 }
 
+fn build_task_notes(
+  db: pog.Connection,
+  state: BuildState,
+  config: SeedConfig,
+) -> Result(BuildState, String) {
+  let available_notes =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.status == Available })
+    |> list.take(2)
+  let claimed_notes =
+    state.task_seeds
+    |> list.filter(fn(seed) { is_claimed_status(seed.status) })
+    |> list.take(2)
+  let completed_notes =
+    state.task_seeds
+    |> list.filter(fn(seed) { is_completed_status(seed.status) })
+    |> list.take(1)
+  let noted_tasks =
+    available_notes
+    |> list.append(claimed_notes)
+    |> list.append(completed_notes)
+
+  use _ <- result.try(
+    list.index_map(noted_tasks, fn(seed, idx) {
+      seed_db.insert_task_note(
+        db,
+        seed.task_id,
+        note_author_for(state.user_ids, idx, state.admin_id),
+        seed_note_content(seed.status, idx),
+        Some(days_ago_timestamp(int.max(1, config.date_range_days - idx))),
+      )
+    })
+    |> result.all,
+  )
+
+  Ok(state)
+}
+
 fn build_root_cards(
   db: pog.Connection,
   state: BuildState,
@@ -3202,4 +3241,19 @@ fn is_completed_status(status: TaskPhase) -> Bool {
     Done -> True
     Available | Claimed(_) -> False
   }
+}
+
+fn note_author_for(user_ids: List(Int), idx: Int, default: Int) -> Int {
+  list_at_int(user_ids, idx + 1, default)
+}
+
+fn seed_note_content(status: TaskPhase, idx: Int) -> String {
+  let status_label = case status {
+    Available -> "available"
+    Claimed(Taken) -> "claimed"
+    Claimed(Ongoing) -> "ongoing"
+    Done -> "closed"
+  }
+
+  "Seed note: " <> status_label <> " task context #" <> int.to_string(idx + 1)
 }
