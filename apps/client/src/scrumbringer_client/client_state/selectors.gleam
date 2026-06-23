@@ -101,10 +101,37 @@ fn ensure_default_section_for_user(
   projects: List(Project),
 ) -> client_state.Model {
   let visible = permissions.visible_sections(user.org_role, projects)
+  let selected = selected_project(model)
 
-  case list.any(visible, fn(s) { s == model.core.active_section }) {
+  case
+    list.any(visible, fn(s) { s == model.core.active_section })
+    || allowed_internal_automation_section(
+      model.core.active_section,
+      user,
+      projects,
+      selected,
+    )
+  {
     True -> model
     False -> set_first_visible_section(model, visible)
+  }
+}
+
+fn allowed_internal_automation_section(
+  section: permissions.AdminSection,
+  user: User,
+  projects: List(Project),
+  selected_project: Option(Project),
+) -> Bool {
+  case section {
+    permissions.TaskTemplates | permissions.RuleMetrics ->
+      permissions.can_access_section(
+        section,
+        user.org_role,
+        projects,
+        selected_project,
+      )
+    _ -> False
   }
 }
 

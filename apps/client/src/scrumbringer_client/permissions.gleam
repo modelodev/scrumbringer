@@ -99,7 +99,7 @@ pub fn can_access_section(
   }
 }
 
-/// Returns the admin sections visible to a user.
+/// Returns the admin sections visible as primary navigation entries to a user.
 pub fn visible_sections(
   org_role: OrgRole,
   projects: List(Project),
@@ -115,13 +115,11 @@ pub fn visible_sections(
       Team,
       ApiTokens,
       Metrics,
-      RuleMetrics,
       Members,
       Capabilities,
       TaskTypes,
       Cards,
       Workflows,
-      TaskTemplates,
     ]
     // Org admin without manager projects: org-level + project-scoped (admin can manage all projects)
     True, False -> [
@@ -131,20 +129,16 @@ pub fn visible_sections(
       Team,
       ApiTokens,
       Metrics,
-      RuleMetrics,
       Capabilities,
       Workflows,
-      TaskTemplates,
     ]
     // Project manager (non-org-admin): project-scoped sections only
     False, True -> [
-      RuleMetrics,
       Members,
       Capabilities,
       TaskTypes,
       Cards,
       Workflows,
-      TaskTemplates,
     ]
     // No admin access
     False, False -> []

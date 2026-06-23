@@ -26,10 +26,8 @@ pub fn visible_sections_org_admin_test() {
     permissions.Team,
     permissions.ApiTokens,
     permissions.Metrics,
-    permissions.RuleMetrics,
     permissions.Capabilities,
     permissions.Workflows,
-    permissions.TaskTemplates,
   ] = permissions.visible_sections(org_role.Admin, projects)
 }
 
@@ -43,28 +41,24 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Team,
     permissions.ApiTokens,
     permissions.Metrics,
-    permissions.RuleMetrics,
     permissions.Members,
     permissions.Capabilities,
     permissions.TaskTypes,
     permissions.Cards,
     permissions.Workflows,
-    permissions.TaskTemplates,
   ] = permissions.visible_sections(org_role.Admin, projects)
 }
 
 pub fn visible_sections_project_manager_only_test() {
   let projects = [project_with_role(Manager)]
 
-  // Project managers get access to project-scoped sections including capabilities
+  // Project managers get primary access to project-scoped configuration.
   let assert [
-    permissions.RuleMetrics,
     permissions.Members,
     permissions.Capabilities,
     permissions.TaskTypes,
     permissions.Cards,
     permissions.Workflows,
-    permissions.TaskTemplates,
   ] = permissions.visible_sections(org_role.Member, projects)
 }
 
