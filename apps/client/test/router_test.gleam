@@ -122,35 +122,31 @@ pub fn parse_config_automation_unknown_mode_redirects_test() {
   )
 }
 
-pub fn parse_config_templates_slug_redirects_to_automation_mode_test() {
+pub fn parse_config_templates_slug_redirects_to_members_test() {
   let parsed = router.parse_uri(build_uri("/config/templates", "?project=2"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.Config(permissions.TaskTemplates, Some(2))),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
-pub fn parse_config_automation_selection_on_old_slug_redirects_test() {
+pub fn parse_config_automation_selection_on_old_slug_drops_legacy_selection_test() {
   let parsed =
     router.parse_uri(build_uri("/config/templates", "?project=2&template=12"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.ConfigAutomation(
-      permissions.TaskTemplates,
-      Some(2),
-      automation_deep_link.SelectedTemplate(12),
-    )),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
-pub fn parse_config_rule_metrics_slug_redirects_to_automation_mode_test() {
+pub fn parse_config_rule_metrics_slug_redirects_to_members_test() {
   let parsed = router.parse_uri(build_uri("/config/rule-metrics", "?project=2"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.Config(permissions.RuleMetrics, Some(2))),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
@@ -217,6 +213,12 @@ pub fn parse_org_api_tokens_test() {
   let parsed = router.parse_uri(build_uri("/org/api-tokens", ""))
 
   assert_equal(parsed, router.Parsed(router.Org(permissions.ApiTokens)))
+}
+
+pub fn parse_org_rule_metrics_legacy_redirects_to_invites_test() {
+  let parsed = router.parse_uri(build_uri("/org/rule-metrics", ""))
+
+  assert_equal(parsed, router.Redirect(router.Org(permissions.Invites)))
 }
 
 pub fn parse_org_unknown_section_redirects_to_invites_test() {

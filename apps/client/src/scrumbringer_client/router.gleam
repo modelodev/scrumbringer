@@ -148,7 +148,7 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
     Ok(section) -> {
       let parsed = config_parse_result(section, result, selection)
       case
-        should_redirect_config_route(slug, search)
+        invalid_config_mode(slug, search)
         || selection_redirect_needed(slug, section, selection)
         || result.is_error(selection_result)
       {
@@ -157,7 +157,7 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
       }
     }
     Error(_) ->
-      config_parse_result(permissions.Members, result, selection) |> as_redirect
+      config_parse_result(permissions.Members, result, None) |> as_redirect
   }
 }
 
@@ -485,8 +485,6 @@ fn config_section_from_slug(
     "task-types" -> Ok(permissions.TaskTypes)
     "cards" -> Ok(permissions.Cards)
     "workflows" -> Ok(automation_section_from_search(search))
-    "templates" -> Ok(permissions.TaskTemplates)
-    "rule-metrics" -> Ok(permissions.RuleMetrics)
     _ -> Error(Nil)
   }
 }
@@ -520,13 +518,6 @@ fn invalid_config_mode(slug: String, search: String) -> Bool {
     None -> False
     Some("templates") | Some("executions") -> slug != "workflows"
     Some(_) -> True
-  }
-}
-
-fn should_redirect_config_route(slug: String, search: String) -> Bool {
-  case slug {
-    "templates" | "rule-metrics" -> True
-    _ -> invalid_config_mode(slug, search)
   }
 }
 
@@ -578,8 +569,8 @@ fn config_section_slug(section: permissions.AdminSection) -> String {
     permissions.TaskTypes -> "task-types"
     permissions.Cards -> "cards"
     permissions.Workflows -> "workflows"
-    permissions.TaskTemplates -> "templates"
-    permissions.RuleMetrics -> "rule-metrics"
+    permissions.TaskTemplates -> "workflows"
+    permissions.RuleMetrics -> "workflows"
     // Org sections should not use this, but provide fallback
     _ -> "members"
   }
@@ -595,7 +586,6 @@ fn org_section_from_slug(slug: String) -> Result(permissions.AdminSection, Nil) 
     "team" | "assignments" -> Ok(permissions.Team)
     "api-tokens" -> Ok(permissions.ApiTokens)
     "metrics" -> Ok(permissions.Metrics)
-    "rule-metrics" -> Ok(permissions.RuleMetrics)
     _ -> Error(Nil)
   }
 }
@@ -609,7 +599,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
     permissions.Team -> "team"
     permissions.ApiTokens -> "api-tokens"
     permissions.Metrics -> "metrics"
-    permissions.RuleMetrics -> "rule-metrics"
+    permissions.RuleMetrics -> "metrics"
     // Config sections should not use this, but provide fallback
     _ -> "invites"
   }
