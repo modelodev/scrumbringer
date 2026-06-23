@@ -149,6 +149,7 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
       let parsed = config_parse_result(section, result, selection)
       case
         invalid_config_mode(slug, search)
+        || legacy_config_slug_redirect_needed(slug, section)
         || selection_redirect_needed(slug, section, selection)
         || result.is_error(selection_result)
       {
@@ -485,6 +486,8 @@ fn config_section_from_slug(
     "task-types" -> Ok(permissions.TaskTypes)
     "cards" -> Ok(permissions.Cards)
     "workflows" -> Ok(automation_section_from_search(search))
+    "templates" -> Ok(permissions.TaskTemplates)
+    "rule-metrics" -> Ok(permissions.RuleMetrics)
     _ -> Error(Nil)
   }
 }
@@ -510,6 +513,17 @@ fn selection_redirect_needed(
     None -> False
     Some(value) ->
       slug != "workflows" || section != automation_deep_link.section(value)
+  }
+}
+
+fn legacy_config_slug_redirect_needed(
+  slug: String,
+  section: permissions.AdminSection,
+) -> Bool {
+  case slug, section {
+    "templates", permissions.TaskTemplates -> True
+    "rule-metrics", permissions.RuleMetrics -> True
+    _, _ -> False
   }
 }
 
