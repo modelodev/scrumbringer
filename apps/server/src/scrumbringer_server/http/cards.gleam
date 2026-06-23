@@ -25,9 +25,10 @@
 //// - GET  /api/v1/cards/:card_id/tasks
 
 import api/cards/contracts as card_contracts
-import domain/card.{type Card}
+import domain/card as domain_card
 import gleam/http
 import gleam/int
+import gleam/option.{Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -38,6 +39,7 @@ import scrumbringer_server/http/query
 import scrumbringer_server/use_case/authorization
 import scrumbringer_server/use_case/cards_db
 import scrumbringer_server/use_case/metrics_db
+import scrumbringer_server/use_case/rules_engine
 import wisp
 
 fn card_not_found_response(include_metrics: Bool) -> wisp.Response {
@@ -328,14 +330,15 @@ fn handle_card_action(
   req: wisp.Request,
   ctx: auth.Ctx,
   card_id: Int,
-  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+  action: fn(auth.Ctx, domain_card.Card, Int, Int) -> wisp.Response,
 ) -> wisp.Response {
   case auth.require_current_user_response(req, ctx) {
     Error(resp) -> resp
     Ok(user) ->
       case csrf.require_csrf(req) {
         Error(resp) -> resp
-        Ok(Nil) -> action_card_with_auth(ctx, card_id, user.id, action)
+        Ok(Nil) ->
+          action_card_with_auth(ctx, card_id, user.id, user.org_id, action)
       }
   }
 }
@@ -344,7 +347,8 @@ fn action_card_with_auth(
   ctx: auth.Ctx,
   card_id: Int,
   user_id: Int,
-  action: fn(auth.Ctx, Int, Int) -> wisp.Response,
+  org_id: Int,
+  action: fn(auth.Ctx, domain_card.Card, Int, Int) -> wisp.Response,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
   case cards_db.get_card(db, card_id, user_id) {
@@ -352,19 +356,29 @@ fn action_card_with_auth(
     Ok(card) ->
       case require_project_admin(db, user_id, card.project_id) {
         Error(resp) -> resp
-        Ok(Nil) -> action(ctx, card_id, user_id)
+        Ok(Nil) -> action(ctx, card, user_id, org_id)
       }
   }
 }
 
 fn activate_card_in_db(
   ctx: auth.Ctx,
-  card_id: Int,
+  current_card: domain_card.Card,
   user_id: Int,
+  org_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
-  case cards_db.activate_card(db, card_id, user_id) {
-    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+  case cards_db.activate_card(db, current_card.id, user_id) {
+    Ok(pool_impact) -> {
+      evaluate_card_rules_after_transition(
+        db,
+        current_card,
+        user_id,
+        org_id,
+        domain_card.Active,
+      )
+      card_action_response(current_card.id, pool_impact)
+    }
     Error(error) -> card_error_response(error)
   }
 }
@@ -381,10 +395,24 @@ fn handle_close_request(
   }
 }
 
-fn close_card_in_db(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
+fn close_card_in_db(
+  ctx: auth.Ctx,
+  current_card: domain_card.Card,
+  user_id: Int,
+  org_id: Int,
+) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
-  case cards_db.close_card(db, card_id, user_id) {
-    Ok(pool_impact) -> card_action_response(card_id, pool_impact)
+  case cards_db.close_card(db, current_card.id, user_id) {
+    Ok(pool_impact) -> {
+      evaluate_card_rules_after_transition(
+        db,
+        current_card,
+        user_id,
+        org_id,
+        domain_card.Closed,
+      )
+      card_action_response(current_card.id, pool_impact)
+    }
     Error(error) -> card_error_response(error)
   }
 }
@@ -398,9 +426,34 @@ fn handle_move_request(
   case card_contracts.decode_card_move(data) {
     Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid move request")
     Ok(card_contracts.CardMoveRequest(parent_card_id: parent_card_id)) ->
-      handle_card_action(req, ctx, card_id, fn(ctx, card_id, _user_id) {
-        move_card_in_db(ctx, card_id, parent_card_id)
+      handle_card_action(req, ctx, card_id, fn(ctx, card, _user_id, _org_id) {
+        move_card_in_db(ctx, card.id, parent_card_id)
       })
+  }
+}
+
+fn evaluate_card_rules_after_transition(
+  db: pog.Connection,
+  existing_card: domain_card.Card,
+  user_id: Int,
+  org_id: Int,
+  to_state: domain_card.CardPhase,
+) -> Nil {
+  case existing_card.state == to_state {
+    True -> Nil
+    False -> {
+      let event =
+        rules_engine.card_event(
+          existing_card.id,
+          existing_card.project_id,
+          org_id,
+          user_id,
+          Some(existing_card.state),
+          to_state,
+        )
+      let _ = rules_engine.evaluate_rules(db, event)
+      Nil
+    }
   }
 }
 
@@ -461,7 +514,7 @@ fn get_card_for_user(
 fn respond_with_card_if_member(
   db: pog.Connection,
   user_id: Int,
-  card: Card,
+  card: domain_card.Card,
   include_metrics: Bool,
 ) -> wisp.Response {
   case authorization.is_project_member(db, user_id, card.project_id) {
@@ -531,7 +584,7 @@ fn update_card_with_auth(
 fn update_card_in_project(
   req: wisp.Request,
   ctx: auth.Ctx,
-  card: Card,
+  card: domain_card.Card,
   user_id: Int,
   org_id: Int,
 ) -> wisp.Response {
@@ -620,7 +673,7 @@ fn delete_card_with_auth(
 
 fn delete_card_in_project(
   ctx: auth.Ctx,
-  card: Card,
+  card: domain_card.Card,
   user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx

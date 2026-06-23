@@ -6,6 +6,7 @@
 //// This is critical because the rules engine is called "fire and forget"
 //// in handlers.gleam, so errors could be silently swallowed.
 
+import domain/card as domain_card
 import domain/task_status
 import fixtures
 import gleam/http
@@ -36,6 +37,23 @@ fn activate_card(
     )
     |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([])),
+  )
+}
+
+fn close_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fixtures.Session,
+  card_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/close",
+    )
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(
+      json.object([#("reason", json.string("manually_closed"))]),
+    ),
   )
 }
 
@@ -748,6 +766,106 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       [pog.int(rule_id)],
     )
   exec_count |> expect.equal(0)
+}
+
+/// Verifies card activation and closure rules fire from the HTTP lifecycle.
+pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Card Trigger API")
+  let assert Ok(followup_type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Followup", "check")
+  let assert Ok(activation_template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      followup_type_id,
+      "Activation follow-up",
+    )
+  let assert Ok(close_template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      followup_type_id,
+      "Close follow-up",
+    )
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Card Trigger WF")
+  let assert Ok(activation_rule_id) =
+    fixtures.create_rule_card(
+      handler,
+      session,
+      workflow_id,
+      "Any Card Activated",
+      domain_card.Active,
+      activation_template_id,
+    )
+  let assert Ok(close_rule_id) =
+    fixtures.create_rule_card_at_depth(
+      handler,
+      session,
+      workflow_id,
+      "Depth 2 Closed",
+      domain_card.Closed,
+      2,
+      close_template_id,
+    )
+
+  let assert Ok(root_card_id) =
+    fixtures.create_card(handler, session, project_id, "Root activation")
+  expect.expect_status(activate_card(handler, session, root_card_id), 200)
+
+  let assert Ok(activation_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(activation_rule_id)],
+    )
+  activation_count |> expect.equal(1)
+
+  let assert Ok(root_close_id) =
+    fixtures.create_card(handler, session, project_id, "Root close mismatch")
+  expect.expect_status(close_card(handler, session, root_close_id), 200)
+
+  let assert Ok(close_mismatch_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(close_rule_id)],
+    )
+  close_mismatch_count |> expect.equal(0)
+
+  let assert Ok(parent_card_id) =
+    fixtures.create_card(handler, session, project_id, "Parent")
+  let assert Ok(child_card_id) =
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      parent_card_id,
+      "Child",
+    )
+  expect.expect_status(close_card(handler, session, child_card_id), 200)
+
+  let assert Ok(close_match_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(close_rule_id)],
+    )
+  close_match_count |> expect.equal(1)
+
+  let assert Ok(followup_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE type_id = $1",
+      [pog.int(followup_type_id)],
+    )
+  followup_count |> expect.equal(2)
 }
 
 // =============================================================================
