@@ -23,13 +23,10 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  div, form, h2, input, option, p, select, span, table, td, text, th, thead, tr,
-}
+import lustre/element/html.{div, form, h2, input, option, p, select, span, text}
 import lustre/element/keyed
 import lustre/event
 
-import domain/automation
 import domain/remote.{type Remote, Loaded}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
@@ -132,7 +129,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           config.on_create_clicked,
         ),
       ),
-      view_rules_table(config, config.rules.rules, config.rules.rules_metrics),
+      view_rules_list(config, config.rules.rules, config.rules.rules_metrics),
       view_rule_builder_panel(config),
     ],
   )
@@ -159,7 +156,7 @@ fn engine_name_or_id(name: opt.Option(String), workflow_id: Int) -> String {
   }
 }
 
-fn view_rules_table(
+fn view_rules_list(
   config: Config(msg),
   rules: Remote(List(Rule)),
   metrics: Remote(api_rule_metrics.WorkflowMetrics),
@@ -180,34 +177,17 @@ fn view_rules_table(
       case rs {
         [] -> empty_state.simple("inbox", t(config, i18n_text.NoRulesYet))
         _ ->
-          div([attribute.class("rules-expandable-table")], [
-            table([attribute.class("table data-table")], [
-              thead([], [
-                tr([], [
-                  th([attribute.class("col-expand")], []),
-                  th([], [text(t(config, i18n_text.RuleName))]),
-                  th([], [text("Automatizacion")]),
-                  th([], [text(t(config, i18n_text.RuleActive))]),
-                  th([], [text(t(config, i18n_text.RuleTemplates))]),
-                  th([], [text(t(config, i18n_text.RuleMetricsApplied))]),
-                  th([], [text(t(config, i18n_text.RuleMetricsSuppressed))]),
-                  th([attribute.class("col-actions")], [
-                    text(t(config, i18n_text.Actions)),
-                  ]),
-                ]),
-              ]),
-              keyed.tbody(
-                [],
-                list.flat_map(rs, fn(r) {
-                  view_rule_row_expandable(
-                    config,
-                    r,
-                    get_rule_metrics(metrics, r.id),
-                  )
-                }),
-              ),
-            ]),
-          ])
+          keyed.element(
+            "div",
+            [attribute.class("automation-rule-list")],
+            list.map(rs, fn(r) {
+              view_rule_row_expandable(
+                config,
+                r,
+                get_rule_metrics(metrics, r.id),
+              )
+            }),
+          )
       }
     },
   )
@@ -218,15 +198,11 @@ fn view_rule_row_expandable(
   config: Config(msg),
   rule: Rule,
   rule_metrics: #(Int, Int),
-) -> List(#(String, Element(msg))) {
+) -> #(String, Element(msg)) {
   let is_selected = config.selected_rule_id == opt.Some(rule.id)
   let is_expanded =
     set.contains(config.rules.rules_expanded, rule.id) || is_selected
-  let _expand_title = case is_expanded {
-    True -> t(config, i18n_text.CollapseRule)
-    False -> t(config, i18n_text.ExpandRule)
-  }
-  let #(applied, suppressed) = rule_metrics
+  let #(applied, ignored) = rule_metrics
   let has_template = opt.is_some(rule.template)
 
   // AC2: Whole row is clickeable (via row class + click handler)
@@ -236,79 +212,68 @@ fn view_rule_row_expandable(
     |> class_when(is_expanded, "rule-row-expanded")
     |> class_when(is_selected, "is-selected")
 
-  let main_row = #(
+  #(
     "rule-" <> int.to_string(rule.id),
-    tr(
-      [
-        attribute.class(row_class),
-        attribute.attribute("data-testid", "automation-rule-row"),
-        attribute.attribute("data-selected", bool_to_string(is_selected)),
-        attribute.attribute(
-          "aria-expanded",
-          attribute_value.boolean(is_expanded),
-        ),
-        // AC2: Click anywhere on the row to expand/collapse
-        event.on_click(config.on_rule_expanded(rule.id)),
-      ],
-      [
-        // Expand/collapse icon (AC1: visual indicator) - use triangles for consistency
-        td([attribute.class("cell-expand")], [
-          expand_toggle.view_with_class(is_expanded, "rule-expand-icon"),
-        ]),
-        // Name
-        td([], [text(rule.name)]),
-        // Cause/effect sentence
-        td([attribute.class("cell-rule-sentence")], [
-          rule_sentence.view(
-            config.locale,
-            rule,
-            rule_task_type_name(config, rule),
+    div([attribute.class("automation-rule-item")], [
+      div(
+        [
+          attribute.class(row_class),
+          attribute.role("button"),
+          attribute.attribute("tabindex", "0"),
+          attribute.attribute("data-testid", "automation-rule-row"),
+          attribute.attribute("data-selected", bool_to_string(is_selected)),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(is_expanded),
           ),
-        ]),
-        // Active status with completeness indicator (AC6-8)
-        td([attribute.class("cell-status")], [
-          view_rule_active_status(config, rule, has_template),
-        ]),
-        // Template count badge
-        td([attribute.class("cell-templates")], [
-          case has_template {
-            False ->
-              badge.new_unchecked("0", badge.Neutral)
-              |> badge.view_with_class("table-badge table-badge-empty")
-            True ->
-              badge.new_unchecked("1", badge.Neutral)
-              |> badge.view_with_class("table-badge table-badge-count")
-          },
-        ]),
-        // Created metrics
-        td([attribute.class("metric-cell")], [
-          span([attribute.class("metric applied")], [
-            text(int.to_string(applied)),
+          // AC2: Click anywhere on the row to expand/collapse
+          event.on_click(config.on_rule_expanded(rule.id)),
+        ],
+        [
+          div([attribute.class("rule-row__main")], [
+            div([attribute.class("rule-row__title")], [
+              expand_toggle.view_with_class(is_expanded, "rule-expand-icon"),
+              span([attribute.class("rule-row__name")], [text(rule.name)]),
+              rule_sentence.status_badge(config.locale, rule),
+            ]),
+            rule_sentence.view(
+              config.locale,
+              rule,
+              rule_task_type_name(config, rule),
+            ),
+            div([attribute.class("rule-row__meta")], [
+              rule_meta("Engine", config.workflow_name),
+              rule_meta("Template", case has_template {
+                True -> "1"
+                False -> "0"
+              }),
+              rule_meta("Created", int.to_string(applied)),
+              rule_meta("Ignored", int.to_string(ignored)),
+            ]),
           ]),
-        ]),
-        // Ignored metrics
-        td([attribute.class("metric-cell")], [
-          span([attribute.class("metric suppressed")], [
-            text(int.to_string(suppressed)),
+          div([attribute.class("rule-row__actions cell-no-expand")], [
+            action_buttons.edit_delete_row(
+              edit_title: t(config, i18n_text.EditRule),
+              edit_click: config.on_edit_clicked(rule),
+              delete_title: t(config, i18n_text.DeleteRule),
+              delete_click: config.on_delete_clicked(rule),
+            ),
           ]),
-        ]),
-        // Actions - use class to prevent row click via CSS/JS
-        td([attribute.class("cell-actions cell-no-expand")], [
-          action_buttons.edit_delete_row(
-            edit_title: t(config, i18n_text.EditRule),
-            edit_click: config.on_edit_clicked(rule),
-            delete_title: t(config, i18n_text.DeleteRule),
-            delete_click: config.on_delete_clicked(rule),
-          ),
-        ]),
-      ],
-    ),
+        ],
+      ),
+      case is_expanded {
+        True -> view_rule_templates_expansion(config, rule)
+        False -> element.none()
+      },
+    ]),
   )
+}
 
-  case is_expanded {
-    False -> [main_row]
-    True -> [main_row, view_rule_templates_expansion(config, rule)]
-  }
+fn rule_meta(label: String, value: String) -> Element(msg) {
+  span([attribute.class("rule-row__metric")], [
+    span([attribute.class("rule-row__metric-label")], [text(label <> ":")]),
+    span([attribute.class("rule-row__metric-value")], [text(value)]),
+  ])
 }
 
 fn class_when(base: String, condition: Bool, class_name: String) -> String {
@@ -334,40 +299,18 @@ fn rule_task_type_name(config: Config(msg), rule: Rule) -> opt.Option(String) {
   }
 }
 
-// Justification: nested case avoids collapsing active/template semantics into
-// fragile conditionals and keeps UI intent explicit.
-fn view_rule_active_status(
-  config: Config(msg),
-  rule: Rule,
-  has_template: Bool,
-) -> Element(msg) {
-  case automation.status_to_active(rule.status) {
-    True ->
-      case has_template {
-        True -> rule_sentence.status_badge(config.locale, rule)
-        False ->
-          span(
-            [
-              attribute.class("rule-incomplete-indicator"),
-              attribute.title(t(config, i18n_text.NoTemplatesWontCreateTasks)),
-            ],
-            [icons.nav_icon(icons.Warning, icons.Small)],
-          )
-      }
-    False ->
-      span([attribute.class("rule-inactive-indicator")], [
-        icons.nav_icon(icons.XMark, icons.Small),
-      ])
-  }
-}
-
 /// Render the expansion row with the rule's selected template.
 fn view_rule_templates_expansion(
   config: Config(msg),
   rule: Rule,
-) -> #(String, Element(msg)) {
-  let content =
-    div([attribute.class("templates-expansion")], [
+) -> Element(msg) {
+  div(
+    [
+      attribute.class("templates-expansion"),
+      // Prevent clicks in expansion row from bubbling up
+      event.on_click(config.on_noop) |> event.stop_propagation,
+    ],
+    [
       div([attribute.class("templates-header")], [
         span([attribute.class("templates-title")], [
           text(t(config, i18n_text.AttachedTemplates)),
@@ -386,20 +329,7 @@ fn view_rule_templates_expansion(
             view_attached_template_item(config, template),
           ])
       },
-    ])
-
-  #(
-    "rule-exp-" <> int.to_string(rule.id),
-    tr(
-      [
-        attribute.class("expansion-row"),
-        // Prevent clicks in expansion row from bubbling up
-        event.on_click(config.on_noop) |> event.stop_propagation,
-      ],
-      [
-        td([attribute.attribute("colspan", "8")], [content]),
-      ],
-    ),
+    ],
   )
 }
 
