@@ -848,10 +848,10 @@ pub fn translate(text: Text) -> String {
 
     // Workflows
     text.AdminWorkflows -> "Automations"
-    text.WorkflowsTitle -> "Workflows"
-    text.WorkflowsOrgTitle -> "Organization Workflows"
-    text.WorkflowsProjectTitle(project_name) -> "Workflows - " <> project_name
-    text.SelectProjectForWorkflows -> "Select a project to manage workflows"
+    text.WorkflowsTitle -> "Automations"
+    text.WorkflowsOrgTitle -> "Organization automations"
+    text.WorkflowsProjectTitle(project_name) -> "Automations - " <> project_name
+    text.SelectProjectForWorkflows -> "Select a project to manage automations"
     text.WorkflowName -> "Name"
     text.WorkflowDescription -> "Description"
     text.WorkflowScope -> "Scope"
@@ -859,14 +859,14 @@ pub fn translate(text: Text) -> String {
     text.WorkflowScopeProject -> "Project"
     text.WorkflowRules -> "Rules"
     text.WorkflowActive -> "Active"
-    text.WorkflowCreated -> "Workflow created"
-    text.WorkflowUpdated -> "Workflow updated"
-    text.CreateWorkflow -> "Create Workflow"
-    text.EditWorkflow -> "Edit Workflow"
-    text.DeleteWorkflow -> "Delete Workflow"
-    text.WorkflowDeleteConfirm(name) -> "Delete workflow \"" <> name <> "\"?"
-    text.NoWorkflowsYet -> "No workflows yet"
-    text.WorkflowDeleted -> "Workflow deleted"
+    text.WorkflowCreated -> "Engine created"
+    text.WorkflowUpdated -> "Engine updated"
+    text.CreateWorkflow -> "Create engine"
+    text.EditWorkflow -> "Edit engine"
+    text.DeleteWorkflow -> "Delete engine"
+    text.WorkflowDeleteConfirm(name) -> "Delete engine \"" <> name <> "\"?"
+    text.NoWorkflowsYet -> "No engines yet"
+    text.WorkflowDeleted -> "Engine deleted"
 
     // Rules
     text.RulesTitle(workflow_name) -> "Rules - " <> workflow_name
@@ -964,12 +964,12 @@ pub fn translate(text: Text) -> String {
     text.SelectTaskType -> "Select type"
 
     // Rule Metrics Tab
-    text.AdminRuleMetrics -> "Rule Metrics"
-    text.RuleMetricsTitle -> "Rule Metrics"
+    text.AdminRuleMetrics -> "Executions"
+    text.RuleMetricsTitle -> "Executions"
     text.RuleMetricsDescription ->
-      "View how many times automation rules have been executed and their effectiveness."
+      "Review automation executions, created tasks, and ignored events."
     text.RuleMetricsHelp ->
-      "View rule execution metrics for workflows. Select a date range (max 90 days) to see applied and suppressed counts."
+      "Select a date range (max 90 days) to review automation executions and ignored events."
     text.RuleMetricsFrom -> "From"
     text.RuleMetricsTo -> "To"
     text.RuleMetricsRefresh -> "Refresh"
@@ -981,14 +981,14 @@ pub fn translate(text: Text) -> String {
     text.RuleMetricsNoData -> "No metrics data for the selected range"
     text.RuleMetricsRuleCount -> "Rules"
     text.RuleMetricsEvaluated -> "Evaluated"
-    text.RuleMetricsNoRules -> "No rules in this workflow"
+    text.RuleMetricsNoRules -> "No rules in this engine"
     text.ViewDetails -> "View Details"
     text.OpenTask -> "Open task"
     text.OpenCard -> "Open card"
     text.AgeLabel -> "Age"
     text.ParentCardLabel -> "Card"
-    text.RuleMetricsDrilldown -> "Rule Metrics Details"
-    text.SuppressionBreakdown -> "Suppression Breakdown"
+    text.RuleMetricsDrilldown -> "Execution details"
+    text.SuppressionBreakdown -> "Ignored events"
     text.SuppressionIdempotent -> "Idempotent (already applied)"
     text.SuppressionNotUserTriggered -> "Not user triggered"
     text.SuppressionNotMatching -> "Conditions not matching"
@@ -1154,7 +1154,7 @@ pub fn translate(text: Text) -> String {
     text.MetricsSessionCount -> "Session count"
     text.MetricsTotalWorkTime -> "Total work time"
     text.MetricsAvgExecutors -> "Avg executors"
-    text.MetricsWorkflows -> "Workflows"
+    text.MetricsWorkflows -> "Automations"
     text.MetricsMostActivated -> "Most activated"
     text.MetricsNotAvailable -> "Not available"
     text.MetricsEmptyState -> "Not enough data for metrics"
@@ -1167,7 +1167,7 @@ pub fn translate(text: Text) -> String {
     text.ErrorLoadingTasks -> "Error loading tasks"
 
     // Workflows / Rules
-    text.BackToWorkflows -> "← Back to Workflows"
+    text.BackToWorkflows -> "← Back to Automations"
     text.ResourceTypeTask -> "task"
     text.RuleMetricsNoExecutions ->
       "No automation executions found in the selected range."

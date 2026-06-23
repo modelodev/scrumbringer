@@ -134,7 +134,7 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
   case config_section_from_slug(slug, search) {
     Ok(section) -> {
       let parsed = config_parse_result(section, result)
-      case invalid_config_mode(slug, search) {
+      case should_redirect_config_route(slug, search) {
         True -> as_redirect(parsed)
         False -> parsed
       }
@@ -446,6 +446,13 @@ fn invalid_config_mode(slug: String, search: String) -> Bool {
     None -> False
     Some("templates") | Some("executions") -> slug != "workflows"
     Some(_) -> True
+  }
+}
+
+fn should_redirect_config_route(slug: String, search: String) -> Bool {
+  case slug {
+    "templates" | "rule-metrics" -> True
+    _ -> invalid_config_mode(slug, search)
   }
 }
 

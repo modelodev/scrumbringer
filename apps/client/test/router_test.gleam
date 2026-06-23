@@ -56,6 +56,24 @@ pub fn parse_config_automation_unknown_mode_redirects_test() {
   )
 }
 
+pub fn parse_config_templates_slug_redirects_to_automation_mode_test() {
+  let parsed = router.parse_uri(build_uri("/config/templates", "?project=2"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.TaskTemplates, Some(2))),
+  )
+}
+
+pub fn parse_config_rule_metrics_slug_redirects_to_automation_mode_test() {
+  let parsed = router.parse_uri(build_uri("/config/rule-metrics", "?project=2"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.RuleMetrics, Some(2))),
+  )
+}
+
 pub fn parse_config_mode_outside_automations_redirects_test() {
   let parsed =
     router.parse_uri(build_uri("/config/members", "?project=2&mode=templates"))

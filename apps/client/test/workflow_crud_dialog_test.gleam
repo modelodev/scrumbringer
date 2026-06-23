@@ -245,9 +245,9 @@ pub fn create_dialog_renders_shared_workflow_fields_test() {
     |> element.to_document_string
 
   assert_contains(html, "workflow-create-form")
-  assert_contains(html, "Create Workflow")
-  assert_contains(html, "Workflow name")
-  assert_contains(html, "Workflow description")
+  assert_contains(html, "Create engine")
+  assert_contains(html, "Engine name")
+  assert_contains(html, "Engine description")
   assert_contains(html, "Active")
 }
 
@@ -257,7 +257,7 @@ pub fn edit_dialog_renders_shared_workflow_fields_test() {
     |> element.to_document_string
 
   assert_contains(html, "workflow-edit-form")
-  assert_contains(html, "Edit Workflow")
+  assert_contains(html, "Edit engine")
   assert_contains(html, "Test Workflow")
   assert_contains(html, "Test Description")
   assert_contains(html, "Active")

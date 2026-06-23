@@ -65,8 +65,8 @@ pub fn workflows_view_renders_list_from_config_without_root_model_test() {
     workflows.view_workflows(config())
     |> element.to_document_string
 
-  assert_contains(html, "Workflows - Roadmap")
-  assert_contains(html, "Create Workflow")
+  assert_contains(html, "Automations - Roadmap")
+  assert_contains(html, "Create engine")
   assert_contains(html, "Release automation")
   assert_contains(html, "workflow-rules-btn")
 }
@@ -78,7 +78,7 @@ pub fn workflows_view_renders_empty_project_state_without_root_model_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Select a project to manage workflows")
+  assert_contains(html, "Select a project to manage automations")
 }
 
 pub fn workflows_view_renders_crud_dialog_from_config_without_root_model_test() {

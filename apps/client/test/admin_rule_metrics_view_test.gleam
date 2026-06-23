@@ -114,7 +114,7 @@ pub fn rule_metrics_view_renders_from_config_without_root_model_test() {
     rule_metrics_view.view_rule_metrics(config())
     |> element.to_document_string
 
-  assert_contains(html, "Rule Metrics")
+  assert_contains(html, "Executions")
   assert_contains(html, "Escalation workflow")
   assert_contains(html, "9")
   assert_contains(html, "6")

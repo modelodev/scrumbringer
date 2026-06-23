@@ -154,7 +154,7 @@ pub fn workflow_rules_view_renders_rules_from_config_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "Rules - Release automation")
-  assert_contains(html, "Back to Workflows")
+  assert_contains(html, "Back to Automations")
   assert_contains(html, "Complete bug workflow")
   assert_contains(html, "Bug")
   assert_contains(html, "Bug triage")
