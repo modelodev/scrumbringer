@@ -63,8 +63,6 @@ import scrumbringer_client/features/admin/automations_console
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/rule_metrics_view as admin_rule_metrics_view
 import scrumbringer_client/features/admin/rule_metrics_view_config as admin_rule_metrics_view_config
-import scrumbringer_client/features/admin/task_templates_view as admin_task_templates_view
-import scrumbringer_client/features/admin/task_templates_view_config as admin_task_templates_view_config
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/admin/workflow_rules_view_config as admin_workflow_rules_config
 import scrumbringer_client/features/assignments/components/project_card
@@ -73,6 +71,8 @@ import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/engine_list_config
+import scrumbringer_client/features/automations/template_library
+import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
@@ -550,16 +550,14 @@ fn view_automations_console(
       model.admin.task_types,
       admin_workflow_callbacks(),
     )),
-    templates_view: admin_task_templates_view.view_task_templates(
-      admin_task_templates_view_config.from_state(
-        model.ui.locale,
-        selected,
-        model.core.selected_project_id,
-        model.admin.task_templates,
-        model.admin.task_types,
-        admin_task_template_callbacks(),
-      ),
-    ),
+    templates_view: template_library.view(template_library_config.from_state(
+      model.ui.locale,
+      selected,
+      model.core.selected_project_id,
+      model.admin.task_templates,
+      model.admin.task_types,
+      admin_task_template_callbacks(),
+    )),
     executions_view: admin_rule_metrics_view.view_rule_metrics(
       admin_rule_metrics_view_config.from_state(
         model.ui.locale,
@@ -973,10 +971,10 @@ fn admin_rule_metrics_callbacks() -> admin_rule_metrics_view_config.Callbacks(
   )
 }
 
-fn admin_task_template_callbacks() -> admin_task_templates_view_config.Callbacks(
+fn admin_task_template_callbacks() -> template_library_config.Callbacks(
   client_state.Msg,
 ) {
-  admin_task_templates_view_config.Callbacks(
+  template_library_config.Callbacks(
     on_create_clicked: client_state.pool_msg(
       pool_messages.OpenTaskTemplateDialog(
         admin_task_templates.TaskTemplateDialogCreate,

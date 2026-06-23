@@ -87,7 +87,7 @@ fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
 }
 
 /// Automation template library view (project-scoped only).
-pub fn view_task_templates(config: Config(msg)) -> Element(msg) {
+pub fn view(config: Config(msg)) -> Element(msg) {
   let title = case config.selected_project {
     opt.Some(project) ->
       i18n.t(config.locale, i18n_text.TaskTemplatesProjectTitle(project.name))

@@ -48,13 +48,13 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_settings_view
 import scrumbringer_client/features/admin/rule_metrics_view
 import scrumbringer_client/features/admin/rule_metrics_view_config
-import scrumbringer_client/features/admin/task_templates_view
-import scrumbringer_client/features/admin/task_templates_view_config
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/workflow_rules_view_config
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/engine_list_config
+import scrumbringer_client/features/automations/template_library
+import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/utils/card_queries
@@ -562,7 +562,7 @@ pub fn view_task_templates(
   model: Model,
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
-  task_templates_view.view_task_templates(task_templates_view_config.from_state(
+  template_library.view(template_library_config.from_state(
     model.ui.locale,
     selected_project,
     model.core.selected_project_id,
@@ -572,8 +572,8 @@ pub fn view_task_templates(
   ))
 }
 
-fn task_template_callbacks() -> task_templates_view_config.Callbacks(Msg) {
-  task_templates_view_config.Callbacks(
+fn task_template_callbacks() -> template_library_config.Callbacks(Msg) {
+  template_library_config.Callbacks(
     on_create_clicked: pool_msg(pool_messages.OpenTaskTemplateDialog(
       admin_task_templates.TaskTemplateDialogCreate,
     )),

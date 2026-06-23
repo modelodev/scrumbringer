@@ -1,4 +1,4 @@
-//// Root-state adapter for admin task template views.
+//// Root-state adapter for the automation template library.
 
 import gleam/option as opt
 
@@ -7,7 +7,7 @@ import domain/workflow.{type TaskTemplate}
 
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
-import scrumbringer_client/features/admin/task_templates_view
+import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/i18n/locale.{type Locale}
 
 pub type Callbacks(msg) {
@@ -30,8 +30,8 @@ pub fn from_state(
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
   callbacks: Callbacks(msg),
-) -> task_templates_view.Config(msg) {
-  task_templates_view.Config(
+) -> template_library.Config(msg) {
+  template_library.Config(
     locale: locale,
     selected_project: selected_project,
     selected_project_id: selected_project_id,

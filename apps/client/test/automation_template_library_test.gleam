@@ -6,7 +6,7 @@ import lustre/element
 import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import domain/workflow.{type TaskTemplate, TaskTemplate}
-import scrumbringer_client/features/admin/task_templates_view
+import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -43,8 +43,8 @@ fn sample_task_type() -> TaskType {
   )
 }
 
-fn config() -> task_templates_view.Config(String) {
-  task_templates_view.Config(
+fn config() -> template_library.Config(String) {
+  template_library.Config(
     locale: locale.En,
     selected_project: opt.None,
     selected_project_id: opt.Some(3),
@@ -63,9 +63,9 @@ fn config() -> task_templates_view.Config(String) {
   )
 }
 
-pub fn task_templates_view_renders_from_config_without_root_model_test() {
+pub fn automation_template_library_renders_from_config_without_root_model_test() {
   let html =
-    task_templates_view.view_task_templates(config())
+    template_library.view(config())
     |> element.to_document_string
 
   assert_contains(html, "Template library")
@@ -82,20 +82,20 @@ pub fn task_templates_view_renders_from_config_without_root_model_test() {
   assert_not_contains(html, "info-callout-link")
 }
 
-pub fn task_templates_view_renders_empty_state_without_root_model_test() {
+pub fn automation_template_library_renders_empty_state_without_root_model_test() {
   let html =
-    task_templates_view.view_task_templates(
-      task_templates_view.Config(..config(), templates: Loaded([])),
+    template_library.view(
+      template_library.Config(..config(), templates: Loaded([])),
     )
     |> element.to_document_string
 
   assert_contains(html, "No templates yet")
 }
 
-pub fn task_templates_view_filters_library_by_search_query_test() {
+pub fn automation_template_library_filters_library_by_search_query_test() {
   let html =
-    task_templates_view.view_task_templates(
-      task_templates_view.Config(..config(), search_query: "missing"),
+    template_library.view(
+      template_library.Config(..config(), search_query: "missing"),
     )
     |> element.to_document_string
 
