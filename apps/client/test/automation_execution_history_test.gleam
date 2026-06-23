@@ -205,6 +205,7 @@ pub fn automation_execution_history_renders_from_config_without_root_model_test(
   assert_contains(html, "6")
   assert_contains(html, "3")
   assert_contains(html, "btn-chip-active")
+  assert_contains(html, "aria-expanded=\"false\"")
   assert_not_contains(html, "Suppressed")
   assert_not_contains(html, "admin-card")
   assert_not_contains(html, "section-header")
@@ -286,6 +287,7 @@ pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
     |> element.to_document_string
 
   assert_contains(html, "Escalate blocked work")
+  assert_contains(html, "aria-expanded=\"true\"")
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
   assert_contains(html, "btn-xs")

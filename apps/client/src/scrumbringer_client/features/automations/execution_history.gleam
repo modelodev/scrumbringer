@@ -354,6 +354,10 @@ fn view_workflow_row(
     tr(
       [
         attribute.class("workflow-row clickable"),
+        attribute.attribute(
+          "aria-expanded",
+          attribute_value.boolean(is_expanded),
+        ),
         event.on_click(config.on_workflow_expanded(w.workflow_id)),
       ],
       [
