@@ -1,8 +1,8 @@
-//// Root-state adapter for admin rule metrics views.
+//// Root-state adapter for automation execution history.
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
-import scrumbringer_client/features/admin/rule_metrics_view
+import scrumbringer_client/features/automations/execution_history
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -23,7 +23,7 @@ pub fn from_state(
   locale: Locale,
   metrics: admin_metrics.Model,
   callbacks: Callbacks(msg),
-) -> rule_metrics_view.Config(msg) {
+) -> execution_history.Config(msg) {
   let today = client_ffi.date_today()
   let default_from = client_ffi.date_days_ago(30)
   let metrics = case
@@ -39,7 +39,7 @@ pub fn from_state(
   }
   let quick_range = fn(label, days) {
     let from = client_ffi.date_days_ago(days)
-    rule_metrics_view.QuickRange(
+    execution_history.QuickRange(
       label: i18n.t(locale, label),
       from: from,
       to: today,
@@ -47,7 +47,7 @@ pub fn from_state(
     )
   }
 
-  rule_metrics_view.Config(
+  execution_history.Config(
     locale: locale,
     model: metrics,
     quick_ranges: [

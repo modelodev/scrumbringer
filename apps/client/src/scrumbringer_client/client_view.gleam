@@ -61,8 +61,6 @@ import scrumbringer_client/features/pool/msg as pool_messages
 
 import scrumbringer_client/features/admin/automations_console
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/admin/rule_metrics_view as admin_rule_metrics_view
-import scrumbringer_client/features/admin/rule_metrics_view_config as admin_rule_metrics_view_config
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/admin/workflow_rules_view_config as admin_workflow_rules_config
 import scrumbringer_client/features/assignments/components/project_card
@@ -71,6 +69,8 @@ import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/engine_list_config
+import scrumbringer_client/features/automations/execution_history
+import scrumbringer_client/features/automations/execution_history_config
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
@@ -558,13 +558,11 @@ fn view_automations_console(
       model.admin.task_types,
       admin_task_template_callbacks(),
     )),
-    executions_view: admin_rule_metrics_view.view_rule_metrics(
-      admin_rule_metrics_view_config.from_state(
-        model.ui.locale,
-        model.admin.metrics,
-        admin_rule_metrics_callbacks(),
-      ),
-    ),
+    executions_view: execution_history.view(execution_history_config.from_state(
+      model.ui.locale,
+      model.admin.metrics,
+      admin_rule_metrics_callbacks(),
+    )),
   ))
 }
 
@@ -930,10 +928,10 @@ fn admin_workflow_callbacks() -> engine_list_config.Callbacks(client_state.Msg) 
   )
 }
 
-fn admin_rule_metrics_callbacks() -> admin_rule_metrics_view_config.Callbacks(
+fn admin_rule_metrics_callbacks() -> execution_history_config.Callbacks(
   client_state.Msg,
 ) {
-  admin_rule_metrics_view_config.Callbacks(
+  execution_history_config.Callbacks(
     on_quick_range_clicked: fn(from, to) {
       client_state.pool_msg(pool_messages.AdminRuleMetricsQuickRangeClicked(
         from,

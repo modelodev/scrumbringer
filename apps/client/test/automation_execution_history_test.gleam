@@ -6,7 +6,7 @@ import lustre/element
 import domain/remote.{Loaded}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
-import scrumbringer_client/features/admin/rule_metrics_view
+import scrumbringer_client/features/automations/execution_history
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -87,8 +87,8 @@ fn executions_response() -> api_rule_metrics.RuleExecutionsResponse {
   )
 }
 
-fn config() -> rule_metrics_view.Config(String) {
-  rule_metrics_view.Config(
+fn config() -> execution_history.Config(String) {
+  execution_history.Config(
     locale: locale.En,
     model: admin_metrics.Model(
       ..admin_metrics.default_model(),
@@ -97,7 +97,7 @@ fn config() -> rule_metrics_view.Config(String) {
       admin_rule_metrics_to: "2026-06-08",
     ),
     quick_ranges: [
-      rule_metrics_view.QuickRange(
+      execution_history.QuickRange(
         label: "7 days",
         from: "2026-06-01",
         to: "2026-06-08",
@@ -113,9 +113,9 @@ fn config() -> rule_metrics_view.Config(String) {
   )
 }
 
-pub fn rule_metrics_view_renders_from_config_without_root_model_test() {
+pub fn automation_execution_history_renders_from_config_without_root_model_test() {
   let html =
-    rule_metrics_view.view_rule_metrics(config())
+    execution_history.view(config())
     |> element.to_document_string
 
   assert_contains(html, "Review automation executions")
@@ -130,10 +130,10 @@ pub fn rule_metrics_view_renders_from_config_without_root_model_test() {
   assert_not_contains(html, "section-header")
 }
 
-pub fn rule_metrics_view_renders_empty_state_without_root_model_test() {
+pub fn automation_execution_history_renders_empty_state_without_root_model_test() {
   let html =
-    rule_metrics_view.view_rule_metrics(
-      rule_metrics_view.Config(
+    execution_history.view(
+      execution_history.Config(
         ..config(),
         model: admin_metrics.Model(
           ..config().model,
@@ -146,10 +146,10 @@ pub fn rule_metrics_view_renders_empty_state_without_root_model_test() {
   assert_contains(html, "No automation executions found in the selected range.")
 }
 
-pub fn rule_metrics_view_detail_action_uses_semantic_button_test() {
+pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
   let html =
-    rule_metrics_view.view_rule_metrics(
-      rule_metrics_view.Config(
+    execution_history.view(
+      execution_history.Config(
         ..config(),
         model: admin_metrics.Model(
           ..config().model,
@@ -167,10 +167,10 @@ pub fn rule_metrics_view_detail_action_uses_semantic_button_test() {
   assert_contains(html, "aria-label=\"View Details\"")
 }
 
-pub fn rule_metrics_view_pagination_uses_semantic_accessible_buttons_test() {
+pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_test() {
   let html =
-    rule_metrics_view.view_rule_metrics(
-      rule_metrics_view.Config(
+    execution_history.view(
+      execution_history.Config(
         ..config(),
         model: admin_metrics.Model(
           ..config().model,
@@ -191,4 +191,5 @@ pub fn rule_metrics_view_pagination_uses_semantic_accessible_buttons_test() {
   assert_contains(html, "aria-label=\"Previous page\"")
   assert_contains(html, "aria-label=\"Next page\"")
   assert_contains(html, "aria-label=\"Last page\"")
+  assert_contains(html, "data-testid=\"automation-execution-row\"")
 }

@@ -1,13 +1,13 @@
-//// Admin rule metrics view.
+//// Automation execution history view.
 ////
 //// ## Mission
 ////
-//// Render the rule metrics tab, workflow expansion metrics, and drilldown modal.
+//// Render the executions mode, engine expansion metrics, and drilldown modal.
 ////
 //// ## Responsibilities
 ////
-//// - Date range controls for rule metrics
-//// - Workflow/rule metrics tables
+//// - Date range controls for automation executions
+//// - Engine/rule execution tables
 //// - Rule execution drilldown modal
 
 import gleam/int
@@ -41,7 +41,7 @@ import scrumbringer_client/ui/modal_close_button
 import scrumbringer_client/ui/skeleton
 
 // =============================================================================
-// Rule Metrics Tab Views
+// Automation Execution History Views
 // =============================================================================
 
 pub type QuickRange(msg) {
@@ -66,18 +66,18 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
   i18n.t(config.locale, key)
 }
 
-/// Rule metrics tab view.
-pub fn view_rule_metrics(config: Config(msg)) -> Element(msg) {
+/// Automation execution history view.
+pub fn view(config: Config(msg)) -> Element(msg) {
   div([attribute.class("automation-executions-mode")], [
     div([attribute.class("automation-executions-description")], [
       text(t(config, i18n_text.RuleMetricsDescription)),
     ]),
-    view_rule_metrics_filters(config),
-    view_rule_metrics_results(config),
+    view_execution_filters(config),
+    view_execution_results(config),
   ])
 }
 
-fn view_rule_metrics_filters(config: Config(msg)) -> Element(msg) {
+fn view_execution_filters(config: Config(msg)) -> Element(msg) {
   let is_loading = case config.model.admin_rule_metrics {
     Loading -> True
     _ -> False
@@ -156,7 +156,7 @@ fn view_quick_range_button(
 }
 
 /// Results section with improved empty state (T5).
-fn view_rule_metrics_results(config: Config(msg)) -> Element(msg) {
+fn view_execution_results(config: Config(msg)) -> Element(msg) {
   case config.model.admin_rule_metrics {
     NotAsked -> info_callout.simple(t(config, i18n_text.RuleMetricsHelp))
 
@@ -164,11 +164,11 @@ fn view_rule_metrics_results(config: Config(msg)) -> Element(msg) {
 
     Failed(err) -> error_notice.view(err.message)
 
-    Loaded(workflows) -> view_rule_metrics_loaded(config, workflows)
+    Loaded(workflows) -> view_execution_history_loaded(config, workflows)
   }
 }
 
-fn view_rule_metrics_loaded(
+fn view_execution_history_loaded(
   config: Config(msg),
   workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> Element(msg) {
@@ -177,12 +177,12 @@ fn view_rule_metrics_loaded(
       empty_state.simple("inbox", t(config, i18n_text.RuleMetricsNoExecutions))
     _ ->
       div([attribute.class("automation-executions-results")], [
-        view_rule_metrics_table(config, config.model.admin_rule_metrics),
+        view_execution_summary_table(config, config.model.admin_rule_metrics),
       ])
   }
 }
 
-fn view_rule_metrics_table(
+fn view_execution_summary_table(
   config: Config(msg),
   metrics: Remote(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
 ) -> Element(msg) {
@@ -196,11 +196,11 @@ fn view_rule_metrics_table(
 
     Failed(err) -> error_notice.view(err.message)
 
-    Loaded(workflows) -> view_rule_metrics_table_loaded(config, workflows)
+    Loaded(workflows) -> view_execution_summary_table_loaded(config, workflows)
   }
 }
 
-fn view_rule_metrics_table_loaded(
+fn view_execution_summary_table_loaded(
   config: Config(msg),
   workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> Element(msg) {

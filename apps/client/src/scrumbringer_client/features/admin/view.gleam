@@ -37,33 +37,18 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, NoOp, admin_msg, pool_msg,
 }
 import scrumbringer_client/client_state/admin/cards as admin_cards
-import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
-import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/features/admin/cards_view
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_settings_view
-import scrumbringer_client/features/admin/rule_metrics_view
-import scrumbringer_client/features/admin/rule_metrics_view_config
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/features/admin/views/members as members_view
-import scrumbringer_client/features/admin/workflow_rules_view_config
-import scrumbringer_client/features/automations/engine_list
-import scrumbringer_client/features/automations/engine_list_config
-import scrumbringer_client/features/automations/template_library
-import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/utils/card_queries
 
-// Story 4.10: Rule template attachment UI
-
-// Workflows
-// Task Templates
-// Rule Metrics Tab
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
@@ -457,183 +442,4 @@ fn selected_show_card_tasks(model: Model) -> List(domain_task.Task) {
       show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
     opt.None -> []
   }
-}
-
-// =============================================================================
-// Workflows Views (delegated)
-// =============================================================================
-
-/// Workflows management view.
-pub fn view_workflows(
-  model: Model,
-  selected_project: opt.Option(Project),
-) -> Element(Msg) {
-  engine_list.view(engine_list_config.from_state(
-    model.ui.locale,
-    model.ui.theme,
-    selected_project,
-    model.core.selected_project_id,
-    model.admin.workflows,
-    model.admin.rules,
-    model.admin.task_templates,
-    model.admin.task_types,
-    workflow_callbacks(),
-  ))
-}
-
-fn workflow_callbacks() -> engine_list_config.Callbacks(Msg) {
-  engine_list_config.Callbacks(
-    on_create_clicked: pool_msg(pool_messages.OpenWorkflowDialog(
-      admin_workflows.WorkflowDialogCreate,
-    )),
-    on_search_changed: fn(value) {
-      pool_msg(pool_messages.WorkflowsSearchChanged(value))
-    },
-    on_status_filter_changed: fn(value) {
-      pool_msg(pool_messages.WorkflowsStatusFilterChanged(value))
-    },
-    on_rules_clicked: fn(workflow_id) {
-      pool_msg(pool_messages.WorkflowRulesClicked(workflow_id))
-    },
-    on_edit_clicked: fn(workflow) {
-      pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
-          workflow,
-        )),
-      )
-    },
-    on_delete_clicked: fn(workflow) {
-      pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
-          workflow,
-        )),
-      )
-    },
-    on_created: fn(workflow) {
-      pool_msg(pool_messages.WorkflowCrudCreated(workflow))
-    },
-    on_updated: fn(workflow) {
-      pool_msg(pool_messages.WorkflowCrudUpdated(workflow))
-    },
-    on_deleted: fn(id) { pool_msg(pool_messages.WorkflowCrudDeleted(id)) },
-    on_closed: pool_msg(pool_messages.CloseWorkflowDialog),
-    rules: workflow_rule_callbacks(),
-  )
-}
-
-fn workflow_rule_callbacks() -> workflow_rules_view_config.Callbacks(Msg) {
-  workflow_rules_view_config.Callbacks(
-    on_back_clicked: pool_msg(pool_messages.RulesBackClicked),
-    on_create_clicked: pool_msg(pool_messages.OpenRuleDialog(
-      admin_rules.RuleDialogCreate,
-    )),
-    on_rule_expanded: fn(rule_id) {
-      pool_msg(pool_messages.RuleExpandToggled(rule_id))
-    },
-    on_edit_clicked: fn(rule) {
-      pool_msg(pool_messages.OpenRuleDialog(admin_rules.RuleDialogEdit(rule)))
-    },
-    on_delete_clicked: fn(rule) {
-      pool_msg(pool_messages.OpenRuleDialog(admin_rules.RuleDialogDelete(rule)))
-    },
-    on_attach_modal_opened: fn(rule_id) {
-      pool_msg(pool_messages.AttachTemplateModalOpened(rule_id))
-    },
-    on_attach_modal_closed: pool_msg(pool_messages.AttachTemplateModalClosed),
-    on_template_detached: fn(rule_id, template_id) {
-      pool_msg(pool_messages.TemplateDetachClicked(rule_id, template_id))
-    },
-    on_template_selected: fn(template_id) {
-      pool_msg(pool_messages.AttachTemplateSelected(template_id))
-    },
-    on_attach_submitted: pool_msg(pool_messages.AttachTemplateSubmitted),
-    on_rule_created: fn(rule) { pool_msg(pool_messages.RuleCrudCreated(rule)) },
-    on_rule_updated: fn(rule) { pool_msg(pool_messages.RuleCrudUpdated(rule)) },
-    on_rule_deleted: fn(rule_id) {
-      pool_msg(pool_messages.RuleCrudDeleted(rule_id))
-    },
-    on_rule_dialog_closed: pool_msg(pool_messages.CloseRuleDialog),
-    on_noop: NoOp,
-  )
-}
-
-/// Task templates management view (project-scoped only).
-pub fn view_task_templates(
-  model: Model,
-  selected_project: opt.Option(Project),
-) -> Element(Msg) {
-  template_library.view(template_library_config.from_state(
-    model.ui.locale,
-    selected_project,
-    model.core.selected_project_id,
-    model.admin.task_templates,
-    model.admin.task_types,
-    task_template_callbacks(),
-  ))
-}
-
-fn task_template_callbacks() -> template_library_config.Callbacks(Msg) {
-  template_library_config.Callbacks(
-    on_create_clicked: pool_msg(pool_messages.OpenTaskTemplateDialog(
-      admin_task_templates.TaskTemplateDialogCreate,
-    )),
-    on_edit_clicked: fn(template) {
-      pool_msg(
-        pool_messages.OpenTaskTemplateDialog(
-          admin_task_templates.TaskTemplateDialogEdit(template),
-        ),
-      )
-    },
-    on_delete_clicked: fn(template) {
-      pool_msg(
-        pool_messages.OpenTaskTemplateDialog(
-          admin_task_templates.TaskTemplateDialogDelete(template),
-        ),
-      )
-    },
-    on_search_changed: fn(value) {
-      pool_msg(pool_messages.TaskTemplatesSearchChanged(value))
-    },
-    on_created: fn(template) {
-      pool_msg(pool_messages.TaskTemplateCrudCreated(template))
-    },
-    on_updated: fn(template) {
-      pool_msg(pool_messages.TaskTemplateCrudUpdated(template))
-    },
-    on_deleted: fn(id) { pool_msg(pool_messages.TaskTemplateCrudDeleted(id)) },
-    on_closed: pool_msg(pool_messages.CloseTaskTemplateDialog),
-  )
-}
-
-/// Rule metrics tab view.
-pub fn view_rule_metrics(model: Model) -> Element(Msg) {
-  rule_metrics_view.view_rule_metrics(rule_metrics_view_config.from_state(
-    model.ui.locale,
-    model.admin.metrics,
-    rule_metrics_callbacks(),
-  ))
-}
-
-fn rule_metrics_callbacks() -> rule_metrics_view_config.Callbacks(Msg) {
-  rule_metrics_view_config.Callbacks(
-    on_quick_range_clicked: fn(from, to) {
-      pool_msg(pool_messages.AdminRuleMetricsQuickRangeClicked(from, to))
-    },
-    on_from_changed: fn(value) {
-      pool_msg(pool_messages.AdminRuleMetricsFromChangedAndRefresh(value))
-    },
-    on_to_changed: fn(value) {
-      pool_msg(pool_messages.AdminRuleMetricsToChangedAndRefresh(value))
-    },
-    on_workflow_expanded: fn(workflow_id) {
-      pool_msg(pool_messages.AdminRuleMetricsWorkflowExpanded(workflow_id))
-    },
-    on_drilldown_clicked: fn(rule_id) {
-      pool_msg(pool_messages.AdminRuleMetricsDrilldownClicked(rule_id))
-    },
-    on_drilldown_closed: pool_msg(pool_messages.AdminRuleMetricsDrilldownClosed),
-    on_exec_page_changed: fn(offset) {
-      pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(offset))
-    },
-  )
 }
