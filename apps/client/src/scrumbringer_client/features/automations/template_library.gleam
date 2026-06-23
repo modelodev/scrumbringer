@@ -5,23 +5,21 @@
 //// Render project-scoped templates as an internal automations mode.
 
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/string
 
-import lustre/attribute.{type Attribute}
+import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{div, h2, input, p, span, text}
+import lustre/element/html.{
+  button, div, h2, input, option, p, select, span, text, textarea,
+}
 import lustre/event
-
-import gleam/dynamic/decode
 
 import domain/project.{type Project}
 import domain/remote as remote_state
 import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
-import domain/workflow/workflow_codec
 
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/i18n/i18n
@@ -31,7 +29,6 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
-import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/info_callout
@@ -49,41 +46,24 @@ pub type Config(msg) {
     dialog_mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
     task_types: remote_state.Remote(List(TaskType)),
     search_query: String,
+    form_name: String,
+    form_description: String,
+    form_type_id: String,
+    form_priority: String,
+    form_submitting: Bool,
+    form_error: opt.Option(String),
     on_create_clicked: msg,
     on_edit_clicked: fn(TaskTemplate) -> msg,
     on_delete_clicked: fn(TaskTemplate) -> msg,
     on_search_changed: fn(String) -> msg,
-    on_created: fn(TaskTemplate) -> msg,
-    on_updated: fn(TaskTemplate) -> msg,
-    on_deleted: fn(Int) -> msg,
+    on_name_changed: fn(String) -> msg,
+    on_description_changed: fn(String) -> msg,
+    on_type_changed: fn(String) -> msg,
+    on_priority_changed: fn(String) -> msg,
+    on_submitted: fn(opt.Option(Int)) -> msg,
+    on_delete_confirmed: msg,
     on_closed: msg,
   )
-}
-
-fn create_dialog_parts(
-  selected_project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #("create", attribute.none(), project_id_attribute(selected_project_id))
-}
-
-fn entity_dialog_parts(
-  mode: String,
-  property_name: String,
-  property_json: json.Json,
-  project_id: opt.Option(Int),
-) -> #(String, Attribute(msg), Attribute(msg)) {
-  #(
-    mode,
-    attribute.property(property_name, property_json),
-    project_id_attribute(project_id),
-  )
-}
-
-fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
-  case project_id {
-    opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
-    opt.None -> attribute.none()
-  }
 }
 
 /// Automation template library view (project-scoped only).
@@ -104,7 +84,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     view_template_filters(config),
     view_templates_hint(config),
     view_task_templates_table(config),
-    view_task_template_crud_dialog(config),
+    view_template_panel(config),
   ])
 }
 
@@ -155,150 +135,216 @@ fn view_templates_hint(config: Config(msg)) -> Element(msg) {
   )
 }
 
-/// Render the task-template-crud-dialog Lustre component.
-fn view_task_template_crud_dialog(config: Config(msg)) -> Element(msg) {
+fn view_template_panel(config: Config(msg)) -> Element(msg) {
   case config.dialog_mode {
     opt.None -> element.none()
-    opt.Some(mode) -> {
-      let #(mode_str, template_json, project_id_attr) = case mode {
-        admin_task_templates.TaskTemplateDialogCreate ->
-          create_dialog_parts(config.selected_project_id)
-        admin_task_templates.TaskTemplateDialogEdit(template) ->
-          entity_dialog_parts(
-            "edit",
-            "template",
-            task_template_to_property_json(template, "edit"),
-            template.project_id,
-          )
-        admin_task_templates.TaskTemplateDialogDelete(template) ->
-          entity_dialog_parts(
-            "delete",
-            "template",
-            task_template_to_property_json(template, "delete"),
-            template.project_id,
-          )
-      }
-
-      element.element(
-        "task-template-crud-dialog",
-        [
-          // Attributes (strings)
-          attribute.attribute("locale", locale.serialize(config.locale)),
-          project_id_attr,
-          attribute.attribute("mode", mode_str),
-          // Property for template data (edit/delete modes)
-          template_json,
-          // Property for task types list
-          attribute.property(
-            "task-types",
-            task_types_to_property_json(config.task_types),
-          ),
-          // Event listeners for component events
-          event.on(
-            "task-template-created",
-            decode_task_template_created_event(config),
-          ),
-          event.on(
-            "task-template-updated",
-            decode_task_template_updated_event(config),
-          ),
-          event.on(
-            "task-template-deleted",
-            decode_task_template_deleted_event(config),
-          ),
-          event.on(
-            "close-requested",
-            decode_task_template_close_requested_event(config),
-          ),
-        ],
-        [],
-      )
-    }
+    opt.Some(admin_task_templates.TaskTemplateDialogDelete(template)) ->
+      view_delete_panel(config, template)
+    opt.Some(mode) -> view_form_panel(config, mode)
   }
 }
 
-/// Convert task template to JSON for property passing to component.
-fn task_template_to_property_json(
-  template: TaskTemplate,
-  mode: String,
-) -> json.Json {
-  json.object([
-    #("id", json.int(template.id)),
-    #("org_id", json.int(template.org_id)),
-    #("project_id", case template.project_id {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
-    #("name", json.string(template.name)),
-    #("description", case template.description {
-      opt.Some(desc) -> json.string(desc)
-      opt.None -> json.null()
-    }),
-    #("type_id", json.int(template.type_id)),
-    #("type_name", json.string(template.type_name)),
-    #("priority", json.int(template.priority)),
-    #("created_by", json.int(template.created_by)),
-    #("created_at", json.string(template.created_at)),
-    #("_mode", json.string(mode)),
-  ])
-}
-
-/// Convert task types to JSON for property passing to component.
-fn task_types_to_property_json(
-  task_types: remote_state.Remote(List(TaskType)),
-) -> json.Json {
-  case task_types {
-    remote_state.Loaded(types) ->
-      json.array(types, fn(tt: TaskType) {
-        json.object([
-          #("id", json.int(tt.id)),
-          #("name", json.string(tt.name)),
-          #("icon", json.string(tt.icon)),
-        ])
-      })
-    _ -> json.array([], fn(_) { json.null() })
+fn view_form_panel(
+  config: Config(msg),
+  mode: admin_task_templates.TaskTemplateDialogMode,
+) -> Element(msg) {
+  let title = case mode {
+    admin_task_templates.TaskTemplateDialogCreate -> "New template"
+    admin_task_templates.TaskTemplateDialogEdit(_) -> "Edit template"
+    admin_task_templates.TaskTemplateDialogDelete(_) -> "Template"
   }
-}
+  let action = case mode {
+    admin_task_templates.TaskTemplateDialogCreate -> "Create template"
+    admin_task_templates.TaskTemplateDialogEdit(_) -> "Save changes"
+    admin_task_templates.TaskTemplateDialogDelete(_) -> "Save"
+  }
 
-/// Decoder for task-template-created event.
-fn decode_task_template_created_event(
-  config: Config(msg),
-) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(task_template_decoder(), fn(template) {
-    decode.success(config.on_created(template))
-  })
-}
-
-/// Decoder for task-template-updated event.
-fn decode_task_template_updated_event(
-  config: Config(msg),
-) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(task_template_decoder(), fn(template) {
-    decode.success(config.on_updated(template))
-  })
-}
-
-/// Decoder for task-template-deleted event.
-fn decode_task_template_deleted_event(
-  config: Config(msg),
-) -> decode.Decoder(msg) {
-  event_decoders.custom_detail(
-    decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(config.on_deleted(id)) },
+  div(
+    [
+      attribute.class("automation-template-panel"),
+      attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-label", title),
+    ],
+    [
+      panel_header(title, config.on_closed),
+      view_form_error(config),
+      form_field.view(
+        "Template name",
+        input([
+          attribute.value(config.form_name),
+          attribute.attribute("data-testid", "automation-template-name"),
+          event.on_input(config.on_name_changed),
+        ]),
+      ),
+      form_field.view(
+        "Template description",
+        textarea(
+          [
+            attribute.value(config.form_description),
+            attribute.attribute(
+              "data-testid",
+              "automation-template-description",
+            ),
+            event.on_input(config.on_description_changed),
+          ],
+          "",
+        ),
+      ),
+      form_field.view(
+        "Task type",
+        select(
+          [
+            attribute.value(config.form_type_id),
+            attribute.attribute("data-testid", "automation-template-type"),
+            event.on_input(config.on_type_changed),
+          ],
+          task_type_options(config),
+        ),
+      ),
+      form_field.view(
+        "Priority",
+        select(
+          [
+            attribute.value(config.form_priority),
+            attribute.attribute("data-testid", "automation-template-priority"),
+            event.on_input(config.on_priority_changed),
+          ],
+          priority_options(config.form_priority),
+        ),
+      ),
+      div([attribute.class("automation-template-panel__hint")], [
+        text(
+          "Available variables: {{origin}}, {{trigger}}, {{project}}, {{user}}",
+        ),
+      ]),
+      panel_actions(
+        cancel: config.on_closed,
+        submit: config.on_submitted(config.selected_project_id),
+        submit_label: action,
+        submitting: config.form_submitting,
+      ),
+    ],
   )
 }
 
-/// Decoder for close-requested event from task template component.
-fn decode_task_template_close_requested_event(
+fn view_delete_panel(
   config: Config(msg),
-) -> decode.Decoder(msg) {
-  decode.success(config.on_closed)
+  template: TaskTemplate,
+) -> Element(msg) {
+  div(
+    [
+      attribute.class("automation-template-panel"),
+      attribute.attribute("role", "dialog"),
+      attribute.attribute("aria-label", "Delete template"),
+    ],
+    [
+      panel_header("Delete template", config.on_closed),
+      view_form_error(config),
+      p([], [
+        text("Delete "),
+        span([attribute.class("strong")], [text(template.name)]),
+        text("? Rules using this template should be paused or updated first."),
+      ]),
+      panel_actions(
+        cancel: config.on_closed,
+        submit: config.on_delete_confirmed,
+        submit_label: "Delete template",
+        submitting: config.form_submitting,
+      ),
+    ],
+  )
 }
 
-/// Decoder for TaskTemplate from JSON (used in custom events).
-/// Story 4.9 AC20: Added rules_count field.
-fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
-  workflow_codec.task_template_decoder()
+fn panel_header(title: String, on_closed: msg) -> Element(msg) {
+  div([attribute.class("automation-template-panel__header")], [
+    h2([], [text(title)]),
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("icon-btn"),
+        attribute.attribute("aria-label", "Close"),
+        event.on_click(on_closed),
+      ],
+      [text("x")],
+    ),
+  ])
+}
+
+fn view_form_error(config: Config(msg)) -> Element(msg) {
+  case config.form_error {
+    opt.None -> element.none()
+    opt.Some(message) ->
+      div(
+        [attribute.class("form-error"), attribute.attribute("role", "alert")],
+        [
+          text(message),
+        ],
+      )
+  }
+}
+
+fn panel_actions(
+  cancel cancel: msg,
+  submit submit: msg,
+  submit_label submit_label: String,
+  submitting submitting: Bool,
+) -> Element(msg) {
+  div([attribute.class("automation-template-panel__actions")], [
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("btn secondary"),
+        event.on_click(cancel),
+      ],
+      [text("Cancel")],
+    ),
+    button(
+      [
+        attribute.type_("button"),
+        attribute.class("btn primary"),
+        attribute.disabled(submitting),
+        event.on_click(submit),
+      ],
+      [
+        text(case submitting {
+          True -> "Saving..."
+          False -> submit_label
+        }),
+      ],
+    ),
+  ])
+}
+
+fn task_type_options(config: Config(msg)) -> List(Element(msg)) {
+  let empty = option([attribute.value("")], "Select task type")
+  case config.task_types {
+    remote_state.Loaded(types) -> [
+      empty,
+      ..list.map(types, fn(task_type) {
+        option(
+          [
+            attribute.value(int.to_string(task_type.id)),
+            attribute.selected(
+              config.form_type_id == int.to_string(task_type.id),
+            ),
+          ],
+          task_type.name,
+        )
+      })
+    ]
+    _ -> [empty]
+  }
+}
+
+fn priority_options(selected: String) -> List(Element(msg)) {
+  [1, 2, 3, 4, 5]
+  |> list.map(fn(priority) {
+    let value = int.to_string(priority)
+    option(
+      [attribute.value(value), attribute.selected(selected == value)],
+      value,
+    )
+  })
 }
 
 fn view_task_templates_table(config: Config(msg)) -> Element(msg) {

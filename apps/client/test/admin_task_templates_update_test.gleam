@@ -31,6 +31,15 @@ fn feedback_context() -> task_templates_update.FeedbackContext(client_state.Msg)
     task_template_updated: "Template updated",
     task_template_deleted: "Template deleted",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
+    on_template_saved: fn(result) {
+      client_state.pool_msg(pool_messages.TaskTemplateSaved(result))
+    },
+    on_template_deleted: fn(template_id, result) {
+      client_state.pool_msg(pool_messages.TaskTemplateDeleteFinished(
+        template_id,
+        result,
+      ))
+    },
   )
 }
 
@@ -59,6 +68,12 @@ fn state_with_templates(
       admin_task_templates.TaskTemplateDialogCreate,
     ),
     task_templates_search: "",
+    task_template_form_name: "",
+    task_template_form_description: "",
+    task_template_form_type_id: "",
+    task_template_form_priority: "3",
+    task_template_form_submitting: False,
+    task_template_form_error: opt.None,
   )
 }
 
@@ -123,18 +138,25 @@ pub fn local_crud_transitions_update_scopes_test() {
   let state = state_with_templates(Loaded([]), Loaded([existing]))
 
   let #(after_create, _, _) =
-    update(state, pool_messages.TaskTemplateCrudCreated(created))
+    update(state, pool_messages.TaskTemplateSaved(Ok(created)))
   let assert True =
     after_create.task_templates_project == Loaded([created, existing])
   let assert opt.None = after_create.task_templates_dialog_mode
 
+  let after_create =
+    admin_task_templates.Model(
+      ..after_create,
+      task_templates_dialog_mode: opt.Some(
+        admin_task_templates.TaskTemplateDialogEdit(created),
+      ),
+    )
   let #(after_update, _, _) =
-    update(after_create, pool_messages.TaskTemplateCrudUpdated(updated))
+    update(after_create, pool_messages.TaskTemplateSaved(Ok(updated)))
   let assert True =
     after_update.task_templates_project == Loaded([updated, existing])
 
   let #(after_delete, _, _) =
-    update(after_update, pool_messages.TaskTemplateCrudDeleted(2))
+    update(after_update, pool_messages.TaskTemplateDeleteFinished(2, Ok(Nil)))
   let assert True = after_delete.task_templates_project == Loaded([existing])
 }
 
@@ -183,7 +205,7 @@ pub fn try_update_created_updates_project_scope_and_emits_feedback_test() {
   let assert opt.Some(task_templates_update.Update(next, fx, auth_policy)) =
     task_templates_update.try_update(
       state,
-      pool_messages.TaskTemplateCrudCreated(created),
+      pool_messages.TaskTemplateSaved(Ok(created)),
       feedback_context(),
     )
 
@@ -198,12 +220,18 @@ pub fn try_update_updated_replaces_org_and_project_scope_test() {
   let old = template(1, "Old", opt.Some(3))
   let updated = template(1, "Updated", opt.Some(3))
   let other = template(2, "Other", opt.None)
-  let state = state_with_templates(Loaded([old, other]), Loaded([old]))
+  let state =
+    admin_task_templates.Model(
+      ..state_with_templates(Loaded([old, other]), Loaded([old])),
+      task_templates_dialog_mode: opt.Some(
+        admin_task_templates.TaskTemplateDialogEdit(old),
+      ),
+    )
 
   let assert opt.Some(task_templates_update.Update(next, fx, auth_policy)) =
     task_templates_update.try_update(
       state,
-      pool_messages.TaskTemplateCrudUpdated(updated),
+      pool_messages.TaskTemplateSaved(Ok(updated)),
       feedback_context(),
     )
 
@@ -222,7 +250,7 @@ pub fn try_update_deleted_removes_from_org_and_project_scope_test() {
   let assert opt.Some(task_templates_update.Update(next, fx, auth_policy)) =
     task_templates_update.try_update(
       state,
-      pool_messages.TaskTemplateCrudDeleted(deleted.id),
+      pool_messages.TaskTemplateDeleteFinished(deleted.id, Ok(Nil)),
       feedback_context(),
     )
 

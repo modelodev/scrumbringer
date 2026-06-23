@@ -6,6 +6,7 @@ import lustre/element
 import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import domain/workflow.{type TaskTemplate, TaskTemplate}
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/i18n/locale
 
@@ -52,13 +53,27 @@ fn config() -> template_library.Config(String) {
     dialog_mode: opt.None,
     task_types: Loaded([sample_task_type()]),
     search_query: "",
+    form_name: "",
+    form_description: "",
+    form_type_id: "",
+    form_priority: "3",
+    form_submitting: False,
+    form_error: opt.None,
     on_create_clicked: "create",
     on_edit_clicked: fn(template) { "edit-" <> template.name },
     on_delete_clicked: fn(template) { "delete-" <> template.name },
     on_search_changed: fn(value) { "search-" <> value },
-    on_created: fn(template) { "created-" <> template.name },
-    on_updated: fn(template) { "updated-" <> template.name },
-    on_deleted: fn(id) { "deleted-" <> int.to_string(id) },
+    on_name_changed: fn(value) { "name-" <> value },
+    on_description_changed: fn(value) { "description-" <> value },
+    on_type_changed: fn(value) { "type-" <> value },
+    on_priority_changed: fn(value) { "priority-" <> value },
+    on_submitted: fn(project_id) {
+      case project_id {
+        opt.Some(id) -> "submit-" <> int.to_string(id)
+        opt.None -> "submit-none"
+      }
+    },
+    on_delete_confirmed: "confirm-delete",
     on_closed: "closed",
   )
 }
@@ -80,6 +95,7 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "template-delete-btn")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")
+  assert_not_contains(html, "task-template-crud-dialog")
 }
 
 pub fn automation_template_library_renders_empty_state_without_root_model_test() {
@@ -101,4 +117,45 @@ pub fn automation_template_library_filters_library_by_search_query_test() {
 
   assert_contains(html, "No templates yet")
   assert_not_contains(html, "Regression checklist")
+}
+
+pub fn automation_template_library_renders_feature_local_create_panel_test() {
+  let html =
+    template_library.view(
+      template_library.Config(
+        ..config(),
+        dialog_mode: opt.Some(admin_task_templates.TaskTemplateDialogCreate),
+        form_name: "QA checklist",
+        form_description: "Check {{project}}",
+        form_type_id: "2",
+        form_priority: "4",
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "automation-template-panel")
+  assert_contains(html, "New template")
+  assert_contains(html, "automation-template-name")
+  assert_contains(html, "QA checklist")
+  assert_contains(html, "Check {{project}}")
+  assert_contains(html, "Available variables")
+  assert_contains(html, "Create template")
+  assert_not_contains(html, "task-template-crud-dialog")
+}
+
+pub fn automation_template_library_renders_feature_local_delete_panel_test() {
+  let html =
+    template_library.view(
+      template_library.Config(
+        ..config(),
+        dialog_mode: opt.Some(
+          admin_task_templates.TaskTemplateDialogDelete(sample_template()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Delete template")
+  assert_contains(html, "Regression checklist")
+  assert_not_contains(html, "task-template-crud-dialog")
 }

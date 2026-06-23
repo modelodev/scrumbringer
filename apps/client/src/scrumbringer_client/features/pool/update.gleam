@@ -981,9 +981,14 @@ fn update_without_view_mode(
     | pool_messages.TaskTemplatesSearchChanged(_)
     | pool_messages.OpenTaskTemplateDialog(_)
     | pool_messages.CloseTaskTemplateDialog
-    | pool_messages.TaskTemplateCrudCreated(_)
-    | pool_messages.TaskTemplateCrudUpdated(_)
-    | pool_messages.TaskTemplateCrudDeleted(_) -> #(model, effect.none())
+    | pool_messages.TaskTemplateNameChanged(_)
+    | pool_messages.TaskTemplateDescriptionChanged(_)
+    | pool_messages.TaskTemplateTypeChanged(_)
+    | pool_messages.TaskTemplatePriorityChanged(_)
+    | pool_messages.TaskTemplateFormSubmitted(_)
+    | pool_messages.TaskTemplateSaved(_)
+    | pool_messages.TaskTemplateDeleteConfirmed
+    | pool_messages.TaskTemplateDeleteFinished(_, _) -> #(model, effect.none())
   }
 }
 

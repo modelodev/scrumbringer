@@ -18,6 +18,7 @@ import domain/view_mode
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
+import gleam/option.{type Option}
 import scrumbringer_client/api/activity as api_activity
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
@@ -231,7 +232,12 @@ pub type Msg {
   TaskTemplatesSearchChanged(String)
   OpenTaskTemplateDialog(admin_task_templates.TaskTemplateDialogMode)
   CloseTaskTemplateDialog
-  TaskTemplateCrudCreated(TaskTemplate)
-  TaskTemplateCrudUpdated(TaskTemplate)
-  TaskTemplateCrudDeleted(Int)
+  TaskTemplateNameChanged(String)
+  TaskTemplateDescriptionChanged(String)
+  TaskTemplateTypeChanged(String)
+  TaskTemplatePriorityChanged(String)
+  TaskTemplateFormSubmitted(Option(Int))
+  TaskTemplateSaved(ApiResult(TaskTemplate))
+  TaskTemplateDeleteConfirmed
+  TaskTemplateDeleteFinished(Int, ApiResult(Nil))
 }

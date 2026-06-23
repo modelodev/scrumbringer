@@ -995,15 +995,24 @@ fn admin_task_template_callbacks() -> template_library_config.Callbacks(
     on_search_changed: fn(value) {
       client_state.pool_msg(pool_messages.TaskTemplatesSearchChanged(value))
     },
-    on_created: fn(template) {
-      client_state.pool_msg(pool_messages.TaskTemplateCrudCreated(template))
+    on_name_changed: fn(value) {
+      client_state.pool_msg(pool_messages.TaskTemplateNameChanged(value))
     },
-    on_updated: fn(template) {
-      client_state.pool_msg(pool_messages.TaskTemplateCrudUpdated(template))
+    on_description_changed: fn(value) {
+      client_state.pool_msg(pool_messages.TaskTemplateDescriptionChanged(value))
     },
-    on_deleted: fn(id) {
-      client_state.pool_msg(pool_messages.TaskTemplateCrudDeleted(id))
+    on_type_changed: fn(value) {
+      client_state.pool_msg(pool_messages.TaskTemplateTypeChanged(value))
     },
+    on_priority_changed: fn(value) {
+      client_state.pool_msg(pool_messages.TaskTemplatePriorityChanged(value))
+    },
+    on_submitted: fn(project_id) {
+      client_state.pool_msg(pool_messages.TaskTemplateFormSubmitted(project_id))
+    },
+    on_delete_confirmed: client_state.pool_msg(
+      pool_messages.TaskTemplateDeleteConfirmed,
+    ),
     on_closed: client_state.pool_msg(pool_messages.CloseTaskTemplateDialog),
   )
 }

@@ -373,6 +373,15 @@ fn task_template_crud_feedback_context(
       i18n_text.TaskTemplateDeleted,
     ),
     on_success_toast: app_effects.toast_success,
+    on_template_saved: fn(result) {
+      client_state.pool_msg(pool_messages.TaskTemplateSaved(result))
+    },
+    on_template_deleted: fn(template_id, result) {
+      client_state.pool_msg(pool_messages.TaskTemplateDeleteFinished(
+        template_id,
+        result,
+      ))
+    },
   )
 }
 

@@ -93,7 +93,6 @@ import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/rule_crud_dialog
-import scrumbringer_client/components/task_template_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/components/workflow_crud_dialog
 import scrumbringer_client/features/auth/update as auth_workflow
@@ -130,10 +129,6 @@ pub fn main() {
     Error(_) -> Nil
   }
   case workflow_crud_dialog.register() {
-    Ok(_) -> Nil
-    Error(_) -> Nil
-  }
-  case task_template_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
