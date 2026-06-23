@@ -1,11 +1,15 @@
 //// Root-aware adapter for admin-owned flows reachable from the pool.
 
+import gleam/int
 import gleam/option as opt
 import lustre/effect
 
 import domain/api_error.{type ApiError}
+import domain/workflow.{type TaskTemplate}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
@@ -174,13 +178,15 @@ fn try_task_templates_update(
       task_template_crud_feedback_context(model),
     )
   {
-    opt.Some(update) -> opt.Some(apply_task_templates_update(model, update))
+    opt.Some(update) ->
+      opt.Some(apply_task_templates_update(model, inner, update))
     opt.None -> opt.None
   }
 }
 
 fn apply_task_templates_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: task_templates_workflow.Update(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_templates_workflow.Update(task_templates, fx, auth_policy) = update
@@ -188,8 +194,53 @@ fn apply_task_templates_update(
   route_support.apply_auth_check_before(
     model,
     task_templates_auth_error(auth_policy),
-    fn() { #(root.set_admin_task_templates(model, task_templates), fx) },
+    fn() {
+      let updated = root.set_admin_task_templates(model, task_templates)
+      #(select_created_template_for_rule_builder(updated, model, inner), fx)
+    },
   )
+}
+
+fn select_created_template_for_rule_builder(
+  updated: client_state.Model,
+  previous: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner, previous.admin.task_templates.task_templates_dialog_mode {
+    pool_messages.TaskTemplateSaved(Ok(template)),
+      opt.Some(admin_task_templates.TaskTemplateDialogCreate)
+    -> select_rule_builder_template(updated, template)
+    _, _ -> updated
+  }
+}
+
+fn select_rule_builder_template(
+  model: client_state.Model,
+  template: TaskTemplate,
+) -> client_state.Model {
+  case rule_builder_is_open(model.admin.rules.rules_dialog_mode) {
+    True -> {
+      let rules = model.admin.rules
+      root.set_admin_rules(
+        model,
+        admin_rules.Model(
+          ..rules,
+          rule_form_template_id: int.to_string(template.id),
+          rule_form_template_search: "",
+          rule_form_error: opt.None,
+        ),
+      )
+    }
+    False -> model
+  }
+}
+
+fn rule_builder_is_open(mode: opt.Option(admin_rules.RuleDialogMode)) -> Bool {
+  case mode {
+    opt.Some(admin_rules.RuleDialogCreate)
+    | opt.Some(admin_rules.RuleDialogEdit(_)) -> True
+    opt.Some(admin_rules.RuleDialogDelete(_)) | opt.None -> False
+  }
 }
 
 fn rules_context(
