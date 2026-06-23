@@ -273,6 +273,11 @@ type ExecutionTemplate {
   )
 }
 
+type RuleExecutionReservation {
+  ReservedExecution(id: Int)
+  DuplicateExecution
+}
+
 // =============================================================================
 // Internal Functions
 // =============================================================================
@@ -313,29 +318,7 @@ fn evaluate_single_rule(
   rule: MatchingRule,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
-  use trigger <- result.try(event_trigger(event))
-  let event_key =
-    automation.trigger_to_event_key(trigger, event_resource_id(event))
-
-  // Check idempotency
-  case check_already_executed(db, rule.id, event_key) {
-    Error(e) -> {
-      log("  Error checking idempotency: " <> debug_error(e))
-      Error(e)
-    }
-    Ok(True) -> suppress_idempotent_execution(db, rule, event)
-    Ok(False) -> evaluate_rule_templates(db, rule, event)
-  }
-}
-
-fn suppress_idempotent_execution(
-  _db: pog.Connection,
-  rule: MatchingRule,
-  _event: StateChange,
-) -> Result(RuleResult, RuleEngineError) {
-  log("  Suppressed: already executed for this resource")
-
-  Ok(RuleResult(rule.id, automation.DuplicateEvent))
+  evaluate_rule_templates(db, rule, event)
 }
 
 fn evaluate_rule_templates(
@@ -372,45 +355,54 @@ fn apply_rule_with_template(
   template: ExecutionTemplate,
   event: StateChange,
 ) -> Result(RuleResult, RuleEngineError) {
-  use task_id <- result.try(create_task_from_template(
-    db,
-    rule.id,
-    template,
-    event,
-    get_project_name(db, event_project_id(event)),
-    get_user_name(db, event_user_id(event)),
-  ))
   use trigger <- result.try(event_trigger(event))
   let event_key =
     automation.trigger_to_event_key(trigger, event_resource_id(event))
 
-  log("  Applied: created task #" <> int.to_string(task_id))
+  pog.transaction(db, fn(tx) {
+    use reservation <- result.try(reserve_execution(
+      tx,
+      rule.id,
+      event_key,
+      event,
+      template,
+    ))
 
-  use execution_id <- result.try(log_execution(
-    db,
-    rule.id,
-    event_key,
-    event,
-    "applied",
-    "",
-    event_user_id(event),
-    template.id,
-    template.version,
-    task_id,
-  ))
+    case reservation {
+      DuplicateExecution -> {
+        log("  Suppressed: already executed for this event")
+        Ok(RuleResult(rule.id, automation.DuplicateEvent))
+      }
+      ReservedExecution(execution_id) -> {
+        use task_id <- result.try(create_task_from_template(
+          tx,
+          rule.id,
+          template,
+          event,
+          get_project_name(tx, event_project_id(event)),
+          get_user_name(tx, event_user_id(event)),
+        ))
 
-  Ok(RuleResult(rule.id, automation.Executed(execution_id)))
+        use _ <- result.try(mark_execution_created_task(
+          tx,
+          execution_id,
+          task_id,
+        ))
+
+        log("  Applied: created task #" <> int.to_string(task_id))
+        Ok(RuleResult(rule.id, automation.Executed(execution_id)))
+      }
+    }
+  })
+  |> result.map_error(transaction_error_to_rule_engine_error)
 }
 
-fn check_already_executed(
-  db: pog.Connection,
-  rule_id: Int,
-  event_key: String,
-) -> Result(Bool, RuleEngineError) {
-  case sql.rule_executions_check(db, rule_id, event_key) {
-    Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(True)
-    Ok(pog.Returned(rows: [], ..)) -> Ok(False)
-    Error(e) -> Error(DbError(e))
+fn transaction_error_to_rule_engine_error(
+  error: pog.TransactionError(RuleEngineError),
+) -> RuleEngineError {
+  case error {
+    pog.TransactionQueryError(error) -> DbError(error)
+    pog.TransactionRolledBack(error) -> error
   }
 }
 
@@ -635,18 +627,13 @@ fn get_card_template_context(
   }
 }
 
-fn log_execution(
+fn reserve_execution(
   db: pog.Connection,
   rule_id: Int,
   event_key: String,
   event: StateChange,
-  outcome: String,
-  suppression_reason: String,
-  user_id: Int,
-  template_id: Int,
-  template_version: Int,
-  created_task_id: Int,
-) -> Result(Int, RuleEngineError) {
+  template: ExecutionTemplate,
+) -> Result(RuleExecutionReservation, RuleEngineError) {
   case
     sql.rule_executions_log(
       db,
@@ -654,17 +641,31 @@ fn log_execution(
       event_key,
       execution_task_id(event),
       execution_card_id(event),
-      outcome,
-      suppression_reason,
-      user_id,
-      template_id,
-      template_version,
-      created_task_id,
+      "applied",
+      "",
+      event_user_id(event),
+      template.id,
+      template.version,
+      no_created_task_id,
     )
+  {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(ReservedExecution(row.id))
+    Ok(pog.Returned(rows: [], ..)) -> Ok(DuplicateExecution)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+fn mark_execution_created_task(
+  db: pog.Connection,
+  execution_id: Int,
+  created_task_id: Int,
+) -> Result(Nil, RuleEngineError) {
+  case
+    sql.rule_executions_mark_created_task(db, execution_id, created_task_id)
   {
     Ok(pog.Returned(rows: rows, ..)) ->
       case persisted_field.query_row(rows) {
-        Ok(row) -> Ok(row.id)
+        Ok(_) -> Ok(Nil)
         Error(e) -> Error(DbError(e))
       }
     Error(e) -> Error(DbError(e))
@@ -704,6 +705,8 @@ fn execution_card_id(event: StateChange) -> Int {
 }
 
 const no_execution_resource_id = 0
+
+const no_created_task_id = 0
 
 fn event_project_id(event: StateChange) -> Int {
   case event {

@@ -1531,6 +1531,13 @@ pub fn rule_execution_idempotency_enforced_test() {
       [pog.int(rule_id)],
     )
   execution_count |> expect.equal(1)
+  let assert Ok(created_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from tasks where created_from_rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  created_count |> expect.equal(1)
 
   // Second fire (suppressed)
   let result2 = rules_engine.evaluate_rules(db, event)
@@ -1544,6 +1551,13 @@ pub fn rule_execution_idempotency_enforced_test() {
       [pog.int(rule_id)],
     )
   execution_count_after |> expect.equal(1)
+  let assert Ok(created_count_after) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from tasks where created_from_rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  created_count_after |> expect.equal(1)
 
   // Original execution is still 'applied'
   let assert Ok(execution) =

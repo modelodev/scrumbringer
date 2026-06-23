@@ -3405,52 +3405,6 @@ where id = $1;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `rule_executions_check` query
-/// defined in `./src/scrumbringer_server/sql/rule_executions_check.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type RuleExecutionsCheckRow {
-  RuleExecutionsCheckRow(id: Int, outcome: String, suppression_reason: String)
-}
-
-/// name: rule_executions_check
-/// Check if a rule has already been executed for a given event (idempotency).
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn rule_executions_check(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: String,
-) -> Result(pog.Returned(RuleExecutionsCheckRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use outcome <- decode.field(1, decode.string)
-    use suppression_reason <- decode.field(2, decode.string)
-    decode.success(RuleExecutionsCheckRow(id:, outcome:, suppression_reason:))
-  }
-
-  "-- name: rule_executions_check
--- Check if a rule has already been executed for a given event (idempotency).
-select
-  id,
-  outcome,
-  coalesce(suppression_reason, '') as suppression_reason
-from rule_executions
-where rule_id = $1
-  and event_key = $2
-limit 1;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
 /// A row you get from running the `rule_executions_count` query
 /// defined in `./src/scrumbringer_server/sql/rule_executions_count.sql`.
 ///
@@ -3712,6 +3666,46 @@ returning
   |> pog.parameter(pog.int(arg_8))
   |> pog.parameter(pog.int(arg_9))
   |> pog.parameter(pog.int(arg_10))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_executions_mark_created_task` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_mark_created_task.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsMarkCreatedTaskRow {
+  RuleExecutionsMarkCreatedTaskRow(id: Int)
+}
+
+/// name: rule_executions_mark_created_task
+/// Attach the task created by a reserved rule execution.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_mark_created_task(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(RuleExecutionsMarkCreatedTaskRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(RuleExecutionsMarkCreatedTaskRow(id:))
+  }
+
+  "-- name: rule_executions_mark_created_task
+-- Attach the task created by a reserved rule execution.
+update rule_executions
+set created_task_id = $2
+where id = $1
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
