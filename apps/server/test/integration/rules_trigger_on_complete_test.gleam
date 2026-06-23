@@ -84,9 +84,8 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       Some(bug_type_id),
       "Bug Complete",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task that will trigger the rule
   let assert Ok(bug_task_id) =
@@ -230,9 +229,8 @@ pub fn complete_task_uses_latest_selected_template_test() {
       Some(feature_type_id),
       "Feature Done",
       task_status.Done,
+      template1_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template1_id)
   let assert Ok(Nil) =
     fixtures.select_rule_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
@@ -340,7 +338,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       review_type_id,
       "Review Task",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -348,9 +346,8 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       Some(bug_type_id),
       "Bug Complete",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   let assert Ok(bug_task_id) =
     fixtures.create_task(
@@ -450,9 +447,8 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       Some(type_id),
       "Task Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Deactivate the rule
   let assert Ok(Nil) = fixtures.set_rule_active(db, rule_id, False)
@@ -548,9 +544,8 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       Some(bug_type_id),
       "Bug Complete",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task WITH the card
   let assert Ok(bug_task_id) =
@@ -651,7 +646,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       review_type_id,
       "Review {{origin}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -659,9 +654,8 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       Some(bug_type_id),
       "Bug Complete",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create the bug task WITHOUT a card
   let assert Ok(bug_task_id) =

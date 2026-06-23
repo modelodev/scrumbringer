@@ -107,8 +107,10 @@ pub fn set_active_cascade_deactivates_children_test() {
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "Cascade Test Project")
-  let assert Ok(_type_id) =
+  let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Cascade Workflow")
   let assert Ok(rule_id) =
@@ -119,6 +121,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       None,
       "Test Rule",
       task_status.Done,
+      template_id,
     )
 
   // Verify rule is initially active
@@ -151,6 +154,10 @@ pub fn set_active_cascade_activates_children_test() {
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "Activate Cascade Project")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Inactive Workflow")
   let assert Ok(rule_id) =
@@ -161,6 +168,7 @@ pub fn set_active_cascade_activates_children_test() {
       None,
       "Inactive Rule",
       task_status.Done,
+      template_id,
     )
 
   // Deactivate both using cascade API
@@ -222,6 +230,10 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "Cascade Delete Project")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(
       handler,
@@ -237,6 +249,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       None,
       "Rule To Delete",
       task_status.Done,
+      template_id,
     )
 
   // Verify rule exists

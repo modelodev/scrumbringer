@@ -186,34 +186,24 @@ pub fn seed() -> Result(SeedResult, String) {
   ))
   io.println("[OK] Created Bug Resolution workflow")
 
-  use rule_bug_resolved <- result.try(fixtures.create_rule(
+  use _rule_bug_resolved <- result.try(fixtures.create_rule(
     handler,
     session,
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Resolved",
     task_status.Done,
-  ))
-  use _ <- result.try(fixtures.select_rule_template(
-    handler,
-    session,
-    rule_bug_resolved,
     alpha_qa_tmpl,
   ))
   io.println("  [+] Rule: On Bug Resolved -> QA template")
 
-  use rule_bug_closed <- result.try(fixtures.create_rule(
+  use _rule_bug_closed <- result.try(fixtures.create_rule(
     handler,
     session,
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Closed",
     task_status.Done,
-  ))
-  use _ <- result.try(fixtures.select_rule_template(
-    handler,
-    session,
-    rule_bug_closed,
     alpha_deploy_tmpl,
   ))
   io.println("  [+] Rule: On Bug Closed -> Deploy template")
@@ -226,18 +216,13 @@ pub fn seed() -> Result(SeedResult, String) {
   ))
   io.println("[OK] Created Feature Development workflow")
 
-  use rule_feature_done <- result.try(fixtures.create_rule(
+  use _rule_feature_done <- result.try(fixtures.create_rule(
     handler,
     session,
     wf_feature_id,
     Some(alpha_feature_type),
     "On Feature Done",
     task_status.Done,
-  ))
-  use _ <- result.try(fixtures.select_rule_template(
-    handler,
-    session,
-    rule_feature_done,
     alpha_review_tmpl,
   ))
   io.println("  [+] Rule: On Feature Done -> Review template")
@@ -254,6 +239,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_card_id,
     "On Card Archived",
     domain_card.Closed,
+    alpha_review_tmpl,
   ))
   io.println("[OK] Created Card Automation workflow")
 
@@ -280,6 +266,13 @@ pub fn seed() -> Result(SeedResult, String) {
     "Feature",
     "sparkles",
   ))
+  use beta_qa_tmpl <- result.try(fixtures.create_template(
+    handler,
+    session,
+    beta_id,
+    beta_bug_type,
+    "Beta QA",
+  ))
 
   use wf_beta <- result.try(fixtures.create_workflow(
     handler,
@@ -294,6 +287,7 @@ pub fn seed() -> Result(SeedResult, String) {
     Some(beta_bug_type),
     "On Beta Bug Resolved",
     task_status.Done,
+    beta_qa_tmpl,
   ))
   io.println("[OK] Created workflow for Beta")
 

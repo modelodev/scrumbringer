@@ -29,6 +29,8 @@ pub fn evaluate_rule_applies_matching_rule_test() {
     fixtures.create_project(handler, session, "Rule Apply Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Apply Test WF")
   let assert Ok(_rule_id) =
@@ -39,6 +41,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       Some(type_id),
       "Bug Complete",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Bug")
@@ -78,6 +81,8 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
     fixtures.create_project(handler, session, "Inactive Rule Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Inactive Rule WF")
   let assert Ok(rule_id) =
@@ -88,6 +93,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       None,
       "Inactive Rule",
       task_status.Done,
+      template_id,
     )
 
   // Deactivate the rule
@@ -130,6 +136,8 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
     fixtures.create_project(handler, session, "Idempotent Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Idempotent WF")
   let assert Ok(rule_id) =
@@ -140,6 +148,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       Some(type_id),
       "Feature Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Feature")
@@ -185,6 +194,8 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
     fixtures.create_project(handler, session, "Inactive WF Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Inactive Workflow")
   let assert Ok(_rule_id) =
@@ -195,6 +206,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
 
   // Deactivate workflow

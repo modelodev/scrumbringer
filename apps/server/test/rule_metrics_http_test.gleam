@@ -30,6 +30,8 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
     fixtures.create_workflow(handler, session, project_id, "Test Workflow")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(template_id) =
+    create_metrics_template(handler, session, project_id, type_id, "Bug Metric")
   let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
@@ -38,6 +40,7 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
       Some(type_id),
       "Test Rule",
       task_status.Done,
+      template_id,
     )
 
   let res = get_workflow_metrics(handler, session, workflow_id)
@@ -63,6 +66,14 @@ pub fn rule_metrics_returns_correct_counts_test() {
     fixtures.create_workflow(handler, session, project_id, "Counts Workflow")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Feature Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -71,6 +82,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
       Some(type_id),
       "Counts Rule",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task1_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Metric 1")
@@ -139,6 +151,14 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
     fixtures.create_workflow(handler, session, project_id, "Breakdown Workflow")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Task Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -147,6 +167,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       Some(type_id),
       "Breakdown Rule",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task1_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Breakdown 1")
@@ -280,6 +301,14 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
     )
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Item", "box")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Item Metric",
+    )
   let assert Ok(rule1_id) =
     fixtures.create_rule(
       handler,
@@ -288,6 +317,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       Some(type_id),
       "Rule 1",
       task_status.Done,
+      template_id,
     )
   let assert Ok(rule2_id) =
     fixtures.create_rule(
@@ -297,6 +327,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       Some(type_id),
       "Rule 2",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task1_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Aggregate 1")
@@ -418,6 +449,14 @@ pub fn executions_list_returns_paginated_results_test() {
     )
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Story", "bookmark")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Story Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -426,6 +465,7 @@ pub fn executions_list_returns_paginated_results_test() {
       Some(type_id),
       "Executions Rule",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task1_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Execution 1")
@@ -498,6 +538,14 @@ pub fn executions_list_empty_returns_empty_array_test() {
     fixtures.create_workflow(handler, session, project_id, "Empty Workflow")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Epic", "layers")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Epic Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -506,6 +554,7 @@ pub fn executions_list_empty_returns_empty_array_test() {
       Some(type_id),
       "Empty Rule",
       task_status.Done,
+      template_id,
     )
 
   let res = get_rule_executions(handler, session, rule_id, None, None)
@@ -577,6 +626,14 @@ pub fn invalid_execution_limit_returns_validation_error_test() {
     fixtures.create_workflow(handler, session, project_id, "Invalid Limit")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Limit Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -585,6 +642,7 @@ pub fn invalid_execution_limit_returns_validation_error_test() {
       Some(type_id),
       "Invalid Limit Rule",
       task_status.Done,
+      template_id,
     )
 
   let res =
@@ -611,6 +669,14 @@ pub fn duplicate_execution_offset_returns_validation_error_test() {
     fixtures.create_workflow(handler, session, project_id, "Duplicate Offset")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Offset Metric",
+    )
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -619,6 +685,7 @@ pub fn duplicate_execution_offset_returns_validation_error_test() {
       Some(type_id),
       "Duplicate Offset Rule",
       task_status.Done,
+      template_id,
     )
 
   let res =
@@ -830,6 +897,16 @@ fn get_org_metrics(handler, session) {
     simulate.request(http.Get, "/api/v1/org/rule-metrics")
     |> fixtures.with_auth(session),
   )
+}
+
+fn create_metrics_template(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  project_id: Int,
+  type_id: Int,
+  name: String,
+) -> Result(Int, String) {
+  fixtures.create_template(handler, session, project_id, type_id, name)
 }
 
 // =============================================================================

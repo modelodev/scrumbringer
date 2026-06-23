@@ -169,7 +169,7 @@ fn create_rule_flow(
     task_type,
     payload.to_state,
   ))
-  use _ <- result.try(validate_rule_template_payload(
+  use _ <- result.try(validate_required_rule_template(
     db,
     workflow,
     payload.template_id,
@@ -189,7 +189,7 @@ fn create_rule_flow(
       use template <- result.try(sync_rule_template(
         db,
         rule.id,
-        payload.template_id,
+        Some(payload.template_id),
       ))
       Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
     }
@@ -226,9 +226,10 @@ fn update_rule_flow(
     payload.task_type_id,
     payload.to_state,
   ))
-  use _ <- result.try(validate_rule_template_payload(
+  use _ <- result.try(validate_update_rule_template(
     db,
     workflow,
+    rule.id,
     payload.template_id,
   ))
 
@@ -480,16 +481,33 @@ fn delete_rule_db(
   }
 }
 
-fn validate_rule_template_payload(
+fn validate_required_rule_template(
   db: pog.Connection,
   workflow: workflows_db.WorkflowRecord,
+  template_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case template_id {
+    value if value <= 0 ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid template_id"))
+    value -> validate_template_scope(db, workflow, value)
+  }
+}
+
+fn validate_update_rule_template(
+  db: pog.Connection,
+  workflow: workflows_db.WorkflowRecord,
+  rule_id: Int,
   template_id: Option(Int),
 ) -> Result(Nil, wisp.Response) {
   case template_id {
-    None -> Ok(Nil)
-    Some(value) if value <= 0 ->
-      Error(api.error(422, "VALIDATION_ERROR", "Invalid template_id"))
-    Some(value) -> validate_template_scope(db, workflow, value)
+    Some(value) -> validate_required_rule_template(db, workflow, value)
+    None -> {
+      use template <- result.try(list_rule_template_response(db, rule_id))
+      case template {
+        Some(_) -> Ok(Nil)
+        None -> Error(api.error(422, "VALIDATION_ERROR", "Missing template_id"))
+      }
+    }
   }
 }
 

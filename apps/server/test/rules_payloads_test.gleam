@@ -17,27 +17,19 @@ pub fn decode_create_payload_test() {
     resource_type: "task",
     task_type_id: Some(7),
     to_state: "completed",
-    template_id: Some(11),
+    template_id: 11,
     active: True,
   )) = payloads.decode_create(dynamic)
 }
 
-pub fn decode_create_payload_defaults_optional_fields_test() {
+pub fn decode_create_payload_requires_template_test() {
   let assert Ok(dynamic) =
     json.parse(
       "{\"name\":\"Rule\",\"resource_type\":\"card\",\"to_state\":\"cerrada\"}",
       decode.dynamic,
     )
 
-  let assert Ok(payloads.CreatePayload(
-    name: "Rule",
-    goal: "",
-    resource_type: "card",
-    task_type_id: None,
-    to_state: "cerrada",
-    template_id: None,
-    active: False,
-  )) = payloads.decode_create(dynamic)
+  let assert Error(Nil) = payloads.decode_create(dynamic)
 }
 
 pub fn decode_update_payload_test() {

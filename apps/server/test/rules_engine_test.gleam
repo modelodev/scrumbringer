@@ -56,9 +56,8 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       Some(bug_type_id),
       "Bug Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Get org_id and user_id for the event
   let assert Ok(org_id) = fixtures.get_org_id(db)
@@ -117,6 +116,8 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
     fixtures.create_project(handler, session, "Idempotent")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Idempotent WF")
   let assert Ok(rule_id) =
@@ -127,6 +128,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       Some(type_id),
       "Feature Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Build Feature")
@@ -165,6 +167,8 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
     fixtures.create_project(handler, session, "NonUser")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Auto WF")
   let assert Ok(_rule_id) =
@@ -175,6 +179,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "System Task")
@@ -206,6 +211,10 @@ pub fn evaluate_rules_card_resource_type_test() {
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "Card Test")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Followup", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Card Workflow")
   let assert Ok(_rule_id) =
@@ -215,6 +224,7 @@ pub fn evaluate_rules_card_resource_type_test() {
       workflow_id,
       "Card Closed",
       domain_card.Closed,
+      template_id,
     )
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Test Card")
@@ -275,7 +285,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       "Review {{origin}}",
       "Desc for {{origin}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -283,9 +293,8 @@ pub fn variable_origin_task_resolves_to_link_test() {
       Some(bug_type_id),
       "Bug Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Login Bug")
 
@@ -354,16 +363,15 @@ pub fn variable_origin_card_resolves_to_link_test() {
       "Followup for {{card_title}} L{{card_level}}",
       "Card {{origin}} was closed: {{card_title}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule_card(
       handler,
       session,
       workflow_id,
       "Card Closed",
       domain_card.Closed,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card to Close")
 
@@ -424,7 +432,7 @@ pub fn variable_trigger_resolves_test() {
       "Trigger: {{trigger}}",
       "Changed to {{trigger}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -432,9 +440,8 @@ pub fn variable_trigger_resolves_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Original Task")
 
@@ -489,7 +496,7 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
       "Trigger: {{trigger}}",
       "Was {{trigger}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -497,9 +504,8 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
       None,
       "On Create",
       task_status.Available,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "New Task")
 
@@ -558,7 +564,7 @@ pub fn variable_project_resolves_to_name_test() {
       type_id,
       "Task for {{project}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -566,9 +572,8 @@ pub fn variable_project_resolves_to_name_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Trigger Task")
 
@@ -618,7 +623,7 @@ pub fn variable_user_resolves_to_email_test() {
       type_id,
       "Done by {{user}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -626,9 +631,8 @@ pub fn variable_user_resolves_to_email_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "User Task")
 
@@ -693,7 +697,7 @@ pub fn all_five_variables_combined_test() {
       "{{task_type}} followup for {{task_title}}",
       "{{user}}: {{trigger}} in {{project}} from {{origin}}",
     )
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -701,9 +705,8 @@ pub fn all_five_variables_combined_test() {
       Some(bug_type_id),
       "Bug Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Get org_id and user_id for the event
   let assert Ok(org_id) = fixtures.get_org_id(db)
@@ -827,10 +830,9 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
       Some(bug_type_id),
       "Bug Done",
       task_status.Done,
+      template1_id,
     )
 
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template1_id)
   let assert Ok(Nil) =
     fixtures.select_rule_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
@@ -899,6 +901,14 @@ pub fn rule_without_task_type_matches_all_types_test() {
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(feature_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      bug_type_id,
+      "Followup",
+    )
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "No Filter WF")
 
@@ -911,6 +921,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
 
   let assert Ok(org_id) = fixtures.get_org_id(db)
@@ -973,6 +984,8 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
     fixtures.create_project(handler, session, "InactiveWF")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Inactive Workflow")
 
@@ -987,6 +1000,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Task")
@@ -1024,6 +1038,8 @@ pub fn inactive_rule_does_not_fire_test() {
       project_id,
       "Active WF Inactive Rule",
     )
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -1032,6 +1048,7 @@ pub fn inactive_rule_does_not_fire_test() {
       None,
       "Inactive Rule",
       task_status.Done,
+      template_id,
     )
 
   // Deactivate rule
@@ -1068,6 +1085,14 @@ pub fn wrong_task_type_does_not_match_test() {
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(feature_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      bug_type_id,
+      "Followup",
+    )
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Type Filter WF")
 
@@ -1080,6 +1105,7 @@ pub fn wrong_task_type_does_not_match_test() {
       Some(bug_type_id),
       "Bug Only",
       task_status.Done,
+      template_id,
     )
 
   // Create Feature task
@@ -1118,6 +1144,8 @@ pub fn wrong_to_state_does_not_match_test() {
     fixtures.create_project(handler, session, "WrongState")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "State Filter WF")
 
@@ -1130,6 +1158,7 @@ pub fn wrong_to_state_does_not_match_test() {
       None,
       "On Complete",
       task_status.Done,
+      template_id,
     )
 
   let assert Ok(task_id) =
@@ -1164,10 +1193,18 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
   let assert Ok(project2_id) =
     fixtures.create_project(handler, session, "Project Two")
 
-  let assert Ok(_type1_id) =
+  let assert Ok(type1_id) =
     fixtures.create_task_type(handler, session, project1_id, "Task", "check")
   let assert Ok(type2_id) =
     fixtures.create_task_type(handler, session, project2_id, "Task", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project1_id,
+      type1_id,
+      "Followup",
+    )
 
   // Workflow scoped to Project One
   let assert Ok(workflow_id) =
@@ -1180,6 +1217,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
 
   // Task in Project Two
@@ -1225,7 +1263,7 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
     fixtures.create_template(handler, session, project_id, type_id, "Followup")
 
   // Rule for TASK resource_type
-  let assert Ok(rule_id) =
+  let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
@@ -1233,9 +1271,8 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
       None,
       "Task Done",
       task_status.Done,
+      template_id,
     )
-  let assert Ok(Nil) =
-    fixtures.select_rule_template(handler, session, rule_id, template_id)
 
   // Create a card
   let assert Ok(card_id) =
@@ -1283,6 +1320,8 @@ pub fn rule_execution_applied_is_persisted_test() {
     fixtures.create_project(handler, session, "PersistApplied")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Persist Test WF")
   let assert Ok(rule_id) =
@@ -1293,6 +1332,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       Some(type_id),
       "Feature Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Feature")
@@ -1346,6 +1386,8 @@ pub fn rule_execution_idempotency_enforced_test() {
       project_id,
       "Idempotency Test WF",
     )
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -1354,6 +1396,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       None,
       "Any Done",
       task_status.Done,
+      template_id,
     )
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Bug Fix")

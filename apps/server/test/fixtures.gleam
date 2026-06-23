@@ -343,6 +343,7 @@ pub fn create_rule(
   task_type_id: Option(Int),
   name: String,
   to_state: task_status.TaskPhase,
+  template_id: Int,
 ) -> Result(Int, String) {
   let payload =
     build_rule_payload(
@@ -350,6 +351,7 @@ pub fn create_rule(
       name,
       task_status.task_status_to_string(to_state),
       task_type_id,
+      template_id,
     )
   do_create_rule(handler, session, workflow_id, name, payload)
 }
@@ -361,6 +363,7 @@ pub fn create_rule_card(
   workflow_id: Int,
   name: String,
   to_state: domain_card.CardPhase,
+  template_id: Int,
 ) -> Result(Int, String) {
   let payload =
     build_rule_payload(
@@ -368,6 +371,7 @@ pub fn create_rule_card(
       name,
       domain_card.state_to_string(to_state),
       None,
+      template_id,
     )
   do_create_rule(handler, session, workflow_id, name, payload)
 }
@@ -378,6 +382,7 @@ fn build_rule_payload(
   name: String,
   to_state: String,
   task_type_id: Option(Int),
+  template_id: Int,
 ) -> json.Json {
   let resource_type_str = case resource_type {
     TaskResource -> "task"
@@ -393,6 +398,7 @@ fn build_rule_payload(
     #("goal", json.string(goal)),
     #("resource_type", json.string(resource_type_str)),
     #("to_state", json.string(to_state)),
+    #("template_id", json.int(template_id)),
     #("active", json.bool(True)),
   ]
 
