@@ -1107,7 +1107,7 @@ pub fn translate(text: Text) -> String {
       "Insertar variable {{" <> variable <> "}}"
     text.SelectTaskType -> "Selecciona tipo"
 
-    // Rule Metrics Tab
+    // Automation executions tab
     text.AdminRuleMetrics -> "Ejecuciones"
     text.RuleMetricsTitle -> "Ejecuciones"
     text.RuleMetricsDescription ->
@@ -1122,7 +1122,8 @@ pub fn translate(text: Text) -> String {
     text.RuleMetrics30Days -> "30 días"
     text.RuleMetrics90Days -> "90 días"
     text.RuleMetricsSelectRange -> "Selecciona un rango de fechas"
-    text.RuleMetricsNoData -> "Sin datos de métricas para el rango seleccionado"
+    text.RuleMetricsNoData ->
+      "Sin diagnostico de ejecuciones para el rango seleccionado"
     text.RuleMetricsRuleCount -> "Reglas"
     text.RuleMetricsEvaluated -> "Evaluadas"
     text.RuleMetricsNoRules -> "No hay reglas en este motor"

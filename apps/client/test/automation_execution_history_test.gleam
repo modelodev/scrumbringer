@@ -267,6 +267,8 @@ pub fn automation_execution_history_renders_empty_state_without_root_model_test(
     |> element.to_document_string
 
   assert_contains(html, "No automation executions found in the selected range.")
+  assert_contains(html, "No execution diagnostics for the selected range")
+  assert_not_contains(html, "metrics data")
 }
 
 pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
