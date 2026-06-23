@@ -1,5 +1,6 @@
 //// Domain types for workflows, rules, and task templates.
 
+import domain/automation
 import domain/card
 import domain/task_status
 import gleam/option.{type Option, None, Some}
@@ -78,6 +79,12 @@ pub type RuleTargetValidationError {
   CardRuleCannotHaveTaskType
 }
 
+/// Errors when projecting a legacy rule target into a typed automation trigger.
+pub type RuleTargetTriggerError {
+  AmbiguousTaskAvailableTrigger
+  UnsupportedCardDraftTrigger
+}
+
 /// Typed target for a workflow rule.
 ///
 /// Rule payloads and DB rows cross boundaries as strings, but application code
@@ -154,6 +161,26 @@ pub fn rule_target_to_db_values(target: RuleTarget) -> #(String, Int, String) {
   }
 
   #(resource_type, task_type_id, to_state)
+}
+
+/// Project a validated legacy rule target into a supported automation trigger.
+///
+/// The legacy DB shape stores task creation and task release as the same
+/// `task/available` target, so that state cannot safely become a trigger until
+/// persistence stores the event kind explicitly.
+pub fn rule_target_to_automation_trigger(
+  target: RuleTarget,
+) -> Result(automation.AutomationTrigger, RuleTargetTriggerError) {
+  case target {
+    TaskRule(task_status.Available, _) -> Error(AmbiguousTaskAvailableTrigger)
+    TaskRule(task_status.Claimed(_), task_type_id) ->
+      Ok(automation.TaskClaimed(task_type_id))
+    TaskRule(task_status.Done, task_type_id) ->
+      Ok(automation.TaskCompleted(task_type_id))
+    CardRule(card.Draft) -> Error(UnsupportedCardDraftTrigger)
+    CardRule(card.Active) -> Ok(automation.CardActivated(automation.AnyCard))
+    CardRule(card.Closed) -> Ok(automation.CardClosed(automation.AnyCard))
+  }
 }
 
 pub fn rule_resource_type(rule: Rule) -> String {
