@@ -991,9 +991,9 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderWhen -> "Cuando"
     text.RuleBuilderEvent -> "Evento"
     text.RuleBuilderCreateTaskFrom -> "Crear task desde"
-    text.RuleBuilderCardLevel -> "Nivel de card"
     text.RuleBuilderCardScope -> "Alcance de automatización de card"
     text.RuleBuilderAnyCard -> "Cualquier card"
+    text.RuleBuilderCardsAtLevel(level_name) -> "Cards de nivel: " <> level_name
     text.RuleBuilderSubject -> "Sujeto de la regla"
     text.RuleBuilderTask -> "Task"
     text.RuleBuilderCard -> "Card"

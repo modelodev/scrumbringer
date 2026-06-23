@@ -36,6 +36,7 @@ import domain/workflow.{
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/features/automations/rule_sentence
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -70,6 +71,7 @@ pub type Config(msg) {
     task_types: Remote(List(TaskType)),
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
+    depth_names: List(scope_view.DepthName),
     on_back_clicked: msg,
     on_create_clicked: msg,
     on_rule_expanded: fn(Int) -> msg,
@@ -532,19 +534,45 @@ fn view_rule_form_panel(
 
 fn view_rule_card_scope_select(config: Config(msg)) -> Element(msg) {
   form_field.view(
-    t(config, i18n_text.RuleBuilderCardLevel),
-    input([
-      attribute.type_("number"),
-      attribute.attribute("min", "1"),
-      attribute.value(config.rules.rule_form_card_scope),
-      event.on_input(config.on_rule_card_scope_changed),
-      attribute.attribute(
-        "aria-label",
-        t(config, i18n_text.RuleBuilderCardScope),
-      ),
-      attribute.placeholder(t(config, i18n_text.RuleBuilderAnyCard)),
-    ]),
+    t(config, i18n_text.RuleBuilderCardScope),
+    select(
+      [
+        attribute.value(config.rules.rule_form_card_scope),
+        event.on_input(config.on_rule_card_scope_changed),
+        event.on_change(config.on_rule_card_scope_changed),
+        attribute.attribute(
+          "aria-label",
+          t(config, i18n_text.RuleBuilderCardScope),
+        ),
+      ],
+      [
+        option(
+          [
+            attribute.value(""),
+            attribute.selected(config.rules.rule_form_card_scope == ""),
+          ],
+          t(config, i18n_text.RuleBuilderAnyCard),
+        ),
+        ..card_depth_options(config)
+      ],
+    ),
   )
+}
+
+fn card_depth_options(config: Config(msg)) -> List(Element(msg)) {
+  config.depth_names
+  |> list.map(fn(depth_name) {
+    let scope_view.DepthName(depth: depth, singular_name: singular, ..) =
+      depth_name
+    let value = int.to_string(depth)
+    option(
+      [
+        attribute.value(value),
+        attribute.selected(config.rules.rule_form_card_scope == value),
+      ],
+      t(config, i18n_text.RuleBuilderCardsAtLevel(singular)),
+    )
+  })
 }
 
 fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
@@ -823,7 +851,24 @@ fn rule_preview_sentence(config: Config(msg)) -> String {
 fn card_scope_label(config: Config(msg)) -> String {
   case string.trim(config.rules.rule_form_card_scope) {
     "" -> "any card"
-    value -> "a card at level " <> value
+    value -> {
+      case int.parse(value) {
+        Ok(depth) -> card_depth_label(config, depth)
+        Error(_) -> "a selected card level"
+      }
+    }
+  }
+}
+
+fn card_depth_label(config: Config(msg), depth: Int) -> String {
+  case
+    list.find(config.depth_names, fn(depth_name) {
+      let scope_view.DepthName(depth: candidate, ..) = depth_name
+      candidate == depth
+    })
+  {
+    Ok(scope_view.DepthName(singular_name: singular, ..)) -> "a " <> singular
+    Error(_) -> "a card at level " <> int.to_string(depth)
   }
 }
 

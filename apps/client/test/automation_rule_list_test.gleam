@@ -14,6 +14,7 @@ import domain/workflow.{
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/features/automations/rule_list
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 
@@ -152,6 +153,11 @@ fn config() -> rule_list.Config(String) {
     task_types: Loaded([task_type()]),
     task_templates_org: Loaded([]),
     task_templates_project: Loaded([task_template()]),
+    depth_names: [
+      scope_view.DepthName(1, "Initiative", "Initiatives"),
+      scope_view.DepthName(2, "Feature", "Features"),
+      scope_view.DepthName(3, "Story", "Stories"),
+    ],
     on_back_clicked: "back",
     on_create_clicked: "create",
     on_rule_expanded: fn(id) { "expand-" <> int.to_string(id) },
@@ -197,11 +203,14 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Card level")
   assert_contains(html, "Card automation scope")
-  assert_contains(html, "placeholder=\"Any card\"")
+  assert_contains(html, ">Any card<")
+  assert_contains(html, ">Cards at level: Initiative<")
+  assert_contains(html, ">Cards at level: Feature<")
+  assert_contains(html, ">Cards at level: Story<")
   assert_contains(html, "value=\"2\"")
-  assert_contains(html, "When a card at level 2 is closed")
+  assert_contains(html, "When a Feature is closed")
+  assert_not_contains(html, "type=\"number\"")
   assert_not_contains(html, "subtree")
 }
 
@@ -338,9 +347,10 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
   assert_contains(html, "Cuando")
   assert_contains(html, "Evento")
   assert_contains(html, "se activa")
-  assert_contains(html, "Nivel de card")
   assert_contains(html, "aria-label=\"Alcance de automatización de card\"")
-  assert_contains(html, "placeholder=\"Cualquier card\"")
+  assert_contains(html, ">Cualquier card<")
+  assert_contains(html, ">Cards de nivel: Initiative<")
+  assert_contains(html, ">Cards de nivel: Feature<")
   assert_contains(html, "Crear task desde")
   assert_contains(html, "aria-label=\"Plantilla de task de la regla\"")
   assert_contains(html, "Elige una plantilla")

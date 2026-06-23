@@ -8,6 +8,7 @@ import scrumbringer_client/client_state/admin/task_templates as task_templates_s
 import scrumbringer_client/client_state/admin/task_types as task_types_state
 import scrumbringer_client/client_state/admin/workflows as workflows_state
 import scrumbringer_client/features/automations/rule_list
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/theme.{type Theme}
 
@@ -42,6 +43,7 @@ pub fn from_state(
   workflows: workflows_state.Model,
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
+  depth_names: List(scope_view.DepthName),
   selected_rule_id: opt.Option(Int),
   callbacks: Callbacks(msg),
 ) -> rule_list.Config(msg) {
@@ -61,6 +63,7 @@ pub fn from_state(
     task_types: task_types.task_types,
     task_templates_org: task_templates.task_templates_org,
     task_templates_project: task_templates.task_templates_project,
+    depth_names: depth_names,
     on_back_clicked: callbacks.on_back_clicked,
     on_create_clicked: callbacks.on_create_clicked,
     on_rule_expanded: callbacks.on_rule_expanded,

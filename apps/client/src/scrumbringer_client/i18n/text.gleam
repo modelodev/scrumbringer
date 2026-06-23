@@ -801,9 +801,9 @@ pub type Text {
   RuleBuilderWhen
   RuleBuilderEvent
   RuleBuilderCreateTaskFrom
-  RuleBuilderCardLevel
   RuleBuilderCardScope
   RuleBuilderAnyCard
+  RuleBuilderCardsAtLevel(level_name: String)
   RuleBuilderSubject
   RuleBuilderTask
   RuleBuilderCard

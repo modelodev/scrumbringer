@@ -506,16 +506,23 @@ fn view_section(
         permissions.TaskTypes -> admin_view.view_task_types(model, selected)
         permissions.Cards -> admin_view.view_cards(model, selected)
         permissions.Workflows ->
-          view_automations_console(model, selected, automations_console.Engines)
+          view_automations_console(
+            model,
+            projects,
+            selected,
+            automations_console.Engines,
+          )
         permissions.TaskTemplates ->
           view_automations_console(
             model,
+            projects,
             selected,
             automations_console.Templates,
           )
         permissions.RuleMetrics ->
           view_automations_console(
             model,
+            projects,
             selected,
             automations_console.Executions,
           )
@@ -525,6 +532,7 @@ fn view_section(
 
 fn view_automations_console(
   model: client_state.Model,
+  projects: List(Project),
   selected: opt.Option(Project),
   mode: automations_console.Mode,
 ) -> Element(client_state.Msg) {
@@ -551,6 +559,7 @@ fn view_automations_console(
       model.admin.rules,
       model.admin.task_templates,
       model.admin.task_types,
+      configured_depth_names(projects, model.core.selected_project_id),
       model.core.automation_selection,
       admin_workflow_callbacks(),
     )),
