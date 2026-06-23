@@ -2,6 +2,8 @@
 -module(test_runner_ffi).
 -export([run_tests_sequential/0]).
 
+-define(MODULE_TIMEOUT_SECONDS, 120).
+
 run_tests_sequential() ->
     %% Find all test modules
     {ok, Files} = file:list_dir("build/dev/erlang/scrumbringer_server/_gleam_artefacts"),
@@ -29,8 +31,13 @@ run_tests_sequential() ->
     Options = [verbose, no_tty,
                {report, {gleeunit_progress, [{colored, true}]}}],
 
-    %% Wrap each module in {inorder, ...} to run its tests sequentially
-    SequentialModules = [{inorder, {module, Mod}} || Mod <- TestModules],
+    %% Wrap each module in {inorder, ...} to run its tests sequentially.
+    %% HTTP integration modules bootstrap PostgreSQL-backed apps and can exceed
+    %% EUnit's default 5s timeout on slower local runs.
+    SequentialModules = [
+        {timeout, ?MODULE_TIMEOUT_SECONDS, {inorder, {module, Mod}}}
+     || Mod <- TestModules
+    ],
 
     %% Then wrap the list to run modules sequentially
     Result = eunit:test({inorder, SequentialModules}, Options),
