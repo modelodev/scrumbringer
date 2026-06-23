@@ -168,6 +168,92 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
   |> expect.is_true
 }
 
+/// Verifies TaskCreated rules do not cascade from automation-created tasks.
+pub fn task_created_rule_does_not_cascade_from_automation_created_task_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Task Created No Cascade")
+  let assert Ok(task_type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Created Task WF")
+  let assert Ok(template_id) =
+    fixtures.create_template(
+      handler,
+      session,
+      project_id,
+      task_type_id,
+      "Follow-up {{origin}}",
+    )
+  let assert Ok(rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      workflow_id,
+      None,
+      "On Task Created",
+      task_status.Available,
+      template_id,
+    )
+
+  let assert Ok(source_task_id) =
+    fixtures.create_task(
+      handler,
+      session,
+      project_id,
+      task_type_id,
+      "Manual source task",
+    )
+
+  let assert Ok(created_by_rule_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  created_by_rule_count |> expect.equal(1)
+
+  let assert Ok(total_task_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM tasks WHERE type_id = $1",
+      [pog.int(task_type_id)],
+    )
+  total_task_count |> expect.equal(2)
+
+  let assert Ok(applied_execution_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM rule_executions WHERE rule_id = $1 AND outcome = 'applied'",
+      [pog.int(rule_id)],
+    )
+  applied_execution_count |> expect.equal(1)
+
+  let assert Ok(generated_task_id) =
+    fixtures.query_int(
+      db,
+      "SELECT id FROM tasks WHERE created_from_rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  let assert Ok(generated_task_applied_executions) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM rule_executions WHERE task_id = $1 AND outcome = 'applied'",
+      [pog.int(generated_task_id)],
+    )
+  generated_task_applied_executions |> expect.equal(0)
+
+  let assert Ok(source_task_applied_executions) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM rule_executions WHERE task_id = $1 AND outcome = 'applied'",
+      [pog.int(source_task_id)],
+    )
+  source_task_applied_executions |> expect.equal(1)
+}
+
 /// Verifies that selecting another template replaces the rule template.
 pub fn complete_task_uses_latest_selected_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
