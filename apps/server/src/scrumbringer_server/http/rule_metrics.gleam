@@ -28,6 +28,7 @@ import gleam/int
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
 import pog
@@ -437,13 +438,13 @@ pub fn parse_date_range_query(
   default_from_ts: Timestamp,
   default_to_ts: Timestamp,
 ) -> Result(#(Timestamp, Timestamp), wisp.Response) {
-  use from <- result.try(parse_optional_timestamp(
+  use from <- result.try(parse_optional_calendar_date(
     query,
     "from",
     default_from_ts,
     RangeStart,
   ))
-  use to <- result.try(parse_optional_timestamp(
+  use to <- result.try(parse_optional_calendar_date(
     query,
     "to",
     default_to_ts,
@@ -456,7 +457,7 @@ pub fn parse_date_range_query(
   validate_range_order(range, from, to, zero)
 }
 
-fn parse_optional_timestamp(
+fn parse_optional_calendar_date(
   query: List(#(String, String)),
   key: String,
   default: Timestamp,
@@ -464,23 +465,23 @@ fn parse_optional_timestamp(
 ) -> Result(Timestamp, wisp.Response) {
   case query_params.single_value(query, key) {
     Ok(None) -> Ok(default)
-    Ok(Some(value)) -> parse_calendar_or_timestamp(value, key, boundary)
+    Ok(Some(value)) -> parse_calendar_date(value, key, boundary)
     Error(_) -> Error(invalid_query_response(key))
   }
 }
 
-fn parse_calendar_or_timestamp(
+fn parse_calendar_date(
   value: String,
   key: String,
   boundary: RangeBoundary,
 ) -> Result(Timestamp, wisp.Response) {
-  case timestamp.parse_rfc3339(value) {
-    Ok(ts) -> Ok(ts)
-    Error(_) ->
+  case string.length(value) == 10 {
+    True ->
       case timestamp.parse_rfc3339(calendar_boundary(value, boundary)) {
         Ok(ts) -> Ok(ts)
         Error(_) -> Error(invalid_query_response(key))
       }
+    False -> Error(invalid_query_response(key))
   }
 }
 

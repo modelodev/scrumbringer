@@ -133,7 +133,7 @@ pub fn get_org_rule_metrics(
 ) -> Effect(msg) {
   core.request(
     core.Get,
-    "/api/v1/org/rule-metrics" <> calendar_range_query(range),
+    "/api/v1/org/rule-metrics" <> calendar_date_range_query(range),
     None,
     org_rule_metrics_decoder(),
     to_msg,
@@ -151,7 +151,7 @@ pub fn get_project_rule_metrics(
     "/api/v1/projects/"
       <> int.to_string(project_id)
       <> "/rule-metrics"
-      <> calendar_range_query(range),
+      <> calendar_date_range_query(range),
     None,
     org_rule_metrics_decoder(),
     to_msg,
@@ -225,7 +225,7 @@ pub fn get_rule_metrics_detailed(
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/metrics"
-      <> calendar_range_query(range),
+      <> calendar_date_range_query(range),
     None,
     rule_metrics_detailed_decoder(),
     to_msg,
@@ -351,7 +351,7 @@ pub fn get_rule_executions(
     "/api/v1/rules/"
       <> int.to_string(rule_id)
       <> "/executions"
-      <> calendar_range_query(range)
+      <> calendar_date_range_query(range)
       <> "&limit="
       <> int.to_string(limit)
       <> "&offset="
@@ -362,6 +362,7 @@ pub fn get_rule_executions(
   )
 }
 
-fn calendar_range_query(range: CalendarDateRange) -> String {
+/// Encodes a calendar date range as metrics query parameters.
+pub fn calendar_date_range_query(range: CalendarDateRange) -> String {
   "?from=" <> range.from <> "&to=" <> range.to
 }

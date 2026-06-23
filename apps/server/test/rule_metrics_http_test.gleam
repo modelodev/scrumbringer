@@ -127,8 +127,8 @@ pub fn rule_metrics_returns_correct_counts_test() {
       handler,
       session,
       rule_id,
-      "2025-11-15T00:00:00Z",
-      "2026-01-30T23:59:59Z",
+      "2025-11-15",
+      "2026-01-30",
     )
   expect.expect_status(res, 200)
 
@@ -255,8 +255,8 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       handler,
       session,
       rule_id,
-      "2025-11-15T00:00:00Z",
-      "2026-01-30T23:59:59Z",
+      "2025-11-15",
+      "2026-01-30",
     )
   expect.expect_status(res, 200)
 
@@ -416,8 +416,8 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       handler,
       session,
       workflow_id,
-      "2025-11-15T00:00:00Z",
-      "2026-01-30T23:59:59Z",
+      "2025-11-15",
+      "2026-01-30",
     )
   expect.expect_status(res, 200)
 
@@ -515,8 +515,8 @@ pub fn executions_list_returns_paginated_results_test() {
       rule_id,
       Some(2),
       Some(0),
-      "2025-11-15T00:00:00Z",
-      "2026-01-30T23:59:59Z",
+      "2025-11-15",
+      "2026-01-30",
     )
   expect.expect_status(res, 200)
 
@@ -583,8 +583,8 @@ pub fn date_range_exceeds_90_days_returns_error_test() {
       handler,
       session,
       workflow_id,
-      "2026-01-01T00:00:00Z",
-      "2026-04-15T00:00:00Z",
+      "2026-01-01",
+      "2026-04-15",
     )
 
   expect.expect_status(res, 400)
