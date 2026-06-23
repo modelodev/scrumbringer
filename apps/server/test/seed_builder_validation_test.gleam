@@ -106,12 +106,31 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
          and re.created_task_id is null",
       [],
     )
+  let assert Ok(noisy_engine_execution_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from rule_executions re
+       join rules r on r.id = re.rule_id
+       join workflows w on w.id = r.workflow_id
+       join projects p on p.id = w.project_id
+       join tasks t on t.id = re.created_task_id
+       where p.name = 'Stress Validation Project'
+         and re.outcome = 'applied'
+         and re.event_key like 'seed:noisy:stress:%'
+         and re.template_id is not null
+         and re.template_version > 0
+         and t.created_from_rule_id = re.rule_id
+         and t.execution_state = 'available'",
+      [],
+    )
 
   { selected_rule_count > 0 } |> expect.is_true
   stress_missing_template_count |> expect.equal(1)
   { applied_execution_count > 0 } |> expect.is_true
   { created_task_trace_count > 0 } |> expect.is_true
   ignored_duplicate_count |> expect.equal(1)
+  noisy_engine_execution_count |> expect.equal(8)
 }
 
 fn project_id_by_name(db: pog.Connection, name: String) -> Result(Int, String) {

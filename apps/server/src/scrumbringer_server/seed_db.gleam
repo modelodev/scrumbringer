@@ -1586,6 +1586,42 @@ pub fn insert_ignored_duplicate_rule_execution(
   })
 }
 
+/// Insert a diagnostic applied execution with full automation traceability.
+pub fn insert_applied_rule_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  event_key: String,
+  task_id: Int,
+  user_id: Int,
+  template_id: Int,
+  template_version: Int,
+  created_task_id: Int,
+) -> Result(Bool, String) {
+  sql.rule_executions_log(
+    db,
+    rule_id,
+    event_key,
+    task_id,
+    0,
+    "applied",
+    "",
+    user_id,
+    template_id,
+    template_version,
+    created_task_id,
+  )
+  |> result.map_error(fn(e) {
+    "insert_applied_rule_execution: " <> string.inspect(e)
+  })
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [_row] -> Ok(True)
+      [] -> Ok(False)
+      _ -> Error("insert_applied_rule_execution: unexpected rows")
+    }
+  })
+}
+
 // =============================================================================
 // Work Session Operations
 // =============================================================================
