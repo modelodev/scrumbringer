@@ -3,13 +3,10 @@
 import gleam/dynamic/decode
 import gleam/option
 
-import domain/automation
 import domain/automation/automation_codec
-import domain/task_status
 import domain/workflow.{
-  type Rule, type RuleTarget, type RuleTargetValidationError, type RuleTemplate,
-  type TaskTemplate, type Workflow, Rule, RuleTemplate, TaskRule, TaskTemplate,
-  Workflow, parse_rule_target, rule_target_validation_error_label,
+  type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
+  RuleTemplate, TaskTemplate, Workflow,
 }
 
 // =============================================================================
@@ -59,62 +56,18 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     "template",
     decode.optional(rule_template_decoder()),
   )
-  let #(resource_type, task_type_id, to_state) =
-    automation.trigger_to_db_values(trigger)
-  case
-    decode_rule_target(resource_type, db_task_type_id(task_type_id), to_state)
-  {
-    Ok(target) ->
-      decode.success(Rule(
-        id: id,
-        workflow_id: workflow_id,
-        name: name,
-        goal: goal,
-        target: target,
-        trigger: trigger,
-        action: action,
-        status: status,
-        active: active,
-        created_at: created_at,
-        template: template,
-      ))
-    Error(error) ->
-      decode.failure(
-        rule_decode_placeholder(),
-        rule_target_validation_error_label(error),
-      )
-  }
-}
-
-fn decode_rule_target(
-  resource_type: String,
-  task_type_id: option.Option(Int),
-  to_state: String,
-) -> Result(RuleTarget, RuleTargetValidationError) {
-  parse_rule_target(resource_type, task_type_id, to_state)
-}
-
-fn db_task_type_id(value: Int) -> option.Option(Int) {
-  case value {
-    id if id > 0 -> option.Some(id)
-    _ -> option.None
-  }
-}
-
-fn rule_decode_placeholder() -> Rule {
-  Rule(
-    id: 0,
-    workflow_id: 0,
-    name: "",
-    goal: option.None,
-    target: TaskRule(task_status.Available, option.None),
-    trigger: automation.TaskCompleted(option.None),
-    action: option.None,
-    status: automation.RequiresReview(automation.InvalidMigratedData),
-    active: False,
-    created_at: "",
-    template: option.None,
-  )
+  decode.success(Rule(
+    id: id,
+    workflow_id: workflow_id,
+    name: name,
+    goal: goal,
+    trigger: trigger,
+    action: action,
+    status: status,
+    active: active,
+    created_at: created_at,
+    template: template,
+  ))
 }
 
 /// Decoder for TaskTemplate.

@@ -4,8 +4,7 @@ import lustre/effect
 import domain/api_error.{ApiError}
 import domain/automation
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task_status
-import domain/workflow.{type Rule, type Workflow, Rule, TaskRule, Workflow}
+import domain/workflow.{type Rule, type Workflow, Rule, Workflow}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
@@ -34,7 +33,6 @@ fn rule(id: Int, name: String) -> Rule {
     workflow_id: 3,
     name: name,
     goal: opt.None,
-    target: TaskRule(task_status.Done, opt.None),
     trigger: automation.TaskCompleted(opt.None),
     action: opt.None,
     status: automation.RequiresReview(automation.TemplateMissing),

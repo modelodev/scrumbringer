@@ -37,13 +37,12 @@ pub fn rule_with_template(
     name: name,
     goal: goal,
     trigger: trigger,
-    target: target,
     active: active,
     created_at: created_at,
   ) = rule
-  let resource_type = workflow.rule_target_resource_type(target)
-  let task_type_id = workflow.rule_target_task_type_id(target)
-  let to_state = workflow.rule_target_to_state_string(target)
+  let resource_type = automation.trigger_resource_type(trigger)
+  let task_type_id = automation.trigger_task_type_id(trigger)
+  let to_state = automation.trigger_to_state_string(trigger)
   let action = action_json(template)
   let status = status_json(template, active)
 

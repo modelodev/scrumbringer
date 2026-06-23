@@ -17,7 +17,7 @@
 ////
 //// ## Relationships
 ////
-//// - Uses `domain/workflow.gleam` for typed rule targets
+//// - Uses `domain/automation.gleam` for typed rule triggers and actions
 //// - Executes queries from `sql.gleam`
 
 import domain/automation
@@ -34,7 +34,7 @@ import scrumbringer_server/use_case/service_error.{
   type ServiceError, DbError, InvalidReference, NotFound, Unexpected,
 }
 
-/// Persisted rule record with a typed target and without loaded templates.
+/// Persisted rule record with typed automation trigger and without loaded templates.
 pub type RuleRecord {
   RuleRecord(
     id: Int,
@@ -42,7 +42,6 @@ pub type RuleRecord {
     name: String,
     goal: Option(String),
     trigger: automation.AutomationTrigger,
-    target: workflow.RuleTarget,
     active: Bool,
     created_at: String,
   )
@@ -130,12 +129,13 @@ fn rule_from_fields(
   active active: Bool,
   created_at created_at: String,
 ) -> Result(RuleRecord, ServiceError) {
-  use target <- result.try(parse_stored_target(
+  use trigger <- result.try(parse_stored_trigger(trigger_kind, task_type_id))
+  use _ <- result.try(validate_stored_trigger_projection(
+    trigger,
     resource_type,
     task_type_id,
     to_state,
   ))
-  use trigger <- result.try(parse_stored_trigger(trigger_kind, task_type_id))
 
   Ok(RuleRecord(
     id: id,
@@ -143,7 +143,6 @@ fn rule_from_fields(
     name: name,
     goal: goal,
     trigger: trigger,
-    target: target,
     active: active,
     created_at: created_at,
   ))
@@ -167,20 +166,30 @@ fn template_from_row(
   ))
 }
 
-fn target_error_to_stored_error(
-  error: workflow.RuleTargetValidationError,
+fn invalid_projection_error(
+  trigger: automation.AutomationTrigger,
   resource_type: String,
   task_type_id: Int,
   to_state: String,
 ) -> ServiceError {
+  let #(expected_resource_type, expected_task_type_id, expected_to_state) =
+    automation.trigger_to_db_values(trigger)
+
   Unexpected(
-    "Invalid persisted rule target: "
-    <> workflow.rule_target_validation_error_label(error)
-    <> " (resource_type="
+    "Invalid persisted rule trigger projection"
+    <> " (trigger_kind="
+    <> automation.trigger_kind(trigger)
+    <> ", expected="
+    <> expected_resource_type
+    <> "/"
+    <> int.to_string(expected_task_type_id)
+    <> "/"
+    <> expected_to_state
+    <> ", actual="
     <> resource_type
-    <> ", task_type_id="
+    <> "/"
     <> int.to_string(task_type_id)
-    <> ", to_state="
+    <> "/"
     <> to_state
     <> ")",
   )
@@ -213,19 +222,29 @@ fn parse_stored_trigger(
   })
 }
 
-fn parse_stored_target(
+fn validate_stored_trigger_projection(
+  trigger: automation.AutomationTrigger,
   resource_type: String,
   task_type_id: Int,
   to_state: String,
-) -> Result(workflow.RuleTarget, ServiceError) {
-  workflow.parse_rule_target(
-    resource_type,
-    db_task_type_id(task_type_id),
-    to_state,
-  )
-  |> result.map_error(fn(error) {
-    target_error_to_stored_error(error, resource_type, task_type_id, to_state)
-  })
+) -> Result(Nil, ServiceError) {
+  let #(expected_resource_type, expected_task_type_id, expected_to_state) =
+    automation.trigger_to_db_values(trigger)
+
+  case
+    expected_resource_type == resource_type
+    && expected_task_type_id == task_type_id
+    && expected_to_state == to_state
+  {
+    True -> Ok(Nil)
+    False ->
+      Error(invalid_projection_error(
+        trigger,
+        resource_type,
+        task_type_id,
+        to_state,
+      ))
+  }
 }
 
 // =============================================================================

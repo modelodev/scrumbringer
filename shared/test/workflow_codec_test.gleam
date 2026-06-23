@@ -2,8 +2,7 @@ import gleam/json
 import gleam/option
 
 import domain/automation
-import domain/task_status
-import domain/workflow.{Rule, TaskRule}
+import domain/workflow.{Rule}
 import domain/workflow/workflow_codec as codec
 
 pub fn rule_decoder_decodes_typed_task_target_test() {
@@ -15,7 +14,6 @@ pub fn rule_decoder_decodes_typed_task_target_test() {
     workflow_id: 2,
     name: "Complete task",
     goal: option.None,
-    target: TaskRule(task_status.Done, option.Some(7)),
     trigger: automation.TaskCompleted(option.Some(7)),
     action: option.Some(automation.CreateTask(11)),
     status: automation.Active,

@@ -6,11 +6,10 @@ import lustre/element
 
 import domain/automation
 import domain/remote.{Loaded, NotAsked}
-import domain/task_status
 import domain/task_type.{type TaskType, TaskType}
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
-  RuleTemplate, TaskRule, TaskTemplate, Workflow,
+  RuleTemplate, TaskTemplate, Workflow,
 }
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
@@ -88,7 +87,6 @@ fn rule() -> Rule {
     workflow_id: 3,
     name: "Complete bug workflow",
     goal: opt.Some("Create a follow-up when work completes"),
-    target: TaskRule(task_status.Done, opt.Some(5)),
     trigger: automation.TaskCompleted(opt.Some(5)),
     action: opt.Some(automation.CreateTask(11)),
     status: automation.Active,

@@ -1,7 +1,6 @@
 //// Decoder tests for workflows, rules, and task templates.
 
-import domain/card
-import domain/task_status
+import domain/automation
 import domain/workflow
 import gleam/dynamic/decode
 import gleam/json
@@ -75,7 +74,8 @@ pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
-  let assert workflow.TaskRule(task_status.Done, option.Some(5)) = rule.target
+  let assert option.Some(5) = workflow.rule_task_type_id(rule)
+  let assert "completed" = workflow.rule_to_state_string(rule)
   let assert option.Some(template) = rule.template
   let assert "Review {{origin}}" = template.name
 }
@@ -88,10 +88,7 @@ pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
-  let assert workflow.TaskRule(
-    task_status.Claimed(task_status.Taken),
-    option.None,
-  ) = rule.target
+  let assert automation.TaskClaimed(option.None) = rule.trigger
 }
 
 pub fn rule_payload_decoder_decodes_card_resource_type_test() {
@@ -102,7 +99,7 @@ pub fn rule_payload_decoder_decodes_card_resource_type_test() {
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
-  let assert workflow.CardRule(card.Closed) = rule.target
+  let assert automation.CardClosed(automation.AnyCard) = rule.trigger
 }
 
 pub fn rule_payload_decoder_rejects_missing_trigger_test() {
@@ -127,9 +124,9 @@ pub fn rules_payload_decoder_decodes_list_test() {
   let assert Ok(rules) = json.parse(from: body, using: decoder)
   let assert [rule_a, rule_b] = rules
   let assert "Rule A" = rule_a.name
-  let assert workflow.TaskRule(task_status.Done, option.Some(1)) = rule_a.target
+  let assert automation.TaskCompleted(option.Some(1)) = rule_a.trigger
   let assert "Rule B" = rule_b.name
-  let assert workflow.CardRule(card.Closed) = rule_b.target
+  let assert automation.CardClosed(automation.AnyCard) = rule_b.trigger
 }
 
 pub fn rule_payload_decoder_rejects_unsupported_trigger_test() {

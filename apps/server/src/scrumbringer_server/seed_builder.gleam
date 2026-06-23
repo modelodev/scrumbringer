@@ -28,7 +28,6 @@ import domain/project_role
 import domain/task_status.{
   type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 }
-import domain/workflow
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -702,7 +701,7 @@ fn build_rules(
               workflow_id: active_wf,
               name: "On Task Done (Active)",
               goal: Some("Auto action on completion"),
-              target: workflow.TaskRule(Done, Some(bug_id)),
+              trigger: automation.TaskCompleted(Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -714,7 +713,7 @@ fn build_rules(
               workflow_id: inactive_wf,
               name: "On Task Done (Inactive)",
               goal: Some("Should not trigger"),
-              target: workflow.TaskRule(Done, Some(feature_id)),
+              trigger: automation.TaskCompleted(Some(feature_id)),
               active: True,
               created_at: None,
             ),
@@ -729,7 +728,7 @@ fn build_rules(
               workflow_id: single_wf,
               name: "On Task Done",
               goal: Some("Auto action on completion"),
-              target: workflow.TaskRule(Done, Some(bug_id)),
+              trigger: automation.TaskCompleted(Some(bug_id)),
               active: True,
               created_at: None,
             ),
@@ -761,20 +760,21 @@ fn seed_rule_options(
   workflow_id workflow_id: Int,
   name name: String,
   goal goal: Option(String),
-  target target: workflow.RuleTarget,
+  trigger trigger: automation.AutomationTrigger,
   active active: Bool,
   created_at created_at: Option(String),
 ) -> seed_db.RuleInsertOptions {
+  let #(resource_type, _task_type_id, to_state) =
+    automation.trigger_to_db_values(trigger)
+
   seed_db.RuleInsertOptions(
     workflow_id: workflow_id,
     name: name,
     goal: goal,
-    resource_type: workflow.rule_target_resource_type(target),
-    trigger_kind: workflow.rule_target_to_automation_trigger(target)
-      |> result.map(automation.trigger_kind)
-      |> result.unwrap("invalid_migrated_rule"),
-    task_type_id: workflow.rule_target_task_type_id(target),
-    to_state: workflow.rule_target_to_state_string(target),
+    resource_type: resource_type,
+    trigger_kind: automation.trigger_kind(trigger),
+    task_type_id: automation.trigger_task_type_id(trigger),
+    to_state: to_state,
     active: active,
     created_at: created_at,
   )
