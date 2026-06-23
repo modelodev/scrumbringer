@@ -59,6 +59,7 @@ import domain/user.{type User}
 import domain/api_error.{type ApiResult}
 import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
@@ -148,6 +149,7 @@ pub type CoreModel {
     active_section: permissions.AdminSection,
     projects: Remote(List(Project)),
     selected_project_id: Option(Int),
+    automation_selection: Option(automation_deep_link.Selection),
   )
 }
 
@@ -378,6 +380,7 @@ pub fn default_model() -> Model {
       active_section: permissions.Invites,
       projects: NotAsked,
       selected_project_id: option.None,
+      automation_selection: option.None,
     ),
     auth: auth_state.default_model(),
     admin: admin_state.default_model(),

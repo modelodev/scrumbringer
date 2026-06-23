@@ -35,6 +35,8 @@ pub type Config(msg) {
     selected_project_id: opt.Option(Int),
     selected_rules_view: opt.Option(Element(msg)),
     workflows: Remote(List(Workflow)),
+    selected_engine_id: opt.Option(Int),
+    selected_rule_id: opt.Option(Int),
     search_query: String,
     status_filter: String,
     dialog_mode: opt.Option(admin_workflows.WorkflowDialogMode),
@@ -176,10 +178,12 @@ fn view_content(
 }
 
 fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
+  let is_selected = config.selected_engine_id == opt.Some(workflow.id)
   div(
     [
-      attribute.class("automation-engine-row"),
+      attribute.class(row_class("automation-engine-row", is_selected)),
       attribute.attribute("data-testid", "automation-engine-row"),
+      attribute.attribute("data-selected", bool_to_string(is_selected)),
     ],
     [
       div([attribute.class("automation-engine-row__main")], [
@@ -209,6 +213,13 @@ fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
       view_actions(config, workflow),
     ],
   )
+}
+
+fn row_class(base: String, is_selected: Bool) -> String {
+  case is_selected {
+    True -> base <> " is-selected"
+    False -> base
+  }
 }
 
 fn workflow_status_badge(
@@ -446,4 +457,11 @@ fn panel_actions(
       ],
     ),
   ])
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }

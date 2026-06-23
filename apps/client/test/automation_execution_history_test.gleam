@@ -110,6 +110,7 @@ fn config() -> execution_history.Config(String) {
       admin_rule_metrics_from: "2026-06-01",
       admin_rule_metrics_to: "2026-06-08",
     ),
+    selected_execution_id: option.None,
     quick_ranges: [
       execution_history.QuickRange(
         label: "7 days",
@@ -212,4 +213,25 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
   assert_contains(html, "Created")
   assert_not_contains(html, "Ignored (idempotent)")
   assert_not_contains(html, "Suppressed")
+}
+
+pub fn automation_execution_history_marks_selected_execution_test() {
+  let html =
+    execution_history.view(
+      execution_history.Config(
+        ..config(),
+        selected_execution_id: option.Some(101),
+        model: admin_metrics.Model(
+          ..config().model,
+          admin_rule_metrics_drilldown_rule_id: option.Some(22),
+          admin_rule_metrics_rule_details: Loaded(rule_details()),
+          admin_rule_metrics_executions: Loaded(executions_response()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-execution-row\"")
+  assert_contains(html, "data-selected=\"true\"")
+  assert_contains(html, "automation-execution-row is-selected")
 }

@@ -1,6 +1,7 @@
 //// Root-state adapter for automation rule lists.
 
 import domain/workflow.{type Rule}
+import gleam/option as opt
 
 import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
@@ -39,12 +40,14 @@ pub fn from_state(
   workflows: workflows_state.Model,
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
+  selected_rule_id: opt.Option(Int),
   callbacks: Callbacks(msg),
 ) -> rule_list.Config(msg) {
   rule_list.Config(
     locale: locale,
     theme: theme,
     workflow_id: workflow_id,
+    selected_rule_id: selected_rule_id,
     workflow_name: rule_list.engine_name_from_remotes(
       workflows.workflows_org,
       workflows.workflows_project,

@@ -5,6 +5,7 @@ import gleam/option as opt
 import domain/project.{type Project}
 import domain/workflow.{type Workflow}
 
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
@@ -42,6 +43,7 @@ pub fn from_state(
   rules: rules_state.Model,
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
+  selection: opt.Option(automation_deep_link.Selection),
   callbacks: Callbacks(msg),
 ) -> engine_list.Config(msg) {
   let selected_rules_view = case rules.rules_workflow_id {
@@ -55,6 +57,7 @@ pub fn from_state(
           workflows,
           task_templates,
           task_types,
+          automation_deep_link.rule_id(selection),
           callbacks.rules,
         )),
       )
@@ -67,6 +70,8 @@ pub fn from_state(
     selected_project_id: selected_project_id,
     selected_rules_view: selected_rules_view,
     workflows: workflows.workflows_project,
+    selected_engine_id: automation_deep_link.engine_id(selection),
+    selected_rule_id: automation_deep_link.rule_id(selection),
     dialog_mode: workflows.workflows_dialog_mode,
     search_query: workflows.workflows_search,
     status_filter: workflows.workflows_status_filter,

@@ -12,6 +12,7 @@ import lustre/element/html.{a, div, text}
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
 
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -133,8 +134,7 @@ fn automation_origin_links(
         automation_route(
           config.task.project_id,
           permissions.Workflows,
-          "engine",
-          id,
+          automation_deep_link.SelectedEngine(id),
         ),
         i18n_text.TaskAutomationViewEngine,
         "automation-origin-engine-link",
@@ -149,8 +149,7 @@ fn automation_origin_links(
       automation_route(
         config.task.project_id,
         permissions.Workflows,
-        "rule",
-        origin.rule_id,
+        automation_deep_link.SelectedRule(origin.rule_id, origin.workflow_id),
       ),
       i18n_text.TaskAutomationViewRule,
       "automation-origin-rule-link",
@@ -164,8 +163,7 @@ fn automation_origin_links(
         automation_route(
           config.task.project_id,
           permissions.TaskTemplates,
-          "template",
-          id,
+          automation_deep_link.SelectedTemplate(id),
         ),
         i18n_text.TaskAutomationViewTemplate,
         "automation-origin-template-link",
@@ -204,8 +202,7 @@ fn automation_execution_href(
       automation_route(
         config.task.project_id,
         permissions.RuleMetrics,
-        "execution",
-        id,
+        automation_deep_link.SelectedExecution(id),
       )
     opt.None ->
       router.format(router.Config(
@@ -218,18 +215,13 @@ fn automation_execution_href(
 fn automation_route(
   project_id: Int,
   section: permissions.AdminSection,
-  entity_key: String,
-  entity_id: Int,
+  selection: automation_deep_link.Selection,
 ) -> String {
-  router.format(router.Config(section, opt.Some(project_id)))
-  |> append_query_param(entity_key, int.to_string(entity_id))
-}
-
-fn append_query_param(href: String, key: String, value: String) -> String {
-  case string.contains(href, "?") {
-    True -> href <> "&" <> key <> "=" <> value
-    False -> href <> "?" <> key <> "=" <> value
-  }
+  router.format(router.ConfigAutomation(
+    section,
+    opt.Some(project_id),
+    selection,
+  ))
 }
 
 fn automation_origin_label(

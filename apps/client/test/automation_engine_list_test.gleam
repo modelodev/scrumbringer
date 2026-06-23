@@ -52,6 +52,8 @@ fn config() -> engine_list.Config(String) {
     selected_project_id: opt.Some(7),
     selected_rules_view: opt.None,
     workflows: Loaded([workflow(3, "Release automation", True)]),
+    selected_engine_id: opt.None,
+    selected_rule_id: opt.None,
     search_query: "",
     status_filter: "all",
     dialog_mode: opt.None,
@@ -120,6 +122,18 @@ pub fn automation_engine_list_filters_by_status_test() {
   assert_contains(html, "Paused intake")
   assert_contains(html, "Paused")
   assert_not_contains(html, "Release automation")
+}
+
+pub fn automation_engine_list_marks_selected_engine_test() {
+  let html =
+    engine_list.view(
+      engine_list.Config(..config(), selected_engine_id: opt.Some(3)),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-engine-row\"")
+  assert_contains(html, "data-selected=\"true\"")
+  assert_contains(html, "automation-engine-row is-selected")
 }
 
 pub fn automation_engine_list_renders_feature_local_create_panel_test() {

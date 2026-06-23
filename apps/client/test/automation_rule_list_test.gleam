@@ -125,6 +125,7 @@ fn config() -> rule_list.Config(String) {
     locale: locale.En,
     theme: theme.Default,
     workflow_id: 3,
+    selected_rule_id: opt.None,
     workflow_name: "Release automation",
     rules: rules_state(),
     workflows_org: NotAsked,
@@ -189,6 +190,18 @@ pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_t
     |> element.to_document_string
 
   assert_contains(html, "No rules yet")
+}
+
+pub fn automation_rule_list_marks_selected_rule_test() {
+  let html =
+    rule_list.view(rule_list.Config(..config(), selected_rule_id: opt.Some(9)))
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-rule-row\"")
+  assert_contains(html, "data-selected=\"true\"")
+  assert_contains(html, "rule-row")
+  assert_contains(html, "is-selected")
+  assert_contains(html, "aria-expanded=\"true\"")
 }
 
 pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_test() {

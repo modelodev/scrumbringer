@@ -46,6 +46,7 @@ import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import domain/view_mode
 
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/rules as admin_rules
@@ -530,6 +531,7 @@ fn view_automations_console(
   automations_console.view(automations_console.Config(
     selected_project_id: model.core.selected_project_id,
     mode: mode,
+    selected_entity: model.core.automation_selection,
     active_engines_count: loaded_count_where(
       model.admin.workflows.workflows_project,
       fn(workflow) { workflow.active },
@@ -548,6 +550,7 @@ fn view_automations_console(
       model.admin.rules,
       model.admin.task_templates,
       model.admin.task_types,
+      model.core.automation_selection,
       admin_workflow_callbacks(),
     )),
     templates_view: template_library.view(template_library_config.from_state(
@@ -556,11 +559,13 @@ fn view_automations_console(
       model.core.selected_project_id,
       model.admin.task_templates,
       model.admin.task_types,
+      automation_deep_link.template_id(model.core.automation_selection),
       admin_task_template_callbacks(),
     )),
     executions_view: execution_history.view(execution_history_config.from_state(
       model.ui.locale,
       model.admin.metrics,
+      automation_deep_link.execution_id(model.core.automation_selection),
       admin_rule_metrics_callbacks(),
     )),
   ))

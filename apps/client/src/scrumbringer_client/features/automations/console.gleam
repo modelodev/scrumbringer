@@ -7,6 +7,7 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{a, div, text}
 
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -22,6 +23,7 @@ pub type Config(msg) {
   Config(
     selected_project_id: opt.Option(Int),
     mode: Mode,
+    selected_entity: opt.Option(automation_deep_link.Selection),
     active_engines_count: Int,
     rules_count: Int,
     templates_count: Int,
@@ -48,6 +50,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   |> work_surface.with_filters(view_modes(config))
   |> work_surface.with_content(
     div([attribute.class("automations-console__content")], [
+      view_selected_entity(config),
       case config.mode {
         Engines -> config.engines_view
         Templates -> config.templates_view
@@ -58,6 +61,20 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   |> work_surface.surface_with_class("automations-console")
   |> work_surface.surface_with_testid("automations-surface")
   |> work_surface.surface
+}
+
+fn view_selected_entity(config: Config(msg)) -> Element(msg) {
+  case config.selected_entity {
+    opt.None -> element.none()
+    opt.Some(selection) ->
+      div(
+        [
+          attribute.class("automations-console__selected-entity"),
+          attribute.attribute("data-testid", "automation-selected-entity"),
+        ],
+        [text(automation_deep_link.label(selection))],
+      )
+  }
 }
 
 fn summary(config: Config(msg)) -> List(work_surface.SummaryChip) {

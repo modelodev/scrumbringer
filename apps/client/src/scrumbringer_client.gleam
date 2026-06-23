@@ -222,19 +222,28 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     router.Login -> Login
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
-    router.Config(_, _) | router.Org(_) -> Admin
+    router.Config(_, _) | router.ConfigAutomation(_, _, _) | router.Org(_) ->
+      Admin
     router.Member(_) -> Member
   }
 
   let active_section = case route {
-    router.Config(section, _) | router.Org(section) -> section
+    router.Config(section, _)
+    | router.ConfigAutomation(section, _, _)
+    | router.Org(section) -> section
     _ -> permissions.Invites
   }
 
   let selected_project_id = case route {
     router.Config(_, project_id) -> project_id
+    router.ConfigAutomation(_, project_id, _) -> project_id
     router.Member(state) -> url_state.project(state)
     router.Org(_) -> opt.None
+    _ -> opt.None
+  }
+
+  let automation_selection = case route {
+    router.ConfigAutomation(_, _, selection) -> opt.Some(selection)
     _ -> opt.None
   }
 
@@ -268,6 +277,7 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
         page: page,
         active_section: active_section,
         selected_project_id: selected_project_id,
+        automation_selection: automation_selection,
       )
     })
     |> update_auth(fn(auth) {

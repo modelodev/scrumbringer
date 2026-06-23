@@ -52,6 +52,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     model: admin_metrics.Model,
+    selected_execution_id: opt.Option(Int),
     quick_ranges: List(QuickRange(msg)),
     on_from_changed: fn(String) -> msg,
     on_to_changed: fn(String) -> msg,
@@ -566,8 +567,20 @@ fn view_drilldown_executions_loaded(
               data_table.column(t(config, i18n_text.Timestamp), timestamp_cell),
             ])
             |> data_table.with_rows(executions, key_fn)
-            |> data_table.with_row_attrs(fn(_exec) {
-              [attribute.attribute("data-testid", "automation-execution-row")]
+            |> data_table.with_row_attrs(fn(exec) {
+              let is_selected =
+                config.selected_execution_id == opt.Some(exec.id)
+              [
+                attribute.attribute("data-testid", "automation-execution-row"),
+                attribute.attribute(
+                  "data-selected",
+                  bool_to_string(is_selected),
+                ),
+                attribute.class(row_class(
+                  "automation-execution-row",
+                  is_selected,
+                )),
+              ]
             })
             |> data_table.view(),
           // Pagination
@@ -575,6 +588,20 @@ fn view_drilldown_executions_loaded(
         ])
     },
   ])
+}
+
+fn row_class(base: String, is_selected: Bool) -> String {
+  case is_selected {
+    True -> base <> " is-selected"
+    False -> base
+  }
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
 
 fn is_business_execution(exec: api_rule_metrics.RuleExecution) -> Bool {

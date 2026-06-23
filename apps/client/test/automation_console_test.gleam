@@ -1,8 +1,9 @@
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 import lustre/element/html.{div, text}
 
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/automations/console as automations_console
 
 fn assert_contains(html: String, fragment: String) {
@@ -17,6 +18,7 @@ fn render(mode: automations_console.Mode) -> String {
   automations_console.Config(
     selected_project_id: Some(7),
     mode: mode,
+    selected_entity: None,
     active_engines_count: 2,
     rules_count: 4,
     templates_count: 3,
@@ -76,4 +78,25 @@ pub fn automations_console_renders_internal_modes_as_tabs_test() {
   assert_not_contains(html, "templates body")
   assert_not_contains(html, "href=\"/config/templates")
   assert_not_contains(html, "href=\"/config/rule-metrics")
+}
+
+pub fn automations_console_renders_selected_entity_context_test() {
+  let html =
+    automations_console.Config(
+      selected_project_id: Some(7),
+      mode: automations_console.Templates,
+      selected_entity: Some(automation_deep_link.SelectedTemplate(12)),
+      active_engines_count: 2,
+      rules_count: 4,
+      templates_count: 3,
+      created_tasks_count: 12,
+      engines_view: div([], [text("engines body")]),
+      templates_view: div([], [text("templates body")]),
+      executions_view: div([], [text("executions body")]),
+    )
+    |> automations_console.view
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-selected-entity\"")
+  assert_contains(html, "Plantilla #12 seleccionada")
 }

@@ -50,6 +50,7 @@ fn config() -> template_library.Config(String) {
     selected_project: opt.None,
     selected_project_id: opt.Some(3),
     templates: Loaded([sample_template()]),
+    selected_template_id: opt.None,
     dialog_mode: opt.None,
     task_types: Loaded([sample_task_type()]),
     search_query: "",
@@ -117,6 +118,18 @@ pub fn automation_template_library_filters_library_by_search_query_test() {
 
   assert_contains(html, "No templates yet")
   assert_not_contains(html, "Regression checklist")
+}
+
+pub fn automation_template_library_marks_selected_template_test() {
+  let html =
+    template_library.view(
+      template_library.Config(..config(), selected_template_id: opt.Some(7)),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-template-row\"")
+  assert_contains(html, "data-selected=\"true\"")
+  assert_contains(html, "automation-template-row is-selected")
 }
 
 pub fn automation_template_library_renders_feature_local_create_panel_test() {

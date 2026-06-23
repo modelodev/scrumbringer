@@ -4,6 +4,7 @@ import gleam/string
 import gleam/uri
 
 import domain/view_mode
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/capability_scope
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -46,6 +47,71 @@ pub fn parse_config_automation_executions_mode_test() {
   )
 }
 
+pub fn parse_config_automation_engine_selection_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/workflows", "?project=2&engine=3"))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.ConfigAutomation(
+      permissions.Workflows,
+      Some(2),
+      automation_deep_link.SelectedEngine(3),
+    )),
+  )
+}
+
+pub fn parse_config_automation_rule_selection_with_engine_test() {
+  let parsed =
+    router.parse_uri(build_uri(
+      "/config/workflows",
+      "?project=2&engine=3&rule=8",
+    ))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.ConfigAutomation(
+      permissions.Workflows,
+      Some(2),
+      automation_deep_link.SelectedRule(8, Some(3)),
+    )),
+  )
+}
+
+pub fn parse_config_automation_template_selection_test() {
+  let parsed =
+    router.parse_uri(build_uri(
+      "/config/workflows",
+      "?project=2&mode=templates&template=12",
+    ))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.ConfigAutomation(
+      permissions.TaskTemplates,
+      Some(2),
+      automation_deep_link.SelectedTemplate(12),
+    )),
+  )
+}
+
+pub fn parse_config_automation_execution_selection_test() {
+  let parsed =
+    router.parse_uri(build_uri(
+      "/config/workflows",
+      "?project=2&mode=executions&execution=101",
+    ))
+
+  assert_equal(
+    parsed,
+    router.Parsed(router.ConfigAutomation(
+      permissions.RuleMetrics,
+      Some(2),
+      automation_deep_link.SelectedExecution(101),
+    )),
+  )
+}
+
 pub fn parse_config_automation_unknown_mode_redirects_test() {
   let parsed =
     router.parse_uri(build_uri("/config/workflows", "?project=2&mode=metrics"))
@@ -62,6 +128,20 @@ pub fn parse_config_templates_slug_redirects_to_automation_mode_test() {
   assert_equal(
     parsed,
     router.Redirect(router.Config(permissions.TaskTemplates, Some(2))),
+  )
+}
+
+pub fn parse_config_automation_selection_on_old_slug_redirects_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/templates", "?project=2&template=12"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.ConfigAutomation(
+      permissions.TaskTemplates,
+      Some(2),
+      automation_deep_link.SelectedTemplate(12),
+    )),
   )
 }
 
@@ -223,6 +303,28 @@ pub fn format_config_rule_metrics_as_automation_mode_test() {
   assert_equal(
     router.format(router.Config(permissions.RuleMetrics, Some(2))),
     "/config/workflows?project=2&mode=executions",
+  )
+}
+
+pub fn format_config_automation_selection_test() {
+  assert_equal(
+    router.format(router.ConfigAutomation(
+      permissions.Workflows,
+      Some(2),
+      automation_deep_link.SelectedRule(8, Some(3)),
+    )),
+    "/config/workflows?project=2&engine=3&rule=8",
+  )
+}
+
+pub fn format_config_automation_template_selection_test() {
+  assert_equal(
+    router.format(router.ConfigAutomation(
+      permissions.TaskTemplates,
+      Some(2),
+      automation_deep_link.SelectedTemplate(12),
+    )),
+    "/config/workflows?project=2&mode=templates&template=12",
   )
 }
 

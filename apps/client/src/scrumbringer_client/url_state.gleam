@@ -606,6 +606,10 @@ fn context_errors(
       list.filter_map(
         [
           #(has("mode"), "mode"),
+          #(has("engine"), "engine"),
+          #(has("rule"), "rule"),
+          #(has("template"), "template"),
+          #(has("execution"), "execution"),
           #(has("view") && !view_is_member, "view"),
           #(has("depth") && !view_is_cards, "depth"),
           #(has_plan_mode && !view_is_cards, "plan_mode"),
@@ -649,6 +653,10 @@ fn context_errors(
       list.filter_map(
         [
           #(has("mode"), "mode"),
+          #(has("engine"), "engine"),
+          #(has("rule"), "rule"),
+          #(has("template"), "template"),
+          #(has("execution"), "execution"),
           #(has("project"), "project"),
           #(has("scope"), "scope"),
           #(has("type"), "type"),
@@ -675,6 +683,10 @@ fn context_errors(
       list.filter_map(
         [
           #(has("mode"), "mode"),
+          #(has("engine"), "engine"),
+          #(has("rule"), "rule"),
+          #(has("template"), "template"),
+          #(has("execution"), "execution"),
           #(has("project"), "project"),
           #(has("view"), "view"),
           #(has("scope"), "scope"),
@@ -738,6 +750,10 @@ fn parse_query_params(query: String) -> ParsedParams {
     "show_card",
     "task",
     "mode",
+    "engine",
+    "rule",
+    "template",
+    "execution",
   ]
   let unknown_keys =
     present_keys

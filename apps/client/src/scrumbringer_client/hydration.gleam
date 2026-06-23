@@ -141,6 +141,8 @@ pub fn plan(route: router.Route, snap: Snapshot) -> List(Command) {
     router.AcceptInvite(_) | router.ResetPassword(_) -> []
     router.Login -> plan_login(snap)
     router.Config(section, project_id) -> plan_admin(snap, section, project_id)
+    router.ConfigAutomation(section, project_id, _) ->
+      plan_admin(snap, section, project_id)
     router.Org(section) -> plan_org(snap, section)
     router.Member(_) -> plan_member(snap)
   }

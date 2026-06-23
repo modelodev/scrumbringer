@@ -43,6 +43,7 @@ pub type Config(msg) {
     selected_project: opt.Option(Project),
     selected_project_id: opt.Option(Int),
     templates: remote_state.Remote(List(TaskTemplate)),
+    selected_template_id: opt.Option(Int),
     dialog_mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
     task_types: remote_state.Remote(List(TaskType)),
     search_query: String,
@@ -398,10 +399,29 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
         ),
       ])
       |> data_table.with_key(fn(tmpl) { int.to_string(tmpl.id) })
-      |> data_table.with_row_attrs(fn(_tmpl) {
-        [attribute.attribute("data-testid", "automation-template-row")]
+      |> data_table.with_row_attrs(fn(tmpl) {
+        let is_selected = config.selected_template_id == opt.Some(tmpl.id)
+        [
+          attribute.attribute("data-testid", "automation-template-row"),
+          attribute.attribute("data-selected", bool_to_string(is_selected)),
+          attribute.class(row_class("automation-template-row", is_selected)),
+        ]
       }),
   )
+}
+
+fn row_class(base: String, is_selected: Bool) -> String {
+  case is_selected {
+    True -> base <> " is-selected"
+    False -> base
+  }
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
 
 fn filter_templates(

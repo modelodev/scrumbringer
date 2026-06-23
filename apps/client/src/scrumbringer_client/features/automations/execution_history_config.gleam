@@ -1,5 +1,6 @@
 //// Root-state adapter for automation execution history.
 
+import gleam/option as opt
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/automations/execution_history
@@ -22,6 +23,7 @@ pub type Callbacks(msg) {
 pub fn from_state(
   locale: Locale,
   metrics: admin_metrics.Model,
+  selected_execution_id: opt.Option(Int),
   callbacks: Callbacks(msg),
 ) -> execution_history.Config(msg) {
   let today = client_ffi.date_today()
@@ -50,6 +52,7 @@ pub fn from_state(
   execution_history.Config(
     locale: locale,
     model: metrics,
+    selected_execution_id: selected_execution_id,
     quick_ranges: [
       quick_range(i18n_text.RuleMetrics7Days, 7),
       quick_range(i18n_text.RuleMetrics30Days, 30),

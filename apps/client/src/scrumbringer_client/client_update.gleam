@@ -31,12 +31,14 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/set
 import gleam/uri.{type Uri}
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/assignments_view_mode
+import scrumbringer_client/automation_deep_link
 
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
@@ -50,6 +52,8 @@ import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/api/tasks/positions as task_positions_api
 import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
+import scrumbringer_client/api/workflows/rules as api_rules
 
 // Domain types
 import domain/task.{type TaskFilters, TaskFilters}
@@ -71,6 +75,7 @@ import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
+import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/auth as auth_state
@@ -288,11 +293,7 @@ fn current_route(model: client_state.Model) -> router.Route {
         | permissions.Team
         | permissions.ApiTokens
         | permissions.Metrics -> router.Org(model.core.active_section)
-        _ ->
-          router.Config(
-            model.core.active_section,
-            model.core.selected_project_id,
-          )
+        _ -> current_config_route(model)
       }
 
     client_state.Member -> {
@@ -356,6 +357,29 @@ fn current_route(model: client_state.Model) -> router.Route {
   }
 }
 
+fn current_config_route(model: client_state.Model) -> router.Route {
+  case model.core.automation_selection {
+    opt.Some(selection) -> {
+      let selection_section = automation_deep_link.section(selection)
+      case model.core.active_section == selection_section {
+        True ->
+          router.ConfigAutomation(
+            model.core.active_section,
+            model.core.selected_project_id,
+            selection,
+          )
+        False ->
+          router.Config(
+            model.core.active_section,
+            model.core.selected_project_id,
+          )
+      }
+    }
+    _ ->
+      router.Config(model.core.active_section, model.core.selected_project_id)
+  }
+}
+
 pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
   case action {
     toast.ClearPoolFilters ->
@@ -397,11 +421,13 @@ fn apply_authenticated_browser_route(
       case router.parse_uri(uri) {
         router.Parsed(router.Member(_) as route)
         | router.Parsed(router.Config(_, _) as route)
+        | router.Parsed(router.ConfigAutomation(_, _, _) as route)
         | router.Parsed(router.Org(_) as route) ->
           apply_route_fields(model, route)
 
         router.Redirect(router.Member(_) as route)
         | router.Redirect(router.Config(_, _) as route)
+        | router.Redirect(router.ConfigAutomation(_, _, _) as route)
         | router.Redirect(router.Org(_) as route) -> {
           let #(model, route_fx) = apply_route_fields(model, route)
           #(
@@ -465,6 +491,7 @@ fn apply_route_fields(
               ..core,
               page: client_state.Login,
               selected_project_id: opt.None,
+              automation_selection: opt.None,
             )
           }),
           member_state.reset_drag_state,
@@ -482,6 +509,7 @@ fn apply_route_fields(
                 ..core,
                 page: client_state.AcceptInvite,
                 selected_project_id: opt.None,
+                automation_selection: opt.None,
               )
             }),
             fn(auth) {
@@ -510,6 +538,7 @@ fn apply_route_fields(
                 ..core,
                 page: client_state.ResetPassword,
                 selected_project_id: opt.None,
+                automation_selection: opt.None,
               )
             }),
             fn(auth) {
@@ -537,12 +566,35 @@ fn apply_route_fields(
               page: client_state.Admin,
               active_section: section,
               selected_project_id: project_id,
+              automation_selection: opt.None,
             )
           }),
           member_state.reset_drag_state,
         )
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
+    }
+
+    router.ConfigAutomation(section, project_id, selection) -> {
+      let model =
+        client_state.update_member(
+          client_state.update_core(model, fn(core) {
+            client_state.CoreModel(
+              ..core,
+              page: client_state.Admin,
+              active_section: section,
+              selected_project_id: project_id,
+              automation_selection: opt.Some(selection),
+            )
+          }),
+          member_state.reset_drag_state,
+        )
+        |> apply_automation_selection(selection)
+      let #(model, fx) = refresh_section_for_test(model)
+      #(
+        model,
+        effect.batch([fx, automation_selection_effect(model, selection)]),
+      )
     }
 
     router.Org(section) -> {
@@ -554,6 +606,7 @@ fn apply_route_fields(
               page: client_state.Admin,
               active_section: section,
               selected_project_id: opt.None,
+              automation_selection: opt.None,
             )
           }),
           member_state.reset_drag_state,
@@ -630,6 +683,7 @@ fn apply_route_fields(
               ..core,
               page: client_state.Member,
               selected_project_id: project_id,
+              automation_selection: opt.None,
             )
           }),
           fn(member) {
@@ -660,6 +714,56 @@ fn apply_route_fields(
       let show_fx = route_show_effect(next_model, url_state.show(state))
       #(next_model, effect.batch([capabilities_fx, show_fx]))
     }
+  }
+}
+
+fn apply_automation_selection(
+  model: client_state.Model,
+  selection: automation_deep_link.Selection,
+) -> client_state.Model {
+  case selection {
+    automation_deep_link.SelectedRule(rule_id, opt.Some(engine_id)) ->
+      client_state.update_admin(model, fn(admin) {
+        admin_state.AdminModel(
+          ..admin,
+          rules: admin_rules.Model(
+            ..admin.rules,
+            rules_workflow_id: opt.Some(engine_id),
+            rules: Loading,
+            rules_metrics: Loading,
+            rules_expanded: set.insert(admin.rules.rules_expanded, rule_id),
+          ),
+        )
+      })
+    _ -> model
+  }
+}
+
+fn automation_selection_effect(
+  model: client_state.Model,
+  selection: automation_deep_link.Selection,
+) -> Effect(client_state.Msg) {
+  case selection {
+    automation_deep_link.SelectedRule(_, opt.Some(engine_id)) -> {
+      let task_types_effect = case model.core.selected_project_id {
+        opt.Some(project_id) ->
+          task_types_api.list_task_types(project_id, fn(result) {
+            client_state.admin_msg(admin_messages.TaskTypesFetched(result))
+          })
+        opt.None -> effect.none()
+      }
+
+      effect.batch([
+        api_rules.list_rules(engine_id, fn(result) {
+          client_state.pool_msg(pool_messages.RulesFetched(result))
+        }),
+        api_rule_metrics.get_workflow_metrics(engine_id, fn(result) {
+          client_state.pool_msg(pool_messages.RuleMetricsFetched(result))
+        }),
+        task_types_effect,
+      ])
+    }
+    _ -> effect.none()
   }
 }
 

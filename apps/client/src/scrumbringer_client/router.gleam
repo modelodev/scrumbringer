@@ -43,14 +43,17 @@
 //// router.update_page_title(route, locale)
 //// ```
 
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
 
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/assignments_view_mode
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
@@ -77,6 +80,11 @@ pub type Route {
   ResetPassword(token: String)
   // Story 4.5: New unified routes
   Config(section: permissions.AdminSection, project_id: Option(Int))
+  ConfigAutomation(
+    section: permissions.AdminSection,
+    project_id: Option(Int),
+    selection: automation_deep_link.Selection,
+  )
   Org(section: permissions.AdminSection)
   Member(state: url_state.UrlState)
 }
@@ -130,30 +138,55 @@ fn parse_app_route(pathname: String, search: String) -> ParseResult {
 fn parse_config_route(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/config")
   let result = url_state.parse_query(search_to_query(search), url_state.Config)
+  let selection_result = automation_selection_from_search(search)
+  let selection = case selection_result {
+    Ok(value) -> value
+    Error(_) -> None
+  }
 
   case config_section_from_slug(slug, search) {
     Ok(section) -> {
-      let parsed = config_parse_result(section, result)
-      case should_redirect_config_route(slug, search) {
+      let parsed = config_parse_result(section, result, selection)
+      case
+        should_redirect_config_route(slug, search)
+        || selection_redirect_needed(slug, section, selection)
+        || result.is_error(selection_result)
+      {
         True -> as_redirect(parsed)
         False -> parsed
       }
     }
-    Error(_) -> config_parse_result(permissions.Members, result) |> as_redirect
+    Error(_) ->
+      config_parse_result(permissions.Members, result, selection) |> as_redirect
   }
 }
 
 fn config_parse_result(
   section: permissions.AdminSection,
   result: url_state.QueryParseResult,
+  selection: Option(automation_deep_link.Selection),
 ) -> ParseResult {
   let route = case result {
-    url_state.Parsed(state) -> Config(section, url_state.project(state))
-    url_state.Redirect(state) -> Config(section, url_state.project(state))
+    url_state.Parsed(state) ->
+      config_route_for_selection(section, url_state.project(state), selection)
+    url_state.Redirect(state) ->
+      config_route_for_selection(section, url_state.project(state), selection)
   }
   case result {
     url_state.Parsed(_) -> Parsed(route)
     url_state.Redirect(_) -> Redirect(route)
+  }
+}
+
+fn config_route_for_selection(
+  section: permissions.AdminSection,
+  project_id: Option(Int),
+  selection: Option(automation_deep_link.Selection),
+) -> Route {
+  case selection {
+    None -> Config(section, project_id)
+    Some(value) ->
+      ConfigAutomation(automation_deep_link.section(value), project_id, value)
   }
 }
 
@@ -263,7 +296,17 @@ fn format_parts(route: Route) -> #(String, Option(String), Option(String)) {
       let #(route_section, mode) = config_route_section(section)
       let base = "/config/" <> config_section_slug(route_section)
       let state = state_with_project(project_id)
-      let query = config_query(state, mode)
+      let query = config_query(state, mode, [])
+      #(base, query, None)
+    }
+
+    ConfigAutomation(_section, project_id, selection) -> {
+      let route_section = automation_deep_link.section(selection)
+      let #(_, mode) = config_route_section(route_section)
+      let base = "/config/workflows"
+      let state = state_with_project(project_id)
+      let query =
+        config_query(state, mode, automation_deep_link.query_params(selection))
       #(base, query, None)
     }
 
@@ -289,6 +332,7 @@ fn state_with_project(project_id: Option(Int)) -> url_state.UrlState {
 fn config_query(
   state: url_state.UrlState,
   mode: Option(String),
+  extra_params: List(#(String, String)),
 ) -> Option(String) {
   let project_query = url_state.to_query_string_for(url_state.Config, state)
   let query = case project_query, mode {
@@ -297,8 +341,22 @@ fn config_query(
     query, None -> query
     query, Some(mode) -> query <> "&mode=" <> mode
   }
+  let extra_query =
+    extra_params
+    |> list.map(fn(param) { param.0 <> "=" <> param.1 })
+    |> string.join("&")
+  let query = append_query(query, extra_query)
 
   query_option(query)
+}
+
+fn append_query(query: String, extra: String) -> String {
+  case query, extra {
+    "", "" -> ""
+    "", extra -> extra
+    query, "" -> query
+    query, extra -> query <> "&" <> extra
+  }
 }
 
 fn config_route_section(
@@ -437,7 +495,23 @@ fn automation_section_from_search(search: String) -> permissions.AdminSection {
   case query_param(search, "mode") {
     Some("templates") -> permissions.TaskTemplates
     Some("executions") -> permissions.RuleMetrics
-    _ -> permissions.Workflows
+    _ ->
+      case automation_selection_from_search(search) {
+        Ok(Some(selection)) -> automation_deep_link.section(selection)
+        _ -> permissions.Workflows
+      }
+  }
+}
+
+fn selection_redirect_needed(
+  slug: String,
+  section: permissions.AdminSection,
+  selection: Option(automation_deep_link.Selection),
+) -> Bool {
+  case selection {
+    None -> False
+    Some(value) ->
+      slug != "workflows" || section != automation_deep_link.section(value)
   }
 }
 
@@ -453,6 +527,46 @@ fn should_redirect_config_route(slug: String, search: String) -> Bool {
   case slug {
     "templates" | "rule-metrics" -> True
     _ -> invalid_config_mode(slug, search)
+  }
+}
+
+fn automation_selection_from_search(
+  search: String,
+) -> Result(Option(automation_deep_link.Selection), Nil) {
+  case optional_query_int(search, "execution") {
+    Error(_) -> Error(Nil)
+    Ok(Some(id)) -> Ok(Some(automation_deep_link.SelectedExecution(id)))
+    Ok(None) ->
+      case optional_query_int(search, "template") {
+        Error(_) -> Error(Nil)
+        Ok(Some(id)) -> Ok(Some(automation_deep_link.SelectedTemplate(id)))
+        Ok(None) ->
+          case optional_query_int(search, "rule") {
+            Error(_) -> Error(Nil)
+            Ok(Some(id)) -> {
+              use engine_id <- result.try(optional_query_int(search, "engine"))
+              Ok(Some(automation_deep_link.SelectedRule(id, engine_id)))
+            }
+            Ok(None) ->
+              case optional_query_int(search, "engine") {
+                Error(_) -> Error(Nil)
+                Ok(Some(id)) ->
+                  Ok(Some(automation_deep_link.SelectedEngine(id)))
+                Ok(None) -> Ok(None)
+              }
+          }
+      }
+  }
+}
+
+fn optional_query_int(search: String, key: String) -> Result(Option(Int), Nil) {
+  case query_param(search, key) {
+    None -> Ok(None)
+    Some(value) ->
+      value
+      |> int.parse
+      |> result.map(Some)
+      |> result.map_error(fn(_) { Nil })
   }
 }
 
@@ -590,7 +704,8 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
     ResetPassword(_) -> None
 
     // Story 4.5: Config/Org routes use admin section titles
-    Config(section, _) -> Some(admin_section_title(section, locale))
+    Config(section, _) | ConfigAutomation(section, _, _) ->
+      Some(admin_section_title(section, locale))
     Org(section) -> Some(admin_section_title(section, locale))
 
     Member(_) -> Some(i18n.t(locale, i18n_text.Pool))

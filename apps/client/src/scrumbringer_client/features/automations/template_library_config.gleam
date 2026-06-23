@@ -32,6 +32,7 @@ pub fn from_state(
   selected_project_id: opt.Option(Int),
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
+  selected_template_id: opt.Option(Int),
   callbacks: Callbacks(msg),
 ) -> template_library.Config(msg) {
   template_library.Config(
@@ -39,6 +40,7 @@ pub fn from_state(
     selected_project: selected_project,
     selected_project_id: selected_project_id,
     templates: task_templates.task_templates_project,
+    selected_template_id: selected_template_id,
     dialog_mode: task_templates.task_templates_dialog_mode,
     task_types: task_types.task_types,
     search_query: task_templates.task_templates_search,

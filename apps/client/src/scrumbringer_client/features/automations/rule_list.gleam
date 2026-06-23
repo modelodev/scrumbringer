@@ -65,6 +65,7 @@ pub type Config(msg) {
     locale: Locale,
     theme: Theme,
     workflow_id: Int,
+    selected_rule_id: opt.Option(Int),
     workflow_name: String,
     rules: admin_rules.Model,
     workflows_org: Remote(List(Workflow)),
@@ -216,7 +217,9 @@ fn view_rule_row_expandable(
   rule: Rule,
   rule_metrics: #(Int, Int),
 ) -> List(#(String, Element(msg))) {
-  let is_expanded = set.contains(config.rules.rules_expanded, rule.id)
+  let is_selected = config.selected_rule_id == opt.Some(rule.id)
+  let is_expanded =
+    set.contains(config.rules.rules_expanded, rule.id) || is_selected
   let _expand_title = case is_expanded {
     True -> t(config, i18n_text.CollapseRule)
     False -> t(config, i18n_text.ExpandRule)
@@ -226,10 +229,10 @@ fn view_rule_row_expandable(
 
   // AC2: Whole row is clickeable (via row class + click handler)
   // AC5: aria-expanded attribute
-  let row_class = case is_expanded {
-    True -> "rule-row rule-row-expandable rule-row-expanded"
-    False -> "rule-row rule-row-expandable"
-  }
+  let row_class =
+    "rule-row rule-row-expandable"
+    |> class_when(is_expanded, "rule-row-expanded")
+    |> class_when(is_selected, "is-selected")
 
   let main_row = #(
     "rule-" <> int.to_string(rule.id),
@@ -237,6 +240,7 @@ fn view_rule_row_expandable(
       [
         attribute.class(row_class),
         attribute.attribute("data-testid", "automation-rule-row"),
+        attribute.attribute("data-selected", bool_to_string(is_selected)),
         attribute.attribute(
           "aria-expanded",
           attribute_value.boolean(is_expanded),
@@ -302,6 +306,20 @@ fn view_rule_row_expandable(
   case is_expanded {
     False -> [main_row]
     True -> [main_row, view_rule_templates_expansion(config, rule)]
+  }
+}
+
+fn class_when(base: String, condition: Bool, class_name: String) -> String {
+  case condition {
+    True -> base <> " " <> class_name
+    False -> base
+  }
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
   }
 }
 

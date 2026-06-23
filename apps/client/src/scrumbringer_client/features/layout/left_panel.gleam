@@ -106,7 +106,7 @@ fn is_route_active(
         // Work views: match by ViewMode
         router.Member(state) -> member_view_active(state, check_view_mode)
         // Config sections: match by AdminSection
-        router.Config(section, _) ->
+        router.Config(section, _) | router.ConfigAutomation(section, _, _) ->
           case check_config_section {
             Some(expected) -> expected == section
             None -> False
