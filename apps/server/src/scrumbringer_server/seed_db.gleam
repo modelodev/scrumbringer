@@ -406,6 +406,22 @@ pub fn insert_project(
   })
 }
 
+/// Insert or update seed-specific project settings.
+pub fn upsert_project_settings(
+  db: pog.Connection,
+  project_id: Int,
+  healthy_pool_limit: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "INSERT INTO project_settings (project_id, healthy_pool_limit) VALUES ($1, $2) ON CONFLICT (project_id) DO UPDATE SET healthy_pool_limit = EXCLUDED.healthy_pool_limit",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(healthy_pool_limit))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "upsert_project_settings: " <> string.inspect(e) })
+}
+
 /// Insert a project member.
 pub fn insert_member(
   db: pog.Connection,

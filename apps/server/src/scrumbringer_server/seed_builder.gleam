@@ -328,7 +328,11 @@ fn build_projects(
   config: SeedConfig,
 ) -> Result(BuildState, String) {
   let default_project_id = 1
-  let project_names = ["Project Alpha", "Project Beta", "Project Gamma"]
+  let project_names = [
+    "Healthy Validation Project",
+    "Stress Validation Project",
+    "Project Gamma",
+  ]
   let names = list.take(project_names, config.project_count)
   let empty_start = int.max(0, list.length(names) - config.empty_project_count)
   let other_users = list.drop(state.user_ids, 1)
@@ -393,6 +397,17 @@ fn build_projects(
     })
   ]
 
+  use _ <- result.try(
+    list.index_map(project_ids, fn(project_id, idx) {
+      seed_db.upsert_project_settings(
+        db,
+        project_id,
+        seeded_healthy_pool_limit(idx),
+      )
+    })
+    |> result.all,
+  )
+
   let empty_project_ids =
     project_results
     |> list.fold([], fn(acc, pair) {
@@ -424,6 +439,14 @@ fn build_projects(
       project_member_ids: project_members,
     ),
   )
+}
+
+fn seeded_healthy_pool_limit(project_index: Int) -> Int {
+  case project_index {
+    1 -> 40
+    2 -> 6
+    _ -> 20
+  }
 }
 
 fn build_capabilities(

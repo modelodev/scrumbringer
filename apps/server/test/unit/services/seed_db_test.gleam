@@ -55,6 +55,26 @@ pub fn insert_card_accepts_sql_timestamp_test() {
   has_created |> expect.equal(1)
 }
 
+pub fn upsert_project_settings_updates_healthy_pool_limit_test() {
+  let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    seed_db.insert_project(db, 1, "Settings Project", None)
+
+  let assert Ok(Nil) = seed_db.upsert_project_settings(db, project_id, 6)
+  let assert Ok(Nil) = seed_db.upsert_project_settings(db, project_id, 9)
+
+  let assert Ok(limit) =
+    fixtures.query_int(
+      db,
+      "select healthy_pool_limit::int from project_settings where project_id = $1",
+      [pog.int(project_id)],
+    )
+
+  limit |> expect.equal(9)
+}
+
 pub fn insert_task_accepts_sql_timestamp_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
