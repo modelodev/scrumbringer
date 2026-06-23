@@ -12,7 +12,6 @@
 import domain/automation
 import domain/card as domain_card
 import domain/task_status
-import domain/workflow
 import envoy
 import gleam/dynamic/decode
 import gleam/int
@@ -114,7 +113,6 @@ pub type RuleResult {
 /// Error during rule evaluation.
 pub type RuleEngineError {
   DbError(pog.QueryError)
-  InvalidRuleTarget
   UnsupportedAutomationTrigger
 }
 
@@ -247,7 +245,6 @@ fn debug_error(e: RuleEngineError) -> String {
       <> ", got "
       <> int.to_string(got)
     DbError(_) -> "database error"
-    InvalidRuleTarget -> "invalid persisted rule target"
     UnsupportedAutomationTrigger -> "unsupported automation trigger"
   }
 }
@@ -257,17 +254,7 @@ fn debug_error(e: RuleEngineError) -> String {
 // =============================================================================
 
 type MatchingRule {
-  MatchingRule(
-    id: Int,
-    workflow_id: Int,
-    name: String,
-    goal: option.Option(String),
-    target: workflow.RuleTarget,
-    active: Bool,
-    created_at: String,
-    workflow_org_id: Int,
-    workflow_project_id: option.Option(Int),
-  )
+  MatchingRule(id: Int, name: String)
 }
 
 type ExecutionTemplate {
@@ -318,43 +305,7 @@ fn find_matching_rules(
 fn matching_rule_from_row(
   row: sql.RulesFindMatchingRow,
 ) -> Result(MatchingRule, RuleEngineError) {
-  use target <- result.try(parse_persisted_target(
-    row.resource_type,
-    row.task_type_id,
-    row.to_state,
-  ))
-
-  Ok(MatchingRule(
-    id: row.id,
-    workflow_id: row.workflow_id,
-    name: row.name,
-    goal: option_helpers.string_to_option(row.goal),
-    target: target,
-    active: row.active,
-    created_at: row.created_at,
-    workflow_org_id: row.workflow_org_id,
-    workflow_project_id: option_helpers.int_to_option(row.workflow_project_id),
-  ))
-}
-
-fn parse_persisted_target(
-  resource_type: String,
-  task_type_id: Int,
-  to_state: String,
-) -> Result(workflow.RuleTarget, RuleEngineError) {
-  workflow.parse_rule_target(
-    resource_type,
-    db_task_type_id(task_type_id),
-    to_state,
-  )
-  |> result.map_error(fn(_) { InvalidRuleTarget })
-}
-
-fn db_task_type_id(value: Int) -> option.Option(Int) {
-  case value {
-    id if id > 0 -> option.Some(id)
-    _ -> option.None
-  }
+  Ok(MatchingRule(id: row.id, name: row.name))
 }
 
 fn evaluate_single_rule(
