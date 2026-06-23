@@ -343,8 +343,8 @@ pub fn variable_origin_card_resolves_to_link_test() {
       session,
       project_id,
       task_type_id,
-      "Followup for {{origin}}",
-      "Card {{origin}} was closed",
+      "Followup for {{card_title}} L{{card_level}}",
+      "Card {{origin}} was closed: {{card_title}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule_card(
@@ -382,13 +382,19 @@ pub fn variable_origin_card_resolves_to_link_test() {
       [],
     )
 
-  created_title
+  created_title |> expect.equal("Followup for Card to Close L1")
+
+  let assert Ok(created_desc) =
+    fixtures.query_string(
+      db,
+      "select description from tasks order by id desc limit 1",
+      [],
+    )
+
+  created_desc
   |> string.contains("[Card #" <> int.to_string(card_id))
   |> expect.is_true
-
-  created_title
-  |> string.contains("/cards/" <> int.to_string(card_id) <> ")")
-  |> expect.is_true
+  created_desc |> string.contains("Card to Close") |> expect.is_true
 }
 
 pub fn variable_trigger_resolves_test() {
@@ -676,8 +682,8 @@ pub fn all_five_variables_combined_test() {
       session,
       project_id,
       review_type_id,
-      "{{origin}} ({{project}})",
-      "{{user}}: {{trigger}}",
+      "{{task_type}} followup for {{task_title}}",
+      "{{user}}: {{trigger}} in {{project}} from {{origin}}",
     )
   let assert Ok(rule_id) =
     fixtures.create_rule(
@@ -730,18 +736,15 @@ pub fn all_five_variables_combined_test() {
     )
   count |> expect.equal(1)
 
-  // Verify title has {{origin}}, {{project}} (query by type_id)
+  // Verify title has {{task_type}}, {{task_title}} (query by type_id)
   let assert Ok(created_title) =
     fixtures.query_string(db, "select title from tasks where type_id = $1", [
       pog.int(review_type_id),
     ])
 
-  created_title
-  |> string.contains("[Task #" <> int.to_string(task_id))
-  |> expect.is_true
-  created_title |> string.contains("CombinedVars") |> expect.is_true
+  created_title |> expect.equal("Bug followup for Fix Combined Bug")
 
-  // Verify description has {{user}}, {{trigger}} (query by type_id)
+  // Verify description has common variables (query by type_id)
   let assert Ok(created_desc) =
     fixtures.query_string(
       db,
@@ -749,6 +752,10 @@ pub fn all_five_variables_combined_test() {
       [pog.int(review_type_id)],
     )
   created_desc |> string.contains("admin@example.com") |> expect.is_true
+  created_desc |> string.contains("CombinedVars") |> expect.is_true
+  created_desc
+  |> string.contains("[Task #" <> int.to_string(task_id))
+  |> expect.is_true
   created_desc
   |> string.contains(task_status.task_status_to_string(task_status.Done))
   |> expect.is_true
@@ -758,7 +765,7 @@ pub fn all_five_variables_combined_test() {
 // Positive Tests
 // =============================================================================
 
-pub fn multiple_templates_create_multiple_tasks_test() {
+pub fn attaching_template_replaces_previous_rule_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -777,7 +784,7 @@ pub fn multiple_templates_create_multiple_tasks_test() {
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Multi Template WF")
 
-  // Create 3 templates
+  // Create 3 templates and select each one in turn.
   let assert Ok(template1_id) =
     fixtures.create_template(
       handler,
@@ -813,13 +820,28 @@ pub fn multiple_templates_create_multiple_tasks_test() {
       task_status.Done,
     )
 
-  // Attach all 3 templates
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template1_id)
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template3_id)
+
+  let assert Ok(attached_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from rule_templates where rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  attached_count |> expect.equal(1)
+
+  let assert Ok(attached_template_id) =
+    fixtures.query_int(
+      db,
+      "select template_id from rule_templates where rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  attached_template_id |> expect.equal(template3_id)
 
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
@@ -839,16 +861,22 @@ pub fn multiple_templates_create_multiple_tasks_test() {
     )
 
   let result = rules_engine.evaluate_rules(db, event)
-  let assert Ok([RuleResult(rule_id: _, outcome: Applied(3))]) = result
+  let assert Ok([RuleResult(rule_id: _, outcome: Applied(1))]) = result
 
-  // Verify 3 Review tasks were created (query by type_id)
+  // Verify one Review task was created from the selected template.
   let assert Ok(count) =
     fixtures.query_int(
       db,
       "select count(*)::int from tasks where type_id = $1",
       [pog.int(review_type_id)],
     )
-  count |> expect.equal(3)
+  count |> expect.equal(1)
+
+  let assert Ok(created_title) =
+    fixtures.query_string(db, "select title from tasks where type_id = $1", [
+      pog.int(review_type_id),
+    ])
+  created_title |> expect.equal("Review 3")
 }
 
 pub fn rule_without_task_type_matches_all_types_test() {

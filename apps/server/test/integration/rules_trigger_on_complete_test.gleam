@@ -169,9 +169,8 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
   |> expect.is_true
 }
 
-// Justification: large function kept intact to preserve cohesive logic.
-/// Verifies that multiple templates attached to a rule create multiple tasks.
-pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
+/// Verifies that selecting another template replaces the rule template.
+pub fn complete_task_uses_latest_selected_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -196,7 +195,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       "Feature Complete WF",
     )
 
-  // Create 3 templates
+  // Create 3 templates and select each one in turn.
   let assert Ok(template1_id) =
     fixtures.create_template(
       handler,
@@ -222,7 +221,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
       "Code Review",
     )
 
-  // Create rule and attach all templates
+  // Create rule and select templates.
   let assert Ok(rule_id) =
     fixtures.create_rule(
       handler,
@@ -238,6 +237,22 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
     fixtures.attach_template(handler, session, rule_id, template2_id)
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template3_id)
+
+  let assert Ok(attached_count) =
+    fixtures.query_int(
+      db,
+      "SELECT count(*)::int FROM rule_templates WHERE rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  attached_count |> expect.equal(1)
+
+  let assert Ok(attached_template_id) =
+    fixtures.query_int(
+      db,
+      "SELECT template_id FROM rule_templates WHERE rule_id = $1",
+      [pog.int(rule_id)],
+    )
+  attached_template_id |> expect.equal(template3_id)
 
   // Create feature task
   let assert Ok(feature_task_id) =
@@ -280,14 +295,20 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
 
   expect.expect_status(complete_res, 200)
 
-  // Then: 3 QA tasks were created
+  // Then: one QA task was created from the selected template.
   let assert Ok(qa_count_after) =
     fixtures.query_int(
       db,
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(qa_type_id)],
     )
-  qa_count_after |> expect.equal(3)
+  qa_count_after |> expect.equal(1)
+
+  let assert Ok(created_title) =
+    fixtures.query_string(db, "SELECT title FROM tasks WHERE type_id = $1", [
+      pog.int(qa_type_id),
+    ])
+  created_title |> expect.equal("Code Review")
 }
 
 // Justification: large function kept intact to preserve cohesive logic.

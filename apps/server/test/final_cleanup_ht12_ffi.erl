@@ -70,7 +70,7 @@ legacy_term_violations(Root) ->
         legacy_bin(), title_legacy_bin(), legacy_plural_bin(), legacy_id_bin(),
         bin(["Card", "State"]), bin(["Pen", "diente"]),
         bin(["En", "Curso"]), bin(["Cer", "rada"]),
-        bin(["Task", "Status"]), bin(["Com", "pleted"])
+        bin(["Task", "Status"])
     ],
     files_containing(Root, active_code_roots(), Terms, source_exts()).
 

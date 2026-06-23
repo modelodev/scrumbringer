@@ -4028,8 +4028,8 @@ pub type RuleTemplatesAttachRow {
 }
 
 /// name: attach_rule_template
-/// Idempotent: if already exists, update execution_order and still return a row.
-/// This prevents false "not found" errors when re-attaching.
+/// A rule has exactly one task template in the automation model.
+/// Re-attaching selects/replaces the rule template and removes any previous one.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4046,8 +4046,14 @@ pub fn rule_templates_attach(
   }
 
   "-- name: attach_rule_template
--- Idempotent: if already exists, update execution_order and still return a row.
--- This prevents false \"not found\" errors when re-attaching.
+-- A rule has exactly one task template in the automation model.
+-- Re-attaching selects/replaces the rule template and removes any previous one.
+WITH removed AS (
+  DELETE FROM rule_templates
+  WHERE rule_id = $1
+    AND template_id <> $2
+  RETURNING rule_id
+)
 INSERT INTO rule_templates (rule_id, template_id, execution_order)
 VALUES ($1, $2, $3)
 ON CONFLICT (rule_id, template_id)

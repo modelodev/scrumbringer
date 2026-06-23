@@ -14,6 +14,7 @@ import domain/card as domain_card
 import domain/task_status
 import domain/workflow
 import envoy
+import gleam/dynamic/decode
 import gleam/int
 import gleam/io
 import gleam/list
@@ -121,6 +122,14 @@ pub type RuleEngineError {
   DbError(pog.QueryError)
   InvalidRuleTarget
   UnsupportedAutomationTrigger
+}
+
+type TaskTemplateContext {
+  TaskTemplateContext(title: String, type_name: String)
+}
+
+type CardTemplateContext {
+  CardTemplateContext(title: String, depth: Int)
 }
 
 // =============================================================================
@@ -389,7 +398,7 @@ fn evaluate_rule_templates(
 ) -> Result(RuleResult, RuleEngineError) {
   use templates <- result.try(get_rule_templates(db, rule.id))
 
-  log("  Found " <> int.to_string(list.length(templates)) <> " template(s)")
+  log("  Found " <> int.to_string(list.length(templates)) <> " template")
 
   case templates {
     [] -> apply_rule_without_templates(db, rule, event)
@@ -500,23 +509,11 @@ fn create_task_from_template(
       event_resource_type(event),
       event_resource_id(event),
     )
-  let trigger = event_to_state_string(event)
-  let title =
-    rules_templates.substitute(
-      template.name,
-      origin,
-      trigger,
-      project_name,
-      user_name,
-    )
+  let context =
+    template_event_context(db, event, origin, project_name, user_name)
+  let title = rules_templates.substitute(template.name, context)
   let description =
-    rules_templates.substitute(
-      template_description_text(template),
-      origin,
-      trigger,
-      project_name,
-      user_name,
-    )
+    rules_templates.substitute(template_description_text(template), context)
 
   // Inherit card_id from triggering task (None means no card)
   let card_id_param = event_card_id(event)
@@ -582,6 +579,110 @@ fn get_user_name(db: pog.Connection, user_id: Int) -> String {
   case sql.engine_get_user_name(db, user_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> row.display_name
     _ -> "Unknown User"
+  }
+}
+
+fn template_event_context(
+  db: pog.Connection,
+  event: StateChange,
+  origin: String,
+  project_name: String,
+  user_name: String,
+) -> rules_templates.EventContext {
+  let #(task_title, task_type) = task_template_values(db, event)
+  let #(card_title, card_level) = card_template_values(db, event)
+
+  rules_templates.EventContext(
+    origin: origin,
+    trigger: event_to_state_string(event),
+    project_name: project_name,
+    user_name: user_name,
+    task_title: task_title,
+    task_type: task_type,
+    card_title: card_title,
+    card_level: card_level,
+  )
+}
+
+fn task_template_values(
+  db: pog.Connection,
+  event: StateChange,
+) -> #(String, String) {
+  case event {
+    TaskChange(ctx: ctx, ..) ->
+      case get_task_template_context(db, ctx.task_id) {
+        Ok(TaskTemplateContext(title: title, type_name: type_name)) -> #(
+          title,
+          type_name,
+        )
+        Error(_) -> #("", "")
+      }
+    CardChange(..) -> #("", "")
+  }
+}
+
+fn card_template_values(
+  db: pog.Connection,
+  event: StateChange,
+) -> #(String, String) {
+  case event {
+    CardChange(card_id: card_id, ..) ->
+      case get_card_template_context(db, card_id) {
+        Ok(CardTemplateContext(title: title, depth: depth)) -> #(
+          title,
+          int.to_string(depth),
+        )
+        Error(_) -> #("", "")
+      }
+    TaskChange(..) -> #("", "")
+  }
+}
+
+fn get_task_template_context(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(TaskTemplateContext, pog.QueryError) {
+  let decoder = {
+    use title <- decode.field(0, decode.string)
+    use type_name <- decode.field(1, decode.string)
+    decode.success(TaskTemplateContext(title: title, type_name: type_name))
+  }
+
+  case
+    pog.query(
+      "\nselect t.title, tt.name\nfrom tasks t\njoin task_types tt on tt.id = t.type_id\nwhere t.id = $1",
+    )
+    |> pog.parameter(pog.int(task_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+  {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row)
+    Ok(_) -> Ok(TaskTemplateContext(title: "", type_name: ""))
+    Error(error) -> Error(error)
+  }
+}
+
+fn get_card_template_context(
+  db: pog.Connection,
+  card_id: Int,
+) -> Result(CardTemplateContext, pog.QueryError) {
+  let decoder = {
+    use title <- decode.field(0, decode.string)
+    use depth <- decode.field(1, decode.int)
+    decode.success(CardTemplateContext(title: title, depth: depth))
+  }
+
+  case
+    pog.query(
+      "\nwith recursive ancestors as (\n  select id, parent_card_id, 1::int as depth\n  from cards\n  where id = $1\n  union all\n  select parent.id, parent.parent_card_id, child.depth + 1\n  from cards parent\n  join ancestors child on child.parent_card_id = parent.id\n), target as (\n  select title\n  from cards\n  where id = $1\n)\nselect target.title, max(ancestors.depth)::int\nfrom target, ancestors\ngroup by target.title",
+    )
+    |> pog.parameter(pog.int(card_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+  {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row)
+    Ok(_) -> Ok(CardTemplateContext(title: "", depth: 0))
+    Error(error) -> Error(error)
   }
 }
 

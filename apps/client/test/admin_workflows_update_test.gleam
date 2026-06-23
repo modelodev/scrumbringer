@@ -579,13 +579,13 @@ pub fn local_template_attachment_transitions_update_rules_test() {
   let #(after_attach_local, fx, auth_policy) =
     template_attachment_update(
       local,
-      pool_messages.AttachTemplateSucceeded(1, [template_a, template_b]),
+      pool_messages.AttachTemplateSucceeded(1, [template_b]),
       opt.None,
     )
   let workflows_update.TemplateAttachmentModel(rules: after_attach, ..) =
     after_attach_local
   let assert Loaded([attached_rule]) = after_attach.rules
-  let assert True = attached_rule.templates == [template_a, template_b]
+  let assert True = attached_rule.templates == [template_b]
   let assert opt.None = after_attach.attach_template_modal
   let assert opt.None = after_attach.attach_template_selected
   let assert False = after_attach.attach_template_loading

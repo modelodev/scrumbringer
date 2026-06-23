@@ -444,7 +444,7 @@ pub fn list_rule_templates(
   |> list.try_map(template_from_row)
 }
 
-/// Attaches a template to a rule with an execution order.
+/// Selects the single template used by a rule.
 ///
 /// Example:
 ///   attach_template(db, rule_id, template_id, 1)

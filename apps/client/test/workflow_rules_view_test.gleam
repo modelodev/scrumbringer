@@ -212,11 +212,11 @@ pub fn workflow_rules_attach_modal_footer_uses_semantic_buttons_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Attach Template")
+  assert_contains(html, "Select Template")
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-primary")
   assert_contains(html, "btn-entity-action")
   assert_contains(html, "btn-loading")
-  assert_contains(html, "Attaching")
+  assert_contains(html, "Selecting")
   assert_contains(html, "disabled")
 }

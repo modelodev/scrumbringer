@@ -887,15 +887,15 @@ pub fn translate(text: Text) -> String {
     text.RuleUpdated -> "Rule updated"
     text.RuleDeleted -> "Rule deleted"
     text.RuleDeleteConfirm(name) -> "Delete rule \"" <> name <> "\"?"
-    text.AttachTemplate -> "Attach Template"
-    text.DetachTemplate -> "Detach Template"
+    text.AttachTemplate -> "Select Template"
+    text.DetachTemplate -> "Remove Template"
     text.RuleMetricsApplied -> "Applied"
     text.RuleMetricsSuppressed -> "Suppressed"
 
     // Story 4.10: Rule template attachment UI
     text.ExpandRule -> "Expand"
     text.CollapseRule -> "Collapse"
-    text.AttachedTemplates -> "Attached Templates"
+    text.AttachedTemplates -> "Selected Template"
     text.AttachedTemplatesCount(count) ->
       int.to_string(count)
       <> " template"
@@ -903,20 +903,20 @@ pub fn translate(text: Text) -> String {
         1 -> ""
         _ -> "s"
       }
-    text.NoTemplatesAttached -> "No templates attached"
+    text.NoTemplatesAttached -> "No template selected"
     text.NoTemplatesWontCreateTasks -> "No templates (won't create tasks)"
-    text.SelectTemplateToAttach -> "Select template to attach"
+    text.SelectTemplateToAttach -> "Select template"
     text.AvailableTemplatesInProject -> "Available templates in this project"
     text.AttachTemplateHint ->
-      "Attach a template so this rule creates tasks automatically when triggered."
+      "Select a template so this rule creates one task automatically when triggered."
     text.NoTemplatesInProject -> "No templates in this project"
     text.CreateTemplateLink -> "Create one in Templates"
-    text.Attach -> "Attach"
-    text.Attaching -> "Attaching…"
-    text.TemplateAttached -> "Template attached"
-    text.TemplateDetached -> "Template detached"
-    text.DetachTemplateConfirm(name) -> "Detach template \"" <> name <> "\"?"
-    text.Detaching -> "Detaching…"
+    text.Attach -> "Select"
+    text.Attaching -> "Selecting…"
+    text.TemplateAttached -> "Template selected"
+    text.TemplateDetached -> "Template removed"
+    text.DetachTemplateConfirm(name) -> "Remove template \"" <> name <> "\"?"
+    text.Detaching -> "Removing…"
     text.RemoveTemplate -> "Remove template"
 
     // Task States (for Rules)
