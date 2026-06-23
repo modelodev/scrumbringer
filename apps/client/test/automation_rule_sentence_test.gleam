@@ -32,6 +32,11 @@ fn template(name: String, id: Int) -> RuleTemplate {
 }
 
 fn rule(target: RuleTarget, templates: List(RuleTemplate)) -> Rule {
+  let template = case templates {
+    [] -> opt.None
+    [template, ..] -> opt.Some(template)
+  }
+
   Rule(
     id: 9,
     workflow_id: 3,
@@ -40,7 +45,7 @@ fn rule(target: RuleTarget, templates: List(RuleTemplate)) -> Rule {
     target: target,
     active: True,
     created_at: "2026-01-01T00:00:00Z",
-    templates: templates,
+    template: template,
   )
 }
 
@@ -71,12 +76,9 @@ pub fn rule_sentence_marks_ambiguous_available_target_for_review_test() {
   assert_contains(html, "Requires review: choose TaskCreated or TaskReleased")
 }
 
-pub fn rule_sentence_marks_multiple_templates_for_review_test() {
+pub fn rule_sentence_marks_missing_template_for_review_test() {
   let sentence =
-    rule_sentence.effect_sentence(
-      locale.En,
-      rule(CardRule(card.Closed), [template("A", 11), template("B", 12)]),
-    )
+    rule_sentence.effect_sentence(locale.En, rule(CardRule(card.Closed), []))
 
-  let assert "Requires review: keep one template, found 2" = sentence
+  let assert "Requires review: add one template" = sentence
 }

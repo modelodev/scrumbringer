@@ -1,7 +1,7 @@
 //// Pool feature messages.
 
 import api/cards/contracts as card_contracts
-import domain/api_error.{type ApiError, type ApiResult}
+import domain/api_error.{type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
@@ -15,9 +15,7 @@ import domain/task.{
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
-import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
-}
+import domain/workflow.{type Rule, type TaskTemplate, type Workflow}
 import gleam/option.{type Option}
 import scrumbringer_client/api/activity as api_activity
 
@@ -230,15 +228,6 @@ pub type Msg {
   RuleDeleteConfirmed
   RuleDeleteFinished(Int, ApiResult(Nil))
   RuleExpandToggled(Int)
-  AttachTemplateModalOpened(Int)
-  AttachTemplateModalClosed
-  AttachTemplateSelected(Int)
-  AttachTemplateSubmitted
-  AttachTemplateSucceeded(Int, List(RuleTemplate))
-  AttachTemplateFailed(ApiError)
-  TemplateDetachClicked(Int, Int)
-  TemplateDetachSucceeded(Int, Int)
-  TemplateDetachFailed(Int, Int, ApiError)
   RuleMetricsFetched(ApiResult(api_rule_metrics.WorkflowMetrics))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
   TaskTemplatesSearchChanged(String)

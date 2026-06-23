@@ -2,14 +2,13 @@
 ////
 //// ## Mission
 ////
-//// Render engine rule drill-down, attached templates, and rule dialogs.
+//// Render engine rule drill-down, selected templates, and rule dialogs.
 ////
 //// ## Responsibilities
 ////
 //// - Rule list for a selected engine
-//// - Rule row expansion and attached template list
-//// - Attach-template modal
-//// - Rule CRUD custom element wiring
+//// - Rule row expansion and selected template summary
+//// - Rule builder panel wiring
 ////
 //// ## Relations
 ////
@@ -25,8 +24,7 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  a, div, form, h2, input, label, option, p, select, span, table, td, text, th,
-  thead, tr,
+  div, form, h2, input, option, p, select, span, table, td, text, th, thead, tr,
 }
 import lustre/element/keyed
 import lustre/event
@@ -43,8 +41,6 @@ import scrumbringer_client/features/automations/rule_sentence
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/permissions
-import scrumbringer_client/router
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attribute_value
@@ -57,7 +53,6 @@ import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
-import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
 
@@ -82,11 +77,6 @@ pub type Config(msg) {
     on_rule_expanded: fn(Int) -> msg,
     on_edit_clicked: fn(Rule) -> msg,
     on_delete_clicked: fn(Rule) -> msg,
-    on_attach_modal_opened: fn(Int) -> msg,
-    on_attach_modal_closed: msg,
-    on_template_detached: fn(Int, Int) -> msg,
-    on_template_selected: fn(Int) -> msg,
-    on_attach_submitted: msg,
     on_rule_name_changed: fn(String) -> msg,
     on_rule_goal_changed: fn(String) -> msg,
     on_rule_subject_changed: fn(String) -> msg,
@@ -214,8 +204,6 @@ fn view_rules_table(
                 }),
               ),
             ]),
-            // Attach template modal
-            view_attach_template_modal(config),
           ])
       }
     },
@@ -234,7 +222,7 @@ fn view_rule_row_expandable(
     False -> t(config, i18n_text.ExpandRule)
   }
   let #(applied, suppressed) = rule_metrics
-  let template_count = list.length(rule.templates)
+  let has_template = opt.is_some(rule.template)
 
   // AC2: Whole row is clickeable (via row class + click handler)
   // AC5: aria-expanded attribute
@@ -273,16 +261,16 @@ fn view_rule_row_expandable(
         ]),
         // Active status with completeness indicator (AC6-8)
         td([attribute.class("cell-status")], [
-          view_rule_active_status(config, rule, template_count),
+          view_rule_active_status(config, rule, has_template),
         ]),
-        // Templates count badge
+        // Template count badge
         td([attribute.class("cell-templates")], [
-          case template_count {
-            0 ->
+          case has_template {
+            False ->
               badge.new_unchecked("0", badge.Neutral)
               |> badge.view_with_class("table-badge table-badge-empty")
-            n ->
-              badge.new_unchecked(int.to_string(n), badge.Neutral)
+            True ->
+              badge.new_unchecked("1", badge.Neutral)
               |> badge.view_with_class("table-badge table-badge-count")
           },
         ]),
@@ -331,11 +319,11 @@ fn rule_task_type_name(config: Config(msg), rule: Rule) -> opt.Option(String) {
 fn view_rule_active_status(
   config: Config(msg),
   rule: Rule,
-  template_count: Int,
+  has_template: Bool,
 ) -> Element(msg) {
   case rule.active {
     True ->
-      case template_count > 0 {
+      case has_template {
         True -> rule_sentence.status_badge(config.locale, rule)
         False ->
           span(
@@ -353,7 +341,7 @@ fn view_rule_active_status(
   }
 }
 
-/// Render the expansion row with attached templates.
+/// Render the expansion row with the rule's selected template.
 fn view_rule_templates_expansion(
   config: Config(msg),
   rule: Rule,
@@ -364,33 +352,19 @@ fn view_rule_templates_expansion(
         span([attribute.class("templates-title")], [
           text(t(config, i18n_text.AttachedTemplates)),
         ]),
-        ui_button.icon_text(
-          t(config, i18n_text.AttachTemplate),
-          config.on_attach_modal_opened(rule.id),
-          icons.Plus,
-          ui_button.Primary,
-          ui_button.EntityAction,
-        )
-          // Stop propagation to prevent any parent click handlers from interfering
-          |> ui_button.with_stop_propagation
-          |> ui_button.view,
       ]),
-      case rule.templates {
-        // AC13: Empathetic hint for empty templates
-        [] ->
+      case rule.template {
+        opt.None ->
           div([attribute.class("templates-empty-hint")], [
             span([attribute.class("hint-icon")], [
               icons.nav_icon(icons.Info, icons.Medium),
             ]),
             p([], [text(t(config, i18n_text.AttachTemplateHint))]),
           ])
-        templates ->
-          div(
-            [attribute.class("templates-list")],
-            list.map(templates, fn(tmpl) {
-              view_attached_template_item(config, rule.id, tmpl)
-            }),
-          )
+        opt.Some(template) ->
+          div([attribute.class("templates-list")], [
+            view_attached_template_item(config, template),
+          ])
       },
     ])
 
@@ -409,23 +383,15 @@ fn view_rule_templates_expansion(
   )
 }
 
-/// Render a single attached template item with detach button.
-/// AC4: Template shows name, type icon, and priority.
+/// Render the selected template item.
 fn view_attached_template_item(
   config: Config(msg),
-  rule_id: Int,
   tmpl: workflow.RuleTemplate,
 ) -> Element(msg) {
-  let is_detaching =
-    set.contains(config.rules.detaching_templates, #(rule_id, tmpl.id))
-
-  // Find task type info for icon (if available)
   let task_type_info = find_task_type(config, tmpl.type_id)
 
   div([attribute.class("attached-template-row")], [
-    // AC4: Template info with icon + priority
     div([attribute.class("attached-template-info")], [
-      // Task type icon
       case task_type_info {
         opt.Some(tt) ->
           span([attribute.class("template-type-icon")], [
@@ -442,239 +408,9 @@ fn view_attached_template_item(
         t(config, i18n_text.PriorityShort(tmpl.priority)),
         badge.Neutral,
       )
-        |> badge.view_with_class("priority-badge"),
-      // Detach button using action_buttons per coding standards
-      case is_detaching {
-        True ->
-          span([attribute.class("detaching")], [
-            text(t(config, i18n_text.Detaching)),
-          ])
-        False ->
-          action_buttons.delete_button(
-            t(config, i18n_text.RemoveTemplate),
-            config.on_template_detached(rule_id, tmpl.id),
-          )
-      },
+      |> badge.view_with_class("priority-badge"),
     ]),
   ])
-}
-
-/// Render the attach template modal.
-/// AC9: Modal opens on button click
-/// AC10: Shows only templates from current project
-/// AC11: Already attached templates excluded
-/// AC12: Radio buttons for selection
-/// AC14-15: Empty state with link to Templates
-fn view_attach_template_modal(config: Config(msg)) -> Element(msg) {
-  case config.rules.attach_template_modal {
-    opt.None -> element.none()
-    opt.Some(rule_id) -> {
-      // Get available templates (exclude already attached ones)
-      let attached_ids = attached_template_ids(config, rule_id)
-      let available_templates =
-        available_templates_for_modal(config, attached_ids)
-
-      div([attribute.class("modal-backdrop")], [
-        div([attribute.class("modal-sm")], [
-          modal_header.view_dialog_with_close_label(
-            t(config, i18n_text.AttachTemplate),
-            opt.None,
-            config.on_attach_modal_closed,
-            t(config, i18n_text.Close),
-          ),
-          view_attach_template_modal_body(
-            config,
-            attached_ids,
-            available_templates,
-          ),
-          view_attach_template_modal_footer(config),
-        ]),
-      ])
-    }
-  }
-}
-
-// Justification: nested case keeps rule lookup and template extraction explicit.
-fn attached_template_ids(config: Config(msg), rule_id: Int) -> List(Int) {
-  case config.rules.rules {
-    Loaded(rules) ->
-      case list.find(rules, fn(r) { r.id == rule_id }) {
-        Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
-        Error(_) -> []
-      }
-    _ -> []
-  }
-}
-
-fn available_templates_for_modal(
-  config: Config(msg),
-  attached_ids: List(Int),
-) -> List(TaskTemplate) {
-  case config.task_templates_org, config.task_templates_project {
-    Loaded(org), Loaded(proj) ->
-      list.filter(list.append(org, proj), fn(tmpl) {
-        !list.contains(attached_ids, tmpl.id)
-      })
-    Loaded(org), _ ->
-      list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
-    _, Loaded(proj) ->
-      list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
-    _, _ -> []
-  }
-}
-
-fn view_attach_template_modal_body(
-  config: Config(msg),
-  attached_ids: List(Int),
-  available_templates: List(TaskTemplate),
-) -> Element(msg) {
-  div([attribute.class("modal-body")], [
-    case available_templates {
-      [] ->
-        div([attribute.class("modal-empty-state")], [
-          icons.nav_icon(icons.TaskTemplates, icons.Large),
-          p([], [text(t(config, i18n_text.NoTemplatesInProject))]),
-          a(
-            [
-              attribute.href(
-                router.format(router.Config(
-                  permissions.TaskTemplates,
-                  workflow_project_id(config),
-                )),
-              ),
-              attribute.class("link-to-templates"),
-            ],
-            [text(t(config, i18n_text.CreateTemplateLink))],
-          ),
-        ])
-      templates ->
-        div([attribute.class("form")], [
-          p([attribute.class("form-hint")], [
-            text(t(config, i18n_text.AvailableTemplatesInProject)),
-          ]),
-          div(
-            [
-              attribute.class("radio-group template-radio-list"),
-              attribute.attribute("data-testid", "automation-template-picker"),
-            ],
-            list.map(templates, fn(tmpl) {
-              view_template_radio_option(config, tmpl)
-            }),
-          ),
-          p([attribute.class("form-hint-secondary")], [
-            icons.nav_icon(icons.Info, icons.Small),
-            text(
-              " "
-              <> t(config, i18n_text.AttachedTemplates)
-              <> ": "
-              <> int.to_string(list.length(attached_ids)),
-            ),
-          ]),
-        ])
-    },
-  ])
-}
-
-fn workflow_project_id(config: Config(msg)) -> opt.Option(Int) {
-  case config.workflows_project {
-    Loaded(workflows) ->
-      case
-        list.find(workflows, fn(workflow) { workflow.id == config.workflow_id })
-      {
-        Ok(workflow) -> workflow.project_id
-        Error(_) -> opt.None
-      }
-    _ -> opt.None
-  }
-}
-
-fn view_attach_template_modal_footer(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("modal-footer")], [
-    ui_button.text(
-      t(config, i18n_text.Cancel),
-      config.on_attach_modal_closed,
-      ui_button.Secondary,
-      ui_button.EntityAction,
-    )
-      |> ui_button.view,
-    view_attach_template_submit_button(config),
-  ])
-}
-
-fn view_attach_template_submit_button(config: Config(msg)) -> Element(msg) {
-  let label = case config.rules.attach_template_loading {
-    True -> t(config, i18n_text.Attaching)
-    False -> t(config, i18n_text.Attach)
-  }
-
-  let button =
-    ui_button.text(
-      label,
-      config.on_attach_submitted,
-      ui_button.Primary,
-      ui_button.EntityAction,
-    )
-    |> ui_button.with_disabled(
-      config.rules.attach_template_loading
-      || opt.is_none(config.rules.attach_template_selected),
-    )
-
-  case config.rules.attach_template_loading {
-    True -> button |> ui_button.with_class("btn-loading") |> ui_button.view
-    False -> button |> ui_button.view
-  }
-}
-
-/// Render a radio button option for template selection.
-/// AC12: Radio buttons with template name, type icon, and priority.
-fn view_template_radio_option(
-  config: Config(msg),
-  tmpl: TaskTemplate,
-) -> Element(msg) {
-  let is_selected = config.rules.attach_template_selected == opt.Some(tmpl.id)
-  let radio_id = "template-radio-" <> int.to_string(tmpl.id)
-
-  // Find task type info for icon
-  let task_type_info = find_task_type(config, tmpl.type_id)
-
-  div(
-    [
-      attribute.class(
-        "radio-option"
-        <> case is_selected {
-          True -> " selected"
-          False -> ""
-        },
-      ),
-      // Put click handler on the whole div so clicking label works
-      event.on_click(config.on_template_selected(tmpl.id)),
-    ],
-    [
-      input([
-        attribute.type_("radio"),
-        attribute.name("template-selection"),
-        attribute.id(radio_id),
-        attribute.value(int.to_string(tmpl.id)),
-        attribute.checked(is_selected),
-      ]),
-      label([attribute.for(radio_id), attribute.class("radio-label")], [
-        // Task type icon
-        case task_type_info {
-          opt.Some(tt) ->
-            span([attribute.class("template-type-icon")], [
-              icons.view_task_type_icon_inline(tt.icon, 16, config.theme),
-            ])
-          opt.None -> element.none()
-        },
-        // Template name
-        span([attribute.class("template-name")], [text(tmpl.name)]),
-        // Priority
-        span([attribute.class("template-priority")], [
-          text(t(config, i18n_text.PriorityShort(tmpl.priority))),
-        ]),
-      ]),
-    ],
-  )
 }
 
 fn find_task_type(config: Config(msg), type_id: Int) -> opt.Option(TaskType) {

@@ -30,10 +30,6 @@ pub type Model {
     rule_form_submitting: Bool,
     rule_form_error: Option(String),
     rules_expanded: set.Set(Int),
-    attach_template_modal: Option(Int),
-    attach_template_selected: Option(Int),
-    attach_template_loading: Bool,
-    detaching_templates: set.Set(#(Int, Int)),
     rules_metrics: Remote(api_rule_metrics.WorkflowMetrics),
   )
 }
@@ -54,10 +50,6 @@ pub fn default_model() -> Model {
     rule_form_submitting: False,
     rule_form_error: option.None,
     rules_expanded: set.new(),
-    attach_template_modal: option.None,
-    attach_template_selected: option.None,
-    attach_template_loading: False,
-    detaching_templates: set.new(),
     rules_metrics: NotAsked,
   )
 }

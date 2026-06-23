@@ -90,7 +90,7 @@ fn rule() -> Rule {
     target: TaskRule(task_status.Done, opt.Some(5)),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
-    templates: [rule_template()],
+    template: opt.Some(rule_template()),
   )
 }
 
@@ -135,15 +135,6 @@ fn config() -> rule_list.Config(String) {
     on_rule_expanded: fn(id) { "expand-" <> int.to_string(id) },
     on_edit_clicked: fn(rule) { "edit-" <> rule.name },
     on_delete_clicked: fn(rule) { "delete-" <> rule.name },
-    on_attach_modal_opened: fn(id) { "attach-open-" <> int.to_string(id) },
-    on_attach_modal_closed: "attach-close",
-    on_template_detached: fn(rule_id, template_id) {
-      "detach-" <> int.to_string(rule_id) <> "-" <> int.to_string(template_id)
-    },
-    on_template_selected: fn(template_id) {
-      "select-" <> int.to_string(template_id)
-    },
-    on_attach_submitted: "attach-submit",
     on_rule_name_changed: fn(value) { "name-" <> value },
     on_rule_goal_changed: fn(value) { "goal-" <> value },
     on_rule_subject_changed: fn(value) { "subject-" <> value },
@@ -182,7 +173,6 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_contains(html, "2")
   assert_contains(html, "btn-view-action")
   assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-icon-text")
   assert_not_contains(html, "btn btn-sm btn-primary")
 }
 
@@ -232,27 +222,4 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_not_contains(html, "rule-crud-dialog")
   assert_not_contains(html, "Resource Type")
   assert_not_contains(html, "Target State")
-}
-
-pub fn automation_rule_list_attach_modal_footer_uses_semantic_buttons_test() {
-  let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          attach_template_modal: opt.Some(9),
-          attach_template_loading: True,
-        ),
-      ),
-    )
-    |> element.to_document_string
-
-  assert_contains(html, "Select Template")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "Selecting")
-  assert_contains(html, "disabled")
 }

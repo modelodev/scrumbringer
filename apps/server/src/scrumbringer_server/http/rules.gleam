@@ -234,12 +234,12 @@ fn create_rule_flow(
     )
   {
     Ok(rule) -> {
-      use templates <- result.try(sync_rule_template(
+      use template <- result.try(sync_rule_template(
         db,
         rule.id,
         payload.template_id,
       ))
-      Ok(api.ok(rule_presenters.rule_response_with_templates(rule, templates)))
+      Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
     }
     Error(error) -> Error(create_rule_error_response(error))
   }
@@ -291,12 +291,12 @@ fn update_rule_flow(
     )
   {
     Ok(rule) -> {
-      use templates <- result.try(sync_rule_template(
+      use template <- result.try(sync_rule_template(
         db,
         rule.id,
         payload.template_id,
       ))
-      Ok(api.ok(rule_presenters.rule_response_with_templates(rule, templates)))
+      Ok(api.ok(rule_presenters.rule_response_with_template(rule, template)))
     }
     Error(error) -> Error(rule_write_error_response(error))
   }
@@ -449,7 +449,8 @@ fn list_rules_with_templates(
 ) {
   list.try_map(rules, fn(rule) {
     case rules_db.list_rule_templates(db, rule.id) {
-      Ok(templates) -> Ok(rule_presenters.rule_with_templates(rule, templates))
+      Ok(templates) ->
+        Ok(rule_presenters.rule_with_template(rule, first_template(templates)))
       Error(error) -> Error(service_error_response.to_database_response(error))
     }
   })
@@ -601,10 +602,20 @@ fn sync_rule_template(
   db: pog.Connection,
   rule_id: Int,
   template_id: Option(Int),
-) -> Result(List(workflow.RuleTemplate), wisp.Response) {
+) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
   case template_id {
-    None -> list_rule_templates_response(db, rule_id)
-    Some(value) -> attach_rule_template_db(db, rule_id, value, 1)
+    None -> list_rule_template_response(db, rule_id)
+    Some(value) -> attach_rule_template_response(db, rule_id, value, 1)
+  }
+}
+
+fn list_rule_template_response(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
+  case rules_db.list_rule_templates(db, rule_id) {
+    Ok(templates) -> Ok(first_template(templates))
+    Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
 
@@ -618,6 +629,21 @@ fn list_rule_templates_response(
   }
 }
 
+fn attach_rule_template_response(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Int,
+  execution_order: Int,
+) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
+  use templates <- result.try(attach_rule_template_db(
+    db,
+    rule_id,
+    template_id,
+    execution_order,
+  ))
+  Ok(first_template(templates))
+}
+
 fn attach_rule_template_db(
   db: pog.Connection,
   rule_id: Int,
@@ -627,6 +653,15 @@ fn attach_rule_template_db(
   case rules_db.attach_template(db, rule_id, template_id, execution_order) {
     Ok(Nil) -> list_rule_templates_response(db, rule_id)
     Error(error) -> Error(rule_write_error_response(error))
+  }
+}
+
+fn first_template(
+  templates: List(workflow.RuleTemplate),
+) -> Option(workflow.RuleTemplate) {
+  case templates {
+    [] -> None
+    [template, ..] -> Some(template)
   }
 }
 

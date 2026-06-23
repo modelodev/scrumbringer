@@ -1,18 +1,13 @@
 import gleam/option as opt
-import gleam/set
 import lustre/effect
 
 import domain/api_error.{ApiError}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_status
-import domain/workflow.{
-  type Rule, type RuleTemplate, type Workflow, Rule, RuleTemplate, TaskRule,
-  Workflow,
-}
+import domain/workflow.{type Rule, type Workflow, Rule, TaskRule, Workflow}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/workflows as workflows_update
@@ -32,7 +27,7 @@ fn workflow(id: Int, name: String, project_id: opt.Option(Int)) -> Workflow {
   )
 }
 
-fn rule(id: Int, name: String, templates: List(RuleTemplate)) -> Rule {
+fn rule(id: Int, name: String) -> Rule {
   Rule(
     id: id,
     workflow_id: 3,
@@ -41,23 +36,7 @@ fn rule(id: Int, name: String, templates: List(RuleTemplate)) -> Rule {
     target: TaskRule(task_status.Done, opt.None),
     active: True,
     created_at: "2026-01-01T00:00:00Z",
-    templates: templates,
-  )
-}
-
-fn rule_template(id: Int, name: String) -> RuleTemplate {
-  RuleTemplate(
-    id: id,
-    org_id: 1,
-    project_id: opt.Some(7),
-    name: name,
-    description: opt.None,
-    type_id: 2,
-    type_name: "Bug",
-    priority: 3,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    execution_order: 1,
+    template: opt.None,
   )
 }
 
@@ -123,50 +102,6 @@ fn rules_context(
   )
 }
 
-fn template_feedback_context() -> workflows_update.TemplateAttachmentFeedbackContext(
-  client_state.Msg,
-) {
-  workflows_update.TemplateAttachmentFeedbackContext(
-    template_attached: "Template attached",
-    template_detached: "Template detached",
-    on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
-    on_error_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
-  )
-}
-
-fn template_attachment_context(
-  selected_project_id: opt.Option(Int),
-) -> workflows_update.TemplateAttachmentContext(client_state.Msg) {
-  workflows_update.TemplateAttachmentContext(
-    selected_project_id: selected_project_id,
-    on_task_templates_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.TaskTemplatesProjectFetched(result))
-    },
-    on_attach_template_succeeded: fn(rule_id, templates) {
-      client_state.pool_msg(pool_messages.AttachTemplateSucceeded(
-        rule_id,
-        templates,
-      ))
-    },
-    on_attach_template_failed: fn(err) {
-      client_state.pool_msg(pool_messages.AttachTemplateFailed(err))
-    },
-    on_template_detach_succeeded: fn(rule_id, template_id) {
-      client_state.pool_msg(pool_messages.TemplateDetachSucceeded(
-        rule_id,
-        template_id,
-      ))
-    },
-    on_template_detach_failed: fn(rule_id, template_id, err) {
-      client_state.pool_msg(pool_messages.TemplateDetachFailed(
-        rule_id,
-        template_id,
-        err,
-      ))
-    },
-  )
-}
-
 fn workflows_state(
   org: Remote(List(Workflow)),
   project: Remote(List(Workflow)),
@@ -218,30 +153,6 @@ fn rules_update(
       msg,
       rules_context(selected_project_id),
       rule_feedback_context(),
-    )
-
-  #(next, fx, auth_policy)
-}
-
-fn template_attachment_update(
-  state: workflows_update.TemplateAttachmentModel,
-  msg: pool_messages.Msg,
-  selected_project_id: opt.Option(Int),
-) -> #(
-  workflows_update.TemplateAttachmentModel,
-  effect.Effect(client_state.Msg),
-  workflows_update.TemplateAttachmentAuthPolicy,
-) {
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      state,
-      msg,
-      template_attachment_context(selected_project_id),
-      template_feedback_context(),
     )
 
   #(next, fx, auth_policy)
@@ -420,9 +331,9 @@ pub fn try_workflows_update_ignores_non_workflow_messages_test() {
 }
 
 pub fn local_rule_form_transitions_update_loaded_rules_test() {
-  let existing = rule(1, "Existing", [])
-  let created = rule(2, "Created", [])
-  let updated = rule(2, "Updated", [])
+  let existing = rule(1, "Existing")
+  let created = rule(2, "Created")
+  let updated = rule(2, "Updated")
   let state =
     admin_rules.Model(
       ..admin_rules.default_model(),
@@ -490,7 +401,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
 }
 
 pub fn local_rule_fetch_navigation_and_dialog_transitions_test() {
-  let rules = [rule(1, "Rule", [])]
+  let rules = [rule(1, "Rule")]
   let metrics = workflow_metrics(3)
   let err = ApiError(status: 409, code: "CONFLICT", message: "Conflict")
   let state = admin_rules.default_model()
@@ -639,8 +550,8 @@ pub fn try_rules_update_ignores_non_rule_messages_test() {
 }
 
 pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
-  let existing = rule(1, "Existing", [])
-  let created = rule(2, "Created", [])
+  let existing = rule(1, "Existing")
+  let created = rule(2, "Created")
   let state =
     admin_rules.Model(
       ..admin_rules.default_model(),
@@ -660,181 +571,6 @@ pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
   let assert opt.None = next.rules_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
-}
-
-pub fn local_template_attachment_transitions_update_rules_test() {
-  let template_a = rule_template(10, "Template A")
-  let template_b = rule_template(11, "Template B")
-  let detaching = set.insert(set.new(), #(1, 10))
-  let state =
-    admin_rules.Model(
-      ..admin_rules.default_model(),
-      rules: Loaded([rule(1, "Rule", [template_a])]),
-      attach_template_modal: opt.Some(1),
-      attach_template_selected: opt.Some(11),
-      attach_template_loading: True,
-      detaching_templates: detaching,
-    )
-
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: state,
-      task_templates: admin_task_templates.default_model(),
-    )
-  let #(after_attach_local, fx, auth_policy) =
-    template_attachment_update(
-      local,
-      pool_messages.AttachTemplateSucceeded(1, [template_b]),
-      opt.None,
-    )
-  let workflows_update.TemplateAttachmentModel(rules: after_attach, ..) =
-    after_attach_local
-  let assert Loaded([attached_rule]) = after_attach.rules
-  let assert True = attached_rule.templates == [template_b]
-  let assert opt.None = after_attach.attach_template_modal
-  let assert opt.None = after_attach.attach_template_selected
-  let assert False = after_attach.attach_template_loading
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
-
-  let #(after_detach_local, fx, auth_policy) =
-    template_attachment_update(
-      workflows_update.TemplateAttachmentModel(
-        rules: after_attach,
-        task_templates: admin_task_templates.default_model(),
-      ),
-      pool_messages.TemplateDetachSucceeded(1, 10),
-      opt.None,
-    )
-  let workflows_update.TemplateAttachmentModel(rules: after_detach, ..) =
-    after_detach_local
-  let assert Loaded([detached_rule]) = after_detach.rules
-  let assert True = detached_rule.templates == [template_b]
-  let assert False = set.contains(after_detach.detaching_templates, #(1, 10))
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
-}
-
-pub fn try_template_attachment_update_modal_open_sets_loading_and_effect_test() {
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: admin_rules.default_model(),
-      task_templates: admin_task_templates.default_model(),
-    )
-
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      local,
-      pool_messages.AttachTemplateModalOpened(1),
-      template_attachment_context(opt.Some(7)),
-      template_feedback_context(),
-    )
-  let workflows_update.TemplateAttachmentModel(
-    rules: rules,
-    task_templates: task_templates,
-  ) = next
-
-  let assert opt.Some(1) = rules.attach_template_modal
-  let assert opt.None = rules.attach_template_selected
-  let assert False = rules.attach_template_loading
-  let assert Loading = task_templates.task_templates_project
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
-}
-
-pub fn try_template_attachment_update_submit_sets_loading_and_effect_test() {
-  let template = rule_template(10, "Template")
-  let rules =
-    admin_rules.Model(
-      ..admin_rules.default_model(),
-      rules: Loaded([rule(1, "Rule", [template])]),
-      attach_template_modal: opt.Some(1),
-      attach_template_selected: opt.Some(11),
-    )
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: rules,
-      task_templates: admin_task_templates.default_model(),
-    )
-
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      local,
-      pool_messages.AttachTemplateSubmitted,
-      template_attachment_context(opt.None),
-      template_feedback_context(),
-    )
-  let workflows_update.TemplateAttachmentModel(rules: next_rules, ..) = next
-
-  let assert True = next_rules.attach_template_loading
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
-}
-
-pub fn try_template_attachment_update_failed_requests_auth_check_test() {
-  let err = ApiError(status: 401, code: "UNAUTHORIZED", message: "Unauthorized")
-  let rules =
-    admin_rules.Model(
-      ..admin_rules.default_model(),
-      attach_template_loading: True,
-    )
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: rules,
-      task_templates: admin_task_templates.default_model(),
-    )
-
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      local,
-      pool_messages.AttachTemplateFailed(err),
-      template_attachment_context(opt.None),
-      template_feedback_context(),
-    )
-  let workflows_update.TemplateAttachmentModel(rules: next_rules, ..) = next
-
-  let assert False = next_rules.attach_template_loading
-  let assert True = fx != effect.none()
-  let assert workflows_update.CheckTemplateAttachmentAuth(auth_err) =
-    auth_policy
-  let assert True = auth_err == err
-}
-
-pub fn try_template_attachment_update_detach_click_marks_in_flight_test() {
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: admin_rules.default_model(),
-      task_templates: admin_task_templates.default_model(),
-    )
-
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      local,
-      pool_messages.TemplateDetachClicked(1, 10),
-      template_attachment_context(opt.None),
-      template_feedback_context(),
-    )
-  let workflows_update.TemplateAttachmentModel(rules: next_rules, ..) = next
-
-  let assert True = set.contains(next_rules.detaching_templates, #(1, 10))
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
 }
 
 pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_test() {
@@ -865,9 +601,9 @@ pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_tes
 }
 
 pub fn try_rules_update_updated_replaces_loaded_rule_and_emits_feedback_test() {
-  let old = rule(1, "Old", [])
-  let updated = rule(1, "Updated", [])
-  let other = rule(2, "Other", [])
+  let old = rule(1, "Old")
+  let updated = rule(1, "Updated")
+  let other = rule(2, "Other")
   let rules =
     admin_rules.Model(
       ..admin_rules.default_model(),
@@ -882,72 +618,4 @@ pub fn try_rules_update_updated_replaces_loaded_rule_and_emits_feedback_test() {
   let assert opt.None = next.rules_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoRulesAuthCheck = auth_policy
-}
-
-pub fn try_template_attachment_update_attach_success_updates_rule_and_emits_feedback_test() {
-  let attached = rule_template(10, "Regression checklist")
-  let rules =
-    admin_rules.Model(
-      ..admin_rules.default_model(),
-      rules: Loaded([rule(1, "Rule", [])]),
-      attach_template_modal: opt.Some(1),
-      attach_template_selected: opt.Some(10),
-      attach_template_loading: True,
-    )
-
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: rules,
-      task_templates: admin_task_templates.default_model(),
-    )
-  let #(next_local, fx, auth_policy) =
-    template_attachment_update(
-      local,
-      pool_messages.AttachTemplateSucceeded(1, [attached]),
-      opt.None,
-    )
-  let workflows_update.TemplateAttachmentModel(rules: next, ..) = next_local
-
-  let assert Loaded([updated_rule]) = next.rules
-  let assert True = updated_rule.templates == [attached]
-  let assert opt.None = next.attach_template_modal
-  let assert opt.None = next.attach_template_selected
-  let assert False = next.attach_template_loading
-  let assert True = fx != effect.none()
-  let assert workflows_update.NoTemplateAttachmentAuthCheck = auth_policy
-}
-
-pub fn try_template_attachment_update_detach_failure_clears_in_flight_and_emits_error_feedback_test() {
-  let detaching = set.insert(set.new(), #(1, 10))
-  let rules =
-    admin_rules.Model(
-      ..admin_rules.default_model(),
-      rules: Loaded([rule(1, "Rule", [rule_template(10, "Template")])]),
-      detaching_templates: detaching,
-    )
-  let local =
-    workflows_update.TemplateAttachmentModel(
-      rules: rules,
-      task_templates: admin_task_templates.default_model(),
-    )
-  let err = ApiError(status: 500, code: "ERROR", message: "Backend failed")
-
-  let assert opt.Some(workflows_update.TemplateAttachmentUpdate(
-    next,
-    fx,
-    auth_policy,
-  )) =
-    workflows_update.try_template_attachment_update(
-      local,
-      pool_messages.TemplateDetachFailed(1, 10, err),
-      template_attachment_context(opt.None),
-      template_feedback_context(),
-    )
-  let workflows_update.TemplateAttachmentModel(rules: next_rules, ..) = next
-
-  let assert False = set.contains(next_rules.detaching_templates, #(1, 10))
-  let assert True = fx != effect.none()
-  let assert workflows_update.CheckTemplateAttachmentAuth(auth_err) =
-    auth_policy
-  let assert True = auth_err == err
 }

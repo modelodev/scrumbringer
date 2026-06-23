@@ -69,18 +69,20 @@ pub fn workflows_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"resource_type\":\"task\",\"task_type_id\":5,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:30:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"resource_type\":\"task\",\"task_type_id\":5,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
   let assert workflow.TaskRule(task_status.Done, option.Some(5)) = rule.target
+  let assert option.Some(template) = rule.template
+  let assert "Review {{origin}}" = template.name
 }
 
 pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":null,\"to_state\":\"claimed\",\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":null,\"to_state\":\"claimed\",\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -94,7 +96,7 @@ pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
 
 pub fn rule_payload_decoder_decodes_card_resource_type_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":3,\"workflow_id\":2,\"name\":\"Card Closed\",\"goal\":\"Notify\",\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":3,\"workflow_id\":2,\"name\":\"Card Closed\",\"goal\":\"Notify\",\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -105,7 +107,7 @@ pub fn rule_payload_decoder_decodes_card_resource_type_test() {
 
 pub fn rule_payload_decoder_rejects_missing_resource_type_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":4,\"workflow_id\":2,\"name\":\"Missing\",\"goal\":\"Notify\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":4,\"workflow_id\":2,\"name\":\"Missing\",\"goal\":\"Notify\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -117,7 +119,7 @@ pub fn rule_payload_decoder_rejects_missing_resource_type_test() {
 
 pub fn rules_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"resource_type\":\"task\",\"task_type_id\":1,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\"},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\"}]}}"
+    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"resource_type\":\"task\",\"task_type_id\":1,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"cerrada\",\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
 
   let decoder =
     decode.field("data", api_rules.rules_payload_decoder(), decode.success)
@@ -132,7 +134,7 @@ pub fn rules_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_rejects_invalid_task_state_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":5,\"workflow_id\":1,\"name\":\"Bad Task\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":null,\"to_state\":\"done\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":5,\"workflow_id\":1,\"name\":\"Bad Task\",\"goal\":null,\"resource_type\":\"task\",\"task_type_id\":null,\"to_state\":\"done\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -144,7 +146,7 @@ pub fn rule_payload_decoder_rejects_invalid_task_state_test() {
 
 pub fn rule_payload_decoder_rejects_invalid_card_state_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":6,\"workflow_id\":1,\"name\":\"Bad Card\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"closed\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":6,\"workflow_id\":1,\"name\":\"Bad Card\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"closed\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -156,7 +158,7 @@ pub fn rule_payload_decoder_rejects_invalid_card_state_test() {
 
 pub fn rule_payload_decoder_rejects_card_task_type_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":7,\"workflow_id\":1,\"name\":\"Bad Card Type\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":9,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\"}}}"
+    "{\"data\":{\"rule\":{\"id\":7,\"workflow_id\":1,\"name\":\"Bad Card Type\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":9,\"to_state\":\"cerrada\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -217,25 +219,6 @@ pub fn templates_payload_decoder_decodes_list_test() {
   let assert "Template A" = template_a.name
   let assert "Template B" = template_b.name
   let assert option.Some(3) = template_b.project_id
-}
-
-pub fn rule_templates_payload_decoder_decodes_list_test() {
-  let body =
-    "{\"data\":{\"templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1},{\"id\":2,\"org_id\":1,\"project_id\":null,\"name\":\"QA Check\",\"description\":null,\"type_id\":3,\"type_name\":\"QA\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\",\"execution_order\":2}]}}"
-
-  let decoder =
-    decode.field(
-      "data",
-      api_rules.rule_templates_payload_decoder(),
-      decode.success,
-    )
-
-  let assert Ok(templates) = json.parse(from: body, using: decoder)
-  let assert [template_a, template_b] = templates
-  let assert "Review {{origin}}" = template_a.name
-  let assert 1 = template_a.execution_order
-  let assert "QA Check" = template_b.name
-  let assert 2 = template_b.execution_order
 }
 
 pub fn workflows_payload_decoder_decodes_empty_list_test() {

@@ -8,7 +8,7 @@
 ////
 //// - Workflow list fetch and CRUD
 //// - Rule list fetch and CRUD within workflows
-//// - Rule-template attachment management
+//// - Rule expansion and builder state
 ////
 //// ## Relations
 ////
@@ -16,7 +16,6 @@
 //// - **view.gleam**: Renders the workflows UI using model state
 
 import gleam/int
-import gleam/list
 import gleam/option as opt
 import gleam/result
 import gleam/set
@@ -26,15 +25,13 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/card
-import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/workflow.{
-  type Rule, type RuleTarget, type RuleTemplate, type TaskTemplate,
-  type Workflow, CardRule, TaskRule,
+  type Rule, type RuleTarget, type Workflow, CardRule, TaskRule,
 }
 import scrumbringer_client/client_state/admin/rules as admin_rules
-import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/scoped_remote_list
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -43,7 +40,6 @@ import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
-import scrumbringer_client/api/workflows/task_templates as api_task_templates
 
 type WorkflowSuccess {
   WorkflowCreated
@@ -96,37 +92,6 @@ pub type RulesAuthPolicy {
 
 pub type RulesUpdate(parent_msg) {
   RulesUpdate(admin_rules.Model, Effect(parent_msg), RulesAuthPolicy)
-}
-
-pub type TemplateAttachmentModel {
-  TemplateAttachmentModel(
-    rules: admin_rules.Model,
-    task_templates: admin_task_templates.Model,
-  )
-}
-
-pub type TemplateAttachmentContext(parent_msg) {
-  TemplateAttachmentContext(
-    selected_project_id: opt.Option(Int),
-    on_task_templates_fetched: fn(ApiResult(List(TaskTemplate))) -> parent_msg,
-    on_attach_template_succeeded: fn(Int, List(RuleTemplate)) -> parent_msg,
-    on_attach_template_failed: fn(ApiError) -> parent_msg,
-    on_template_detach_succeeded: fn(Int, Int) -> parent_msg,
-    on_template_detach_failed: fn(Int, Int, ApiError) -> parent_msg,
-  )
-}
-
-pub type TemplateAttachmentAuthPolicy {
-  NoTemplateAttachmentAuthCheck
-  CheckTemplateAttachmentAuth(ApiError)
-}
-
-pub type TemplateAttachmentUpdate(parent_msg) {
-  TemplateAttachmentUpdate(
-    TemplateAttachmentModel,
-    Effect(parent_msg),
-    TemplateAttachmentAuthPolicy,
-  )
 }
 
 pub fn try_rules_update(
@@ -229,68 +194,9 @@ pub fn try_rules_update(
       #(rule_form_error(state, err.message), effect.none())
       |> with_rules_auth_check(err)
 
-    _ -> opt.None
-  }
-}
-
-pub fn try_template_attachment_update(
-  state: TemplateAttachmentModel,
-  inner: pool_messages.Msg,
-  context: TemplateAttachmentContext(parent_msg),
-  feedback: TemplateAttachmentFeedbackContext(parent_msg),
-) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
-  case inner {
     pool_messages.RuleExpandToggled(rule_id) ->
       #(rule_expand_toggled(state, rule_id), effect.none())
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateModalOpened(rule_id) ->
-      attach_template_modal_opened(state, rule_id, context)
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateModalClosed ->
-      #(attach_template_modal_closed(state), effect.none())
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateSelected(template_id) ->
-      #(attach_template_selected(state, template_id), effect.none())
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateSubmitted ->
-      attach_template_submitted(state, context)
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateSucceeded(rule_id, templates) ->
-      #(
-        attach_template_success_local(state, rule_id, templates),
-        template_attachment_success_effect(TemplateAttached, feedback),
-      )
-      |> without_template_attachment_auth_check
-
-    pool_messages.AttachTemplateFailed(err) ->
-      #(
-        attach_template_failed_local(state),
-        feedback.on_error_toast(err.message),
-      )
-      |> with_template_attachment_auth_check(err)
-
-    pool_messages.TemplateDetachClicked(rule_id, template_id) ->
-      template_detach_clicked(state, rule_id, template_id, context)
-      |> without_template_attachment_auth_check
-
-    pool_messages.TemplateDetachSucceeded(rule_id, template_id) ->
-      #(
-        template_detach_success_local(state, rule_id, template_id),
-        template_attachment_success_effect(TemplateDetached, feedback),
-      )
-      |> without_template_attachment_auth_check
-
-    pool_messages.TemplateDetachFailed(rule_id, template_id, err) ->
-      #(
-        template_detach_failed_local(state, rule_id, template_id),
-        feedback.on_error_toast(err.message),
-      )
-      |> with_template_attachment_auth_check(err)
+      |> without_rules_auth_check
 
     _ -> opt.None
   }
@@ -337,241 +243,15 @@ fn with_rules_auth_check(
 }
 
 fn rule_expand_toggled(
-  state: TemplateAttachmentModel,
+  state: admin_rules.Model,
   rule_id: Int,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  let expanded = case set.contains(rules.rules_expanded, rule_id) {
-    True -> set.delete(rules.rules_expanded, rule_id)
-    False -> set.insert(rules.rules_expanded, rule_id)
+) -> admin_rules.Model {
+  let expanded = case set.contains(state.rules_expanded, rule_id) {
+    True -> set.delete(state.rules_expanded, rule_id)
+    False -> set.insert(state.rules_expanded, rule_id)
   }
 
-  TemplateAttachmentModel(
-    rules: admin_rules.Model(..rules, rules_expanded: expanded),
-    task_templates: task_templates,
-  )
-}
-
-fn attach_template_modal_opened(
-  state: TemplateAttachmentModel,
-  rule_id: Int,
-  context: TemplateAttachmentContext(parent_msg),
-) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-
-  let fetch_effect = case
-    task_templates.task_templates_project,
-    context.selected_project_id
-  {
-    Loaded(_), _ -> effect.none()
-    Loading, _ -> effect.none()
-    _, opt.Some(project_id) ->
-      api_task_templates.list_project_templates(
-        project_id,
-        context.on_task_templates_fetched,
-      )
-    _, opt.None -> effect.none()
-  }
-
-  let task_templates_project = case
-    task_templates.task_templates_project,
-    context.selected_project_id
-  {
-    Loaded(_), _ -> task_templates.task_templates_project
-    Loading, _ -> task_templates.task_templates_project
-    _, opt.Some(_) -> Loading
-    _, opt.None -> task_templates.task_templates_project
-  }
-
-  #(
-    TemplateAttachmentModel(
-      rules: admin_rules.Model(
-        ..rules,
-        attach_template_modal: opt.Some(rule_id),
-        attach_template_selected: opt.None,
-        attach_template_loading: False,
-      ),
-      task_templates: admin_task_templates.Model(
-        ..task_templates,
-        task_templates_project: task_templates_project,
-      ),
-    ),
-    fetch_effect,
-  )
-}
-
-fn attach_template_modal_closed(
-  state: TemplateAttachmentModel,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: admin_rules.Model(
-      ..rules,
-      attach_template_modal: opt.None,
-      attach_template_selected: opt.None,
-      attach_template_loading: False,
-    ),
-    task_templates: task_templates,
-  )
-}
-
-fn attach_template_selected(
-  state: TemplateAttachmentModel,
-  template_id: Int,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: admin_rules.Model(
-      ..rules,
-      attach_template_selected: opt.Some(template_id),
-    ),
-    task_templates: task_templates,
-  )
-}
-
-fn attach_template_submitted(
-  state: TemplateAttachmentModel,
-  context: TemplateAttachmentContext(parent_msg),
-) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-
-  case rules.attach_template_modal, rules.attach_template_selected {
-    opt.Some(rule_id), opt.Some(template_id) -> {
-      let order = next_template_order(rules, rule_id)
-      #(
-        TemplateAttachmentModel(
-          rules: admin_rules.Model(..rules, attach_template_loading: True),
-          task_templates: task_templates,
-        ),
-        api_rules.attach_template(rule_id, template_id, order, fn(result) {
-          case result {
-            Ok(templates) ->
-              context.on_attach_template_succeeded(rule_id, templates)
-            Error(err) -> context.on_attach_template_failed(err)
-          }
-        }),
-      )
-    }
-    _, _ -> #(state, effect.none())
-  }
-}
-
-fn next_template_order(rules_state: admin_rules.Model, rule_id: Int) -> Int {
-  case rules_state.rules {
-    Loaded(rules) ->
-      case list.find(rules, fn(rule) { rule.id == rule_id }) {
-        Ok(rule) -> list.length(rule.templates) + 1
-        Error(_) -> 1
-      }
-    _ -> 1
-  }
-}
-
-fn attach_template_success_local(
-  state: TemplateAttachmentModel,
-  rule_id: Int,
-  templates: List(RuleTemplate),
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: attach_template_succeeded(rules, rule_id, templates),
-    task_templates: task_templates,
-  )
-}
-
-fn attach_template_failed_local(
-  state: TemplateAttachmentModel,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: attach_template_failed(rules),
-    task_templates: task_templates,
-  )
-}
-
-fn template_detach_clicked(
-  state: TemplateAttachmentModel,
-  rule_id: Int,
-  template_id: Int,
-  context: TemplateAttachmentContext(parent_msg),
-) -> #(TemplateAttachmentModel, Effect(parent_msg)) {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  #(
-    TemplateAttachmentModel(
-      rules: template_detach_started(rules, rule_id, template_id),
-      task_templates: task_templates,
-    ),
-    api_rules.detach_template(rule_id, template_id, fn(result) {
-      case result {
-        Ok(_) -> context.on_template_detach_succeeded(rule_id, template_id)
-        Error(err) ->
-          context.on_template_detach_failed(rule_id, template_id, err)
-      }
-    }),
-  )
-}
-
-fn template_detach_success_local(
-  state: TemplateAttachmentModel,
-  rule_id: Int,
-  template_id: Int,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: template_detach_succeeded(rules, rule_id, template_id),
-    task_templates: task_templates,
-  )
-}
-
-fn template_detach_failed_local(
-  state: TemplateAttachmentModel,
-  rule_id: Int,
-  template_id: Int,
-) -> TemplateAttachmentModel {
-  let TemplateAttachmentModel(rules: rules, task_templates: task_templates) =
-    state
-  TemplateAttachmentModel(
-    rules: template_detach_failed(rules, rule_id, template_id),
-    task_templates: task_templates,
-  )
-}
-
-fn without_template_attachment_auth_check(
-  result: #(TemplateAttachmentModel, Effect(parent_msg)),
-) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
-  let #(state, fx) = result
-  opt.Some(TemplateAttachmentUpdate(state, fx, NoTemplateAttachmentAuthCheck))
-}
-
-fn with_template_attachment_auth_check(
-  result: #(TemplateAttachmentModel, Effect(parent_msg)),
-  err: ApiError,
-) -> opt.Option(TemplateAttachmentUpdate(parent_msg)) {
-  let #(state, fx) = result
-  opt.Some(TemplateAttachmentUpdate(state, fx, CheckTemplateAttachmentAuth(err)))
-}
-
-type TemplateAttachmentSuccess {
-  TemplateAttached
-  TemplateDetached
-}
-
-pub type TemplateAttachmentFeedbackContext(parent_msg) {
-  TemplateAttachmentFeedbackContext(
-    template_attached: String,
-    template_detached: String,
-    on_success_toast: fn(String) -> Effect(parent_msg),
-    on_error_toast: fn(String) -> Effect(parent_msg),
-  )
+  admin_rules.Model(..state, rules_expanded: expanded)
 }
 
 pub type WorkflowAuthPolicy {
@@ -1285,7 +965,7 @@ fn open_rule_dialog(
       )
     admin_rules.RuleDialogEdit(rule) -> {
       let #(subject, task_type_id, event) = rule_target_form_values(rule.target)
-      let template_id = selected_rule_template_id(rule.templates)
+      let template_id = selected_rule_template_id(rule.template)
       admin_rules.Model(
         ..state,
         rules_dialog_mode: opt.Some(mode),
@@ -1310,10 +990,12 @@ fn open_rule_dialog(
   }
 }
 
-fn selected_rule_template_id(templates: List(RuleTemplate)) -> String {
-  case templates {
-    [template, ..] -> int.to_string(template.id)
-    [] -> ""
+fn selected_rule_template_id(
+  template: opt.Option(workflow.RuleTemplate),
+) -> String {
+  case template {
+    opt.Some(template) -> int.to_string(template.id)
+    opt.None -> ""
   }
 }
 
@@ -1356,103 +1038,6 @@ fn optional_int_text(value: opt.Option(Int)) -> String {
   }
 }
 
-fn attach_template_succeeded(
-  state: admin_rules.Model,
-  rule_id: Int,
-  templates: List(RuleTemplate),
-) -> admin_rules.Model {
-  let rules =
-    map_rules_remote(state.rules, fn(rules) {
-      list.map(rules, fn(rule) {
-        case rule.id == rule_id {
-          True -> workflow.Rule(..rule, templates: templates)
-          False -> rule
-        }
-      })
-    })
-
-  admin_rules.Model(
-    ..state,
-    rules: rules,
-    attach_template_modal: opt.None,
-    attach_template_selected: opt.None,
-    attach_template_loading: False,
-  )
-}
-
-fn attach_template_failed(state: admin_rules.Model) -> admin_rules.Model {
-  admin_rules.Model(..state, attach_template_loading: False)
-}
-
-fn template_detach_started(
-  state: admin_rules.Model,
-  rule_id: Int,
-  template_id: Int,
-) -> admin_rules.Model {
-  admin_rules.Model(
-    ..state,
-    detaching_templates: set.insert(state.detaching_templates, #(
-      rule_id,
-      template_id,
-    )),
-  )
-}
-
-fn template_detach_succeeded(
-  state: admin_rules.Model,
-  rule_id: Int,
-  template_id: Int,
-) -> admin_rules.Model {
-  let rules =
-    map_rules_remote(state.rules, fn(rules) {
-      list.map(rules, fn(rule) {
-        case rule.id == rule_id {
-          True ->
-            workflow.Rule(
-              ..rule,
-              templates: list.filter(rule.templates, fn(template) {
-                template.id != template_id
-              }),
-            )
-          False -> rule
-        }
-      })
-    })
-
-  admin_rules.Model(
-    ..state,
-    rules: rules,
-    detaching_templates: set.delete(state.detaching_templates, #(
-      rule_id,
-      template_id,
-    )),
-  )
-}
-
-fn template_detach_failed(
-  state: admin_rules.Model,
-  rule_id: Int,
-  template_id: Int,
-) -> admin_rules.Model {
-  admin_rules.Model(
-    ..state,
-    detaching_templates: set.delete(state.detaching_templates, #(
-      rule_id,
-      template_id,
-    )),
-  )
-}
-
-fn map_rules_remote(
-  remote: Remote(List(Rule)),
-  f: fn(List(Rule)) -> List(Rule),
-) -> Remote(List(Rule)) {
-  case remote {
-    Loaded(rules) -> Loaded(f(rules))
-    other -> other
-  }
-}
-
 fn workflow_success_effect(
   success: WorkflowSuccess,
   feedback: WorkflowFeedbackContext(parent_msg),
@@ -1474,18 +1059,6 @@ fn rule_success_effect(
     RuleCreated -> feedback.rule_created
     RuleUpdated -> feedback.rule_updated
     RuleDeleted -> feedback.rule_deleted
-  }
-
-  feedback.on_success_toast(message)
-}
-
-fn template_attachment_success_effect(
-  success: TemplateAttachmentSuccess,
-  feedback: TemplateAttachmentFeedbackContext(parent_msg),
-) -> Effect(parent_msg) {
-  let message = case success {
-    TemplateAttached -> feedback.template_attached
-    TemplateDetached -> feedback.template_detached
   }
 
   feedback.on_success_toast(message)

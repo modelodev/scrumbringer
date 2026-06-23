@@ -974,19 +974,8 @@ fn update_without_view_mode(
     | pool_messages.RuleFormSubmitted
     | pool_messages.RuleSaved(_)
     | pool_messages.RuleDeleteConfirmed
-    | pool_messages.RuleDeleteFinished(_, _) -> #(model, effect.none())
-
-    // Handled by workflows_workflow.try_template_attachment_update before this dispatch.
-    pool_messages.RuleExpandToggled(_)
-    | pool_messages.AttachTemplateModalOpened(_)
-    | pool_messages.AttachTemplateModalClosed
-    | pool_messages.AttachTemplateSelected(_)
-    | pool_messages.AttachTemplateSubmitted
-    | pool_messages.AttachTemplateSucceeded(_, _)
-    | pool_messages.AttachTemplateFailed(_)
-    | pool_messages.TemplateDetachClicked(_, _)
-    | pool_messages.TemplateDetachSucceeded(_, _)
-    | pool_messages.TemplateDetachFailed(_, _, _) -> #(model, effect.none())
+    | pool_messages.RuleDeleteFinished(_, _)
+    | pool_messages.RuleExpandToggled(_) -> #(model, effect.none())
 
     // Handled by task_templates_workflow.try_update before this dispatch.
     pool_messages.TaskTemplatesProjectFetched(_)

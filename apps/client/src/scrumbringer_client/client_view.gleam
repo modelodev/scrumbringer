@@ -1044,24 +1044,6 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
         pool_messages.OpenRuleDialog(admin_rules.RuleDialogDelete(rule)),
       )
     },
-    on_attach_modal_opened: fn(rule_id) {
-      client_state.pool_msg(pool_messages.AttachTemplateModalOpened(rule_id))
-    },
-    on_attach_modal_closed: client_state.pool_msg(
-      pool_messages.AttachTemplateModalClosed,
-    ),
-    on_template_detached: fn(rule_id, template_id) {
-      client_state.pool_msg(pool_messages.TemplateDetachClicked(
-        rule_id,
-        template_id,
-      ))
-    },
-    on_template_selected: fn(template_id) {
-      client_state.pool_msg(pool_messages.AttachTemplateSelected(template_id))
-    },
-    on_attach_submitted: client_state.pool_msg(
-      pool_messages.AttachTemplateSubmitted,
-    ),
     on_rule_name_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleNameChanged(value))
     },

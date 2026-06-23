@@ -2,6 +2,7 @@
 
 import domain/workflow
 import gleam/json
+import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import scrumbringer_server/use_case/rules_db
 
@@ -10,23 +11,23 @@ pub fn rules_response(values: List(json.Json)) -> json.Json {
 }
 
 pub fn rule(rule: rules_db.RuleRecord) -> json.Json {
-  rule_with_templates(rule, [])
+  rule_with_template(rule, None)
 }
 
 pub fn rule_response(value: rules_db.RuleRecord) -> json.Json {
   json.object([#("rule", rule(value))])
 }
 
-pub fn rule_response_with_templates(
+pub fn rule_response_with_template(
   rule: rules_db.RuleRecord,
-  templates: List(workflow.RuleTemplate),
+  template: Option(workflow.RuleTemplate),
 ) -> json.Json {
-  json.object([#("rule", rule_with_templates(rule, templates))])
+  json.object([#("rule", rule_with_template(rule, template))])
 }
 
-pub fn rule_with_templates(
+pub fn rule_with_template(
   rule: rules_db.RuleRecord,
-  templates: List(workflow.RuleTemplate),
+  template: Option(workflow.RuleTemplate),
 ) -> json.Json {
   let rules_db.RuleRecord(
     id: id,
@@ -51,8 +52,15 @@ pub fn rule_with_templates(
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),
     #("created_at", json.string(created_at)),
-    #("templates", json.array(templates, of: template)),
+    #("template", option_template_json(template)),
   ])
+}
+
+fn option_template_json(value: Option(workflow.RuleTemplate)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(value) -> template(value)
+  }
 }
 
 pub fn template(template: workflow.RuleTemplate) -> json.Json {

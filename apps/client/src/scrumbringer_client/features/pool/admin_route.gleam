@@ -6,7 +6,6 @@ import lustre/effect
 import domain/api_error.{type ApiError}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
-import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
@@ -43,16 +42,6 @@ fn try_rules_update(
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case try_rule_update(model, inner) {
-    opt.Some(result) -> opt.Some(result)
-    opt.None -> try_template_attachment_update(model, inner)
-  }
-}
-
-fn try_template_attachment_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case try_template_attachment_crud_update(model, inner) {
     opt.Some(result) -> opt.Some(result)
     opt.None -> try_task_templates_update(model, inner)
   }
@@ -174,38 +163,6 @@ fn apply_rules_update(
   )
 }
 
-fn try_template_attachment_crud_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case
-    workflows_workflow.try_template_attachment_update(
-      template_attachment_model(model),
-      inner,
-      template_attachment_context(model),
-      template_attachment_feedback_context(model),
-    )
-  {
-    opt.Some(update) ->
-      opt.Some(apply_template_attachment_update(model, update))
-    opt.None -> opt.None
-  }
-}
-
-fn apply_template_attachment_update(
-  model: client_state.Model,
-  update: workflows_workflow.TemplateAttachmentUpdate(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let workflows_workflow.TemplateAttachmentUpdate(local, fx, auth_policy) =
-    update
-
-  route_support.apply_auth_check_before(
-    model,
-    template_attachment_auth_error(auth_policy),
-    fn() { #(set_template_attachment_model(model, local), fx) },
-  )
-}
-
 fn try_task_templates_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
@@ -248,66 +205,6 @@ fn rules_context(
     },
     on_task_types_fetched: fn(result) {
       client_state.admin_msg(admin_messages.TaskTypesFetched(result))
-    },
-  )
-}
-
-fn template_attachment_model(
-  model: client_state.Model,
-) -> workflows_workflow.TemplateAttachmentModel {
-  workflows_workflow.TemplateAttachmentModel(
-    rules: model.admin.rules,
-    task_templates: model.admin.task_templates,
-  )
-}
-
-fn set_template_attachment_model(
-  model: client_state.Model,
-  local: workflows_workflow.TemplateAttachmentModel,
-) -> client_state.Model {
-  let workflows_workflow.TemplateAttachmentModel(
-    rules: rules,
-    task_templates: task_templates,
-  ) = local
-
-  client_state.update_admin(model, fn(admin) {
-    admin_state.AdminModel(
-      ..admin,
-      rules: rules,
-      task_templates: task_templates,
-    )
-  })
-}
-
-fn template_attachment_context(
-  model: client_state.Model,
-) -> workflows_workflow.TemplateAttachmentContext(client_state.Msg) {
-  workflows_workflow.TemplateAttachmentContext(
-    selected_project_id: model.core.selected_project_id,
-    on_task_templates_fetched: fn(result) {
-      client_state.pool_msg(pool_messages.TaskTemplatesProjectFetched(result))
-    },
-    on_attach_template_succeeded: fn(rule_id, templates) {
-      client_state.pool_msg(pool_messages.AttachTemplateSucceeded(
-        rule_id,
-        templates,
-      ))
-    },
-    on_attach_template_failed: fn(err) {
-      client_state.pool_msg(pool_messages.AttachTemplateFailed(err))
-    },
-    on_template_detach_succeeded: fn(rule_id, template_id) {
-      client_state.pool_msg(pool_messages.TemplateDetachSucceeded(
-        rule_id,
-        template_id,
-      ))
-    },
-    on_template_detach_failed: fn(rule_id, template_id, err) {
-      client_state.pool_msg(pool_messages.TemplateDetachFailed(
-        rule_id,
-        template_id,
-        err,
-      ))
     },
   )
 }
@@ -357,17 +254,6 @@ fn rule_feedback_context(
     on_rule_deleted: fn(rule_id, result) {
       client_state.pool_msg(pool_messages.RuleDeleteFinished(rule_id, result))
     },
-  )
-}
-
-fn template_attachment_feedback_context(
-  model: client_state.Model,
-) -> workflows_workflow.TemplateAttachmentFeedbackContext(client_state.Msg) {
-  workflows_workflow.TemplateAttachmentFeedbackContext(
-    template_attached: i18n.t(model.ui.locale, i18n_text.TemplateAttached),
-    template_detached: i18n.t(model.ui.locale, i18n_text.TemplateDetached),
-    on_success_toast: app_effects.toast_success,
-    on_error_toast: app_effects.toast_error,
   )
 }
 
@@ -422,15 +308,6 @@ fn rules_auth_error(
   case policy {
     workflows_workflow.NoRulesAuthCheck -> opt.None
     workflows_workflow.CheckRulesAuth(err) -> opt.Some(err)
-  }
-}
-
-fn template_attachment_auth_error(
-  policy: workflows_workflow.TemplateAttachmentAuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    workflows_workflow.NoTemplateAttachmentAuthCheck -> opt.None
-    workflows_workflow.CheckTemplateAttachmentAuth(err) -> opt.Some(err)
   }
 }
 

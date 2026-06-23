@@ -4,8 +4,6 @@
 //// phrase used by the automations console. It does not decide permissions or
 //// trigger actions.
 
-import gleam/int
-import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
@@ -55,30 +53,24 @@ pub fn trigger_sentence(
 }
 
 pub fn effect_sentence(locale: Locale, rule: workflow.Rule) -> String {
-  case rule.templates {
-    [] ->
+  case rule.template {
+    opt.None ->
       needs_review_sentence(
         locale,
         en: "add one template",
         es: "anade una plantilla",
       )
-    [template] ->
+    opt.Some(template) ->
       case locale {
         En -> "-> Create " <> template.name <> " in the Pool"
         Es -> "-> Crear " <> template.name <> " en el Pool"
       }
-    templates ->
-      needs_review_sentence(
-        locale,
-        en: "keep one template, found " <> int.to_string(list.length(templates)),
-        es: "deja una plantilla, hay " <> int.to_string(list.length(templates)),
-      )
   }
 }
 
 pub fn status_badge(locale: Locale, rule: workflow.Rule) -> Element(msg) {
-  case workflow.rule_target_to_automation_trigger(rule.target), rule.templates {
-    Ok(_), [_] ->
+  case workflow.rule_target_to_automation_trigger(rule.target), rule.template {
+    Ok(_), opt.Some(_) ->
       badge.new_unchecked(active_label(locale), badge.Success)
       |> badge.view_with_class("automation-rule-sentence__badge")
     _, _ ->

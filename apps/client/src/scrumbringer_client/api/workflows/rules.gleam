@@ -8,7 +8,7 @@ import gleam/option.{None, Some}
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/workflow.{type Rule, type RuleTarget, type RuleTemplate}
+import domain/workflow.{type Rule, type RuleTarget}
 import domain/workflow/workflow_codec
 import scrumbringer_client/api/core
 import scrumbringer_client/api/payload_fields
@@ -23,15 +23,6 @@ pub fn rules_payload_decoder() -> decode.Decoder(List(Rule)) {
   decode.field(
     "rules",
     decode.list(workflow_codec.rule_decoder()),
-    decode.success,
-  )
-}
-
-/// Decoder for list of rule templates.
-pub fn rule_templates_payload_decoder() -> decode.Decoder(List(RuleTemplate)) {
-  decode.field(
-    "templates",
-    decode.list(workflow_codec.rule_template_decoder()),
     decode.success,
   )
 }
@@ -128,43 +119,6 @@ pub fn delete_rule(
   core.request_nil(
     core.Delete,
     "/api/v1/rules/" <> int.to_string(rule_id),
-    None,
-    to_msg,
-  )
-}
-
-/// Attach template to rule.
-pub fn attach_template(
-  rule_id: Int,
-  template_id: Int,
-  execution_order: Int,
-  to_msg: fn(ApiResult(List(RuleTemplate))) -> msg,
-) -> Effect(msg) {
-  let body = json.object([#("execution_order", json.int(execution_order))])
-  core.request(
-    core.Post,
-    "/api/v1/rules/"
-      <> int.to_string(rule_id)
-      <> "/templates/"
-      <> int.to_string(template_id),
-    Some(body),
-    rule_templates_payload_decoder(),
-    to_msg,
-  )
-}
-
-/// Detach template from rule.
-pub fn detach_template(
-  rule_id: Int,
-  template_id: Int,
-  to_msg: fn(ApiResult(Nil)) -> msg,
-) -> Effect(msg) {
-  core.request_nil(
-    core.Delete,
-    "/api/v1/rules/"
-      <> int.to_string(rule_id)
-      <> "/templates/"
-      <> int.to_string(template_id),
     None,
     to_msg,
   )

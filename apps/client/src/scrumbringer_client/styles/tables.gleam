@@ -88,20 +88,9 @@ pub fn css() -> List(String) {
     ".radio-label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }",
     ".radio-label .template-name { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); flex: 1; }",
     ".radio-label .template-priority { font-size: var(--sb-font-xs); color: var(--sb-muted); background: var(--sb-surface); padding: 2px 6px; border-radius: 4px; }",
-    // Story 4.10: AC14-15 - Empty state in modal with link
-    ".modal-empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px 16px; text-align: center; }",
-    ".modal-empty-state p { margin: 0; color: var(--sb-muted); font-size: var(--sb-font-md); line-height: var(--sb-line-body); }",
-    ".link-to-templates { color: var(--sb-primary); text-decoration: none; font-weight: var(--sb-weight-medium); }",
-    ".link-to-templates:hover { text-decoration: underline; }",
     // Form hints
     ".form-hint { font-size: var(--sb-font-base); line-height: var(--sb-line-body); color: var(--sb-muted); margin-bottom: 8px; }",
     ".form-hint-secondary { display: flex; align-items: center; gap: 4px; font-size: var(--sb-font-sm); line-height: var(--sb-line-body); color: var(--sb-muted); margin-top: 8px; }",
-    // Attach template modal
-    ".modal-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.5); }",
-    ".modal-sm { position: relative; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 0; width: min(400px, 100%); max-height: 85vh; overflow: hidden; }",
-    ".modal-sm .modal-header { padding: 16px; border-bottom: 1px solid var(--sb-border); margin: 0; }",
-    ".modal-sm .modal-body { padding: 16px; }",
-    ".modal-sm .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--sb-border); background: var(--sb-surface); }",
     ".form-group .select { width: 100%; padding: 10px 12px; font-size: var(--sb-font-md); }",
     // Metric cells in tables
     ".metric-cell { text-align: center; }",

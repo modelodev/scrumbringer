@@ -913,39 +913,15 @@ pub fn translate(text: Text) -> String {
     text.RuleUpdated -> "Regla actualizada"
     text.RuleDeleted -> "Regla eliminada"
     text.RuleDeleteConfirm(name) -> "¿Eliminar la regla \"" <> name <> "\"?"
-    text.AttachTemplate -> "Seleccionar plantilla"
-    text.DetachTemplate -> "Quitar plantilla"
     text.RuleMetricsApplied -> "Aplicadas"
     text.RuleMetricsSuppressed -> "Suprimidas"
 
-    // Story 4.10: Rule template attachment UI
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"
     text.AttachedTemplates -> "Plantilla seleccionada"
-    text.AttachedTemplatesCount(count) ->
-      int.to_string(count)
-      <> " plantilla"
-      <> case count {
-        1 -> ""
-        _ -> "s"
-      }
-    text.NoTemplatesAttached -> "Sin plantilla seleccionada"
     text.NoTemplatesWontCreateTasks -> "Sin plantillas (no creará tareas)"
-    text.SelectTemplateToAttach -> "Selecciona una plantilla"
-    text.AvailableTemplatesInProject ->
-      "Plantillas disponibles en este proyecto"
     text.AttachTemplateHint ->
       "Selecciona una plantilla para que esta regla cree una tarea automáticamente cuando se active."
-    text.NoTemplatesInProject -> "No hay plantillas en este proyecto"
-    text.CreateTemplateLink -> "Créala en Plantillas"
-    text.Attach -> "Seleccionar"
-    text.Attaching -> "Seleccionando…"
-    text.TemplateAttached -> "Plantilla seleccionada"
-    text.TemplateDetached -> "Plantilla retirada"
-    text.DetachTemplateConfirm(name) ->
-      "¿Quitar la plantilla \"" <> name <> "\"?"
-    text.Detaching -> "Quitando…"
-    text.RemoveTemplate -> "Quitar plantilla"
 
     // Task States (for Rules)
     text.TaskStateAvailable -> "Disponible"

@@ -39,7 +39,6 @@ pub fn workflow_decoder() -> decode.Decoder(Workflow) {
 }
 
 /// Decoder for Rule.
-/// Story 4.10: Added templates field decoding.
 pub fn rule_decoder() -> decode.Decoder(Rule) {
   use id <- decode.field("id", decode.int)
   use workflow_id <- decode.field("workflow_id", decode.int)
@@ -50,10 +49,9 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
   use to_state <- decode.field("to_state", decode.string)
   use active <- decode.field("active", decode.bool)
   use created_at <- decode.field("created_at", decode.string)
-  use templates <- decode.optional_field(
-    "templates",
-    [],
-    decode.list(rule_template_decoder()),
+  use template <- decode.field(
+    "template",
+    decode.optional(rule_template_decoder()),
   )
   case decode_rule_target(resource_type, task_type_id, to_state) {
     Ok(target) ->
@@ -65,7 +63,7 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
         target: target,
         active: active,
         created_at: created_at,
-        templates: templates,
+        template: template,
       ))
     Error(error) ->
       decode.failure(
@@ -92,7 +90,7 @@ fn rule_decode_placeholder() -> Rule {
     target: TaskRule(task_status.Available, option.None),
     active: False,
     created_at: "",
-    templates: [],
+    template: option.None,
   )
 }
 
