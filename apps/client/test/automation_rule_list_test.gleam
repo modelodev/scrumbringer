@@ -233,6 +233,21 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_not_contains(html, "btn btn-sm btn-primary")
 }
 
+pub fn automation_rule_list_localizes_rule_meta_labels_test() {
+  let html =
+    rule_list.view(rule_list.Config(..config(), locale: locale.Es))
+    |> element.to_document_string
+
+  assert_contains(html, "Motor:")
+  assert_contains(html, "Plantilla:")
+  assert_contains(html, "Creadas:")
+  assert_contains(html, "Ignoradas:")
+  assert_not_contains(html, "Engine:")
+  assert_not_contains(html, "Template:")
+  assert_not_contains(html, "Created:")
+  assert_not_contains(html, "Ignored:")
+}
+
 pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_test() {
   let html =
     rule_list.view(

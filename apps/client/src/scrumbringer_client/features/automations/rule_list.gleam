@@ -247,13 +247,25 @@ fn view_rule_row_expandable(
               rule_task_type_name(config, rule),
             ),
             div([attribute.class("rule-row__meta")], [
-              rule_meta("Engine", config.workflow_name),
-              rule_meta("Template", case has_template {
-                True -> "1"
-                False -> "0"
-              }),
-              rule_meta("Created", int.to_string(applied)),
-              rule_meta("Ignored", int.to_string(ignored)),
+              rule_meta(
+                t(config, i18n_text.ProjectExecutionsEngineColumn),
+                config.workflow_name,
+              ),
+              rule_meta(
+                t(config, i18n_text.ProjectExecutionsTemplateColumn),
+                case has_template {
+                  True -> "1"
+                  False -> "0"
+                },
+              ),
+              rule_meta(
+                t(config, i18n_text.RuleMetricsApplied),
+                int.to_string(applied),
+              ),
+              rule_meta(
+                t(config, i18n_text.RuleMetricsSuppressed),
+                int.to_string(ignored),
+              ),
             ]),
           ]),
           div([attribute.class("rule-row__actions cell-no-expand")], [
