@@ -976,6 +976,7 @@ fn update_without_view_mode(
 
     // Handled by task_templates_workflow.try_update before this dispatch.
     pool_messages.TaskTemplatesProjectFetched(_)
+    | pool_messages.TaskTemplatesSearchChanged(_)
     | pool_messages.OpenTaskTemplateDialog(_)
     | pool_messages.CloseTaskTemplateDialog
     | pool_messages.TaskTemplateCrudCreated(_)

@@ -58,6 +58,7 @@ fn state_with_templates(
     task_templates_dialog_mode: opt.Some(
       admin_task_templates.TaskTemplateDialogCreate,
     ),
+    task_templates_search: "",
   )
 }
 
@@ -100,6 +101,17 @@ pub fn local_dialog_transitions_open_and_close_test() {
   let #(closed, fx, auth_policy) =
     update(opened, pool_messages.CloseTaskTemplateDialog)
   let assert opt.None = closed.task_templates_dialog_mode
+  let assert True = fx == effect.none()
+  let assert task_templates_update.NoAuthCheck = auth_policy
+}
+
+pub fn local_search_transition_updates_template_query_test() {
+  let state = state_with_templates(Loaded([]), Loaded([]))
+
+  let #(next, fx, auth_policy) =
+    update(state, pool_messages.TaskTemplatesSearchChanged("regression"))
+
+  let assert "regression" = next.task_templates_search
   let assert True = fx == effect.none()
   let assert task_templates_update.NoAuthCheck = auth_policy
 }

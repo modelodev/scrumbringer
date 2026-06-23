@@ -802,6 +802,8 @@ pub type Text {
   TaskTemplatesTitle
   TaskTemplatesOrgTitle
   TaskTemplatesProjectTitle(project_name: String)
+  AutomationTemplatesDescription
+  AutomationTemplatesSearchPlaceholder
   TaskTemplateName
   TaskTemplateDescription
   TaskTemplateType

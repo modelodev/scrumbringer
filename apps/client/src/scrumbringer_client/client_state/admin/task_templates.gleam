@@ -18,6 +18,7 @@ pub type Model {
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
     task_templates_dialog_mode: Option(TaskTemplateDialogMode),
+    task_templates_search: String,
   )
 }
 
@@ -27,5 +28,6 @@ pub fn default_model() -> Model {
     task_templates_org: NotAsked,
     task_templates_project: NotAsked,
     task_templates_dialog_mode: option.None,
+    task_templates_search: "",
   )
 }

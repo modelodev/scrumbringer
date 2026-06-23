@@ -777,7 +777,7 @@ pub fn translate(text: Text) -> String {
       "Rules use templates to create tasks. Manage templates in "
     text.RulesHintTemplatesLink -> "Templates"
     text.TemplatesHintRules ->
-      "Templates define what tasks to create. Rules determine when to create them. See "
+      "Templates define what tasks to create. Rules determine when each template creates work."
     text.TemplatesHintRulesLink -> "Rules"
 
     text.IdentitySection -> "Identity"
@@ -937,11 +937,14 @@ pub fn translate(text: Text) -> String {
     text.TaskNextActionOpen -> "Open task"
 
     // Task Templates
-    text.AdminTaskTemplates -> "Task Templates"
-    text.TaskTemplatesTitle -> "Task Templates"
-    text.TaskTemplatesOrgTitle -> "Organization Templates"
+    text.AdminTaskTemplates -> "Templates"
+    text.TaskTemplatesTitle -> "Template library"
+    text.TaskTemplatesOrgTitle -> "Organization templates"
     text.TaskTemplatesProjectTitle(project_name) ->
-      "Templates - " <> project_name
+      "Template library - " <> project_name
+    text.AutomationTemplatesDescription ->
+      "Manage reusable templates for rules. Generated tasks stay available in the Pool."
+    text.AutomationTemplatesSearchPlaceholder -> "Search templates"
     text.TaskTemplateName -> "Name"
     text.TaskTemplateDescription -> "Description"
     text.TaskTemplateType -> "Type"
@@ -952,7 +955,7 @@ pub fn translate(text: Text) -> String {
     text.CreateTaskTemplate -> "Create Template"
     text.EditTaskTemplate -> "Edit Template"
     text.DeleteTaskTemplate -> "Delete Template"
-    text.NoTaskTemplatesYet -> "No task templates yet"
+    text.NoTaskTemplatesYet -> "No templates yet"
     text.TaskTemplateDeleted -> "Template deleted"
     text.TaskTemplateDeleteConfirm(name) ->
       "Delete template \"" <> name <> "\"?"

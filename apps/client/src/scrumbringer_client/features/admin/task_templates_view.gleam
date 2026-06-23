@@ -1,22 +1,24 @@
-//// Admin task templates view.
+//// Automation template library view.
 ////
 //// ## Mission
 ////
-//// Render project-scoped task templates and their CRUD custom element.
+//// Render project-scoped templates as an internal automations mode.
 
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
-import lustre/element/html.{a, div, span, text}
+import lustre/element/html.{div, h2, input, p, span, text}
 import lustre/event
 
 import gleam/dynamic/decode
 
 import domain/project.{type Project}
-import domain/remote.{type Remote, Loaded}
+import domain/remote as remote_state
 import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
 import domain/workflow/workflow_codec
@@ -25,19 +27,17 @@ import scrumbringer_client/client_state/admin/task_templates as admin_task_templ
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/permissions
-import scrumbringer_client/router
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/event_decoders
-import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/filter_bar
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/info_callout
-import scrumbringer_client/ui/section_header
 
 // =============================================================================
-// Task Templates Views
+// Template Library Views
 // =============================================================================
 
 pub type Config(msg) {
@@ -45,12 +45,14 @@ pub type Config(msg) {
     locale: Locale,
     selected_project: opt.Option(Project),
     selected_project_id: opt.Option(Int),
-    templates: Remote(List(TaskTemplate)),
+    templates: remote_state.Remote(List(TaskTemplate)),
     dialog_mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
-    task_types: Remote(List(TaskType)),
+    task_types: remote_state.Remote(List(TaskType)),
+    search_query: String,
     on_create_clicked: msg,
     on_edit_clicked: fn(TaskTemplate) -> msg,
     on_delete_clicked: fn(TaskTemplate) -> msg,
+    on_search_changed: fn(String) -> msg,
     on_created: fn(TaskTemplate) -> msg,
     on_updated: fn(TaskTemplate) -> msg,
     on_deleted: fn(Int) -> msg,
@@ -84,59 +86,67 @@ fn project_id_attribute(project_id: opt.Option(Int)) -> Attribute(msg) {
   }
 }
 
-/// Task templates management view (project-scoped only).
+/// Automation template library view (project-scoped only).
 pub fn view_task_templates(config: Config(msg)) -> Element(msg) {
-  // Get title with project name
   let title = case config.selected_project {
     opt.Some(project) ->
       i18n.t(config.locale, i18n_text.TaskTemplatesProjectTitle(project.name))
     opt.None -> i18n.t(config.locale, i18n_text.TaskTemplatesTitle)
   }
 
-  div([attribute.class("section")], [
-    // Section header with action button
-    section_header.view_with_action(
-      icons.TaskTemplates,
-      title,
-      dialog.add_button_with_locale(
-        config.locale,
-        i18n_text.CreateTaskTemplate,
-        config.on_create_clicked,
-      ),
-    ),
-    // Story 4.9: Unified hint with rules link and variables info
+  div([attribute.class("automation-templates-mode")], [
+    div([attribute.class("automation-templates-heading")], [
+      h2([], [text(title)]),
+      p([], [
+        text(i18n.t(config.locale, i18n_text.AutomationTemplatesDescription)),
+      ]),
+    ]),
+    view_template_filters(config),
     view_templates_hint(config),
-    // Templates table (project-scoped)
     view_task_templates_table(config),
-    // Task template CRUD dialog component
     view_task_template_crud_dialog(config),
   ])
 }
 
-/// Story 4.9: Unified hint with rules link and variables documentation.
+fn view_template_filters(config: Config(msg)) -> Element(msg) {
+  filter_bar.new([
+    form_field.view(
+      i18n.t(config.locale, i18n_text.SearchLabel),
+      input([
+        attribute.type_("search"),
+        attribute.value(config.search_query),
+        attribute.placeholder(i18n.t(
+          config.locale,
+          i18n_text.AutomationTemplatesSearchPlaceholder,
+        )),
+        attribute.attribute(
+          "aria-label",
+          i18n.t(config.locale, i18n_text.AutomationTemplatesSearchPlaceholder),
+        ),
+        attribute.attribute("data-testid", "automation-template-search"),
+        event.on_input(config.on_search_changed),
+      ]),
+    ),
+  ])
+  |> filter_bar.with_actions([
+    dialog.add_button_with_locale(
+      config.locale,
+      i18n_text.CreateTaskTemplate,
+      config.on_create_clicked,
+    ),
+  ])
+  |> filter_bar.with_class("automation-templates-filters")
+  |> filter_bar.with_testid("automation-template-picker")
+  |> filter_bar.view
+}
+
+/// Unified hint with variables documentation for the template library.
 fn view_templates_hint(config: Config(msg)) -> Element(msg) {
   info_callout.view_with_content(
     opt.None,
     div([], [
       span([], [
         text(i18n.t(config.locale, i18n_text.TemplatesHintRules)),
-        a(
-          [
-            attribute.href(
-              router.format(router.Config(
-                permissions.Workflows,
-                config.selected_project_id,
-              )),
-            ),
-            attribute.class("info-callout-link"),
-          ],
-          [
-            text(
-              i18n.t(config.locale, i18n_text.TemplatesHintRulesLink)
-              <> " \u{2192}",
-            ),
-          ],
-        ),
       ]),
       div([attribute.class("info-callout-variables")], [
         text(i18n.t(config.locale, i18n_text.TaskTemplateVariablesHelp)),
@@ -234,9 +244,11 @@ fn task_template_to_property_json(
 }
 
 /// Convert task types to JSON for property passing to component.
-fn task_types_to_property_json(task_types: Remote(List(TaskType))) -> json.Json {
+fn task_types_to_property_json(
+  task_types: remote_state.Remote(List(TaskType)),
+) -> json.Json {
   case task_types {
-    Loaded(types) ->
+    remote_state.Loaded(types) ->
       json.array(types, fn(tt: TaskType) {
         json.object([
           #("id", json.int(tt.id)),
@@ -291,9 +303,14 @@ fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
 
 fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
+  let templates =
+    config.templates
+    |> remote_state.map(fn(items) {
+      filter_templates(items, config.search_query)
+    })
 
   data_table.view_remote_with_forbidden(
-    config.templates,
+    templates,
     loading_msg: t(i18n_text.LoadingEllipsis),
     empty_msg: t(i18n_text.NoTaskTemplatesYet),
     forbidden_msg: t(i18n_text.NotPermitted),
@@ -339,4 +356,28 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
         [attribute.attribute("data-testid", "automation-template-row")]
       }),
   )
+}
+
+fn filter_templates(
+  templates: List(TaskTemplate),
+  query: String,
+) -> List(TaskTemplate) {
+  let needle = string.trim(query) |> string.lowercase
+  case needle {
+    "" -> templates
+    _ ->
+      list.filter(templates, fn(template) {
+        template_matches_query(template, needle)
+      })
+  }
+}
+
+fn template_matches_query(template: TaskTemplate, needle: String) -> Bool {
+  string.contains(string.lowercase(template.name), needle)
+  || string.contains(string.lowercase(template.type_name), needle)
+  || case template.description {
+    opt.Some(description) ->
+      string.contains(string.lowercase(description), needle)
+    opt.None -> False
+  }
 }

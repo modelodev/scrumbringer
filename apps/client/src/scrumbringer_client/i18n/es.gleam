@@ -797,7 +797,7 @@ pub fn translate(text: Text) -> String {
       "Las reglas usan plantillas para crear tareas. Gestiona plantillas en "
     text.RulesHintTemplatesLink -> "Plantillas"
     text.TemplatesHintRules ->
-      "Las plantillas definen qué tareas crear. Las reglas determinan cuándo crearlas. Ver "
+      "Las plantillas definen qué tasks crear. Las reglas determinan cuándo cada plantilla crea trabajo."
     text.TemplatesHintRulesLink -> "Reglas"
 
     text.IdentitySection -> "Identidad"
@@ -962,11 +962,14 @@ pub fn translate(text: Text) -> String {
     text.TaskNextActionOpen -> "Abrir tarea"
 
     // Task Templates
-    text.AdminTaskTemplates -> "Plantillas de tarea"
-    text.TaskTemplatesTitle -> "Plantillas de tarea"
+    text.AdminTaskTemplates -> "Plantillas"
+    text.TaskTemplatesTitle -> "Biblioteca de plantillas"
     text.TaskTemplatesOrgTitle -> "Plantillas de la organización"
     text.TaskTemplatesProjectTitle(project_name) ->
-      "Plantillas - " <> project_name
+      "Biblioteca de plantillas - " <> project_name
+    text.AutomationTemplatesDescription ->
+      "Gestiona plantillas reutilizables para reglas. Las tasks generadas quedan disponibles en el Pool."
+    text.AutomationTemplatesSearchPlaceholder -> "Buscar plantillas"
     text.TaskTemplateName -> "Nombre"
     text.TaskTemplateDescription -> "Descripción"
     text.TaskTemplateType -> "Tipo"
@@ -977,7 +980,7 @@ pub fn translate(text: Text) -> String {
     text.CreateTaskTemplate -> "Crear plantilla"
     text.EditTaskTemplate -> "Editar plantilla"
     text.DeleteTaskTemplate -> "Eliminar plantilla"
-    text.NoTaskTemplatesYet -> "Aún no hay plantillas de tarea"
+    text.NoTaskTemplatesYet -> "Aún no hay plantillas"
     text.TaskTemplateDeleted -> "Plantilla eliminada"
     text.TaskTemplateDeleteConfirm(name) ->
       "¿Eliminar la plantilla \"" <> name <> "\"?"

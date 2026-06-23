@@ -994,6 +994,9 @@ fn admin_task_template_callbacks() -> admin_task_templates_view_config.Callbacks
         ),
       )
     },
+    on_search_changed: fn(value) {
+      client_state.pool_msg(pool_messages.TaskTemplatesSearchChanged(value))
+    },
     on_created: fn(template) {
       client_state.pool_msg(pool_messages.TaskTemplateCrudCreated(template))
     },

@@ -585,6 +585,9 @@ fn task_template_callbacks() -> task_templates_view_config.Callbacks(Msg) {
         ),
       )
     },
+    on_search_changed: fn(value) {
+      pool_msg(pool_messages.TaskTemplatesSearchChanged(value))
+    },
     on_created: fn(template) {
       pool_msg(pool_messages.TaskTemplateCrudCreated(template))
     },

@@ -226,6 +226,7 @@ pub type Msg {
   TemplateDetachFailed(Int, Int, ApiError)
   RuleMetricsFetched(ApiResult(api_rule_metrics.WorkflowMetrics))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
+  TaskTemplatesSearchChanged(String)
   OpenTaskTemplateDialog(admin_task_templates.TaskTemplateDialogMode)
   CloseTaskTemplateDialog
   TaskTemplateCrudCreated(TaskTemplate)

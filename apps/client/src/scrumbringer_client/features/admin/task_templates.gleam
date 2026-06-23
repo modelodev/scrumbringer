@@ -71,6 +71,10 @@ pub fn try_update(
       #(project_fetched_error(state, err), effect.none())
       |> with_auth_check(err)
 
+    pool_messages.TaskTemplatesSearchChanged(query) ->
+      #(search_changed(state, query), effect.none())
+      |> without_auth_check
+
     pool_messages.OpenTaskTemplateDialog(mode) ->
       #(open_dialog(state, mode), effect.none())
       |> without_auth_check
@@ -133,6 +137,13 @@ fn project_fetched_error(
   admin_task_templates.Model(..state, task_templates_project: Failed(err))
 }
 
+fn search_changed(
+  state: admin_task_templates.Model,
+  query: String,
+) -> admin_task_templates.Model {
+  admin_task_templates.Model(..state, task_templates_search: query)
+}
+
 fn open_dialog(
   state: admin_task_templates.Model,
   mode: admin_task_templates.TaskTemplateDialogMode,
@@ -163,6 +174,7 @@ fn template_created(
     task_templates_org: org,
     task_templates_project: project,
     task_templates_dialog_mode: opt.None,
+    task_templates_search: state.task_templates_search,
   )
 }
 
@@ -187,6 +199,7 @@ fn template_updated(
     task_templates_org: org,
     task_templates_project: project,
     task_templates_dialog_mode: opt.None,
+    task_templates_search: state.task_templates_search,
   )
 }
 
@@ -211,6 +224,7 @@ fn template_deleted(
     task_templates_org: org,
     task_templates_project: project,
     task_templates_dialog_mode: opt.None,
+    task_templates_search: state.task_templates_search,
   )
 }
 
