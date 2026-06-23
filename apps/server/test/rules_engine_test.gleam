@@ -250,6 +250,126 @@ pub fn evaluate_rules_card_resource_type_test() {
     result
 }
 
+pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Card Activated Depth")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Followup", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Card Depth WF")
+  let assert Ok(_rule_id) =
+    fixtures.create_rule_card_at_depth(
+      handler,
+      session,
+      workflow_id,
+      "Depth 2 Activated",
+      domain_card.Active,
+      2,
+      template_id,
+    )
+  let assert Ok(root_card_id) =
+    fixtures.create_card(handler, session, project_id, "Root Card")
+  let assert Ok(child_card_id) =
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      root_card_id,
+      "Child Card",
+    )
+
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  let root_event =
+    fixtures.card_event_state(
+      root_card_id,
+      project_id,
+      org_id,
+      user_id,
+      Some(domain_card.Draft),
+      domain_card.Active,
+    )
+  let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
+
+  let child_event =
+    fixtures.card_event_state(
+      child_card_id,
+      project_id,
+      org_id,
+      user_id,
+      Some(domain_card.Draft),
+      domain_card.Active,
+    )
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    rules_engine.evaluate_rules(db, child_event)
+}
+
+pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Card Closed Depth")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Followup", "check")
+  let assert Ok(template_id) =
+    fixtures.create_template(handler, session, project_id, type_id, "Followup")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Card Closed WF")
+  let assert Ok(_rule_id) =
+    fixtures.create_rule_card_at_depth(
+      handler,
+      session,
+      workflow_id,
+      "Depth 2 Closed",
+      domain_card.Closed,
+      2,
+      template_id,
+    )
+  let assert Ok(root_card_id) =
+    fixtures.create_card(handler, session, project_id, "Root Card")
+  let assert Ok(child_card_id) =
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      root_card_id,
+      "Child Card",
+    )
+
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  let root_event =
+    fixtures.card_event_state(
+      root_card_id,
+      project_id,
+      org_id,
+      user_id,
+      Some(domain_card.Draft),
+      domain_card.Closed,
+    )
+  let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
+
+  let child_event =
+    fixtures.card_event_state(
+      child_card_id,
+      project_id,
+      org_id,
+      user_id,
+      Some(domain_card.Draft),
+      domain_card.Closed,
+    )
+  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
+    rules_engine.evaluate_rules(db, child_event)
+}
+
 // =============================================================================
 // Variable Substitution Tests
 // =============================================================================

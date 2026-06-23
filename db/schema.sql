@@ -781,6 +781,8 @@ CREATE TABLE public.rules (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     trigger_kind text NOT NULL,
+    card_depth integer,
+    CONSTRAINT rules_card_depth_check CHECK (((card_depth IS NULL) OR (card_depth > 0))),
     CONSTRAINT rules_resource_type_check CHECK ((resource_type = ANY (ARRAY['task'::text, 'card'::text]))),
     CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text, 'invalid_migrated_rule'::text])))
 );
@@ -1823,6 +1825,13 @@ CREATE INDEX idx_rules_active ON public.rules USING btree (active) WHERE (active
 
 
 --
+-- Name: idx_rules_card_depth; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rules_card_depth ON public.rules USING btree (card_depth) WHERE (card_depth IS NOT NULL);
+
+
+--
 -- Name: idx_rules_trigger_kind; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2743,4 +2752,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260622132000'),
     ('20260622133000'),
     ('20260622134000'),
-    ('20260622135000');
+    ('20260622135000'),
+    ('20260623120000');

@@ -376,6 +376,30 @@ pub fn create_rule_card(
   do_create_rule(handler, session, workflow_id, name, payload)
 }
 
+/// Create a card rule scoped to a specific hierarchy depth and return its ID.
+pub fn create_rule_card_at_depth(
+  handler: Handler,
+  session: Session,
+  workflow_id: Int,
+  name: String,
+  to_state: domain_card.CardPhase,
+  depth: Int,
+  template_id: Int,
+) -> Result(Int, String) {
+  let payload =
+    build_rule_card_payload(
+      name,
+      domain_card.state_to_string(to_state),
+      json.object([
+        #("type", json.string("at_depth")),
+        #("depth", json.int(depth)),
+      ]),
+      template_id,
+    )
+
+  do_create_rule(handler, session, workflow_id, name, payload)
+}
+
 /// Build JSON payload for rule creation.
 fn build_rule_payload(
   resource_type: RuleResourceType,
@@ -408,6 +432,33 @@ fn build_rule_payload(
   ]
 
   json.object(base_fields)
+}
+
+fn build_rule_card_payload(
+  name: String,
+  to_state: String,
+  scope: json.Json,
+  template_id: Int,
+) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("goal", json.string("Card automation")),
+    #(
+      "trigger",
+      json.object([
+        #("type", json.string(card_trigger_type(to_state))),
+        #("scope", scope),
+      ]),
+    ),
+    #(
+      "action",
+      json.object([
+        #("type", json.string("create_task")),
+        #("template_id", json.int(template_id)),
+      ]),
+    ),
+    #("status", json.object([#("type", json.string("active"))])),
+  ])
 }
 
 fn trigger_payload(
@@ -701,6 +752,44 @@ pub fn create_card(
     status ->
       Error(
         "create_card failed: status="
+        <> int.to_string(status)
+        <> " title="
+        <> title
+        <> " body="
+        <> simulate.read_body(res),
+      )
+  }
+}
+
+/// Create a child card and return its ID.
+pub fn create_child_card(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  parent_card_id: Int,
+  title: String,
+) -> Result(Int, String) {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
+      )
+      |> with_auth(session)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string(title)),
+          #("description", json.string("Test child card")),
+          #("parent_card_id", json.int(parent_card_id)),
+        ]),
+      ),
+    )
+
+  case res.status {
+    200 -> decode_entity_id(simulate.read_body(res), CardEntity)
+    status ->
+      Error(
+        "create_child_card failed: status="
         <> int.to_string(status)
         <> " title="
         <> title

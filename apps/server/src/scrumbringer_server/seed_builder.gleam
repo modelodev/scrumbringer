@@ -764,7 +764,7 @@ fn seed_rule_options(
   active active: Bool,
   created_at created_at: Option(String),
 ) -> seed_db.RuleInsertOptions {
-  let #(resource_type, _task_type_id, to_state) =
+  let #(resource_type, _task_type_id, card_depth, to_state) =
     automation.trigger_to_db_values(trigger)
 
   seed_db.RuleInsertOptions(
@@ -774,10 +774,18 @@ fn seed_rule_options(
     resource_type: resource_type,
     trigger_kind: automation.trigger_kind(trigger),
     task_type_id: automation.trigger_task_type_id(trigger),
+    card_depth: option_from_positive_int(card_depth),
     to_state: to_state,
     active: active,
     created_at: created_at,
   )
+}
+
+fn option_from_positive_int(value: Int) -> Option(Int) {
+  case value {
+    n if n > 0 -> Some(n)
+    _ -> None
+  }
 }
 
 fn build_tasks(

@@ -292,15 +292,27 @@ pub fn trigger_kind(trigger: AutomationTrigger) -> String {
 pub fn trigger_from_kind(
   kind: String,
   task_type_id: Option(Int),
+  card_depth: Option(Int),
 ) -> Result(AutomationTrigger, TriggerKindParseError) {
   case kind {
     "task_created" -> Ok(TaskCreated(task_type_id))
     "task_claimed" -> Ok(TaskClaimed(task_type_id))
     "task_released" -> Ok(TaskReleased(task_type_id))
     "task_completed" -> Ok(TaskCompleted(task_type_id))
-    "card_activated" -> Ok(CardActivated(AnyCard))
-    "card_closed" -> Ok(CardClosed(AnyCard))
+    "card_activated" -> Ok(CardActivated(scope_from_depth(card_depth)))
+    "card_closed" -> Ok(CardClosed(scope_from_depth(card_depth)))
     other -> Error(UnknownTriggerKind(other))
+  }
+}
+
+fn scope_from_depth(card_depth: Option(Int)) -> CardAutomationScope {
+  case card_depth {
+    Some(depth) ->
+      case card_depth_from_int(depth) {
+        Ok(valid) -> AtDepth(valid)
+        Error(_) -> AnyCard
+      }
+    None -> AnyCard
   }
 }
 
@@ -332,17 +344,34 @@ pub fn trigger_task_type_id(trigger: AutomationTrigger) -> Option(Int) {
   }
 }
 
+pub fn trigger_card_depth(trigger: AutomationTrigger) -> Option(Int) {
+  let scope = case trigger {
+    CardActivated(scope) | CardClosed(scope) -> Some(scope)
+    TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskCompleted(_) -> None
+  }
+
+  case scope {
+    Some(AtDepth(depth)) -> Some(card_depth_to_int(depth))
+    Some(AnyCard) | None -> None
+  }
+}
+
 pub fn trigger_to_db_values(
   trigger: AutomationTrigger,
-) -> #(String, Int, String) {
+) -> #(String, Int, Int, String) {
   let task_type_id = case trigger_task_type_id(trigger) {
     Some(id) -> id
+    None -> 0
+  }
+  let card_depth = case trigger_card_depth(trigger) {
+    Some(depth) -> depth
     None -> 0
   }
 
   #(
     trigger_resource_type(trigger),
     task_type_id,
+    card_depth,
     trigger_to_state_string(trigger),
   )
 }

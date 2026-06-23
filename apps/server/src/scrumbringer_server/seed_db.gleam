@@ -117,6 +117,7 @@ pub type RuleInsertOptions {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Option(Int),
+    card_depth: Option(Int),
     to_state: String,
     active: Bool,
     created_at: Option(String),
@@ -1169,9 +1170,9 @@ pub fn insert_rule(
   opts: RuleInsertOptions,
 ) -> Result(Int, String) {
   let base_cols =
-    "workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active"
-  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8"
-  let base_idx = 9
+    "workflow_id, name, goal, resource_type, trigger_kind, task_type_id, card_depth, to_state, active"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9"
+  let base_idx = 10
 
   let #(cols, vals, _, params) =
     append_optional_timestamp(
@@ -1194,6 +1195,7 @@ pub fn insert_rule(
     |> pog.parameter(pog.text(opts.resource_type))
     |> pog.parameter(pog.text(opts.trigger_kind))
     |> pog.parameter(pog.nullable(pog.int, opts.task_type_id))
+    |> pog.parameter(pog.nullable(pog.int, opts.card_depth))
     |> pog.parameter(pog.text(opts.to_state))
     |> pog.parameter(pog.bool(opts.active))
 
@@ -1227,6 +1229,7 @@ pub fn insert_rule_simple(
       resource_type: resource_type,
       trigger_kind: trigger_kind_from_rule_values(resource_type, to_state),
       task_type_id: task_type_id,
+      card_depth: None,
       to_state: to_state,
       active: True,
       created_at: None,

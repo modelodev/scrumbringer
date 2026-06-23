@@ -69,13 +69,28 @@ pub fn event_keys_separate_different_facts_on_same_task_test() {
 
 pub fn trigger_kind_round_trips_to_supported_trigger_test() {
   let assert Ok(automation.TaskCreated(Some(7))) =
-    automation.trigger_from_kind("task_created", Some(7))
+    automation.trigger_from_kind("task_created", Some(7), None)
   let assert Ok(automation.TaskReleased(Some(7))) =
-    automation.trigger_from_kind("task_released", Some(7))
+    automation.trigger_from_kind("task_released", Some(7), None)
   let assert Ok(automation.CardActivated(automation.AnyCard)) =
-    automation.trigger_from_kind("card_activated", None)
+    automation.trigger_from_kind("card_activated", None, None)
+  let assert Ok(automation.CardClosed(automation.AtDepth(depth))) =
+    automation.trigger_from_kind("card_closed", None, Some(2))
+  let assert 2 = automation.card_depth_to_int(depth)
   let assert Error(automation.UnknownTriggerKind("task_due")) =
-    automation.trigger_from_kind("task_due", None)
+    automation.trigger_from_kind("task_due", None, None)
+}
+
+pub fn trigger_to_db_values_preserves_card_depth_scope_test() {
+  let assert Ok(depth) = automation.card_depth_from_int(3)
+
+  let assert #("card", 0, 3, "en_curso") =
+    automation.trigger_to_db_values(
+      automation.CardActivated(automation.AtDepth(depth)),
+    )
+
+  let assert #("card", 0, 0, "cerrada") =
+    automation.trigger_to_db_values(automation.CardClosed(automation.AnyCard))
 }
 
 pub fn available_variables_exclude_legacy_and_due_date_values_test() {

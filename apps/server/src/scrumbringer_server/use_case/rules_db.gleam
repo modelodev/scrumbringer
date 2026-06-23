@@ -62,6 +62,7 @@ fn rule_from_list_row(
     trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
+    card_depth: row.card_depth,
     to_state: row.to_state,
     active: row.active,
     created_at: row.created_at,
@@ -77,6 +78,7 @@ fn rule_from_get_row(row: sql.RulesGetRow) -> Result(RuleRecord, ServiceError) {
     trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
+    card_depth: row.card_depth,
     to_state: row.to_state,
     active: row.active,
     created_at: row.created_at,
@@ -94,6 +96,7 @@ fn rule_from_create_row(
     trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
+    card_depth: row.card_depth,
     to_state: row.to_state,
     active: row.active,
     created_at: row.created_at,
@@ -111,6 +114,7 @@ fn rule_from_update_row(
     trigger_kind: row.trigger_kind,
     resource_type: row.resource_type,
     task_type_id: row.task_type_id,
+    card_depth: row.card_depth,
     to_state: row.to_state,
     active: row.active,
     created_at: row.created_at,
@@ -125,15 +129,21 @@ fn rule_from_fields(
   trigger_kind trigger_kind: String,
   resource_type resource_type: String,
   task_type_id task_type_id: Int,
+  card_depth card_depth: Int,
   to_state to_state: String,
   active active: Bool,
   created_at created_at: String,
 ) -> Result(RuleRecord, ServiceError) {
-  use trigger <- result.try(parse_stored_trigger(trigger_kind, task_type_id))
+  use trigger <- result.try(parse_stored_trigger(
+    trigger_kind,
+    task_type_id,
+    card_depth,
+  ))
   use _ <- result.try(validate_stored_trigger_projection(
     trigger,
     resource_type,
     task_type_id,
+    card_depth,
     to_state,
   ))
 
@@ -170,10 +180,15 @@ fn invalid_projection_error(
   trigger: automation.AutomationTrigger,
   resource_type: String,
   task_type_id: Int,
+  card_depth: Int,
   to_state: String,
 ) -> ServiceError {
-  let #(expected_resource_type, expected_task_type_id, expected_to_state) =
-    automation.trigger_to_db_values(trigger)
+  let #(
+    expected_resource_type,
+    expected_task_type_id,
+    expected_card_depth,
+    expected_to_state,
+  ) = automation.trigger_to_db_values(trigger)
 
   Unexpected(
     "Invalid persisted rule trigger projection"
@@ -184,11 +199,15 @@ fn invalid_projection_error(
     <> "/"
     <> int.to_string(expected_task_type_id)
     <> "/"
+    <> int.to_string(expected_card_depth)
+    <> "/"
     <> expected_to_state
     <> ", actual="
     <> resource_type
     <> "/"
     <> int.to_string(task_type_id)
+    <> "/"
+    <> int.to_string(card_depth)
     <> "/"
     <> to_state
     <> ")",
@@ -215,25 +234,43 @@ fn db_task_type_id(value: Int) -> Option(Int) {
 fn parse_stored_trigger(
   trigger_kind: String,
   task_type_id: Int,
+  card_depth: Int,
 ) -> Result(automation.AutomationTrigger, ServiceError) {
-  automation.trigger_from_kind(trigger_kind, db_task_type_id(task_type_id))
+  automation.trigger_from_kind(
+    trigger_kind,
+    db_task_type_id(task_type_id),
+    db_card_depth(card_depth),
+  )
   |> result.map_error(fn(error) {
     trigger_error_to_stored_error(error, trigger_kind)
   })
+}
+
+fn db_card_depth(value: Int) -> Option(Int) {
+  case value {
+    depth if depth > 0 -> Some(depth)
+    _ -> None
+  }
 }
 
 fn validate_stored_trigger_projection(
   trigger: automation.AutomationTrigger,
   resource_type: String,
   task_type_id: Int,
+  card_depth: Int,
   to_state: String,
 ) -> Result(Nil, ServiceError) {
-  let #(expected_resource_type, expected_task_type_id, expected_to_state) =
-    automation.trigger_to_db_values(trigger)
+  let #(
+    expected_resource_type,
+    expected_task_type_id,
+    expected_card_depth,
+    expected_to_state,
+  ) = automation.trigger_to_db_values(trigger)
 
   case
     expected_resource_type == resource_type
     && expected_task_type_id == task_type_id
+    && expected_card_depth == card_depth
     && expected_to_state == to_state
   {
     True -> Ok(Nil)
@@ -242,6 +279,7 @@ fn validate_stored_trigger_projection(
         trigger,
         resource_type,
         task_type_id,
+        card_depth,
         to_state,
       ))
   }
@@ -296,7 +334,7 @@ pub fn create_rule(
   status: automation.AutomationRuleStatus,
 ) -> Result(RuleRecord, ServiceError) {
   use _ <- result.try(validate_rule_action(action))
-  let #(resource_type_value, task_type_value, to_state_value) =
+  let #(resource_type_value, task_type_value, card_depth_value, to_state_value) =
     automation.trigger_to_db_values(trigger)
   let trigger_kind_value = automation.trigger_kind(trigger)
   let active = automation.status_to_active(status)
@@ -309,6 +347,7 @@ pub fn create_rule(
     resource_type_value,
     trigger_kind_value,
     task_type_value,
+    card_depth_value,
     to_state_value,
     active,
   )
@@ -322,6 +361,7 @@ fn create_rule_in_db(
   resource_type_value: String,
   trigger_kind_value: String,
   task_type_value: Int,
+  card_depth_value: Int,
   to_state_value: String,
   active: Bool,
 ) -> Result(RuleRecord, ServiceError) {
@@ -334,6 +374,7 @@ fn create_rule_in_db(
       resource_type_value,
       trigger_kind_value,
       task_type_value,
+      card_depth_value,
       to_state_value,
       active,
     )
@@ -408,6 +449,7 @@ fn update_rule_with_row(
   use stored_trigger <- result.try(parse_stored_trigger(
     row.trigger_kind,
     row.task_type_id,
+    row.card_depth,
   ))
   let trigger_value = option_helpers.option_to_value(trigger, stored_trigger)
   let status_value =
@@ -415,7 +457,7 @@ fn update_rule_with_row(
       status,
       automation.active_to_rule_status(row.active),
     )
-  let #(resource_type_param, task_type_param, to_state_param) =
+  let #(resource_type_param, task_type_param, card_depth_param, to_state_param) =
     automation.trigger_to_db_values(trigger_value)
   let trigger_kind_param = automation.trigger_kind(trigger_value)
   let active_flag = case automation.status_to_active(status_value) {
@@ -431,6 +473,7 @@ fn update_rule_with_row(
     resource_type_param,
     trigger_kind_param,
     task_type_param,
+    card_depth_param,
     to_state_param,
     active_flag,
   )
@@ -444,6 +487,7 @@ fn update_rule_in_db(
   resource_type_param: String,
   trigger_kind_param: String,
   task_type_param: Int,
+  card_depth_param: Int,
   to_state_param: String,
   active_flag: Int,
 ) -> Result(RuleRecord, ServiceError) {
@@ -456,6 +500,7 @@ fn update_rule_in_db(
       resource_type_param,
       trigger_kind_param,
       task_type_param,
+      card_depth_param,
       to_state_param,
       active_flag,
     )

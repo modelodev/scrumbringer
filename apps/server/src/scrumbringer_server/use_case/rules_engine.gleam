@@ -289,6 +289,7 @@ fn find_matching_rules(
   use trigger <- result.try(event_trigger(event))
   let trigger_kind = automation.trigger_kind(trigger)
   let task_type_param = task_type_filter_value(trigger)
+  use card_depth_param <- result.try(event_card_depth(db, event))
 
   case
     sql.rules_find_matching(
@@ -297,6 +298,7 @@ fn find_matching_rules(
       event_project_id(event),
       event_org_id(event),
       task_type_param,
+      card_depth_param,
     )
   {
     Ok(returned) -> list.try_map(returned.rows, matching_rule_from_row)
@@ -767,6 +769,22 @@ fn event_card_id(event: StateChange) -> option.Option(Int) {
     CardChange(..) -> option.None
   }
 }
+
+fn event_card_depth(
+  db: pog.Connection,
+  event: StateChange,
+) -> Result(Int, RuleEngineError) {
+  case event {
+    TaskChange(..) -> Ok(no_card_depth_scope)
+    CardChange(card_id: card_id, ..) ->
+      case get_card_template_context(db, card_id) {
+        Ok(CardTemplateContext(depth: depth, ..)) -> Ok(depth)
+        Error(error) -> Error(DbError(error))
+      }
+  }
+}
+
+const no_card_depth_scope = 0
 
 fn event_trigger(
   event: StateChange,

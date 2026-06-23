@@ -4355,6 +4355,7 @@ pub type RulesCreateRow {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Int,
+    card_depth: Int,
     to_state: String,
     active: Bool,
     created_at: String,
@@ -4374,8 +4375,9 @@ pub fn rules_create(
   arg_4: String,
   arg_5: String,
   arg_6: Int,
-  arg_7: String,
-  arg_8: Bool,
+  arg_7: Int,
+  arg_8: String,
+  arg_9: Bool,
 ) -> Result(pog.Returned(RulesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4385,9 +4387,10 @@ pub fn rules_create(
     use resource_type <- decode.field(4, decode.string)
     use trigger_kind <- decode.field(5, decode.string)
     use task_type_id <- decode.field(6, decode.int)
-    use to_state <- decode.field(7, decode.string)
-    use active <- decode.field(8, decode.bool)
-    use created_at <- decode.field(9, decode.string)
+    use card_depth <- decode.field(7, decode.int)
+    use to_state <- decode.field(8, decode.string)
+    use active <- decode.field(9, decode.bool)
+    use created_at <- decode.field(10, decode.string)
     decode.success(RulesCreateRow(
       id:,
       workflow_id:,
@@ -4396,6 +4399,7 @@ pub fn rules_create(
       resource_type:,
       trigger_kind:,
       task_type_id:,
+      card_depth:,
       to_state:,
       active:,
       created_at:,
@@ -4410,6 +4414,7 @@ INSERT INTO rules (
   resource_type,
   trigger_kind,
   task_type_id,
+  card_depth,
   to_state,
   active
 )
@@ -4420,8 +4425,9 @@ VALUES (
   $4,
   $5,
   CASE WHEN $6 <= 0 THEN null ELSE $6 END,
-  $7,
-  $8
+  CASE WHEN $7 <= 0 THEN null ELSE $7 END,
+  $8,
+  $9
 )
 RETURNING
   id,
@@ -4431,6 +4437,7 @@ RETURNING
   resource_type,
   trigger_kind,
   coalesce(task_type_id, 0) as task_type_id,
+  coalesce(card_depth, 0) as card_depth,
   to_state,
   active,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
@@ -4442,8 +4449,9 @@ RETURNING
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.text(arg_7))
-  |> pog.parameter(pog.bool(arg_8))
+  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.text(arg_8))
+  |> pog.parameter(pog.bool(arg_9))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4498,6 +4506,7 @@ pub type RulesFindMatchingRow {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Int,
+    card_depth: Int,
     to_state: String,
     active: Bool,
     created_at: String,
@@ -4510,7 +4519,7 @@ pub type RulesFindMatchingRow {
 /// Find active rules that match a state change event.
 /// For task events, filters by task_type_id if specified.
 /// For card events, task_type_id filter is ignored.
-/// Params: $1=trigger_kind, $2=project_id, $3=org_id, $4=task_type_id
+/// Params: $1=trigger_kind, $2=project_id, $3=org_id, $4=task_type_id, $5=card_depth
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4521,6 +4530,7 @@ pub fn rules_find_matching(
   arg_2: Int,
   arg_3: Int,
   arg_4: Int,
+  arg_5: Int,
 ) -> Result(pog.Returned(RulesFindMatchingRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4530,11 +4540,12 @@ pub fn rules_find_matching(
     use resource_type <- decode.field(4, decode.string)
     use trigger_kind <- decode.field(5, decode.string)
     use task_type_id <- decode.field(6, decode.int)
-    use to_state <- decode.field(7, decode.string)
-    use active <- decode.field(8, decode.bool)
-    use created_at <- decode.field(9, decode.string)
-    use workflow_org_id <- decode.field(10, decode.int)
-    use workflow_project_id <- decode.field(11, decode.int)
+    use card_depth <- decode.field(7, decode.int)
+    use to_state <- decode.field(8, decode.string)
+    use active <- decode.field(9, decode.bool)
+    use created_at <- decode.field(10, decode.string)
+    use workflow_org_id <- decode.field(11, decode.int)
+    use workflow_project_id <- decode.field(12, decode.int)
     decode.success(RulesFindMatchingRow(
       id:,
       workflow_id:,
@@ -4543,6 +4554,7 @@ pub fn rules_find_matching(
       resource_type:,
       trigger_kind:,
       task_type_id:,
+      card_depth:,
       to_state:,
       active:,
       created_at:,
@@ -4555,7 +4567,7 @@ pub fn rules_find_matching(
 -- Find active rules that match a state change event.
 -- For task events, filters by task_type_id if specified.
 -- For card events, task_type_id filter is ignored.
--- Params: $1=trigger_kind, $2=project_id, $3=org_id, $4=task_type_id
+-- Params: $1=trigger_kind, $2=project_id, $3=org_id, $4=task_type_id, $5=card_depth
 select
   r.id,
   r.workflow_id,
@@ -4564,6 +4576,7 @@ select
   r.resource_type,
   r.trigger_kind,
   coalesce(r.task_type_id, 0) as task_type_id,
+  coalesce(r.card_depth, 0) as card_depth,
   r.to_state,
   r.active,
   to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
@@ -4584,6 +4597,12 @@ where r.active = true
     or $4 <= 0
     or r.task_type_id = $4
   )
+  -- Card depth scope: NULL means any card; otherwise exact depth.
+  and (
+    r.resource_type != 'card'
+    or r.card_depth is null
+    or r.card_depth = $5
+  )
 order by w.project_id nulls last, r.id;
 "
   |> pog.query
@@ -4591,6 +4610,7 @@ order by w.project_id nulls last, r.id;
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.int(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4610,6 +4630,7 @@ pub type RulesGetRow {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Int,
+    card_depth: Int,
     to_state: String,
     active: Bool,
     created_at: String,
@@ -4633,9 +4654,10 @@ pub fn rules_get(
     use resource_type <- decode.field(4, decode.string)
     use trigger_kind <- decode.field(5, decode.string)
     use task_type_id <- decode.field(6, decode.int)
-    use to_state <- decode.field(7, decode.string)
-    use active <- decode.field(8, decode.bool)
-    use created_at <- decode.field(9, decode.string)
+    use card_depth <- decode.field(7, decode.int)
+    use to_state <- decode.field(8, decode.string)
+    use active <- decode.field(9, decode.bool)
+    use created_at <- decode.field(10, decode.string)
     decode.success(RulesGetRow(
       id:,
       workflow_id:,
@@ -4644,6 +4666,7 @@ pub fn rules_get(
       resource_type:,
       trigger_kind:,
       task_type_id:,
+      card_depth:,
       to_state:,
       active:,
       created_at:,
@@ -4659,6 +4682,7 @@ SELECT
   r.resource_type,
   r.trigger_kind,
   coalesce(r.task_type_id, 0) as task_type_id,
+  coalesce(r.card_depth, 0) as card_depth,
   r.to_state,
   r.active,
   to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
@@ -4770,6 +4794,7 @@ pub type RulesListForWorkflowRow {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Int,
+    card_depth: Int,
     to_state: String,
     active: Bool,
     created_at: String,
@@ -4793,9 +4818,10 @@ pub fn rules_list_for_workflow(
     use resource_type <- decode.field(4, decode.string)
     use trigger_kind <- decode.field(5, decode.string)
     use task_type_id <- decode.field(6, decode.int)
-    use to_state <- decode.field(7, decode.string)
-    use active <- decode.field(8, decode.bool)
-    use created_at <- decode.field(9, decode.string)
+    use card_depth <- decode.field(7, decode.int)
+    use to_state <- decode.field(8, decode.string)
+    use active <- decode.field(9, decode.bool)
+    use created_at <- decode.field(10, decode.string)
     decode.success(RulesListForWorkflowRow(
       id:,
       workflow_id:,
@@ -4804,6 +4830,7 @@ pub fn rules_list_for_workflow(
       resource_type:,
       trigger_kind:,
       task_type_id:,
+      card_depth:,
       to_state:,
       active:,
       created_at:,
@@ -4819,6 +4846,7 @@ SELECT
   r.resource_type,
   r.trigger_kind,
   coalesce(r.task_type_id, 0) as task_type_id,
+  coalesce(r.card_depth, 0) as card_depth,
   r.to_state,
   r.active,
   to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
@@ -4885,6 +4913,7 @@ pub type RulesUpdateRow {
     resource_type: String,
     trigger_kind: String,
     task_type_id: Int,
+    card_depth: Int,
     to_state: String,
     active: Bool,
     created_at: String,
@@ -4904,8 +4933,9 @@ pub fn rules_update(
   arg_4: String,
   arg_5: String,
   arg_6: Int,
-  arg_7: String,
-  arg_8: Int,
+  arg_7: Int,
+  arg_8: String,
+  arg_9: Int,
 ) -> Result(pog.Returned(RulesUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4915,9 +4945,10 @@ pub fn rules_update(
     use resource_type <- decode.field(4, decode.string)
     use trigger_kind <- decode.field(5, decode.string)
     use task_type_id <- decode.field(6, decode.int)
-    use to_state <- decode.field(7, decode.string)
-    use active <- decode.field(8, decode.bool)
-    use created_at <- decode.field(9, decode.string)
+    use card_depth <- decode.field(7, decode.int)
+    use to_state <- decode.field(8, decode.string)
+    use active <- decode.field(9, decode.bool)
+    use created_at <- decode.field(10, decode.string)
     decode.success(RulesUpdateRow(
       id:,
       workflow_id:,
@@ -4926,6 +4957,7 @@ pub fn rules_update(
       resource_type:,
       trigger_kind:,
       task_type_id:,
+      card_depth:,
       to_state:,
       active:,
       created_at:,
@@ -4940,8 +4972,9 @@ SET
   resource_type = $4,
   trigger_kind = $5,
   task_type_id = case when $6 <= 0 then null else $6 end,
-  to_state = $7,
-  active = ($8 = 1)
+  card_depth = case when $7 <= 0 then null else $7 end,
+  to_state = $8,
+  active = ($9 = 1)
 WHERE id = $1
 RETURNING
   id,
@@ -4951,6 +4984,7 @@ RETURNING
   resource_type,
   trigger_kind,
   coalesce(task_type_id, 0) as task_type_id,
+  coalesce(card_depth, 0) as card_depth,
   to_state,
   active,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
@@ -4962,8 +4996,9 @@ RETURNING
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.text(arg_7))
-  |> pog.parameter(pog.int(arg_8))
+  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.text(arg_8))
+  |> pog.parameter(pog.int(arg_9))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
