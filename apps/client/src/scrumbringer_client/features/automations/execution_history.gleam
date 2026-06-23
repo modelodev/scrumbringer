@@ -185,7 +185,10 @@ fn view_project_execution_history_loaded(
   config: Config(msg),
   response: api_rule_metrics.ProjectRuleExecutionsResponse,
 ) -> Element(msg) {
-  case response.executions {
+  let business_executions =
+    list.filter(response.executions, is_project_business_execution)
+
+  case business_executions {
     [] ->
       empty_state.simple("inbox", t(config, i18n_text.RuleMetricsNoExecutions))
     executions ->
@@ -706,6 +709,12 @@ fn bool_to_string(value: Bool) -> String {
 }
 
 fn is_business_execution(exec: api_rule_metrics.RuleExecution) -> Bool {
+  api_rule_metrics.execution_outcome_is_created(exec.outcome)
+}
+
+fn is_project_business_execution(
+  exec: api_rule_metrics.ProjectRuleExecution,
+) -> Bool {
   api_rule_metrics.execution_outcome_is_created(exec.outcome)
 }
 

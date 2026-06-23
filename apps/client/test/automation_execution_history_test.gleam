@@ -124,6 +124,29 @@ fn project_execution() -> api_rule_metrics.ProjectRuleExecution {
   )
 }
 
+fn project_ignored_execution() -> api_rule_metrics.ProjectRuleExecution {
+  api_rule_metrics.ProjectRuleExecution(
+    id: 102,
+    workflow_id: 11,
+    workflow_name: "Escalation workflow",
+    rule_id: 22,
+    rule_name: "Escalate blocked work",
+    task_id: option.Some(42),
+    task_title: "Blocked backend task",
+    card_id: option.None,
+    card_title: "",
+    outcome: api_rule_metrics.IgnoredExecution("idempotent"),
+    user_id: 7,
+    user_email: "member@example.com",
+    template_id: option.Some(12),
+    template_name: "Escalation template",
+    template_version: option.Some(3),
+    created_task_id: option.None,
+    created_task_title: "",
+    created_at: "2026-06-08T10:01:00Z",
+  )
+}
+
 fn project_executions_response() -> api_rule_metrics.ProjectRuleExecutionsResponse {
   api_rule_metrics.ProjectRuleExecutionsResponse(
     project_id: 3,
@@ -185,6 +208,38 @@ pub fn automation_execution_history_renders_from_config_without_root_model_test(
   assert_not_contains(html, "Suppressed")
   assert_not_contains(html, "admin-card")
   assert_not_contains(html, "section-header")
+}
+
+pub fn automation_execution_history_keeps_ignored_events_out_of_main_table_test() {
+  let html =
+    execution_history.view(
+      execution_history.Config(
+        ..config(),
+        model: admin_metrics.Model(
+          ..config().model,
+          admin_project_rule_executions: Loaded(
+            api_rule_metrics.ProjectRuleExecutionsResponse(
+              project_id: 3,
+              executions: [project_ignored_execution()],
+              pagination: api_rule_metrics.Pagination(
+                limit: 20,
+                offset: 0,
+                total: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "No automation executions found in the selected range.")
+  assert_contains(html, "Diagnostics by engine")
+  assert_contains(html, "Escalation workflow")
+  assert_contains(html, "3")
+  assert_not_contains(html, "Ignored (idempotent)")
+  assert_not_contains(html, "task #42 Blocked backend task")
+  assert_not_contains(html, "data-testid=\"automation-execution-row\"")
 }
 
 pub fn automation_execution_history_renders_empty_state_without_root_model_test() {
