@@ -16,6 +16,7 @@ import lustre/element/html.{
 }
 import lustre/event
 
+import domain/automation
 import domain/project.{type Project}
 import domain/remote as remote_state
 import domain/task_type.{type TaskType}
@@ -220,8 +221,13 @@ fn view_form_panel(
         ),
       ),
       div([attribute.class("automation-template-panel__hint")], [
-        text(t(i18n_text.AvailableVariables) <> ": "),
-        text(t(i18n_text.TaskTemplateDescriptionHint)),
+        span([], [text(t(i18n_text.AvailableVariables) <> ":")]),
+        div(
+          [attribute.class("automation-template-variable-chips")],
+          template_variable_names()
+            |> list.map(fn(variable) { view_variable_chip(config, variable) }),
+        ),
+        p([], [text(t(i18n_text.TaskTemplateDescriptionHint))]),
       ]),
       panel_actions(
         locale: config.locale,
@@ -232,6 +238,65 @@ fn view_form_panel(
       ),
     ],
   )
+}
+
+fn view_variable_chip(config: Config(msg), variable: String) -> Element(msg) {
+  let token = variable_token(variable)
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class("automation-template-variable-chip"),
+      attribute.attribute("data-testid", "automation-template-variable-chip"),
+      attribute.attribute("data-variable", token),
+      attribute.attribute(
+        "aria-label",
+        i18n.t(config.locale, i18n_text.TaskTemplateInsertVariable(variable)),
+      ),
+      event.on_click(
+        config.on_description_changed(description_with_inserted_variable(
+          config.form_description,
+          variable,
+        )),
+      ),
+    ],
+    [text(token)],
+  )
+}
+
+fn description_with_inserted_variable(
+  description: String,
+  variable: String,
+) -> String {
+  let token = variable_token(variable)
+  case string.trim(description) {
+    "" -> token
+    _ -> description <> " " <> token
+  }
+}
+
+fn variable_token(variable: String) -> String {
+  "{{" <> variable <> "}}"
+}
+
+fn template_variable_names() -> List(String) {
+  automation.available_template_variables(automation.TaskCompleted(opt.None))
+  |> list.append(
+    automation.available_template_variables(automation.CardActivated(
+      automation.AnyCard,
+    )),
+  )
+  |> unique_strings([])
+}
+
+fn unique_strings(items: List(String), seen: List(String)) -> List(String) {
+  case items {
+    [] -> list.reverse(seen)
+    [item, ..rest] ->
+      case list.contains(seen, item) {
+        True -> unique_strings(rest, seen)
+        False -> unique_strings(rest, [item, ..seen])
+      }
+  }
 }
 
 fn view_delete_panel(

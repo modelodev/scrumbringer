@@ -831,6 +831,7 @@ pub type Text {
   TaskTemplateVariablesHelp
   TaskTemplateDescriptionHint
   AvailableVariables
+  TaskTemplateInsertVariable(variable: String)
   SelectTaskType
 
   // Rule Metrics Tab

@@ -972,6 +972,8 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDescriptionHint ->
       "Use variables in the description: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}"
     text.AvailableVariables -> "Available variables"
+    text.TaskTemplateInsertVariable(variable) ->
+      "Insert variable {{" <> variable <> "}}"
     text.SelectTaskType -> "Select type"
 
     // Rule Metrics Tab
