@@ -62,6 +62,11 @@ pub fn css() -> List(String) {
     ".resource-type-separator { color: var(--sb-muted); margin: 0 2px; }",
     ".task-type-inline { display: inline-flex; align-items: center; vertical-align: middle; }",
     ".task-type-inline svg { width: 14px; height: 14px; }",
+    ".cell-rule-sentence { min-width: 260px; }",
+    ".automation-rule-sentence { display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: var(--sb-line-body); }",
+    ".automation-rule-sentence__when { color: var(--sb-text-strong); font-weight: var(--sb-weight-medium); overflow-wrap: anywhere; }",
+    ".automation-rule-sentence__effect { color: var(--sb-muted-strong); font-size: var(--sb-font-sm); overflow-wrap: anywhere; }",
+    ".automation-rule-sentence__badge { white-space: nowrap; }",
     // Story 4.10: AC4 - Attached template row with icon and priority
     ".attached-template-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
     ".attached-template-info { display: flex; align-items: center; gap: 8px; }",

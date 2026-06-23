@@ -21,6 +21,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn workflow(id: Int, name: String) -> Workflow {
   Workflow(
     id: id,
@@ -156,14 +160,18 @@ pub fn workflow_rules_view_renders_rules_from_config_without_root_model_test() {
   assert_contains(html, "Rules - Release automation")
   assert_contains(html, "Back to Automations")
   assert_contains(html, "Complete bug workflow")
-  assert_contains(html, "Bug")
+  assert_contains(html, "Automatizacion")
+  assert_contains(html, "When a Bug task is completed")
+  assert_contains(html, "-&gt; Create Bug triage in the Pool")
+  assert_not_contains(html, "Resource Type")
+  assert_not_contains(html, "Target State")
   assert_contains(html, "Bug triage")
   assert_contains(html, "4")
   assert_contains(html, "2")
   assert_contains(html, "btn-view-action")
   assert_contains(html, "btn-entity-action")
   assert_contains(html, "btn-icon-text")
-  let assert False = string.contains(html, "btn btn-sm btn-primary")
+  assert_not_contains(html, "btn btn-sm btn-primary")
 }
 
 pub fn workflow_rules_view_renders_empty_state_from_config_without_root_model_test() {

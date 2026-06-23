@@ -43,6 +43,7 @@ import domain/workflow/workflow_codec
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/features/automations/rule_sentence
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
@@ -191,8 +192,7 @@ fn view_rules_table(
                 tr([], [
                   th([attribute.class("col-expand")], []),
                   th([], [text(t(config, i18n_text.RuleName))]),
-                  th([], [text(t(config, i18n_text.RuleResourceType))]),
-                  th([], [text(t(config, i18n_text.RuleToState))]),
+                  th([], [text("Automatizacion")]),
                   th([], [text(t(config, i18n_text.RuleActive))]),
                   th([], [text(t(config, i18n_text.RuleTemplates))]),
                   th([], [text(t(config, i18n_text.RuleMetricsApplied))]),
@@ -262,15 +262,17 @@ fn view_rule_row_expandable(
         ]),
         // Name
         td([], [text(rule.name)]),
-        // Resource type with task type info if applicable
-        td([attribute.class("cell-resource-type")], [
-          view_rule_resource_type(config, rule),
+        // Cause/effect sentence
+        td([attribute.class("cell-rule-sentence")], [
+          rule_sentence.view(
+            config.locale,
+            rule,
+            rule_task_type_name(config, rule),
+          ),
         ]),
-        // To state
-        td([], [text(rule_to_state_string(rule))]),
         // Active status with completeness indicator (AC6-8)
         td([attribute.class("cell-status")], [
-          view_rule_active_status(config, rule.active, template_count),
+          view_rule_active_status(config, rule, template_count),
         ]),
         // Templates count badge
         td([attribute.class("cell-templates")], [
@@ -314,25 +316,12 @@ fn view_rule_row_expandable(
   }
 }
 
-// Justification: nested case keeps resource type rendering readable with optional
-// task type lookup and a fallback for missing types.
-fn view_rule_resource_type(config: Config(msg), rule: Rule) -> Element(msg) {
-  let task_label = t(config, i18n_text.ResourceTypeTask)
-  case rule_resource_type(rule), rule_task_type_id(rule) {
-    "task", opt.Some(type_id) ->
-      case find_task_type(config, type_id) {
-        opt.Some(tt) ->
-          span([attribute.class("resource-type-task")], [
-            text(task_label),
-            span([attribute.class("resource-type-separator")], [text(" · ")]),
-            span([attribute.class("task-type-inline")], [
-              icons.view_task_type_icon_inline(tt.icon, 14, config.theme),
-            ]),
-            text(" " <> tt.name),
-          ])
-        opt.None -> text(task_label)
-      }
-    resource_type, _ -> text(resource_type)
+fn rule_task_type_name(config: Config(msg), rule: Rule) -> opt.Option(String) {
+  case rule_task_type_id(rule) {
+    opt.Some(type_id) ->
+      find_task_type(config, type_id)
+      |> opt.map(fn(task_type) { task_type.name })
+    opt.None -> opt.None
   }
 }
 
@@ -340,16 +329,13 @@ fn view_rule_resource_type(config: Config(msg), rule: Rule) -> Element(msg) {
 // fragile conditionals and keeps UI intent explicit.
 fn view_rule_active_status(
   config: Config(msg),
-  is_active: Bool,
+  rule: Rule,
   template_count: Int,
 ) -> Element(msg) {
-  case is_active {
+  case rule.active {
     True ->
       case template_count > 0 {
-        True ->
-          span([attribute.class("rule-complete-indicator")], [
-            icons.nav_icon(icons.Check, icons.Small),
-          ])
+        True -> rule_sentence.status_badge(config.locale, rule)
         False ->
           span(
             [
@@ -416,7 +402,7 @@ fn view_rule_templates_expansion(
         event.on_click(config.on_noop) |> event.stop_propagation,
       ],
       [
-        td([attribute.attribute("colspan", "9")], [content]),
+        td([attribute.attribute("colspan", "8")], [content]),
       ],
     ),
   )
