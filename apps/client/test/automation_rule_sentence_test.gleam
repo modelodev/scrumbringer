@@ -96,6 +96,36 @@ pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
   assert_contains(html, "When any task is created")
 }
 
+pub fn rule_sentence_renders_task_claimed_cause_test() {
+  let html =
+    rule_sentence.view(
+      locale.En,
+      rule(automation.TaskClaimed(opt.Some(5)), [
+        template("Follow-up", 11),
+      ]),
+      opt.Some("Bug"),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "When a Bug task is claimed")
+  assert_contains(html, "-&gt; Create Follow-up in the Pool")
+}
+
+pub fn rule_sentence_renders_task_released_cause_test() {
+  let html =
+    rule_sentence.view(
+      locale.En,
+      rule(automation.TaskReleased(opt.None), [
+        template("Pool review", 11),
+      ]),
+      opt.None,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "When any task is released")
+  assert_contains(html, "-&gt; Create Pool review in the Pool")
+}
+
 pub fn rule_sentence_marks_missing_template_for_review_test() {
   let sentence =
     rule_sentence.effect_sentence(
@@ -104,6 +134,21 @@ pub fn rule_sentence_marks_missing_template_for_review_test() {
     )
 
   let assert "Requires review: add one template" = sentence
+}
+
+pub fn rule_sentence_renders_card_activation_scope_test() {
+  let html =
+    rule_sentence.view(
+      locale.En,
+      rule(automation.CardActivated(automation.AnyCard), [
+        template("Activation review", 11),
+      ]),
+      opt.None,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "When any card is activated")
+  assert_contains(html, "-&gt; Create Activation review in the Pool")
 }
 
 pub fn rule_sentence_renders_card_depth_scope_test() {

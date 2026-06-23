@@ -374,6 +374,70 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_not_contains(html, "Target State")
 }
 
+pub fn automation_rule_builder_offers_only_supported_task_events_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when task changes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "",
+          rule_form_event: "task_created",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "value=\"task_created\"")
+  assert_contains(html, "value=\"task_claimed\"")
+  assert_contains(html, "value=\"task_released\"")
+  assert_contains(html, "value=\"task_completed\"")
+  assert_contains(html, ">is created<")
+  assert_contains(html, ">is claimed<")
+  assert_contains(html, ">is released<")
+  assert_contains(html, ">is completed<")
+  assert_not_contains(html, "task_blocked")
+  assert_not_contains(html, "task_unblocked")
+  assert_not_contains(html, "task_due")
+  assert_not_contains(html, "due date")
+  assert_not_contains(html, ">is blocked<")
+  assert_not_contains(html, ">is unblocked<")
+}
+
+pub fn automation_rule_builder_offers_only_supported_card_events_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when card changes",
+          rule_form_subject: "card",
+          rule_form_event: "card_activated",
+          rule_form_card_scope: "",
+          rule_form_template_id: "12",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "value=\"card_activated\"")
+  assert_contains(html, "value=\"card_closed\"")
+  assert_contains(html, ">is activated<")
+  assert_contains(html, ">is closed<")
+  assert_not_contains(html, "task_created")
+  assert_not_contains(html, "task_claimed")
+  assert_not_contains(html, "task_released")
+  assert_not_contains(html, "task_completed")
+  assert_not_contains(html, "subtree")
+  assert_not_contains(html, "card_type")
+}
+
 pub fn automation_rule_builder_disables_save_for_incompatible_template_variables_test() {
   let html =
     rule_list.view(
