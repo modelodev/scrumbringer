@@ -76,6 +76,31 @@ pub type RuleExecution {
   )
 }
 
+/// Business execution record for a project-level automations history view.
+pub type ProjectRuleExecution {
+  ProjectRuleExecution(
+    id: Int,
+    workflow_id: Int,
+    workflow_name: String,
+    rule_id: Int,
+    rule_name: String,
+    task_id: Option(Int),
+    task_title: String,
+    card_id: Option(Int),
+    card_title: String,
+    outcome: String,
+    suppression_reason: String,
+    user_id: Int,
+    user_email: String,
+    template_id: Option(Int),
+    template_name: String,
+    template_version: Option(Int),
+    created_task_id: Option(Int),
+    created_task_title: String,
+    created_at: String,
+  )
+}
+
 /// Aggregated metrics summary for a workflow.
 pub type WorkflowMetricsSummary {
   WorkflowMetricsSummary(
@@ -130,6 +155,32 @@ fn rule_execution_from_row(row: sql.RuleExecutionsListRow) -> RuleExecution {
     template_id: option_helpers.int_to_option(row.template_id),
     template_version: option_helpers.int_to_option(row.template_version),
     created_task_id: option_helpers.int_to_option(row.created_task_id),
+    created_at: row.created_at,
+  )
+}
+
+fn project_rule_execution_from_row(
+  row: sql.RuleExecutionsListForProjectRow,
+) -> ProjectRuleExecution {
+  ProjectRuleExecution(
+    id: row.id,
+    workflow_id: row.workflow_id,
+    workflow_name: row.workflow_name,
+    rule_id: row.rule_id,
+    rule_name: row.rule_name,
+    task_id: option_helpers.int_to_option(row.task_id),
+    task_title: row.task_title,
+    card_id: option_helpers.int_to_option(row.card_id),
+    card_title: row.card_title,
+    outcome: row.outcome,
+    suppression_reason: row.suppression_reason,
+    user_id: row.user_id,
+    user_email: row.user_email,
+    template_id: option_helpers.int_to_option(row.template_id),
+    template_name: row.template_name,
+    template_version: option_helpers.int_to_option(row.template_version),
+    created_task_id: option_helpers.int_to_option(row.created_task_id),
+    created_task_title: row.created_task_title,
     created_at: row.created_at,
   )
 }
@@ -253,6 +304,45 @@ pub fn count_rule_executions(
   to: Timestamp,
 ) -> Result(Int, pog.QueryError) {
   use returned <- result.try(sql.rule_executions_count(db, rule_id, from, to))
+  use row <- result.try(persisted_field.query_row(returned.rows))
+  Ok(row.total)
+}
+
+/// Get paginated business executions visible in a project.
+///
+/// Example:
+///   list_project_rule_executions(db, project_id, from, to, limit, offset)
+pub fn list_project_rule_executions(
+  db: pog.Connection,
+  project_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+  limit: Int,
+  offset: Int,
+) -> Result(List(ProjectRuleExecution), pog.QueryError) {
+  sql.rule_executions_list_for_project(db, project_id, from, to, limit, offset)
+  |> result.map(fn(returned) {
+    returned.rows
+    |> list.map(project_rule_execution_from_row)
+  })
+}
+
+/// Count business executions visible in a project.
+///
+/// Example:
+///   count_project_rule_executions(db, project_id, from, to)
+pub fn count_project_rule_executions(
+  db: pog.Connection,
+  project_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+) -> Result(Int, pog.QueryError) {
+  use returned <- result.try(sql.rule_executions_count_for_project(
+    db,
+    project_id,
+    from,
+    to,
+  ))
   use row <- result.try(persisted_field.query_row(returned.rows))
   Ok(row.total)
 }

@@ -52,6 +52,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     model: admin_metrics.Model,
+    selected_project_id: opt.Option(Int),
     selected_execution_id: opt.Option(Int),
     quick_ranges: List(QuickRange(msg)),
     on_from_changed: fn(String) -> msg,
@@ -60,6 +61,7 @@ pub type Config(msg) {
     on_drilldown_clicked: fn(Int) -> msg,
     on_drilldown_closed: msg,
     on_exec_page_changed: fn(Int) -> msg,
+    on_project_exec_page_changed: fn(Int) -> msg,
   )
 }
 
@@ -158,29 +160,122 @@ fn view_quick_range_button(
 
 /// Results section with improved empty state (T5).
 fn view_execution_results(config: Config(msg)) -> Element(msg) {
-  case config.model.admin_rule_metrics {
-    NotAsked -> info_callout.simple(t(config, i18n_text.RuleMetricsHelp))
+  div([attribute.class("automation-executions-results")], [
+    view_project_execution_history(config),
+    view_execution_diagnostics(config),
+  ])
+}
 
-    Loading -> skeleton.skeleton_table(3)
-
-    Failed(err) -> error_notice.view(err.message)
-
-    Loaded(workflows) -> view_execution_history_loaded(config, workflows)
+fn view_project_execution_history(config: Config(msg)) -> Element(msg) {
+  case config.selected_project_id {
+    opt.None ->
+      info_callout.simple(t(config, i18n_text.ProjectExecutionsSelectProject))
+    opt.Some(_) ->
+      case config.model.admin_project_rule_executions {
+        NotAsked -> info_callout.simple(t(config, i18n_text.RuleMetricsHelp))
+        Loading -> skeleton.skeleton_table(5)
+        Failed(err) -> error_notice.view(err.message)
+        Loaded(response) ->
+          view_project_execution_history_loaded(config, response)
+      }
   }
 }
 
-fn view_execution_history_loaded(
+fn view_project_execution_history_loaded(
   config: Config(msg),
-  workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
+  response: api_rule_metrics.ProjectRuleExecutionsResponse,
 ) -> Element(msg) {
-  case workflows {
+  case response.executions {
     [] ->
       empty_state.simple("inbox", t(config, i18n_text.RuleMetricsNoExecutions))
-    _ ->
-      div([attribute.class("automation-executions-results")], [
-        view_execution_summary_table(config, config.model.admin_rule_metrics),
+    executions ->
+      element.fragment([
+        view_project_execution_table(config, executions),
+        view_project_executions_pagination(config, response.pagination),
       ])
   }
+}
+
+fn view_project_execution_table(
+  config: Config(msg),
+  executions: List(api_rule_metrics.ProjectRuleExecution),
+) -> Element(msg) {
+  let timestamp_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(exec.created_at)
+  }
+  let engine_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(exec.workflow_name)
+  }
+  let rule_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(exec.rule_name)
+  }
+  let template_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(project_template_label(exec))
+  }
+  let origin_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(project_origin_label(exec))
+  }
+  let outcome_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    span([attribute.class(outcome_class_for(exec.outcome))], [
+      text(outcome_text_for_outcome(config, exec.outcome)),
+    ])
+  }
+  let created_task_cell = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    text(project_created_task_label(exec))
+  }
+  let key_fn = fn(exec: api_rule_metrics.ProjectRuleExecution) {
+    int.to_string(exec.id)
+  }
+
+  data_table.new()
+  |> data_table.with_class("executions-table automation-executions-table")
+  |> data_table.with_columns([
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsDateColumn),
+      timestamp_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsEngineColumn),
+      engine_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsRuleColumn),
+      rule_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsTemplateColumn),
+      template_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsOriginColumn),
+      origin_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsOutcomeColumn),
+      outcome_cell,
+    ),
+    data_table.column(
+      t(config, i18n_text.ProjectExecutionsTaskColumn),
+      created_task_cell,
+    ),
+  ])
+  |> data_table.with_rows(executions, key_fn)
+  |> data_table.with_row_attrs(fn(exec) {
+    let is_selected = config.selected_execution_id == opt.Some(exec.id)
+    [
+      attribute.attribute("data-testid", "automation-execution-row"),
+      attribute.attribute("data-selected", bool_to_string(is_selected)),
+      attribute.class(row_class("automation-execution-row", is_selected)),
+    ]
+  })
+  |> data_table.view()
+}
+
+fn view_execution_diagnostics(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("automation-executions-diagnostics")], [
+    h3([], [text(t(config, i18n_text.ProjectExecutionsDiagnostics))]),
+    view_execution_summary_table(config, config.model.admin_rule_metrics),
+  ])
 }
 
 fn view_execution_summary_table(
@@ -650,13 +745,62 @@ fn outcome_text_for(
   config: Config(msg),
   exec: api_rule_metrics.RuleExecution,
 ) -> String {
-  case exec.outcome {
+  outcome_text_for_outcome(config, exec.outcome)
+}
+
+fn outcome_text_for_outcome(
+  config: Config(msg),
+  outcome: api_rule_metrics.RuleExecutionOutcome,
+) -> String {
+  case outcome {
     api_rule_metrics.CreatedExecution -> t(config, i18n_text.OutcomeApplied)
     api_rule_metrics.IgnoredExecution(reason) ->
       t(config, i18n_text.OutcomeSuppressed)
       <> suppression_reason_suffix(reason)
     api_rule_metrics.UnknownExecution(raw) -> raw
   }
+}
+
+fn project_template_label(exec: api_rule_metrics.ProjectRuleExecution) -> String {
+  case exec.template_name, exec.template_id, exec.template_version {
+    "", opt.Some(id), opt.Some(version) ->
+      "#" <> int.to_string(id) <> " v" <> int.to_string(version)
+    "", opt.Some(id), _ -> "#" <> int.to_string(id)
+    "", _, _ -> "-"
+    name, _, opt.Some(version) -> name <> " v" <> int.to_string(version)
+    name, _, _ -> name
+  }
+}
+
+fn project_origin_label(exec: api_rule_metrics.ProjectRuleExecution) -> String {
+  case exec.task_id, exec.task_title, exec.card_id, exec.card_title {
+    opt.Some(id), "", _, _ -> "task #" <> int.to_string(id)
+    opt.Some(id), title, _, _ -> "task #" <> int.to_string(id) <> " " <> title
+    _, _, opt.Some(id), "" -> "card #" <> int.to_string(id)
+    _, _, opt.Some(id), title -> "card #" <> int.to_string(id) <> " " <> title
+    _, _, _, _ -> "-"
+  }
+}
+
+fn project_created_task_label(
+  exec: api_rule_metrics.ProjectRuleExecution,
+) -> String {
+  case exec.created_task_id, exec.created_task_title {
+    opt.Some(id), "" -> "task #" <> int.to_string(id)
+    opt.Some(id), title -> "task #" <> int.to_string(id) <> " " <> title
+    opt.None, _ -> "-"
+  }
+}
+
+fn view_project_executions_pagination(
+  config: Config(msg),
+  pagination: api_rule_metrics.Pagination,
+) -> Element(msg) {
+  view_pagination(
+    pagination,
+    fn(offset) { config.on_project_exec_page_changed(offset) },
+    config,
+  )
 }
 
 fn suppression_reason_suffix(reason: String) -> String {
@@ -678,6 +822,14 @@ fn view_executions_pagination(
   config: Config(msg),
   pagination: api_rule_metrics.Pagination,
 ) -> Element(msg) {
+  view_pagination(pagination, config.on_exec_page_changed, config)
+}
+
+fn view_pagination(
+  pagination: api_rule_metrics.Pagination,
+  on_page_changed: fn(Int) -> msg,
+  config: Config(msg),
+) -> Element(msg) {
   let current_page = pagination.offset / pagination.limit + 1
   let total_pages =
     { pagination.total + pagination.limit - 1 } / pagination.limit
@@ -690,13 +842,13 @@ fn view_executions_pagination(
           label: "<<",
           accessible_label: t(config, i18n_text.FirstPage),
           disabled: pagination.offset == 0,
-          on_click: config.on_exec_page_changed(0),
+          on_click: on_page_changed(0),
         ),
         pagination_button(
           label: "<",
           accessible_label: t(config, i18n_text.PreviousPage),
           disabled: pagination.offset == 0,
-          on_click: config.on_exec_page_changed(int.max(
+          on_click: on_page_changed(int.max(
             0,
             pagination.offset - pagination.limit,
           )),
@@ -710,17 +862,13 @@ fn view_executions_pagination(
           label: ">",
           accessible_label: t(config, i18n_text.NextPage),
           disabled: pagination.offset + pagination.limit >= pagination.total,
-          on_click: config.on_exec_page_changed(
-            pagination.offset + pagination.limit,
-          ),
+          on_click: on_page_changed(pagination.offset + pagination.limit),
         ),
         pagination_button(
           label: ">>",
           accessible_label: t(config, i18n_text.LastPage),
           disabled: pagination.offset + pagination.limit >= pagination.total,
-          on_click: config.on_exec_page_changed(
-            { total_pages - 1 } * pagination.limit,
-          ),
+          on_click: on_page_changed({ total_pages - 1 } * pagination.limit),
         ),
       ])
   }

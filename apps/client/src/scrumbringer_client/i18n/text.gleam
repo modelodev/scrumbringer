@@ -838,6 +838,15 @@ pub type Text {
   SuppressionInactive
   RecentExecutions
   NoExecutions
+  ProjectExecutionsSelectProject
+  ProjectExecutionsDiagnostics
+  ProjectExecutionsDateColumn
+  ProjectExecutionsEngineColumn
+  ProjectExecutionsRuleColumn
+  ProjectExecutionsTemplateColumn
+  ProjectExecutionsOriginColumn
+  ProjectExecutionsOutcomeColumn
+  ProjectExecutionsTaskColumn
   FirstPage
   PreviousPage
   NextPage

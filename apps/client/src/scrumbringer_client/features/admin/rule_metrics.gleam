@@ -21,7 +21,7 @@ import gleam/option.{type Option, None, Some}
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
@@ -39,6 +39,10 @@ pub type Context(parent_msg) {
       parent_msg,
     on_executions_fetched: fn(
       ApiResult(api_rule_metrics.RuleExecutionsResponse),
+    ) ->
+      parent_msg,
+    on_project_executions_fetched: fn(
+      ApiResult(api_rule_metrics.ProjectRuleExecutionsResponse),
     ) ->
       parent_msg,
   )
@@ -60,6 +64,7 @@ pub type Update(parent_msg) {
 pub fn try_update(
   model: admin_metrics.Model,
   inner: pool_messages.Msg,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> Option(Update(parent_msg)) {
   case inner {
@@ -80,19 +85,19 @@ pub fn try_update(
       |> without_auth_check
 
     pool_messages.AdminRuleMetricsFromChangedAndRefresh(from) ->
-      handle_from_changed_and_refresh(model, from, context)
+      handle_from_changed_and_refresh(model, from, selected_project_id, context)
       |> without_auth_check
 
     pool_messages.AdminRuleMetricsToChangedAndRefresh(to) ->
-      handle_to_changed_and_refresh(model, to, context)
+      handle_to_changed_and_refresh(model, to, selected_project_id, context)
       |> without_auth_check
 
     pool_messages.AdminRuleMetricsRefreshClicked ->
-      handle_refresh_clicked(model, context)
+      handle_refresh_clicked(model, selected_project_id, context)
       |> without_auth_check
 
     pool_messages.AdminRuleMetricsQuickRangeClicked(from, to) ->
-      handle_quick_range_clicked(model, from, to, context)
+      handle_quick_range_clicked(model, from, to, selected_project_id, context)
       |> without_auth_check
 
     pool_messages.AdminRuleMetricsWorkflowExpanded(workflow_id) ->
@@ -131,8 +136,25 @@ pub fn try_update(
       handle_executions_fetched_error(model, err)
       |> with_auth_check(err)
 
+    pool_messages.AdminProjectRuleExecutionsFetched(Ok(response)) ->
+      handle_project_executions_fetched_ok(model, response)
+      |> without_auth_check
+
+    pool_messages.AdminProjectRuleExecutionsFetched(Error(err)) ->
+      handle_project_executions_fetched_error(model, err)
+      |> with_auth_check(err)
+
     pool_messages.AdminRuleMetricsExecPageChanged(offset) ->
       handle_exec_page_changed(model, offset, context)
+      |> without_auth_check
+
+    pool_messages.AdminProjectRuleExecutionsPageChanged(offset) ->
+      handle_project_exec_page_changed(
+        model,
+        selected_project_id,
+        offset,
+        context,
+      )
       |> without_auth_check
 
     _ -> None
@@ -174,6 +196,7 @@ fn handle_to_changed(
 fn handle_from_changed_and_refresh(
   model: admin_metrics.Model,
   from: String,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   let to = model.admin_rule_metrics_to
@@ -189,12 +212,19 @@ fn handle_from_changed_and_refresh(
           ..model,
           admin_rule_metrics_from: from,
           admin_rule_metrics: Loading,
+          admin_project_rule_executions: project_executions_loading(
+            selected_project_id,
+          ),
+          admin_project_rule_executions_offset: 0,
         )
       #(
         model,
-        api_rule_metrics.get_org_rule_metrics(
-          date_range(from, to),
-          context.on_rule_metrics_fetched,
+        fetch_overview_and_project_executions(
+          selected_project_id,
+          from,
+          to,
+          0,
+          context,
         ),
       )
     }
@@ -205,6 +235,7 @@ fn handle_from_changed_and_refresh(
 fn handle_to_changed_and_refresh(
   model: admin_metrics.Model,
   to: String,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   let from = model.admin_rule_metrics_from
@@ -220,12 +251,19 @@ fn handle_to_changed_and_refresh(
           ..model,
           admin_rule_metrics_to: to,
           admin_rule_metrics: Loading,
+          admin_project_rule_executions: project_executions_loading(
+            selected_project_id,
+          ),
+          admin_project_rule_executions_offset: 0,
         )
       #(
         model,
-        api_rule_metrics.get_org_rule_metrics(
-          date_range(from, to),
-          context.on_rule_metrics_fetched,
+        fetch_overview_and_project_executions(
+          selected_project_id,
+          from,
+          to,
+          0,
+          context,
         ),
       )
     }
@@ -235,6 +273,7 @@ fn handle_to_changed_and_refresh(
 /// Handle refresh clicked.
 fn handle_refresh_clicked(
   model: admin_metrics.Model,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   let from = model.admin_rule_metrics_from
@@ -244,13 +283,23 @@ fn handle_refresh_clicked(
   case from == "" || to == "" {
     True -> #(model, effect.none())
     False -> {
-      let model = admin_metrics.Model(..model, admin_rule_metrics: Loading)
-      // Use org-wide metrics (project filtering can be added later)
+      let model =
+        admin_metrics.Model(
+          ..model,
+          admin_rule_metrics: Loading,
+          admin_project_rule_executions: project_executions_loading(
+            selected_project_id,
+          ),
+          admin_project_rule_executions_offset: 0,
+        )
       #(
         model,
-        api_rule_metrics.get_org_rule_metrics(
-          date_range(from, to),
-          context.on_rule_metrics_fetched,
+        fetch_overview_and_project_executions(
+          selected_project_id,
+          from,
+          to,
+          0,
+          context,
         ),
       )
     }
@@ -262,6 +311,7 @@ fn handle_quick_range_clicked(
   model: admin_metrics.Model,
   from: String,
   to: String,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   let model =
@@ -270,12 +320,19 @@ fn handle_quick_range_clicked(
       admin_rule_metrics_from: from,
       admin_rule_metrics_to: to,
       admin_rule_metrics: Loading,
+      admin_project_rule_executions: project_executions_loading(
+        selected_project_id,
+      ),
+      admin_project_rule_executions_offset: 0,
     )
   #(
     model,
-    api_rule_metrics.get_org_rule_metrics(
-      date_range(from, to),
-      context.on_rule_metrics_fetched,
+    fetch_overview_and_project_executions(
+      selected_project_id,
+      from,
+      to,
+      0,
+      context,
     ),
   )
 }
@@ -309,6 +366,7 @@ fn handle_fetched_error(
 /// Initialize the rule metrics tab with default date range (last 30 days).
 pub fn init_tab(
   model: admin_metrics.Model,
+  selected_project_id: Option(Int),
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   // Set default dates if not already set: from 30 days ago to today
@@ -324,31 +382,69 @@ pub fn init_tab(
           admin_rule_metrics_from: from,
           admin_rule_metrics_to: to,
           admin_rule_metrics: Loading,
+          admin_project_rule_executions: project_executions_loading(
+            selected_project_id,
+          ),
+          admin_project_rule_executions_offset: 0,
         )
       #(
         model,
-        api_rule_metrics.get_org_rule_metrics(
-          date_range(from, to),
-          context.on_rule_metrics_fetched,
+        fetch_overview_and_project_executions(
+          selected_project_id,
+          from,
+          to,
+          0,
+          context,
         ),
       )
     }
     False ->
-      case model.admin_rule_metrics {
-        NotAsked -> {
-          let model = admin_metrics.Model(..model, admin_rule_metrics: Loading)
+      case
+        model.admin_rule_metrics,
+        project_executions_should_load(model, selected_project_id)
+      {
+        NotAsked, _ -> {
+          let model =
+            admin_metrics.Model(
+              ..model,
+              admin_rule_metrics: Loading,
+              admin_project_rule_executions: project_executions_loading(
+                selected_project_id,
+              ),
+              admin_project_rule_executions_offset: 0,
+            )
           #(
             model,
-            api_rule_metrics.get_org_rule_metrics(
-              date_range(
-                model.admin_rule_metrics_from,
-                model.admin_rule_metrics_to,
-              ),
-              context.on_rule_metrics_fetched,
+            fetch_overview_and_project_executions(
+              selected_project_id,
+              model.admin_rule_metrics_from,
+              model.admin_rule_metrics_to,
+              0,
+              context,
             ),
           )
         }
-        _ -> #(model, effect.none())
+        _, True -> {
+          let model =
+            admin_metrics.Model(
+              ..model,
+              admin_project_rule_executions: project_executions_loading(
+                selected_project_id,
+              ),
+              admin_project_rule_executions_offset: 0,
+            )
+          #(
+            model,
+            fetch_project_executions(
+              selected_project_id,
+              model.admin_rule_metrics_from,
+              model.admin_rule_metrics_to,
+              0,
+              context,
+            ),
+          )
+        }
+        _, False -> #(model, effect.none())
       }
   }
 }
@@ -524,6 +620,29 @@ fn handle_executions_fetched_error(
   )
 }
 
+fn handle_project_executions_fetched_ok(
+  model: admin_metrics.Model,
+  response: api_rule_metrics.ProjectRuleExecutionsResponse,
+) -> #(admin_metrics.Model, Effect(parent_msg)) {
+  #(
+    admin_metrics.Model(
+      ..model,
+      admin_project_rule_executions: Loaded(response),
+    ),
+    effect.none(),
+  )
+}
+
+fn handle_project_executions_fetched_error(
+  model: admin_metrics.Model,
+  err: ApiError,
+) -> #(admin_metrics.Model, Effect(parent_msg)) {
+  #(
+    admin_metrics.Model(..model, admin_project_rule_executions: Failed(err)),
+    effect.none(),
+  )
+}
+
 /// Handle executions pagination.
 fn handle_exec_page_changed(
   model: admin_metrics.Model,
@@ -555,6 +674,102 @@ fn handle_exec_page_changed(
   }
 }
 
+fn handle_project_exec_page_changed(
+  model: admin_metrics.Model,
+  selected_project_id: Option(Int),
+  offset: Int,
+  context: Context(parent_msg),
+) -> #(admin_metrics.Model, Effect(parent_msg)) {
+  let from = model.admin_rule_metrics_from
+  let to = model.admin_rule_metrics_to
+  let model =
+    admin_metrics.Model(
+      ..model,
+      admin_project_rule_executions: project_executions_loading(
+        selected_project_id,
+      ),
+      admin_project_rule_executions_offset: offset,
+    )
+
+  #(
+    model,
+    fetch_project_executions(selected_project_id, from, to, offset, context),
+  )
+}
+
 fn date_range(from: String, to: String) -> api_rule_metrics.CalendarDateRange {
   api_rule_metrics.calendar_date_range(from, to)
+}
+
+fn project_executions_loading(
+  selected_project_id: Option(Int),
+) -> Remote(api_rule_metrics.ProjectRuleExecutionsResponse) {
+  case selected_project_id {
+    Some(_) -> Loading
+    None -> NotAsked
+  }
+}
+
+fn project_executions_should_load(
+  model: admin_metrics.Model,
+  selected_project_id: Option(Int),
+) -> Bool {
+  case selected_project_id, model.admin_project_rule_executions {
+    Some(_), NotAsked -> True
+    _, _ -> False
+  }
+}
+
+fn fetch_overview_and_project_executions(
+  selected_project_id: Option(Int),
+  from: String,
+  to: String,
+  offset: Int,
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  effect.batch([
+    fetch_overview_metrics(selected_project_id, from, to, context),
+    fetch_project_executions(selected_project_id, from, to, offset, context),
+  ])
+}
+
+fn fetch_overview_metrics(
+  selected_project_id: Option(Int),
+  from: String,
+  to: String,
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  case selected_project_id {
+    Some(project_id) ->
+      api_rule_metrics.get_project_rule_metrics(
+        project_id,
+        date_range(from, to),
+        context.on_rule_metrics_fetched,
+      )
+    None ->
+      api_rule_metrics.get_org_rule_metrics(
+        date_range(from, to),
+        context.on_rule_metrics_fetched,
+      )
+  }
+}
+
+fn fetch_project_executions(
+  selected_project_id: Option(Int),
+  from: String,
+  to: String,
+  offset: Int,
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  case selected_project_id {
+    Some(project_id) ->
+      api_rule_metrics.get_project_rule_executions(
+        project_id,
+        date_range(from, to),
+        20,
+        offset,
+        context.on_project_executions_fetched,
+      )
+    None -> effect.none()
+  }
 }

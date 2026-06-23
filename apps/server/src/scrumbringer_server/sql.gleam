@@ -3449,6 +3449,60 @@ where rule_id = $1
   |> pog.execute(db)
 }
 
+/// A row you get from running the `rule_executions_count_for_project` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_count_for_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsCountForProjectRow {
+  RuleExecutionsCountForProjectRow(total: Int)
+}
+
+/// name: rule_executions_count_for_project
+/// Count business executions visible in a project.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_count_for_project(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleExecutionsCountForProjectRow), pog.QueryError) {
+  let decoder = {
+    use total <- decode.field(0, decode.int)
+    decode.success(RuleExecutionsCountForProjectRow(total:))
+  }
+
+  "-- name: rule_executions_count_for_project
+-- Count business executions visible in a project.
+select count(*)::int as total
+from rule_executions re
+join rules r on r.id = re.rule_id
+join workflows w on w.id = r.workflow_id
+left join tasks origin_task on origin_task.id = re.task_id
+left join cards origin_card on origin_card.id = re.card_id
+left join tasks created_task on created_task.id = re.created_task_id
+where re.outcome = 'applied'
+    and (
+        w.project_id = $1
+        or origin_task.project_id = $1
+        or origin_card.project_id = $1
+        or created_task.project_id = $1
+    )
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day');
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `rule_executions_list` query
 /// defined in `./src/scrumbringer_server/sql/rule_executions_list.sql`.
 ///
@@ -3530,6 +3584,145 @@ from rule_executions re
 left join users u on u.id = re.user_id
 where re.rule_id = $1
     and re.outcome = 'applied'
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
+order by re.created_at desc
+limit $4 offset $5;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_executions_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_list_for_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsListForProjectRow {
+  RuleExecutionsListForProjectRow(
+    id: Int,
+    workflow_id: Int,
+    workflow_name: String,
+    rule_id: Int,
+    rule_name: String,
+    task_id: Int,
+    task_title: String,
+    card_id: Int,
+    card_title: String,
+    outcome: String,
+    suppression_reason: String,
+    user_id: Int,
+    user_email: String,
+    template_id: Int,
+    template_name: String,
+    template_version: Int,
+    created_task_id: Int,
+    created_task_title: String,
+    created_at: String,
+  )
+}
+
+/// name: rule_executions_list_for_project
+/// List business executions visible in a project.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_list_for_project(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+  arg_4: Int,
+  arg_5: Int,
+) -> Result(pog.Returned(RuleExecutionsListForProjectRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use workflow_name <- decode.field(2, decode.string)
+    use rule_id <- decode.field(3, decode.int)
+    use rule_name <- decode.field(4, decode.string)
+    use task_id <- decode.field(5, decode.int)
+    use task_title <- decode.field(6, decode.string)
+    use card_id <- decode.field(7, decode.int)
+    use card_title <- decode.field(8, decode.string)
+    use outcome <- decode.field(9, decode.string)
+    use suppression_reason <- decode.field(10, decode.string)
+    use user_id <- decode.field(11, decode.int)
+    use user_email <- decode.field(12, decode.string)
+    use template_id <- decode.field(13, decode.int)
+    use template_name <- decode.field(14, decode.string)
+    use template_version <- decode.field(15, decode.int)
+    use created_task_id <- decode.field(16, decode.int)
+    use created_task_title <- decode.field(17, decode.string)
+    use created_at <- decode.field(18, decode.string)
+    decode.success(RuleExecutionsListForProjectRow(
+      id:,
+      workflow_id:,
+      workflow_name:,
+      rule_id:,
+      rule_name:,
+      task_id:,
+      task_title:,
+      card_id:,
+      card_title:,
+      outcome:,
+      suppression_reason:,
+      user_id:,
+      user_email:,
+      template_id:,
+      template_name:,
+      template_version:,
+      created_task_id:,
+      created_task_title:,
+      created_at:,
+    ))
+  }
+
+  "-- name: rule_executions_list_for_project
+-- List business executions visible in a project.
+select
+    re.id,
+    w.id as workflow_id,
+    w.name as workflow_name,
+    r.id as rule_id,
+    r.name as rule_name,
+    coalesce(re.task_id, 0) as task_id,
+    coalesce(origin_task.title, '') as task_title,
+    coalesce(re.card_id, 0) as card_id,
+    coalesce(origin_card.title, '') as card_title,
+    re.outcome,
+    coalesce(re.suppression_reason, '') as suppression_reason,
+    coalesce(re.user_id, 0) as user_id,
+    coalesce(u.email, '') as user_email,
+    coalesce(re.template_id, 0) as template_id,
+    coalesce(template.name, '') as template_name,
+    coalesce(re.template_version, 0) as template_version,
+    coalesce(re.created_task_id, 0) as created_task_id,
+    coalesce(created_task.title, '') as created_task_title,
+    to_char(re.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from rule_executions re
+join rules r on r.id = re.rule_id
+join workflows w on w.id = r.workflow_id
+left join users u on u.id = re.user_id
+left join task_templates template on template.id = re.template_id
+left join tasks origin_task on origin_task.id = re.task_id
+left join cards origin_card on origin_card.id = re.card_id
+left join tasks created_task on created_task.id = re.created_task_id
+where re.outcome = 'applied'
+    and (
+        w.project_id = $1
+        or origin_task.project_id = $1
+        or origin_card.project_id = $1
+        or created_task.project_id = $1
+    )
     and re.created_at >= ($2::timestamp)::date
     and re.created_at < (($3::timestamp)::date + interval '1 day')
 order by re.created_at desc

@@ -276,6 +276,39 @@ pub type RuleExecutionsResponse {
   )
 }
 
+/// Project-level execution row for the automations executions mode.
+pub type ProjectRuleExecution {
+  ProjectRuleExecution(
+    id: Int,
+    workflow_id: Int,
+    workflow_name: String,
+    rule_id: Int,
+    rule_name: String,
+    task_id: Option(Int),
+    task_title: String,
+    card_id: Option(Int),
+    card_title: String,
+    outcome: RuleExecutionOutcome,
+    user_id: Int,
+    user_email: String,
+    template_id: Option(Int),
+    template_name: String,
+    template_version: Option(Int),
+    created_task_id: Option(Int),
+    created_task_title: String,
+    created_at: String,
+  )
+}
+
+/// Project-level execution response with pagination.
+pub type ProjectRuleExecutionsResponse {
+  ProjectRuleExecutionsResponse(
+    project_id: Int,
+    executions: List(ProjectRuleExecution),
+    pagination: Pagination,
+  )
+}
+
 fn rule_execution_decoder() -> decode.Decoder(RuleExecution) {
   use id <- decode.field("id", decode.int)
   use task_id <- decode.optional_field(
@@ -361,6 +394,93 @@ pub fn rule_executions_response_decoder() -> decode.Decoder(
   ))
 }
 
+fn project_rule_execution_decoder() -> decode.Decoder(ProjectRuleExecution) {
+  use id <- decode.field("id", decode.int)
+  use workflow_id <- decode.field("workflow_id", decode.int)
+  use workflow_name <- decode.field("workflow_name", decode.string)
+  use rule_id <- decode.field("rule_id", decode.int)
+  use rule_name <- decode.field("rule_name", decode.string)
+  use task_id <- decode.optional_field(
+    "task_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use task_title <- decode.optional_field("task_title", "", decode.string)
+  use card_id <- decode.optional_field(
+    "card_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use card_title <- decode.optional_field("card_title", "", decode.string)
+  use outcome_raw <- decode.field("outcome", decode.string)
+  use suppression_reason <- decode.optional_field(
+    "suppression_reason",
+    "",
+    decode.string,
+  )
+  use user_id <- decode.optional_field("user_id", 0, decode.int)
+  use user_email <- decode.optional_field("user_email", "", decode.string)
+  use template_id <- decode.optional_field(
+    "template_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use template_name <- decode.optional_field("template_name", "", decode.string)
+  use template_version <- decode.optional_field(
+    "template_version",
+    None,
+    decode.optional(decode.int),
+  )
+  use created_task_id <- decode.optional_field(
+    "created_task_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use created_task_title <- decode.optional_field(
+    "created_task_title",
+    "",
+    decode.string,
+  )
+  use created_at <- decode.field("created_at", decode.string)
+  decode.success(ProjectRuleExecution(
+    id: id,
+    workflow_id: workflow_id,
+    workflow_name: workflow_name,
+    rule_id: rule_id,
+    rule_name: rule_name,
+    task_id: task_id,
+    task_title: task_title,
+    card_id: card_id,
+    card_title: card_title,
+    outcome: parse_execution_outcome(outcome_raw, suppression_reason),
+    user_id: user_id,
+    user_email: user_email,
+    template_id: template_id,
+    template_name: template_name,
+    template_version: template_version,
+    created_task_id: created_task_id,
+    created_task_title: created_task_title,
+    created_at: created_at,
+  ))
+}
+
+/// Provides project execution history response decoder.
+pub fn project_rule_executions_response_decoder() -> decode.Decoder(
+  ProjectRuleExecutionsResponse,
+) {
+  use project_id <- decode.field("project_id", decode.int)
+  use executions <- decode.field(
+    "executions",
+    decode.list(project_rule_execution_decoder()),
+  )
+  use pagination <- decode.field("pagination", pagination_decoder())
+  decode.success(ProjectRuleExecutionsResponse(
+    project_id: project_id,
+    executions: executions,
+    pagination: pagination,
+  ))
+}
+
 /// Fetch paginated executions for a rule.
 pub fn get_rule_executions(
   rule_id: Int,
@@ -381,6 +501,30 @@ pub fn get_rule_executions(
       <> int.to_string(offset),
     None,
     rule_executions_response_decoder(),
+    to_msg,
+  )
+}
+
+/// Fetch paginated business executions visible in a project.
+pub fn get_project_rule_executions(
+  project_id: Int,
+  range: CalendarDateRange,
+  limit: Int,
+  offset: Int,
+  to_msg: fn(ApiResult(ProjectRuleExecutionsResponse)) -> msg,
+) -> Effect(msg) {
+  core.request(
+    core.Get,
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/rule-executions"
+      <> calendar_date_range_query(range)
+      <> "&limit="
+      <> int.to_string(limit)
+      <> "&offset="
+      <> int.to_string(offset),
+    None,
+    project_rule_executions_response_decoder(),
     to_msg,
   )
 }

@@ -17,12 +17,14 @@ pub type Callbacks(msg) {
     on_drilldown_clicked: fn(Int) -> msg,
     on_drilldown_closed: msg,
     on_exec_page_changed: fn(Int) -> msg,
+    on_project_exec_page_changed: fn(Int) -> msg,
   )
 }
 
 pub fn from_state(
   locale: Locale,
   metrics: admin_metrics.Model,
+  selected_project_id: opt.Option(Int),
   selected_execution_id: opt.Option(Int),
   callbacks: Callbacks(msg),
 ) -> execution_history.Config(msg) {
@@ -52,6 +54,7 @@ pub fn from_state(
   execution_history.Config(
     locale: locale,
     model: metrics,
+    selected_project_id: selected_project_id,
     selected_execution_id: selected_execution_id,
     quick_ranges: [
       quick_range(i18n_text.RuleMetrics7Days, 7),
@@ -64,5 +67,6 @@ pub fn from_state(
     on_drilldown_clicked: callbacks.on_drilldown_clicked,
     on_drilldown_closed: callbacks.on_drilldown_closed,
     on_exec_page_changed: callbacks.on_exec_page_changed,
+    on_project_exec_page_changed: callbacks.on_project_exec_page_changed,
   )
 }

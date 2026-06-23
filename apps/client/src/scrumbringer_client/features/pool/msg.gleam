@@ -183,7 +183,11 @@ pub type Msg {
   AdminRuleMetricsExecutionsFetched(
     ApiResult(api_rule_metrics.RuleExecutionsResponse),
   )
+  AdminProjectRuleExecutionsFetched(
+    ApiResult(api_rule_metrics.ProjectRuleExecutionsResponse),
+  )
   AdminRuleMetricsExecPageChanged(Int)
+  AdminProjectRuleExecutionsPageChanged(Int)
   CardsFetched(ApiResult(List(Card)))
   OpenCardDialog(admin_cards.CardDialogMode)
   CloseCardDialog

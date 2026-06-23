@@ -565,6 +565,7 @@ fn view_automations_console(
     executions_view: execution_history.view(execution_history_config.from_state(
       model.ui.locale,
       model.admin.metrics,
+      model.core.selected_project_id,
       automation_deep_link.execution_id(model.core.automation_selection),
       admin_rule_metrics_callbacks(),
     )),
@@ -974,6 +975,11 @@ fn admin_rule_metrics_callbacks() -> execution_history_config.Callbacks(
     ),
     on_exec_page_changed: fn(offset) {
       client_state.pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(
+        offset,
+      ))
+    },
+    on_project_exec_page_changed: fn(offset) {
+      client_state.pool_msg(pool_messages.AdminProjectRuleExecutionsPageChanged(
         offset,
       ))
     },

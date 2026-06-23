@@ -101,15 +101,48 @@ fn executions_response() -> api_rule_metrics.RuleExecutionsResponse {
   )
 }
 
+fn project_execution() -> api_rule_metrics.ProjectRuleExecution {
+  api_rule_metrics.ProjectRuleExecution(
+    id: 101,
+    workflow_id: 11,
+    workflow_name: "Escalation workflow",
+    rule_id: 22,
+    rule_name: "Escalate blocked work",
+    task_id: option.Some(42),
+    task_title: "Blocked backend task",
+    card_id: option.None,
+    card_title: "",
+    outcome: api_rule_metrics.CreatedExecution,
+    user_id: 7,
+    user_email: "member@example.com",
+    template_id: option.Some(12),
+    template_name: "Escalation template",
+    template_version: option.Some(3),
+    created_task_id: option.Some(43),
+    created_task_title: "Follow up task",
+    created_at: "2026-06-08T10:00:00Z",
+  )
+}
+
+fn project_executions_response() -> api_rule_metrics.ProjectRuleExecutionsResponse {
+  api_rule_metrics.ProjectRuleExecutionsResponse(
+    project_id: 3,
+    executions: [project_execution()],
+    pagination: api_rule_metrics.Pagination(limit: 20, offset: 0, total: 1),
+  )
+}
+
 fn config() -> execution_history.Config(String) {
   execution_history.Config(
     locale: locale.En,
     model: admin_metrics.Model(
       ..admin_metrics.default_model(),
       admin_rule_metrics: Loaded([workflow_summary()]),
+      admin_project_rule_executions: Loaded(project_executions_response()),
       admin_rule_metrics_from: "2026-06-01",
       admin_rule_metrics_to: "2026-06-08",
     ),
+    selected_project_id: option.Some(3),
     selected_execution_id: option.None,
     quick_ranges: [
       execution_history.QuickRange(
@@ -125,6 +158,9 @@ fn config() -> execution_history.Config(String) {
     on_drilldown_clicked: fn(id) { "drilldown-" <> int.to_string(id) },
     on_drilldown_closed: "drilldown-closed",
     on_exec_page_changed: fn(offset) { "page-" <> int.to_string(offset) },
+    on_project_exec_page_changed: fn(offset) {
+      "project-page-" <> int.to_string(offset)
+    },
   )
 }
 
@@ -137,8 +173,11 @@ pub fn automation_execution_history_renders_from_config_without_root_model_test(
   assert_contains(html, "filter-bar automation-executions-filters")
   assert_contains(html, "data-testid=\"automation-executions-filter-bar\"")
   assert_contains(html, "Escalation workflow")
+  assert_contains(html, "Escalate blocked work")
+  assert_contains(html, "Escalation template v3")
+  assert_contains(html, "task #42 Blocked backend task")
+  assert_contains(html, "task #43 Follow up task")
   assert_contains(html, "Created")
-  assert_contains(html, "Ignored")
   assert_contains(html, "9")
   assert_contains(html, "6")
   assert_contains(html, "3")
@@ -156,6 +195,17 @@ pub fn automation_execution_history_renders_empty_state_without_root_model_test(
         model: admin_metrics.Model(
           ..config().model,
           admin_rule_metrics: Loaded([]),
+          admin_project_rule_executions: Loaded(
+            api_rule_metrics.ProjectRuleExecutionsResponse(
+              project_id: 3,
+              executions: [],
+              pagination: api_rule_metrics.Pagination(
+                limit: 20,
+                offset: 0,
+                total: 0,
+              ),
+            ),
+          ),
         ),
       ),
     )

@@ -841,7 +841,9 @@ fn update_without_view_mode(
     | pool_messages.AdminRuleMetricsDrilldownClosed
     | pool_messages.AdminRuleMetricsRuleDetailsFetched(_)
     | pool_messages.AdminRuleMetricsExecutionsFetched(_)
-    | pool_messages.AdminRuleMetricsExecPageChanged(_) -> #(
+    | pool_messages.AdminProjectRuleExecutionsFetched(_)
+    | pool_messages.AdminRuleMetricsExecPageChanged(_)
+    | pool_messages.AdminProjectRuleExecutionsPageChanged(_) -> #(
       model,
       effect.none(),
     )

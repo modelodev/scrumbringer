@@ -15,7 +15,14 @@ pub fn try_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case rule_metrics_workflow.try_update(model.admin.metrics, inner, context()) {
+  case
+    rule_metrics_workflow.try_update(
+      model.admin.metrics,
+      inner,
+      model.core.selected_project_id,
+      context(),
+    )
+  {
     opt.Some(update) -> opt.Some(apply_update(model, update))
     opt.None -> opt.None
   }
@@ -49,6 +56,11 @@ fn context() -> rule_metrics_workflow.Context(client_state.Msg) {
     },
     on_executions_fetched: fn(result) {
       client_state.pool_msg(pool_messages.AdminRuleMetricsExecutionsFetched(
+        result,
+      ))
+    },
+    on_project_executions_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminProjectRuleExecutionsFetched(
         result,
       ))
     },

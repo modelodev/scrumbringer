@@ -127,6 +127,11 @@ fn rule_metrics_context() -> rule_metrics_workflow.Context(client_state.Msg) {
         result,
       ))
     },
+    on_project_executions_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminProjectRuleExecutionsFetched(
+        result,
+      ))
+    },
   )
 }
 
@@ -1365,7 +1370,11 @@ pub fn refresh_section_for_test(
     permissions.RuleMetrics -> {
       let #(model, fx) =
         apply_admin_metrics_transition(model, fn(metrics) {
-          rule_metrics_workflow.init_tab(metrics, rule_metrics_context())
+          rule_metrics_workflow.init_tab(
+            metrics,
+            model.core.selected_project_id,
+            rule_metrics_context(),
+          )
         })
       with_right_panel_data(model, [fx])
     }

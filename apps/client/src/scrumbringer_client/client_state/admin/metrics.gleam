@@ -31,6 +31,10 @@ pub type Model {
     admin_rule_metrics_executions: Remote(
       api_rule_metrics.RuleExecutionsResponse,
     ),
+    admin_project_rule_executions: Remote(
+      api_rule_metrics.ProjectRuleExecutionsResponse,
+    ),
+    admin_project_rule_executions_offset: Int,
     admin_rule_metrics_exec_offset: Int,
   )
 }
@@ -53,6 +57,8 @@ pub fn default_model() -> Model {
     admin_rule_metrics_drilldown_rule_id: option.None,
     admin_rule_metrics_rule_details: NotAsked,
     admin_rule_metrics_executions: NotAsked,
+    admin_project_rule_executions: NotAsked,
+    admin_project_rule_executions_offset: 0,
     admin_rule_metrics_exec_offset: 0,
   )
 }

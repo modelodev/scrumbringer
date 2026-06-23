@@ -296,6 +296,12 @@ fn route_rule_metrics(
       Some(rule_metrics.handle_org_metrics(req, auth_ctx(ctx)))
     ["api", "v1", "projects", project_id, "rule-metrics"] ->
       Some(rule_metrics.handle_project_metrics(req, auth_ctx(ctx), project_id))
+    ["api", "v1", "projects", project_id, "rule-executions"] ->
+      Some(rule_metrics.handle_project_executions(
+        req,
+        auth_ctx(ctx),
+        project_id,
+      ))
     _ -> None
   }
 }

@@ -136,6 +136,21 @@ pub fn handle_project_metrics(
   }
 }
 
+/// Routes project execution history requests (GET only).
+///
+/// Example:
+///   handle_project_executions(req, ctx, project_id)
+pub fn handle_project_executions(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Get -> get_project_executions(req, ctx, project_id)
+    _ -> wisp.method_not_allowed([http.Get])
+  }
+}
+
 // =============================================================================
 // Handlers
 // =============================================================================
@@ -298,6 +313,17 @@ fn get_project_metrics(
   }
 }
 
+fn get_project_executions(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case project_executions(req, ctx, project_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
+  }
+}
+
 fn authorize_project_metrics(
   db: pog.Connection,
   user: StoredUser,
@@ -333,6 +359,61 @@ fn project_metrics(
       Ok(
         api.ok(presenters.project_metrics_json(project_id, from, to, workflows)),
       )
+    Error(_) -> Error(database_error_response())
+  }
+}
+
+fn project_executions(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(authorize_project_metrics(db, user, project_id))
+  use #(from, to) <- result.try(parse_date_range(req))
+  use #(limit, offset) <- result.try(parse_pagination(req))
+
+  case
+    rule_metrics_db.list_project_rule_executions(
+      db,
+      project_id,
+      from,
+      to,
+      limit,
+      offset,
+    )
+  {
+    Ok(executions) -> {
+      use total <- result.try(count_project_rule_executions(
+        db,
+        project_id,
+        from,
+        to,
+      ))
+      Ok(
+        api.ok(presenters.project_rule_executions_json(
+          project_id,
+          executions,
+          limit,
+          offset,
+          total,
+        )),
+      )
+    }
+    Error(_) -> Error(database_error_response())
+  }
+}
+
+fn count_project_rule_executions(
+  db: pog.Connection,
+  project_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+) -> Result(Int, wisp.Response) {
+  case rule_metrics_db.count_project_rule_executions(db, project_id, from, to) {
+    Ok(total) -> Ok(total)
     Error(_) -> Error(database_error_response())
   }
 }

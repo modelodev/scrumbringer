@@ -14,6 +14,7 @@ fn context() -> rule_metrics.Context(String) {
     on_workflow_details_fetched: fn(_) { "workflow-details-fetched" },
     on_rule_details_fetched: fn(_) { "rule-details-fetched" },
     on_executions_fetched: fn(_) { "executions-fetched" },
+    on_project_executions_fetched: fn(_) { "project-executions-fetched" },
   )
 }
 
@@ -22,7 +23,7 @@ fn update(
   inner: pool_messages.Msg,
 ) -> rule_metrics.Update(String) {
   let assert option.Some(update) =
-    rule_metrics.try_update(model, inner, context())
+    rule_metrics.try_update(model, inner, option.None, context())
   update
 }
 
@@ -86,6 +87,7 @@ pub fn try_update_from_changed_returns_local_update_without_auth_test() {
     rule_metrics.try_update(
       admin_metrics.default_model(),
       pool_messages.AdminRuleMetricsFromChanged("2026-01-01"),
+      option.None,
       context(),
     )
 
@@ -101,6 +103,7 @@ pub fn try_update_error_returns_local_update_with_auth_policy_test() {
     rule_metrics.try_update(
       admin_metrics.default_model(),
       pool_messages.AdminRuleMetricsFetched(Error(err)),
+      option.None,
       context(),
     )
   let assert rule_metrics.CheckAuth(auth_err) = auth_policy
@@ -115,6 +118,7 @@ pub fn try_update_ignores_non_rule_metrics_messages_test() {
     rule_metrics.try_update(
       admin_metrics.default_model(),
       pool_messages.MemberPoolVisibilityChanged("all-open"),
+      option.None,
       context(),
     )
 }

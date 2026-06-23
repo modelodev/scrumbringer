@@ -74,6 +74,27 @@ pub fn rule_executions_json(
   ])
 }
 
+pub fn project_rule_executions_json(
+  project_id: Int,
+  executions: List(rule_metrics_db.ProjectRuleExecution),
+  limit: Int,
+  offset: Int,
+  total: Int,
+) -> json.Json {
+  json.object([
+    #("project_id", json.int(project_id)),
+    #("executions", json.array(executions, of: project_execution_json)),
+    #(
+      "pagination",
+      json.object([
+        #("limit", json.int(limit)),
+        #("offset", json.int(offset)),
+        #("total", json.int(total)),
+      ]),
+    ),
+  ])
+}
+
 pub fn org_metrics_json(
   from: Timestamp,
   to: Timestamp,
@@ -181,6 +202,82 @@ fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
   let fields = case exec.created_task_id {
     None -> fields
     Some(id) -> [#("created_task_id", json.int(id)), ..fields]
+  }
+
+  json.object(fields)
+}
+
+fn project_execution_json(
+  exec: rule_metrics_db.ProjectRuleExecution,
+) -> json.Json {
+  let fields = [
+    #("id", json.int(exec.id)),
+    #("workflow_id", json.int(exec.workflow_id)),
+    #("workflow_name", json.string(exec.workflow_name)),
+    #("rule_id", json.int(exec.rule_id)),
+    #("rule_name", json.string(exec.rule_name)),
+    #("outcome", json.string(exec.outcome)),
+    #("created_at", json.string(exec.created_at)),
+  ]
+
+  let fields = case exec.task_id {
+    None -> fields
+    Some(id) -> [#("task_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.task_title {
+    "" -> fields
+    title -> [#("task_title", json.string(title)), ..fields]
+  }
+
+  let fields = case exec.card_id {
+    None -> fields
+    Some(id) -> [#("card_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.card_title {
+    "" -> fields
+    title -> [#("card_title", json.string(title)), ..fields]
+  }
+
+  let fields = case exec.suppression_reason {
+    "" -> fields
+    reason -> [#("suppression_reason", json.string(reason)), ..fields]
+  }
+
+  let fields = case exec.user_id {
+    0 -> fields
+    id -> [#("user_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.user_email {
+    "" -> fields
+    email -> [#("user_email", json.string(email)), ..fields]
+  }
+
+  let fields = case exec.template_id {
+    None -> fields
+    Some(id) -> [#("template_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.template_name {
+    "" -> fields
+    name -> [#("template_name", json.string(name)), ..fields]
+  }
+
+  let fields = case exec.template_version {
+    None -> fields
+    Some(version) -> [#("template_version", json.int(version)), ..fields]
+  }
+
+  let fields = case exec.created_task_id {
+    None -> fields
+    Some(id) -> [#("created_task_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.created_task_title {
+    "" -> fields
+    title -> [#("created_task_title", json.string(title)), ..fields]
   }
 
   json.object(fields)

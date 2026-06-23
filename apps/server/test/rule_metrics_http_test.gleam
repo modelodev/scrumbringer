@@ -529,6 +529,124 @@ pub fn executions_list_returns_paginated_results_test() {
   Nil
 }
 
+pub fn project_executions_list_returns_project_business_executions_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "ProjectExecutions")
+  let assert Ok(other_project_id) =
+    fixtures.create_project(handler, session, "OtherProjectExecutions")
+  let assert Ok(workflow_id) =
+    fixtures.create_workflow(handler, session, project_id, "Visible Flow")
+  let assert Ok(other_workflow_id) =
+    fixtures.create_workflow(handler, session, other_project_id, "Other Flow")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Story", "bookmark")
+  let assert Ok(other_type_id) =
+    fixtures.create_task_type(handler, session, other_project_id, "Bug", "bug")
+  let assert Ok(template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      project_id,
+      type_id,
+      "Visible Template",
+    )
+  let assert Ok(other_template_id) =
+    create_metrics_template(
+      handler,
+      session,
+      other_project_id,
+      other_type_id,
+      "Other Template",
+    )
+  let assert Ok(rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      workflow_id,
+      Some(type_id),
+      "Visible Rule",
+      task_status.Done,
+      template_id,
+    )
+  let assert Ok(other_rule_id) =
+    fixtures.create_rule(
+      handler,
+      session,
+      other_workflow_id,
+      Some(other_type_id),
+      "Other Rule",
+      task_status.Done,
+      other_template_id,
+    )
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Origin Task")
+  let assert Ok(other_task_id) =
+    fixtures.create_task(
+      handler,
+      session,
+      other_project_id,
+      other_type_id,
+      "Other Origin Task",
+    )
+
+  let ts = execution_time()
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", task_id, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      task_id,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      other_rule_id,
+      admin_id,
+      "task",
+      other_task_id,
+      "applied",
+      "",
+      ts,
+    )
+
+  let res =
+    get_project_executions_with_dates(
+      handler,
+      session,
+      project_id,
+      Some(20),
+      Some(0),
+      "2025-11-15",
+      "2026-01-30",
+    )
+  expect.expect_status(res, 200)
+
+  let body = simulate.read_body(res)
+  expect.expect_json_field_int(body, ["data", "project_id"], project_id)
+  expect.expect_json_field_int(body, ["data", "pagination", "total"], 1)
+  let assert True =
+    string.contains(body, "\"workflow_id\":" <> int.to_string(workflow_id))
+  let assert True =
+    string.contains(body, "\"rule_id\":" <> int.to_string(rule_id))
+  let assert True = string.contains(body, "Visible Flow")
+  let assert True = string.contains(body, "Visible Rule")
+  let assert True = string.contains(body, "Origin Task")
+  let assert False = string.contains(body, "suppressed")
+  let assert False = string.contains(body, "Other Flow")
+
+  Nil
+}
+
 pub fn executions_list_empty_returns_empty_array_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: _db, ..) = app
@@ -863,6 +981,39 @@ fn get_rule_executions_with_dates(
     "/api/v1/rules/"
     <> int.to_string(rule_id)
     <> "/executions?from="
+    <> from
+    <> "&to="
+    <> to
+  let path = case limit, offset {
+    Some(l), Some(o) ->
+      base_path
+      <> "&limit="
+      <> int.to_string(l)
+      <> "&offset="
+      <> int.to_string(o)
+    Some(l), None -> base_path <> "&limit=" <> int.to_string(l)
+    None, Some(o) -> base_path <> "&offset=" <> int.to_string(o)
+    None, None -> base_path
+  }
+  handler(
+    simulate.request(http.Get, path)
+    |> fixtures.with_auth(session),
+  )
+}
+
+fn get_project_executions_with_dates(
+  handler,
+  session,
+  project_id: Int,
+  limit,
+  offset,
+  from: String,
+  to: String,
+) {
+  let base_path =
+    "/api/v1/projects/"
+    <> int.to_string(project_id)
+    <> "/rule-executions?from="
     <> from
     <> "&to="
     <> to
