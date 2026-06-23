@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option as opt
 import gleam/string
 import lustre/element
@@ -71,4 +72,36 @@ pub fn mobile_admin_team_uses_team_title_test() {
 
   let assert True = string.contains(html, "topbar-title-mobile")
   let assert True = string.contains(html, "Team")
+}
+
+pub fn mobile_admin_automation_modes_use_single_console_title_test() {
+  [permissions.Workflows, permissions.TaskTemplates, permissions.RuleMetrics]
+  |> list.each(fn(section) {
+    let model = admin_mobile_model(section)
+
+    let html = client_view.view(model) |> element.to_document_string
+
+    let assert True = string.contains(html, "topbar-title-mobile")
+    let assert True =
+      string.contains(html, "class=\"topbar-title-mobile\">Automations<")
+  })
+}
+
+fn admin_mobile_model(section: permissions.AdminSection) -> Model {
+  base_model()
+  |> update_core(fn(core) {
+    CoreModel(
+      ..core,
+      page: Admin,
+      active_section: section,
+      user: opt.Some(User(
+        id: 1,
+        email: "admin@example.com",
+        org_id: 1,
+        org_role: org_role.Admin,
+        created_at: "2026-01-01T00:00:00Z",
+      )),
+    )
+  })
+  |> update_ui(fn(ui) { ui_state.UiModel(..ui, is_mobile: True) })
 }

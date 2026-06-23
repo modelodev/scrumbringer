@@ -212,6 +212,29 @@ pub fn left_panel_config_has_single_automations_entry_test() {
   assert_not_contains(html, "<span class=\"nav-label\">Executions</span>")
 }
 
+pub fn left_panel_automation_entry_active_for_all_console_modes_test() {
+  [
+    permissions.Workflows,
+    permissions.TaskTemplates,
+    permissions.RuleMetrics,
+  ]
+  |> list.each(fn(section) {
+    let config =
+      left_panel.LeftPanelConfig(
+        ..base_config(opt.Some(config_route(section))),
+        is_pm: True,
+        config_collapsed: False,
+      )
+    let html = left_panel.view(config) |> element.to_document_string
+
+    assert_contains(
+      html,
+      "class=\"nav-link active\" data-testid=\"nav-automations\"",
+    )
+    count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+  })
+}
+
 pub fn left_panel_org_section_active_test() {
   // Org section needs is_org_admin to be visible
   let config =

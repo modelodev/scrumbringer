@@ -1190,13 +1190,13 @@ fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
     permissions.Team -> i18n_text.Team
     permissions.ApiTokens -> i18n_text.AdminApiTokens
     permissions.Metrics -> i18n_text.AdminMetrics
-    permissions.RuleMetrics -> i18n_text.RuleMetricsTitle
+    permissions.RuleMetrics -> i18n_text.AdminWorkflows
     permissions.Members -> i18n_text.AdminMembers
     permissions.Capabilities -> i18n_text.Capabilities
     permissions.Cards -> i18n_text.MemberCards
     permissions.TaskTypes -> i18n_text.TaskTypes
     permissions.Workflows -> i18n_text.AdminWorkflows
-    permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
+    permissions.TaskTemplates -> i18n_text.AdminWorkflows
   }
 }
 

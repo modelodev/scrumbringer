@@ -6,6 +6,7 @@ import gleam/uri
 import domain/view_mode
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/capability_scope
+import scrumbringer_client/i18n/locale
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -119,6 +120,41 @@ pub fn parse_config_automation_unknown_mode_redirects_test() {
   assert_equal(
     parsed,
     router.Redirect(router.Config(permissions.Workflows, Some(2))),
+  )
+}
+
+pub fn page_title_for_automation_modes_uses_single_console_title_test() {
+  assert_equal(
+    router.page_title_for_route(
+      router.Config(permissions.Workflows, Some(2)),
+      locale.En,
+    ),
+    "Automations - Scrumbringer",
+  )
+  assert_equal(
+    router.page_title_for_route(
+      router.Config(permissions.TaskTemplates, Some(2)),
+      locale.En,
+    ),
+    "Automations - Scrumbringer",
+  )
+  assert_equal(
+    router.page_title_for_route(
+      router.Config(permissions.RuleMetrics, Some(2)),
+      locale.En,
+    ),
+    "Automations - Scrumbringer",
+  )
+  assert_equal(
+    router.page_title_for_route(
+      router.ConfigAutomation(
+        permissions.TaskTemplates,
+        Some(2),
+        automation_deep_link.SelectedTemplate(12),
+      ),
+      locale.Es,
+    ),
+    "Automatizaciones - Scrumbringer",
   )
 }
 

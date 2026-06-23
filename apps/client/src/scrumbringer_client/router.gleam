@@ -709,7 +709,7 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
 
     // Story 4.5: Config/Org routes use admin section titles
     Config(section, _) | ConfigAutomation(section, _, _) ->
-      Some(admin_section_title(section, locale))
+      Some(config_section_title(section, locale))
     Org(section) -> Some(admin_section_title(section, locale))
 
     Member(_) -> Some(i18n.t(locale, i18n_text.Pool))
@@ -718,6 +718,24 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
   case section_title {
     None -> "Scrumbringer"
     Some(title) -> title <> " - Scrumbringer"
+  }
+}
+
+fn config_section_title(
+  section: permissions.AdminSection,
+  locale: i18n_locale.Locale,
+) -> String {
+  case is_automation_section(section) {
+    True -> i18n.t(locale, i18n_text.AdminWorkflows)
+    False -> admin_section_title(section, locale)
+  }
+}
+
+fn is_automation_section(section: permissions.AdminSection) -> Bool {
+  case section {
+    permissions.Workflows | permissions.TaskTemplates | permissions.RuleMetrics ->
+      True
+    _ -> False
   }
 }
 

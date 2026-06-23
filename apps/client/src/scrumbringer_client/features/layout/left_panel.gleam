@@ -106,7 +106,9 @@ fn is_route_active(
         // Config sections: match by AdminSection
         router.Config(section, _) | router.ConfigAutomation(section, _, _) ->
           case check_config_section {
-            Some(expected) -> expected == section
+            Some(expected) ->
+              normalize_config_section(expected)
+              == normalize_config_section(section)
             None -> False
           }
         // Org sections: match by AdminSection
@@ -118,6 +120,15 @@ fn is_route_active(
         // Other routes don't match nav items
         _ -> False
       }
+  }
+}
+
+fn normalize_config_section(
+  section: permissions.AdminSection,
+) -> permissions.AdminSection {
+  case section {
+    permissions.TaskTemplates | permissions.RuleMetrics -> permissions.Workflows
+    _ -> section
   }
 }
 
