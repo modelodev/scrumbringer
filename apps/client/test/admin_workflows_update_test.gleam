@@ -159,6 +159,8 @@ fn workflows_state(
   admin_workflows.Model(
     workflows_org: org,
     workflows_project: project,
+    workflows_search: "",
+    workflows_status_filter: "all",
     workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
   )
 }
@@ -341,6 +343,30 @@ pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
   let assert True = next.workflows_project == Loaded([created, existing])
   let assert opt.None = next.workflows_dialog_mode
   let assert True = fx != effect.none()
+  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+}
+
+pub fn try_workflows_update_search_change_is_local_test() {
+  let #(next, fx, auth_policy) =
+    workflow_update(
+      admin_workflows.default_model(),
+      pool_messages.WorkflowsSearchChanged("release"),
+    )
+
+  let assert "release" = next.workflows_search
+  let assert True = fx == effect.none()
+  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+}
+
+pub fn try_workflows_update_status_filter_change_is_local_test() {
+  let #(next, fx, auth_policy) =
+    workflow_update(
+      admin_workflows.default_model(),
+      pool_messages.WorkflowsStatusFilterChanged("paused"),
+    )
+
+  let assert "paused" = next.workflows_status_filter
+  let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
 
@@ -739,6 +765,8 @@ pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_tes
     admin_workflows.Model(
       workflows_org: Loaded([]),
       workflows_project: Loaded([existing]),
+      workflows_search: "",
+      workflows_status_filter: "all",
       workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
     )
 

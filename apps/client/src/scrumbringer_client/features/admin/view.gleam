@@ -486,6 +486,12 @@ fn workflow_callbacks() -> workflows_config.Callbacks(Msg) {
     on_create_clicked: pool_msg(pool_messages.OpenWorkflowDialog(
       admin_workflows.WorkflowDialogCreate,
     )),
+    on_search_changed: fn(value) {
+      pool_msg(pool_messages.WorkflowsSearchChanged(value))
+    },
+    on_status_filter_changed: fn(value) {
+      pool_msg(pool_messages.WorkflowsStatusFilterChanged(value))
+    },
     on_rules_clicked: fn(workflow_id) {
       pool_msg(pool_messages.WorkflowRulesClicked(workflow_id))
     },

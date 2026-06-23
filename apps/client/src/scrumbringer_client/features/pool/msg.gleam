@@ -201,6 +201,8 @@ pub type Msg {
   CardActivateRequested(Int)
   CardActivated(ApiResult(card_contracts.CardActionResponse))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
+  WorkflowsSearchChanged(String)
+  WorkflowsStatusFilterChanged(String)
   OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
   CloseWorkflowDialog
   WorkflowCrudCreated(Workflow)

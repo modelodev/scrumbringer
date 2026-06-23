@@ -735,6 +735,12 @@ pub type Text {
   WorkflowDeleteConfirm(workflow_name: String)
   NoWorkflowsYet
   WorkflowDeleted
+  AutomationEnginesDescription
+  AutomationEnginesSearchPlaceholder
+  AutomationEngineStatus
+  AutomationEngineStatusAll
+  AutomationEngineStatusActive
+  AutomationEngineStatusPaused
 
   // Rules
   RulesTitle(workflow_name: String)

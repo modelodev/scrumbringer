@@ -18,6 +18,8 @@ pub type Model {
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
     workflows_dialog_mode: Option(WorkflowDialogMode),
+    workflows_search: String,
+    workflows_status_filter: String,
   )
 }
 
@@ -27,5 +29,7 @@ pub fn default_model() -> Model {
     workflows_org: NotAsked,
     workflows_project: NotAsked,
     workflows_dialog_mode: option.None,
+    workflows_search: "",
+    workflows_status_filter: "all",
   )
 }

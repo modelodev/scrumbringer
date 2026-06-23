@@ -18,6 +18,8 @@ import scrumbringer_client/theme.{type Theme}
 pub type Callbacks(msg) {
   Callbacks(
     on_create_clicked: msg,
+    on_search_changed: fn(String) -> msg,
+    on_status_filter_changed: fn(String) -> msg,
     on_rules_clicked: fn(Int) -> msg,
     on_edit_clicked: fn(Workflow) -> msg,
     on_delete_clicked: fn(Workflow) -> msg,
@@ -66,7 +68,11 @@ pub fn from_state(
     selected_rules_view: selected_rules_view,
     workflows: workflows.workflows_project,
     dialog_mode: workflows.workflows_dialog_mode,
+    search_query: workflows.workflows_search,
+    status_filter: workflows.workflows_status_filter,
     on_create_clicked: callbacks.on_create_clicked,
+    on_search_changed: callbacks.on_search_changed,
+    on_status_filter_changed: callbacks.on_status_filter_changed,
     on_rules_clicked: callbacks.on_rules_clicked,
     on_edit_clicked: callbacks.on_edit_clicked,
     on_delete_clicked: callbacks.on_delete_clicked,

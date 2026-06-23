@@ -540,6 +540,14 @@ pub fn try_workflows_update(
       workflows_project_fetched_error(state, err)
       |> with_workflow_auth_check(err)
 
+    pool_messages.WorkflowsSearchChanged(query) ->
+      admin_workflows.Model(..state, workflows_search: query)
+      |> without_workflow_auth_check
+
+    pool_messages.WorkflowsStatusFilterChanged(status) ->
+      admin_workflows.Model(..state, workflows_status_filter: status)
+      |> without_workflow_auth_check
+
     pool_messages.OpenWorkflowDialog(mode) ->
       open_workflow_dialog(state, mode)
       |> without_workflow_auth_check
@@ -625,6 +633,8 @@ fn workflow_created(
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
+    workflows_search: state.workflows_search,
+    workflows_status_filter: state.workflows_status_filter,
   )
 }
 
@@ -649,6 +659,8 @@ fn workflow_updated(
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
+    workflows_search: state.workflows_search,
+    workflows_status_filter: state.workflows_status_filter,
   )
 }
 
@@ -673,6 +685,8 @@ fn workflow_deleted(
     workflows_org: org,
     workflows_project: project,
     workflows_dialog_mode: opt.None,
+    workflows_search: state.workflows_search,
+    workflows_status_filter: state.workflows_status_filter,
   )
 }
 

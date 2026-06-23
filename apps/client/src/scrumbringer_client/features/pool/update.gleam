@@ -945,6 +945,8 @@ fn update_without_view_mode(
 
     // Handled by workflows_workflow.try_workflows_update before this dispatch.
     pool_messages.WorkflowsProjectFetched(_)
+    | pool_messages.WorkflowsSearchChanged(_)
+    | pool_messages.WorkflowsStatusFilterChanged(_)
     | pool_messages.OpenWorkflowDialog(_)
     | pool_messages.CloseWorkflowDialog
     | pool_messages.WorkflowCrudCreated(_)

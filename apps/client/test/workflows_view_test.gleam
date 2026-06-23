@@ -15,6 +15,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn workflow(id: Int, name: String, active: Bool) -> Workflow {
   Workflow(
     id: id,
@@ -48,8 +52,12 @@ fn config() -> workflows.Config(String) {
     selected_project_id: opt.Some(7),
     selected_rules_view: opt.None,
     workflows: Loaded([workflow(3, "Release automation", True)]),
+    search_query: "",
+    status_filter: "all",
     dialog_mode: opt.None,
     on_create_clicked: "create",
+    on_search_changed: fn(value) { "search-" <> value },
+    on_status_filter_changed: fn(value) { "status-" <> value },
     on_rules_clicked: fn(id) { "rules-" <> int.to_string(id) },
     on_edit_clicked: fn(workflow) { "edit-" <> workflow.name },
     on_delete_clicked: fn(workflow) { "delete-" <> workflow.name },
@@ -65,10 +73,54 @@ pub fn workflows_view_renders_list_from_config_without_root_model_test() {
     workflows.view_workflows(config())
     |> element.to_document_string
 
-  assert_contains(html, "Automations - Roadmap")
+  assert_contains(html, "Engines - Roadmap")
   assert_contains(html, "Create engine")
+  assert_contains(html, "filter-bar automation-engines-filters")
+  assert_contains(html, "data-testid=\"automation-engines-filter-bar\"")
+  assert_contains(html, "data-testid=\"automation-engine-search\"")
+  assert_contains(html, "data-testid=\"automation-engine-status-filter\"")
+  assert_contains(html, "data-testid=\"automation-engine-row\"")
   assert_contains(html, "Release automation")
   assert_contains(html, "workflow-rules-btn")
+  assert_not_contains(html, "section-header")
+  assert_not_contains(html, "info-callout-link")
+}
+
+pub fn workflows_view_filters_engines_by_search_test() {
+  let html =
+    workflows.view_workflows(
+      workflows.Config(
+        ..config(),
+        workflows: Loaded([
+          workflow(3, "Release automation", True),
+          workflow(4, "Backlog grooming", True),
+        ]),
+        search_query: "backlog",
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Backlog grooming")
+  assert_not_contains(html, "Release automation")
+}
+
+pub fn workflows_view_filters_engines_by_status_test() {
+  let html =
+    workflows.view_workflows(
+      workflows.Config(
+        ..config(),
+        workflows: Loaded([
+          workflow(3, "Release automation", True),
+          workflow(4, "Paused intake", False),
+        ]),
+        status_filter: "paused",
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Paused intake")
+  assert_contains(html, "Paused")
+  assert_not_contains(html, "Release automation")
 }
 
 pub fn workflows_view_renders_empty_project_state_without_root_model_test() {

@@ -871,8 +871,7 @@ pub fn translate(text: Text) -> String {
     text.AdminWorkflows -> "Automatizaciones"
     text.WorkflowsTitle -> "Automatizaciones"
     text.WorkflowsOrgTitle -> "Automatizaciones de la organización"
-    text.WorkflowsProjectTitle(project_name) ->
-      "Automatizaciones - " <> project_name
+    text.WorkflowsProjectTitle(project_name) -> "Motores - " <> project_name
     text.SelectProjectForWorkflows ->
       "Selecciona un proyecto para gestionar automatizaciones"
     text.WorkflowName -> "Nombre"
@@ -890,6 +889,14 @@ pub fn translate(text: Text) -> String {
     text.WorkflowDeleteConfirm(name) -> "¿Eliminar el motor \"" <> name <> "\"?"
     text.NoWorkflowsYet -> "Aún no hay motores"
     text.WorkflowDeleted -> "Motor eliminado"
+    text.AutomationEnginesDescription ->
+      "Agrupa reglas de automatización que crean trabajo en el Pool sin asignarlo."
+    text.AutomationEnginesSearchPlaceholder ->
+      "Busca motores por nombre o descripción"
+    text.AutomationEngineStatus -> "Estado"
+    text.AutomationEngineStatusAll -> "Todos los estados"
+    text.AutomationEngineStatusActive -> "Activo"
+    text.AutomationEngineStatusPaused -> "Pausado"
 
     // Rules
     text.RulesTitle(workflow_name) -> "Reglas - " <> workflow_name

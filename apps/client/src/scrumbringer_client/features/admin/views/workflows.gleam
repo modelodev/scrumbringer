@@ -17,17 +17,20 @@
 
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
-import lustre/element/html.{a, div, span, text}
+import lustre/element/html.{div, h2, input, p, span, text}
+import lustre/element/keyed
 import lustre/event
 
 import gleam/dynamic/decode
 
 import domain/project.{type Project}
-import domain/remote.{type Remote}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/workflow.{type Workflow}
 import domain/workflow/workflow_codec
 
@@ -35,16 +38,15 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, serialize}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/permissions
-import scrumbringer_client/router
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/data_table
+import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
-import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/info_callout
-import scrumbringer_client/ui/section_header
+import scrumbringer_client/ui/filter_bar
+import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/skeleton
 
 // =============================================================================
 // Workflows Views
@@ -57,8 +59,12 @@ pub type Config(msg) {
     selected_project_id: opt.Option(Int),
     selected_rules_view: opt.Option(Element(msg)),
     workflows: Remote(List(Workflow)),
+    search_query: String,
+    status_filter: String,
     dialog_mode: opt.Option(admin_workflows.WorkflowDialogMode),
     on_create_clicked: msg,
+    on_search_changed: fn(String) -> msg,
+    on_status_filter_changed: fn(String) -> msg,
     on_rules_clicked: fn(Int) -> msg,
     on_edit_clicked: fn(Workflow) -> msg,
     on_delete_clicked: fn(Workflow) -> msg,
@@ -86,55 +92,79 @@ fn view_workflows_list(config: Config(msg)) -> Element(msg) {
   // Workflows are project-scoped, so require a project to be selected (AC22)
   case config.selected_project {
     opt.None ->
-      div([attribute.class("section")], [
+      div([attribute.class("automation-engines-mode")], [
         div([attribute.class("empty")], [
           text(t(config, i18n_text.SelectProjectForWorkflows)),
         ]),
       ])
     opt.Some(project) ->
-      div([attribute.class("section")], [
-        // Section header with add button (Story 4.8: consistent icons)
-        section_header.view_with_action(
-          icons.Workflows,
-          t(config, i18n_text.WorkflowsProjectTitle(project.name)),
-          dialog.add_button_with_locale(
-            config.locale,
-            i18n_text.CreateWorkflow,
-            config.on_create_clicked,
-          ),
-        ),
-        // Story 4.9 AC21: Contextual hint with link to Templates
-        view_rules_hint(config),
-        // Project workflows table (AC23)
-        view_workflows_table(config, config.workflows),
-        // Workflow CRUD dialog component (handles create, edit, delete)
+      div([attribute.class("automation-engines-mode")], [
+        div([attribute.class("automation-engines-heading")], [
+          h2([], [
+            text(t(config, i18n_text.WorkflowsProjectTitle(project.name))),
+          ]),
+          p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
+        ]),
+        view_engine_filters(config),
+        view_engines_content(config, config.workflows),
         view_workflow_crud_dialog(config),
       ])
   }
 }
 
-/// Story 4.9 AC21: Contextual hint linking Rules to Templates.
-fn view_rules_hint(config: Config(msg)) -> Element(msg) {
-  info_callout.view_with_content(
-    opt.None,
-    span([], [
-      text(t(config, i18n_text.RulesHintTemplates)),
-      a(
-        [
-          attribute.href(
-            router.format(router.Config(
-              permissions.TaskTemplates,
-              config.selected_project_id,
-            )),
-          ),
-          attribute.class("info-callout-link"),
-        ],
-        [
-          text(t(config, i18n_text.RulesHintTemplatesLink) <> " \u{2192}"),
-        ],
-      ),
-    ]),
-  )
+fn view_engine_filters(config: Config(msg)) -> Element(msg) {
+  filter_bar.new([
+    form_field.view(
+      t(config, i18n_text.SearchLabel),
+      input([
+        attribute.type_("search"),
+        attribute.value(config.search_query),
+        attribute.placeholder(t(
+          config,
+          i18n_text.AutomationEnginesSearchPlaceholder,
+        )),
+        attribute.attribute(
+          "aria-label",
+          t(config, i18n_text.AutomationEnginesSearchPlaceholder),
+        ),
+        attribute.attribute("data-testid", "automation-engine-search"),
+        event.on_input(config.on_search_changed),
+      ]),
+    ),
+    filter_bar.select_field(
+      t(config, i18n_text.AutomationEngineStatus),
+      config.status_filter,
+      [
+        filter_bar.SelectOption(
+          "all",
+          t(config, i18n_text.AutomationEngineStatusAll),
+          config.status_filter == "all",
+        ),
+        filter_bar.SelectOption(
+          "active",
+          t(config, i18n_text.AutomationEngineStatusActive),
+          config.status_filter == "active",
+        ),
+        filter_bar.SelectOption(
+          "paused",
+          t(config, i18n_text.AutomationEngineStatusPaused),
+          config.status_filter == "paused",
+        ),
+      ],
+      config.on_status_filter_changed,
+      "automation-engine-status-filter",
+    ),
+  ])
+  |> filter_bar.with_actions([
+    dialog.add_button_with_locale(
+      config.locale,
+      i18n_text.CreateWorkflow,
+      config.on_create_clicked,
+    ),
+  ])
+  |> filter_bar.with_class("automation-engines-filters")
+  |> filter_bar.with_testid("automation-engines-filter-bar")
+  |> filter_bar.view
 }
 
 // Justification: nested case keeps dialog mode and project scoping logic colocated.
@@ -269,65 +299,137 @@ fn decode_workflow_close_requested_event(
   decode.success(config.on_closed)
 }
 
-fn view_workflows_table(
+fn view_engines_content(
   config: Config(msg),
   workflows: Remote(List(Workflow)),
 ) -> Element(msg) {
-  data_table.view_remote_with_forbidden(
-    workflows,
-    loading_msg: t(config, i18n_text.LoadingEllipsis),
-    empty_msg: t(config, i18n_text.NoWorkflowsYet),
-    forbidden_msg: t(config, i18n_text.NotPermitted),
-    config: data_table.new()
-      |> data_table.with_columns([
-        // Name
-        data_table.column(t(config, i18n_text.WorkflowName), fn(w: Workflow) {
-          text(w.name)
-        }),
-        // Active status
-        data_table.column(t(config, i18n_text.WorkflowActive), fn(w: Workflow) {
-          text(case w.active {
-            True -> "✓"
-            False -> "✗"
-          })
-        }),
-        // Rules count
-        data_table.column(t(config, i18n_text.WorkflowRules), fn(w: Workflow) {
-          text(int.to_string(w.rule_count))
-        }),
-        // Actions
-        data_table.column_with_class(
-          t(config, i18n_text.Actions),
-          fn(w: Workflow) { view_workflow_actions(config, w) },
-          "col-actions",
-          "cell-actions",
-        ),
-      ])
-      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) })
-      |> data_table.with_row_attrs(fn(_w: Workflow) {
-        [attribute.attribute("data-testid", "automation-engine-row")]
-      })
-      |> data_table.with_empty_state(empty_state.simple(
-        "cog-6-tooth",
-        t(config, i18n_text.NoWorkflowsYet),
-      )),
+  case workflows {
+    NotAsked -> skeleton.skeleton_list(3)
+    Loading -> skeleton.skeleton_list(3)
+    Failed(err) -> error_notice.view(err.message)
+    Loaded(items) -> {
+      let filtered =
+        filter_workflows(items, config.search_query, config.status_filter)
+
+      case filtered {
+        [] ->
+          empty_state.simple("cog-6-tooth", t(config, i18n_text.NoWorkflowsYet))
+        _ ->
+          keyed.element(
+            "div",
+            [attribute.class("automation-engine-list")],
+            list.map(filtered, fn(workflow) {
+              #(int.to_string(workflow.id), view_engine_row(config, workflow))
+            }),
+          )
+      }
+    }
+  }
+}
+
+fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
+  div(
+    [
+      attribute.class("automation-engine-row"),
+      attribute.attribute("data-testid", "automation-engine-row"),
+    ],
+    [
+      div([attribute.class("automation-engine-row__main")], [
+        div([attribute.class("automation-engine-row__title")], [
+          span([attribute.class("automation-engine-row__name")], [
+            text(workflow.name),
+          ]),
+          workflow_status_badge(config, workflow),
+        ]),
+        case workflow.description {
+          opt.Some(description) ->
+            p([attribute.class("automation-engine-row__description")], [
+              text(description),
+            ])
+          opt.None -> element.none()
+        },
+      ]),
+      div([attribute.class("automation-engine-row__meta")], [
+        span([], [
+          text(
+            int.to_string(workflow.rule_count)
+            <> " "
+            <> t(config, i18n_text.WorkflowRules),
+          ),
+        ]),
+      ]),
+      view_workflow_actions(config, workflow),
+    ],
   )
+}
+
+fn workflow_status_badge(
+  config: Config(msg),
+  workflow: Workflow,
+) -> Element(msg) {
+  case workflow.active {
+    True ->
+      badge.new_unchecked(
+        t(config, i18n_text.AutomationEngineStatusActive),
+        badge.Success,
+      )
+      |> badge.view
+    False ->
+      badge.new_unchecked(
+        t(config, i18n_text.AutomationEngineStatusPaused),
+        badge.Neutral,
+      )
+      |> badge.view
+  }
+}
+
+fn filter_workflows(
+  workflows: List(Workflow),
+  query: String,
+  status_filter: String,
+) -> List(Workflow) {
+  let needle = string.trim(query) |> string.lowercase
+
+  workflows
+  |> list.filter(fn(workflow) {
+    workflow_matches_status(workflow, status_filter)
+  })
+  |> list.filter(fn(workflow) {
+    case needle {
+      "" -> True
+      _ -> workflow_matches_query(workflow, needle)
+    }
+  })
+}
+
+fn workflow_matches_status(workflow: Workflow, status_filter: String) -> Bool {
+  case status_filter {
+    "active" -> workflow.active
+    "paused" -> !workflow.active
+    _ -> True
+  }
+}
+
+fn workflow_matches_query(workflow: Workflow, needle: String) -> Bool {
+  string.contains(string.lowercase(workflow.name), needle)
+  || case workflow.description {
+    opt.Some(description) ->
+      string.contains(string.lowercase(description), needle)
+    opt.None -> False
+  }
 }
 
 fn view_workflow_actions(config: Config(msg), w: Workflow) -> Element(msg) {
   div([attribute.class("btn-group")], [
-    // Rules button - navigate to rules view
     action_buttons.settings_button_with_testid(
       t(config, i18n_text.WorkflowRules),
       config.on_rules_clicked(w.id),
       "workflow-rules-btn",
     ),
-    // Edit button
     action_buttons.edit_button(
       t(config, i18n_text.EditWorkflow),
       config.on_edit_clicked(w),
     ),
-    // Delete button
     action_buttons.delete_button(
       t(config, i18n_text.DeleteWorkflow),
       config.on_delete_clicked(w),
