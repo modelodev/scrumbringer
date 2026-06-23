@@ -772,6 +772,48 @@ pub fn translate(text: Text) -> String {
     text.TaskTypeUpdated -> "Task type updated"
     text.TaskTypeDeleted -> "Task type deleted"
 
+    // Project structure and Pool settings
+    text.ProjectStructureAndPool -> "Structure and Pool"
+    text.ProjectStructureCreateHint ->
+      "Choose how deep cards can nest before work reaches the Pool."
+    text.ProjectStructureEditHint ->
+      "Visible level names define how cards are grouped before work reaches the Pool."
+    text.ProjectMaximumDepth -> "Maximum depth"
+    text.ProjectPoolSoftLimit -> "Pool soft limit"
+    text.ProjectStructureExamples ->
+      "Examples: Card -> Task for small teams, Initiative -> Feature -> Task group for product work."
+    text.ProjectPoolSoftLimitHint ->
+      "This limit never blocks. It helps avoid saturation and team frustration when too many tasks are available in the Pool."
+    text.ProjectDepthLevel(depth) -> "Level " <> int.to_string(depth)
+    text.ProjectDepthLevelSingularName(depth) ->
+      "Level " <> int.to_string(depth) <> " singular name"
+    text.ProjectDepthLevelPluralName(depth) ->
+      "Level " <> int.to_string(depth) <> " plural name"
+    text.ProjectDepthReductionHidden ->
+      "Depth reduction confirmation appears before closing cards outside a new limit."
+    text.ProjectDepthReductionNeedsReview(new_max_depth) ->
+      "Reducing depth to "
+      <> int.to_string(new_max_depth)
+      <> " levels needs review before any cards are closed."
+    text.ProjectDepthReductionReviewCards -> "Review affected cards"
+    text.ProjectDepthReductionLoading(new_max_depth) ->
+      "Checking cards below " <> int.to_string(new_max_depth) <> " levels..."
+    text.ProjectDepthReductionBlocked(cards_count, claimed_tasks_count) ->
+      int.to_string(cards_count)
+      <> " cards are below the new limit, but "
+      <> int.to_string(claimed_tasks_count)
+      <> " claimed or ongoing tasks must be released or closed first."
+    text.ProjectDepthReductionReady(cards_count, available_tasks_count) ->
+      int.to_string(cards_count)
+      <> " cards and "
+      <> int.to_string(available_tasks_count)
+      <> " available tasks are below the new limit."
+    text.ProjectDepthReductionConfirm -> "Confirm depth reduction"
+    text.ProjectDepthReductionConfirmed(new_max_depth) ->
+      "Depth reduction to "
+      <> int.to_string(new_max_depth)
+      <> " levels confirmed."
+
     // Contextual hints (Story 4.9 AC21-22)
     text.RulesHintTemplates ->
       "Rules use templates to create tasks. Manage templates in "

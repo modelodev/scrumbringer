@@ -221,13 +221,13 @@ fn view_project_create_structure_settings(
     ],
     [
       p([attribute.class("project-structure-settings__title")], [
-        text("Structure and Pool"),
+        text(t(config, i18n_text.ProjectStructureAndPool)),
       ]),
       p([attribute.class("project-structure-settings__hint")], [
-        text("Choose how deep cards can nest before work reaches the Pool."),
+        text(t(config, i18n_text.ProjectStructureCreateHint)),
       ]),
       form_field.view(
-        "Maximum depth",
+        t(config, i18n_text.ProjectMaximumDepth),
         input([
           attribute.type_("number"),
           attribute.min("1"),
@@ -241,13 +241,14 @@ fn view_project_create_structure_settings(
         |> list.map(fn(depth_name) {
           view_depth_name(
             depth_name,
+            config,
             config.on_create_depth_singular_changed,
             config.on_create_depth_plural_changed,
           )
         })
       }),
       form_field.view(
-        "Pool soft limit",
+        t(config, i18n_text.ProjectPoolSoftLimit),
         input([
           attribute.type_("number"),
           attribute.min("1"),
@@ -257,9 +258,7 @@ fn view_project_create_structure_settings(
         ]),
       ),
       p([attribute.class("project-structure-settings__hint")], [
-        text(
-          "Examples: Card to Task for small teams, Initiative to Feature to Task group for product work.",
-        ),
+        text(t(config, i18n_text.ProjectStructureExamples)),
       ]),
     ],
   )
@@ -314,15 +313,13 @@ fn view_project_structure_settings(
     ],
     [
       p([attribute.class("project-structure-settings__title")], [
-        text("Structure and Pool"),
+        text(t(config, i18n_text.ProjectStructureAndPool)),
       ]),
       p([attribute.class("project-structure-settings__hint")], [
-        text(
-          "Visible level names define how cards are grouped before work reaches the Pool.",
-        ),
+        text(t(config, i18n_text.ProjectStructureEditHint)),
       ]),
       form_field.view(
-        "Maximum depth",
+        t(config, i18n_text.ProjectMaximumDepth),
         input([
           attribute.type_("number"),
           attribute.min("1"),
@@ -336,13 +333,14 @@ fn view_project_structure_settings(
         |> list.map(fn(depth_name) {
           view_depth_name(
             depth_name,
+            config,
             config.on_edit_depth_singular_changed,
             config.on_edit_depth_plural_changed,
           )
         })
       }),
       form_field.view(
-        "Pool soft limit",
+        t(config, i18n_text.ProjectPoolSoftLimit),
         input([
           attribute.type_("number"),
           attribute.min("1"),
@@ -352,9 +350,7 @@ fn view_project_structure_settings(
         ]),
       ),
       p([attribute.class("project-structure-settings__hint")], [
-        text(
-          "This limit never blocks work. It helps avoid saturation and team frustration when too many tasks are available in the Pool.",
-        ),
+        text(t(config, i18n_text.ProjectPoolSoftLimitHint)),
       ]),
       view_depth_reduction_confirmation(depth_reduction, config),
     ],
@@ -378,23 +374,20 @@ fn view_depth_reduction_confirmation(
           attribute.attribute("hidden", ""),
         ]),
         [
-          text(
-            "Depth reduction confirmation appears before closing cards outside a new limit.",
-          ),
+          text(t(config, i18n_text.ProjectDepthReductionHidden)),
         ],
       )
 
     projects_state.DepthReductionNeedsReview(new_max_depth) ->
       div(attrs, [
         p([], [
-          text(
-            "Reducing depth to "
-            <> int.to_string(new_max_depth)
-            <> " levels needs review before any cards are closed.",
-          ),
+          text(t(
+            config,
+            i18n_text.ProjectDepthReductionNeedsReview(new_max_depth),
+          )),
         ]),
         ui_button.text(
-          "Review affected cards",
+          t(config, i18n_text.ProjectDepthReductionReviewCards),
           config.on_edit_depth_reduction_review_clicked,
           ui_button.Secondary,
           ui_button.EntityAction,
@@ -405,11 +398,7 @@ fn view_depth_reduction_confirmation(
     projects_state.DepthReductionLoading(new_max_depth) ->
       div(attrs, [
         p([], [
-          text(
-            "Checking cards below "
-            <> int.to_string(new_max_depth)
-            <> " levels...",
-          ),
+          text(t(config, i18n_text.ProjectDepthReductionLoading(new_max_depth))),
         ]),
       ])
 
@@ -419,11 +408,10 @@ fn view_depth_reduction_confirmation(
     projects_state.DepthReductionConfirmed(new_max_depth) ->
       div(attrs, [
         p([], [
-          text(
-            "Depth reduction to "
-            <> int.to_string(new_max_depth)
-            <> " levels confirmed.",
-          ),
+          text(t(
+            config,
+            i18n_text.ProjectDepthReductionConfirmed(new_max_depth),
+          )),
         ]),
       ])
   }
@@ -438,26 +426,28 @@ fn view_depth_reduction_ready(
     True ->
       div(attrs, [
         p([], [
-          text(
-            int.to_string(impact.affected_cards_count)
-            <> " cards are below the new limit, but "
-            <> int.to_string(impact.claimed_tasks_count)
-            <> " claimed or ongoing tasks must be released or closed first.",
-          ),
+          text(t(
+            config,
+            i18n_text.ProjectDepthReductionBlocked(
+              impact.affected_cards_count,
+              impact.claimed_tasks_count,
+            ),
+          )),
         ]),
       ])
     False ->
       div(attrs, [
         p([], [
-          text(
-            int.to_string(impact.affected_cards_count)
-            <> " cards and "
-            <> int.to_string(impact.available_tasks_count)
-            <> " available tasks are below the new limit.",
-          ),
+          text(t(
+            config,
+            i18n_text.ProjectDepthReductionReady(
+              impact.affected_cards_count,
+              impact.available_tasks_count,
+            ),
+          )),
         ]),
         ui_button.text(
-          "Confirm depth reduction",
+          t(config, i18n_text.ProjectDepthReductionConfirm),
           config.on_edit_depth_reduction_confirmed,
           ui_button.Danger,
           ui_button.EntityAction,
@@ -478,20 +468,21 @@ fn normalize_depth_names(
 
 fn view_depth_name(
   depth_name: ProjectDepthName,
+  config: Config(msg),
   on_singular_changed: fn(Int, String) -> msg,
   on_plural_changed: fn(Int, String) -> msg,
 ) -> element.Element(msg) {
   let ProjectDepthName(depth:, singular_name:, plural_name:) = depth_name
   div([attribute.class("project-structure-settings__level")], [
     label([attribute.class("project-structure-settings__level-label")], [
-      text("Level " <> int.to_string(depth)),
+      text(t(config, i18n_text.ProjectDepthLevel(depth))),
     ]),
     input([
       attribute.type_("text"),
       attribute.value(singular_name),
       attribute.attribute(
         "aria-label",
-        "Level " <> int.to_string(depth) <> " singular name",
+        t(config, i18n_text.ProjectDepthLevelSingularName(depth)),
       ),
       event.on_input(fn(value) { on_singular_changed(depth, value) }),
       attribute.required(True),
@@ -501,7 +492,7 @@ fn view_depth_name(
       attribute.value(plural_name),
       attribute.attribute(
         "aria-label",
-        "Level " <> int.to_string(depth) <> " plural name",
+        t(config, i18n_text.ProjectDepthLevelPluralName(depth)),
       ),
       event.on_input(fn(value) { on_plural_changed(depth, value) }),
       attribute.required(True),

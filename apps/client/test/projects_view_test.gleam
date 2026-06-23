@@ -5,6 +5,7 @@ import lustre/element
 import domain/project.{type Project, Project, ProjectDepthName}
 import domain/project_role
 import domain/remote
+import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{DialogOpen, InFlight}
 import scrumbringer_client/features/projects/view as projects_view
@@ -143,4 +144,83 @@ pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() 
   assert_contains(html, "value=\"Hito\"")
   assert_contains(html, "value=\"Entregas\"")
   assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
+}
+
+pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
+  let dialog =
+    projects_state.Model(projects_dialog: DialogOpen(
+      form: projects_state.ProjectDialogEdit(
+        id: 7,
+        name: "Project Alpha",
+        max_depth: "2",
+        healthy_pool_limit: "12",
+        card_depth_names: [
+          ProjectDepthName(1, "Hito", "Hitos"),
+          ProjectDepthName(2, "Entrega", "Entregas"),
+        ],
+        depth_reduction: projects_state.NoDepthReduction,
+      ),
+      operation: InFlight,
+    ))
+
+  let html =
+    projects_view.view_project_dialogs(
+      projects_view.Config(
+        ..config(remote.Loaded([project()])),
+        locale: locale.Es,
+        project_dialog: dialog,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Estructura y Pool")
+  assert_contains(html, "Profundidad maxima")
+  assert_contains(html, "Limite blando del Pool")
+  assert_contains(html, "Este limite nunca bloquea")
+  assert_contains(html, "Nivel 1")
+  assert_contains(html, "aria-label=\"Nombre singular del nivel 1\"")
+  assert_not_contains(html, "Structure and Pool")
+  assert_not_contains(html, "Pool soft limit")
+}
+
+pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
+  let dialog =
+    projects_state.Model(projects_dialog: DialogOpen(
+      form: projects_state.ProjectDialogEdit(
+        id: 7,
+        name: "Project Alpha",
+        max_depth: "1",
+        healthy_pool_limit: "12",
+        card_depth_names: [
+          ProjectDepthName(1, "Hito", "Hitos"),
+          ProjectDepthName(2, "Entrega", "Entregas"),
+        ],
+        depth_reduction: projects_state.DepthReductionReady(
+          1,
+          api_projects.DepthReductionImpact(
+            affected_cards_count: 4,
+            available_tasks_count: 3,
+            claimed_tasks_count: 0,
+            blocked: False,
+          ),
+        ),
+      ),
+      operation: InFlight,
+    ))
+
+  let html =
+    projects_view.view_project_dialogs(
+      projects_view.Config(
+        ..config(remote.Loaded([project()])),
+        locale: locale.Es,
+        project_dialog: dialog,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
+  assert_contains(html, "4 cards y 3 tasks disponibles")
+  assert_contains(html, "Confirmar reduccion de profundidad")
+  assert_contains(html, "btn-danger")
+  assert_not_contains(html, "Confirm depth reduction")
 }

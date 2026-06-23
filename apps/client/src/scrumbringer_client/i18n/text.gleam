@@ -653,6 +653,26 @@ pub type Text {
   TaskTypeUpdated
   TaskTypeDeleted
 
+  // Project structure and Pool settings
+  ProjectStructureAndPool
+  ProjectStructureCreateHint
+  ProjectStructureEditHint
+  ProjectMaximumDepth
+  ProjectPoolSoftLimit
+  ProjectStructureExamples
+  ProjectPoolSoftLimitHint
+  ProjectDepthLevel(depth: Int)
+  ProjectDepthLevelSingularName(depth: Int)
+  ProjectDepthLevelPluralName(depth: Int)
+  ProjectDepthReductionHidden
+  ProjectDepthReductionNeedsReview(new_max_depth: Int)
+  ProjectDepthReductionReviewCards
+  ProjectDepthReductionLoading(new_max_depth: Int)
+  ProjectDepthReductionBlocked(cards_count: Int, claimed_tasks_count: Int)
+  ProjectDepthReductionReady(cards_count: Int, available_tasks_count: Int)
+  ProjectDepthReductionConfirm
+  ProjectDepthReductionConfirmed(new_max_depth: Int)
+
   // Contextual hints (Story 4.9 AC21-22)
   RulesHintTemplates
   RulesHintTemplatesLink
