@@ -370,9 +370,8 @@ fn list_rules_with_templates(
   rules: List(rules_db.RuleRecord),
 ) {
   list.try_map(rules, fn(rule) {
-    case rules_db.list_rule_templates(db, rule.id) {
-      Ok(templates) ->
-        Ok(rule_presenters.rule_with_template(rule, first_template(templates)))
+    case rules_db.selected_rule_template(db, rule.id) {
+      Ok(template) -> Ok(rule_presenters.rule_with_template(rule, template))
       Error(error) -> Error(service_error_response.to_database_response(error))
     }
   })
@@ -477,8 +476,8 @@ fn list_rule_template_response(
   db: pog.Connection,
   rule_id: Int,
 ) -> Result(Option(workflow.RuleTemplate), wisp.Response) {
-  case rules_db.list_rule_templates(db, rule_id) {
-    Ok(templates) -> Ok(first_template(templates))
+  case rules_db.selected_rule_template(db, rule_id) {
+    Ok(template) -> Ok(template)
     Error(error) -> Error(service_error_response.to_database_response(error))
   }
 }
@@ -492,15 +491,6 @@ fn select_rule_template_response(
   case rules_db.select_template(db, rule_id, template_id, execution_order) {
     Ok(Nil) -> list_rule_template_response(db, rule_id)
     Error(error) -> Error(rule_write_error_response(error))
-  }
-}
-
-fn first_template(
-  templates: List(workflow.RuleTemplate),
-) -> Option(workflow.RuleTemplate) {
-  case templates {
-    [] -> None
-    [template, ..] -> Some(template)
   }
 }
 

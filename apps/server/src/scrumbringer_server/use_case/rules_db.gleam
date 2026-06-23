@@ -610,6 +610,26 @@ pub fn list_rule_templates(
   |> list.try_map(template_from_row)
 }
 
+/// Returns the selected template for a rule.
+pub fn selected_rule_template(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(Option(workflow.RuleTemplate), ServiceError) {
+  use templates <- result.try(list_rule_templates(db, rule_id))
+
+  selected_rule_template_from_list(templates)
+}
+
+pub fn selected_rule_template_from_list(
+  templates: List(workflow.RuleTemplate),
+) -> Result(Option(workflow.RuleTemplate), ServiceError) {
+  case templates {
+    [] -> Ok(None)
+    [template] -> Ok(Some(template))
+    [_, _, ..] -> Error(Unexpected("rule has multiple selected task templates"))
+  }
+}
+
 /// Selects the single template used by a rule.
 ///
 /// Example:
