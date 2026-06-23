@@ -3437,6 +3437,7 @@ pub fn rule_executions_count(
 select count(*)::int as total
 from rule_executions
 where rule_id = $1
+    and outcome = 'applied'
     and created_at >= ($2::timestamp)::date
     and created_at < (($3::timestamp)::date + interval '1 day');
 "
@@ -3528,6 +3529,7 @@ select
 from rule_executions re
 left join users u on u.id = re.user_id
 where re.rule_id = $1
+    and re.outcome = 'applied'
     and re.created_at >= ($2::timestamp)::date
     and re.created_at < (($3::timestamp)::date + interval '1 day')
 order by re.created_at desc

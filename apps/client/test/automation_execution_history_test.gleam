@@ -212,6 +212,6 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
   assert_contains(html, "aria-label=\"Last page\"")
   assert_contains(html, "data-testid=\"automation-execution-row\"")
   assert_contains(html, "Created")
-  assert_contains(html, "Ignored (idempotent)")
+  assert_not_contains(html, "Ignored (idempotent)")
   assert_not_contains(html, "Suppressed")
 }

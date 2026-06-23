@@ -3,5 +3,6 @@
 select count(*)::int as total
 from rule_executions
 where rule_id = $1
+    and outcome = 'applied'
     and created_at >= ($2::timestamp)::date
     and created_at < (($3::timestamp)::date + interval '1 day');

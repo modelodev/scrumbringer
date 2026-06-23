@@ -521,9 +521,10 @@ pub fn executions_list_returns_paginated_results_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  expect.expect_json_field_int(body, ["data", "pagination", "total"], 5)
+  expect.expect_json_field_int(body, ["data", "pagination", "total"], 3)
   expect.expect_json_field_int(body, ["data", "pagination", "limit"], 2)
   expect.expect_json_field_int(body, ["data", "pagination", "offset"], 0)
+  let assert False = string.contains(body, "suppressed")
 
   Nil
 }

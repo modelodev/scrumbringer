@@ -503,6 +503,9 @@ fn view_drilldown_executions_loaded(
   config: Config(msg),
   response: api_rule_metrics.RuleExecutionsResponse,
 ) -> Element(msg) {
+  let business_executions =
+    list.filter(response.executions, is_business_execution)
+
   let origin_cell: fn(api_rule_metrics.RuleExecution) -> Element(msg) = fn(
     exec: api_rule_metrics.RuleExecution,
   ) {
@@ -545,7 +548,7 @@ fn view_drilldown_executions_loaded(
     h3([], [
       text(t(config, i18n_text.RecentExecutions)),
     ]),
-    case response.executions {
+    case business_executions {
       [] ->
         div([attribute.class("empty")], [
           text(t(config, i18n_text.NoExecutions)),
@@ -572,6 +575,10 @@ fn view_drilldown_executions_loaded(
         ])
     },
   ])
+}
+
+fn is_business_execution(exec: api_rule_metrics.RuleExecution) -> Bool {
+  exec.outcome == "applied"
 }
 
 fn execution_template_label(
