@@ -336,6 +336,10 @@ fn view_form_panel(
               attribute.type_("text"),
               attribute.required(True),
               attribute.value(config.form_name),
+              attribute.attribute(
+                "aria-label",
+                t(config, i18n_text.WorkflowName),
+              ),
               attribute.attribute("data-testid", "automation-engine-name"),
               event.on_input(config.on_name_changed),
             ]),
@@ -345,6 +349,10 @@ fn view_form_panel(
             input([
               attribute.type_("text"),
               attribute.value(config.form_description),
+              attribute.attribute(
+                "aria-label",
+                t(config, i18n_text.WorkflowDescription),
+              ),
               attribute.attribute(
                 "data-testid",
                 "automation-engine-description",
