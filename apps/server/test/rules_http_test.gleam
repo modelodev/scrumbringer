@@ -331,6 +331,81 @@ pub fn rule_create_without_template_returns_400_test() {
   expect.expect_status(res, 400)
 }
 
+pub fn rule_create_rejects_missing_card_depth_scope_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "MissingCardDepthRule")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'MissingCardDepthRule'",
+      [],
+    )
+  create_task_type(handler, session, csrf, project_id, "Checklist", "list")
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Checklist'",
+      [pog.int(project_id)],
+    )
+  let workflow_id =
+    create_workflow(handler, session, csrf, project_id, "Card Depth Rule")
+  let template_id =
+    create_template(handler, session, csrf, project_id, type_id, "Card task")
+
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Stale card depth")),
+          #("goal", json.string("Should fail")),
+          #(
+            "trigger",
+            json.object([
+              #("type", json.string("card_closed")),
+              #(
+                "scope",
+                json.object([
+                  #("type", json.string("at_depth")),
+                  #("depth", json.int(9)),
+                ]),
+              ),
+            ]),
+          ),
+          #(
+            "action",
+            json.object([
+              #("type", json.string("create_task")),
+              #("template_id", json.int(template_id)),
+            ]),
+          ),
+          #("status", json.object([#("type", json.string("active"))])),
+        ]),
+      ),
+    )
+
+  expect.expect_status(res, 422)
+  let body = simulate.read_body(res)
+  let assert True = string.contains(body, "Card level is no longer available")
+  single_int(db, "select count(*)::int from rules where workflow_id = $1", [
+    pog.int(workflow_id),
+  ])
+  |> expect.equal(0)
+}
+
 fn create_project(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,

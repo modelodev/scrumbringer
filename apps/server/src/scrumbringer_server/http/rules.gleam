@@ -22,6 +22,7 @@
 
 import domain/automation
 import domain/workflow
+import gleam/dynamic/decode
 import gleam/http
 import gleam/json
 import gleam/list
@@ -170,6 +171,7 @@ fn create_rule_flow(
   payload: rule_payloads.CreatePayload,
 ) -> Result(wisp.Response, wisp.Response) {
   let template_id = automation.action_template_id(payload.action)
+  use _ <- result.try(validate_rule_trigger_scope(db, workflow, payload.trigger))
   use _ <- result.try(validate_required_rule_template(
     db,
     workflow,
@@ -239,6 +241,7 @@ fn update_rule_flow(
 ) -> Result(wisp.Response, wisp.Response) {
   let template_id = option_action_template_id(payload.action)
   let trigger = option_value(payload.trigger, rule.trigger)
+  use _ <- result.try(validate_rule_trigger_scope(db, workflow, trigger))
   use _ <- result.try(validate_update_rule_template(
     db,
     workflow,
@@ -524,6 +527,77 @@ fn workflow_from_rule(
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Workflow not found"))
+  }
+}
+
+fn validate_rule_trigger_scope(
+  db: pog.Connection,
+  workflow: workflows_db.WorkflowRecord,
+  trigger: automation.AutomationTrigger,
+) -> Result(Nil, wisp.Response) {
+  case trigger {
+    automation.CardActivated(scope) | automation.CardClosed(scope) ->
+      validate_card_scope_depth(db, workflow.project_id, scope)
+    _ -> Ok(Nil)
+  }
+}
+
+fn validate_card_scope_depth(
+  db: pog.Connection,
+  project_id: Int,
+  scope: automation.CardAutomationScope,
+) -> Result(Nil, wisp.Response) {
+  case scope {
+    automation.AnyCard -> Ok(Nil)
+    automation.AtDepth(depth) ->
+      validate_project_card_depth(
+        db,
+        project_id,
+        automation.card_depth_to_int(depth),
+      )
+  }
+}
+
+fn validate_project_card_depth(
+  db: pog.Connection,
+  project_id: Int,
+  depth: Int,
+) -> Result(Nil, wisp.Response) {
+  case project_card_depth_exists(db, project_id, depth) {
+    Ok(True) -> Ok(Nil)
+    Ok(False) ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Card level is no longer available",
+      ))
+    Error(_) -> Error(database_error_response())
+  }
+}
+
+fn project_card_depth_exists(
+  db: pog.Connection,
+  project_id: Int,
+  depth: Int,
+) -> Result(Bool, pog.QueryError) {
+  let decoder = {
+    use value <- decode.field(0, decode.int)
+    decode.success(value)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "select 1 from project_card_depth_names where project_id = $1 and depth = $2 limit 1",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(depth))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [] -> Ok(False)
+    _ -> Ok(True)
   }
 }
 
