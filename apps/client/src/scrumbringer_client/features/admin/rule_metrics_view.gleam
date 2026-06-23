@@ -34,11 +34,10 @@ import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
+import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
-import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/ui/modal_close_button
-import scrumbringer_client/ui/section_header
 import scrumbringer_client/ui/skeleton
 
 // =============================================================================
@@ -69,59 +68,52 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 
 /// Rule metrics tab view.
 pub fn view_rule_metrics(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("automation-executions-mode")], [
+    div([attribute.class("automation-executions-description")], [
+      text(t(config, i18n_text.RuleMetricsDescription)),
+    ]),
+    view_rule_metrics_filters(config),
+    view_rule_metrics_results(config),
+  ])
+}
+
+fn view_rule_metrics_filters(config: Config(msg)) -> Element(msg) {
   let is_loading = case config.model.admin_rule_metrics {
     Loading -> True
     _ -> False
   }
 
-  div([attribute.class("section")], [
-    // Header with icon (Story 4.8: consistent icons via section_header)
-    section_header.view(icons.Metrics, t(config, i18n_text.RuleMetricsTitle)),
-    // Description tooltip
-    div([attribute.class("section-description")], [
-      icons.nav_icon(icons.Info, icons.Small),
-      text(" " <> t(config, i18n_text.RuleMetricsDescription)),
-    ]),
-    // Card wrapper
-    div([attribute.class("admin-card")], [
-      // Quick range buttons with active state
-      div([attribute.class("quick-ranges")], [
-        span([attribute.class("quick-ranges-label")], [
-          text(t(config, i18n_text.RuleMetricsQuickRange)),
-        ]),
-        config.quick_ranges
-          |> list.map(fn(range) { view_quick_range_button(config, range) })
-          |> element.fragment,
+  filter_bar.new([
+    form_field.view(
+      t(config, i18n_text.RuleMetricsFrom),
+      input([
+        attribute.type_("date"),
+        attribute.value(config.model.admin_rule_metrics_from),
+        event.on_input(config.on_from_changed),
+        attribute.attribute("aria-label", t(config, i18n_text.RuleMetricsFrom)),
       ]),
-      // Date range inputs - auto-refresh on change
-      div([attribute.class("filters-row")], [
-        form_field.view(
-          t(config, i18n_text.RuleMetricsFrom),
-          input([
-            attribute.type_("date"),
-            attribute.value(config.model.admin_rule_metrics_from),
-            // Auto-refresh on date change
-            event.on_input(config.on_from_changed),
-            attribute.attribute(
-              "aria-label",
-              t(config, i18n_text.RuleMetricsFrom),
-            ),
-          ]),
-        ),
-        form_field.view(
-          t(config, i18n_text.RuleMetricsTo),
-          input([
-            attribute.type_("date"),
-            attribute.value(config.model.admin_rule_metrics_to),
-            // Auto-refresh on date change
-            event.on_input(config.on_to_changed),
-            attribute.attribute(
-              "aria-label",
-              t(config, i18n_text.RuleMetricsTo),
-            ),
-          ]),
-        ),
-        // Loading indicator (replaces manual refresh button)
+    ),
+    form_field.view(
+      t(config, i18n_text.RuleMetricsTo),
+      input([
+        attribute.type_("date"),
+        attribute.value(config.model.admin_rule_metrics_to),
+        event.on_input(config.on_to_changed),
+        attribute.attribute("aria-label", t(config, i18n_text.RuleMetricsTo)),
+      ]),
+    ),
+  ])
+  |> filter_bar.with_actions(list.append(
+    [
+      span([attribute.class("quick-ranges-label")], [
+        text(t(config, i18n_text.RuleMetricsQuickRange)),
+      ]),
+    ],
+    list.append(
+      list.map(config.quick_ranges, fn(range) {
+        view_quick_range_button(config, range)
+      }),
+      [
         case is_loading {
           True ->
             div([attribute.class("field loading-indicator")], [
@@ -130,11 +122,12 @@ pub fn view_rule_metrics(config: Config(msg)) -> Element(msg) {
             ])
           False -> element.none()
         },
-      ]),
-    ]),
-    // Results
-    view_rule_metrics_results(config),
-  ])
+      ],
+    ),
+  ))
+  |> filter_bar.with_class("automation-executions-filters")
+  |> filter_bar.with_testid("automation-executions-filter-bar")
+  |> filter_bar.view
 }
 
 /// Quick range button helper with active state.
@@ -165,10 +158,7 @@ fn view_quick_range_button(
 /// Results section with improved empty state (T5).
 fn view_rule_metrics_results(config: Config(msg)) -> Element(msg) {
   case config.model.admin_rule_metrics {
-    NotAsked ->
-      info_callout.simple(
-        "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
-      )
+    NotAsked -> info_callout.simple(t(config, i18n_text.RuleMetricsHelp))
 
     Loading -> skeleton.skeleton_table(3)
 
@@ -186,11 +176,7 @@ fn view_rule_metrics_loaded(
     [] ->
       empty_state.simple("inbox", t(config, i18n_text.RuleMetricsNoExecutions))
     _ ->
-      div([attribute.class("admin-card")], [
-        div([attribute.class("admin-card-header")], [
-          span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
-          text(" " <> t(config, i18n_text.RuleMetricsResults)),
-        ]),
+      div([attribute.class("automation-executions-results")], [
         view_rule_metrics_table(config, config.model.admin_rule_metrics),
       ])
   }

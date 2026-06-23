@@ -13,6 +13,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn workflow_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
   api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: 11,
@@ -114,12 +118,16 @@ pub fn rule_metrics_view_renders_from_config_without_root_model_test() {
     rule_metrics_view.view_rule_metrics(config())
     |> element.to_document_string
 
-  assert_contains(html, "Executions")
+  assert_contains(html, "Review automation executions")
+  assert_contains(html, "filter-bar automation-executions-filters")
+  assert_contains(html, "data-testid=\"automation-executions-filter-bar\"")
   assert_contains(html, "Escalation workflow")
   assert_contains(html, "9")
   assert_contains(html, "6")
   assert_contains(html, "3")
   assert_contains(html, "btn-chip-active")
+  assert_not_contains(html, "admin-card")
+  assert_not_contains(html, "section-header")
 }
 
 pub fn rule_metrics_view_renders_empty_state_without_root_model_test() {
