@@ -44,7 +44,6 @@ fn rule(
     trigger: trigger,
     action: option_action(template),
     status: rule_status(template),
-    active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: template,
   )

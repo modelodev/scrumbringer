@@ -28,7 +28,6 @@ pub type Rule {
     trigger: automation.AutomationTrigger,
     action: Option(automation.AutomationAction),
     status: automation.AutomationRuleStatus,
-    active: Bool,
     created_at: String,
     template: Option(RuleTemplate),
   )

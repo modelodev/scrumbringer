@@ -36,7 +36,6 @@ fn rule(id: Int, name: String) -> Rule {
     trigger: automation.TaskCompleted(opt.None),
     action: opt.None,
     status: automation.RequiresReview(automation.TemplateMissing),
-    active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: opt.None,
   )

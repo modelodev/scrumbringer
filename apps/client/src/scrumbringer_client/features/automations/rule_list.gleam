@@ -29,6 +29,7 @@ import lustre/element/html.{
 import lustre/element/keyed
 import lustre/event
 
+import domain/automation
 import domain/remote.{type Remote, Loaded}
 import domain/task_type.{type TaskType}
 import domain/workflow.{
@@ -339,7 +340,7 @@ fn view_rule_active_status(
   rule: Rule,
   has_template: Bool,
 ) -> Element(msg) {
-  case rule.active {
+  case automation.status_to_active(rule.status) {
     True ->
       case has_template {
         True -> rule_sentence.status_badge(config.locale, rule)

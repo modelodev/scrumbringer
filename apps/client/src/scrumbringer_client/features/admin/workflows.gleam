@@ -994,7 +994,7 @@ fn open_rule_dialog(
         rule_form_task_type_id: task_type_id,
         rule_form_event: event,
         rule_form_template_id: template_id,
-        rule_form_active: rule.active,
+        rule_form_active: automation.status_to_active(rule.status),
         rule_form_submitting: False,
         rule_form_error: opt.None,
       )

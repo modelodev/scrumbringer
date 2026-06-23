@@ -50,7 +50,6 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     decode.optional(automation_codec.action_decoder()),
   )
   use status <- decode.field("status", automation_codec.rule_status_decoder())
-  use active <- decode.field("active", decode.bool)
   use created_at <- decode.field("created_at", decode.string)
   use template <- decode.field(
     "template",
@@ -64,7 +63,6 @@ pub fn rule_decoder() -> decode.Decoder(Rule) {
     trigger: trigger,
     action: action,
     status: status,
-    active: active,
     created_at: created_at,
     template: template,
   ))

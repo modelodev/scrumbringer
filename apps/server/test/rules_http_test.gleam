@@ -70,9 +70,11 @@ pub fn rules_crud_with_selected_template_test() {
     )
 
   expect.expect_status(list_res, 200)
-  decode_rule_names(simulate.read_body(list_res))
+  let list_body = simulate.read_body(list_res)
+  let assert False = string.contains(list_body, "\"active\":")
+  decode_rule_names(list_body)
   |> expect.equal(["Rule 1"])
-  decode_first_rule_template_name(simulate.read_body(list_res))
+  decode_first_rule_template_name(list_body)
   |> expect.equal("Rule Template")
 
   let patch_res =
@@ -90,7 +92,9 @@ pub fn rules_crud_with_selected_template_test() {
     )
 
   expect.expect_status(patch_res, 200)
-  decode_rule_name(simulate.read_body(patch_res))
+  let patch_body = simulate.read_body(patch_res)
+  let assert False = string.contains(patch_body, "\"active\":")
+  decode_rule_name(patch_body)
   |> expect.equal("Rule 1 Updated")
 
   let delete_res =

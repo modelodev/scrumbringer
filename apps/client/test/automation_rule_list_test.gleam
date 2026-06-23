@@ -90,7 +90,6 @@ fn rule() -> Rule {
     trigger: automation.TaskCompleted(opt.Some(5)),
     action: opt.Some(automation.CreateTask(11)),
     status: automation.Active,
-    active: True,
     created_at: "2026-01-01T00:00:00Z",
     template: opt.Some(rule_template()),
   )

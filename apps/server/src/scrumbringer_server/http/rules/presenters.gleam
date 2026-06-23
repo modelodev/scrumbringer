@@ -45,7 +45,6 @@ pub fn rule_with_template(
   let to_state = automation.trigger_to_state_string(trigger)
   let action = action_json(template)
   let status_json = status_json(template, status)
-  let active = automation.status_to_active(status)
 
   json.object([
     #("id", json.int(id)),
@@ -58,7 +57,6 @@ pub fn rule_with_template(
     #("status", status_json),
     #("task_type_id", json_helpers.option_int_json(task_type_id)),
     #("to_state", json.string(to_state)),
-    #("active", json.bool(active)),
     #("created_at", json.string(created_at)),
     #("template", option_template_json(template)),
   ])

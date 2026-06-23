@@ -68,7 +68,7 @@ pub fn workflows_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
+    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -82,7 +82,7 @@ pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
 
 pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"trigger\":{\"type\":\"task_claimed\",\"task_type_id\":null},\"action\":null,\"status\":{\"type\":\"paused\"},\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":2,\"workflow_id\":1,\"name\":\"Any Task\",\"goal\":null,\"trigger\":{\"type\":\"task_claimed\",\"task_type_id\":null},\"action\":null,\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -93,7 +93,7 @@ pub fn rule_payload_decoder_decodes_with_null_task_type_id_test() {
 
 pub fn rule_payload_decoder_decodes_card_resource_type_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":3,\"workflow_id\":2,\"name\":\"Card Closed\",\"goal\":\"Notify\",\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":null,\"status\":{\"type\":\"requires_review\",\"reason\":\"template_missing\"},\"active\":false,\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":3,\"workflow_id\":2,\"name\":\"Card Closed\",\"goal\":\"Notify\",\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":null,\"status\":{\"type\":\"requires_review\",\"reason\":\"template_missing\"},\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -104,7 +104,7 @@ pub fn rule_payload_decoder_decodes_card_resource_type_test() {
 
 pub fn rule_payload_decoder_rejects_missing_trigger_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":4,\"workflow_id\":2,\"name\":\"Missing\",\"goal\":\"Notify\",\"action\":null,\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":4,\"workflow_id\":2,\"name\":\"Missing\",\"goal\":\"Notify\",\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T12:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -116,7 +116,7 @@ pub fn rule_payload_decoder_rejects_missing_trigger_test() {
 
 pub fn rules_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":1},\"action\":null,\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":null,\"status\":{\"type\":\"paused\"},\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
+    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":1},\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":null,\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
 
   let decoder =
     decode.field("data", api_rules.rules_payload_decoder(), decode.success)
@@ -131,7 +131,7 @@ pub fn rules_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_rejects_unsupported_trigger_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":5,\"workflow_id\":1,\"name\":\"Bad Task\",\"goal\":null,\"trigger\":{\"type\":\"task_blocked\",\"task_type_id\":null},\"action\":null,\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":5,\"workflow_id\":1,\"name\":\"Bad Task\",\"goal\":null,\"trigger\":{\"type\":\"task_blocked\",\"task_type_id\":null},\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -143,7 +143,7 @@ pub fn rule_payload_decoder_rejects_unsupported_trigger_test() {
 
 pub fn rule_payload_decoder_rejects_invalid_card_scope_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":6,\"workflow_id\":1,\"name\":\"Bad Card\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"subtree\"}},\"action\":null,\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":6,\"workflow_id\":1,\"name\":\"Bad Card\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"subtree\"}},\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -155,7 +155,7 @@ pub fn rule_payload_decoder_rejects_invalid_card_scope_test() {
 
 pub fn rule_payload_decoder_rejects_card_depth_zero_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":7,\"workflow_id\":1,\"name\":\"Bad Card Type\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"at_depth\",\"depth\":0}},\"action\":null,\"status\":{\"type\":\"active\"},\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
+    "{\"data\":{\"rule\":{\"id\":7,\"workflow_id\":1,\"name\":\"Bad Card Type\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"at_depth\",\"depth\":0}},\"action\":null,\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
