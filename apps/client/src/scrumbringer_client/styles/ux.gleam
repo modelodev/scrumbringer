@@ -73,6 +73,7 @@ pub fn css() -> List(String) {
     ".info-callout-text { font-size: var(--sb-font-md); color: var(--sb-muted); line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
     ".info-callout-link { color: var(--sb-primary); text-decoration: underline; text-underline-offset: 2px; }",
     ".info-callout-variables { font-size: var(--sb-font-sm); color: var(--sb-muted); font-family: var(--sb-font-mono); opacity: 0.9; }",
+    ".automation-template-panel__warning { font-size: var(--sb-font-md); line-height: var(--sb-line-body); color: var(--sb-warning-text); background: color-mix(in oklab, var(--sb-warning) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-warning) 34%, var(--sb-border)); border-radius: 8px; padding: 10px 12px; }",
     ".error-banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin-bottom: 12px; }",
     ".error-banner-icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--sb-error-text); }",
     ".error-banner-text { flex: 1; font-size: var(--sb-font-md); line-height: var(--sb-line-body); color: var(--sb-error-text); }",

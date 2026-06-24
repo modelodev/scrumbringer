@@ -177,6 +177,7 @@ fn view_form_panel(
     [
       panel_header(title, config.locale, config.on_closed),
       view_form_error(config),
+      view_edit_future_tasks_warning(config, mode),
       form_field.view(
         t(i18n_text.TaskTemplateName),
         input([
@@ -246,6 +247,30 @@ fn view_form_panel(
       ),
     ],
   )
+}
+
+fn view_edit_future_tasks_warning(
+  config: Config(msg),
+  mode: admin_task_templates.TaskTemplateDialogMode,
+) -> Element(msg) {
+  case mode {
+    admin_task_templates.TaskTemplateDialogEdit(template)
+      if template.rules_count > 0
+    ->
+      div(
+        [
+          attribute.class("automation-template-panel__warning"),
+          attribute.attribute("role", "note"),
+        ],
+        [
+          text(i18n.t(
+            config.locale,
+            i18n_text.TaskTemplateEditFutureTasksWarning,
+          )),
+        ],
+      )
+    _ -> element.none()
+  }
 }
 
 fn view_variable_chip(config: Config(msg), variable: String) -> Element(msg) {

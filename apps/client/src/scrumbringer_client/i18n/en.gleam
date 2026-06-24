@@ -1093,6 +1093,8 @@ pub fn translate(text: Text) -> String {
       "Delete template \"" <> name <> "\"?"
     text.TaskTemplateDeleteRulesWarning ->
       "Rules using this template should be paused or updated first."
+    text.TaskTemplateEditFutureTasksWarning ->
+      "This template is used by active rules. Changes affect only future generated tasks; tasks already created keep their original content and origin."
     text.TaskTemplateVariablesHelp ->
       "Variables: {{origin}} (origin task/card), {{trigger}} (event), {{project}} (project name), {{user}} (user who triggered), {{task_title}} and {{task_type}} for task events, {{card_title}} and {{card_level}} for card events"
     text.TaskTemplateDescriptionHint ->

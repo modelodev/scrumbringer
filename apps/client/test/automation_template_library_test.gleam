@@ -246,3 +246,41 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
   )
   assert_not_contains(html, "task-template-crud-dialog")
 }
+
+pub fn automation_template_library_warns_when_editing_used_template_test() {
+  let html =
+    template_library.view(
+      template_library.Config(
+        ..config(),
+        dialog_mode: opt.Some(
+          admin_task_templates.TaskTemplateDialogEdit(sample_template()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Edit Template")
+  assert_contains(html, "automation-template-panel__warning")
+  assert_contains(html, "role=\"note\"")
+  assert_contains(
+    html,
+    "Changes affect only future generated tasks; tasks already created keep their original content and origin.",
+  )
+}
+
+pub fn automation_template_library_skips_future_warning_for_unused_template_test() {
+  let html =
+    template_library.view(
+      template_library.Config(
+        ..config(),
+        dialog_mode: opt.Some(
+          admin_task_templates.TaskTemplateDialogEdit(unused_template()),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Edit Template")
+  assert_not_contains(html, "automation-template-panel__warning")
+  assert_not_contains(html, "Changes affect only future generated tasks")
+}

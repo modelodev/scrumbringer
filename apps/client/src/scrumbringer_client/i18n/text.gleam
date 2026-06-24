@@ -900,6 +900,7 @@ pub type Text {
   TaskTemplateDeleted
   TaskTemplateDeleteConfirm(template_name: String)
   TaskTemplateDeleteRulesWarning
+  TaskTemplateEditFutureTasksWarning
   TaskTemplateVariablesHelp
   TaskTemplateDescriptionHint
   AvailableVariables

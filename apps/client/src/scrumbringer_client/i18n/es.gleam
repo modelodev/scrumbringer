@@ -1117,6 +1117,8 @@ pub fn translate(text: Text) -> String {
       "¿Eliminar la plantilla \"" <> name <> "\"?"
     text.TaskTemplateDeleteRulesWarning ->
       "Las reglas que usan esta plantilla deben pausarse o actualizarse primero."
+    text.TaskTemplateEditFutureTasksWarning ->
+      "Esta plantilla se usa en reglas activas. Los cambios afectan solo a futuras tasks generadas; las tasks ya creadas conservan su contenido y origen originales."
     text.TaskTemplateVariablesHelp ->
       "Variables: {{origin}} (tarea/tarjeta origen), {{trigger}} (evento), {{project}} (nombre del proyecto), {{user}} (usuario que disparó), {{task_title}} y {{task_type}} para eventos de task, {{card_title}} y {{card_level}} para eventos de card"
     text.TaskTemplateDescriptionHint ->
