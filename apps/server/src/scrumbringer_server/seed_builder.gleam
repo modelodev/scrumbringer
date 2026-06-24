@@ -273,6 +273,7 @@ pub fn build_seed(
   use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
   use state <- result.try(build_task_notes(db, state, config))
+  use state <- result.try(build_card_notes(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
   use state <- result.try(trigger_rule_executions(db, state, config))
@@ -1949,12 +1950,43 @@ fn build_task_notes(
 
   use _ <- result.try(
     list.index_map(noted_tasks, fn(seed, idx) {
-      seed_db.insert_task_note(
+      seed_db.insert_task_note_with_pinned(
         db,
         seed.task_id,
         note_author_for(state.user_ids, idx, state.admin_id),
         seed_note_content(seed.status, idx),
         Some(days_ago_timestamp(int.max(1, config.date_range_days - idx))),
+        idx == 0,
+      )
+    })
+    |> result.all,
+  )
+
+  Ok(state)
+}
+
+fn build_card_notes(
+  db: pog.Connection,
+  state: BuildState,
+  config: SeedConfig,
+) -> Result(BuildState, String) {
+  let noted_cards =
+    active_project_ids(state)
+    |> list.flat_map(fn(project_id) {
+      cards_for_project(state.card_ids_by_project, project_id)
+      |> list.take(1)
+    })
+    |> list.take(2)
+
+  use _ <- result.try(
+    list.index_map(noted_cards, fn(card_id, idx) {
+      seed_db.insert_card_note(
+        db,
+        card_id,
+        note_author_for(state.user_ids, idx + 2, state.admin_id),
+        seed_card_note_content(idx),
+        Some(days_ago_timestamp(int.max(1, config.date_range_days - idx - 2))),
+        idx == 0,
       )
     })
     |> result.all,
@@ -3256,4 +3288,11 @@ fn seed_note_content(status: TaskPhase, idx: Int) -> String {
   }
 
   "Seed note: " <> status_label <> " task context #" <> int.to_string(idx + 1)
+}
+
+fn seed_card_note_content(idx: Int) -> String {
+  case idx {
+    0 -> "Seed card note: pinned delivery decision"
+    _ -> "Seed card note: follow-up context"
+  }
 }

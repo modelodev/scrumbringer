@@ -1457,8 +1457,20 @@ pub fn insert_task_note(
   content: String,
   created_at: Option(String),
 ) -> Result(Int, String) {
+  insert_task_note_with_pinned(db, task_id, user_id, content, created_at, False)
+}
+
+/// Insert a task note with explicit pinned state.
+pub fn insert_task_note_with_pinned(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  content: String,
+  created_at: Option(String),
+  pinned: Bool,
+) -> Result(Int, String) {
   let #(cols, vals, idx, params) =
-    append_optional_timestamp("", "", 4, "created_at", created_at, [])
+    append_optional_timestamp("", "", 5, "created_at", created_at, [])
   let #(timestamp_cols, timestamp_vals, _, timestamp_params) =
     append_optional_timestamp(cols, vals, idx, "updated_at", created_at, params)
 
@@ -1467,8 +1479,8 @@ pub fn insert_task_note(
        FROM tasks
        WHERE id = $1
      ), inserted_note AS (
-       INSERT INTO notes (project_id, user_id, content" <> timestamp_cols <> ")
-       SELECT project_id, $2, $3" <> timestamp_vals <> "
+       INSERT INTO notes (project_id, user_id, content, pinned" <> timestamp_cols <> ")
+       SELECT project_id, $2, $3, $4" <> timestamp_vals <> "
        FROM task_scope
        RETURNING id
      ), inserted_relation AS (
@@ -1484,11 +1496,64 @@ pub fn insert_task_note(
     |> pog.parameter(pog.int(task_id))
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.text(content))
+    |> pog.parameter(pog.bool(pinned))
 
   apply_timestamp_params(query, timestamp_params)
   |> pog.returning(int_decoder())
   |> pog.execute(db)
-  |> result.map_error(fn(e) { "insert_task_note: " <> string.inspect(e) })
+  |> result.map_error(fn(e) {
+    "insert_task_note_with_pinned: " <> string.inspect(e)
+  })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No ID")
+    }
+  })
+}
+
+/// Insert a card note with explicit pinned state.
+pub fn insert_card_note(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+  content: String,
+  created_at: Option(String),
+  pinned: Bool,
+) -> Result(Int, String) {
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp("", "", 5, "created_at", created_at, [])
+  let #(timestamp_cols, timestamp_vals, _, timestamp_params) =
+    append_optional_timestamp(cols, vals, idx, "updated_at", created_at, params)
+
+  let sql = "WITH card_scope AS (
+       SELECT id, project_id
+       FROM cards
+       WHERE id = $1
+     ), inserted_note AS (
+       INSERT INTO notes (project_id, user_id, content, pinned" <> timestamp_cols <> ")
+       SELECT project_id, $2, $3, $4" <> timestamp_vals <> "
+       FROM card_scope
+       RETURNING id
+     ), inserted_relation AS (
+       INSERT INTO card_notes (note_id, card_id)
+       SELECT inserted_note.id, card_scope.id
+       FROM inserted_note, card_scope
+       RETURNING note_id
+     )
+     SELECT note_id FROM inserted_relation"
+
+  let query =
+    pog.query(sql)
+    |> pog.parameter(pog.int(card_id))
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.text(content))
+    |> pog.parameter(pog.bool(pinned))
+
+  apply_timestamp_params(query, timestamp_params)
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "insert_card_note: " <> string.inspect(e) })
   |> result.try(fn(r) {
     case r.rows {
       [id] -> Ok(id)

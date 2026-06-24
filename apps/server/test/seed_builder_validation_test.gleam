@@ -232,6 +232,55 @@ pub fn realistic_seed_covers_people_capabilities_notes_and_activity_test() {
        where n.content like 'Seed note:%'",
       [],
     )
+  let assert Ok(pinned_task_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join task_notes tn on tn.note_id = n.id
+       where n.content like 'Seed note:%'
+         and n.pinned = true",
+      [],
+    )
+  let assert Ok(unpinned_task_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join task_notes tn on tn.note_id = n.id
+       where n.content like 'Seed note:%'
+         and n.pinned = false",
+      [],
+    )
+  let assert Ok(seed_card_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join card_notes cn on cn.note_id = n.id
+       where n.content like 'Seed card note:%'",
+      [],
+    )
+  let assert Ok(pinned_card_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join card_notes cn on cn.note_id = n.id
+       where n.content like 'Seed card note:%'
+         and n.pinned = true",
+      [],
+    )
+  let assert Ok(unpinned_card_note_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from notes n
+       join card_notes cn on cn.note_id = n.id
+       where n.content like 'Seed card note:%'
+         and n.pinned = false",
+      [],
+    )
   let assert Ok(activity_count) =
     fixtures.query_int(db, "select count(*)::int from audit_events", [])
   let assert Ok(work_session_count) =
@@ -245,6 +294,11 @@ pub fn realistic_seed_covers_people_capabilities_notes_and_activity_test() {
   { capability_count > 0 } |> expect.is_true
   { member_capability_count > 0 } |> expect.is_true
   seed_note_count |> expect.equal(5)
+  pinned_task_note_count |> expect.equal(1)
+  { unpinned_task_note_count > 0 } |> expect.is_true
+  seed_card_note_count |> expect.equal(2)
+  pinned_card_note_count |> expect.equal(1)
+  unpinned_card_note_count |> expect.equal(1)
   { activity_count > 0 } |> expect.is_true
   { work_session_count > 0 } |> expect.is_true
 }
