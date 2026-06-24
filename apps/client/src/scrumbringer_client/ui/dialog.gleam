@@ -189,6 +189,19 @@ pub fn focused_panel_title_attributes(
   ]
 }
 
+/// Attributes for the feature content behind an open panel.
+pub fn panel_background_attributes(
+  is_panel_open: Bool,
+) -> List(attribute.Attribute(msg)) {
+  case is_panel_open {
+    True -> [
+      attribute.inert(True),
+      attribute.attribute("aria-hidden", "true"),
+    ]
+    False -> []
+  }
+}
+
 fn view_header(config: DialogConfig(msg), close_label: String) -> Element(msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [

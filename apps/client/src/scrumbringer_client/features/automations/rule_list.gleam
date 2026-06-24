@@ -109,21 +109,25 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
+  let panel_open = opt.is_some(config.rules.rules_dialog_mode)
+
   div(
     [
       attribute.class("section"),
       attribute.attribute("data-testid", "automation-rule-builder"),
     ],
     [
-      ui_button.text(
-        t(config, i18n_text.BackToWorkflows),
-        config.on_back_clicked,
-        ui_button.Secondary,
-        ui_button.ViewAction,
-      )
-        |> ui_button.view,
-      view_rules_heading(config),
-      view_rules_list(config, config.rules.rules, config.rules.rules_metrics),
+      div(dialog.panel_background_attributes(panel_open), [
+        ui_button.text(
+          t(config, i18n_text.BackToWorkflows),
+          config.on_back_clicked,
+          ui_button.Secondary,
+          ui_button.ViewAction,
+        )
+          |> ui_button.view,
+        view_rules_heading(config),
+        view_rules_list(config, config.rules.rules, config.rules.rules_metrics),
+      ]),
       view_rule_builder_panel(config),
     ],
   )

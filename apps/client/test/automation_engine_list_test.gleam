@@ -100,6 +100,7 @@ pub fn automation_engine_list_renders_operational_rows_test() {
   assert_contains(html, "data-testid=\"automation-engine-row\"")
   assert_contains(html, "Release automation")
   assert_contains(html, "workflow-rules-btn")
+  assert_not_contains(html, "inert")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")
 }
@@ -148,6 +149,8 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")
@@ -217,6 +220,8 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-engine-panel")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")

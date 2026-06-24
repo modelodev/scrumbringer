@@ -222,6 +222,8 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
     |> element.to_document_string
 
   assert_contains(html, "Card automation scope")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
@@ -287,6 +289,8 @@ pub fn automation_rule_delete_panel_focuses_title_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-rule-panel-danger")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
   assert_contains(html, "id=\"automation-rule-panel-title\"")
   assert_contains(html, "tabindex=\"-1\"")
@@ -323,6 +327,7 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_contains(html, "2")
   assert_contains(html, "btn-view-action")
   assert_contains(html, "btn-entity-action")
+  assert_not_contains(html, "inert")
   assert_not_contains(html, "btn btn-sm btn-primary")
 }
 

@@ -79,18 +79,23 @@ fn view_list(config: Config(msg)) -> Element(msg) {
           text(t(config, i18n_text.SelectProjectForWorkflows)),
         ]),
       ])
-    opt.Some(project) ->
+    opt.Some(project) -> {
+      let panel_open = opt.is_some(config.dialog_mode)
+
       div([attribute.class("automation-engines-mode")], [
-        div([attribute.class("automation-engines-heading")], [
-          h2([], [
-            text(t(config, i18n_text.WorkflowsProjectTitle(project.name))),
+        div(dialog.panel_background_attributes(panel_open), [
+          div([attribute.class("automation-engines-heading")], [
+            h2([], [
+              text(t(config, i18n_text.WorkflowsProjectTitle(project.name))),
+            ]),
+            p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
           ]),
-          p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
+          view_filters(config),
+          view_content(config, config.workflows),
         ]),
-        view_filters(config),
-        view_content(config, config.workflows),
         view_engine_panel(config),
       ])
+    }
   }
 }
 

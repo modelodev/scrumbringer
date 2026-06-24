@@ -76,17 +76,20 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       i18n.t(config.locale, i18n_text.TaskTemplatesProjectTitle(project.name))
     opt.None -> i18n.t(config.locale, i18n_text.TaskTemplatesTitle)
   }
+  let panel_open = opt.is_some(config.dialog_mode)
 
   div([attribute.class("automation-templates-mode")], [
-    div([attribute.class("automation-templates-heading")], [
-      h2([], [text(title)]),
-      p([], [
-        text(i18n.t(config.locale, i18n_text.AutomationTemplatesDescription)),
+    div(dialog.panel_background_attributes(panel_open), [
+      div([attribute.class("automation-templates-heading")], [
+        h2([], [text(title)]),
+        p([], [
+          text(i18n.t(config.locale, i18n_text.AutomationTemplatesDescription)),
+        ]),
       ]),
+      view_template_filters(config),
+      view_templates_hint(config),
+      view_task_templates_table(config),
     ]),
-    view_template_filters(config),
-    view_templates_hint(config),
-    view_task_templates_table(config),
     view_template_panel(config),
   ])
 }

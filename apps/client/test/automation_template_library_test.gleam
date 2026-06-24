@@ -122,6 +122,7 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "Unused")
   assert_contains(html, "template-edit-btn")
   assert_contains(html, "template-delete-btn")
+  assert_not_contains(html, "inert")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")
   assert_not_contains(html, "task-template-crud-dialog")
@@ -192,6 +193,8 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "automation-template-panel")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
@@ -246,6 +249,8 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
     |> element.to_document_string
 
   assert_contains(html, "Delete Template")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
