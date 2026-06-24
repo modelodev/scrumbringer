@@ -406,6 +406,129 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
   |> expect.equal(0)
 }
 
+pub fn rules_project_scope_requires_project_manager_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Rule Permissions")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Rule Permissions'",
+      [],
+    )
+
+  create_task_type(handler, admin_session, admin_csrf, project_id, "QA", "bug")
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'QA'",
+      [pog.int(project_id)],
+    )
+  let workflow_id =
+    create_workflow(handler, admin_session, admin_csrf, project_id, "Rules")
+  let template_id =
+    create_template(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      type_id,
+      "Follow-up",
+    )
+  let rule_id =
+    create_rule(
+      handler,
+      admin_session,
+      admin_csrf,
+      workflow_id,
+      type_id,
+      template_id,
+      "Protected Rule",
+    )
+
+  create_member_user(handler, db, "member@example.com", "rule_member_invite")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    "member",
+  )
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+      )
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf),
+    )
+  expect.expect_status(list_res, 403)
+
+  let create_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+      )
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf)
+      |> simulate.json_body(rule_create_json(
+        "Member Rule",
+        type_id,
+        template_id,
+      )),
+    )
+  expect.expect_status(create_res, 403)
+
+  let update_res =
+    handler(
+      simulate.request(http.Patch, "/api/v1/rules/" <> int_to_string(rule_id))
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Member Updated Rule")),
+          #("status", json.object([#("type", json.string("paused"))])),
+        ]),
+      ),
+    )
+  expect.expect_status(update_res, 403)
+
+  let delete_res =
+    handler(
+      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf),
+    )
+  expect.expect_status(delete_res, 403)
+  single_bool(db, "select active from rules where id = $1", [pog.int(rule_id)])
+  |> expect.equal(True)
+}
+
 fn create_project(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
@@ -582,6 +705,76 @@ fn create_rule(
 
   expect.expect_status(res, 200)
   decode_rule_id(simulate.read_body(res))
+}
+
+fn rule_create_json(name: String, type_id: Int, template_id: Int) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("goal", json.string("Member should not save this")),
+    #(
+      "trigger",
+      json.object([
+        #("type", json.string("task_completed")),
+        #("task_type_id", json.int(type_id)),
+      ]),
+    ),
+    #(
+      "action",
+      json.object([
+        #("type", json.string("create_task")),
+        #("template_id", json.int(template_id)),
+      ]),
+    ),
+    #("status", json.object([#("type", json.string("active"))])),
+  ])
+}
+
+fn add_member(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  user_id: Int,
+  role: String,
+) {
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([
+        #("user_id", json.int(user_id)),
+        #("role", json.string(role)),
+      ]),
+    )
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
+}
+
+fn create_member_user(
+  handler: fn(wisp.Request) -> wisp.Response,
+  db: pog.Connection,
+  email: String,
+  invite_code: String,
+) {
+  insert_invite_link_active(db, invite_code, email)
+
+  let req =
+    simulate.request(http.Post, "/api/v1/auth/register")
+    |> simulate.json_body(
+      json.object([
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string(invite_code)),
+      ]),
+    )
+
+  let res = handler(req)
+  expect.expect_status(res, 200)
 }
 
 fn decode_workflow_id(body: String) -> Int {
@@ -902,6 +1095,18 @@ fn insert_rule_execution(
       "task:" <> int_to_string(task_id) <> ":" <> suffix,
     ))
     |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
+    )
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil
