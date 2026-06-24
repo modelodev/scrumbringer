@@ -133,7 +133,11 @@ fn list_rules(
     workflow_id_str,
   ))
   use rules <- result.try(list_rules_for_workflow(db, workflow.id))
-  use rules_with_templates <- result.try(list_rules_with_templates(db, rules))
+  use rules_with_templates <- result.try(list_rules_with_templates(
+    db,
+    workflow,
+    rules,
+  ))
 
   Ok(api.ok(rule_presenters.rules_response(rules_with_templates)))
 }
@@ -377,14 +381,54 @@ fn list_rules_for_workflow(
 
 fn list_rules_with_templates(
   db: pog.Connection,
+  workflow: workflows_db.WorkflowRecord,
   rules: List(rules_db.RuleRecord),
 ) {
   list.try_map(rules, fn(rule) {
     case rules_db.selected_rule_template(db, rule.id) {
-      Ok(template) -> Ok(rule_presenters.rule_with_template(rule, template))
+      Ok(template) -> {
+        use reviewed_rule <- result.try(rule_with_review_status(
+          db,
+          workflow.project_id,
+          rule,
+        ))
+        Ok(rule_presenters.rule_with_template(reviewed_rule, template))
+      }
       Error(error) -> Error(service_error_response.to_database_response(error))
     }
   })
+}
+
+fn rule_with_review_status(
+  db: pog.Connection,
+  project_id: Int,
+  rule: rules_db.RuleRecord,
+) -> Result(rules_db.RuleRecord, wisp.Response) {
+  case rule.trigger {
+    automation.CardActivated(automation.AtDepth(depth))
+    | automation.CardClosed(automation.AtDepth(depth)) ->
+      case
+        project_card_depth_exists(
+          db,
+          project_id,
+          automation.card_depth_to_int(depth),
+        )
+      {
+        Ok(True) -> Ok(rule)
+        Ok(False) ->
+          Ok(
+            rules_db.RuleRecord(
+              ..rule,
+              status: automation.RequiresReview(
+                automation.CardDepthNoLongerExists,
+              ),
+            ),
+          )
+        Error(_) -> Error(database_error_response())
+      }
+
+    _ -> Ok(rule)
+  }
 }
 
 fn decode_create_payload(

@@ -262,6 +262,74 @@ pub fn depth_reduction_preview_returns_affected_cards_test() {
   affected_cards |> expect.equal([#("Middle", 2), #("Leaf", 3)])
 }
 
+pub fn depth_reduction_marks_card_depth_rules_requires_review_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Depth Rule Review")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Depth Rule Review'",
+      [],
+    )
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+  let task_type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'General'",
+      [pog.int(project_id)],
+    )
+  let workflow_id =
+    insert_workflow(db, project_id, admin_id, "Depth automation")
+  let template_id =
+    insert_task_template(db, project_id, task_type_id, admin_id, "Depth review")
+  let rule_id =
+    insert_card_depth_rule(db, workflow_id, template_id, "Depth three", 3)
+
+  let update_req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/" <> int_to_string(project_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(project_update_json("Depth Rule Review", 2))
+
+  let update_res = handler(update_req)
+  expect.expect_status(update_res, 200)
+
+  single_int(
+    db,
+    "select count(*)::int from rules where id = $1 and active = false",
+    [pog.int(rule_id)],
+  )
+  |> expect.equal(1)
+
+  let list_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+
+  let list_res = handler(list_req)
+  expect.expect_status(list_res, 200)
+  let body = simulate.read_body(list_res)
+
+  string.contains(body, "\"type\":\"requires_review\"") |> expect.is_true
+  string.contains(body, "\"reason\":\"card_depth_no_longer_exists\"")
+  |> expect.is_true
+}
+
 pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1117,6 +1185,32 @@ fn project_create_json(name: String) -> json.Json {
   ])
 }
 
+fn project_update_json(name: String, max_depth: Int) -> json.Json {
+  json.object([
+    #("name", json.string(name)),
+    #("healthy_pool_limit", json.int(20)),
+    #(
+      "card_depth_names",
+      json.array(depth_names_for_count(max_depth), of: fn(value) { value }),
+    ),
+  ])
+}
+
+fn depth_names_for_count(max_depth: Int) -> List(json.Json) {
+  case max_depth {
+    1 -> [project_depth_name_json(1, "Initiative", "Initiatives")]
+    2 -> [
+      project_depth_name_json(1, "Initiative", "Initiatives"),
+      project_depth_name_json(2, "Feature", "Features"),
+    ]
+    _ -> [
+      project_depth_name_json(1, "Initiative", "Initiatives"),
+      project_depth_name_json(2, "Feature", "Features"),
+      project_depth_name_json(3, "Task group", "Task groups"),
+    ]
+  }
+}
+
 fn project_depth_name_json(
   depth: Int,
   singular_name: String,
@@ -1360,6 +1454,63 @@ fn insert_card(
       pog.int(parent_card_id),
     ],
   )
+}
+
+fn insert_workflow(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  name: String,
+) -> Int {
+  single_int(
+    db,
+    "insert into workflows (org_id, project_id, name, active, created_by) values (1, $1, $2, true, $3) returning id",
+    [pog.int(project_id), pog.text(name), pog.int(user_id)],
+  )
+}
+
+fn insert_task_template(
+  db: pog.Connection,
+  project_id: Int,
+  task_type_id: Int,
+  user_id: Int,
+  name: String,
+) -> Int {
+  single_int(
+    db,
+    "insert into task_templates (org_id, project_id, name, type_id, priority, created_by) values (1, $1, $2, $3, 3, $4) returning id",
+    [
+      pog.int(project_id),
+      pog.text(name),
+      pog.int(task_type_id),
+      pog.int(user_id),
+    ],
+  )
+}
+
+fn insert_card_depth_rule(
+  db: pog.Connection,
+  workflow_id: Int,
+  template_id: Int,
+  name: String,
+  card_depth: Int,
+) -> Int {
+  let rule_id =
+    single_int(
+      db,
+      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, card_depth, to_state, active) values ($1, $2, '', 'card', 'card_activated', $3, 'en_curso', true) returning id",
+      [pog.int(workflow_id), pog.text(name), pog.int(card_depth)],
+    )
+
+  let assert Ok(_) =
+    pog.query(
+      "insert into rule_templates (rule_id, template_id, execution_order) values ($1, $2, 1)",
+    )
+    |> pog.parameter(pog.int(rule_id))
+    |> pog.parameter(pog.int(template_id))
+    |> pog.execute(db)
+
+  rule_id
 }
 
 fn int_to_string(value: Int) -> String {

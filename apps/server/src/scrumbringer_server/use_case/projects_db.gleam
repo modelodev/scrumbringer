@@ -950,8 +950,26 @@ fn apply_depth_reduction(
   case returned.rows {
     [claimed_tasks_count, ..] if claimed_tasks_count > 0 ->
       Error(DepthReductionBlocked(claimed_tasks_count))
-    _ -> Ok(Nil)
+    _ -> pause_card_depth_rules_above(db, project_id, new_max_depth)
   }
+}
+
+fn pause_card_depth_rules_above(
+  db: pog.Connection,
+  project_id: Int,
+  new_max_depth: Int,
+) -> Result(Nil, UpdateProjectError) {
+  use _updated <- result.try(
+    pog.query(
+      "\nupdate rules rule\nset active = false\nfrom workflows workflow\nwhere workflow.id = rule.workflow_id\n  and workflow.project_id = $1\n  and rule.resource_type = 'card'\n  and rule.card_depth > $2",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(new_max_depth))
+    |> pog.execute(db)
+    |> result.map_error(UpdateProjectDbError),
+  )
+
+  Ok(Nil)
 }
 
 fn transaction_error_to_update_project_error(
