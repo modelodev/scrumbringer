@@ -168,9 +168,16 @@ if grep -Eq "seed_and_exercise_automation_api" scripts/ht12-agent-browser-sweep.
   && grep -Eq "/task-templates" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "/workflows" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "/rules" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "task_created" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "task_claimed" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "task_released" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "task_completed" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "card_activated" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "card_closed" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "/rule-executions" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "automation_origin" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automation-invalid-missing-template-rule" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "created-noncascade" scripts/ht12-agent-browser-sweep.sh \
   && grep -Eq "AUTOMATION_CREATED_TASK_ID" scripts/ht12-agent-browser-sweep.sh; then
   echo "ht12-static:sweep:automation_execution_trace=ok"
 else

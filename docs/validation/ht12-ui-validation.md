@@ -68,6 +68,13 @@ It also writes `db-schema-check.txt` with the database invariants that affect
 activation, Pool visibility, task claim, dependencies, and delete-with-history
 behavior.
 
+The automation API phase creates an engine, templates, and rules for every
+supported trigger family: `task_created`, `task_claimed`, `task_released`,
+`task_completed`, `card_activated`, and `card_closed`. It verifies generated
+task origins, rule execution records, duplicate completion suppression, missing
+template rejection, and the non-cascading guard that prevents
+automation-created tasks from firing `task_created` rules.
+
 The browser phase is intentionally evidence-oriented: the API phase proves the
 mutations and server contracts, while the agent-browser phase proves that the
 resulting user-facing routes render and remain inspectable at the expected
@@ -339,3 +346,6 @@ Latest checks and sweep:
 - `git diff --check`
 - `make ht12-sweep-lan`
   passed and wrote evidence to `/tmp/scrumbringer-ht12-sweep-20260620143550`.
+- `BASE_URL=http://127.0.0.1:18443 API_BASE=http://127.0.0.1:18000 DATABASE_URL="postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable" bash scripts/ht12-agent-browser-sweep.sh`
+  passed and wrote automation trigger coverage evidence to
+  `/tmp/scrumbringer-ht12-sweep-20260624092846`.

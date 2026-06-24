@@ -172,6 +172,17 @@ create_rule() {
   json_get "$output" 'data.rule.id'
 }
 
+create_rule_with_trigger() {
+  local workflow_id="$1"
+  local template_id="$2"
+  local trigger_json="$3"
+  local title="$4"
+  local output="$5"
+
+  api_request POST "/api/v1/workflows/${workflow_id}/rules" "{\"name\":\"${title}\",\"goal\":\"sweep automation edge rule\",\"trigger\":${trigger_json},\"action\":{\"type\":\"create_task\",\"template_id\":${template_id}},\"status\":{\"type\":\"active\"}}" "$output"
+  json_get "$output" 'data.rule.id'
+}
+
 csrf_token() {
   awk '$6 == "sb_csrf" { value = $7 } END { print value }' "$COOKIE_JAR"
 }
@@ -304,6 +315,13 @@ seed_and_exercise_automation_api() {
   api_request GET "/api/v1/rules/${rule_id}/executions?limit=10" "" "$rule_executions_json"
   json_expect "$rule_executions_json" "data.executions.length" "1"
 
+  api_request POST "/api/v1/tasks/${origin_task_id}/complete" '{"version":2}' "${OUT_DIR}/automation-origin-complete-duplicate.json" 422
+  json_expect_error_code "${OUT_DIR}/automation-origin-complete-duplicate.json" "VALIDATION_ERROR"
+  api_request GET "/api/v1/rules/${rule_id}/executions?limit=10" "" "${OUT_DIR}/automation-rule-executions-after-duplicate.json"
+  json_expect "${OUT_DIR}/automation-rule-executions-after-duplicate.json" "data.executions.filter(e => e.outcome === 'applied').length" "1"
+
+  exercise_automation_edge_triggers "$project_id" "$type_id" "$workflow_id" "$rule_id"
+
   cat >"${OUT_DIR}/automation.env" <<EOF
 AUTOMATION_WORKFLOW_ID=${workflow_id}
 AUTOMATION_TEMPLATE_ID=${template_id}
@@ -312,6 +330,91 @@ AUTOMATION_EXECUTION_ID=${execution_id}
 AUTOMATION_ORIGIN_TASK_ID=${origin_task_id}
 AUTOMATION_CREATED_TASK_ID=${created_task_id}
 EOF
+}
+
+verify_automation_rule_applied() {
+  local project_id="$1"
+  local rule_id="$2"
+  local label="$3"
+  local executions_json="${OUT_DIR}/automation-${label}-executions.json"
+  local generated_json="${OUT_DIR}/automation-${label}-generated-task.json"
+  local created_task_id
+
+  api_request GET "/api/v1/projects/${project_id}/rule-executions?limit=100" "" "$executions_json"
+  json_expect "$executions_json" "data.executions.filter(e => e.rule_id === ${rule_id} && e.outcome === 'applied').length" "1"
+  created_task_id="$(json_get "$executions_json" "data.executions.find(e => e.rule_id === ${rule_id} && e.outcome === 'applied').created_task_id")"
+  api_request GET "/api/v1/tasks/${created_task_id}" "" "$generated_json"
+  json_expect "$generated_json" "data.task.automation_origin && data.task.automation_origin.rule_id" "$rule_id"
+  json_expect "$generated_json" "data.task.status" "available"
+}
+
+assert_rule_applied_count() {
+  local project_id="$1"
+  local rule_id="$2"
+  local expected="$3"
+  local label="$4"
+  local executions_json="${OUT_DIR}/automation-${label}-count.json"
+
+  api_request GET "/api/v1/projects/${project_id}/rule-executions?limit=100" "" "$executions_json"
+  json_expect "$executions_json" "data.executions.filter(e => e.rule_id === ${rule_id} && e.outcome === 'applied').length" "$expected"
+}
+
+exercise_automation_edge_triggers() {
+  local project_id="$1"
+  local type_id="$2"
+  local workflow_id="$3"
+  local completion_rule_id="$4"
+
+  log "Exercising automation edge triggers and duplicate guards"
+
+  local claimed_template_id released_template_id activated_template_id closed_template_id created_template_id
+  local claimed_rule_id released_rule_id activated_rule_id closed_rule_id created_rule_id
+
+  claimed_template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Claimed follow-up" "${OUT_DIR}/automation-claimed-template.json")"
+  claimed_rule_id="$(create_rule_with_trigger "$workflow_id" "$claimed_template_id" "{\"type\":\"task_claimed\",\"task_type_id\":${type_id}}" "${SWEEP_NAME} Claimed trigger" "${OUT_DIR}/automation-claimed-rule.json")"
+  local claimed_origin_id
+  claimed_origin_id="$(create_task "$project_id" "$type_id" "${SWEEP_NAME} Claimed trigger origin" "${OUT_DIR}/automation-claimed-origin.json")"
+  api_request POST "/api/v1/tasks/${claimed_origin_id}/claim" '{"version":1}' "${OUT_DIR}/automation-claimed-origin-claim.json"
+  verify_automation_rule_applied "$project_id" "$claimed_rule_id" "claimed"
+
+  released_template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Released follow-up" "${OUT_DIR}/automation-released-template.json")"
+  released_rule_id="$(create_rule_with_trigger "$workflow_id" "$released_template_id" "{\"type\":\"task_released\",\"task_type_id\":${type_id}}" "${SWEEP_NAME} Released trigger" "${OUT_DIR}/automation-released-rule.json")"
+  local released_origin_id
+  released_origin_id="$(create_task "$project_id" "$type_id" "${SWEEP_NAME} Released trigger origin" "${OUT_DIR}/automation-released-origin.json")"
+  api_request POST "/api/v1/tasks/${released_origin_id}/claim" '{"version":1}' "${OUT_DIR}/automation-released-origin-claim.json"
+  api_request POST "/api/v1/tasks/${released_origin_id}/release" '{"version":2}' "${OUT_DIR}/automation-released-origin-release.json"
+  verify_automation_rule_applied "$project_id" "$released_rule_id" "released"
+
+  activated_template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Activated follow-up" "${OUT_DIR}/automation-activated-template.json")"
+  activated_rule_id="$(create_rule_with_trigger "$workflow_id" "$activated_template_id" "{\"type\":\"card_activated\",\"scope\":{\"type\":\"at_depth\",\"depth\":1}}" "${SWEEP_NAME} Card activated trigger" "${OUT_DIR}/automation-activated-rule.json")"
+  local activated_card_json="${OUT_DIR}/automation-activated-card.json"
+  local activated_card_id
+  api_request POST "/api/v1/projects/${project_id}/cards" "{\"title\":\"${SWEEP_NAME} Automation activated card\",\"description\":\"card activation trigger\",\"color\":\"purple\"}" "$activated_card_json"
+  activated_card_id="$(json_get "$activated_card_json" 'data.card.id')"
+  api_request POST "/api/v1/cards/${activated_card_id}/activate" '{}' "${OUT_DIR}/automation-activated-card-activate.json"
+  verify_automation_rule_applied "$project_id" "$activated_rule_id" "activated"
+
+  closed_template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Closed follow-up" "${OUT_DIR}/automation-closed-template.json")"
+  closed_rule_id="$(create_rule_with_trigger "$workflow_id" "$closed_template_id" "{\"type\":\"card_closed\",\"scope\":{\"type\":\"at_depth\",\"depth\":1}}" "${SWEEP_NAME} Card closed trigger" "${OUT_DIR}/automation-closed-rule.json")"
+  local closed_card_json="${OUT_DIR}/automation-closed-card.json"
+  local closed_card_id
+  api_request POST "/api/v1/projects/${project_id}/cards" "{\"title\":\"${SWEEP_NAME} Automation closed card\",\"description\":\"card close trigger\",\"color\":\"orange\"}" "$closed_card_json"
+  closed_card_id="$(json_get "$closed_card_json" 'data.card.id')"
+  api_request POST "/api/v1/cards/${closed_card_id}/activate" '{}' "${OUT_DIR}/automation-closed-card-activate.json"
+  api_request POST "/api/v1/cards/${closed_card_id}/close" '{}' "${OUT_DIR}/automation-closed-card-close.json"
+  verify_automation_rule_applied "$project_id" "$closed_rule_id" "closed"
+
+  api_request POST "/api/v1/workflows/${workflow_id}/rules" "{\"name\":\"${SWEEP_NAME} Missing template rule\",\"goal\":\"must fail\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":${type_id}},\"status\":{\"type\":\"active\"}}" "${OUT_DIR}/automation-invalid-missing-template-rule.json" 400
+
+  created_template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Created follow-up" "${OUT_DIR}/automation-created-template.json")"
+  created_rule_id="$(create_rule_with_trigger "$workflow_id" "$created_template_id" "{\"type\":\"task_created\",\"task_type_id\":${type_id}}" "${SWEEP_NAME} Created trigger" "${OUT_DIR}/automation-created-rule.json")"
+  local created_origin_id
+  created_origin_id="$(create_task "$project_id" "$type_id" "${SWEEP_NAME} Created trigger origin" "${OUT_DIR}/automation-created-origin.json")"
+  verify_automation_rule_applied "$project_id" "$created_rule_id" "created"
+  api_request POST "/api/v1/tasks/${created_origin_id}/claim" '{"version":1}' "${OUT_DIR}/automation-created-origin-claim.json"
+  api_request POST "/api/v1/tasks/${created_origin_id}/complete" '{"version":2}' "${OUT_DIR}/automation-created-origin-complete.json"
+  assert_rule_applied_count "$project_id" "$completion_rule_id" "2" "completion-after-created-origin"
+  assert_rule_applied_count "$project_id" "$created_rule_id" "1" "created-noncascade"
 }
 
 seed_and_exercise_api() {
