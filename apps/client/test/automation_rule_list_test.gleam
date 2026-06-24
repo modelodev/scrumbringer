@@ -2,7 +2,9 @@ import gleam/int
 import gleam/option as opt
 import gleam/set
 import gleam/string
+import lustre/attribute
 import lustre/element
+import lustre/element/html.{div, text}
 
 import domain/automation
 import domain/remote.{Loaded, NotAsked}
@@ -172,6 +174,8 @@ fn config() -> rule_list.Config(String) {
     task_types: Loaded([task_type()]),
     task_templates_org: Loaded([]),
     task_templates_project: Loaded([task_template()]),
+    template_panel_open: False,
+    template_panel: element.none(),
     depth_names: [
       scope_view.DepthName(1, "Initiative", "Initiatives"),
       scope_view.DepthName(2, "Feature", "Features"),
@@ -190,6 +194,7 @@ fn config() -> rule_list.Config(String) {
     on_rule_card_scope_changed: fn(value) { "card-scope-" <> value },
     on_rule_template_search_changed: fn(value) { "template-search-" <> value },
     on_rule_template_changed: fn(value) { "template-" <> value },
+    on_create_template_clicked: "create-template",
     on_rule_active_changed: fn(value) {
       "active-"
       <> case value {
@@ -405,6 +410,9 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_contains(html, "Create task from")
   assert_contains(html, "data-testid=\"automation-template-search\"")
   assert_contains(html, "data-testid=\"automation-template-picker\"")
+  assert_contains(html, "data-testid=\"automation-rule-create-template\"")
+  assert_contains(html, "id=\"automation-create-template-trigger\"")
+  assert_contains(html, "Create Template")
   assert_contains(html, "Follow-up task")
   assert_contains(html, "Manual QA review")
   assert_contains(html, "Bug - P3")
@@ -412,6 +420,38 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_not_contains(html, "rule-crud-dialog")
   assert_not_contains(html, "Resource Type")
   assert_not_contains(html, "Target State")
+}
+
+pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        template_panel_open: True,
+        template_panel: div(
+          [
+            attribute.class("automation-template-panel"),
+            attribute.attribute("data-testid", "automation-template-panel"),
+          ],
+          [text("template panel")],
+        ),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          rule_form_name: "Follow-up when bug closes",
+          rule_form_subject: "task",
+          rule_form_task_type_id: "5",
+          rule_form_event: "task_completed",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"automation-rule-builder\"")
+  assert_contains(html, "data-testid=\"automation-template-panel\"")
+  assert_contains(html, "template panel")
+  assert_contains(html, "inert")
+  assert_contains(html, "aria-hidden=\"true\"")
 }
 
 pub fn automation_rule_builder_offers_only_supported_task_events_test() {

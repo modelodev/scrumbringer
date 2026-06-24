@@ -578,7 +578,7 @@ fn view_automations_console(
       model.admin.task_types,
       configured_depth_names(projects, model.core.selected_project_id),
       model.core.automation_selection,
-      admin_workflow_callbacks(),
+      admin_workflow_callbacks(model),
     )),
     templates_view: template_library.view(template_library_config.from_state(
       model.ui.locale,
@@ -925,7 +925,9 @@ fn admin_assignments_user_card(
   )
 }
 
-fn admin_workflow_callbacks() -> engine_list_config.Callbacks(client_state.Msg) {
+fn admin_workflow_callbacks(
+  model: client_state.Model,
+) -> engine_list_config.Callbacks(client_state.Msg) {
   engine_list_config.Callbacks(
     on_create_clicked: client_state.pool_msg(pool_messages.OpenWorkflowDialog(
       admin_workflows.WorkflowDialogCreate,
@@ -969,7 +971,7 @@ fn admin_workflow_callbacks() -> engine_list_config.Callbacks(client_state.Msg) 
       pool_messages.WorkflowDeleteConfirmed,
     ),
     on_closed: client_state.pool_msg(pool_messages.CloseWorkflowDialog),
-    rules: admin_workflow_rule_callbacks(),
+    rules: admin_workflow_rule_callbacks(model),
   )
 }
 
@@ -1067,9 +1069,9 @@ fn admin_task_template_callbacks() -> template_library_config.Callbacks(
   )
 }
 
-fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
-  client_state.Msg,
-) {
+fn admin_workflow_rule_callbacks(
+  model: client_state.Model,
+) -> automation_rule_list_config.Callbacks(client_state.Msg) {
   automation_rule_list_config.Callbacks(
     on_back_clicked: client_state.pool_msg(pool_messages.RulesBackClicked),
     on_create_clicked: client_state.pool_msg(pool_messages.OpenRuleDialog(
@@ -1112,6 +1114,11 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
     on_rule_template_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleTemplateChanged(value))
     },
+    on_create_template_clicked: client_state.pool_msg(
+      pool_messages.OpenTaskTemplateDialog(
+        admin_task_templates.TaskTemplateDialogCreate,
+      ),
+    ),
     on_rule_active_changed: fn(value) {
       client_state.pool_msg(pool_messages.RuleActiveChanged(value))
     },
@@ -1121,6 +1128,15 @@ fn admin_workflow_rule_callbacks() -> automation_rule_list_config.Callbacks(
     ),
     on_rule_panel_closed: client_state.pool_msg(pool_messages.CloseRuleDialog),
     on_noop: client_state.NoOp,
+    template_panel: template_library.panel(template_library_config.from_state(
+      model.ui.locale,
+      opt.None,
+      model.core.selected_project_id,
+      model.admin.task_templates,
+      model.admin.task_types,
+      automation_deep_link.template_id(model.core.automation_selection),
+      admin_task_template_callbacks(),
+    )),
   )
 }
 

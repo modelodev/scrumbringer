@@ -96,6 +96,10 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   ])
 }
 
+pub fn panel(config: Config(msg)) -> Element(msg) {
+  view_template_panel(config)
+}
+
 fn view_template_filters(config: Config(msg)) -> Element(msg) {
   filter_bar.new([
     form_field.view(

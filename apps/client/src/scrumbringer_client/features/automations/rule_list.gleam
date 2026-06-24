@@ -72,6 +72,8 @@ pub type Config(msg) {
     task_types: Remote(List(TaskType)),
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
+    template_panel_open: Bool,
+    template_panel: Element(msg),
     depth_names: List(scope_view.DepthName),
     on_back_clicked: msg,
     on_create_clicked: msg,
@@ -86,6 +88,7 @@ pub type Config(msg) {
     on_rule_card_scope_changed: fn(String) -> msg,
     on_rule_template_search_changed: fn(String) -> msg,
     on_rule_template_changed: fn(String) -> msg,
+    on_create_template_clicked: msg,
     on_rule_active_changed: fn(Bool) -> msg,
     on_rule_submitted: msg,
     on_rule_delete_confirmed: msg,
@@ -109,7 +112,8 @@ fn t(config: Config(msg), key: i18n_text.Text) -> String {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
-  let panel_open = opt.is_some(config.rules.rules_dialog_mode)
+  let panel_open =
+    opt.is_some(config.rules.rules_dialog_mode) || config.template_panel_open
 
   div(
     [
@@ -129,6 +133,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         view_rules_list(config, config.rules.rules, config.rules.rules_metrics),
       ]),
       view_rule_builder_panel(config),
+      config.template_panel,
     ],
   )
 }
@@ -442,19 +447,32 @@ fn view_rule_builder_panel(config: Config(msg)) -> Element(msg) {
   case config.rules.rules_dialog_mode {
     opt.None -> element.none()
     opt.Some(admin_rules.RuleDialogDelete(rule)) ->
-      view_rule_delete_panel(config, rule)
+      panel_layer(config, view_rule_delete_panel(config, rule))
     opt.Some(admin_rules.RuleDialogCreate) ->
-      view_rule_form_panel(
+      panel_layer(
         config,
-        t(config, i18n_text.RuleBuilderNewRule),
-        t(config, i18n_text.CreateRule),
+        view_rule_form_panel(
+          config,
+          t(config, i18n_text.RuleBuilderNewRule),
+          t(config, i18n_text.CreateRule),
+        ),
       )
     opt.Some(admin_rules.RuleDialogEdit(_rule)) ->
-      view_rule_form_panel(
+      panel_layer(
         config,
-        t(config, i18n_text.RuleBuilderEditRule),
-        t(config, i18n_text.RuleBuilderSaveRule),
+        view_rule_form_panel(
+          config,
+          t(config, i18n_text.RuleBuilderEditRule),
+          t(config, i18n_text.RuleBuilderSaveRule),
+        ),
       )
+  }
+}
+
+fn panel_layer(config: Config(msg), panel: Element(msg)) -> Element(msg) {
+  case config.template_panel_open {
+    True -> div(dialog.panel_background_attributes(True), [panel])
+    False -> panel
   }
 }
 
@@ -663,6 +681,16 @@ fn view_rule_template_picker(config: Config(msg)) -> Element(msg) {
         ..task_template_options(config, templates)
       ],
     ),
+    ui_button.icon_text(
+      t(config, i18n_text.CreateTaskTemplate),
+      config.on_create_template_clicked,
+      icons.Plus,
+      ui_button.Secondary,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_id(automation_focus.create_template_trigger_id)
+      |> ui_button.with_testid("automation-rule-create-template")
+      |> ui_button.view,
     case templates {
       [] ->
         p([attribute.class("rule-template-picker__empty")], [

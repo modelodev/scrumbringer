@@ -3,6 +3,8 @@
 import domain/workflow.{type Rule}
 import gleam/option as opt
 
+import lustre/element.{type Element}
+
 import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
@@ -27,11 +29,13 @@ pub type Callbacks(msg) {
     on_rule_card_scope_changed: fn(String) -> msg,
     on_rule_template_search_changed: fn(String) -> msg,
     on_rule_template_changed: fn(String) -> msg,
+    on_create_template_clicked: msg,
     on_rule_active_changed: fn(Bool) -> msg,
     on_rule_submitted: msg,
     on_rule_delete_confirmed: msg,
     on_rule_panel_closed: msg,
     on_noop: msg,
+    template_panel: Element(msg),
   )
 }
 
@@ -63,6 +67,8 @@ pub fn from_state(
     task_types: task_types.task_types,
     task_templates_org: task_templates.task_templates_org,
     task_templates_project: task_templates.task_templates_project,
+    template_panel_open: opt.is_some(task_templates.task_templates_dialog_mode),
+    template_panel: callbacks.template_panel,
     depth_names: depth_names,
     on_back_clicked: callbacks.on_back_clicked,
     on_create_clicked: callbacks.on_create_clicked,
@@ -77,6 +83,7 @@ pub fn from_state(
     on_rule_card_scope_changed: callbacks.on_rule_card_scope_changed,
     on_rule_template_search_changed: callbacks.on_rule_template_search_changed,
     on_rule_template_changed: callbacks.on_rule_template_changed,
+    on_create_template_clicked: callbacks.on_create_template_clicked,
     on_rule_active_changed: callbacks.on_rule_active_changed,
     on_rule_submitted: callbacks.on_rule_submitted,
     on_rule_delete_confirmed: callbacks.on_rule_delete_confirmed,
