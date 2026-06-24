@@ -2536,7 +2536,9 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(
+  db: pog.Connection,
+) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -4358,7 +4360,6 @@ pub type RuleTemplatesSelectRow {
 
 /// name: select_rule_template
 /// A rule has exactly one task template in the automation model.
-/// Selecting replaces the rule template and removes any previous one.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5949,6 +5950,7 @@ pub type TaskTemplatesDeleteRow {
     has_rules: Bool,
     has_executions: Bool,
     deleted_id: Int,
+    archived_id: Int,
   )
 }
 
@@ -5967,11 +5969,13 @@ pub fn task_templates_delete(
     use has_rules <- decode.field(1, decode.bool)
     use has_executions <- decode.field(2, decode.bool)
     use deleted_id <- decode.field(3, decode.int)
+    use archived_id <- decode.field(4, decode.int)
     decode.success(TaskTemplatesDeleteRow(
       template_found:,
       has_rules:,
       has_executions:,
       deleted_id:,
+      archived_id:,
     ))
   }
 
@@ -5981,6 +5985,7 @@ WITH matched AS (
   FROM task_templates
   WHERE id = $1
     AND org_id = $2
+    AND archived_at IS NULL
 ), usage AS (
   SELECT
     EXISTS (
@@ -5998,12 +6003,20 @@ WITH matched AS (
   WHERE id IN (SELECT id FROM matched)
     AND NOT (SELECT has_rules OR has_executions FROM usage)
   RETURNING id
+), archived AS (
+  UPDATE task_templates
+  SET archived_at = now()
+  WHERE id IN (SELECT id FROM matched)
+    AND NOT (SELECT has_rules FROM usage)
+    AND (SELECT has_executions FROM usage)
+  RETURNING id
 )
 SELECT
   EXISTS (SELECT 1 FROM matched) as template_found,
   COALESCE((SELECT has_rules FROM usage), false) as has_rules,
   COALESCE((SELECT has_executions FROM usage), false) as has_executions,
-  COALESCE((SELECT id FROM deleted), 0) as deleted_id;
+  COALESCE((SELECT id FROM deleted), 0) as deleted_id,
+  COALESCE((SELECT id FROM archived), 0) as archived_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -6085,7 +6098,8 @@ SELECT
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id
-WHERE t.id = $1;
+WHERE t.id = $1
+  AND t.archived_at IS NULL;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -6202,6 +6216,7 @@ LEFT JOIN (
 ) execution_stats ON execution_stats.template_id = t.id
 WHERE t.org_id = $1
   AND t.project_id is null
+  AND t.archived_at IS NULL
 ORDER BY t.created_at DESC;
 "
   |> pog.query
@@ -6318,6 +6333,7 @@ LEFT JOIN (
   GROUP BY template_id
 ) execution_stats ON execution_stats.template_id = t.id
 WHERE t.project_id = $1
+  AND t.archived_at IS NULL
 ORDER BY t.created_at DESC;
 "
   |> pog.query
@@ -6396,6 +6412,7 @@ WITH current AS (
   FROM task_templates
   WHERE id = $1
     AND org_id = $3
+    AND archived_at IS NULL
 ), type_ok AS (
   SELECT
     CASE

@@ -39,4 +39,5 @@ LEFT JOIN (
 ) execution_stats ON execution_stats.template_id = t.id
 WHERE t.org_id = $1
   AND t.project_id is null
+  AND t.archived_at IS NULL
 ORDER BY t.created_at DESC;

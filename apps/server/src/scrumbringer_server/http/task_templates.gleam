@@ -428,7 +428,7 @@ fn delete_template_db(
         task_templates_db.get_template(tx, template_id)
         |> result.map_error(template_error_response),
       )
-      use _ <- result.try(
+      use disposition <- result.try(
         task_templates_db.delete_template(tx, template_id, org_id)
         |> result.map_error(template_error_response),
       )
@@ -438,7 +438,10 @@ fn delete_template_db(
         project_id,
         config_audit.Template,
         template.id,
-        config_audit.Deleted,
+        case disposition {
+          task_templates_db.PhysicallyDeleted -> config_audit.Deleted
+          task_templates_db.Archived -> config_audit.Archived
+        },
         json.object([#("name", json.string(template.name))]),
       ))
       Ok(api.no_content())

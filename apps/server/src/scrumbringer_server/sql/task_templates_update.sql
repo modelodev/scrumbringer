@@ -4,6 +4,7 @@ WITH current AS (
   FROM task_templates
   WHERE id = $1
     AND org_id = $3
+    AND archived_at IS NULL
 ), type_ok AS (
   SELECT
     CASE

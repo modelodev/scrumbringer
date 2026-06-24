@@ -29,6 +29,11 @@ import scrumbringer_server/use_case/service_error.{
   type ServiceError, Conflict, DbError, InvalidReference, NotFound,
 }
 
+pub type DeleteDisposition {
+  PhysicallyDeleted
+  Archived
+}
+
 /// Template definition for creating tasks and automation usage counters.
 pub type TaskTemplate {
   TaskTemplate(
@@ -289,7 +294,7 @@ pub fn delete_template(
   db: pog.Connection,
   template_id: Int,
   org_id: Int,
-) -> Result(Nil, ServiceError) {
+) -> Result(DeleteDisposition, ServiceError) {
   case sql.task_templates_delete(db, template_id, org_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> delete_result_to_service(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -299,15 +304,16 @@ pub fn delete_template(
 
 fn delete_result_to_service(
   row: sql.TaskTemplatesDeleteRow,
-) -> Result(Nil, ServiceError) {
-  case row.template_found, row.has_rules || row.has_executions, row.deleted_id {
-    False, _, _ -> Error(NotFound)
-    True, True, _ ->
+) -> Result(DeleteDisposition, ServiceError) {
+  case row.template_found, row.has_rules, row.deleted_id, row.archived_id {
+    False, _, _, _ -> Error(NotFound)
+    True, True, _, _ ->
       Error(Conflict(
-        "Template is used by automation rules or executions. Pause or update those rules before deleting it.",
+        "Template is used by automation rules. Pause or update those rules before deleting it.",
       ))
-    True, False, id if id > 0 -> Ok(Nil)
-    True, False, _ -> Error(NotFound)
+    True, False, id, _ if id > 0 -> Ok(PhysicallyDeleted)
+    True, False, _, id if id > 0 -> Ok(Archived)
+    True, False, _, _ -> Error(NotFound)
   }
 }
 

@@ -925,6 +925,7 @@ CREATE TABLE public.task_templates (
     created_by bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     version integer DEFAULT 1 NOT NULL,
+    archived_at timestamp with time zone,
     CONSTRAINT task_templates_priority_check CHECK (((priority >= 1) AND (priority <= 5)))
 );
 
@@ -1938,6 +1939,13 @@ CREATE INDEX idx_task_dependencies_task_id ON public.task_dependencies USING btr
 --
 
 CREATE INDEX idx_task_notes_task ON public.task_notes USING btree (task_id);
+
+
+--
+-- Name: idx_task_templates_active_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_templates_active_project ON public.task_templates USING btree (project_id, created_at DESC) WHERE (archived_at IS NULL);
 
 
 --

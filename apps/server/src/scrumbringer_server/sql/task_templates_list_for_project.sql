@@ -38,4 +38,5 @@ LEFT JOIN (
   GROUP BY template_id
 ) execution_stats ON execution_stats.template_id = t.id
 WHERE t.project_id = $1
+  AND t.archived_at IS NULL
 ORDER BY t.created_at DESC;

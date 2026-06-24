@@ -205,6 +205,82 @@ pub fn task_template_used_by_rule_cannot_be_deleted_test() {
   |> expect.equal(["Protected Template"])
 }
 
+pub fn task_template_with_only_execution_history_archives_on_delete_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "TemplateHistory")
+  let project_id =
+    single_int(db, "select id from projects where name = 'TemplateHistory'", [])
+
+  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'QA'",
+      [pog.int(project_id)],
+    )
+
+  let workflow_id =
+    create_workflow(handler, session, csrf, project_id, "History Engine")
+  let template_id =
+    create_template(
+      handler,
+      session,
+      csrf,
+      project_id,
+      type_id,
+      "Historical Template",
+    )
+  let rule_id = insert_rule_without_template(db, workflow_id, type_id)
+  let task_id = insert_origin_task(db, project_id, type_id)
+  insert_template_execution(db, rule_id, template_id, task_id)
+
+  let delete_res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/task-templates/" <> int.to_string(template_id),
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf),
+    )
+
+  expect.expect_status(delete_res, 204)
+  single_int(
+    db,
+    "select count(*)::int from task_templates where id = $1 and archived_at is not null",
+    [pog.int(template_id)],
+  )
+  |> expect.equal(1)
+  single_int(
+    db,
+    "select count(*)::int from automation_config_events where entity_type = 'template' and entity_id = $1 and change_type = 'archived'",
+    [pog.int(template_id)],
+  )
+  |> expect.equal(1)
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf),
+    )
+
+  expect.expect_status(list_res, 200)
+  decode_template_names(simulate.read_body(list_res))
+  |> expect.equal([])
+}
+
 pub fn task_templates_project_scope_requires_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -584,6 +660,49 @@ fn create_rule(
     )
 
   expect.expect_status(res, 200)
+}
+
+fn insert_rule_without_template(
+  db: pog.Connection,
+  workflow_id: Int,
+  type_id: Int,
+) -> Int {
+  single_int(
+    db,
+    "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active)
+     values ($1, 'Historical rule', 'Historical execution only', 'task', 'task_completed', $2, 'completed', false)
+     returning id",
+    [pog.int(workflow_id), pog.int(type_id)],
+  )
+}
+
+fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
+  single_int(
+    db,
+    "insert into tasks (title, description, priority, type_id, project_id, created_by, execution_state)
+     values ('Origin task', '', 3, $1, $2, 1, 'closed')
+     returning id",
+    [pog.int(type_id), pog.int(project_id)],
+  )
+}
+
+fn insert_template_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Int,
+  task_id: Int,
+) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into rule_executions (rule_id, event_key, task_id, outcome, user_id, template_id, template_version)
+       values ($1, 'template-archive-history', $2, 'applied', 1, $3, 1)",
+    )
+    |> pog.parameter(pog.int(rule_id))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.parameter(pog.int(template_id))
+    |> pog.execute(db)
+
+  Nil
 }
 
 fn decode_workflow_id(body: String) -> Int {
