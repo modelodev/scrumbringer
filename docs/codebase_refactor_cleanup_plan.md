@@ -25,7 +25,7 @@ Top priorities:
 
 | Priority | Proposal | Valor | Complejidad | Riesgo |
 | --- | --- | --- | --- | --- |
-| P0 | Freeze baseline, document compatibility, and remove stale architecture references | Alto | Baja | Bajo |
+| P0 | Recompute execution baseline, document legacy removal, and remove stale architecture references | Alto | Baja | Bajo |
 | P1 | Make card/task lifecycle ADTs canonical across shared, DB mappers, HTTP, client API, and UI | Alto | Alta | Alto |
 | P1 | Normalize due dates across Date typing, DB/API codecs, project timezone, activity, seeds, and visual urgency | Alto | Media | Alto |
 | P1 | Promote automations/workflows to a strategic refactor block | Alto | Alta | Medio |
@@ -39,7 +39,23 @@ Top priorities:
 
 ## 2. Baseline
 
-Diff baseline:
+This section records the audit that produced the plan. It is not a reusable
+execution baseline. Every execution goal must recompute the baseline before
+touching code.
+
+Mandatory execution baseline:
+
+- Record current branch, `HEAD`, upstream/ahead-behind state, and dirty files.
+- Recompute the base comparison commit/branch and verify it is an ancestor.
+- Recompute diff stat, changed-file layer inventory, deleted/renamed files, and
+  largest current modules.
+- Rerun shared, client, and server format/tests on the current checkout.
+- Rerun static/schema checks used by the project before starting structural
+  edits.
+- Stop and update the plan if the current code has materially diverged from this
+  audit.
+
+Historical audit baseline:
 
 - Base commit: `3511cf309cb45015109f81ab78733e6db34ca1a0`
 - Code HEAD audited before plan-only commits: `bc76bca98b1d69b3f571438dbe4d661a56d04e49`
@@ -49,7 +65,7 @@ Diff baseline:
 - Change mix at audit time: 208 added files, 117 deleted files, 462 modified
   files, plus renames
 
-Verification run before writing the plan:
+Verification run before writing the plan, for audit context only:
 
 | Area | Command | Result |
 | --- | --- | --- |
@@ -62,6 +78,18 @@ Skill note: the refactor skill references `rules/gleam/coding-standards.md` and
 `rules/gleam/testing-practices.md`, but those files were not present in this
 checkout. The active local standard used for this audit is
 `docs/architecture/coding-standards.md`.
+
+Prior product decisions to reuse, not reinvent:
+
+| Source | Use in this refactor |
+| --- | --- |
+| `docs/pool-work-surface-unification-plan.md` | Pool surface, work-surface composition, member workflows, and validation expectations. |
+| `docs/card-task-show-redesign-plan.md` | Card Show and Task Show product direction, tabs, notes/activity/dependency behavior, and show routing. |
+| `docs/card-task-show-ui-correction-plan.md` | Follow-up UI corrections for Card/Task Show that should be preserved. |
+| `docs/card-tree-task-leaves-model.md` | Canonical hierarchy/product model for card trees and task leaves. |
+| `docs/bottom-up-data-model-refactor-plan.md` | Data model refactor constraints and persistence migration context. |
+| `docs/fin_refactor.md` | Workflow/automation finish-state decisions and final validation intent. |
+| `docs/pull-flow-model-hardening-plan.md` | Pull-flow hardening constraints for Pool, claimability, and work lifecycle. |
 
 ## 3. Inventory by layers
 
@@ -162,6 +190,10 @@ Shared/domain:
   mode, and closed metadata.
 - `shared/src/domain/task_status.gleam` remains useful only as a UI/filter
   projection: available, claimed, ongoing, done/completed labels.
+- `task_status.gleam` is allowed in final code only for UI labels, filter values,
+  and presentation projections. It is prohibited as the domain execution model,
+  persistence representation, repository truth, automation/rules-engine state,
+  seed truth, or workflow transition model.
 - `shared/src/domain/task_state.gleam` is migration-only and must not remain as a
   final bridge. Its deletion criteria: repository mappers, HTTP presenters,
   client task selectors, Plan/People/Capability/Card Show, and tests no longer
@@ -172,6 +204,18 @@ Shared/domain:
 - `shared/src/domain/automation.gleam` has broad public surface. Keep the domain
   model, but move trigger/action string codecs to explicit boundary modules if
   they are only needed for DB/API/forms.
+
+Task state migration phases:
+
+| Phase | Consumers to migrate | Completion rule |
+| --- | --- | --- |
+| 1. Shared entity/codecs | `shared/src/domain/task.gleam`, `task/task_codec.gleam`, task creation helpers, API task contracts | Shared task data exposes canonical execution state or explicit presentation projections only. |
+| 2. Server mappers/persistence | `repository/tasks/mappers.gleam`, `repository/tasks/queries.gleam`, SQL row adapters, seeds | Repositories return canonical task execution state; DB strings do not leak into use cases. |
+| 3. HTTP presenters/filters | `http/tasks/presenters.gleam`, task filters, conflict handlers, dependency presenters, metrics presenters | HTTP compatibility strings exist only in response/request boundary code. |
+| 4. Automation engine/workflows | `rules_engine.gleam`, `workflows/handlers.gleam`, `workflows/types.gleam`, task dependency use cases | Rules and workflow transitions use canonical execution state, not `task_status`. |
+| 5. Client API/selectors | `api/tasks/*`, shared client selectors, Pool/People/Capability/Plan/Kanban selectors | Client state stores canonical execution state and derives presentation labels. |
+| 6. Product surfaces | Pool, People, Card Show, Task Show, Plan, Kanban, Capability Board, now-working panels | Views consume selectors/presentation helpers only. |
+| 7. Deletion | `shared/src/domain/task_state.gleam` and obsolete tests/imports | File is removed and `rg task_state` shows no strategic callers. |
 
 Shared API contracts:
 
@@ -287,7 +331,7 @@ UI cleanup principles:
 | --- | --- | --- | --- | --- | --- |
 | `shared/src/domain/task/state.gleam` | Canonical model exists but is not fully adopted. | Make it the source of truth for task execution. | Alto | Media | Alto |
 | `shared/src/domain/task_state.gleam` | Compatibility model with `Done/completed`. | Migrate callers, then delete. A final bridge is not acceptable. | Alto | Media | Alto |
-| `shared/src/domain/task_status.gleam` | Useful flattened UI/filter model. | Keep as projection, not persistence/domain truth. | Medio | Baja | Medio |
+| `shared/src/domain/task_status.gleam` | Useful flattened UI/filter model but still used outside presentation today. | Keep only for filters/presentation; remove from repositories, seeds, metrics truth, workflows, and rules engine. | Alto | Media | Alto |
 | `shared/src/domain/task.gleam` | Task entity exposes compatibility helpers. | Move helpers to canonical lifecycle or presentation selectors. | Alto | Media | Alto |
 | `shared/src/domain/card/state.gleam` | Good canonical card state. | Use through card close/activate/move contracts. | Alto | Baja | Medio |
 | `shared/src/api/cards/contracts.gleam` | Card close reason is raw string. | P1: typed `CardClosedReason` decoding and tests. | Alto | Baja | Alto |
@@ -397,14 +441,36 @@ Lustre/state:
 | Remove Pool fallback arms by owner tests | `features/pool/update.gleam` | Alto | Alta | Medio |
 | Automations route/update naming cleanup | Automations/admin workflow modules | Alto | Media | Medio |
 
+Feature update policy pattern:
+
+- Keep feature-owned updates returning local model, parent effect, and explicit
+  policies rather than hiding behavior in generic frameworks.
+- Normalize naming and semantics for `AuthPolicy`, `RefreshPolicy`,
+  `CorePolicy`, root policy, and focus policy across admin, Pool, tasks,
+  projects, assignments, capabilities, invites, members, task types, and API
+  tokens.
+- `route_support` modules should remain thin adapters that apply auth timing,
+  refresh, and core-selection policy around feature updates.
+- Do not introduce one universal update result type unless it removes repeated
+  policy plumbing in multiple feature families without obscuring flow.
+- Every policy-bearing feature update must have tests for auth-negative,
+  refresh/no-refresh, and effect ordering behavior.
+
 Routing/URL:
 
 | Improvement | Target | Valor | Complejidad | Riesgo |
 | --- | --- | --- | --- | --- |
 | Canonical route state | Page, section, selected project, Plan scope, show stack, sidebar, automations | Alto | Alta | Alto |
 | Round-trip tests | `url_state` encode/decode, router parse/build | Alto | Media | Alto |
+| No redundant history writes | `router.replace`, `router.push`, `client_update.replace_url`, hydration route sync | Alto | Baja | Alto |
 | Legacy redirects | Config slug and old admin routes | Medio | Media | Medio |
 | Deep links | Card Show, Task Show, automation metrics/history, Plan scopes | Alto | Media | Alto |
+
+Blocking routing rule: no code path may call `history.replaceState` or
+`history.pushState` when the normalized target URL already equals the current
+browser URL. Preserve and test the `router.write_browser_url` guard so route
+normalization, hydration, and show-stack sync do not reintroduce excessive
+history/location writes.
 
 I18n/copy:
 
@@ -427,7 +493,9 @@ Styles:
 ## 12. Execution plan by slices
 
 1. Baseline, legacy removal register, and stale docs
-   - Record current green checks.
+   - Recompute current branch, `HEAD`, upstream status, diff stat, changed-file
+     inventory, deleted/renamed files, largest modules, and current green
+     checks before touching code.
    - Inventory active legacy names, stale docs, dead module references,
      transitional DB values, redirects, SQL projections, and CSS compat classes.
    - Mark every legacy item as delete, migrate, or strictly external-boundary
@@ -475,59 +543,69 @@ Styles:
      Plan scope, show stack, sidebar, automations, auth resources, and deep
      links.
    - Add round-trip tests and redirect/resource-decision tests.
+   - Make redundant history writes a blocking failure: no `history.replaceState`
+     or `history.pushState` when the normalized URL already matches the current
+     browser URL.
    - Delete legacy redirects or isolate strictly external URL adapters.
    - Valor: Alto. Complejidad: Alta. Riesgo: Alto.
 
-8. Project settings, hierarchy, assignments, permissions, and wizard
+8. Feature update policies
+   - Normalize `AuthPolicy`, `RefreshPolicy`, `CorePolicy`, root policy, focus
+     policy, and route-support behavior across feature-owned updates.
+   - Keep policy plumbing explicit; do not add a generic framework unless it
+     removes real duplication without hiding effects.
+   - Valor: Alto. Complejidad: Media. Riesgo: Medio.
+
+9. Project settings, hierarchy, assignments, permissions, and wizard
    - Treat projects as hierarchy configuration and permissioned product setup,
      not CRUD.
    - Split project view/update/server persistence by settings area.
    - Include `features/assignments/update.gleam` and root auth policy tests.
    - Valor: Alto. Complejidad: Alta. Riesgo: Medio.
 
-9. Client state/update and Pool ownership
+10. Client state/update and Pool ownership
    - Extract bootstrap, project switching, show-stack, route sync helpers.
    - Remove Pool fallback arms by owner route tests.
    - Valor: Alto. Complejidad: Alta. Riesgo: Medio.
 
-10. Card Show and Task Show
+11. Card Show and Task Show
     - Move Card Show to feature namespace.
     - Split Card/Task panels for summary, work/tasks, notes, activity,
       dependencies, and actions.
     - Valor: Alto. Complejidad: Media. Riesgo: Medio.
 
-11. Plan/tree, Kanban, Capabilities, and People
+12. Plan/tree, Kanban, Capabilities, and People
     - Extract selectors, rollups, action availability, task labels, ownership,
       due-date visibility, and move view model.
     - Keep layouts product-specific.
     - Valor: Alto. Complejidad: Media. Riesgo: Medio.
 
-12. I18n/copy
+13. I18n/copy
     - Normalize closed/done/completed and workflow/automation terminology.
     - Normalize due-date, overdue, assignment, permission, and hydration/redirect
       copy.
     - Add key coverage tests and remove obsolete keys.
     - Valor: Alto. Complejidad: Media. Riesgo: Bajo.
 
-13. Styles/design-system
+14. Styles/design-system
     - Audit `styles/ux.gleam`, `styles/layout.gleam`, UI classes, focus states,
       mobile constraints, tokens, and dead/compat classes.
     - Validate with browser screenshots.
     - Valor: Alto. Complejidad: Media. Riesgo: Medio.
 
-14. Seeds and product validation matrix
+15. Seeds and product validation matrix
     - Split seeds by scenario.
     - Map every scenario to a browser validation case.
     - Include due dates, assignments, hydration/deep-link startup, automations,
       permissions, and API token scenarios.
     - Valor: Alto. Complejidad: Media. Riesgo: Medio.
 
-15. Test suite maintainability
+16. Test suite maintainability
     - Partition huge tests and shared fixtures where they reduce maintenance.
     - Preserve behavior coverage before deleting redundant cases.
     - Valor: Medio. Complejidad: Media. Riesgo: Medio.
 
-16. Final docs and anti-overengineering sweep
+17. Final docs and anti-overengineering sweep
     - Update architecture docs and mark historical plans.
     - Remove obsolete wrappers, unused public APIs, dead styles, stale seeds, and
       compatibility code with proven removal criteria.
@@ -537,12 +615,13 @@ Styles:
 
 | Slice | Minimum tests |
 | --- | --- |
-| Baseline/docs | `git diff --check`; grep for deleted modules in current architecture docs. |
+| Baseline/docs | Recompute `HEAD`, diff stat, layer inventory, largest modules, current test baseline, `git diff --check`, and grep for deleted modules in current architecture docs. |
 | Lifecycle contracts | Shared tests for task/card state codecs, card close reason decode, task close response, compatibility projections. |
 | Due dates | Shared/API codec tests, DB mapper tests, project timezone/overdue selector tests, `DueDateChanged` activity tests, Pool/Card visual urgency tests. |
 | Persistence/repository | Server tests for claim/release/complete/close-by-ancestor, card activate/close/rollup/move, dependency blocking. |
 | HTTP/API | Server HTTP tests for lifecycle conflicts, validation, auth/API token permissions, project settings errors. |
-| Routing/URL/hydration | Encode/decode round-trip tests, redirect-resource decision tests, deep link tests for Card Show, Task Show, Plan scopes, automations, and startup hydration. |
+| Routing/URL/hydration | Encode/decode round-trip tests, redirect-resource decision tests, no-redundant-history-write tests, deep link tests for Card Show, Task Show, Plan scopes, automations, and startup hydration. |
+| Feature update policies | Tests for auth policy timing, refresh/no-refresh, core-selection policy, root/focus policy, route-support adapters, and effect ordering. |
 | Project settings/assignments | Client update/view tests, server project settings tests, assignments update tests, permissions matrix tests, wizard/depth behavior. |
 | Client update/Pool | Route owner tests, show-stack tests, project switching tests, Pool fallback removal tests. |
 | Card/Task Show | Component/update tests for tabs, notes, activity, dependencies, create/edit/close/activate/claim/release/complete. |
@@ -558,17 +637,39 @@ Use `let assert` in Gleam tests. Keep snapshot tests only where they protect
 meaningful UI structure. Prefer behavior tests for lifecycle, routing, security,
 permissions, and automation outcomes.
 
-Large tests should be split when file size or fixture duplication makes intent
-hard to maintain. Candidates include large HTTP tests such as task/card/rule
-HTTP suites. Split by behavior matrix, not by arbitrary line count.
+Large-test work inventory:
+
+| Test file | Approx. lines | Split around |
+| --- | ---: | --- |
+| `apps/server/test/tasks_http_test.gleam` | 3695 | list/create, patch/delete, transitions, dependencies, lifecycle compatibility, permission failures. |
+| `apps/server/test/notes_and_positions_http_test.gleam` | 1980 | notes, pin/delete flows, positions, hover/Pool concerns. |
+| `apps/server/test/rules_engine_test.gleam` | 1703 | trigger matching, action execution, suppression/outcome matrix. |
+| `apps/server/test/projects_http_test.gleam` | 1533 | project CRUD, settings, hierarchy depth, permissions, wizard/setup behavior. |
+| `apps/server/test/fixtures.gleam` | 1523 | scenario fixtures, auth users, hierarchy data, automation data. |
+| `apps/server/test/rule_metrics_http_test.gleam` | 1224 | org/project metrics, drilldowns, date ranges, permission-negative paths. |
+| `apps/server/test/rules_http_test.gleam` | 1133 | rule CRUD, payload compatibility, automation contracts. |
+| `apps/server/test/integration/rules_trigger_on_complete_test.gleam` | 1087 | lifecycle-trigger integration matrix. |
+| `apps/client/test/people_view_test.gleam` | 1030 | roster, ownership, task status labels, capability filters. |
+| `apps/server/test/cards_http_test.gleam` | 1020 | card lifecycle, move, close, due dates, operational history. |
+| `apps/server/test/task_templates_http_test.gleam` | 1004 | template CRUD, automation usage, archive/delete behavior. |
+| `apps/server/test/api_tokens_http_test.gleam` | 944 | token create/revoke, permissions, security responses. |
+
+Split large tests only when it makes behavior ownership clearer. Do not split by
+line count alone, and do not hide important matrices behind opaque helpers.
 
 ## 14. Acceptance criteria
 
 The final refactor is complete only when:
 
+- The execution baseline was recomputed at the start of the goal and any drift
+  from this planning audit was reflected before code changes.
+- Prior product decision docs were reused and not contradicted without an
+  explicit replacement decision.
 - `domain/task/state.gleam` is the canonical task execution model in new domain,
   repository, HTTP, client API, and selector code.
-- `task_status.gleam` is explicitly presentation/filter-only.
+- `task_status.gleam` is explicitly presentation/filter-only and is absent from
+  final persistence, repository truth, seeds truth, workflows, metrics truth, and
+  rules-engine state.
 - `task_state.gleam` is removed. It may exist only during intermediate commits,
   never as the final state.
 - Card close requests use typed `CardClosedReason`.
@@ -584,6 +685,9 @@ The final refactor is complete only when:
   project switching are covered as one product area.
 - URL state and hydration have round-trip/resource-decision tests. Legacy
   redirects are deleted or isolated as strictly external URL adapters.
+- Route sync preserves the no-op history-write rule: no `history.replaceState`
+  or `history.pushState` call when the normalized target URL equals the current
+  browser URL.
 - Card Show, Task Show, Plan, Pool, Kanban, People, Capability Board, Projects,
   and Automations have feature-owned selectors/view models where needed.
 - I18n keys are covered and terminology is consistent in English and Spanish.
@@ -596,23 +700,25 @@ The final refactor is complete only when:
 
 ## 15. Seed and agent-browser validation matrix
 
-Every seed scenario must support at least one browser validation. Required matrix:
+Every seed scenario must support at least one browser validation. Each
+validation must name the user, URL, seed data, key testids, action, expected
+visual result, and the automated test to add if a reproducible defect appears.
 
-| Seed scenario | Product use case | Browser validation |
-| --- | --- | --- |
-| Hierarchy with draft/active/closed cards | Plan/tree, Card Show, card movement, rollup | Scope by depth/card, move card, activate subtree, close card, show closed toggle. |
-| Claimable task leaves | Pool, Task Show, now-working | Claim, release, complete/close, drag-to-claim, active work session. |
-| Due dates and overdue work | Pool urgency, Plan sorting/visibility, Card Show, audit activity | Create/change/remove due date, verify timezone-aware overdue state, visual urgency, and `DueDateChanged` activity. |
-| Dependencies/blockers | Task Show, Plan, People/Capability visibility | Add/remove dependency, blocked badge, dependency close behavior. |
-| Notes/activity | Card Show, Task Show, audit history | Add/delete/pin note, activity pagination, target-specific activity. |
-| Automations/rules/templates | Automation builder, execution history, metrics | Create/edit rule, choose template, trigger rule, inspect execution history and metrics. |
-| Project settings/hierarchy config | Project wizard/settings/admin | Change settings, max depth labels, permissions, project switching. |
-| People/capabilities | People roster, Capability Board | Assign capabilities, filter members, view task ownership/status. |
-| Auth/invites/API tokens | Security/admin flows | Login/logout, invite acceptance, token create/revoke, permission-denied states. |
-| Assignments and permissions | Admin assignments, project settings, capability/member permissions | Assign/remove users, verify permission-negative states, role changes, and project switching. |
-| Hydration/deep-link startup | Auth resources, selected project, sidebar, Plan scope, show surfaces | Load deep links cold, refresh authenticated routes, verify resource hydration and redirects. |
-| I18n/copy | Locale switching and labels | Switch locale and verify key surfaces use canonical terms. |
-| Responsive layout | Mobile and desktop operations | Screenshot checks for Pool, Plan, Card Show, Task Show, Automations, Settings. |
+| Scenario | User | Initial URL | Seed expectation | Key testid | Action | Expected result | Bug becomes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Hierarchy with draft/active/closed cards | Project manager | `/member?view=plan` | Tree contains draft, active, and closed cards | `plan-structure-view` | Scope by depth/card, move card, activate subtree, close card, toggle closed | Tree, rollups, disabled reasons, and show-closed state update without layout overlap | Plan selector/update test or card HTTP lifecycle test |
+| Claimable task leaves | Member | `/member?view=pool` | Available, claimed, ongoing, and closed task leaves | Pool task/card testids | Claim, release, complete/close, drag-to-claim, start/pause work | Pool and now-working state refresh correctly and no invalid action remains enabled | Task mutation update test or server task transition test |
+| Due dates and overdue work | Member and project manager | `/member?view=pool` and `/member?view=plan` | Cards/tasks include future, today, overdue, and no due date | Due-date/urgency labels | Create/change/remove due date and refresh | Timezone-aware urgency, overdue tone, sorting, and `DueDateChanged` activity are correct | Due-date selector, API contract, activity, or card/task HTTP test |
+| Dependencies/blockers | Member | Task Show deep link | Task has open and closed dependencies | dependency list/dialog testids | Add/remove dependency and close dependency | Blocked badge and available actions update correctly | Dependency update/API test |
+| Notes/activity | Member | Card Show and Task Show deep links | Notes and activity exist for card and task targets | notes/activity testids | Add/delete/pin note and paginate activity | Target-specific notes/activity update and survive refresh | Notes update/API or activity HTTP test |
+| Automations/rules/templates | Project manager | Automation/rule route | Workflow, rules, templates, execution history, metrics | rule builder/list/history testids | Create/edit rule, choose template, trigger rule, inspect history/metrics | Outcome, execution history, metrics, and copy use canonical automation vocabulary | Rule engine, handler, HTTP, or client builder test |
+| Project settings/hierarchy config | Project manager | Project settings route | Project has hierarchy depth labels, members, and settings | project settings testids | Change settings, max depth labels, permissions, project switch | Settings persist, hierarchy labels update, permissions respected | Project update/API or permissions test |
+| People/capabilities | Project manager | People and Capability Board routes | Members have varied capabilities and task ownership | people/capability board testids | Assign capabilities, filter members, inspect ownership/status | Roster and board reflect canonical task status projections | People/capability selector or view test |
+| Auth/invites/API tokens | Org admin and non-admin | Admin/security routes | Invites and tokens exist; restricted user exists | token/invite/security testids | Login/logout, accept invite, create/revoke token, attempt forbidden action | Auth flow succeeds and forbidden states are explicit | Auth/API token/invite HTTP or update test |
+| Assignments and permissions | Project manager and restricted user | Assignments route | Assignable users and capability/member permissions exist | assignments testids | Assign/remove users, change role, switch project | Permission-positive and permission-negative paths are correct | Assignments update/API or permission matrix test |
+| Hydration/deep-link startup | Authenticated member/admin | Cold deep links for show, Plan, automations, settings | Selected project and resources exist | route/show/shell testids | Open URL in fresh session and refresh | Resources hydrate once, selected project/sidebar/show state match URL, no redundant history write | URL/hydration/client update test |
+| I18n/copy | Any authenticated user | Key product routes | English and Spanish locales available | locale switch/test surface ids | Switch locale and scan key surfaces | Closed/done/completed, automation/workflow, due-date, and permission terms are consistent | I18n key coverage or copy assertion test |
+| Responsive layout | Member/admin | Pool, Plan, Shows, Automations, Settings | Same scenarios as above | route root testids | Capture desktop and mobile screenshots | No overlap, clipped dropdowns, invisible focus, or button text overflow | View/layout test, selector test, or style cleanup item |
 
 Run after each UI-affecting slice:
 
@@ -650,25 +756,29 @@ Do not do these as part of the final refactor:
 
 Recommended commit sequence:
 
-1. Baseline checks, compatibility register, and stale docs cleanup.
-2. Shared lifecycle tests and canonical task/card contract decisions.
-3. Typed card close reason and task lifecycle compatibility tests.
-4. Due-date Date/timezone contract, activity, DB, seed, and UI urgency tests.
-5. SQL/repository lifecycle and due-date boundary cleanup.
-6. Migration/schema compatibility classification and runtime legacy removal.
-7. HTTP payload, presenter, conflict, auth, and API token normalization.
-8. Automations/rules/templates/metrics outcome model and server/client split.
-9. URL state, hydration contract, round-trip tests, deep links, and redirect policy.
-10. Project settings, hierarchy depth, wizard, assignments, permissions, and project switching.
-11. Client API decoding and shared selectors.
-12. Root `client_update.gleam` route/show-stack/bootstrap extraction.
-13. Pool ownership cleanup and fallback reduction.
-14. Card Show and Task Show feature module split.
-15. Plan/tree selector, rollup, due-date visibility, and move-policy extraction.
-16. Kanban, Capability Board, and People selector reuse.
-17. I18n/copy terminology and key coverage.
-18. Styles/design-system audit and compat/dead class removal.
-19. Seed scenario split and browser validation matrix.
-20. Test fixture cleanup and partition of oversized tests.
-21. Architecture docs update and final anti-legacy, anti-duplication,
+1. Recompute execution baseline, diff scope, large-module inventory, and tests.
+2. Reconcile prior product decision docs with the current goal.
+3. Compatibility register, runtime legacy removal plan, and stale docs cleanup.
+4. Shared lifecycle tests and canonical task/card contract decisions.
+5. Typed card close reason and task lifecycle compatibility tests.
+6. `task_state` consumer migration and `task_status` usage restrictions.
+7. Due-date Date/timezone contract, activity, DB, seed, and UI urgency tests.
+8. SQL/repository lifecycle and due-date boundary cleanup.
+9. Migration/schema compatibility classification and runtime legacy removal.
+10. HTTP payload, presenter, conflict, auth, and API token normalization.
+11. Automations/rules/templates/metrics outcome model and server/client split.
+12. URL state, hydration contract, no-redundant-history-write tests, deep links, and redirect policy.
+13. Feature update policy normalization for auth, refresh, core, root, focus, and route-support.
+14. Project settings, hierarchy depth, wizard, assignments, permissions, and project switching.
+15. Client API decoding and shared selectors.
+16. Root `client_update.gleam` route/show-stack/bootstrap extraction.
+17. Pool ownership cleanup and fallback reduction.
+18. Card Show and Task Show feature module split.
+19. Plan/tree selector, rollup, due-date visibility, and move-policy extraction.
+20. Kanban, Capability Board, and People selector reuse.
+21. I18n/copy terminology and key coverage.
+22. Styles/design-system audit and compat/dead class removal.
+23. Seed scenario split and browser validation matrix.
+24. Test fixture cleanup and partition of oversized tests.
+25. Architecture docs update and final anti-legacy, anti-duplication,
     anti-overengineering sweep.
