@@ -173,6 +173,7 @@ fn view_form_panel(
       attribute.attribute("role", "dialog"),
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
+      ..dialog.escape_close_attributes(config.on_closed)
     ],
     [
       panel_header(title, config.locale, config.on_closed),
@@ -343,6 +344,7 @@ fn view_delete_panel(
       attribute.attribute("role", "dialog"),
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(i18n_text.DeleteTaskTemplate)),
+      ..dialog.escape_close_attributes(config.on_closed)
     ],
     [
       panel_header(

@@ -27,11 +27,13 @@
 //// )
 //// ```
 
+import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, h3, span, text}
+import lustre/event
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -107,6 +109,7 @@ fn view_dialog(
         attribute.attribute("role", "dialog"),
         attribute.attribute("aria-modal", "true"),
         attribute.attribute("aria-labelledby", "dialog-title"),
+        ..escape_close_attributes(config.on_close)
       ],
       [
         // Header
@@ -120,6 +123,39 @@ fn view_dialog(
       ],
     ),
   ])
+}
+
+/// Attributes that make a dialog or drawer close on Escape and accept initial focus.
+pub fn escape_close_attributes(on_close: msg) -> List(attribute.Attribute(msg)) {
+  [
+    attribute.attribute("aria-keyshortcuts", "Escape"),
+    attribute.attribute("tabindex", "-1"),
+    on_escape(on_close),
+  ]
+}
+
+fn on_escape(on_close: msg) -> attribute.Attribute(msg) {
+  event.advanced("keydown", {
+    use key <- decode.field("key", decode.string)
+
+    case key {
+      "Escape" ->
+        decode.success(event.handler(
+          on_close,
+          prevent_default: True,
+          stop_propagation: True,
+        ))
+      _ ->
+        decode.failure(
+          event.handler(
+            on_close,
+            prevent_default: False,
+            stop_propagation: False,
+          ),
+          expected: "escape",
+        )
+    }
+  })
 }
 
 fn view_header(config: DialogConfig(msg), close_label: String) -> Element(msg) {

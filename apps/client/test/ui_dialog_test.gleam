@@ -46,6 +46,24 @@ pub fn dialog_view_open_includes_title_and_icon_test() {
   assert_contains(html, "icon")
 }
 
+pub fn dialog_view_open_exposes_escape_close_contract_test() {
+  let config =
+    dialog.DialogConfig(
+      title: "Create",
+      icon: None,
+      size: dialog.DialogSm,
+      on_close: "close",
+    )
+
+  let rendered = dialog.view(config, True, None, [], [])
+  let html = element.to_document_string(rendered)
+
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
+  assert_contains(html, "tabindex=\"-1\"")
+}
+
 pub fn dialog_view_accepts_localized_close_label_test() {
   let config =
     dialog.DialogConfig(

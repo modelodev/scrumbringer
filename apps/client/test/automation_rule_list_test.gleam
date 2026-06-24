@@ -224,6 +224,8 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
   assert_contains(html, "Card automation scope")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
+  assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "aria-label=\"Name\"")
   assert_contains(html, "aria-label=\"Goal\"")
   assert_contains(html, "aria-label=\"Rule subject\"")

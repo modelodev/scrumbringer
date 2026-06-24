@@ -448,6 +448,7 @@ fn view_rule_form_panel(
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
       attribute.attribute("data-testid", "automation-rule-builder"),
+      ..dialog.escape_close_attributes(config.on_rule_panel_closed)
     ],
     [
       div([attribute.class("automation-rule-panel-header")], [
@@ -1157,6 +1158,7 @@ fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(config, i18n_text.DeleteRule)),
       attribute.attribute("data-testid", "automation-rule-builder"),
+      ..dialog.escape_close_attributes(config.on_rule_panel_closed)
     ],
     [
       div([attribute.class("automation-rule-panel-header")], [

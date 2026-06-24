@@ -21,6 +21,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/filter_bar
@@ -318,6 +319,7 @@ fn view_form_panel(
       attribute.attribute("role", "dialog"),
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", title),
+      ..dialog.escape_close_attributes(config.on_closed)
     ],
     [
       panel_header(title, config.on_closed, t(config, i18n_text.Close)),
@@ -390,6 +392,7 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
       attribute.attribute("role", "dialog"),
       attribute.attribute("aria-modal", "true"),
       attribute.attribute("aria-label", t(config, i18n_text.DeleteWorkflow)),
+      ..dialog.escape_close_attributes(config.on_closed)
     ],
     [
       panel_header(
