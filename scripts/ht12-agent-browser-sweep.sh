@@ -676,6 +676,16 @@ assert_url_contains() {
   exit 1
 }
 
+assert_testid_count_ge() {
+  local label="$1"
+  local testid="$2"
+  local minimum="${3:-1}"
+  local count
+
+  count="$(ab get count "[data-testid=\"${testid}\"]" | tr -d '\r')"
+  assert_int_ge "${label}:${testid}" "$minimum" "$count"
+}
+
 open_and_capture_route() {
   local label="$1"
   local url="$2"
@@ -692,6 +702,33 @@ open_and_capture_route() {
   fi
   ab snapshot -i >"${OUT_DIR}/${label}.snapshot.txt"
   ab screenshot "${OUT_DIR}/${label}.png" >/dev/null
+}
+
+assert_automation_engines_surface() {
+  local label="$1"
+
+  assert_testid_count_ge "$label" "automations-surface"
+  assert_testid_count_ge "$label" "automations-mode-engines"
+  assert_testid_count_ge "$label" "automation-engine-row"
+  assert_testid_count_ge "$label" "automation-rule-row"
+  assert_testid_count_ge "$label" "automation-rule-builder"
+}
+
+assert_automation_templates_surface() {
+  local label="$1"
+
+  assert_testid_count_ge "$label" "automations-surface"
+  assert_testid_count_ge "$label" "automations-mode-templates"
+  assert_testid_count_ge "$label" "automation-template-row"
+  assert_testid_count_ge "$label" "automation-template-picker"
+}
+
+assert_automation_executions_surface() {
+  local label="$1"
+
+  assert_testid_count_ge "$label" "automations-surface"
+  assert_testid_count_ge "$label" "automations-mode-executions"
+  assert_testid_count_ge "$label" "automation-execution-row"
 }
 
 click_and_capture_nav_route() {
@@ -798,9 +835,13 @@ EOF
   open_and_capture_route "depth-2-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=2" "nav-cards" "depth=2"
   open_and_capture_route "depth-3-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=3" "nav-cards" "depth=3"
   open_and_capture_route "automations-engines-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&engine=${AUTOMATION_WORKFLOW_ID}&rule=${AUTOMATION_RULE_ID}" "nav-automations" "rule=${AUTOMATION_RULE_ID}"
+  assert_automation_engines_surface "automations-engines-route"
   open_and_capture_route "automations-templates-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=templates&template=${AUTOMATION_TEMPLATE_ID}" "nav-automations" "mode=templates"
+  assert_automation_templates_surface "automations-templates-route"
   open_and_capture_route "automations-executions-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=executions&execution=${AUTOMATION_EXECUTION_ID}" "nav-automations" "mode=executions"
+  assert_automation_executions_surface "automations-executions-route"
   open_and_capture_route "automation-created-task-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool&show=task&task=${AUTOMATION_CREATED_TASK_ID}" "nav-pool" "show=task"
+  assert_testid_count_ge "automation-created-task-route" "automation-created-task-origin"
   open_and_capture_route "card-show-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&show=card&show_card=${ROOT_A_ID}" "nav-cards" "show=card"
   open_and_capture_route "card-scope-kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&plan_mode=kanban&work_scope=card&card=${ROOT_A_ID}" "nav-kanban" "work_scope=card"
   open_and_capture_route "card-scope-capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities&work_scope=card&card=${ROOT_A_ID}" "nav-capabilities-board" "work_scope=card"

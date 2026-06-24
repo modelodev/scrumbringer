@@ -78,8 +78,12 @@ automation-created tasks from firing `task_created` rules.
 The browser phase is intentionally evidence-oriented: the API phase proves the
 mutations and server contracts, while the agent-browser phase proves that the
 resulting user-facing routes render and remain inspectable at the expected
-viewports. Inspect `api-steps.log`, `scenario.env`, snapshots, and screenshots in
-the sweep output directory for each run.
+viewports. The sweep now asserts the Automations console anchors for Engines,
+Templates, and Executions (`automations-surface`, mode controls, rows, rule
+builder, template picker, and execution rows) plus the generated task origin
+anchor in Task Show (`automation-created-task-origin`). Inspect `api-steps.log`,
+`scenario.env`, snapshots, and screenshots in the sweep output directory for
+each run.
 
 For database-only diagnostics:
 
