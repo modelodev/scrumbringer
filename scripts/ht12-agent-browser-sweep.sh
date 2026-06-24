@@ -710,6 +710,13 @@ assert_automation_engines_surface() {
   assert_testid_count_ge "$label" "automations-surface"
   assert_testid_count_ge "$label" "automations-mode-engines"
   assert_testid_count_ge "$label" "automation-engine-row"
+}
+
+assert_automation_rules_surface() {
+  local label="$1"
+
+  assert_testid_count_ge "$label" "automations-surface"
+  assert_testid_count_ge "$label" "automations-mode-engines"
   assert_testid_count_ge "$label" "automation-rule-row"
   assert_testid_count_ge "$label" "automation-rule-builder"
 }
@@ -720,6 +727,16 @@ assert_automation_templates_surface() {
   assert_testid_count_ge "$label" "automations-surface"
   assert_testid_count_ge "$label" "automations-mode-templates"
   assert_testid_count_ge "$label" "automation-template-row"
+}
+
+assert_automation_rule_builder_picker() {
+  local label="$1"
+
+  ab eval "(function(){const el=document.querySelector('#automation-create-rule-trigger'); if(!el) throw new Error('missing create rule trigger'); el.click(); return true;})()" >/dev/null
+  ab wait --load networkidle >/dev/null || true
+  ab snapshot -i >"${OUT_DIR}/${label}.snapshot.txt"
+  ab screenshot "${OUT_DIR}/${label}.png" >/dev/null
+  assert_testid_count_ge "$label" "automation-rule-builder"
   assert_testid_count_ge "$label" "automation-template-picker"
 }
 
@@ -834,8 +851,11 @@ EOF
   open_and_capture_route "depth-1-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=1" "nav-cards" "depth=1"
   open_and_capture_route "depth-2-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=2" "nav-cards" "depth=2"
   open_and_capture_route "depth-3-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=3" "nav-cards" "depth=3"
-  open_and_capture_route "automations-engines-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&engine=${AUTOMATION_WORKFLOW_ID}&rule=${AUTOMATION_RULE_ID}" "nav-automations" "rule=${AUTOMATION_RULE_ID}"
+  open_and_capture_route "automations-engines-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=engines" "nav-automations"
   assert_automation_engines_surface "automations-engines-route"
+  open_and_capture_route "automations-rules-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&engine=${AUTOMATION_WORKFLOW_ID}&rule=${AUTOMATION_RULE_ID}" "nav-automations" "rule=${AUTOMATION_RULE_ID}"
+  assert_automation_rules_surface "automations-rules-route"
+  assert_automation_rule_builder_picker "automations-rule-builder-open"
   open_and_capture_route "automations-templates-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=templates&template=${AUTOMATION_TEMPLATE_ID}" "nav-automations" "mode=templates"
   assert_automation_templates_surface "automations-templates-route"
   open_and_capture_route "automations-executions-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=executions&execution=${AUTOMATION_EXECUTION_ID}" "nav-automations" "mode=executions"

@@ -79,11 +79,14 @@ The browser phase is intentionally evidence-oriented: the API phase proves the
 mutations and server contracts, while the agent-browser phase proves that the
 resulting user-facing routes render and remain inspectable at the expected
 viewports. The sweep now asserts the Automations console anchors for Engines,
-Templates, and Executions (`automations-surface`, mode controls, rows, rule
-builder, template picker, and execution rows) plus the generated task origin
-anchor in Task Show (`automation-created-task-origin`). Inspect `api-steps.log`,
-`scenario.env`, snapshots, and screenshots in the sweep output directory for
-each run.
+Rules, Templates, and Executions: the engine list route exposes
+`automation-engine-row`, the focused rule route exposes `automation-rule-row`
+and `automation-rule-builder`, the opened rule builder exposes
+`automation-template-picker`, the template library exposes
+`automation-template-row`, and execution history exposes `automation-execution-row`.
+It also asserts the generated task origin anchor in Task Show
+(`automation-created-task-origin`). Inspect `api-steps.log`, `scenario.env`,
+snapshots, and screenshots in the sweep output directory for each run.
 
 For database-only diagnostics:
 
@@ -259,9 +262,9 @@ Latest LAN evidence on this host:
 - Expected: opening the generated task in Task Show exposes its
   `automation_origin`, including the rule, engine, execution, template, and
   template version.
-- Expected: the Automations console opens the Engines, Templates, and Executions
-  modes for the created project without legacy `/config/templates` or
-  `/config/rule-metrics` surfaces.
+- Expected: the Automations console opens the Engines list, focused Rules view,
+  Templates mode, and Executions mode for the created project without legacy
+  `/config/templates` or `/config/rule-metrics` surfaces.
 
 ### 8. Responsive And Usability Pass
 
@@ -353,3 +356,8 @@ Latest checks and sweep:
 - `BASE_URL=http://127.0.0.1:18443 API_BASE=http://127.0.0.1:18000 DATABASE_URL="postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable" bash scripts/ht12-agent-browser-sweep.sh`
   passed and wrote automation trigger coverage evidence to
   `/tmp/scrumbringer-ht12-sweep-20260624092846`.
+- `BASE_URL=http://127.0.0.1:8443 API_BASE=http://127.0.0.1:8000 DATABASE_URL="postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable" bash scripts/ht12-agent-browser-sweep.sh`
+  passed with split Automations assertions for engines, rules, builder picker,
+  templates, executions, generated task origin, responsive screenshots, and
+  card-scoped routes. Evidence:
+  `/tmp/scrumbringer-ht12-sweep-20260625005323`.
