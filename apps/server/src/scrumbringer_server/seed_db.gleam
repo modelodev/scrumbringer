@@ -431,7 +431,10 @@ pub fn insert_member(
   role: project_role.ProjectRole,
 ) -> Result(Nil, String) {
   pog.query(
-    "INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)",
+    "INSERT INTO project_members (project_id, user_id, role)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (project_id, user_id)
+     DO UPDATE SET role = EXCLUDED.role",
   )
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(user_id))
