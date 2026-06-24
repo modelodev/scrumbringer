@@ -224,6 +224,9 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
   assert_contains(html, "Card automation scope")
   assert_contains(html, "role=\"dialog\"")
   assert_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
+  assert_contains(html, "id=\"automation-rule-panel-title\"")
+  assert_contains(html, "autofocus")
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "aria-label=\"Name\"")
@@ -358,6 +361,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
 
   assert_contains(html, "automation-rule-panel")
   assert_contains(html, "data-testid=\"automation-rule-builder\"")
+  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
   assert_contains(html, "New rule")
   assert_contains(html, "When")
   assert_contains(html, "Any task type")

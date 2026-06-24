@@ -438,21 +438,19 @@ fn view_rule_form_panel(
   title: String,
   submit_label: String,
 ) -> Element(msg) {
+  let title_id = "automation-rule-panel-title"
   let form_disabled =
     config.rules.rule_form_submitting || !rule_form_is_valid(config)
 
   div(
     [
       attribute.class("automation-rule-panel"),
-      attribute.role("dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", title),
       attribute.attribute("data-testid", "automation-rule-builder"),
-      ..dialog.escape_close_attributes(config.on_rule_panel_closed)
+      ..dialog.panel_attributes(title_id, config.on_rule_panel_closed)
     ],
     [
       div([attribute.class("automation-rule-panel-header")], [
-        h2([], [text(title)]),
+        h2(dialog.panel_title_attributes(title_id), [text(title)]),
         ui_button.text(
           t(config, i18n_text.Cancel),
           config.on_rule_panel_closed,
@@ -1151,18 +1149,18 @@ fn current_rule_card_scope(
 }
 
 fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {
+  let title_id = "automation-rule-panel-title"
   div(
     [
       attribute.class("automation-rule-panel automation-rule-panel-danger"),
-      attribute.role("dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", t(config, i18n_text.DeleteRule)),
       attribute.attribute("data-testid", "automation-rule-builder"),
-      ..dialog.escape_close_attributes(config.on_rule_panel_closed)
+      ..dialog.panel_attributes(title_id, config.on_rule_panel_closed)
     ],
     [
       div([attribute.class("automation-rule-panel-header")], [
-        h2([], [text(t(config, i18n_text.DeleteRule))]),
+        h2(dialog.panel_title_attributes(title_id), [
+          text(t(config, i18n_text.DeleteRule)),
+        ]),
         ui_button.text(
           t(config, i18n_text.Cancel),
           config.on_rule_panel_closed,

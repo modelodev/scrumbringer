@@ -302,6 +302,7 @@ fn view_form_panel(
   config: Config(msg),
   mode: admin_workflows.WorkflowDialogMode,
 ) -> Element(msg) {
+  let title_id = "automation-engine-panel-title"
   let title = case mode {
     admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
     admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.EditWorkflow)
@@ -316,13 +317,15 @@ fn view_form_panel(
   div(
     [
       attribute.class("automation-engine-panel"),
-      attribute.attribute("role", "dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", title),
-      ..dialog.escape_close_attributes(config.on_closed)
+      ..dialog.panel_attributes(title_id, config.on_closed)
     ],
     [
-      panel_header(title, config.on_closed, t(config, i18n_text.Close)),
+      panel_header(
+        title_id,
+        title,
+        config.on_closed,
+        t(config, i18n_text.Close),
+      ),
       view_form_error(config),
       form(
         [
@@ -386,16 +389,15 @@ fn view_form_panel(
 }
 
 fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
+  let title_id = "automation-engine-panel-title"
   div(
     [
       attribute.class("automation-engine-panel"),
-      attribute.attribute("role", "dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", t(config, i18n_text.DeleteWorkflow)),
-      ..dialog.escape_close_attributes(config.on_closed)
+      ..dialog.panel_attributes(title_id, config.on_closed)
     ],
     [
       panel_header(
+        title_id,
         t(config, i18n_text.DeleteWorkflow),
         config.on_closed,
         t(config, i18n_text.Close),
@@ -415,12 +417,13 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
 }
 
 fn panel_header(
+  title_id: String,
   title: String,
   on_closed: msg,
   close_label: String,
 ) -> Element(msg) {
   div([attribute.class("automation-engine-panel__header")], [
-    h2([], [text(title)]),
+    h2(dialog.panel_title_attributes(title_id), [text(title)]),
     button(
       [
         attribute.type_("button"),

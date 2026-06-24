@@ -158,6 +158,30 @@ fn on_escape(on_close: msg) -> attribute.Attribute(msg) {
   })
 }
 
+/// Attributes for feature-local panels that use a visible heading as their label.
+pub fn panel_attributes(
+  title_id: String,
+  on_close: msg,
+) -> List(attribute.Attribute(msg)) {
+  [
+    attribute.attribute("role", "dialog"),
+    attribute.attribute("aria-modal", "true"),
+    attribute.attribute("aria-labelledby", title_id),
+    ..escape_close_attributes(on_close)
+  ]
+}
+
+/// Attributes for a dialog heading that receives initial programmatic focus.
+pub fn panel_title_attributes(
+  title_id: String,
+) -> List(attribute.Attribute(msg)) {
+  [
+    attribute.id(title_id),
+    attribute.attribute("tabindex", "-1"),
+    attribute.autofocus(True),
+  ]
+}
+
 fn view_header(config: DialogConfig(msg), close_label: String) -> Element(msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [

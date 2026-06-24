@@ -152,6 +152,7 @@ fn view_form_panel(
   mode: admin_task_templates.TaskTemplateDialogMode,
 ) -> Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
+  let title_id = "automation-template-panel-title"
   let title = case mode {
     admin_task_templates.TaskTemplateDialogCreate ->
       t(i18n_text.CreateTaskTemplate)
@@ -170,13 +171,10 @@ fn view_form_panel(
   div(
     [
       attribute.class("automation-template-panel"),
-      attribute.attribute("role", "dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", title),
-      ..dialog.escape_close_attributes(config.on_closed)
+      ..dialog.panel_attributes(title_id, config.on_closed)
     ],
     [
-      panel_header(title, config.locale, config.on_closed),
+      panel_header(title_id, title, config.locale, config.on_closed),
       view_form_error(config),
       view_edit_future_tasks_warning(config, mode),
       form_field.view(
@@ -338,16 +336,15 @@ fn view_delete_panel(
   template: TaskTemplate,
 ) -> Element(msg) {
   let t = fn(key) { i18n.t(config.locale, key) }
+  let title_id = "automation-template-panel-title"
   div(
     [
       attribute.class("automation-template-panel"),
-      attribute.attribute("role", "dialog"),
-      attribute.attribute("aria-modal", "true"),
-      attribute.attribute("aria-label", t(i18n_text.DeleteTaskTemplate)),
-      ..dialog.escape_close_attributes(config.on_closed)
+      ..dialog.panel_attributes(title_id, config.on_closed)
     ],
     [
       panel_header(
+        title_id,
         t(i18n_text.DeleteTaskTemplate),
         config.locale,
         config.on_closed,
@@ -370,9 +367,14 @@ fn view_delete_panel(
   )
 }
 
-fn panel_header(title: String, locale: Locale, on_closed: msg) -> Element(msg) {
+fn panel_header(
+  title_id: String,
+  title: String,
+  locale: Locale,
+  on_closed: msg,
+) -> Element(msg) {
   div([attribute.class("automation-template-panel__header")], [
-    h2([], [text(title)]),
+    h2(dialog.panel_title_attributes(title_id), [text(title)]),
     modal_close_button.view_with_label_and_class(
       i18n.t(locale, i18n_text.Close),
       "icon-btn",
