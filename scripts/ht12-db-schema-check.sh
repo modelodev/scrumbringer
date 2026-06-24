@@ -22,6 +22,7 @@ EXPECTED_MIGRATIONS=(
   "20260620108000"
   "20260623121000"
   "20260623122000"
+  "20260623123000"
 )
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -299,6 +300,22 @@ automation_history_fk_checks AS (
         )
       )
   ) AS properties(check_name, ok)
+),
+rule_template_selection_checks AS (
+  SELECT
+    'rule_templates:single_template_per_rule' AS check_name,
+    CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND tablename = 'rule_templates'
+          AND indexname = 'rule_templates_single_template_per_rule_key'
+          AND indexdef LIKE '%UNIQUE%'
+          AND indexdef LIKE '%(rule_id)%'
+      ) THEN 'ok'
+      ELSE 'missing'
+    END AS result
 )
 SELECT check_name || '=' || result
 FROM (
@@ -321,6 +338,8 @@ FROM (
   SELECT * FROM task_lifecycle_checks
   UNION ALL
   SELECT * FROM automation_history_fk_checks
+  UNION ALL
+  SELECT * FROM rule_template_selection_checks
 ) checks
 ORDER BY check_name;
 SQL

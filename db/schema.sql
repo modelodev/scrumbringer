@@ -2074,6 +2074,13 @@ CREATE UNIQUE INDEX rule_executions_rule_id_event_key_key ON public.rule_executi
 
 
 --
+-- Name: rule_templates_single_template_per_rule_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX rule_templates_single_template_per_rule_key ON public.rule_templates USING btree (rule_id);
+
+
+--
 -- Name: api_tokens trg_api_tokens_org_scope; Type: TRIGGER; Schema: public; Owner: -
 --
 
