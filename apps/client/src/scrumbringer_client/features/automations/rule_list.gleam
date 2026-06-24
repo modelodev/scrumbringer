@@ -14,6 +14,7 @@
 ////
 //// - **features/automations/engine_list.gleam**: Delegates selected-engine rules here
 
+import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -109,6 +110,13 @@ pub fn engine_name_from_remotes(
 
 fn t(config: Config(msg), key: i18n_text.Text) -> String {
   i18n.t(config.locale, key)
+}
+
+pub fn is_rule_row_activation_key(key: String) -> Bool {
+  case key {
+    "Enter" | " " -> True
+    _ -> False
+  }
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
@@ -246,6 +254,7 @@ fn view_rule_row_expandable(
           ),
           // AC2: Click anywhere on the row to expand/collapse
           event.on_click(config.on_rule_expanded(rule.id)),
+          on_rule_row_keydown(config.on_rule_expanded(rule.id)),
         ],
         [
           div([attribute.class("rule-row__main")], [
@@ -292,6 +301,30 @@ fn view_rule_row_expandable(
       },
     ]),
   )
+}
+
+fn on_rule_row_keydown(toggle_msg: msg) -> attribute.Attribute(msg) {
+  event.advanced("keydown", {
+    use key <- decode.field("key", decode.string)
+
+    case is_rule_row_activation_key(key) {
+      True ->
+        decode.success(event.handler(
+          toggle_msg,
+          prevent_default: True,
+          stop_propagation: True,
+        ))
+      False ->
+        decode.failure(
+          event.handler(
+            toggle_msg,
+            prevent_default: False,
+            stop_propagation: False,
+          ),
+          expected: "rule-row-activation-key",
+        )
+    }
+  })
 }
 
 fn rule_row_actions(config: Config(msg), rule: Rule) -> Element(msg) {

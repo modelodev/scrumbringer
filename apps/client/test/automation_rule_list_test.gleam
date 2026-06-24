@@ -374,10 +374,19 @@ pub fn automation_rule_list_marks_selected_rule_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"automation-rule-row\"")
+  assert_contains(html, "role=\"button\"")
+  assert_contains(html, "tabindex=\"0\"")
   assert_contains(html, "data-selected=\"true\"")
   assert_contains(html, "rule-row")
   assert_contains(html, "is-selected")
   assert_contains(html, "aria-expanded=\"true\"")
+}
+
+pub fn automation_rule_list_activation_keys_match_button_behavior_test() {
+  let assert True = rule_list.is_rule_row_activation_key("Enter")
+  let assert True = rule_list.is_rule_row_activation_key(" ")
+  let assert False = rule_list.is_rule_row_activation_key("Spacebar")
+  let assert False = rule_list.is_rule_row_activation_key("ArrowDown")
 }
 
 pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_test() {
