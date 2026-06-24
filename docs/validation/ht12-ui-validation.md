@@ -225,6 +225,33 @@ Latest LAN evidence on this host:
 - Expected: the server rejects it; dependencies remain task-to-task within one
   project and are not introduced between cards.
 
+### 6. Capabilities And People
+
+- Open the project Capabilities board.
+- Open the project People view.
+- Open the same Capabilities and People views scoped to a card.
+- Expected: the board keeps the same card/work-scope language as Plan and
+  Kanban, and filters/scope controls do not overlap or disappear.
+- Expected: the People view shows real project members, claimed/ongoing work,
+  blockers, and empty/free-person states without duplicating actions that belong
+  in Task Show.
+
+### 7. Automation Console
+
+- In the same seeded project, create an automation engine.
+- Create a task template for generated follow-up work.
+- Create an active rule that triggers on `task_completed` and creates a task
+  from that template.
+- Complete a matching origin task.
+- Expected: rule executions include an applied execution with
+  `template_version`, `created_task_id`, and the generated task.
+- Expected: opening the generated task in Task Show exposes its
+  `automation_origin`, including the rule, engine, execution, template, and
+  template version.
+- Expected: the Automations console opens the Engines, Templates, and Executions
+  modes for the created project without legacy `/config/templates` or
+  `/config/rule-metrics` surfaces.
+
 ### 8. Responsive And Usability Pass
 
 Repeat the main Pool, card detail, activation, claim, and delete-history checks

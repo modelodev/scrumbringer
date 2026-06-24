@@ -116,6 +116,11 @@ assert_int_ge() {
   fi
 }
 
+project_create_payload() {
+  local name="$1"
+  printf '{"name":"%s","healthy_pool_limit":20,"card_depth_names":[{"depth":1,"singular_name":"Initiative","plural_name":"Initiatives"},{"depth":2,"singular_name":"Feature","plural_name":"Features"},{"depth":3,"singular_name":"Task group","plural_name":"Task groups"}]}' "$name"
+}
+
 create_task() {
   local project_id="$1"
   local type_id="$2"
@@ -135,6 +140,36 @@ create_task_under_card() {
 
   api_request POST "/api/v1/projects/${project_id}/tasks" "{\"title\":\"${title}\",\"description\":\"sweep task\",\"priority\":3,\"type_id\":${type_id},\"card_id\":${card_id}}" "$output"
   json_get "$output" 'data.task.id'
+}
+
+create_template() {
+  local project_id="$1"
+  local type_id="$2"
+  local title="$3"
+  local output="$4"
+
+  api_request POST "/api/v1/projects/${project_id}/task-templates" "{\"name\":\"${title}\",\"description\":\"sweep template\",\"priority\":3,\"type_id\":${type_id}}" "$output"
+  json_get "$output" 'data.template.id'
+}
+
+create_workflow() {
+  local project_id="$1"
+  local title="$2"
+  local output="$3"
+
+  api_request POST "/api/v1/projects/${project_id}/workflows" "{\"name\":\"${title}\",\"description\":\"sweep automation engine\",\"active\":true}" "$output"
+  json_get "$output" 'data.workflow.id'
+}
+
+create_rule() {
+  local workflow_id="$1"
+  local type_id="$2"
+  local template_id="$3"
+  local title="$4"
+  local output="$5"
+
+  api_request POST "/api/v1/workflows/${workflow_id}/rules" "{\"name\":\"${title}\",\"goal\":\"sweep automation rule\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":${type_id}},\"action\":{\"type\":\"create_task\",\"template_id\":${template_id}},\"status\":{\"type\":\"active\"}}" "$output"
+  json_get "$output" 'data.rule.id'
 }
 
 csrf_token() {
@@ -231,12 +266,60 @@ EOF
   esac
 }
 
+seed_and_exercise_automation_api() {
+  local project_id="$1"
+  local type_id="$2"
+
+  log "Seeding automation engine, template, rule, execution, and generated task"
+
+  local template_json="${OUT_DIR}/automation-template.json"
+  local workflow_json="${OUT_DIR}/automation-workflow.json"
+  local rule_json="${OUT_DIR}/automation-rule.json"
+  local origin_json="${OUT_DIR}/automation-origin-task.json"
+  local executions_json="${OUT_DIR}/automation-project-executions.json"
+  local generated_json="${OUT_DIR}/automation-generated-task.json"
+  local metrics_json="${OUT_DIR}/automation-rule-metrics.json"
+  local rule_executions_json="${OUT_DIR}/automation-rule-executions.json"
+
+  local template_id workflow_id rule_id origin_task_id execution_id created_task_id
+  template_id="$(create_template "$project_id" "$type_id" "${SWEEP_NAME} Generated follow-up" "$template_json")"
+  workflow_id="$(create_workflow "$project_id" "${SWEEP_NAME} Automation engine" "$workflow_json")"
+  rule_id="$(create_rule "$workflow_id" "$type_id" "$template_id" "${SWEEP_NAME} Completion follow-up" "$rule_json")"
+  origin_task_id="$(create_task "$project_id" "$type_id" "${SWEEP_NAME} Automation origin task" "$origin_json")"
+
+  api_request POST "/api/v1/tasks/${origin_task_id}/claim" '{"version":1}' "${OUT_DIR}/automation-origin-claim.json"
+  api_request POST "/api/v1/tasks/${origin_task_id}/complete" '{"version":2}' "${OUT_DIR}/automation-origin-complete.json"
+
+  api_request GET "/api/v1/projects/${project_id}/rule-executions?limit=20" "" "$executions_json"
+  json_expect "$executions_json" "data.executions.some(e => e.rule_id === ${rule_id} && e.outcome === 'applied' && e.template_version > 0 && e.created_task_id)" "true"
+  execution_id="$(json_get "$executions_json" "data.executions.find(e => e.rule_id === ${rule_id} && e.outcome === 'applied').id")"
+  created_task_id="$(json_get "$executions_json" "data.executions.find(e => e.rule_id === ${rule_id} && e.outcome === 'applied').created_task_id")"
+
+  api_request GET "/api/v1/tasks/${created_task_id}" "" "$generated_json"
+  json_expect "$generated_json" "data.task.automation_origin && data.task.automation_origin.rule_id" "$rule_id"
+  json_expect "$generated_json" "data.task.automation_origin && data.task.automation_origin.template_version" "1"
+
+  api_request GET "/api/v1/rules/${rule_id}/metrics" "" "$metrics_json"
+  json_expect "$metrics_json" "data.applied_count" "1"
+  api_request GET "/api/v1/rules/${rule_id}/executions?limit=10" "" "$rule_executions_json"
+  json_expect "$rule_executions_json" "data.executions.length" "1"
+
+  cat >"${OUT_DIR}/automation.env" <<EOF
+AUTOMATION_WORKFLOW_ID=${workflow_id}
+AUTOMATION_TEMPLATE_ID=${template_id}
+AUTOMATION_RULE_ID=${rule_id}
+AUTOMATION_EXECUTION_ID=${execution_id}
+AUTOMATION_ORIGIN_TASK_ID=${origin_task_id}
+AUTOMATION_CREATED_TASK_ID=${created_task_id}
+EOF
+}
+
 seed_and_exercise_api() {
   log "Seeding HT-12 project through API"
   api_login
 
   local project_json="${OUT_DIR}/project.json"
-  api_request POST /api/v1/projects "{\"name\":\"${SWEEP_NAME}\"}" "$project_json"
+  api_request POST /api/v1/projects "$(project_create_payload "$SWEEP_NAME")" "$project_json"
   local project_id
   project_id="$(json_get "$project_json" 'data.project.id')"
   printf '%s\n' "$project_id" >"${OUT_DIR}/project-id.txt"
@@ -388,13 +471,15 @@ seed_and_exercise_api() {
   json_expect_error_code "${OUT_DIR}/delete-claimed-task.json" "TASK_HAS_OPERATIONAL_HISTORY"
 
   local cross_project_json="${OUT_DIR}/dependency-cross-project.json"
-  api_request POST /api/v1/projects "{\"name\":\"${SWEEP_NAME} Dependency Cross Project\"}" "$cross_project_json"
+  api_request POST /api/v1/projects "$(project_create_payload "${SWEEP_NAME} Dependency Cross Project")" "$cross_project_json"
   local cross_project_id cross_type_id cross_task_id
   cross_project_id="$(json_get "$cross_project_json" 'data.project.id')"
   api_request GET "/api/v1/projects/${cross_project_id}/task-types" "" "${OUT_DIR}/dependency-cross-task-types.json"
   cross_type_id="$(json_get "${OUT_DIR}/dependency-cross-task-types.json" 'data.task_types[0].id')"
   cross_task_id="$(create_task "$cross_project_id" "$cross_type_id" "${SWEEP_NAME} Cross project dependency target" "${OUT_DIR}/task-cross-project-dependency-target.json")"
   api_request POST "/api/v1/tasks/${dep_cycle_a_id}/dependencies" "{\"depends_on_task_id\":${cross_task_id}}" "${OUT_DIR}/dependency-cross-project-rejected.json" 422
+
+  seed_and_exercise_automation_api "$project_id" "$type_id"
 
   cat >"${OUT_DIR}/scenario.env" <<EOF
 PROJECT_ID=${project_id}
@@ -420,6 +505,7 @@ CLOSE_AVAILABLE_LEAF_ID=${close_leaf_id}
 CLOSE_AVAILABLE_TASK_ID=${close_task_id}
 CROSS_PROJECT_ID=${cross_project_id}
 EOF
+  cat "${OUT_DIR}/automation.env" >>"${OUT_DIR}/scenario.env"
 }
 
 capture_state() {
@@ -602,9 +688,20 @@ EOF
   ab set viewport 1440 1000 >/dev/null
   open_and_capture_route "pool-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool" "nav-pool"
   open_and_capture_route "cards-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards" "nav-cards"
+  open_and_capture_route "kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=kanban" "nav-kanban"
+  open_and_capture_route "capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities" "nav-capabilities-board"
+  open_and_capture_route "people-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=people" "nav-people"
   open_and_capture_route "depth-1-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=1" "nav-cards" "depth=1"
   open_and_capture_route "depth-2-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=2" "nav-cards" "depth=2"
   open_and_capture_route "depth-3-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=3" "nav-cards" "depth=3"
+  open_and_capture_route "automations-engines-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&engine=${AUTOMATION_WORKFLOW_ID}&rule=${AUTOMATION_RULE_ID}" "nav-automations" "rule=${AUTOMATION_RULE_ID}"
+  open_and_capture_route "automations-templates-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=templates&template=${AUTOMATION_TEMPLATE_ID}" "nav-automations" "mode=templates"
+  open_and_capture_route "automations-executions-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=executions&execution=${AUTOMATION_EXECUTION_ID}" "nav-automations" "mode=executions"
+  open_and_capture_route "automation-created-task-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool&show=task&task=${AUTOMATION_CREATED_TASK_ID}" "nav-pool" "show=task"
+  open_and_capture_route "card-show-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&show=card&show_card=${ROOT_A_ID}" "nav-cards" "show=card"
+  open_and_capture_route "card-scope-kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=kanban&work_scope=card&card=${ROOT_A_ID}" "nav-kanban" "work_scope=card"
+  open_and_capture_route "card-scope-capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities&work_scope=card&card=${ROOT_A_ID}" "nav-capabilities-board" "work_scope=card"
+  open_and_capture_route "card-scope-people-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=people&work_scope=card&card=${ROOT_A_ID}" "nav-people" "work_scope=card"
 
   open_and_capture_route "sidebar-click-start" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool" "nav-pool"
   click_and_capture_nav_route "sidebar-click-cards" "nav-cards" "view=cards"

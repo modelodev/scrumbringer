@@ -164,6 +164,35 @@ else
   failures=1
 fi
 
+if grep -Eq "seed_and_exercise_automation_api" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "/task-templates" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "/workflows" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "/rules" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "task_completed" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "/rule-executions" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automation_origin" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "AUTOMATION_CREATED_TASK_ID" scripts/ht12-agent-browser-sweep.sh; then
+  echo "ht12-static:sweep:automation_execution_trace=ok"
+else
+  echo "ht12-static:sweep:automation_execution_trace=missing"
+  failures=1
+fi
+
+if grep -Eq "capabilities-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "people-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "kanban-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automations-engines-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automations-templates-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automations-executions-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "automation-created-task-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "card-scope-capabilities-route" scripts/ht12-agent-browser-sweep.sh \
+  && grep -Eq "card-scope-people-route" scripts/ht12-agent-browser-sweep.sh; then
+  echo "ht12-static:sweep:fin_refactor_routes=ok"
+else
+  echo "ht12-static:sweep:fin_refactor_routes=missing"
+  failures=1
+fi
+
 if grep -Eq "closed_by_ancestor" apps/server/test/cards_http_test.gleam; then
   echo "ht12-static:cards_http:closed_by_ancestor_reason=ok"
 else
