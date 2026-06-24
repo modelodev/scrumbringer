@@ -132,6 +132,20 @@ fn normalize_config_section(
   }
 }
 
+fn route_in_config_section(current_route: Option(router.Route)) -> Bool {
+  case current_route {
+    Some(router.Config(_, _)) | Some(router.ConfigAutomation(_, _, _)) -> True
+    _ -> False
+  }
+}
+
+fn route_in_org_section(current_route: Option(router.Route)) -> Bool {
+  case current_route {
+    Some(router.Org(_)) -> True
+    _ -> False
+  }
+}
+
 fn member_view_active(
   state: url_state.UrlState,
   check_view_mode: Option(ViewMode),
@@ -461,11 +475,14 @@ fn view_config_nav_link(
 }
 
 fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
-  let collapsed_class = case config.config_collapsed {
+  let is_collapsed =
+    config.config_collapsed && !route_in_config_section(config.current_route)
+
+  let collapsed_class = case is_collapsed {
     True -> " collapsed"
     False -> ""
   }
-  let toggle_icon = case config.config_collapsed {
+  let toggle_icon = case is_collapsed {
     True -> "▸"
     False -> "▾"
   }
@@ -488,7 +505,7 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      case config.config_collapsed {
+      case is_collapsed {
         True -> element.none()
         False -> view_config_items(config)
       },
@@ -573,11 +590,14 @@ fn view_org_nav_link(
 }
 
 fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
-  let collapsed_class = case config.org_collapsed {
+  let is_collapsed =
+    config.org_collapsed && !route_in_org_section(config.current_route)
+
+  let collapsed_class = case is_collapsed {
     True -> " collapsed"
     False -> ""
   }
-  let toggle_icon = case config.org_collapsed {
+  let toggle_icon = case is_collapsed {
     True -> "▸"
     False -> "▾"
   }
@@ -600,7 +620,7 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      case config.org_collapsed {
+      case is_collapsed {
         True -> element.none()
         False -> view_org_items(config)
       },

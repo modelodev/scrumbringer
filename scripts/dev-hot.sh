@@ -164,7 +164,7 @@ main() {
   start_background \
     "Lustre dev server on ${DEV_HOST}:${DEV_PORT}" \
     "$REPO_ROOT/apps/client" \
-    gleam run -m lustre/dev start
+    gleam run -m lustre/dev start --host="$DEV_HOST" --port="$DEV_PORT"
 
   start_background \
     "Caddy on ${CADDY_HTTP_HOST}:${CADDY_HTTP_PORT}" \

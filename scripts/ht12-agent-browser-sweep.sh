@@ -688,7 +688,7 @@ EOF
   ab set viewport 1440 1000 >/dev/null
   open_and_capture_route "pool-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool" "nav-pool"
   open_and_capture_route "cards-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards" "nav-cards"
-  open_and_capture_route "kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=kanban" "nav-kanban"
+  open_and_capture_route "kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&plan_mode=kanban" "nav-kanban" "plan_mode=kanban"
   open_and_capture_route "capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities" "nav-capabilities-board"
   open_and_capture_route "people-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=people" "nav-people"
   open_and_capture_route "depth-1-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&depth=1" "nav-cards" "depth=1"
@@ -699,7 +699,7 @@ EOF
   open_and_capture_route "automations-executions-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=executions&execution=${AUTOMATION_EXECUTION_ID}" "nav-automations" "mode=executions"
   open_and_capture_route "automation-created-task-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool&show=task&task=${AUTOMATION_CREATED_TASK_ID}" "nav-pool" "show=task"
   open_and_capture_route "card-show-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&show=card&show_card=${ROOT_A_ID}" "nav-cards" "show=card"
-  open_and_capture_route "card-scope-kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=kanban&work_scope=card&card=${ROOT_A_ID}" "nav-kanban" "work_scope=card"
+  open_and_capture_route "card-scope-kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&plan_mode=kanban&work_scope=card&card=${ROOT_A_ID}" "nav-kanban" "work_scope=card"
   open_and_capture_route "card-scope-capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities&work_scope=card&card=${ROOT_A_ID}" "nav-capabilities-board" "work_scope=card"
   open_and_capture_route "card-scope-people-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=people&work_scope=card&card=${ROOT_A_ID}" "nav-people" "work_scope=card"
 

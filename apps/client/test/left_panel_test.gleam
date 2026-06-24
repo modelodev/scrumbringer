@@ -253,7 +253,7 @@ pub fn left_panel_org_section_active_test() {
 pub fn left_panel_collapsed_config_items_are_not_rendered_test() {
   let config =
     left_panel.LeftPanelConfig(
-      ..base_config(opt.Some(config_route(permissions.Members))),
+      ..base_config(opt.Some(member_route(view_mode_module.Pool))),
       is_pm: True,
       config_collapsed: True,
     )
@@ -263,7 +263,36 @@ pub fn left_panel_collapsed_config_items_are_not_rendered_test() {
   assert_not_contains(html, "data-testid=\"nav-team\"")
 }
 
+pub fn left_panel_collapsed_config_route_still_renders_active_item_test() {
+  let config =
+    left_panel.LeftPanelConfig(
+      ..base_config(opt.Some(config_route(permissions.Workflows))),
+      is_pm: True,
+      config_collapsed: True,
+    )
+  let html = left_panel.view(config) |> element.to_document_string
+
+  assert_contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-automations\"",
+  )
+  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+}
+
 pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
+  let config =
+    left_panel.LeftPanelConfig(
+      ..base_config(opt.Some(member_route(view_mode_module.Pool))),
+      is_org_admin: True,
+      org_collapsed: True,
+    )
+  let html = left_panel.view(config) |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"section-org\"")
+  assert_not_contains(html, "data-testid=\"nav-projects\"")
+}
+
+pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
   let config =
     left_panel.LeftPanelConfig(
       ..base_config(opt.Some(org_route(permissions.Projects))),
@@ -272,8 +301,11 @@ pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"section-org\"")
-  assert_not_contains(html, "data-testid=\"nav-projects\"")
+  assert_contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-projects\"",
+  )
+  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test() {
