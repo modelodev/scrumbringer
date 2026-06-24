@@ -9,6 +9,7 @@ import domain/task_status
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 
 pub opaque type CardDepth {
@@ -243,6 +244,7 @@ pub type TriggerParseError {
 
 pub type TriggerKindParseError {
   UnknownTriggerKind(String)
+  InvalidTriggerCardDepth(Int)
 }
 
 pub fn task_transition_trigger(
@@ -299,20 +301,28 @@ pub fn trigger_from_kind(
     "task_claimed" -> Ok(TaskClaimed(task_type_id))
     "task_released" -> Ok(TaskReleased(task_type_id))
     "task_completed" -> Ok(TaskCompleted(task_type_id))
-    "card_activated" -> Ok(CardActivated(scope_from_depth(card_depth)))
-    "card_closed" -> Ok(CardClosed(scope_from_depth(card_depth)))
+    "card_activated" -> {
+      use scope <- result.try(scope_from_depth(card_depth))
+      Ok(CardActivated(scope))
+    }
+    "card_closed" -> {
+      use scope <- result.try(scope_from_depth(card_depth))
+      Ok(CardClosed(scope))
+    }
     other -> Error(UnknownTriggerKind(other))
   }
 }
 
-fn scope_from_depth(card_depth: Option(Int)) -> CardAutomationScope {
+fn scope_from_depth(
+  card_depth: Option(Int),
+) -> Result(CardAutomationScope, TriggerKindParseError) {
   case card_depth {
     Some(depth) ->
       case card_depth_from_int(depth) {
-        Ok(valid) -> AtDepth(valid)
-        Error(_) -> AnyCard
+        Ok(valid) -> Ok(AtDepth(valid))
+        Error(_) -> Error(InvalidTriggerCardDepth(depth))
       }
-    None -> AnyCard
+    None -> Ok(AnyCard)
   }
 }
 

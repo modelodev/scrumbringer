@@ -226,6 +226,8 @@ fn trigger_error_to_stored_error(
   case error {
     automation.UnknownTriggerKind(_) ->
       Unexpected("Invalid persisted rule trigger_kind: " <> trigger_kind)
+    automation.InvalidTriggerCardDepth(depth) ->
+      Unexpected("Invalid persisted rule card_depth: " <> int.to_string(depth))
   }
 }
 

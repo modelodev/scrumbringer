@@ -81,6 +81,8 @@ pub fn trigger_kind_round_trips_to_supported_trigger_test() {
   let assert Ok(automation.CardClosed(automation.AtDepth(depth))) =
     automation.trigger_from_kind("card_closed", None, Some(2))
   let assert 2 = automation.card_depth_to_int(depth)
+  let assert Error(automation.InvalidTriggerCardDepth(0)) =
+    automation.trigger_from_kind("card_activated", None, Some(0))
   let assert Error(automation.UnknownTriggerKind("task_due")) =
     automation.trigger_from_kind("task_due", None, None)
 }
