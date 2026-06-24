@@ -325,6 +325,7 @@ fn view_form_panel(
         title,
         config.on_closed,
         t(config, i18n_text.Close),
+        False,
       ),
       view_form_error(config),
       form(
@@ -346,6 +347,7 @@ fn view_form_panel(
                 t(config, i18n_text.WorkflowName),
               ),
               attribute.attribute("data-testid", "automation-engine-name"),
+              attribute.autofocus(True),
               event.on_input(config.on_name_changed),
             ]),
           ),
@@ -401,6 +403,7 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
         t(config, i18n_text.DeleteWorkflow),
         config.on_closed,
         t(config, i18n_text.Close),
+        True,
       ),
       view_form_error(config),
       p([], [text(t(config, i18n_text.WorkflowDeleteConfirm(workflow.name)))]),
@@ -421,9 +424,15 @@ fn panel_header(
   title: String,
   on_closed: msg,
   close_label: String,
+  focus_title: Bool,
 ) -> Element(msg) {
+  let title_attrs = case focus_title {
+    True -> dialog.focused_panel_title_attributes(title_id)
+    False -> dialog.panel_title_attributes(title_id)
+  }
+
   div([attribute.class("automation-engine-panel__header")], [
-    h2(dialog.panel_title_attributes(title_id), [text(title)]),
+    h2(title_attrs, [text(title)]),
     button(
       [
         attribute.type_("button"),

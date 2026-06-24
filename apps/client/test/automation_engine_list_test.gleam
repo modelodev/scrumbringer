@@ -152,7 +152,12 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")
   assert_contains(html, "id=\"automation-engine-panel-title\"")
+  assert_contains(html, "data-testid=\"automation-engine-name\"")
   assert_contains(html, "autofocus")
+  assert_not_contains(
+    html,
+    "id=\"automation-engine-panel-title\" tabindex=\"-1\"",
+  )
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "Create engine")
@@ -216,6 +221,7 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")
   assert_contains(html, "id=\"automation-engine-panel-title\"")
+  assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "autofocus")
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")

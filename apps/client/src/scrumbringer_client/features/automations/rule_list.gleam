@@ -476,6 +476,7 @@ fn view_rule_form_panel(
               attribute.type_("text"),
               attribute.value(config.rules.rule_form_name),
               attribute.attribute("aria-label", t(config, i18n_text.RuleName)),
+              attribute.autofocus(True),
               event.on_input(config.on_rule_name_changed),
             ]),
           ),
@@ -1158,7 +1159,7 @@ fn view_rule_delete_panel(config: Config(msg), rule: Rule) -> Element(msg) {
     ],
     [
       div([attribute.class("automation-rule-panel-header")], [
-        h2(dialog.panel_title_attributes(title_id), [
+        h2(dialog.focused_panel_title_attributes(title_id), [
           text(t(config, i18n_text.DeleteRule)),
         ]),
         ui_button.text(

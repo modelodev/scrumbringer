@@ -196,7 +196,12 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
   assert_contains(html, "id=\"automation-template-panel-title\"")
+  assert_contains(html, "data-testid=\"automation-template-name\"")
   assert_contains(html, "autofocus")
+  assert_not_contains(
+    html,
+    "id=\"automation-template-panel-title\" tabindex=\"-1\"",
+  )
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "Create Template")
@@ -245,6 +250,7 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
   assert_contains(html, "id=\"automation-template-panel-title\"")
+  assert_contains(html, "tabindex=\"-1\"")
   assert_contains(html, "autofocus")
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")

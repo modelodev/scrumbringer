@@ -171,8 +171,15 @@ pub fn panel_attributes(
   ]
 }
 
-/// Attributes for a dialog heading that receives initial programmatic focus.
+/// Attributes for a visible panel heading used as the dialog label.
 pub fn panel_title_attributes(
+  title_id: String,
+) -> List(attribute.Attribute(msg)) {
+  [attribute.id(title_id)]
+}
+
+/// Attributes for a panel heading that is also the initial focus target.
+pub fn focused_panel_title_attributes(
   title_id: String,
 ) -> List(attribute.Attribute(msg)) {
   [

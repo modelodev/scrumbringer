@@ -226,10 +226,14 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
   assert_contains(html, "id=\"automation-rule-panel-title\"")
+  assert_contains(html, "aria-label=\"Name\"")
   assert_contains(html, "autofocus")
+  assert_not_contains(
+    html,
+    "id=\"automation-rule-panel-title\" tabindex=\"-1\"",
+  )
   assert_contains(html, "aria-keyshortcuts=\"Escape\"")
   assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "aria-label=\"Name\"")
   assert_contains(html, "aria-label=\"Goal\"")
   assert_contains(html, "aria-label=\"Rule subject\"")
   assert_contains(html, "aria-label=\"Event\"")
@@ -267,6 +271,27 @@ pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
   assert_contains(html, "role=\"alert\"")
   assert_contains(html, "disabled")
   assert_not_contains(html, "value=\"9\" selected")
+}
+
+pub fn automation_rule_delete_panel_focuses_title_test() {
+  let html =
+    rule_list.view(
+      rule_list.Config(
+        ..config(),
+        rules: admin_rules.Model(
+          ..rules_state(),
+          rules_dialog_mode: opt.Some(admin_rules.RuleDialogDelete(rule())),
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "automation-rule-panel-danger")
+  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
+  assert_contains(html, "id=\"automation-rule-panel-title\"")
+  assert_contains(html, "tabindex=\"-1\"")
+  assert_contains(html, "autofocus")
+  assert_contains(html, "Delete rule")
 }
 
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {

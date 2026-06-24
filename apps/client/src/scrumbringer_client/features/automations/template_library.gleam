@@ -174,7 +174,7 @@ fn view_form_panel(
       ..dialog.panel_attributes(title_id, config.on_closed)
     ],
     [
-      panel_header(title_id, title, config.locale, config.on_closed),
+      panel_header(title_id, title, config.locale, config.on_closed, False),
       view_form_error(config),
       view_edit_future_tasks_warning(config, mode),
       form_field.view(
@@ -183,6 +183,7 @@ fn view_form_panel(
           attribute.value(config.form_name),
           attribute.attribute("aria-label", t(i18n_text.TaskTemplateName)),
           attribute.attribute("data-testid", "automation-template-name"),
+          attribute.autofocus(True),
           event.on_input(config.on_name_changed),
         ]),
       ),
@@ -348,6 +349,7 @@ fn view_delete_panel(
         t(i18n_text.DeleteTaskTemplate),
         config.locale,
         config.on_closed,
+        True,
       ),
       view_form_error(config),
       p([], [
@@ -372,9 +374,15 @@ fn panel_header(
   title: String,
   locale: Locale,
   on_closed: msg,
+  focus_title: Bool,
 ) -> Element(msg) {
+  let title_attrs = case focus_title {
+    True -> dialog.focused_panel_title_attributes(title_id)
+    False -> dialog.panel_title_attributes(title_id)
+  }
+
   div([attribute.class("automation-template-panel__header")], [
-    h2(dialog.panel_title_attributes(title_id), [text(title)]),
+    h2(title_attrs, [text(title)]),
     modal_close_button.view_with_label_and_class(
       i18n.t(locale, i18n_text.Close),
       "icon-btn",
