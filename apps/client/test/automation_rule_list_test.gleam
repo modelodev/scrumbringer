@@ -13,6 +13,7 @@ import domain/workflow.{
 }
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
@@ -306,6 +307,7 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_contains(html, "Rules - Release automation")
   assert_contains(html, "Back to Automations")
   assert_contains(html, "automation-rules-heading")
+  assert_contains(html, automation_focus.create_rule_trigger_id)
   assert_contains(html, "automation-rule-list")
   assert_contains(html, "Complete bug workflow")
   assert_contains(html, "When a Bug task is completed")
@@ -327,6 +329,8 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_contains(html, "2")
   assert_contains(html, "btn-view-action")
   assert_contains(html, "btn-entity-action")
+  assert_contains(html, automation_focus.rule_edit_trigger_id(9))
+  assert_contains(html, automation_focus.rule_delete_trigger_id(9))
   assert_not_contains(html, "inert")
   assert_not_contains(html, "btn btn-sm btn-primary")
 }

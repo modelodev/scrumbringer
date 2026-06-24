@@ -23,15 +23,17 @@ import domain/task_type.{type TaskType}
 import domain/workflow.{type TaskTemplate}
 
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/ui/modal_close_button
 
@@ -115,10 +117,11 @@ fn view_template_filters(config: Config(msg)) -> Element(msg) {
     ),
   ])
   |> filter_bar.with_actions([
-    dialog.add_button_with_locale(
+    dialog.add_button_with_locale_and_id(
       config.locale,
       i18n_text.CreateTaskTemplate,
       config.on_create_clicked,
+      automation_focus.create_template_trigger_id,
     ),
   ])
   |> filter_bar.with_class("automation-templates-filters")
@@ -530,16 +533,7 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
         // Actions column with icon buttons
         data_table.column_with_class(
           t(i18n_text.Actions),
-          fn(tmpl: TaskTemplate) {
-            action_buttons.edit_delete_row_with_testid(
-              edit_title: t(i18n_text.EditTaskTemplate),
-              edit_click: config.on_edit_clicked(tmpl),
-              edit_testid: "template-edit-btn",
-              delete_title: t(i18n_text.Delete),
-              delete_click: config.on_delete_clicked(tmpl),
-              delete_testid: "template-delete-btn",
-            )
-          },
+          fn(tmpl: TaskTemplate) { template_row_actions(config, tmpl) },
           "col-actions",
           "cell-actions",
         ),
@@ -554,6 +548,42 @@ fn view_task_templates_table(config: Config(msg)) -> Element(msg) {
         ]
       }),
   )
+}
+
+fn template_row_actions(
+  config: Config(msg),
+  template: TaskTemplate,
+) -> Element(msg) {
+  let t = fn(key) { i18n.t(config.locale, key) }
+
+  div([], [
+    ui_button.icon(
+      t(i18n_text.EditTaskTemplate),
+      config.on_edit_clicked(template),
+      icons.Pencil,
+      ui_button.Neutral,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.template_edit_trigger_id(
+        template.id,
+      ))
+      |> ui_button.with_testid("template-edit-btn")
+      |> ui_button.view,
+    ui_button.icon(
+      t(i18n_text.Delete),
+      config.on_delete_clicked(template),
+      icons.Trash,
+      ui_button.Danger,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.template_delete_trigger_id(
+        template.id,
+      ))
+      |> ui_button.with_testid("template-delete-btn")
+      |> ui_button.view,
+  ])
 }
 
 fn view_template_usage(

@@ -7,6 +7,7 @@ import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import domain/workflow.{type TaskTemplate, TaskTemplate}
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/i18n/locale
 
@@ -107,6 +108,7 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "Template library")
   assert_contains(html, "filter-bar automation-templates-filters")
   assert_contains(html, "data-testid=\"automation-template-picker\"")
+  assert_contains(html, automation_focus.create_template_trigger_id)
   assert_contains(html, "data-testid=\"automation-template-search\"")
   assert_contains(html, "data-testid=\"automation-template-row\"")
   assert_contains(html, "Regression checklist")
@@ -122,6 +124,10 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
   assert_contains(html, "Unused")
   assert_contains(html, "template-edit-btn")
   assert_contains(html, "template-delete-btn")
+  assert_contains(html, automation_focus.template_edit_trigger_id(7))
+  assert_contains(html, automation_focus.template_delete_trigger_id(7))
+  assert_contains(html, automation_focus.template_edit_trigger_id(8))
+  assert_contains(html, automation_focus.template_delete_trigger_id(8))
   assert_not_contains(html, "inert")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")

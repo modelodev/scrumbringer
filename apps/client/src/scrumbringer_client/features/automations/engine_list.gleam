@@ -16,16 +16,19 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/workflow.{type Workflow}
 
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/filter_bar
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/skeleton
 
 pub type Config(msg) {
@@ -247,14 +250,28 @@ fn view_actions(config: Config(msg), workflow: Workflow) -> Element(msg) {
       config.on_rules_clicked(workflow.id),
       "workflow-rules-btn",
     ),
-    action_buttons.edit_button(
+    ui_button.icon(
       t(config, i18n_text.EditWorkflow),
       config.on_edit_clicked(workflow),
-    ),
-    action_buttons.delete_button(
+      icons.Pencil,
+      ui_button.Neutral,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.engine_edit_trigger_id(workflow.id))
+      |> ui_button.view,
+    ui_button.icon(
       t(config, i18n_text.DeleteWorkflow),
       config.on_delete_clicked(workflow),
-    ),
+      icons.Trash,
+      ui_button.Danger,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.engine_delete_trigger_id(
+        workflow.id,
+      ))
+      |> ui_button.view,
   ])
 }
 

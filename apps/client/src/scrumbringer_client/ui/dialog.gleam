@@ -351,6 +351,27 @@ pub fn add_button_with_locale(
   label: i18n_text.Text,
   on_click: msg,
 ) -> Element(msg) {
+  add_button(locale, label, on_click)
+  |> ui_button.view
+}
+
+/// Create an add button with a stable HTML id.
+pub fn add_button_with_locale_and_id(
+  locale: Locale,
+  label: i18n_text.Text,
+  on_click: msg,
+  id: String,
+) -> Element(msg) {
+  add_button(locale, label, on_click)
+  |> ui_button.with_id(id)
+  |> ui_button.view
+}
+
+fn add_button(
+  locale: Locale,
+  label: i18n_text.Text,
+  on_click: msg,
+) -> ui_button.Config(msg) {
   ui_button.text(
     i18n.t(locale, label),
     on_click,
@@ -358,5 +379,4 @@ pub fn add_button_with_locale(
     ui_button.GlobalAction,
   )
   |> ui_button.with_class("btn-add")
-  |> ui_button.view
 }

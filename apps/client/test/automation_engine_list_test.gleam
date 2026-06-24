@@ -9,6 +9,7 @@ import domain/remote.{Loaded}
 import domain/workflow.{type Workflow, Workflow}
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/automations/engine_list
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {
@@ -100,6 +101,8 @@ pub fn automation_engine_list_renders_operational_rows_test() {
   assert_contains(html, "data-testid=\"automation-engine-row\"")
   assert_contains(html, "Release automation")
   assert_contains(html, "workflow-rules-btn")
+  assert_contains(html, automation_focus.engine_edit_trigger_id(3))
+  assert_contains(html, automation_focus.engine_delete_trigger_id(3))
   assert_not_contains(html, "inert")
   assert_not_contains(html, "section-header")
   assert_not_contains(html, "info-callout-link")

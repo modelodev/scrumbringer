@@ -10,10 +10,12 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/workflows as workflows_workflow
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
 import scrumbringer_client/features/pool/route_support
@@ -119,13 +121,14 @@ fn try_workflow_crud_update(
       workflow_crud_feedback_context(model),
     )
   {
-    opt.Some(update) -> opt.Some(apply_workflows_update(model, update))
+    opt.Some(update) -> opt.Some(apply_workflows_update(model, inner, update))
     opt.None -> opt.None
   }
 }
 
 fn apply_workflows_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: workflows_workflow.WorkflowUpdate(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let workflows_workflow.WorkflowUpdate(workflows, fx, auth_policy) = update
@@ -133,7 +136,12 @@ fn apply_workflows_update(
   route_support.apply_auth_check_before(
     model,
     workflow_auth_error(auth_policy),
-    fn() { #(root.set_admin_workflows(model, workflows), fx) },
+    fn() {
+      #(
+        root.set_admin_workflows(model, workflows),
+        apply_automation_panel_focus(model, inner, fx),
+      )
+    },
   )
 }
 
@@ -149,13 +157,14 @@ fn try_rule_update(
       rule_feedback_context(model),
     )
   {
-    opt.Some(update) -> opt.Some(apply_rules_update(model, update))
+    opt.Some(update) -> opt.Some(apply_rules_update(model, inner, update))
     opt.None -> opt.None
   }
 }
 
 fn apply_rules_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: workflows_workflow.RulesUpdate(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let workflows_workflow.RulesUpdate(rules, fx, auth_policy) = update
@@ -163,7 +172,12 @@ fn apply_rules_update(
   route_support.apply_auth_check_before(
     model,
     rules_auth_error(auth_policy),
-    fn() { #(root.set_admin_rules(model, rules), fx) },
+    fn() {
+      #(
+        root.set_admin_rules(model, rules),
+        apply_automation_panel_focus(model, inner, fx),
+      )
+    },
   )
 }
 
@@ -196,9 +210,113 @@ fn apply_task_templates_update(
     task_templates_auth_error(auth_policy),
     fn() {
       let updated = root.set_admin_task_templates(model, task_templates)
-      #(select_created_template_for_rule_builder(updated, model, inner), fx)
+      #(
+        select_created_template_for_rule_builder(updated, model, inner),
+        apply_automation_panel_focus(model, inner, fx),
+      )
     },
   )
+}
+
+fn apply_automation_panel_focus(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  fx: effect.Effect(client_state.Msg),
+) -> effect.Effect(client_state.Msg) {
+  case automation_panel_focus_target(model, inner) {
+    opt.Some(element_id) ->
+      effect.batch([
+        fx,
+        app_effects.focus_element_after_timeout(element_id, 0),
+      ])
+    opt.None -> fx
+  }
+}
+
+fn automation_panel_focus_target(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> opt.Option(String) {
+  case inner {
+    pool_messages.CloseWorkflowDialog
+    | pool_messages.WorkflowSaved(Ok(_))
+    | pool_messages.WorkflowDeleteFinished(_, Ok(_)) ->
+      workflow_dialog_focus_target(model.admin.workflows.workflows_dialog_mode)
+
+    pool_messages.CloseRuleDialog
+    | pool_messages.RuleSaved(Ok(_))
+    | pool_messages.RuleDeleteFinished(_, Ok(_)) ->
+      rule_dialog_focus_target(model.admin.rules.rules_dialog_mode)
+
+    pool_messages.CloseTaskTemplateDialog
+    | pool_messages.TaskTemplateSaved(Ok(_))
+    | pool_messages.TaskTemplateDeleteFinished(_, Ok(_)) ->
+      task_template_dialog_focus_target(
+        model.admin.task_templates.task_templates_dialog_mode,
+      )
+
+    _ -> opt.None
+  }
+}
+
+pub fn workflow_dialog_focus_target_for_test(
+  mode: opt.Option(admin_workflows.WorkflowDialogMode),
+) -> opt.Option(String) {
+  workflow_dialog_focus_target(mode)
+}
+
+fn workflow_dialog_focus_target(
+  mode: opt.Option(admin_workflows.WorkflowDialogMode),
+) -> opt.Option(String) {
+  case mode {
+    opt.Some(admin_workflows.WorkflowDialogCreate) ->
+      opt.Some(automation_focus.create_engine_trigger_id)
+    opt.Some(admin_workflows.WorkflowDialogEdit(workflow)) ->
+      opt.Some(automation_focus.engine_edit_trigger_id(workflow.id))
+    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) ->
+      opt.Some(automation_focus.engine_delete_trigger_id(workflow.id))
+    opt.None -> opt.None
+  }
+}
+
+pub fn rule_dialog_focus_target_for_test(
+  mode: opt.Option(admin_rules.RuleDialogMode),
+) -> opt.Option(String) {
+  rule_dialog_focus_target(mode)
+}
+
+fn rule_dialog_focus_target(
+  mode: opt.Option(admin_rules.RuleDialogMode),
+) -> opt.Option(String) {
+  case mode {
+    opt.Some(admin_rules.RuleDialogCreate) ->
+      opt.Some(automation_focus.create_rule_trigger_id)
+    opt.Some(admin_rules.RuleDialogEdit(rule)) ->
+      opt.Some(automation_focus.rule_edit_trigger_id(rule.id))
+    opt.Some(admin_rules.RuleDialogDelete(rule)) ->
+      opt.Some(automation_focus.rule_delete_trigger_id(rule.id))
+    opt.None -> opt.None
+  }
+}
+
+pub fn task_template_dialog_focus_target_for_test(
+  mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
+) -> opt.Option(String) {
+  task_template_dialog_focus_target(mode)
+}
+
+fn task_template_dialog_focus_target(
+  mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
+) -> opt.Option(String) {
+  case mode {
+    opt.Some(admin_task_templates.TaskTemplateDialogCreate) ->
+      opt.Some(automation_focus.create_template_trigger_id)
+    opt.Some(admin_task_templates.TaskTemplateDialogEdit(template)) ->
+      opt.Some(automation_focus.template_edit_trigger_id(template.id))
+    opt.Some(admin_task_templates.TaskTemplateDialogDelete(template)) ->
+      opt.Some(automation_focus.template_delete_trigger_id(template.id))
+    opt.None -> opt.None
+  }
 }
 
 fn select_created_template_for_rule_builder(

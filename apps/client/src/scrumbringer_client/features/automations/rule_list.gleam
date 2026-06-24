@@ -36,13 +36,13 @@ import domain/workflow.{
 
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/automations/rule_sentence
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
-import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/button as ui_button
@@ -139,10 +139,11 @@ fn view_rules_heading(config: Config(msg)) -> Element(msg) {
       h2([], [text(t(config, i18n_text.RulesTitle(config.workflow_name)))]),
       p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
     ]),
-    dialog.add_button_with_locale(
+    dialog.add_button_with_locale_and_id(
       config.locale,
       i18n_text.CreateRule,
       config.on_create_clicked,
+      automation_focus.create_rule_trigger_id,
     ),
   ])
 }
@@ -276,12 +277,7 @@ fn view_rule_row_expandable(
             ]),
           ]),
           div([attribute.class("rule-row__actions cell-no-expand")], [
-            action_buttons.edit_delete_row(
-              edit_title: t(config, i18n_text.EditRule),
-              edit_click: config.on_edit_clicked(rule),
-              delete_title: t(config, i18n_text.DeleteRule),
-              delete_click: config.on_delete_clicked(rule),
-            ),
+            rule_row_actions(config, rule),
           ]),
         ],
       ),
@@ -291,6 +287,31 @@ fn view_rule_row_expandable(
       },
     ]),
   )
+}
+
+fn rule_row_actions(config: Config(msg), rule: Rule) -> Element(msg) {
+  div([], [
+    ui_button.icon(
+      t(config, i18n_text.EditRule),
+      config.on_edit_clicked(rule),
+      icons.Pencil,
+      ui_button.Neutral,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.rule_edit_trigger_id(rule.id))
+      |> ui_button.view,
+    ui_button.icon(
+      t(config, i18n_text.DeleteRule),
+      config.on_delete_clicked(rule),
+      icons.Trash,
+      ui_button.Danger,
+      ui_button.EntityAction,
+    )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_id(automation_focus.rule_delete_trigger_id(rule.id))
+      |> ui_button.view,
+  ])
 }
 
 fn rule_meta(label: String, value: String) -> Element(msg) {

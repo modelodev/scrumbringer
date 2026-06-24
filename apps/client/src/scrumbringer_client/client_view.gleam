@@ -71,6 +71,7 @@ import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/engine_list_config
 import scrumbringer_client/features/automations/execution_history
 import scrumbringer_client/features/automations/execution_history_config
+import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/automations/rule_list_config as automation_rule_list_config
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
@@ -562,6 +563,7 @@ fn view_automations_console(
         button.Primary,
         button.GlobalAction,
       )
+      |> button.with_id(automation_focus.create_engine_trigger_id)
       |> button.with_testid("automation-create-engine")
       |> button.view,
     ),
