@@ -60,10 +60,10 @@ pub fn filter_bar_checkbox_and_actions_use_separate_slots_test() {
   let html =
     filter_bar.new([
       filter_bar.checkbox_chip(
-        "Show completed",
+        "Show closed",
         True,
         fn(value) { value },
-        "filter-completed",
+        "filter-closed",
         "filter-chip",
         "filter-checkbox",
       ),
@@ -77,8 +77,8 @@ pub fn filter_bar_checkbox_and_actions_use_separate_slots_test() {
 
   assert_contains(html, "filter-bar-fields")
   assert_contains(html, "filter-bar-actions")
-  assert_contains(html, "data-testid=\"filter-completed\"")
+  assert_contains(html, "data-testid=\"filter-closed\"")
   assert_contains(html, "checked")
-  assert_contains(html, "Show completed")
+  assert_contains(html, "Show closed")
   assert_contains(html, ">Clear<")
 }
