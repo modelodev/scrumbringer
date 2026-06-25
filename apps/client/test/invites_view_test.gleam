@@ -64,7 +64,7 @@ pub fn invites_view_loaded_links_uses_config_data_test() {
   assert_contains(html, "Pending")
 }
 
-pub fn invites_view_active_state_uses_spanish_pending_copy_test() {
+pub fn invites_view_active_state_uses_spanish_open_copy_test() {
   let link = invite_link("new@example.test")
   let state =
     invites_state.Model(
@@ -78,6 +78,6 @@ pub fn invites_view_active_state_uses_spanish_pending_copy_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Pendiente")
+  assert_contains(html, "Por aceptar")
   assert_not_contains(html, "Draft")
 }
