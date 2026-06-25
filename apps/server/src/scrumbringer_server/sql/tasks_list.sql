@@ -8,10 +8,7 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  case
-    when t.execution_state = 'closed' then 'completed'
-    else t.execution_state
-  end as status,
+  t.execution_state as status,
   (
     t.execution_state = 'claimed'
     and exists(
@@ -95,10 +92,7 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', case
-            when dt.execution_state = 'closed' then 'completed'
-            else dt.execution_state
-          end,
+          'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
           'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),

@@ -155,10 +155,7 @@ fn fetch_card_summary(
     with tasks_scope as (
       select
         t.id,
-        case
-          when t.execution_state = 'closed' then 'completed'
-          else t.execution_state
-        end as status,
+        t.execution_state as status,
         t.pool_lifetime_s,
         exists(
           select 1
@@ -178,7 +175,7 @@ fn fetch_card_summary(
     )
     select
       (select count(*)::int from tasks_scope) as tasks_total,
-      (select count(*)::int from tasks_scope where status = 'completed') as tasks_completed,
+      (select count(*)::int from tasks_scope where status = 'closed') as tasks_completed,
       (select count(*)::int from tasks_scope where status = 'available') as tasks_available,
       (select count(*)::int from tasks_scope where status = 'claimed' and not is_ongoing) as tasks_claimed,
       (select count(*)::int from tasks_scope where status = 'claimed' and is_ongoing) as tasks_ongoing,

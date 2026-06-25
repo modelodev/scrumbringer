@@ -390,6 +390,13 @@ obsolete_code_violations(Root) ->
     ], [
         <<"Some(task_state.FilterClosed) -> \"completed\"">>,
         <<"end = $2">>
+    ], [".gleam", ".sql"]) ++
+    files_containing(Root, [
+        "apps/server/src/scrumbringer_server/sql",
+        "apps/server/src/scrumbringer_server/sql.gleam"
+    ], [
+        <<"then 'completed'">>,
+        <<"'completed' as status">>
     ], [".gleam", ".sql"]).
 
 active_code_roots() ->

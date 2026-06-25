@@ -2,10 +2,7 @@
 select
   td.depends_on_task_id as task_id,
   t.title,
-  case
-    when t.execution_state = 'closed' then 'completed'
-    else t.execution_state
-  end as status,
+  t.execution_state as status,
   (
     t.execution_state = 'claimed'
     and exists(

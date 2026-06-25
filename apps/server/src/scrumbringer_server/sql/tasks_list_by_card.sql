@@ -8,10 +8,7 @@ select
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
-  case
-    when t.execution_state = 'closed' then 'completed'
-    else t.execution_state
-  end as status,
+  t.execution_state as status,
   (
     t.execution_state = 'claimed'
     and exists(

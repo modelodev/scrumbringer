@@ -26,10 +26,7 @@ where id = $1
     title,
     coalesce(description, '') as description,
     priority,
-    case
-      when execution_state = 'closed' then 'completed'
-      else execution_state
-    end as status,
+    execution_state as status,
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
@@ -88,10 +85,7 @@ left join lateral (
         json_build_object(
           'task_id', d.depends_on_task_id,
           'title', dt.title,
-          'status', case
-            when dt.execution_state = 'closed' then 'completed'
-            else dt.execution_state
-          end,
+          'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
           'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
