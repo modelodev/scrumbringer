@@ -88,6 +88,31 @@ It also asserts the generated task origin anchor in Task Show
 (`automation-created-task-origin`). Inspect `api-steps.log`, `scenario.env`,
 snapshots, and screenshots in the sweep output directory for each run.
 
+## Seed Scenario Coverage
+
+The realistic seed is split by product scenario. Each module below must remain
+represented by a server seed validation and at least one browser validation
+surface:
+
+| Seed module | Product coverage | Browser validation surface |
+| --- | --- | --- |
+| `seed_workspace_scenarios.gleam` | Users, active/inactive membership, healthy and saturated project pool limits | Project switch, Pool health, People, Assignments |
+| `seed_capability_scenarios.gleam` | Capabilities, task types, project member capability assignments | Capability Board and People filters |
+| `seed_card_scenarios.gleam` | Card profile colors and per-project card inventory | Plan all-cards and Card Show inspection |
+| `seed_task_scenarios.gleam` | Available, claimed, closed, RootPool, card-scoped, workflow-origin, and pool-lifetime task states | Pool, Task Show, Kanban, People ownership |
+| `seed_plan_scenarios.gleam` | Direct-task cards, capability matrix cards, blockers, due dates, draft activation impact | Plan structure, card-scoped Kanban, activation impact, blocked work |
+| `seed_people_scenarios.gleam` | Distributed ownership, overloaded members, ongoing work, blocked claimed work, free-person states | People route and scoped People view |
+| `seed_root_card_scenarios.gleam` | Draft, active, closed, empty, card-heavy, and task-leaf root cards | Plan depth routes, all-cards route, root-card hierarchy inspection |
+| `seed_activity_scenarios.gleam` | Notes, pinned notes, task positions, and work sessions | Card Show, Task Show, activity stream, Now Working |
+| `seed_audit_events.gleam` | Canonical audit event history for task lifecycle and comments | Activity stream and metrics/history views |
+| `seed_automation_definitions.gleam` | Engines, workflows, rules, templates, inactive and empty automation states | Automations Engines, Rules, Templates, Metrics |
+| `seed_automation_executions.gleam` | Applied rule execution history from real rule evaluation | Automations Executions and generated-task origin |
+| `seed_automation_diagnostics.gleam` | Ignored duplicate execution, missing template warning, noisy execution history | Automations diagnostics, execution history filters, metrics |
+
+When adding a seed scenario, update this table, `seed_builder_validation_test`,
+and the HT-12 static source list in `final_cleanup_ht12_ffi.erl` in the same
+slice.
+
 For database-only diagnostics:
 
 ```sh

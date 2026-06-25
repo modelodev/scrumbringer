@@ -375,7 +375,7 @@ fn insert_people_task(
       project_id: project_id,
       type_id: type_id,
       title: title,
-      description: "Plan QA fixture task",
+      description: "People QA fixture task",
       priority: priority,
       execution_state: hydrated_execution_state,
       created_by: created_by,
