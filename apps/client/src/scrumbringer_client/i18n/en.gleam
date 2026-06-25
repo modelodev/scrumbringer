@@ -599,7 +599,7 @@ pub fn translate(text: Text) -> String {
     text.WindowDays(days) -> "Window: " <> int.to_string(days) <> " days"
     text.Claimed -> "Claimed"
     text.Released -> "Released"
-    text.Done -> "Done"
+    text.Closed -> "Closed"
     text.MetricsOverview -> "Metrics Overview"
     text.LoadingOverview -> "Loading overview…"
     text.ReleasePercent -> "Release %"

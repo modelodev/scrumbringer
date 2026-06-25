@@ -614,7 +614,7 @@ pub fn translate(text: Text) -> String {
     text.WindowDays(days) -> "Ventana: " <> int.to_string(days) <> " días"
     text.Claimed -> "Reclamadas"
     text.Released -> "Liberadas"
-    text.Done -> "Completadas"
+    text.Closed -> "Finalizadas"
     text.MetricsOverview -> "Resumen de métricas"
     text.LoadingOverview -> "Cargando resumen…"
     text.ReleasePercent -> "Liberación %"

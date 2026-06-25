@@ -126,7 +126,7 @@ pub fn my_bar_section_renders_from_config_test() {
   assert_contains(html, "Window: 14 days")
   assert_contains(html, "Claimed")
   assert_contains(html, "Released")
-  assert_contains(html, "Done")
+  assert_contains(html, "Closed")
   assert_contains(html, "Release card")
   assert_contains(html, "Prepare release")
   assert_contains(html, "Add task to Release card")

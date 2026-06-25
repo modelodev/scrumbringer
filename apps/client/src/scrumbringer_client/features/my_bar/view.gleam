@@ -351,7 +351,7 @@ pub fn view_member_metrics_panel(
             data_table.column(t(i18n_text.Released), fn(_) {
               text(int.to_string(released_count))
             }),
-            data_table.column(t(i18n_text.Done), fn(_) {
+            data_table.column(t(i18n_text.Closed), fn(_) {
               text(int.to_string(completed_count))
             }),
           ])

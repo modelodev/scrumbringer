@@ -182,7 +182,7 @@ fn view_summary_table(
       let #(_, _, _, released, _, _, _, _) = r
       text(int.to_string(released))
     }),
-    data_table.column(i18n.t(config.locale, i18n_text.Done), fn(r) {
+    data_table.column(i18n.t(config.locale, i18n_text.Closed), fn(r) {
       let #(_, _, _, _, completed, _, _, _) = r
       text(int.to_string(completed))
     }),
@@ -381,7 +381,7 @@ fn view_by_project_table(
           let OrgMetricsProjectOverview(released_count: released, ..) = p
           text(int.to_string(released))
         }),
-        data_table.column(i18n.t(config.locale, i18n_text.Done), fn(p) {
+        data_table.column(i18n.t(config.locale, i18n_text.Closed), fn(p) {
           let OrgMetricsProjectOverview(completed_count: completed, ..) = p
           text(int.to_string(completed))
         }),
@@ -519,7 +519,7 @@ fn work_state_label(config: Config(msg), state: WorkState) -> String {
     WorkAvailable -> i18n.t(config.locale, i18n_text.AvailableCount)
     WorkClaimed -> i18n.t(config.locale, i18n_text.Claimed)
     WorkOngoing -> i18n.t(config.locale, i18n_text.OngoingCount)
-    WorkDone -> i18n.t(config.locale, i18n_text.Done)
+    WorkDone -> i18n.t(config.locale, i18n_text.Closed)
   }
 }
 

@@ -220,7 +220,7 @@ fn user_metrics_view(
       text(t(i18n_text.Released) <> ": " <> int.to_string(released_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.Done) <> ": " <> int.to_string(completed_count)),
+      text(t(i18n_text.Closed) <> ": " <> int.to_string(completed_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
       text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),

@@ -507,7 +507,7 @@ pub type Text {
   WindowDays(days: Int)
   Claimed
   Released
-  Done
+  Closed
   MetricsOverview
   LoadingOverview
   ReleasePercent
