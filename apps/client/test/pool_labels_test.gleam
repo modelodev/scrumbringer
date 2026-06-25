@@ -2,8 +2,6 @@ import scrumbringer_client/features/pool/labels
 import scrumbringer_client/i18n/locale
 
 pub fn pool_labels_translate_task_actions_without_root_model_test() {
-  let assert "Claim" = labels.claim(locale.En)
-  let assert "Release" = labels.release(locale.En)
   let assert "Drag" = labels.drag(locale.En)
 }
 

@@ -2,16 +2,8 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 
-pub fn claim(locale: Locale) -> String {
-  i18n.t(locale, i18n_text.Claim)
-}
-
 pub fn claim_this_task(locale: Locale) -> String {
   i18n.t(locale, i18n_text.ClaimThisTask)
-}
-
-pub fn release(locale: Locale) -> String {
-  i18n.t(locale, i18n_text.Release)
 }
 
 pub fn drag(locale: Locale) -> String {
