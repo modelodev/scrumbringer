@@ -15,7 +15,7 @@
 ////   Available -> "Task is available"
 ////   Claimed(Taken) -> "Task is claimed but not being worked on"
 ////   Claimed(Ongoing) -> "Task is actively being worked on"
-////   Done -> "Task is done"
+////   Done -> "Task is closed"
 //// }
 //// ```
 
@@ -23,11 +23,14 @@
 // Types
 // =============================================================================
 
-/// Task status ADT representing all possible task states.
+/// Presentation/filter projection of task execution state.
+///
+/// This is not the canonical task execution lifecycle. Use
+/// `domain/task/state.gleam` for lifecycle decisions.
 ///
 /// - `Available`: Task is open and can be claimed
 /// - `Claimed(ClaimedState)`: Task is assigned to someone
-/// - `Done`: Task is finished
+/// - `Done`: Task is closed, exposed as the historical `completed` filter value
 ///
 /// ## Example
 ///
@@ -36,7 +39,7 @@
 ///   Available -> allow_claim(task)
 ///   Claimed(Ongoing) -> show_timer(task)
 ///   Claimed(Taken) -> show_claimed_badge(task)
-///   Done -> show_completed_badge(task)
+///   Done -> show_closed_badge(task)
 /// }
 /// ```
 pub type TaskPhase {
@@ -73,7 +76,7 @@ pub type ClaimedState {
 ///   WorkAvailable -> show_claim_button()
 ///   WorkClaimed -> show_release_button()
 ///   WorkOngoing -> show_timer()
-///   WorkDone -> show_done_badge()
+///   WorkDone -> show_closed_badge()
 /// }
 /// ```
 pub type WorkState {
@@ -93,7 +96,10 @@ pub type TaskPhaseParseError {
 // Status Parsing
 // =============================================================================
 
-/// Parse a task status string into TaskPhase.
+/// Parse an external task status/filter string into TaskPhase.
+///
+/// The `"completed"` value is retained for API/filter compatibility and maps
+/// to the closed presentation phase.
 ///
 /// ## Example
 ///
@@ -116,7 +122,7 @@ pub fn parse_task_status(
   }
 }
 
-/// Convert TaskPhase to string for API.
+/// Convert TaskPhase to the external API/filter string.
 ///
 /// ## Example
 ///
@@ -124,7 +130,7 @@ pub fn parse_task_status(
 /// task_status_to_string(Available)        // -> "available"
 /// task_status_to_string(Claimed(Taken))   // -> "claimed"
 /// task_status_to_string(Claimed(Ongoing)) // -> "ongoing"
-/// task_status_to_string(Done)        // -> "completed"
+/// task_status_to_string(Done)             // -> "completed"
 /// ```
 pub fn task_status_to_string(status: TaskPhase) -> String {
   case status {
@@ -135,7 +141,10 @@ pub fn task_status_to_string(status: TaskPhase) -> String {
   }
 }
 
-/// Parse work state string into WorkState.
+/// Parse an external work-state string into WorkState.
+///
+/// The `"completed"` value is retained for API/filter compatibility and maps
+/// to the closed presentation work state.
 ///
 /// ## Example
 ///
@@ -164,7 +173,7 @@ pub fn parse_error_to_string(error: TaskPhaseParseError) -> String {
   }
 }
 
-/// Convert WorkState to string for API/UI serialization.
+/// Convert WorkState to the external API/UI serialization string.
 ///
 /// ## Example
 ///
