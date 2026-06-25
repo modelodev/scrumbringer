@@ -1,7 +1,4 @@
-import domain/task_status.{
-  Available, Claimed, Done, Ongoing, Taken, WorkAvailable, WorkClaimed, WorkDone,
-  WorkOngoing,
-}
+import domain/task_status.{WorkAvailable, WorkClaimed, WorkDone, WorkOngoing}
 
 pub fn parse_work_state_accepts_known_values_test() {
   let assert Ok(WorkAvailable) = task_status.parse_work_state("available")
@@ -25,18 +22,6 @@ pub fn work_state_to_string_returns_wire_values_test() {
   let assert "claimed" = task_status.work_state_to_string(WorkClaimed)
   let assert "ongoing" = task_status.work_state_to_string(WorkOngoing)
   let assert "completed" = task_status.work_state_to_string(WorkDone)
-}
-
-pub fn from_db_accepts_known_values_test() {
-  let assert Ok(Available) = task_status.from_db("available", False)
-  let assert Ok(Claimed(Taken)) = task_status.from_db("claimed", False)
-  let assert Ok(Claimed(Ongoing)) = task_status.from_db("claimed", True)
-  let assert Ok(Done) = task_status.from_db("completed", False)
-}
-
-pub fn from_db_rejects_unknown_values_test() {
-  let assert Error(task_status.UnknownTaskPhase("archived")) =
-    task_status.from_db("archived", False)
 }
 
 pub fn parse_error_to_string_returns_stable_messages_test() {

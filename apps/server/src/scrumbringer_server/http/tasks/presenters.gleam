@@ -20,7 +20,9 @@ import domain/task.{
   Task, TaskDependency,
 }
 import domain/task/state as task_state
-import domain/task_status.{type TaskPhase, type WorkState}
+import domain/task_status.{
+  type TaskPhase, type WorkState, Available, Claimed, Done,
+}
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
@@ -289,7 +291,11 @@ pub fn ongoing_by_json(value: Option(OngoingBy)) -> json.Json {
 /// status_to_string(Done)        // "completed"
 /// ```
 fn status_to_string(status: TaskPhase) -> String {
-  task_status.to_db_status(status)
+  case status {
+    Available -> "available"
+    Claimed(_) -> "claimed"
+    Done -> "completed"
+  }
 }
 
 /// Convert TaskPhase to work_state string for JSON output.
