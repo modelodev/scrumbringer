@@ -394,17 +394,10 @@ fn update_without_card_show(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_project_refresh_update(model, inner) {
+  case refresh_update.try_project_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_project_refresh(model, inner, member_refresh)
   }
-}
-
-fn try_pool_project_refresh_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  refresh_update.try_project_update(model, inner)
 }
 
 fn update_without_project_refresh(
@@ -413,17 +406,10 @@ fn update_without_project_refresh(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_card_refresh_update(model, inner) {
+  case refresh_update.try_card_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_card_refresh(model, inner, member_refresh)
   }
-}
-
-fn try_pool_card_refresh_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  refresh_update.try_card_update(model, inner)
 }
 
 fn update_without_card_refresh(
@@ -522,19 +508,10 @@ fn update_without_plan_move(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_filters_update(model, inner, member_refresh) {
+  case filters_route.try_update(model, inner, member_refresh) {
     opt.Some(result) -> result
     opt.None -> update_without_filters(model, inner, member_refresh)
   }
-}
-
-fn try_pool_filters_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-  member_refresh: fn(client_state.Model) ->
-    #(client_state.Model, effect.Effect(client_state.Msg)),
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  filters_route.try_update(model, inner, member_refresh)
 }
 
 fn update_without_filters(
@@ -543,17 +520,10 @@ fn update_without_filters(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_preferences_update(model, inner) {
+  case preferences_effect.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_preferences(model, inner, member_refresh)
   }
-}
-
-fn try_pool_preferences_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  preferences_effect.try_update(model, inner)
 }
 
 fn update_without_preferences(
@@ -562,17 +532,10 @@ fn update_without_preferences(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_people_update(model, inner) {
+  case people_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_people(model, inner, member_refresh)
   }
-}
-
-fn try_pool_people_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  people_route.try_update(model, inner)
 }
 
 fn update_without_people(
@@ -581,17 +544,10 @@ fn update_without_people(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_metrics_update(model, inner) {
+  case metrics_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_metrics(model, inner, member_refresh)
   }
-}
-
-fn try_pool_metrics_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  metrics_route.try_update(model, inner)
 }
 
 fn update_without_metrics(
@@ -600,17 +556,10 @@ fn update_without_metrics(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_rule_metrics_update(model, inner) {
+  case rule_metrics_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_rule_metrics(model, inner, member_refresh)
   }
-}
-
-fn try_pool_rule_metrics_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  rule_metrics_route.try_update(model, inner)
 }
 
 fn update_without_rule_metrics(
@@ -619,17 +568,10 @@ fn update_without_rule_metrics(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_skills_update(model, inner) {
+  case skills_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_skills(model, inner, member_refresh)
   }
-}
-
-fn try_pool_skills_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  skills_route.try_update(model, inner)
 }
 
 fn update_without_skills(
@@ -701,17 +643,10 @@ fn update_without_now_working(
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_positions_update(model, inner) {
+  case positions_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_positions(model, inner, member_refresh)
   }
-}
-
-fn try_pool_positions_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  positions_route.try_update(model, inner)
 }
 
 fn update_without_positions(
@@ -730,17 +665,10 @@ fn update_without_task_route(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case try_pool_view_mode_update(model, inner) {
+  case view_mode_route.try_update(model, inner) {
     opt.Some(result) -> result
     opt.None -> update_without_view_mode(model, inner)
   }
-}
-
-fn try_pool_view_mode_update(
-  model: client_state.Model,
-  inner: client_state.PoolMsg,
-) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  view_mode_route.try_update(model, inner)
 }
 
 fn update_without_view_mode(
