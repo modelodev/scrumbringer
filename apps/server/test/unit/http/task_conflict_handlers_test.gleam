@@ -130,7 +130,7 @@ pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
-    fixtures.create_task(handler, session, project_id, type_id, "Done")
+    fixtures.create_task(handler, session, project_id, type_id, "Closed")
 
   expect.expect_status(claim_task(handler, session, task_id, 1), 200)
   expect.expect_status(close_task(handler, session, task_id, 2), 200)

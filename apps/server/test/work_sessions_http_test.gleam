@@ -81,8 +81,8 @@ pub fn start_rejects_closed_task_test() {
       seed_db.TaskInsertOptions(
         project_id: project_id,
         type_id: type_id,
-        title: "Done",
-        description: "Done",
+        title: "Closed",
+        description: "Closed",
         priority: 3,
         execution_state: task_state.Closed(
           reason: task_state.ClosedByClaimant,

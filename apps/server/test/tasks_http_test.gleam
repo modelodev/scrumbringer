@@ -1261,9 +1261,9 @@ pub fn task_dependencies_reject_closed_dependency_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Deps Done")
+  create_project(handler, session, csrf, "Deps Closed")
   let project_id =
-    single_int(db, "select id from projects where name = 'Deps Done'", [])
+    single_int(db, "select id from projects where name = 'Deps Closed'", [])
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1389,11 +1389,11 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
-  create_project(handler, session, csrf, "Blocked Claim Done")
+  create_project(handler, session, csrf, "Blocked Claim Closed")
   let project_id =
     single_int(
       db,
-      "select id from projects where name = 'Blocked Claim Done'",
+      "select id from projects where name = 'Blocked Claim Closed'",
       [],
     )
 
@@ -2266,7 +2266,16 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     )
 
   let closed_id =
-    create_task(handler, session, csrf, project_id, "Done", "", 3, bug_type_id)
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_id,
+      "Closed",
+      "",
+      3,
+      bug_type_id,
+    )
 
   claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
   claim_task(handler, session, csrf, closed_id, 1) |> expect.equal(200)
@@ -2318,7 +2327,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(completed_filter_res, 200)
   decode_task_titles(simulate.read_body(completed_filter_res))
-  |> expect.equal(["Done"])
+  |> expect.equal(["Closed"])
 
   let type_res =
     handler(
@@ -2335,7 +2344,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
   expect.expect_status(type_res, 200)
   decode_task_titles(simulate.read_body(type_res))
-  |> expect.equal(["Done", "Available"])
+  |> expect.equal(["Closed", "Available"])
 
   let invalid_status_res =
     handler(

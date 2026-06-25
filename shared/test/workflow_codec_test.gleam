@@ -7,12 +7,12 @@ import domain/workflow/workflow_codec as codec
 
 pub fn rule_decoder_decodes_typed_task_target_test() {
   let body =
-    "{\"id\":1,\"workflow_id\":2,\"name\":\"Complete task\",\"goal\":null,\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":7},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-28T12:00:00Z\",\"template\":null}"
+    "{\"id\":1,\"workflow_id\":2,\"name\":\"Close task\",\"goal\":null,\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":7},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-28T12:00:00Z\",\"template\":null}"
 
   let assert Ok(Rule(
     id: 1,
     workflow_id: 2,
-    name: "Complete task",
+    name: "Close task",
     goal: option.None,
     trigger: automation.TaskClosed(option.Some(7)),
     action: option.Some(automation.CreateTask(11)),
@@ -24,7 +24,7 @@ pub fn rule_decoder_decodes_typed_task_target_test() {
 
 pub fn rule_decoder_rejects_missing_trigger_test() {
   let body =
-    "{\"id\":1,\"workflow_id\":2,\"name\":\"Complete task\",\"goal\":null,\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-28T12:00:00Z\",\"template\":null}"
+    "{\"id\":1,\"workflow_id\":2,\"name\":\"Close task\",\"goal\":null,\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-28T12:00:00Z\",\"template\":null}"
 
   let assert Error(_) = json.parse(body, codec.rule_decoder())
 }
