@@ -16,7 +16,7 @@ pub type PlanFilters {
 pub type CardRollup {
   CardRollup(
     total_tasks: Int,
-    completed_tasks: Int,
+    closed_tasks: Int,
     available_tasks: Int,
     claimed_tasks: Int,
     ongoing_tasks: Int,

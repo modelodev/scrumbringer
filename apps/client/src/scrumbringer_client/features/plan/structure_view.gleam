@@ -557,7 +557,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
         view_state_cell(config.locale, row),
         span([attribute.class("plan-task-count")], [
           text(
-            int.to_string(rollup.completed_tasks)
+            int.to_string(rollup.closed_tasks)
             <> "/"
             <> int.to_string(rollup.total_tasks)
             <> " tareas",
@@ -678,7 +678,7 @@ fn view_task_count_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(rollup:, ..) = row
   span([attribute.class("plan-task-count")], [
     text(
-      int.to_string(rollup.completed_tasks)
+      int.to_string(rollup.closed_tasks)
       <> "/"
       <> int.to_string(rollup.total_tasks),
     ),
@@ -1339,7 +1339,7 @@ fn summary_for_rows(
 fn rollup_for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
   types.CardRollup(
     total_tasks: list.length(tasks),
-    completed_tasks: list.count(tasks, is_closed_task),
+    closed_tasks: list.count(tasks, is_closed_task),
     available_tasks: list.count(tasks, is_available_task),
     claimed_tasks: list.count(tasks, is_taken_task),
     ongoing_tasks: list.count(tasks, is_ongoing_task),
