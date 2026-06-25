@@ -58,7 +58,7 @@ pub type MyCardProgress {
     card_id: Int,
     card_title: String,
     card_color: Option(card.CardColor),
-    completed: Int,
+    closed: Int,
     total: Int,
   )
 }
@@ -413,7 +413,7 @@ fn view_my_card_item(
     ],
     [
       span([attribute.class("card-title")], [text(card.card_title)]),
-      card_progress.view(card.completed, card.total, card_progress.Compact),
+      card_progress.view(card.closed, card.total, card_progress.Compact),
     ],
   )
 }

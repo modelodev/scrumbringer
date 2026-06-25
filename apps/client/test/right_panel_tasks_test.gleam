@@ -127,7 +127,7 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
       card_id: 1,
       card_title: "Sprint",
       card_color: Some(card.Blue),
-      completed: 1,
+      closed: 1,
       total: 3,
     )
 

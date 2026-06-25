@@ -65,7 +65,7 @@ pub fn my_cards_returns_cards_with_user_claimed_tasks_and_progress_test() {
     card_id: 1,
     card_title: "Release",
     card_color: Some(Blue),
-    completed: 1,
+    closed: 1,
     total: 2,
   ) = progress
 }

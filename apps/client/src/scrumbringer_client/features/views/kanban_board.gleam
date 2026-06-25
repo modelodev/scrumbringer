@@ -102,7 +102,7 @@ pub type KanbanConfig(msg) {
 type CardWithProgress {
   CardWithProgress(
     card: Card,
-    completed: Int,
+    closed: Int,
     total: Int,
     tasks: List(domain_task.Task),
   )
@@ -406,7 +406,7 @@ fn view_card(
     tasks: preview_tasks,
     org_users: config.org_users,
     preview_limit: 3,
-    progress_completed: cwp.completed,
+    progress_closed: cwp.closed,
     progress_total: cwp.total,
     project_today: client_ffi.date_today(),
     description: option.Some(cwp.card.description),
@@ -549,11 +549,11 @@ fn compute_progress(
       list.filter(tasks, fn(task) {
         card_queries.task_in_card_subtree(task, card.id, all_cards)
       })
-    let completed = list.count(card_tasks, is_closed_task)
+    let closed = list.count(card_tasks, is_closed_task)
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,
-      completed: completed,
+      closed: closed,
       total: total,
       tasks: card_tasks,
     )

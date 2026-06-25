@@ -49,7 +49,7 @@ fn config(card: Card) {
     tasks: [],
     org_users: [],
     preview_limit: 3,
-    progress_completed: 0,
+    progress_closed: 0,
     progress_total: 0,
     project_today: "2026-06-19",
     description: None,

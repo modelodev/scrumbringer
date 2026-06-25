@@ -59,7 +59,7 @@ pub fn my_cards(
     case has_claimed_task {
       False -> Error(Nil)
       True -> {
-        let completed =
+        let closed =
           list.count(card_tasks, fn(task) {
             case task.state {
               task_state.Closed(..) -> True
@@ -70,7 +70,7 @@ pub fn my_cards(
           card_id: card.id,
           card_title: card.title,
           card_color: card.color,
-          completed: completed,
+          closed: closed,
           total: list.length(card_tasks),
         ))
       }

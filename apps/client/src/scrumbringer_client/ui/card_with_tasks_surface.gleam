@@ -36,7 +36,7 @@ pub type Config(msg) {
     tasks: List(domain_task.Task),
     org_users: List(OrgUser),
     preview_limit: Int,
-    progress_completed: Int,
+    progress_closed: Int,
     progress_total: Int,
     project_today: String,
     description: option.Option(String),
@@ -151,7 +151,7 @@ fn due_date_class(card_state, due_date: String, project_today: String) -> String
 fn view_progress(config: Config(msg)) -> Element(msg) {
   div([attribute.class(progress_class())], [
     card_progress.view(
-      config.progress_completed,
+      config.progress_closed,
       config.progress_total,
       card_progress.Default,
     ),
