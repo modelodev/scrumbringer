@@ -14,6 +14,23 @@ fn assert_no_claim_word(copy: String) {
   let assert False = string.contains(copy, "Claim")
 }
 
+fn assert_no_complete_word(copy: String) {
+  let assert False = string.contains(copy, "complete")
+  let assert False = string.contains(copy, "Complete")
+}
+
+pub fn english_metrics_copy_uses_close_vocabulary_test() {
+  let labels = [
+    i18n.t(locale.En, text.AvgClaimToComplete),
+    i18n.t(locale.En, text.Completes),
+  ]
+
+  list.each(labels, assert_no_complete_word)
+  i18n.t(locale.En, text.AvgClaimToComplete)
+  |> assert_equal("Avg claim → close")
+  i18n.t(locale.En, text.Completes) |> assert_equal("Closures")
+}
+
 pub fn spanish_metrics_copy_uses_localized_claim_vocabulary_test() {
   let labels = [
     i18n.t(locale.Es, text.HealthTimeToFirstClaim),

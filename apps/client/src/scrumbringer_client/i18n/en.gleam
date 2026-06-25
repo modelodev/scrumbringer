@@ -611,7 +611,7 @@ pub fn translate(text: Text) -> String {
     text.HealthAttention -> "Attention"
     text.HealthAlert -> "Alert"
     text.NoSample -> "No sample"
-    text.AvgClaimToComplete -> "Avg claim → complete"
+    text.AvgClaimToComplete -> "Avg claim → close"
     text.AvgTimeInClaimed -> "Avg time in claimed"
     text.StaleClaims -> "Stale claims"
     text.LastClaim -> "Last claim"
@@ -631,7 +631,7 @@ pub fn translate(text: Text) -> String {
     text.Status -> "Status"
     text.Claims -> "Claims"
     text.Releases -> "Releases"
-    text.Completes -> "Completes"
+    text.Completes -> "Closures"
     text.FirstClaim -> "First claim"
     text.ProjectTasks(project_name) -> "Project tasks: " <> project_name
 
