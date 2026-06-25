@@ -362,7 +362,6 @@ pub fn css() -> List(String) {
     // Card group header in My Bar
     ".my-bar-card-group { margin-bottom: 16px; }",
     ".my-bar-card-header { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--sb-surface-elevated, var(--sb-elevated)); border-radius: 8px 8px 0 0; font-weight: var(--sb-weight-semibold); font-size: var(--sb-font-md); }",
-    ".my-bar-card-tasks { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--sb-surface); border-radius: 0 0 8px 8px; border: 1px solid color-mix(in oklab, var(--sb-card-accent, var(--sb-muted)) 28%, var(--sb-border)); border-top: 0; }",
     ".my-bar-card-progress { font-size: var(--sb-font-sm); color: var(--sb-muted); margin-left: auto; font-variant-numeric: tabular-nums; }",
     // Member Fichas section
     ".fichas-list { display: flex; flex-direction: column; gap: 12px; }",
