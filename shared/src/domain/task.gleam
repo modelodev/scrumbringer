@@ -5,10 +5,8 @@
 //// ## Usage
 ////
 //// ```gleam
-//// import shared/domain/task.{type Task, type TaskFilters}
+//// import shared/domain/task.{type Task}
 //// import shared/domain/task/state as task_state
-////
-//// let filters = TaskFilters(status: None, type_id: None, capability_id: None, q: None)
 //// ```
 
 import domain/card
@@ -156,23 +154,6 @@ pub type WorkSession {
 /// ```
 pub type WorkSessionsPayload {
   WorkSessionsPayload(active_sessions: List(WorkSession), as_of: String)
-}
-
-/// Filters for listing tasks.
-///
-/// ## Example
-///
-/// ```gleam
-/// TaskFilters(status: Some(Available), type_id: None, capability_id: Some(1), q: None, blocked: None)
-/// ```
-pub type TaskFilters {
-  TaskFilters(
-    status: Option(TaskPhase),
-    type_id: Option(Int),
-    capability_id: Option(Int),
-    q: Option(String),
-    blocked: Option(Bool),
-  )
 }
 
 // =============================================================================

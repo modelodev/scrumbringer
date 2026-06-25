@@ -4,17 +4,16 @@ import gleam/option as opt
 
 import domain/api_error.{type ApiError}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import domain/task.{
-  type Task, type TaskDependency, type TaskFilters, TaskFilters,
-}
+import domain/task.{type Task, type TaskDependency}
+import scrumbringer_client/api/tasks/operations as task_operations
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/dependency_list
 import scrumbringer_client/features/tasks/task_list
 
-pub fn candidate_filters() -> TaskFilters {
-  TaskFilters(
+pub fn candidate_filters() -> task_operations.TaskFilters {
+  task_operations.TaskFilters(
     status: opt.None,
     type_id: opt.None,
     capability_id: opt.None,

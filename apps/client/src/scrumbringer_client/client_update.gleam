@@ -55,8 +55,6 @@ import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 
-// Domain types
-import domain/task.{type TaskFilters, TaskFilters}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
@@ -1704,7 +1702,7 @@ fn fetch_right_panel_data(
       let tasks_effect =
         task_operations_api.list_project_tasks(
           project_id,
-          TaskFilters(
+          task_operations_api.TaskFilters(
             status: opt.None,
             type_id: opt.None,
             capability_id: opt.None,
@@ -1985,8 +1983,10 @@ fn refresh_member_data(
 
 // cards_effects_for_refresh removed from member refresh to avoid admin coupling.
 
-fn task_filters_for_member_route(model: client_state.Model) -> TaskFilters {
-  TaskFilters(
+fn task_filters_for_member_route(
+  model: client_state.Model,
+) -> task_operations_api.TaskFilters {
+  task_operations_api.TaskFilters(
     status: opt.None,
     type_id: model.member.pool.member_filters_type_id,
     capability_id: model.member.pool.member_filters_capability_id,

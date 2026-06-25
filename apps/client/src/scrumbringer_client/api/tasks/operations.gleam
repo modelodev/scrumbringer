@@ -25,11 +25,21 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
-import domain/task.{type Task, type TaskFilters, TaskFilters}
+import domain/task.{type Task}
 import domain/task/task_codec as decoders
 import domain/task_status
 import scrumbringer_client/api/core
 import scrumbringer_client/client_ffi
+
+pub type TaskFilters {
+  TaskFilters(
+    status: option.Option(task_status.TaskPhase),
+    type_id: option.Option(Int),
+    capability_id: option.Option(Int),
+    q: option.Option(String),
+    blocked: option.Option(Bool),
+  )
+}
 
 // =============================================================================
 // URL Helpers
