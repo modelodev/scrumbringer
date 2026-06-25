@@ -8,7 +8,7 @@
 ////
 //// - List tasks for a project
 //// - Create new tasks
-//// - Claim, release, and complete tasks
+//// - Claim, release, and close tasks
 ////
 //// ## Relations
 ////
@@ -237,7 +237,7 @@ pub fn release_task(
   )
 }
 
-/// Complete a claimed task.
+/// Closes a claimed task.
 pub fn complete_task(
   task_id: Int,
   version: Int,

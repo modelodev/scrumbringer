@@ -1,4 +1,4 @@
-//// Task mutation update flow for claim/release/complete operations.
+//// Task mutation update flow for claim, release, and close operations.
 
 import gleam/option as opt
 import gleam/string
@@ -264,7 +264,7 @@ fn handle_release_clicked(
   }
 }
 
-/// Handle complete button click with optimistic update.
+/// Handles close button clicks with an optimistic update.
 /// Immediately marks task as closed locally, sends API request.
 fn handle_complete_clicked(
   model: member_pool.Model,

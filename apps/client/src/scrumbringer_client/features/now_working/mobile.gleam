@@ -210,7 +210,7 @@ pub fn view_overlay(config: Config(msg)) -> Element(msg) {
 // =============================================================================
 
 /// Row for an active work session (NOW WORKING section).
-/// Actions: Pause, Complete
+/// Actions: Pause, Close
 fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
   let SessionInfo(
     task_id: task_id,
