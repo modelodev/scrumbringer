@@ -2,14 +2,14 @@
 
 import scrumbringer_client/client_state
 import scrumbringer_client/features/auth/msg as auth_messages
-import scrumbringer_client/features/auth/update as auth_workflow
+import scrumbringer_client/features/auth/update as auth_update
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 
 pub fn from_state(
   model: client_state.Model,
-) -> auth_workflow.Context(client_state.Msg) {
-  auth_workflow.Context(
+) -> auth_update.Context(client_state.Msg) {
+  auth_update.Context(
     on_login_dom_values_read: fn(email, password) {
       client_state.auth_msg(auth_messages.LoginDomValuesRead(email, password))
     },

@@ -90,7 +90,7 @@ import scrumbringer_client/features/admin/rule_metrics as rule_metrics_workflow
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/update as admin_workflow
 import scrumbringer_client/features/auth/root_context as auth_context
-import scrumbringer_client/features/auth/update as auth_workflow
+import scrumbringer_client/features/auth/update as auth_update
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
 import scrumbringer_client/features/pool/card_refresh
@@ -524,10 +524,7 @@ fn apply_route_fields(
 
       #(
         model,
-        auth_workflow.accept_invite_effect(
-          action,
-          auth_context.from_state(model),
-        ),
+        auth_update.accept_invite_effect(action, auth_context.from_state(model)),
       )
     }
 
@@ -553,7 +550,7 @@ fn apply_route_fields(
 
       #(
         model,
-        auth_workflow.reset_password_effect(
+        auth_update.reset_password_effect(
           action,
           auth_context.from_state(model),
         ),
@@ -917,7 +914,7 @@ fn finish_authenticated_session(
 
 fn handle_auth_action(
   model: client_state.Model,
-  action: auth_workflow.Action,
+  action: auth_update.Action,
   local_fx: Effect(client_state.Msg),
   bootstrap_fn: fn(client_state.Model) ->
     #(client_state.Model, Effect(client_state.Msg)),
@@ -926,9 +923,9 @@ fn handle_auth_action(
   replace_url_fn: fn(client_state.Model) -> Effect(client_state.Msg),
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case action {
-    auth_workflow.NoAction -> #(model, local_fx)
+    auth_update.NoAction -> #(model, local_fx)
 
-    auth_workflow.LoginSucceeded(user) ->
+    auth_update.LoginSucceeded(user) ->
       finish_authenticated_session(
         model,
         user,
@@ -940,7 +937,7 @@ fn handle_auth_action(
         replace_url_fn,
       )
 
-    auth_workflow.LogoutSucceeded -> {
+    auth_update.LogoutSucceeded -> {
       let model = show_login_without_user(model, False)
       #(
         model,
@@ -955,12 +952,12 @@ fn handle_auth_action(
       )
     }
 
-    auth_workflow.LogoutUnauthorized -> {
+    auth_update.LogoutUnauthorized -> {
       let model = show_login_without_user(model, False)
       #(model, effect.batch([local_fx, replace_url_fn(model)]))
     }
 
-    auth_workflow.LogoutFailed -> #(
+    auth_update.LogoutFailed -> #(
       model,
       effect.batch([
         local_fx,
@@ -971,7 +968,7 @@ fn handle_auth_action(
       ]),
     )
 
-    auth_workflow.AcceptInviteAuthed(user) ->
+    auth_update.AcceptInviteAuthed(user) ->
       finish_authenticated_session(
         model,
         user,
@@ -983,7 +980,7 @@ fn handle_auth_action(
         replace_url_fn,
       )
 
-    auth_workflow.PasswordResetDone -> {
+    auth_update.PasswordResetDone -> {
       let model =
         client_state.update_core(model, fn(core) {
           client_state.CoreModel(..core, page: client_state.Login)
@@ -2110,7 +2107,7 @@ pub fn update(
 
     client_state.AuthMsg(inner) -> {
       let #(auth, fx, action) =
-        auth_workflow.update(model.auth, inner, auth_context.from_state(model))
+        auth_update.update(model.auth, inner, auth_context.from_state(model))
       let model = client_state.update_auth(model, fn(_) { auth })
       handle_auth_action(
         model,

@@ -65,7 +65,7 @@ type RangeBoundary {
 // Routing
 // =============================================================================
 
-/// Routes workflow metrics requests (GET only).
+/// Routes automation engine metrics requests (GET only).
 ///
 /// Example:
 ///   handle_workflow_metrics(req, ctx, workflow_id)

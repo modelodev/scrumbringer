@@ -93,7 +93,7 @@ import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
-import scrumbringer_client/features/auth/update as auth_workflow
+import scrumbringer_client/features/auth/update as auth_update
 
 // =============================================================================
 // Application Entry Point
@@ -141,8 +141,8 @@ pub fn main() {
   }
 }
 
-fn auth_context(model: Model) -> auth_workflow.Context(Msg) {
-  auth_workflow.Context(
+fn auth_context(model: Model) -> auth_update.Context(Msg) {
+  auth_update.Context(
     on_login_dom_values_read: fn(email, password) {
       auth_msg(auth_messages.LoginDomValuesRead(email, password))
     },
@@ -314,9 +314,9 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   let auth_ctx = auth_context(model)
   let base_effect = case page {
     AcceptInvitePage ->
-      auth_workflow.accept_invite_effect(accept_action, auth_ctx)
+      auth_update.accept_invite_effect(accept_action, auth_ctx)
     ResetPasswordPage ->
-      auth_workflow.reset_password_effect(reset_action, auth_ctx)
+      auth_update.reset_password_effect(reset_action, auth_ctx)
     _ -> api_auth.fetch_me(MeFetched)
   }
 

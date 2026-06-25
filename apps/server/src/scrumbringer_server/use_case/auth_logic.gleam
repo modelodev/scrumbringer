@@ -2,7 +2,7 @@
 ////
 //// ## Mission
 ////
-//// Provides core authentication workflows independent of storage backend.
+//// Provides core authentication flow logic independent of storage backend.
 ////
 //// ## Responsibilities
 ////
@@ -30,7 +30,7 @@ import pog
 import scrumbringer_server/use_case/password
 import scrumbringer_server/use_case/store_state as ss
 
-/// Errors returned by authentication workflows.
+/// Errors returned by authentication flow logic.
 pub type AuthError {
   InviteRequired
   InviteInvalid

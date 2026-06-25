@@ -454,7 +454,7 @@ fn find_task_type(config: Config(msg), type_id: Int) -> opt.Option(TaskType) {
   }
 }
 
-/// Get metrics for a specific rule from the workflow metrics.
+/// Get metrics for a specific rule from the automation engine metrics.
 fn get_rule_metrics(
   metrics: Remote(api_rule_metrics.WorkflowMetrics),
   rule_id: Int,

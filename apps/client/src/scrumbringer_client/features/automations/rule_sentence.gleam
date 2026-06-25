@@ -1,6 +1,6 @@
 //// Human-readable automation rule sentence.
 ////
-//// Receives typed workflow/automation domain data and renders the cause/effect
+//// Receives typed automation domain data and renders the cause/effect
 //// phrase used by the automations console. It does not decide permissions or
 //// trigger actions.
 
