@@ -41,6 +41,18 @@ pub fn closed_card_does_not_show_overdue_alarm_test() {
   assert_not_contains(html, "decay-shake")
 }
 
+pub fn invalid_card_due_date_does_not_show_overdue_alarm_test() {
+  let html =
+    card_with_tasks_surface.view(config(
+      Card(..sample_card(), state: Active, due_date: Some("not-a-date")),
+    ))
+    |> element.to_document_string
+
+  assert_contains(html, "card-due-date")
+  assert_contains(html, "not-a-date")
+  assert_not_contains(html, "card-due-date-overdue")
+}
+
 fn config(card: Card) {
   card_with_tasks_surface.Config(
     locale: locale.En,

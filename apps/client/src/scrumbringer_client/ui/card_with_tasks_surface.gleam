@@ -1,4 +1,5 @@
 import domain/card.{type Card, Closed}
+import domain/due_date as due_date_domain
 import domain/org.{type OrgUser}
 import domain/task as domain_task
 import domain/task/state as task_execution_state
@@ -140,11 +141,17 @@ fn view_due_date(config: Config(msg)) -> Element(msg) {
 
 fn due_date_class(card_state, due_date: String, project_today: String) -> String {
   let base = "card-due-date"
-  case
-    card_state != Closed && string.compare(due_date, project_today) == order.Lt
-  {
+  case card_state != Closed && due_date_before(due_date, project_today) {
     True -> base <> " card-due-date-overdue"
     False -> base
+  }
+}
+
+fn due_date_before(due_date: String, project_today: String) -> Bool {
+  case due_date_domain.parse(due_date), due_date_domain.parse(project_today) {
+    Ok(parsed_due_date), Ok(parsed_project_today) ->
+      due_date_domain.compare(parsed_due_date, parsed_project_today) == order.Lt
+    _, _ -> False
   }
 }
 
