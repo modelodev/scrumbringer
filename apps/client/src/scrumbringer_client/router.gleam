@@ -199,10 +199,15 @@ fn parse_org_route(pathname: String, search: String) -> ParseResult {
 
 fn parse_org_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/org")
-  case org_section_from_slug(slug) {
-    Ok(section) -> parse_org_section_query(section, search)
-    Error(_) ->
-      parse_org_section_query(permissions.Invites, search) |> as_redirect
+  case slug {
+    "assignments" ->
+      parse_org_section_query(permissions.Team, search) |> as_redirect
+    _ ->
+      case org_section_from_slug(slug) {
+        Ok(section) -> parse_org_section_query(section, search)
+        Error(_) ->
+          parse_org_section_query(permissions.Invites, search) |> as_redirect
+      }
   }
 }
 
@@ -409,24 +414,6 @@ pub fn push_team_view(
   push_url(format_team(Some(view)))
 }
 
-pub fn format_assignments(
-  view: Option(assignments_view_mode.AssignmentsViewMode),
-) -> String {
-  format_team(view)
-}
-
-pub fn replace_assignments_view(
-  view: assignments_view_mode.AssignmentsViewMode,
-) -> Effect(msg) {
-  replace_team_view(view)
-}
-
-pub fn push_assignments_view(
-  view: assignments_view_mode.AssignmentsViewMode,
-) -> Effect(msg) {
-  push_team_view(view)
-}
-
 fn search_to_query(search: String) -> String {
   case string.starts_with(search, "?") {
     True -> string.drop_start(search, 1)
@@ -583,7 +570,7 @@ fn org_section_from_slug(slug: String) -> Result(permissions.AdminSection, Nil) 
     "settings" -> Ok(permissions.OrgSettings)
     "users" -> Ok(permissions.OrgSettings)
     "projects" -> Ok(permissions.Projects)
-    "team" | "assignments" -> Ok(permissions.Team)
+    "team" -> Ok(permissions.Team)
     "api-tokens" -> Ok(permissions.ApiTokens)
     "metrics" -> Ok(permissions.Metrics)
     _ -> Error(Nil)

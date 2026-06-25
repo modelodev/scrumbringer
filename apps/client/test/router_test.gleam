@@ -256,10 +256,10 @@ pub fn parse_accept_invite_token_test() {
   assert_equal(parsed, router.Parsed(router.AcceptInvite("il_token")))
 }
 
-pub fn parse_org_assignments_test() {
+pub fn parse_org_assignments_redirects_to_team_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", ""))
 
-  assert_equal(parsed, router.Parsed(router.Org(permissions.Team)))
+  assert_equal(parsed, router.Redirect(router.Org(permissions.Team)))
 }
 
 pub fn parse_org_team_test() {
@@ -309,7 +309,7 @@ pub fn parse_member_removed_list_view_redirects_test() {
   assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
 
-pub fn parse_org_assignments_invalid_view_redirects_test() {
+pub fn parse_org_assignments_invalid_view_redirects_to_team_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", "?view=pool"))
 
   assert_equal(parsed, router.Redirect(router.Org(permissions.Team)))
