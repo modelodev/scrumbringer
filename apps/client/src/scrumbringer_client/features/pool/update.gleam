@@ -850,7 +850,7 @@ fn update_without_view_mode(
     | pool_messages.CardCrudUpdated(_)
     | pool_messages.CardCrudDeleted(_)
     | pool_messages.CardsShowEmptyToggled
-    | pool_messages.CardsShowDoneToggled
+    | pool_messages.CardsShowClosedToggled
     | pool_messages.CardsStateFilterChanged(_)
     | pool_messages.CardsSearchChanged(_) -> #(model, effect.none())
 

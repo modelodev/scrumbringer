@@ -195,7 +195,7 @@ pub type Msg {
   CardCrudUpdated(Card)
   CardCrudDeleted(Int)
   CardsShowEmptyToggled
-  CardsShowDoneToggled
+  CardsShowClosedToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
   OpenCardShow(Int)

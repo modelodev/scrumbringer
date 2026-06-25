@@ -222,7 +222,7 @@ pub fn show_closed_toggled_flips_visibility_test() {
     admin_cards.Model(..admin_cards.default_model(), cards_show_closed: True)
 
   let #(next, fx, auth_policy, focus_policy) =
-    update(model, pool_messages.CardsShowDoneToggled)
+    update(model, pool_messages.CardsShowClosedToggled)
 
   let assert False = next.cards_show_closed
   let assert True = fx == effect.none()

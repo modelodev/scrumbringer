@@ -1015,7 +1015,7 @@ pub type Text {
   Rules
   // Story 4.9: Cards config filters (UX improvements)
   ShowEmptyCards
-  ShowDoneCards
+  ShowClosedCards
   Organization
   OrgUsers
   Invites

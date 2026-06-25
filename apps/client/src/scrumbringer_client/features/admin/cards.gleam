@@ -98,7 +98,7 @@ pub fn try_update(
       handle_show_empty_toggled(model)
       |> without_policies
 
-    pool_messages.CardsShowDoneToggled ->
+    pool_messages.CardsShowClosedToggled ->
       handle_show_closed_toggled(model)
       |> without_policies
 

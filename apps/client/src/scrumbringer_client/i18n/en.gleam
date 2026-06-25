@@ -1216,7 +1216,7 @@ pub fn translate(text: Text) -> String {
     text.Rules -> "Rules"
     // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Show empty"
-    text.ShowDoneCards -> "Show closed"
+    text.ShowClosedCards -> "Show closed"
     text.Organization -> "Organization"
     text.OrgUsers -> "Users"
     text.Invites -> "Invitations"
