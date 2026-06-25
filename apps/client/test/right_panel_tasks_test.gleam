@@ -96,6 +96,8 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
   assert_contains(html, "task-type-icon")
   assert_contains(html, "task-timer")
   assert_contains(html, "title=\"Fix login\"")
+  assert_contains(html, "Close task")
+  assert_not_contains(html, "aria-label=\"Complete\"")
 }
 
 pub fn right_panel_my_task_renders_border_and_actions_test() {
