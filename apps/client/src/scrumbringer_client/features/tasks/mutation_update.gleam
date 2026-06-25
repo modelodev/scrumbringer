@@ -347,7 +347,7 @@ fn handle_task_released_ok(
   #(mutation_state.confirm_task(model, task), effect.none())
 }
 
-/// Handle successful task completion.
+/// Handle successful task close.
 /// Clears snapshot and refreshes from server for authoritative state.
 fn handle_task_completed_ok(
   model: member_pool.Model,

@@ -5,7 +5,7 @@
 ////
 //// ## Responsibilities
 ////
-//// - Org-wide metrics overview panel (claims, releases, completions)
+//// - Org-wide metrics overview panel (claims, releases, closed tasks)
 //// - Time-to-first-claim histogram and buckets
 //// - Release rate distribution
 //// - Per-project metrics table
