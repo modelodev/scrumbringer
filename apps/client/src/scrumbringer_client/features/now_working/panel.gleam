@@ -55,7 +55,7 @@ pub type Config(msg) {
     error: opt.Option(String),
     disable_actions: Bool,
     on_pause: msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_close: fn(Int, Int) -> msg,
   )
 }
 
@@ -137,7 +137,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
         task_state_ui.pause_action(config.locale),
         config.on_pause,
         task_state_ui.close_action(config.locale),
-        config.on_complete(task_id, version),
+        config.on_close(task_id, version),
         action_buttons.SizeXs,
         config.disable_actions,
         "",

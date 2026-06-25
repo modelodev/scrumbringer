@@ -175,7 +175,7 @@ fn now_working_config(context: Context(msg)) -> now_working_panel.Config(msg) {
     disable_actions: context.pool.member_task_mutation_in_flight
       || context.now_working.member_now_working_in_flight,
     on_pause: context.callbacks.on_now_working_pause,
-    on_complete: context.callbacks.on_complete,
+    on_close: context.callbacks.on_complete,
   )
 }
 

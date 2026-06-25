@@ -55,7 +55,7 @@ pub type Config(msg) {
     disable_actions: Bool,
     on_panel_toggled: msg,
     on_pause: msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_close: fn(Int, Int) -> msg,
     on_start: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
   )
@@ -233,7 +233,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
     ),
     action_buttons.task_icon_button_with_class(
       task_state_ui.close_action(config.locale),
-      config.on_complete(task_id, version),
+      config.on_close(task_id, version),
       icons.Check,
       icons.Small,
       config.disable_actions,

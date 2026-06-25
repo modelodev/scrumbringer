@@ -1255,7 +1255,7 @@ fn now_working_mobile_config(
       layout_messages.MemberPanelToggled,
     ),
     on_pause: client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked),
-    on_complete: fn(task_id, version) {
+    on_close: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
     },
     on_start: fn(task_id) {
