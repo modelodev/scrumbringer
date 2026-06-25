@@ -7,7 +7,6 @@ import domain/card.{type CardColor}
 import domain/note/entity.{type Note}
 import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status.{Claimed}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
@@ -64,7 +63,6 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   let domain_task.Task(id: id, task_type: task_type, title: title, ..) =
     config.task
-  let status = domain_task.status(config.task)
 
   let is_mine =
     task_state.claimed_by(config.task.state) == config.current_user_id
@@ -80,7 +78,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       config.touch_preview,
     )
   let style = card_style(config.x, config.y)
-  let top_left_action = top_left_action(config.locale, status, is_mine, config)
+  let top_left_action = top_left_action(config.locale, is_mine, config)
   let claim_action = claim_action(config.locale, config)
   let drag_handle = drag_handle(config.locale, config.on_drag_started)
   let complete_action = complete_action(config.locale, is_mine, config)
@@ -303,12 +301,11 @@ fn description_context(description: Option(String)) -> Element(msg) {
 
 fn top_left_action(
   locale: Locale,
-  status,
   is_mine: Bool,
   config: Config(msg),
 ) -> Element(msg) {
-  case status, is_mine {
-    Claimed(_), True ->
+  case config.task.state, is_mine {
+    task_state.Claimed(..), True ->
       task_actions.release_icon(
         task_state_ui.release_action(locale),
         config.on_release,
@@ -380,8 +377,8 @@ fn complete_action(
   is_mine: Bool,
   config: Config(msg),
 ) -> Element(msg) {
-  case domain_task.status(config.task), is_mine {
-    Claimed(_), True ->
+  case config.task.state, is_mine {
+    task_state.Claimed(..), True ->
       task_actions.complete_icon(
         task_state_ui.complete_action(locale),
         config.on_complete,
