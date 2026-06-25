@@ -256,7 +256,7 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
   let assert True = fx != effect.none()
 }
 
-pub fn local_complete_clicked_applies_optimistic_complete_test() {
+pub fn local_close_clicked_applies_optimistic_close_test() {
   let task =
     sample_task(
       42,

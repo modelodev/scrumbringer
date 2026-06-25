@@ -276,11 +276,7 @@ fn handle_close_clicked(
     True -> #(model, effect.none())
     False -> #(
       mutation_state.start_close(model, task_id, context.current_user_id),
-      task_operations_api.complete_task(
-        task_id,
-        version,
-        context.on_task_closed,
-      ),
+      task_operations_api.close_task(task_id, version, context.on_task_closed),
     )
   }
 }

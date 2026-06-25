@@ -238,7 +238,7 @@ pub fn release_task(
 }
 
 /// Closes a claimed task.
-pub fn complete_task(
+pub fn close_task(
   task_id: Int,
   version: Int,
   to_msg: fn(ApiResult(Task)) -> msg,
