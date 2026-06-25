@@ -175,7 +175,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
   assert_contains(html, "Tasks")
   assert_contains(html, "data-testid=\"card-health-done\"")
   assert_contains(html, "1")
-  assert_contains(html, "completed")
+  assert_contains(html, "closed")
   assert_contains(html, "data-testid=\"card-health-blocked\"")
   assert_contains(html, "2")
   assert_contains(html, "Blocked")

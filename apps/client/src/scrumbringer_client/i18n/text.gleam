@@ -1051,7 +1051,6 @@ pub type Text {
   NewNotesTooltip
   EditCardTooltip
   DeleteCardTooltip
-  ProgressTooltip(completed: Int, in_progress: Int, pending: Int)
   // AC16: Rich tooltip on [!] indicator
   NotesPreviewNewNotes
   NotesPreviewTimeAgo
@@ -1102,7 +1101,7 @@ pub type Text {
   NoDueDate
   TaskBlockingClear
   MetricsTasksTotal
-  MetricsTasksDone
+  MetricsTasksClosed
   MetricsProgress
   MetricsRebotesAvg
   MetricsPoolLifetimeAvg

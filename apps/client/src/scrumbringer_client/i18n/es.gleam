@@ -1290,13 +1290,6 @@ pub fn translate(text: Text) -> String {
     text.NewNotesTooltip -> "Hay notas nuevas"
     text.EditCardTooltip -> "Editar tarjeta"
     text.DeleteCardTooltip -> "Eliminar tarjeta"
-    text.ProgressTooltip(completed, in_progress, pending) ->
-      int.to_string(completed)
-      <> " completadas, "
-      <> int.to_string(in_progress)
-      <> " en curso, "
-      <> int.to_string(pending)
-      <> " pendientes"
     // AC16: Rich tooltip on [!] indicator
     text.NotesPreviewNewNotes -> "notas nuevas"
     text.NotesPreviewTimeAgo -> "desde hace"
@@ -1355,7 +1348,7 @@ pub fn translate(text: Text) -> String {
     text.NoDueDate -> "Sin vencimiento"
     text.TaskBlockingClear -> "Sin bloqueos activos"
     text.MetricsTasksTotal -> "Tareas totales"
-    text.MetricsTasksDone -> "Tareas completadas"
+    text.MetricsTasksClosed -> "Tareas finalizadas"
     text.MetricsProgress -> "Progreso"
     text.MetricsRebotesAvg -> "Rebotes promedio"
     text.MetricsPoolLifetimeAvg -> "Vida en pool promedio"

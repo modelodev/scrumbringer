@@ -1142,7 +1142,7 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
         int.to_string(card.task_count),
       ),
       summary_item(
-        t(model.locale, i18n_text.MetricsTasksDone),
+        t(model.locale, i18n_text.MetricsTasksClosed),
         int.to_string(card.completed_count),
       ),
       summary_item(
