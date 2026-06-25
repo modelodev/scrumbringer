@@ -330,7 +330,11 @@ docs_i18n_violations(Root) ->
         <<"Card Detail Modal">>,
         <<"status TEXT NOT NULL DEFAULT 'available'">>,
         <<"idx_tasks_status">>,
-        <<"Status State Machine">>
+        <<"Status State Machine">>,
+        <<"services/*_db.gleam">>,
+        <<"scrumbringer_server/persistence">>,
+        <<"business services">>,
+        <<"apps/server/persistence + services">>
     ], [".md"]).
 
 audit_replaces_task_events_violations(Root) ->
