@@ -5,7 +5,7 @@ import scrumbringer_client/i18n/text
 import scrumbringer_client/ui/card_state
 
 pub fn spanish_card_phase_labels_are_localized_test() {
-  let assert "Draft" = card_state.label(locale.Es, Draft)
+  let assert "Por iniciar" = card_state.label(locale.Es, Draft)
   let assert "En curso" = card_state.label(locale.Es, Active)
   let assert "Finalizada" = card_state.label(locale.Es, Closed)
 }

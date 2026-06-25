@@ -909,7 +909,7 @@ pub fn translate(text: Text) -> String {
     text.CardTitle -> "Título"
     text.CardDescription -> "Descripción"
     text.CardPhase -> "Estado"
-    text.CardPhaseDraft -> "Draft"
+    text.CardPhaseDraft -> "Por iniciar"
     text.CardPhaseActive -> "En curso"
     text.CardPhaseClosed -> "Finalizada"
     text.CardTasks -> "Tareas"
