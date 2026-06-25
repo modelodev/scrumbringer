@@ -2422,3 +2422,7 @@ ADD COLUMN archived_at TIMESTAMPTZ;
 CREATE INDEX idx_task_templates_active_project
   ON task_templates(project_id, created_at DESC)
   WHERE archived_at IS NULL;
+
+-- migrate:down
+-- Irreversible final-model cleanup. The production-supported path is forward
+-- from 686908bfb7b2774a8c3949c0a4b07c1715b80e21 to the current model.

@@ -895,18 +895,27 @@ Metrica no-doc contra el baseline de ejecucion tras esta fase:
 
 ```txt
 git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
-172 files changed, 2933 insertions(+), 13816 deletions(-)
+173 files changed, 2991 insertions(+), 11424 deletions(-)
 ```
 
-Reduccion neta no-doc acumulada: `-10.883` lineas.
+Reduccion neta no-doc acumulada: `-8.433` lineas.
+
+Nota: antes de commitear, el movimiento de ficheros aparecia como borrado
+masivo porque los destinos aun no estaban trackeados. La metrica oficial del
+plan se calcula con `git diff` contra el baseline y detecta renames; por tanto,
+esta fase cuenta como reduccion de ownership/superficie legacy, no como gran
+reduccion neta de lineas.
 
 Distribucion acumulada de cambios no-doc:
 
 ```txt
-A 1
+A 2
+R098 6
 R099 1
-R100 1
-D 58
+R100 4
+D 47
+R093 1
+R096 1
 M 111
 ```
 
@@ -923,4 +932,38 @@ Validacion ejecutada:
 ```txt
 apps/client: gleam format src test && gleam test --target javascript
 1781 passed, no failures
+```
+
+### Validacion DB/server ejecutada en PostgreSQL 5433
+
+Hallazgo:
+
+- `dbmate` exige que toda migracion tenga bloque `-- migrate:down`;
+- la migracion final se mantiene irreversible, pero incluye el separador
+  requerido por la herramienta para poder ejecutar `migrate`.
+
+Validacion de upgrade desde produccion:
+
+```txt
+DB: scrumbringer_test en localhost:5433
+produccion: 686908bfb7b2774a8c3949c0a4b07c1715b80e21
+production_migrations=35
+current final migration applied: 20260626000000_post_production_final_model.sql
+schema_migrations_count=36
+```
+
+Secuencia ejecutada:
+
+```sh
+git archive 686908bfb7b2774a8c3949c0a4b07c1715b80e21 db/migrations | tar -x -C "$TMPDIR"
+dbmate --url "$DATABASE_URL" --migrations-dir "$TMPDIR/db/migrations" migrate
+dbmate --url "$DATABASE_URL" --migrations-dir db/migrations migrate
+```
+
+Validacion server:
+
+```txt
+DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+apps/server: gleam format src test && gleam test
+564 passed, no failures
 ```
