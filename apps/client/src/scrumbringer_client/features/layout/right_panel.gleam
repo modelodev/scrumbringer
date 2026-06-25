@@ -214,7 +214,7 @@ fn view_active_task_card(
           config.disable_actions,
           "",
           None,
-          Some("task-complete-btn"),
+          Some("task-close-btn"),
         ),
       ]),
     ],
