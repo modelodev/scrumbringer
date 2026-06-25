@@ -223,7 +223,7 @@ fn log_results(results: Result(List(RuleResult), RuleEngineError)) -> Nil {
 
 fn log_applied_results(results: List(RuleResult)) -> Nil {
   let applied = list.filter(results, is_rule_applied)
-  log("Done: " <> int.to_string(list.length(applied)) <> " rule(s) applied")
+  log("Applied: " <> int.to_string(list.length(applied)) <> " rule(s)")
 }
 
 fn is_rule_applied(result: RuleResult) -> Bool {
