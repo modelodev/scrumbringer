@@ -87,6 +87,21 @@ pub fn relative_date_future_test() {
   let assert "en el futuro" = relative_date_from_ms(timestamp, base_now)
 }
 
+pub fn relative_date_older_than_week_uses_calendar_date_test() {
+  let timestamp = base_now - { 8 * ms_per_day }
+  let assert "14 ene 2026" = relative_date_from_ms(timestamp, base_now)
+}
+
+pub fn relative_date_older_than_week_handles_leap_day_test() {
+  let leap_day = 1_709_164_800_000
+  let now = leap_day + { 8 * ms_per_day }
+  let assert "29 feb 2024" = relative_date_from_ms(leap_day, now)
+}
+
+pub fn relative_date_older_than_week_handles_epoch_test() {
+  let assert "1 ene 1970" = relative_date_from_ms(0, 8 * ms_per_day)
+}
+
 // =============================================================================
 // short_date tests
 // =============================================================================

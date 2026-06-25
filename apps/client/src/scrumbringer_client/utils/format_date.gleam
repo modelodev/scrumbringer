@@ -142,23 +142,53 @@ pub fn full_date(iso_timestamp: String) -> String {
 // =============================================================================
 
 fn short_date_from_ms(timestamp_ms: Int) -> String {
-  // Use JavaScript to format the date since we need locale-aware month names
-  // For now, use a simple approximation based on the ISO string
-  // In production, we'd add an FFI function for proper formatting
   let iso = ms_to_iso_date(timestamp_ms)
   format_date_part(iso)
 }
 
 fn ms_to_iso_date(ms: Int) -> String {
-  // Simple approximation: return YYYY-MM-DD
-  // This is a placeholder - in real implementation we'd use FFI
   let days_since_epoch = ms / ms_per_day
-  let year = 1970 + days_since_epoch / 365
-  let remaining_days = days_since_epoch - { { year - 1970 } * 365 }
-  let month = { remaining_days / 30 } + 1
-  let day = { remaining_days % 30 } + 1
+  let date = civil_from_days(days_since_epoch)
 
-  int.to_string(year) <> "-" <> pad_zero(month) <> "-" <> pad_zero(day)
+  int.to_string(date.year)
+  <> "-"
+  <> pad_zero(date.month)
+  <> "-"
+  <> pad_zero(date.day)
+}
+
+type CalendarDate {
+  CalendarDate(year: Int, month: Int, day: Int)
+}
+
+fn civil_from_days(days_since_epoch: Int) -> CalendarDate {
+  let z = days_since_epoch + 719_468
+  let era = z / 146_097
+  let day_of_era = z - { era * 146_097 }
+  let year_of_era =
+    {
+      day_of_era
+      - { day_of_era / 1460 }
+      + { day_of_era / 36_524 }
+      - { day_of_era / 146_096 }
+    }
+    / 365
+  let year = year_of_era + { era * 400 }
+  let day_of_year =
+    day_of_era
+    - { 365 * year_of_era + { year_of_era / 4 } - { year_of_era / 100 } }
+  let month_phase = { 5 * day_of_year + 2 } / 153
+  let day = day_of_year - { { 153 * month_phase + 2 } / 5 } + 1
+  let month = case month_phase < 10 {
+    True -> month_phase + 3
+    False -> month_phase - 9
+  }
+  let adjusted_year = case month <= 2 {
+    True -> year + 1
+    False -> year
+  }
+
+  CalendarDate(year: adjusted_year, month: month, day: day)
 }
 
 fn pad_zero(n: Int) -> String {
