@@ -36,7 +36,7 @@ import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
-import scrumbringer_server/seed_pools
+import scrumbringer_server/seed_task_scenarios
 import scrumbringer_server/seed_workspace_scenarios
 
 // =============================================================================
@@ -335,193 +335,48 @@ fn build_tasks(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let titles = seed_pools.task_titles()
-  let priorities = config.priority_distribution
-  let execution_state_pool =
-    execution_state_pool_from(config.status_distribution)
+  let StatusDistribution(
+    available: available,
+    claimed: claimed,
+    completed: completed,
+  ) = config.status_distribution
+  use task_result <- result.try(seed_task_scenarios.build(
+    db,
+    seed_task_scenarios.Context(
+      admin_id: state.admin_id,
+      user_ids: state.user_ids,
+      active_task_types: task_types_for_active_projects(state),
+      card_ids_by_project: state.card_ids_by_project,
+      project_member_ids: state.project_member_ids,
+      rule_ids_by_project: state.rule_ids_by_project,
+      tasks_per_project: config.tasks_per_project,
+      priority_distribution: config.priority_distribution,
+      status_distribution: seed_task_scenarios.StatusDistribution(
+        available: available,
+        claimed: claimed,
+        completed: completed,
+      ),
+      empty_card_count: config.empty_card_count,
+      date_range_days: config.date_range_days,
+    ),
+  ))
 
-  let active_task_types = task_types_for_active_projects(state)
-  use task_results_nested <- result.try(
-    list.index_map(active_task_types, fn(types, proj_idx) {
-      let #(project_id, bug_id, feature_id, task_id) = types
-      let cards_for_project =
-        cards_for_project(state.card_ids_by_project, project_id)
-      let usable_cards = case config.empty_card_count > 0 {
-        True -> list.drop(cards_for_project, config.empty_card_count)
-        False -> cards_for_project
-      }
-
-      let card_all_done = list_at_int(usable_cards, 0, 0)
-      let card_mixed = list_at_int(usable_cards, 1, 0)
-      let card_single = list_at_int(usable_cards, 2, 0)
-
-      let base_idx = proj_idx * config.tasks_per_project
-
-      let title_for = fn(idx, fallback) {
-        let base = list_at(titles, idx, fallback)
-        "P"
-        <> int.to_string(project_id)
-        <> " - "
-        <> base
-        <> " #"
-        <> int.to_string(idx + 1)
-      }
-
-      let creator_id = list_at_int(state.user_ids, proj_idx, state.admin_id)
-      let claimed_user_id = claimed_member_id(state, project_id, creator_id)
-      let members = members_for_project(state.project_member_ids, project_id)
-      let project_rule_ids =
-        rule_ids_for_project(state.rule_ids_by_project, project_id)
-      let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
-
-      let tasks = [
-        #(
-          title_for(base_idx, "Task A"),
-          bug_id,
-          done_state_template(),
-          Some(card_all_done),
-        ),
-        #(
-          title_for(base_idx + 1, "Task B"),
-          feature_id,
-          done_state_template(),
-          Some(card_all_done),
-        ),
-        #(
-          title_for(base_idx + 2, "Task C"),
-          bug_id,
-          done_state_template(),
-          Some(card_mixed),
-        ),
-        #(
-          title_for(base_idx + 3, "Task D"),
-          feature_id,
-          claimed_state_template(task_state.Taken),
-          Some(card_mixed),
-        ),
-        #(
-          title_for(base_idx + 4, "Task E"),
-          task_id,
-          task_state.Available,
-          Some(card_single),
-        ),
-        #(title_for(base_idx + 5, "Task F"), bug_id, task_state.Available, None),
-        #(
-          title_for(base_idx + 6, "Task G"),
-          feature_id,
-          task_state.Available,
-          None,
-        ),
-      ]
-
-      let extra_count =
-        int.max(0, config.tasks_per_project - list.length(tasks))
-      let extra_indexes = case extra_count > 0 {
-        True -> list.range(0, extra_count - 1)
-        False -> []
-      }
-      let extra_tasks =
-        extra_indexes
-        |> list.map(fn(extra_idx) {
-          let idx = base_idx + list.length(tasks) + extra_idx
-          let type_id = case extra_idx % 3 {
-            0 -> bug_id
-            1 -> feature_id
-            _ -> task_id
-          }
-          let execution_state =
-            execution_state_from_pool(execution_state_pool, idx)
-          let card_id = case extra_idx % 4 {
-            0 -> Some(card_mixed)
-            1 -> Some(card_single)
-            _ -> None
-          }
-          #(title_for(idx, "Task Extra"), type_id, execution_state, card_id)
-        })
-
-      let all_tasks = list.append(tasks, extra_tasks)
-
-      list.index_map(all_tasks, fn(task_def, idx) {
-        let #(title, type_id, execution_state, card_id) = task_def
-        let priority = list_at_int(priorities, idx % list.length(priorities), 3)
-        let creator_for = list_at_int(state.user_ids, idx, state.admin_id)
-        let claimed_user_for = member_for_index(members, idx, claimed_user_id)
-        let created_from_rule_id =
-          seeded_rule_for_task(project_rule_ids, idx, proj_idx)
-        let pool_lifetime_s =
-          seeded_pool_lifetime_s(execution_state, idx, proj_idx)
-        let last_entered_pool_at =
-          seeded_last_entered_pool_at(
-            execution_state,
-            pool_lifetime_s,
-            base_days,
-            idx,
-          )
-        let #(claimed_by, claimed_at, completed_at) = case execution_state {
-          task_state.Claimed(..) -> #(
-            Some(claimed_user_for),
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
-            None,
-          )
-          task_state.Closed(..) -> #(
-            None,
-            None,
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
-          )
-          task_state.Available -> #(None, None, None)
-        }
-        let hydrated_execution_state =
-          hydrate_seed_execution_state(
-            execution_state,
-            creator_for,
-            claimed_by,
-            claimed_at,
-            completed_at,
-          )
-
-        let created_at =
-          days_ago_timestamp(int.max(1, base_days - { idx % 13 }))
-
-        seed_db.insert_task(
-          db,
-          seed_db.TaskInsertOptions(
-            project_id: project_id,
-            type_id: type_id,
-            title: title,
-            description: "Seeded task",
-            priority: priority,
-            execution_state: hydrated_execution_state,
-            created_by: creator_for,
-            card_id: card_id,
-            created_from_rule_id: created_from_rule_id,
-            pool_lifetime_s: pool_lifetime_s,
-            due_date: None,
-            created_at: Some(created_at),
-            last_entered_pool_at: last_entered_pool_at,
-          ),
-        )
-        |> result.map(fn(task_id) {
-          TaskSeedInfo(
-            task_id: task_id,
-            project_id: project_id,
-            execution_state: hydrated_execution_state,
-            created_at: created_at,
-            created_by: creator_for,
-            claimed_by: claimed_by,
-          )
-        })
-      })
-      |> result.all
+  let task_seeds =
+    task_result.task_seeds
+    |> list.map(fn(seed) {
+      TaskSeedInfo(
+        task_id: seed.task_id,
+        project_id: seed.project_id,
+        execution_state: seed.execution_state,
+        created_at: seed.created_at,
+        created_by: seed.created_by,
+        claimed_by: seed.claimed_by,
+      )
     })
-    |> result.all,
+
+  Ok(
+    BuildState(..state, task_ids: task_result.task_ids, task_seeds: task_seeds),
   )
-
-  let task_seeds = list.flatten(task_results_nested)
-  let task_ids =
-    task_seeds
-    |> list.map(fn(seed) { seed.task_id })
-
-  Ok(BuildState(..state, task_ids: task_ids, task_seeds: task_seeds))
 }
 
 fn build_plan_qa_scenarios(
@@ -2039,21 +1894,6 @@ fn members_for_project(
   }
 }
 
-fn cards_for_project(
-  card_ids_by_project: List(#(Int, List(Int))),
-  project_id: Int,
-) -> List(Int) {
-  case
-    list.find(card_ids_by_project, fn(pair) {
-      let #(pid, _cards) = pair
-      pid == project_id
-    })
-  {
-    Ok(#(_pid, cards)) -> cards
-    Error(_) -> []
-  }
-}
-
 fn append_cards_for_project(
   card_ids_by_project: List(#(Int, List(Int))),
   project_id: Int,
@@ -2097,10 +1937,6 @@ fn days_ago_timestamp(days: Int) -> String {
   "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
 }
 
-fn list_at(items: List(String), idx: Int, default: String) -> String {
-  list_at_helper(items, idx, default)
-}
-
 fn list_at_int(items: List(Int), idx: Int, default: Int) -> Int {
   list_at_helper(items, idx, default)
 }
@@ -2111,44 +1947,6 @@ fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
     0, [first, ..] -> first
     n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
   }
-}
-
-fn repeat_value(value: a, count: Int) -> List(a) {
-  case count <= 0 {
-    True -> []
-    False -> [value, ..repeat_value(value, count - 1)]
-  }
-}
-
-fn execution_state_pool_from(
-  distribution: StatusDistribution,
-) -> List(task_state.TaskExecutionState) {
-  let StatusDistribution(
-    available: available,
-    claimed: claimed,
-    completed: completed,
-  ) = distribution
-  list.append(
-    repeat_value(task_state.Available, available),
-    list.append(
-      repeat_value(claimed_state_template(task_state.Taken), claimed),
-      repeat_value(done_state_template(), completed),
-    ),
-  )
-}
-
-fn execution_state_from_pool(
-  pool: List(task_state.TaskExecutionState),
-  idx: Int,
-) -> task_state.TaskExecutionState {
-  case pool {
-    [] -> task_state.Available
-    _ -> list_at_helper(pool, idx % list.length(pool), task_state.Available)
-  }
-}
-
-fn member_for_index(members: List(Int), idx: Int, fallback: Int) -> Int {
-  list_at_int(members, idx % int.max(1, list.length(members)), fallback)
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {
@@ -2174,77 +1972,6 @@ fn task_types_for_active_projects(
     let #(project_id, _, _, _) = entry
     !list.contains(state.empty_project_ids, project_id)
   })
-}
-
-fn rule_ids_for_project(
-  rule_ids_by_project: List(#(Int, List(Int))),
-  project_id: Int,
-) -> List(Int) {
-  case
-    list.find(rule_ids_by_project, fn(pair) {
-      let #(pid, _rule_ids) = pair
-      pid == project_id
-    })
-  {
-    Ok(#(_pid, rule_ids)) -> rule_ids
-    Error(_) -> []
-  }
-}
-
-fn seeded_rule_for_task(
-  project_rule_ids: List(Int),
-  task_idx: Int,
-  _project_idx: Int,
-) -> Option(Int) {
-  case project_rule_ids {
-    [] -> None
-    _ ->
-      case task_idx % 5 == 0 {
-        // Keep a stable "sin workflow" bucket for metrics tabs.
-        True -> None
-        False -> {
-          let rule_idx = task_idx % list.length(project_rule_ids)
-          Some(list_at_int(project_rule_ids, rule_idx, 0))
-        }
-      }
-  }
-}
-
-fn seeded_pool_lifetime_s(
-  execution_state: task_state.TaskExecutionState,
-  task_idx: Int,
-  project_idx: Int,
-) -> Int {
-  let base_idx = task_idx + project_idx
-  let base = case base_idx % 4 {
-    0 -> 0
-    1 -> 900
-    2 -> 3600
-    _ -> 14_400
-  }
-
-  case execution_state {
-    task_state.Available -> base
-    task_state.Claimed(..) -> int.max(300, base)
-    task_state.Closed(..) -> int.max(900, base)
-  }
-}
-
-fn seeded_last_entered_pool_at(
-  execution_state: task_state.TaskExecutionState,
-  pool_lifetime_s: Int,
-  base_days: Int,
-  task_idx: Int,
-) -> Option(String) {
-  case execution_state {
-    task_state.Available ->
-      case pool_lifetime_s > 0 {
-        True ->
-          Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
-        False -> None
-      }
-    task_state.Claimed(..) | task_state.Closed(..) -> None
-  }
 }
 
 fn hydrate_seed_execution_state(
