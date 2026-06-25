@@ -12,7 +12,9 @@ import domain/task.{
   WorkSessionsPayload,
 }
 import domain/task/state as task_state
-import domain/task_status.{type WorkState, WorkAvailable, parse_work_state}
+import domain/task_status.{
+  type WorkState, WorkAvailable, WorkOngoing, parse_work_state,
+}
 import domain/task_type.{
   type TaskType, type TaskTypeInline, TaskType, TaskTypeInline,
 }
@@ -114,6 +116,11 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use priority <- decode.field("priority", decode.int)
 
   use status_raw <- decode.field("status", decode.string)
+  use work_state <- decode.optional_field(
+    "work_state",
+    option.None,
+    decode.optional(work_state_decoder()),
+  )
 
   use created_by <- decode.field("created_by", decode.int)
 
@@ -133,7 +140,10 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     decode.optional(decode.string),
   )
 
-  let is_ongoing = status_raw == "ongoing"
+  let is_ongoing = case work_state {
+    option.Some(WorkOngoing) -> True
+    _ -> False
+  }
   use state <- decode.then(task_state_decoder_from_fields(
     status_raw,
     is_ongoing,

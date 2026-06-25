@@ -6,7 +6,7 @@ import gleam/option
 import lustre/effect
 
 import domain/api_error.{type ApiError}
-import domain/project.{type ProjectMember}
+import domain/people_workload.{type PersonWorkload}
 import domain/remote
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/people/state as people_state
@@ -17,10 +17,10 @@ pub fn try_update(
   inner: pool_messages.Msg,
 ) -> option.Option(#(member_pool.Model, effect.Effect(parent_msg))) {
   case inner {
-    pool_messages.MemberPeopleRosterFetched(Ok(members)) ->
-      option.Some(handle_roster_fetched_ok(model, members))
-    pool_messages.MemberPeopleRosterFetched(Error(err)) ->
-      option.Some(handle_roster_fetched_error(model, err))
+    pool_messages.MemberPeopleWorkloadFetched(Ok(people)) ->
+      option.Some(handle_workload_fetched_ok(model, people))
+    pool_messages.MemberPeopleWorkloadFetched(Error(err)) ->
+      option.Some(handle_workload_fetched_error(model, err))
     pool_messages.MemberPeopleRowToggled(user_id) ->
       option.Some(handle_row_toggled(model, user_id))
     pool_messages.MemberPeopleSearchChanged(query) ->
@@ -33,11 +33,11 @@ pub fn try_update(
   }
 }
 
-fn handle_roster_fetched_ok(
+fn handle_workload_fetched_ok(
   model: member_pool.Model,
-  members: List(ProjectMember),
+  people: List(PersonWorkload),
 ) -> #(member_pool.Model, effect.Effect(parent_msg)) {
-  let valid_user_ids = list.map(members, fn(m) { m.user_id })
+  let valid_user_ids = list.map(people, fn(person) { person.user_id })
   let next_expansions =
     dict.filter(model.people_expansions, fn(user_id, _expansion) {
       list.contains(valid_user_ids, user_id)
@@ -46,19 +46,19 @@ fn handle_roster_fetched_ok(
   #(
     member_pool.Model(
       ..model,
-      people_roster: remote.Loaded(members),
+      people_workload: remote.Loaded(people),
       people_expansions: next_expansions,
     ),
     effect.none(),
   )
 }
 
-fn handle_roster_fetched_error(
+fn handle_workload_fetched_error(
   model: member_pool.Model,
   err: ApiError,
 ) -> #(member_pool.Model, effect.Effect(parent_msg)) {
   #(
-    member_pool.Model(..model, people_roster: remote.Failed(err)),
+    member_pool.Model(..model, people_workload: remote.Failed(err)),
     effect.none(),
   )
 }

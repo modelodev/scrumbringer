@@ -28,6 +28,7 @@ import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/guidance
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/utils/format_date
@@ -76,9 +77,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     ),
     div([], [
       view_created_secret(config),
-      div([attribute.class("task-section-hint")], [
-        text(t(config, i18n_text.ApiTokenGrantsImmutable)),
-      ]),
+      guidance.section(t(config, i18n_text.ApiTokenGrantsImmutable)),
       div([attribute.class("api-token-list-card")], [view_tokens(config)]),
       div([attribute.class("api-token-list-card")], [
         section_header.view(icons.Team, t(config, i18n_text.Integrations)),

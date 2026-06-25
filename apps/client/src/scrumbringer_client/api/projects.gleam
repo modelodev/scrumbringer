@@ -22,6 +22,8 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
+import domain/people_workload.{type PersonWorkload}
+import domain/people_workload/people_workload_codec
 import domain/project.{
   type Project, type ProjectDepthName, type ProjectMember, ProjectDepthName,
 }
@@ -88,6 +90,19 @@ pub fn list_project_members(
     "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     option.None,
     decoder,
+    to_msg,
+  )
+}
+
+pub fn list_project_people_workload(
+  project_id: Int,
+  to_msg: fn(ApiResult(List(PersonWorkload))) -> msg,
+) -> Effect(msg) {
+  core.request(
+    core.Get,
+    "/api/v1/projects/" <> int.to_string(project_id) <> "/people/workload",
+    option.None,
+    people_workload_codec.people_decoder(),
     to_msg,
   )
 }

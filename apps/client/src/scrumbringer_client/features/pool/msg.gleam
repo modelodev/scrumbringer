@@ -9,7 +9,7 @@ import domain/metrics.{
   type OrgMetricsUserOverview,
 }
 import domain/note/entity as note_entity
-import domain/project.{type ProjectMember}
+import domain/people_workload.{type PersonWorkload}
 import domain/task.{
   type Task, type TaskDependency, type TaskPosition, type WorkSessionsPayload,
 }
@@ -73,7 +73,7 @@ pub type Msg {
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)
   MemberProjectTasksFetched(Int, ApiResult(List(Task)))
-  MemberPeopleRosterFetched(ApiResult(List(ProjectMember)))
+  MemberPeopleWorkloadFetched(ApiResult(List(PersonWorkload)))
   MemberPeopleRowToggled(Int)
   MemberPeopleSearchChanged(String)
   MemberPeopleFilterChanged(String)

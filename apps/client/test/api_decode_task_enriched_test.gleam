@@ -1,3 +1,4 @@
+import domain/task/state as task_state
 import domain/task/task_codec
 import gleam/dynamic/decode
 import gleam/json
@@ -20,6 +21,7 @@ pub fn task_decoder_accepts_enriched_task_type_and_work_state_test() {
   let assert "Bug" = task.task_type.name
   let assert "bug-ant" = task.task_type.icon
   let assert "T" = task.title
+  let assert task_state.Claimed(mode: task_state.Ongoing, ..) = task.state
 }
 
 pub fn task_decoder_rejects_invalid_status_and_work_state_test() {

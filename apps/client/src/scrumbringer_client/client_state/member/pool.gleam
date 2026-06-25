@@ -4,7 +4,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
-import domain/project.{type ProjectMember}
+import domain/people_workload.{type PersonWorkload}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
 import domain/task_type.{type TaskType}
@@ -155,7 +155,7 @@ pub type Model {
     member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
     member_highlight_state: HighlightState,
-    people_roster: Remote(List(ProjectMember)),
+    people_workload: Remote(List(PersonWorkload)),
     people_expansions: Dict(Int, people_state.RowExpansion),
     member_people_search_query: String,
     member_people_filter: people_state.PeopleVisibilityFilter,
@@ -217,7 +217,7 @@ pub fn default_model() -> Model {
     member_pool_touch_client_y: 0,
     member_pool_preview_task_id: option.None,
     member_highlight_state: NoHighlight,
-    people_roster: NotAsked,
+    people_workload: NotAsked,
     people_expansions: dict.new(),
     member_people_search_query: "",
     member_people_filter: people_state.ShowEveryone,

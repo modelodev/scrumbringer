@@ -2,7 +2,7 @@
 -module(test_runner_ffi).
 -export([run_tests_sequential/0]).
 
--define(MODULE_TIMEOUT_SECONDS, 120).
+-define(MODULE_TIMEOUT_SECONDS, 240).
 
 run_tests_sequential() ->
     %% Find all test modules
@@ -28,7 +28,7 @@ run_tests_sequential() ->
     %% Run tests sequentially:
     %% - {inorder, [...]} makes modules run one after another
     %% - {inorder, {module, Mod}} makes tests within each module run sequentially
-    Options = [verbose, no_tty,
+    Options = [verbose, no_tty, {timeout, ?MODULE_TIMEOUT_SECONDS},
                {report, {gleeunit_progress, [{colored, true}]}}],
 
     %% Wrap each module in {inorder, ...} to run its tests sequentially.

@@ -15,6 +15,7 @@ import domain/metrics.{
 }
 import domain/task.{Task}
 import domain/task/task_codec
+import domain/task_status.{WorkOngoing}
 
 // =============================================================================
 // Decoders
@@ -266,7 +267,15 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     option.None,
     decode.optional(task_codec.ongoing_by_decoder()),
   )
-  let is_ongoing = status_raw == "ongoing"
+  use work_state <- decode.optional_field(
+    "work_state",
+    option.None,
+    decode.optional(task_codec.work_state_decoder()),
+  )
+  let is_ongoing = case work_state {
+    option.Some(WorkOngoing) -> True
+    _ -> False
+  }
   use state <- decode.then(task_codec.task_state_decoder_from_fields(
     status_raw,
     is_ongoing,

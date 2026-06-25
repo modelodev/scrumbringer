@@ -323,33 +323,66 @@ pub fn translate(text: Text) -> String {
     text.PeopleWorkingCount(count) -> int.to_string(count) <> " working now"
     text.PeopleClaimedTotal(count) -> int.to_string(count) <> " claimed"
     text.PeopleOngoingCount(count) -> int.to_string(count) <> " ongoing"
-    text.PeopleClaimedCount(count) -> int.to_string(count) <> " claimed"
+    text.PeopleReservedCount(count) -> int.to_string(count) <> " reserved"
+    text.PeopleBlockedCount(count) -> int.to_string(count) <> " blocked"
     text.PeopleCardsCount(count) -> int.to_string(count) <> " cards"
     text.PeopleLoadWarning -> "High load"
-    text.PeopleAvailableCapacity -> "No work in progress"
-    text.PeopleNoClaimedTasks -> "No claimed work"
+    text.PeopleTrayTitle(person) -> "Work tray for " <> person
+    text.PeopleNowSection -> "Now"
+    text.PeopleNowDescription ->
+      "Active focus. Reserved work waits until this is paused, closed, or released."
+    text.PeopleReservedSection -> "Reserved"
+    text.PeopleReservedDescription ->
+      "Claimed by this person; not active focus yet."
+    text.PeopleNoActiveFocus -> "No active focus"
+    text.PeopleNoReservedWork -> "No reserved work"
     text.PeopleNoCardContext -> "No card"
     text.PeopleColumnPerson -> "Person"
     text.PeopleColumnState -> "State"
-    text.PeopleColumnWork -> "Work"
-    text.PeopleColumnContext -> "Context"
-    text.PeopleColumnAction -> "Action"
+    text.PeopleColumnFocus -> "Focus"
+    text.PeopleColumnScope -> "Scope"
+    text.PeopleColumnLoad -> "Load"
+    text.PeopleGuidanceStateTerm -> "State"
+    text.PeopleGuidanceStateDescription -> "main operating situation"
+    text.PeopleGuidanceFocusTerm -> "Focus"
+    text.PeopleGuidanceFocusDescription -> "task explaining the row"
+    text.PeopleGuidanceScopeTerm -> "Scope"
+    text.PeopleGuidanceScopeDescription -> "dominant card or capability"
+    text.PeopleGuidanceLoadTerm -> "Load"
+    text.PeopleGuidanceLoadDescription -> "total work volume"
     text.PeopleSectionNeedsAttention -> "Needs attention"
     text.PeopleSectionWorkingNow -> "Working now"
-    text.PeopleSectionClaimedWork -> "With claimed work"
+    text.PeopleSectionReservedWork -> "Reserved"
     text.PeopleSectionAvailable -> "Available"
     text.PeopleOngoingWorkBlocked -> "Ongoing work blocked"
-    text.PeopleClaimedWorkBlocked -> "Claimed work blocked"
+    text.PeopleReservedWorkBlocked -> "Reserved work blocked"
     text.PeopleWorkingNowState -> "Working now"
     text.PeopleAvailableState -> "Available"
     text.PeopleNeedsAttentionState -> "Needs attention"
     text.PeopleBlockedDetail -> "Blocked by open dependencies"
-    text.PeopleNoOwnedWork -> "No claimed work"
+    text.PeopleNoOwnedWork -> "No reserved work"
     text.PeopleNextWork(title) -> "Next: " <> title
+    text.PeopleReservedGroupCount(count) ->
+      int.to_string(count)
+      <> case count {
+        1 -> " task"
+        _ -> " tasks"
+      }
+    text.PeopleTaskNowMeta(context) -> "In progress · " <> context
+    text.PeopleTaskReservedMeta(context) -> "Reserved · " <> context
+    text.PeopleTaskBlockedMeta(context) -> "Blocked · " <> context
+    text.PeopleOutsideActiveWorkScope -> "outside active work"
     text.PeopleBlockedBy(title) -> "Blocked by: " <> title
     text.PeopleOpenDependencies -> "open dependencies"
     text.PeopleCanPullFromPool -> "Can pull from Pool"
-    text.PeopleOpenTaskAction -> "Open"
+    text.PeopleScopeAdditionalCards(title, count) ->
+      title
+      <> " +"
+      <> int.to_string(count)
+      <> case count {
+        1 -> " card"
+        _ -> " cards"
+      }
     text.PeopleShowLabel -> "Show"
     text.PeopleFilterEveryone -> "Everyone"
     text.PeopleFilterWithWork -> "With work"
@@ -358,8 +391,8 @@ pub fn translate(text: Text) -> String {
     text.PeopleSortLabel -> "Sort"
     text.PeopleSortAttention -> "Attention"
     text.PeopleSortName -> "Name"
-    text.PeopleSortClaimed -> "Most claimed"
-    text.PeopleCardScopeNoWork -> "No claimed work in this card scope"
+    text.PeopleSortClaimed -> "Most reserved"
+    text.PeopleCardScopeNoWork -> "No reserved work in this card scope"
     text.CapabilityBoardLoading -> "Loading capabilities..."
     text.CapabilityBoardEmpty -> "No active tasks grouped by capability"
     text.CapabilityBoardNoResults ->
@@ -477,8 +510,6 @@ pub fn translate(text: Text) -> String {
     text.CollapseHierarchy(name) -> "Collapse hierarchy " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name
     text.CollapsePerson(name) -> "Collapse status for " <> name
-    text.PeopleActiveSection -> "Working now"
-    text.PeopleClaimedSection -> "Claimed, not started"
     text.Drag -> "Drag"
     text.StartNowWorking -> "Start working"
     text.PauseNowWorking -> "Pause work"

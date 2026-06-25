@@ -23,6 +23,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/guidance
 
 pub type Config(msg) {
   Config(
@@ -174,11 +175,7 @@ pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
       True -> element.none()
       False ->
         case permission_hint(config, current_task) {
-          opt.Some(hint) ->
-            div(
-              [attribute.class("task-section-hint task-edit-permission-hint")],
-              [text(hint)],
-            )
+          opt.Some(hint) -> guidance.section(hint)
           opt.None -> element.none()
         }
     },

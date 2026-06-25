@@ -18,6 +18,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/guidance
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/tooltips/types as notes_list_types
@@ -58,9 +59,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         on_button_click: config.on_dialog_opened,
       ),
     ),
-    div([attribute.class("task-section-hint")], [
-      text(t(config, i18n_text.TaskNotesHint)),
-    ]),
+    guidance.section(t(config, i18n_text.TaskNotesHint)),
     notes_content(config),
     case config.dialog_mode {
       dialog_mode.DialogCreate -> note_dialog(config)

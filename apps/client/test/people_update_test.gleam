@@ -3,7 +3,9 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{ApiError}
-import domain/project.{type ProjectMember, ProjectMember}
+import domain/people_workload.{
+  type PersonWorkload, PersonWorkload, PersonWorkloadSummary, WorkloadAvailable,
+}
 import domain/project_role
 import domain/remote
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -11,16 +13,24 @@ import scrumbringer_client/features/people/state as people_state
 import scrumbringer_client/features/people/update as people_update
 import scrumbringer_client/features/pool/msg as pool_messages
 
-fn member(user_id: Int) -> ProjectMember {
-  ProjectMember(
+fn person(user_id: Int) -> PersonWorkload {
+  PersonWorkload(
     user_id: user_id,
+    email: "person@example.com",
     role: project_role.Member,
-    created_at: "2026-02-01T10:00:00Z",
-    claimed_count: 0,
+    state: WorkloadAvailable,
+    working_now: [],
+    reserved: [],
+    attention: [],
+    summary: PersonWorkloadSummary(
+      working_now_count: 0,
+      reserved_count: 0,
+      attention_count: 0,
+    ),
   )
 }
 
-pub fn roster_success_filters_expansions_for_missing_members_test() {
+pub fn workload_success_filters_expansions_for_missing_people_test() {
   let pool =
     member_pool.default_model()
     |> fn(pool) {
@@ -36,25 +46,25 @@ pub fn roster_success_filters_expansions_for_missing_members_test() {
   let assert Some(#(next_pool, fx)) =
     people_update.try_update(
       pool,
-      pool_messages.MemberPeopleRosterFetched(Ok([member(10)])),
+      pool_messages.MemberPeopleWorkloadFetched(Ok([person(10)])),
     )
 
-  let expected_roster = remote.Loaded([member(10)])
-  let assert True = next_pool.people_roster == expected_roster
+  let expected_workload = remote.Loaded([person(10)])
+  let assert True = next_pool.people_workload == expected_workload
   let assert Ok(people_state.Expanded) =
     dict.get(next_pool.people_expansions, 10)
   let assert Error(_) = dict.get(next_pool.people_expansions, 20)
   let assert True = fx == effect.none()
 }
 
-pub fn try_update_handles_roster_success_test() {
+pub fn try_update_handles_workload_success_test() {
   let assert Some(#(next_pool, fx)) =
     people_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPeopleRosterFetched(Ok([member(10)])),
+      pool_messages.MemberPeopleWorkloadFetched(Ok([person(10)])),
     )
 
-  let assert True = next_pool.people_roster == remote.Loaded([member(10)])
+  let assert True = next_pool.people_workload == remote.Loaded([person(10)])
   let assert True = fx == effect.none()
 }
 
@@ -82,28 +92,28 @@ pub fn try_update_handles_row_toggle_test() {
   let assert True = fx == effect.none()
 }
 
-pub fn roster_error_sets_failed_state_test() {
+pub fn workload_error_sets_failed_state_test() {
   let err = ApiError(status: 500, code: "E_PEOPLE", message: "Server error")
   let assert Some(#(next_pool, fx)) =
     people_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPeopleRosterFetched(Error(err)),
+      pool_messages.MemberPeopleWorkloadFetched(Error(err)),
     )
 
-  let assert True = next_pool.people_roster == remote.Failed(err)
+  let assert True = next_pool.people_workload == remote.Failed(err)
   let assert True = fx == effect.none()
 }
 
-pub fn try_update_handles_roster_error_test() {
+pub fn try_update_handles_workload_error_test() {
   let err = ApiError(status: 500, code: "E_PEOPLE", message: "Server error")
 
   let assert Some(#(next_pool, fx)) =
     people_update.try_update(
       member_pool.default_model(),
-      pool_messages.MemberPeopleRosterFetched(Error(err)),
+      pool_messages.MemberPeopleWorkloadFetched(Error(err)),
     )
 
-  let assert True = next_pool.people_roster == remote.Failed(err)
+  let assert True = next_pool.people_workload == remote.Failed(err)
   let assert True = fx == effect.none()
 }
 

@@ -105,7 +105,6 @@ pub type TaskPhaseParseError {
 /// ```gleam
 /// parse_task_status("available")  // -> Ok(Available)
 /// parse_task_status("claimed")    // -> Ok(Claimed(Taken))
-/// parse_task_status("ongoing")    // -> Ok(Claimed(Ongoing))
 /// parse_task_status("closed")     // -> Ok(Closed)
 /// parse_task_status("invalid")    // -> Error(UnknownTaskPhase("invalid"))
 /// ```
@@ -115,7 +114,6 @@ pub fn parse_task_status(
   case value {
     "available" -> Ok(Available)
     "claimed" -> Ok(Claimed(Taken))
-    "ongoing" -> Ok(Claimed(Ongoing))
     "closed" -> Ok(Closed)
     other -> Error(UnknownTaskPhase(other))
   }
@@ -128,14 +126,13 @@ pub fn parse_task_status(
 /// ```gleam
 /// task_status_to_string(Available)        // -> "available"
 /// task_status_to_string(Claimed(Taken))   // -> "claimed"
-/// task_status_to_string(Claimed(Ongoing)) // -> "ongoing"
+/// task_status_to_string(Claimed(Ongoing)) // -> "claimed"
 /// task_status_to_string(Closed)           // -> "closed"
 /// ```
 pub fn task_status_to_string(status: TaskPhase) -> String {
   case status {
     Available -> "available"
-    Claimed(Taken) -> "claimed"
-    Claimed(Ongoing) -> "ongoing"
+    Claimed(_) -> "claimed"
     Closed -> "closed"
   }
 }

@@ -326,10 +326,11 @@ pub fn tasks_list_includes_task_contract_fields_test() {
     })
 
   let task_decoder = {
+    use status <- decode.field("status", decode.string)
     use work_state <- decode.field("work_state", decode.string)
     use task_type <- decode.field("task_type", task_type_decoder)
     use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
-    decode.success(#(work_state, task_type, ongoing_by))
+    decode.success(#(status, work_state, task_type, ongoing_by))
   }
 
   let data_decoder = {
@@ -343,9 +344,15 @@ pub fn tasks_list_includes_task_contract_fields_test() {
 
   case tasks {
     [
-      #(work_state, #(task_type_id, task_type_name, task_type_icon), ongoing_by),
+      #(
+        status,
+        work_state,
+        #(task_type_id, task_type_name, task_type_icon),
+        ongoing_by,
+      ),
       ..
     ] -> {
+      status |> expect.equal("available")
       work_state |> expect.equal("available")
       task_type_id |> expect.equal(type_id)
       task_type_name |> expect.equal("Bug")
@@ -487,10 +494,11 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     })
 
   let task_decoder = {
+    use status <- decode.field("status", decode.string)
     use work_state <- decode.field("work_state", decode.string)
     use task_type <- decode.field("task_type", task_type_decoder)
     use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
-    decode.success(#(work_state, task_type, ongoing_by))
+    decode.success(#(status, work_state, task_type, ongoing_by))
   }
 
   let data_decoder = {
@@ -501,11 +509,13 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let response_decoder = decode.field("data", data_decoder, decode.success)
 
   let assert Ok(#(
+    status,
     work_state,
     #(task_type_id, task_type_name, task_type_icon),
     ongoing_by,
   )) = decode.run(dynamic, response_decoder)
 
+  status |> expect.equal("claimed")
   work_state |> expect.equal("ongoing")
   task_type_id |> expect.equal(type_id)
   task_type_name |> expect.equal("Bug")
@@ -2012,6 +2022,10 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+
+  let user_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
 
   let req =
     simulate.request(
@@ -2032,8 +2046,15 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
     // Ensure global Task contract fields exist
     use _task_type <- decode.field("task_type", decode.dynamic)
-    use _work_state <- decode.field("work_state", decode.string)
-    use _ongoing_by <- decode.field("ongoing_by", decode.dynamic)
+    use status <- decode.field("status", decode.string)
+    use work_state <- decode.field("work_state", decode.string)
+    use ongoing_by <- decode.field(
+      "ongoing_by",
+      decode.optional({
+        use user_id <- decode.field("user_id", decode.int)
+        decode.success(user_id)
+      }),
+    )
 
     use claim_count <- decode.field("claim_count", decode.int)
     use release_count <- decode.field("release_count", decode.int)
@@ -2045,6 +2066,9 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
     decode.success(#(
       id,
+      status,
+      work_state,
+      ongoing_by,
       claim_count,
       release_count,
       close_count,
@@ -2062,8 +2086,23 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let assert Ok(tasks) = decode.run(dynamic, response_decoder)
 
   case tasks {
-    [#(id, claim_count, release_count, close_count, first_claim_at), ..] -> {
+    [
+      #(
+        id,
+        status,
+        work_state,
+        ongoing_by,
+        claim_count,
+        release_count,
+        close_count,
+        first_claim_at,
+      ),
+      ..
+    ] -> {
       id |> expect.equal(task_id)
+      status |> expect.equal("claimed")
+      work_state |> expect.equal("ongoing")
+      ongoing_by |> expect.equal(option.Some(user_id))
       claim_count |> expect.equal(1)
       release_count |> expect.equal(0)
       close_count |> expect.equal(0)

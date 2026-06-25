@@ -24,6 +24,7 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/guidance
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/task_state
@@ -65,9 +66,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         on_button_click: config.on_dialog_opened,
       ),
     ),
-    div([attribute.class("task-section-hint")], [
-      text(t(config, i18n_text.TaskDependenciesHint)),
-    ]),
+    guidance.section(t(config, i18n_text.TaskDependenciesHint)),
     dependencies_content(config),
     case config.dialog_mode {
       dialog_mode.DialogClosed -> element.none()

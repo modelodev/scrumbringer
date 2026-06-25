@@ -278,33 +278,52 @@ pub type Text {
   PeopleWorkingCount(count: Int)
   PeopleClaimedTotal(count: Int)
   PeopleOngoingCount(count: Int)
-  PeopleClaimedCount(count: Int)
+  PeopleReservedCount(count: Int)
+  PeopleBlockedCount(count: Int)
   PeopleCardsCount(count: Int)
   PeopleLoadWarning
-  PeopleAvailableCapacity
-  PeopleNoClaimedTasks
+  PeopleTrayTitle(person: String)
+  PeopleNowSection
+  PeopleNowDescription
+  PeopleReservedSection
+  PeopleReservedDescription
+  PeopleNoActiveFocus
+  PeopleNoReservedWork
   PeopleNoCardContext
   PeopleColumnPerson
   PeopleColumnState
-  PeopleColumnWork
-  PeopleColumnContext
-  PeopleColumnAction
+  PeopleColumnFocus
+  PeopleColumnScope
+  PeopleColumnLoad
+  PeopleGuidanceStateTerm
+  PeopleGuidanceStateDescription
+  PeopleGuidanceFocusTerm
+  PeopleGuidanceFocusDescription
+  PeopleGuidanceScopeTerm
+  PeopleGuidanceScopeDescription
+  PeopleGuidanceLoadTerm
+  PeopleGuidanceLoadDescription
   PeopleSectionNeedsAttention
   PeopleSectionWorkingNow
-  PeopleSectionClaimedWork
+  PeopleSectionReservedWork
   PeopleSectionAvailable
   PeopleOngoingWorkBlocked
-  PeopleClaimedWorkBlocked
+  PeopleReservedWorkBlocked
   PeopleWorkingNowState
   PeopleAvailableState
   PeopleNeedsAttentionState
   PeopleBlockedDetail
   PeopleNoOwnedWork
   PeopleNextWork(title: String)
+  PeopleReservedGroupCount(count: Int)
+  PeopleTaskNowMeta(context: String)
+  PeopleTaskReservedMeta(context: String)
+  PeopleTaskBlockedMeta(context: String)
+  PeopleOutsideActiveWorkScope
   PeopleBlockedBy(title: String)
   PeopleOpenDependencies
   PeopleCanPullFromPool
-  PeopleOpenTaskAction
+  PeopleScopeAdditionalCards(title: String, count: Int)
   PeopleShowLabel
   PeopleFilterEveryone
   PeopleFilterWithWork
@@ -412,8 +431,6 @@ pub type Text {
   CollapseHierarchy(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
-  PeopleActiveSection
-  PeopleClaimedSection
   Drag
   StartNowWorking
   PauseNowWorking

@@ -94,6 +94,7 @@ import scrumbringer_client/features/auth/update as auth_update
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
 import scrumbringer_client/features/pool/card_refresh
+import scrumbringer_client/features/pool/member_refresh_filters
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
 import scrumbringer_client/features/tasks/show_state as task_show_state
@@ -1844,7 +1845,7 @@ fn reset_member_tasks(
           member_task_types: NotAsked,
           member_task_types_pending: 0,
           member_task_types_by_project: dict.new(),
-          people_roster: NotAsked,
+          people_workload: NotAsked,
           people_expansions: dict.new(),
         ),
       )
@@ -1897,16 +1898,16 @@ fn refresh_member_data(
       })
     })
 
-  let roster_project_id = case model.core.selected_project_id, project_ids {
+  let people_project_id = case model.core.selected_project_id, project_ids {
     opt.Some(project_id), _ -> opt.Some(project_id)
     opt.None, [project_id, ..] -> opt.Some(project_id)
     opt.None, [] -> opt.None
   }
 
-  let roster_effect = case roster_project_id {
+  let people_workload_effect = case people_project_id {
     opt.Some(project_id) ->
-      api_projects.list_project_members(project_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberPeopleRosterFetched(result))
+      api_projects.list_project_people_workload(project_id, fn(result) {
+        client_state.pool_msg(pool_messages.MemberPeopleWorkloadFetched(result))
       })
     opt.None -> effect.none()
   }
@@ -1927,7 +1928,7 @@ fn refresh_member_data(
       list.append(
         task_type_effects,
         list.append(
-          [positions_effect, roster_effect, org_users_effect],
+          [positions_effect, people_workload_effect, org_users_effect],
           member_card_effects,
         ),
       ),
@@ -1946,11 +1947,11 @@ fn refresh_member_data(
           member_task_types: Loading,
           member_task_types_pending: list.length(project_ids),
           member_task_types_by_project: dict.new(),
-          people_roster: case roster_project_id {
+          people_workload: case people_project_id {
             opt.Some(_) -> Loading
             opt.None -> NotAsked
           },
-          people_expansions: case roster_project_id {
+          people_expansions: case people_project_id {
             opt.Some(_) -> pool.people_expansions
             opt.None -> dict.new()
           },
@@ -1983,12 +1984,11 @@ fn refresh_member_data(
 fn task_filters_for_member_route(
   model: client_state.Model,
 ) -> task_operations_api.TaskFilters {
-  task_operations_api.TaskFilters(
-    status: opt.None,
-    type_id: model.member.pool.member_filters_type_id,
-    capability_id: model.member.pool.member_filters_capability_id,
-    q: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
-    blocked: opt.None,
+  member_refresh_filters.task_filters(
+    model.member.pool.view_mode,
+    model.member.pool.member_filters_type_id,
+    model.member.pool.member_filters_capability_id,
+    model.member.pool.member_filters_q,
   )
 }
 

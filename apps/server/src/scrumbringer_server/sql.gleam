@@ -2514,6 +2514,132 @@ order by email asc;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `people_workload_list` query
+/// defined in `./src/scrumbringer_server/sql/people_workload_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type PeopleWorkloadListRow {
+  PeopleWorkloadListRow(
+    project_id: Int,
+    user_id: Int,
+    email: String,
+    role: String,
+    member_created_at: String,
+    task_id: Int,
+    task_version: Int,
+    task_owner_user_id: Int,
+    task_title: String,
+    task_type_name: String,
+    capability_name: String,
+    card_id: Int,
+    card_title: String,
+    card_state: String,
+    ongoing_by_user_id: Int,
+    blocked_count: Int,
+  )
+}
+
+/// name: people_workload_list
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn people_workload_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(PeopleWorkloadListRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use user_id <- decode.field(1, decode.int)
+    use email <- decode.field(2, decode.string)
+    use role <- decode.field(3, decode.string)
+    use member_created_at <- decode.field(4, decode.string)
+    use task_id <- decode.field(5, decode.int)
+    use task_version <- decode.field(6, decode.int)
+    use task_owner_user_id <- decode.field(7, decode.int)
+    use task_title <- decode.field(8, decode.string)
+    use task_type_name <- decode.field(9, decode.string)
+    use capability_name <- decode.field(10, decode.string)
+    use card_id <- decode.field(11, decode.int)
+    use card_title <- decode.field(12, decode.string)
+    use card_state <- decode.field(13, decode.string)
+    use ongoing_by_user_id <- decode.field(14, decode.int)
+    use blocked_count <- decode.field(15, decode.int)
+    decode.success(PeopleWorkloadListRow(
+      project_id:,
+      user_id:,
+      email:,
+      role:,
+      member_created_at:,
+      task_id:,
+      task_version:,
+      task_owner_user_id:,
+      task_title:,
+      task_type_name:,
+      capability_name:,
+      card_id:,
+      card_title:,
+      card_state:,
+      ongoing_by_user_id:,
+      blocked_count:,
+    ))
+  }
+
+  "-- name: people_workload_list
+select
+  pm.project_id,
+  pm.user_id,
+  u.email,
+  pm.role,
+  to_char(pm.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as member_created_at,
+  coalesce(t.id, 0) as task_id,
+  coalesce(t.version, 0) as task_version,
+  coalesce(t.claimed_by, 0) as task_owner_user_id,
+  coalesce(t.title, '') as task_title,
+  coalesce(tt.name, '') as task_type_name,
+  coalesce(cap.name, '') as capability_name,
+  coalesce(t.card_id, 0) as card_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.execution_state, '') as card_state,
+  coalesce(active_ws.user_id, 0) as ongoing_by_user_id,
+  coalesce(deps.blocked_count, 0) as blocked_count
+from project_members pm
+join users u on u.id = pm.user_id
+left join tasks t
+  on t.project_id = pm.project_id
+  and t.claimed_by = pm.user_id
+  and t.execution_state = 'claimed'
+left join task_types tt on tt.id = t.type_id
+left join capabilities cap on cap.id = tt.capability_id
+left join cards c on c.id = t.card_id
+left join lateral (
+  select ws.user_id
+  from user_task_work_session ws
+  where ws.task_id = t.id
+    and ws.ended_at is null
+  order by ws.started_at desc
+  limit 1
+) active_ws on true
+left join lateral (
+  select coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  where d.task_id = t.id
+) deps on true
+where pm.project_id = $1
+order by
+  u.email asc,
+  coalesce(t.created_at, pm.created_at) desc,
+  coalesce(t.id, 0) desc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `ping` query
 /// defined in `./src/scrumbringer_server/sql/ping.sql`.
 ///

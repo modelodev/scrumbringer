@@ -1,4 +1,7 @@
-import domain/task_status.{WorkAvailable, WorkClaimed, WorkClosed, WorkOngoing}
+import domain/task_status.{
+  Available, Claimed, Closed, Ongoing, Taken, WorkAvailable, WorkClaimed,
+  WorkClosed, WorkOngoing,
+}
 
 pub fn parse_work_state_accepts_known_values_test() {
   let assert Ok(WorkAvailable) = task_status.parse_work_state("available")
@@ -17,11 +20,23 @@ pub fn parse_task_status_rejects_unknown_values_test() {
     task_status.parse_task_status("archived")
 }
 
+pub fn parse_task_status_rejects_ongoing_status_test() {
+  let assert Error(task_status.UnknownTaskPhase("ongoing")) =
+    task_status.parse_task_status("ongoing")
+}
+
 pub fn work_state_to_string_returns_wire_values_test() {
   let assert "available" = task_status.work_state_to_string(WorkAvailable)
   let assert "claimed" = task_status.work_state_to_string(WorkClaimed)
   let assert "ongoing" = task_status.work_state_to_string(WorkOngoing)
   let assert "closed" = task_status.work_state_to_string(WorkClosed)
+}
+
+pub fn task_status_to_string_keeps_ongoing_as_claimed_phase_test() {
+  let assert "available" = task_status.task_status_to_string(Available)
+  let assert "claimed" = task_status.task_status_to_string(Claimed(Taken))
+  let assert "claimed" = task_status.task_status_to_string(Claimed(Ongoing))
+  let assert "closed" = task_status.task_status_to_string(Closed)
 }
 
 pub fn parse_error_to_string_returns_stable_messages_test() {

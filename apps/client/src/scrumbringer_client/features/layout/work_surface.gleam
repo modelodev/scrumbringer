@@ -28,6 +28,7 @@ pub type SurfaceConfig(msg) {
   SurfaceConfig(
     header: Element(msg),
     filters: Option(Element(msg)),
+    guidance: Option(Element(msg)),
     content: Option(Element(msg)),
     state: Option(Element(msg)),
     extra_class: Option(String),
@@ -53,6 +54,7 @@ pub fn surface(config: SurfaceConfig(msg)) -> Element(msg) {
     div([attribute.class("work-surface-chrome")], [
       config.header,
       optional_slot("work-surface-filters", config.filters),
+      optional_slot("work-surface-guidance", config.guidance),
     ]),
     optional_slot("work-surface-state", config.state),
     optional_slot("work-surface-content", config.content),
@@ -81,6 +83,13 @@ pub fn with_content(
   SurfaceConfig(..config, content: Some(content))
 }
 
+pub fn with_guidance(
+  config: SurfaceConfig(msg),
+  guidance: Element(msg),
+) -> SurfaceConfig(msg) {
+  SurfaceConfig(..config, guidance: Some(guidance))
+}
+
 pub fn with_state(
   config: SurfaceConfig(msg),
   state: Element(msg),
@@ -92,6 +101,7 @@ pub fn new_surface(header: Element(msg)) -> SurfaceConfig(msg) {
   SurfaceConfig(
     header:,
     filters: None,
+    guidance: None,
     content: None,
     state: None,
     extra_class: None,

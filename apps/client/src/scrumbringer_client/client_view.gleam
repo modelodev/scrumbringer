@@ -1797,10 +1797,7 @@ fn people_config(
 ) -> people_view.Config(client_state.Msg) {
   people_view.Config(
     locale: model.ui.locale,
-    people_roster: model.member.pool.people_roster,
-    member_tasks: model.member.pool.member_tasks,
-    task_types: model.member.pool.member_task_types,
-    capabilities: model.admin.capabilities.capabilities,
+    people_workload: model.member.pool.people_workload,
     cards: cards,
     depth_names: configured_depth_names(
       state_selectors.active_projects(model),
@@ -1810,12 +1807,11 @@ fn people_config(
     selected_depth: model.member.pool.member_card_depth_filter,
     selected_card_id: model.member.pool.member_plan_scope_card_id,
     card_query: model.member.pool.member_plan_scope_card_query,
-    org_users: model.admin.members.org_users_cache,
     people_expansions: model.member.pool.people_expansions,
     search_query: model.member.pool.member_people_search_query,
     visibility_filter: model.member.pool.member_people_filter,
     sort: model.member.pool.member_people_sort,
-    task_card_color: fn(task) { resolved_task_card_color(model, task) },
+    current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
     on_scope_kind_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
     },
@@ -1844,6 +1840,18 @@ fn people_config(
     },
     on_task_click: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
+    },
+    on_now_working_start: fn(task_id) {
+      client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
+    },
+    on_now_working_pause: client_state.pool_msg(
+      pool_messages.MemberNowWorkingPauseClicked,
+    ),
+    on_task_release: fn(task_id, version) {
+      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
+    },
+    on_task_close: fn(task_id, version) {
+      client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
     },
   )
 }

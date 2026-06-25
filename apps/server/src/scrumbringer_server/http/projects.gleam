@@ -22,6 +22,7 @@
 
 import domain/api_token as api_token_domain
 import domain/org_role
+import domain/people_workload/people_workload_codec
 import gleam/http
 import gleam/int
 import gleam/list
@@ -35,6 +36,7 @@ import scrumbringer_server/http/projects/payloads as project_payloads
 import scrumbringer_server/http/projects/presenters as project_presenters
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/people_workload_db
 import scrumbringer_server/use_case/projects_db
 import scrumbringer_server/use_case/store_state.{type StoredUser}
 import wisp
@@ -60,6 +62,17 @@ pub fn handle_members(
     http.Get -> handle_members_list(req, ctx, project_id)
     http.Post -> handle_members_add(req, ctx, project_id)
     _ -> wisp.method_not_allowed([http.Get, http.Post])
+  }
+}
+
+pub fn handle_people_workload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Get -> handle_people_workload_get(req, ctx, project_id)
+    _ -> wisp.method_not_allowed([http.Get])
   }
 }
 
@@ -286,6 +299,19 @@ fn handle_members_list(
   }
 }
 
+fn handle_people_workload_get(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Get)
+
+  case list_people_workload(req, ctx, project_id) {
+    Ok(payload) -> api.ok(payload)
+    Error(resp) -> resp
+  }
+}
+
 fn handle_members_add(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -439,6 +465,17 @@ fn list_members(req: wisp.Request, ctx: auth.Ctx, project_id: String) {
   }
 }
 
+fn list_people_workload(req: wisp.Request, ctx: auth.Ctx, project_id: String) {
+  use user <- result.try(auth.require_current_user_response(req, ctx))
+  use project_id <- result.try(api.parse_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_workload_access(db, user, project_id))
+  case people_workload_db.list_project_workload(db, project_id) {
+    Ok(people) -> Ok(people_workload_codec.people_to_json(people))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
 fn release_all_tasks(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -540,6 +577,23 @@ fn require_members_management_access(
     user,
     project_id,
   )
+}
+
+fn require_project_workload_access(
+  db,
+  user: StoredUser,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case user.org_role {
+    org_role.Admin -> Ok(Nil)
+    _ ->
+      case projects_db.is_project_member(db, project_id, user.id) {
+        Ok(True) -> Ok(Nil)
+        Ok(False) ->
+          Error(api.error(403, "FORBIDDEN", "Project access required"))
+        Error(_) -> Error(database_error_response())
+      }
+  }
 }
 
 fn require_target_not_current_user(

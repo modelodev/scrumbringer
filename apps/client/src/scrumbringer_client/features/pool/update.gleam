@@ -25,11 +25,17 @@
 //// - **client_update.gleam**: Delegates pool messages here
 //// - **api/tasks/positions.gleam**: Provides position API functions
 
+import gleam/list
 import gleam/option as opt
 import lustre/effect
 
+import domain/people_workload.{
+  type PersonWorkload, type PersonWorkloadTask, PersonWorkload,
+  PersonWorkloadSummary, PersonWorkloadTask, WorkloadAttention,
+  WorkloadAvailable, WorkloadReserved, WorkloadWorkingNow,
+}
 import domain/remote.{type Remote, Loaded}
-import domain/task.{type Task}
+import domain/task.{type Task, type WorkSession, WorkSession}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -689,8 +695,158 @@ fn reconcile_tasks_from_work_sessions(
 
     member_state.MemberModel(
       ..member,
-      pool: member_pool.Model(..pool, member_tasks: member_tasks),
+      pool: member_pool.Model(
+        ..pool,
+        member_tasks: member_tasks,
+        people_workload: reconcile_people_workload_from_work_sessions(
+          pool.people_workload,
+          inner,
+          current_user_id,
+        ),
+      ),
     )
+  })
+}
+
+fn reconcile_people_workload_from_work_sessions(
+  people: Remote(List(PersonWorkload)),
+  inner: client_state.PoolMsg,
+  current_user_id: opt.Option(Int),
+) -> Remote(List(PersonWorkload)) {
+  case current_user_id, people {
+    opt.Some(user_id), Loaded(items) ->
+      case inner {
+        pool_messages.MemberWorkSessionsFetched(Ok(payload))
+        | pool_messages.MemberWorkSessionHeartbeated(Ok(payload)) ->
+          Loaded(
+            list.map(items, fn(person) {
+              reconcile_person_active_sessions(
+                person,
+                user_id,
+                payload.active_sessions,
+              )
+            }),
+          )
+
+        pool_messages.MemberWorkSessionStarted(task_id, Ok(payload)) ->
+          Loaded(
+            list.map(items, fn(person) {
+              person
+              |> mark_person_task_ongoing(task_id, user_id, True)
+              |> reconcile_person_active_sessions(
+                user_id,
+                payload.active_sessions,
+              )
+            }),
+          )
+
+        pool_messages.MemberWorkSessionPaused(task_id, Ok(payload)) ->
+          Loaded(
+            list.map(items, fn(person) {
+              person
+              |> mark_person_task_ongoing(task_id, user_id, False)
+              |> reconcile_person_active_sessions(
+                user_id,
+                payload.active_sessions,
+              )
+            }),
+          )
+
+        _ -> people
+      }
+
+    _, _ -> people
+  }
+}
+
+fn reconcile_person_active_sessions(
+  person: PersonWorkload,
+  current_user_id: Int,
+  sessions: List(WorkSession),
+) -> PersonWorkload {
+  case person.user_id == current_user_id {
+    True ->
+      person
+      |> person_workload_tasks
+      |> list.map(fn(task) {
+        case task.owner_user_id == current_user_id {
+          True ->
+            PersonWorkloadTask(
+              ..task,
+              ongoing: work_session_exists(sessions, task.task_id),
+            )
+          False -> task
+        }
+      })
+      |> rebucket_person_workload(person)
+
+    False -> person
+  }
+}
+
+fn mark_person_task_ongoing(
+  person: PersonWorkload,
+  task_id: Int,
+  current_user_id: Int,
+  ongoing: Bool,
+) -> PersonWorkload {
+  person
+  |> person_workload_tasks
+  |> list.map(fn(task) {
+    case task.task_id == task_id && task.owner_user_id == current_user_id {
+      True -> PersonWorkloadTask(..task, ongoing: ongoing)
+      False -> task
+    }
+  })
+  |> rebucket_person_workload(person)
+}
+
+fn rebucket_person_workload(
+  tasks: List(PersonWorkloadTask),
+  person: PersonWorkload,
+) -> PersonWorkload {
+  let working_now =
+    tasks
+    |> list.filter(fn(task) { task.ongoing && !task.blocked })
+  let reserved =
+    tasks
+    |> list.filter(fn(task) { !task.ongoing && !task.blocked })
+  let attention =
+    tasks
+    |> list.filter(fn(task) { task.blocked })
+
+  let state = case attention, working_now, reserved {
+    [_, ..], _, _ -> WorkloadAttention
+    _, [_, ..], _ -> WorkloadWorkingNow
+    _, _, [_, ..] -> WorkloadReserved
+    _, _, _ -> WorkloadAvailable
+  }
+
+  PersonWorkload(
+    ..person,
+    state: state,
+    working_now: working_now,
+    reserved: reserved,
+    attention: attention,
+    summary: PersonWorkloadSummary(
+      working_now_count: list.length(working_now),
+      reserved_count: list.length(reserved),
+      attention_count: list.length(attention),
+    ),
+  )
+}
+
+fn person_workload_tasks(person: PersonWorkload) -> List(PersonWorkloadTask) {
+  list.append(
+    person.working_now,
+    list.append(person.reserved, person.attention),
+  )
+}
+
+fn work_session_exists(sessions: List(WorkSession), task_id: Int) -> Bool {
+  list.any(sessions, fn(session) {
+    let WorkSession(task_id: session_task_id, ..) = session
+    session_task_id == task_id
   })
 }
 
@@ -799,7 +955,7 @@ fn update_without_view_mode(
     | pool_messages.MemberListCardToggled(_) -> #(model, effect.none())
 
     // Handled by people_workflow.try_update before this dispatch.
-    pool_messages.MemberPeopleRosterFetched(_)
+    pool_messages.MemberPeopleWorkloadFetched(_)
     | pool_messages.MemberPeopleRowToggled(_)
     | pool_messages.MemberPeopleSearchChanged(_)
     | pool_messages.MemberPeopleFilterChanged(_)
