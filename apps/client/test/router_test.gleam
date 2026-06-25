@@ -274,7 +274,7 @@ pub fn parse_org_api_tokens_test() {
   assert_equal(parsed, router.Parsed(router.Org(permissions.ApiTokens)))
 }
 
-pub fn parse_org_rule_metrics_legacy_redirects_to_invites_test() {
+pub fn parse_org_rule_metrics_retired_route_redirects_to_invites_test() {
   let parsed = router.parse_uri(build_uri("/org/rule-metrics", ""))
 
   assert_equal(parsed, router.Redirect(router.Org(permissions.Invites)))
@@ -303,7 +303,7 @@ pub fn parse_member_invalid_view_redirects_test() {
   assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
 
-pub fn parse_member_legacy_list_view_redirects_test() {
+pub fn parse_member_removed_list_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
 
   assert_equal(parsed, router.Redirect(member_route(None, None)))
@@ -568,7 +568,7 @@ pub fn roundtrip_member_cards_with_project_test() {
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
-pub fn parse_legacy_tracking_view_redirects_to_pool_test() {
+pub fn parse_removed_tracking_view_redirects_to_pool_test() {
   assert_equal(
     router.parse_uri(build_uri("/app/pool", "?project=2&view=hierarchies")),
     router.Redirect(member_route(Some(2), None)),

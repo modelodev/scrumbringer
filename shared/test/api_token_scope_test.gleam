@@ -21,9 +21,9 @@ pub fn to_string_roundtrips_supported_scope_test() {
 }
 
 pub fn parse_rejects_removed_hierarchy_scope_test() {
-  let legacy = "card_" <> "trees:read"
+  let retired = "card_" <> "trees:read"
   let assert Error(api_token_scope.InvalidScope(_)) =
-    api_token_scope.parse(legacy)
+    api_token_scope.parse(retired)
 }
 
 pub fn from_parts_rejects_unsupported_project_write_test() {

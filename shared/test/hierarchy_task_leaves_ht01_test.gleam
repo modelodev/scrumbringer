@@ -115,7 +115,7 @@ fn assert_task_state_roundtrip(state: task_state.TaskExecutionState) {
   let assert True = decoded == state
 }
 
-pub fn completed_legacy_is_not_a_public_task_state_test() {
+pub fn completed_string_is_not_a_public_task_state_test() {
   let assert Error(_) =
     json.parse("{\"type\":\"completed\"}", task_state_codec.decoder())
 }

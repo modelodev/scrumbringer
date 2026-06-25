@@ -302,25 +302,25 @@ pub fn get_card_not_found_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
-pub fn legacy_hierarchy_routes_return_not_found_test() {
+pub fn retired_hierarchy_routes_return_not_found_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let legacy_collection = "card_" <> "trees"
+  let retired_collection = "card_" <> "trees"
 
   let project_route =
     handler(
-      simulate.request(http.Get, "/api/v1/projects/1/" <> legacy_collection)
+      simulate.request(http.Get, "/api/v1/projects/1/" <> retired_collection)
       |> fixtures.with_auth(session),
     )
   let item_route =
     handler(
-      simulate.request(http.Get, "/api/v1/" <> legacy_collection <> "/1")
+      simulate.request(http.Get, "/api/v1/" <> retired_collection <> "/1")
       |> fixtures.with_auth(session),
     )
   let activate_route =
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/" <> legacy_collection <> "/1/activate",
+        "/api/v1/" <> retired_collection <> "/1/activate",
       )
       |> fixtures.with_auth(session),
     )

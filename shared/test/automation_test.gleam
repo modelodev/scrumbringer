@@ -99,7 +99,7 @@ pub fn trigger_to_db_values_preserves_card_depth_scope_test() {
     automation.trigger_to_db_values(automation.CardClosed(automation.AnyCard))
 }
 
-pub fn available_variables_exclude_legacy_and_due_date_values_test() {
+pub fn available_variables_exclude_removed_and_due_date_values_test() {
   let trigger = automation.TaskCompleted(None)
 
   let assert False =

@@ -9,9 +9,9 @@ pub fn parse_pool_test() {
   let assert Ok(Pool) = view_mode.parse("pool")
 }
 
-pub fn parse_legacy_tracking_rejects_value_test() {
-  let legacy = "card_" <> "trees"
-  let assert Error(view_mode.UnknownViewMode(_)) = view_mode.parse(legacy)
+pub fn parse_removed_tracking_rejects_value_test() {
+  let retired = "card_" <> "trees"
+  let assert Error(view_mode.UnknownViewMode(_)) = view_mode.parse(retired)
 }
 
 pub fn parse_cards_test() {

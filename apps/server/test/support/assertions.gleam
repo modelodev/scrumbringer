@@ -1,6 +1,6 @@
 //// Test assertion helpers based on Gleam's `let assert`.
 ////
-//// Provides a small replacement for deprecated pipeline-style assertions.
+//// Provides a small replacement for old pipeline-style assertions.
 //// Keep these helpers intentionally boring: they should make tests shorter
 //// without hiding domain-specific expectations.
 

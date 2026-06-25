@@ -158,7 +158,7 @@ pub fn left_panel_kanban_route_can_be_active_test() {
   count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
 }
 
-pub fn left_panel_does_not_render_legacy_hierarchy_nav_test() {
+pub fn left_panel_does_not_render_removed_hierarchy_nav_test() {
   let rendered =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
   let html = element.to_document_string(rendered)
