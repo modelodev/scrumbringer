@@ -8,7 +8,7 @@ import lustre/element.{type Element}
 import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
-import scrumbringer_client/client_state/admin/workflows as workflows_state
+import scrumbringer_client/client_state/admin/workflows as engine_state
 import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -44,7 +44,7 @@ pub fn from_state(
   theme: Theme,
   workflow_id: Int,
   rules: rules_state.Model,
-  workflows: workflows_state.Model,
+  engines_state: engine_state.Model,
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
   depth_names: List(scope_view.DepthName),
@@ -57,13 +57,13 @@ pub fn from_state(
     workflow_id: workflow_id,
     selected_rule_id: selected_rule_id,
     engine_name: rule_list.engine_name_from_remotes(
-      workflows.engines_org,
-      workflows.engines_project,
+      engines_state.engines_org,
+      engines_state.engines_project,
       workflow_id,
     ),
     rules: rules,
-    engines_org: workflows.engines_org,
-    engines_project: workflows.engines_project,
+    engines_org: engines_state.engines_org,
+    engines_project: engines_state.engines_project,
     task_types: task_types.task_types,
     task_templates_org: task_templates.task_templates_org,
     task_templates_project: task_templates.task_templates_project,

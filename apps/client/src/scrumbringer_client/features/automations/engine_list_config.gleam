@@ -9,7 +9,7 @@ import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_state/admin/rules as rules_state
 import scrumbringer_client/client_state/admin/task_templates as task_templates_state
 import scrumbringer_client/client_state/admin/task_types as task_types_state
-import scrumbringer_client/client_state/admin/workflows as workflows_state
+import scrumbringer_client/client_state/admin/workflows as engine_state
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/features/automations/rule_list_config
@@ -40,7 +40,7 @@ pub fn from_state(
   theme: Theme,
   selected_project: opt.Option(Project),
   selected_project_id: opt.Option(Int),
-  workflows: workflows_state.Model,
+  engines_state: engine_state.Model,
   rules: rules_state.Model,
   task_templates: task_templates_state.Model,
   task_types: task_types_state.Model,
@@ -56,7 +56,7 @@ pub fn from_state(
           theme,
           workflow_id,
           rules,
-          workflows,
+          engines_state,
           task_templates,
           task_types,
           depth_names,
@@ -72,17 +72,17 @@ pub fn from_state(
     selected_project: selected_project,
     selected_project_id: selected_project_id,
     selected_rules_view: selected_rules_view,
-    engines: workflows.engines_project,
+    engines: engines_state.engines_project,
     selected_engine_id: automation_deep_link.engine_id(selection),
     selected_rule_id: automation_deep_link.rule_id(selection),
-    dialog_mode: workflows.engine_dialog_mode,
-    search_query: workflows.engine_search,
-    status_filter: workflows.engine_status_filter,
-    form_name: workflows.engine_form_name,
-    form_description: workflows.engine_form_description,
-    form_active: workflows.engine_form_active,
-    form_submitting: workflows.engine_form_submitting,
-    form_error: workflows.engine_form_error,
+    dialog_mode: engines_state.engine_dialog_mode,
+    search_query: engines_state.engine_search,
+    status_filter: engines_state.engine_status_filter,
+    form_name: engines_state.engine_form_name,
+    form_description: engines_state.engine_form_description,
+    form_active: engines_state.engine_form_active,
+    form_submitting: engines_state.engine_form_submitting,
+    form_error: engines_state.engine_form_error,
     on_create_clicked: callbacks.on_create_clicked,
     on_search_changed: callbacks.on_search_changed,
     on_status_filter_changed: callbacks.on_status_filter_changed,
