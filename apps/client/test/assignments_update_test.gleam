@@ -6,7 +6,7 @@ import lustre/effect
 import domain/api_error.{ApiError}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{Manager, Member}
-import domain/remote.{Failed, Loaded}
+import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state/admin/assignments as assignments_state
@@ -224,6 +224,74 @@ pub fn try_update_inline_add_error_clears_state_and_checks_auth_test() {
   next.inline_add_in_flight |> assert_equal(False)
   let assert True = fx != effect.none()
   auth_policy |> assert_equal(assignments_update.CheckAuth(err))
+  root_policy |> assert_equal(assignments_update.NoRootPolicy)
+}
+
+pub fn project_member_added_ok_clears_add_and_refreshes_both_caches_test() {
+  let initial =
+    assignments_state.AssignmentsModel(
+      ..model(),
+      inline_add_context: option.Some(assignments_state.AddUserToProject(7)),
+      inline_add_selection: option.Some(9),
+      inline_add_search: "ana",
+      inline_add_in_flight: True,
+    )
+
+  let assert option.Some(assignments_update.Update(
+    next,
+    fx,
+    auth_policy,
+    root_policy,
+  )) =
+    assignments_update.try_update(
+      initial,
+      admin_messages.AssignmentsProjectMemberAdded(7, Ok(member(9, Member))),
+      context(),
+      feedback_context(),
+    )
+
+  next.inline_add_context |> assert_equal(option.None)
+  next.inline_add_selection |> assert_equal(option.None)
+  next.inline_add_search |> assert_equal("")
+  next.inline_add_in_flight |> assert_equal(False)
+  let assert Ok(Loading) = dict.get(next.project_members, 7)
+  let assert Ok(Loading) = dict.get(next.user_projects, 9)
+  let assert True = fx != effect.none()
+  auth_policy |> assert_equal(assignments_update.NoAuthCheck)
+  root_policy |> assert_equal(assignments_update.NoRootPolicy)
+}
+
+pub fn user_project_added_ok_clears_add_and_refreshes_both_caches_test() {
+  let initial =
+    assignments_state.AssignmentsModel(
+      ..model(),
+      inline_add_context: option.Some(assignments_state.AddProjectToUser(9)),
+      inline_add_selection: option.Some(7),
+      inline_add_search: "project",
+      inline_add_in_flight: True,
+    )
+
+  let assert option.Some(assignments_update.Update(
+    next,
+    fx,
+    auth_policy,
+    root_policy,
+  )) =
+    assignments_update.try_update(
+      initial,
+      admin_messages.AssignmentsUserProjectAdded(9, Ok(project(7, Member))),
+      context(),
+      feedback_context(),
+    )
+
+  next.inline_add_context |> assert_equal(option.None)
+  next.inline_add_selection |> assert_equal(option.None)
+  next.inline_add_search |> assert_equal("")
+  next.inline_add_in_flight |> assert_equal(False)
+  let assert Ok(Loading) = dict.get(next.project_members, 7)
+  let assert Ok(Loading) = dict.get(next.user_projects, 9)
+  let assert True = fx != effect.none()
+  auth_policy |> assert_equal(assignments_update.NoAuthCheck)
   root_policy |> assert_equal(assignments_update.NoRootPolicy)
 }
 

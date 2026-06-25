@@ -608,22 +608,12 @@ fn handle_assignments_project_member_added_ok(
   member: ProjectMember,
   callbacks: Context(parent_msg),
 ) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
-  let model = clear_inline_add(model)
-  let model =
-    model
-    |> set_project_members_state(project_id, Loading)
-    |> set_user_projects_state(member.user_id, Loading)
-
-  let effects = [
-    api_projects.list_project_members(project_id, fn(result) {
-      callbacks.on_project_members_fetched(project_id, result)
-    }),
-    api_org.list_user_projects(member.user_id, fn(result) {
-      callbacks.on_user_projects_fetched(member.user_id, result)
-    }),
-  ]
-
-  #(model, effect.batch(effects))
+  refresh_assignment_caches(
+    clear_inline_add(model),
+    project_id,
+    member.user_id,
+    callbacks,
+  )
 }
 
 fn handle_assignments_project_member_added_error(
@@ -640,22 +630,12 @@ fn handle_assignments_user_project_added_ok(
   project: Project,
   callbacks: Context(parent_msg),
 ) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
-  let model = clear_inline_add(model)
-  let model =
-    model
-    |> set_user_projects_state(user_id, Loading)
-    |> set_project_members_state(project.id, Loading)
-
-  let effects = [
-    api_org.list_user_projects(user_id, fn(result) {
-      callbacks.on_user_projects_fetched(user_id, result)
-    }),
-    api_projects.list_project_members(project.id, fn(result) {
-      callbacks.on_project_members_fetched(project.id, result)
-    }),
-  ]
-
-  #(model, effect.batch(effects))
+  refresh_assignment_caches(
+    clear_inline_add(model),
+    project.id,
+    user_id,
+    callbacks,
+  )
 }
 
 fn handle_assignments_user_project_added_error(
@@ -664,6 +644,29 @@ fn handle_assignments_user_project_added_error(
   feedback: FeedbackContext(parent_msg),
 ) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
   #(clear_inline_add(model), error_effect(err, feedback))
+}
+
+fn refresh_assignment_caches(
+  model: assignments_state.AssignmentsModel,
+  project_id: Int,
+  user_id: Int,
+  callbacks: Context(parent_msg),
+) -> #(assignments_state.AssignmentsModel, Effect(parent_msg)) {
+  let model =
+    model
+    |> set_project_members_state(project_id, Loading)
+    |> set_user_projects_state(user_id, Loading)
+
+  let effects = [
+    api_projects.list_project_members(project_id, fn(result) {
+      callbacks.on_project_members_fetched(project_id, result)
+    }),
+    api_org.list_user_projects(user_id, fn(result) {
+      callbacks.on_user_projects_fetched(user_id, result)
+    }),
+  ]
+
+  #(model, effect.batch(effects))
 }
 
 // =============================================================================
