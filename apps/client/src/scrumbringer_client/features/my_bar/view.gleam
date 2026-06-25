@@ -250,7 +250,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
   let border_class = task_color.card_border_class(card_color)
 
   let total = list.length(tasks)
-  let completed =
+  let closed =
     list.count(tasks, fn(t) {
       case t.state {
         task_state.Closed(..) -> True
@@ -275,10 +275,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
       span([attribute.class("my-bar-card-title")], [text(header_title)]),
       // Progress count
       span([attribute.class("my-bar-card-progress")], [
-        text(i18n.t(
-          config.locale,
-          i18n_text.CardProgressCount(completed, total),
-        )),
+        text(i18n.t(config.locale, i18n_text.CardProgressCount(closed, total))),
       ]),
       // [+] button to create task in this card (Story 4.12 AC8-9, AC16)
       case card_id, card_title {
