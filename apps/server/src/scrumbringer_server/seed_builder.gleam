@@ -32,10 +32,10 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/seed_activity_scenarios
+import scrumbringer_server/seed_audit_events
 import scrumbringer_server/seed_automation_diagnostics
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
-import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/rules_engine
 
 // =============================================================================
@@ -1874,45 +1874,29 @@ fn build_audit_events(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  case state.task_seeds {
-    [] -> Ok(state)
-    seeds -> {
-      let created_events =
-        seeds
-        |> list.map(fn(seed) {
-          seed_db.AuditEventInsertOptions(
-            org_id: state.org_id,
-            project_id: seed.project_id,
-            task_id: seed.task_id,
-            actor_user_id: seed.created_by,
-            event_type: audit_events_db.TaskCreated,
-            created_at: Some(seed.created_at),
-          )
-        })
-
-      let per_audit_events =
-        seeds
-        |> list.index_map(fn(seed, idx) {
-          audit_event_options_for_seed(seed, idx, state, config)
-        })
-        |> list.flatten
-
-      let per_user_events = first_claim_events_for_users(state, seeds, config)
-
-      let all_events =
-        created_events
-        |> list.append(per_audit_events)
-        |> list.append(per_user_events)
-
-      use _ <- result.try(
-        list.try_map(all_events, fn(opts) {
-          seed_db.insert_audit_event(db, opts)
-        }),
-      )
-
-      Ok(BuildState(..state, audit_events_count: list.length(all_events)))
-    }
-  }
+  use audit_events_count <- result.try(seed_audit_events.build(
+    db,
+    seed_audit_events.Context(
+      org_id: state.org_id,
+      admin_id: state.admin_id,
+      user_ids: state.user_ids,
+      task_ids: state.task_ids,
+      task_refs: list.map(state.task_seeds, fn(seed) {
+        seed_audit_events.TaskRef(
+          task_id: seed.task_id,
+          project_id: seed.project_id,
+          execution_state: seed.execution_state,
+          created_at: seed.created_at,
+          created_by: seed.created_by,
+          claimed_by: seed.claimed_by,
+        )
+      }),
+      user_count: config.user_count,
+      inactive_user_count: config.inactive_user_count,
+      date_range_days: config.date_range_days,
+    ),
+  ))
+  Ok(BuildState(..state, audit_events_count: audit_events_count))
 }
 
 fn build_activity_support_scenarios(
@@ -2721,152 +2705,6 @@ fn execution_state_from_pool(
 
 fn member_for_index(members: List(Int), idx: Int, fallback: Int) -> Int {
   list_at_int(members, idx % int.max(1, list.length(members)), fallback)
-}
-
-fn timestamp_days_hours(days: Int, hours: Int) -> String {
-  "NOW() - INTERVAL '"
-  <> int.to_string(days)
-  <> " days' + INTERVAL '"
-  <> int.to_string(hours)
-  <> " hours'"
-}
-
-fn compact_options(items: List(Option(a))) -> List(a) {
-  items
-  |> list.fold([], fn(acc, item) {
-    case item {
-      Some(value) -> [value, ..acc]
-      None -> acc
-    }
-  })
-  |> list.reverse
-}
-
-fn task_seed_at(
-  items: List(TaskSeedInfo),
-  idx: Int,
-  default: TaskSeedInfo,
-) -> TaskSeedInfo {
-  list_at_helper(items, idx, default)
-}
-
-fn audit_event_options_for_seed(
-  seed: TaskSeedInfo,
-  idx: Int,
-  state: BuildState,
-  config: SeedConfig,
-) -> List(seed_db.AuditEventInsertOptions) {
-  let actor_id = case seed.claimed_by {
-    Some(user_id) -> user_id
-    None -> seed.created_by
-  }
-  let days_ago = int.max(1, { idx % config.date_range_days } + 1)
-  let claim_time = timestamp_days_hours(days_ago, 2 + { idx % 4 })
-  let release_time = timestamp_days_hours(days_ago, 6 + { idx % 5 })
-  let reclaim_time = timestamp_days_hours(days_ago, 10 + { idx % 6 })
-  let complete_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
-
-  let claim_event = case seed.execution_state {
-    task_state.Claimed(..) ->
-      Some(seed_db.AuditEventInsertOptions(
-        org_id: state.org_id,
-        project_id: seed.project_id,
-        task_id: seed.task_id,
-        actor_user_id: actor_id,
-        event_type: audit_events_db.TaskClaimed,
-        created_at: Some(claim_time),
-      ))
-    task_state.Closed(..) ->
-      Some(seed_db.AuditEventInsertOptions(
-        org_id: state.org_id,
-        project_id: seed.project_id,
-        task_id: seed.task_id,
-        actor_user_id: actor_id,
-        event_type: audit_events_db.TaskClaimed,
-        created_at: Some(claim_time),
-      ))
-    task_state.Available -> None
-  }
-
-  let release_event = case idx % 4 == 0 {
-    True ->
-      Some(seed_db.AuditEventInsertOptions(
-        org_id: state.org_id,
-        project_id: seed.project_id,
-        task_id: seed.task_id,
-        actor_user_id: actor_id,
-        event_type: audit_events_db.TaskReleased,
-        created_at: Some(release_time),
-      ))
-    False -> None
-  }
-
-  let reclaim_event = case idx % 6 == 0 {
-    True ->
-      Some(seed_db.AuditEventInsertOptions(
-        org_id: state.org_id,
-        project_id: seed.project_id,
-        task_id: seed.task_id,
-        actor_user_id: actor_id,
-        event_type: audit_events_db.TaskClaimed,
-        created_at: Some(reclaim_time),
-      ))
-    False -> None
-  }
-
-  let complete_event = case seed.execution_state {
-    task_state.Closed(..) ->
-      Some(seed_db.AuditEventInsertOptions(
-        org_id: state.org_id,
-        project_id: seed.project_id,
-        task_id: seed.task_id,
-        actor_user_id: actor_id,
-        event_type: audit_events_db.TaskClosed,
-        created_at: Some(complete_time),
-      ))
-    task_state.Available | task_state.Claimed(..) -> None
-  }
-
-  compact_options([claim_event, release_event, reclaim_event, complete_event])
-}
-
-fn first_claim_events_for_users(
-  state: BuildState,
-  seeds: List(TaskSeedInfo),
-  config: SeedConfig,
-) -> List(seed_db.AuditEventInsertOptions) {
-  let active_count = config.user_count - 1 - config.inactive_user_count
-  let active_users =
-    list.drop(state.user_ids, 1)
-    |> list.take(active_count)
-  let login_days = config.date_range_days / 2
-  let offsets = [1, 2, 8, 30]
-
-  active_users
-  |> list.index_map(fn(user_id, idx) {
-    let seed: TaskSeedInfo =
-      task_seed_at(
-        seeds,
-        idx,
-        TaskSeedInfo(
-          task_id: list_at_int(state.task_ids, 0, 0),
-          project_id: state.org_id,
-          execution_state: claimed_state_template(task_state.Taken),
-          created_at: timestamp_days_hours(login_days, 0),
-          created_by: state.admin_id,
-          claimed_by: Some(user_id),
-        ),
-      )
-    let hours = list_at_int(offsets, idx, 2)
-    seed_db.AuditEventInsertOptions(
-      org_id: state.org_id,
-      project_id: seed.project_id,
-      task_id: seed.task_id,
-      actor_user_id: user_id,
-      event_type: audit_events_db.TaskClaimed,
-      created_at: Some(timestamp_days_hours(login_days, hours)),
-    )
-  })
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {
