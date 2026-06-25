@@ -934,6 +934,51 @@ apps/client: gleam format src test && gleam test --target javascript
 1781 passed, no failures
 ```
 
+### Fase 10 parcial: poda agresiva de seeds QA/transicionales
+
+Cambio ejecutado:
+
+- eliminados seeds de QA/transicion que existian para validar hitos
+  intermedios o superficies visuales demasiado especificas:
+  - `seed_activity_scenarios.gleam`;
+  - `seed_automation_diagnostics.gleam`;
+  - `seed_people_scenarios.gleam`;
+  - `seed_plan_scenarios.gleam`;
+  - `seed_root_card_scenarios.gleam`;
+- `seed_builder.gleam` queda reducido al seed core: workspace, capabilities,
+  cards, automation definitions, tasks, audit events y automation executions;
+- eliminados imports y helpers muertos derivados de esos escenarios.
+
+Metrica de la fase:
+
+```txt
+6 files changed, 4 insertions(+), 2534 deletions(-)
+```
+
+Seed source tras la poda:
+
+```txt
+apps/server/src/scrumbringer_server/seed*.gleam
+4017 total lines
+```
+
+Metrica no-doc acumulada tras esta fase:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+184 files changed, 3591 insertions(+), 14384 deletions(-)
+```
+
+Reduccion neta no-doc acumulada: `-10.793` lineas.
+
+Validacion ejecutada:
+
+```txt
+apps/server: gleam format src test && gleam test
+DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+544 passed, no failures
+```
+
 ### Validacion DB/server ejecutada en PostgreSQL 5433
 
 Hallazgo:

@@ -13,8 +13,7 @@
 //// - Define seed configuration preset
 //// - Build full scenarios with proper relationships
 //// - Manage data pools for realistic names/titles
-//// - HT-12 coverage: root pool, parent_card_id, due_date, closed, healthy,
-////   saturated, hierarchy, manager, member, capability
+//// - Minimal final-model demo data for local development
 ////
 //// ## Non-responsibilities
 ////
@@ -23,19 +22,14 @@
 
 import domain/task/state as task_state
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import pog
-import scrumbringer_server/seed_activity_scenarios
 import scrumbringer_server/seed_audit_events
 import scrumbringer_server/seed_automation_definitions
-import scrumbringer_server/seed_automation_diagnostics
 import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
-import scrumbringer_server/seed_people_scenarios
-import scrumbringer_server/seed_plan_scenarios
-import scrumbringer_server/seed_root_card_scenarios
 import scrumbringer_server/seed_task_scenarios
 import scrumbringer_server/seed_workspace_scenarios
 
@@ -193,20 +187,15 @@ pub fn build_seed(
       rule_executions_count: 0,
     )
 
-  // Build in dependency order: core records, automation definitions, tasks, QA
-  // scenarios, then derived activity and diagnostics.
+  // Build in dependency order: core records, automation definitions, tasks,
+  // audit events, then derived automation executions.
   use state <- result.try(build_workspace_scenarios(db, state, config))
   use state <- result.try(build_capability_scenarios(db, state, config))
   use state <- result.try(build_cards(db, state, config))
   use state <- result.try(build_automation_definitions(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
-  use state <- result.try(build_plan_qa_scenarios(db, state, config))
-  use state <- result.try(build_people_qa_scenarios(db, state, config))
-  use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
-  use state <- result.try(build_activity_support_scenarios(db, state, config))
   use state <- result.try(build_automation_executions(db, state, config))
-  use state <- result.try(build_automation_diagnostics(db, state, config))
 
   Ok(SeedResult(
     projects: list.length(state.project_ids),
@@ -376,102 +365,6 @@ fn build_tasks(
   )
 }
 
-fn build_plan_qa_scenarios(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use plan_result <- result.try(seed_plan_scenarios.build(
-    db,
-    seed_plan_scenarios.Context(
-      admin_id: state.admin_id,
-      active_project_ids: active_project_ids(state),
-      task_type_ids: state.task_type_ids,
-      project_member_ids: state.project_member_ids,
-    ),
-  ))
-
-  let new_task_seeds =
-    plan_result.task_seeds
-    |> list.map(fn(seed) {
-      TaskSeedInfo(
-        task_id: seed.task_id,
-        project_id: seed.project_id,
-        execution_state: seed.execution_state,
-        created_at: seed.created_at,
-        created_by: seed.created_by,
-        claimed_by: seed.claimed_by,
-      )
-    })
-  let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
-
-  case plan_result.project_id {
-    None -> Ok(state)
-    Some(project_id) ->
-      Ok(
-        BuildState(
-          ..state,
-          card_ids: list.append(state.card_ids, plan_result.card_ids),
-          card_ids_by_project: append_cards_for_project(
-            state.card_ids_by_project,
-            project_id,
-            plan_result.card_ids,
-          ),
-          task_ids: list.append(state.task_ids, new_task_ids),
-          task_seeds: list.append(state.task_seeds, new_task_seeds),
-        ),
-      )
-  }
-}
-
-fn build_people_qa_scenarios(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use people_result <- result.try(seed_people_scenarios.build(
-    db,
-    seed_people_scenarios.Context(
-      admin_id: state.admin_id,
-      active_project_ids: active_project_ids(state),
-      task_type_ids: state.task_type_ids,
-      project_member_ids: state.project_member_ids,
-    ),
-  ))
-
-  let new_task_seeds =
-    people_result.task_seeds
-    |> list.map(fn(seed) {
-      TaskSeedInfo(
-        task_id: seed.task_id,
-        project_id: seed.project_id,
-        execution_state: seed.execution_state,
-        created_at: seed.created_at,
-        created_by: seed.created_by,
-        claimed_by: seed.claimed_by,
-      )
-    })
-  let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
-
-  case people_result.project_id {
-    None -> Ok(state)
-    Some(project_id) ->
-      Ok(
-        BuildState(
-          ..state,
-          card_ids: list.append(state.card_ids, people_result.card_ids),
-          card_ids_by_project: append_cards_for_project(
-            state.card_ids_by_project,
-            project_id,
-            people_result.card_ids,
-          ),
-          task_ids: list.append(state.task_ids, new_task_ids),
-          task_seeds: list.append(state.task_seeds, new_task_seeds),
-        ),
-      )
-  }
-}
-
 fn build_audit_events(
   db: pog.Connection,
   state: BuildState,
@@ -502,45 +395,6 @@ fn build_audit_events(
   Ok(BuildState(..state, audit_events_count: audit_events_count))
 }
 
-fn build_activity_support_scenarios(
-  db: pog.Connection,
-  state: BuildState,
-  config: SeedConfig,
-) -> Result(BuildState, String) {
-  use _ <- result.try(seed_activity_scenarios.build_all(
-    db,
-    seed_activity_scenarios.Context(
-      admin_id: state.admin_id,
-      user_ids: state.user_ids,
-      active_project_ids: active_project_ids(state),
-      card_ids_by_project: state.card_ids_by_project,
-      task_refs: list.map(state.task_seeds, fn(seed) {
-        seed_activity_scenarios.TaskRef(
-          task_id: seed.task_id,
-          execution_state: seed.execution_state,
-        )
-      }),
-      date_range_days: config.date_range_days,
-    ),
-  ))
-  Ok(state)
-}
-
-fn build_root_cards(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use _ <- result.try(seed_root_card_scenarios.build(
-    db,
-    seed_root_card_scenarios.Context(
-      admin_id: state.admin_id,
-      active_project_ids: active_project_ids(state),
-    ),
-  ))
-  Ok(state)
-}
-
 fn build_automation_executions(
   db: pog.Connection,
   state: BuildState,
@@ -559,69 +413,6 @@ fn build_automation_executions(
   ))
 
   Ok(BuildState(..state, rule_executions_count: context.rule_executions_count))
-}
-
-fn build_automation_diagnostics(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  let active_projects = active_project_ids(state)
-
-  case active_projects {
-    [_default_project_id, _healthy_project_id, stress_project_id, ..] -> {
-      use context <- result.try(seed_automation_diagnostics.build(
-        db,
-        seed_automation_diagnostics.Context(
-          admin_id: state.admin_id,
-          task_ids: state.task_ids,
-          task_refs: list.map(state.task_seeds, fn(seed) {
-            #(seed.project_id, seed.task_id)
-          }),
-          rule_ids_by_project: state.rule_ids_by_project,
-          template_ids_by_project: state.template_ids_by_project,
-          task_type_ids: state.task_type_ids,
-          rule_executions_count: state.rule_executions_count,
-        ),
-        stress_project_id,
-      ))
-      Ok(
-        BuildState(
-          ..state,
-          task_ids: context.task_ids,
-          rule_executions_count: context.rule_executions_count,
-        ),
-      )
-    }
-    _ -> Ok(state)
-  }
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-fn append_cards_for_project(
-  card_ids_by_project: List(#(Int, List(Int))),
-  project_id: Int,
-  new_card_ids: List(Int),
-) -> List(#(Int, List(Int))) {
-  case card_ids_by_project {
-    [] -> [#(project_id, new_card_ids)]
-    [first, ..rest] -> {
-      let #(existing_project_id, existing_card_ids) = first
-      case existing_project_id == project_id {
-        True -> [
-          #(existing_project_id, list.append(existing_card_ids, new_card_ids)),
-          ..rest
-        ]
-        False -> [
-          first,
-          ..append_cards_for_project(rest, project_id, new_card_ids)
-        ]
-      }
-    }
-  }
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {
