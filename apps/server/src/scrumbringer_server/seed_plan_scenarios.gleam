@@ -605,7 +605,7 @@ fn insert_seed_root_card(
       created_by: admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,
-      completed_at: closed_at,
+      closed_at: closed_at,
     ),
   )
 }

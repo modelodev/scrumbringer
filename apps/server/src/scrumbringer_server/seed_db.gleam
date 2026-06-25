@@ -89,7 +89,7 @@ pub type RootCardInsertOptions {
     created_by: Int,
     created_at: Option(String),
     activated_at: Option(String),
-    completed_at: Option(String),
+    closed_at: Option(String),
   )
 }
 
@@ -868,7 +868,7 @@ pub fn insert_root_card(
       vals,
       idx,
       "closed_at",
-      opts.completed_at,
+      opts.closed_at,
       params,
     )
 
