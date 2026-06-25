@@ -53,6 +53,7 @@ fn pool_context(model: Model) {
     locale: model.ui.locale,
     theme: model.ui.theme,
     has_active_projects: has_active_projects(model),
+    healthy_pool_limit: 20,
     current_user_id: opt.Some(1),
     active_task_id: opt.None,
     now_working_sessions: [],

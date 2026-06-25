@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option as opt
 
 import domain/card.{type Card}
+import domain/project/settings as project_settings
 import domain/remote.{unwrap}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/selectors as state_selectors
@@ -18,6 +19,7 @@ pub fn from_state(
     locale: model.ui.locale,
     theme: model.ui.theme,
     has_active_projects: !list.is_empty(state_selectors.active_projects(model)),
+    healthy_pool_limit: selected_healthy_pool_limit(model),
     current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
     active_task_id: state_selectors.now_working_active_task_id(model),
     now_working_sessions: state_selectors.now_working_all_sessions(model),
@@ -30,6 +32,13 @@ pub fn from_state(
     positions: model.member.positions,
     callbacks: callbacks(),
   )
+}
+
+fn selected_healthy_pool_limit(model: client_state.Model) -> Int {
+  case state_selectors.selected_project(model) {
+    opt.Some(project) -> project.healthy_pool_limit
+    opt.None -> project_settings.default_healthy_pool_limit()
+  }
 }
 
 fn callbacks() -> pool_view.Callbacks(client_state.Msg) {

@@ -7,6 +7,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/selectors as state_selectors
+import scrumbringer_client/features/pool/view_context as pool_view_context
 
 pub fn active_projects_returns_empty_when_not_loaded_test() {
   let model = client_state.default_model()
@@ -35,6 +36,32 @@ pub fn selected_project_returns_selected_project_test() {
     })
 
   let assert True = state_selectors.selected_project(model) == opt.Some(project)
+}
+
+pub fn pool_view_context_uses_selected_project_healthy_pool_limit_test() {
+  let project =
+    Project(
+      id: 1,
+      name: "Alpha",
+      my_role: Manager,
+      created_at: "2026-01-01",
+      members_count: 1,
+      card_depth_names: [],
+      healthy_pool_limit: 12,
+    )
+  let model =
+    client_state.default_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(
+        ..core,
+        selected_project_id: opt.Some(1),
+        projects: Loaded([project]),
+      )
+    })
+
+  let context = pool_view_context.from_state(model, [])
+
+  let assert 12 = context.healthy_pool_limit
 }
 
 pub fn ensure_selected_project_picks_first_when_missing_test() {
