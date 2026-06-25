@@ -93,7 +93,10 @@ fn blocked_items(locale: Locale, task: domain_task.Task) -> List(String) {
   |> list.map(fn(dep) {
     dep.title
     <> " · "
-    <> task_status_utils.label(locale, domain_task.dependency_status(dep))
+    <> task_status_utils.label(
+      locale,
+      task_execution_state.to_status(dep.state),
+    )
   })
 }
 

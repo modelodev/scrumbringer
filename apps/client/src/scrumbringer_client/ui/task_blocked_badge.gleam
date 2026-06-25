@@ -9,9 +9,8 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{span, text}
 
-import domain/task.{
-  type Task, type TaskDependency, dependency_is_closed, dependency_status,
-}
+import domain/task.{type Task, type TaskDependency, dependency_is_closed}
+import domain/task/state as task_execution_state
 import domain/task_status
 
 import scrumbringer_client/i18n/i18n
@@ -61,7 +60,7 @@ pub fn tooltip_text(locale: Locale, task: Task) -> String {
 }
 
 fn dependency_status_text(locale: Locale, dep: TaskDependency) -> String {
-  let status = dependency_status(dep)
+  let status = task_execution_state.to_status(dep.state)
   let status_label = task_status_utils.label(locale, status)
   case status {
     task_status.Claimed(_) ->

@@ -11,7 +11,6 @@
 
 import domain/card
 import domain/task/state as task_state
-import domain/task_status.{type TaskPhase, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
 
@@ -162,22 +161,6 @@ pub type WorkSessionsPayload {
 
 pub fn with_state(task: Task, state: task_state.TaskExecutionState) -> Task {
   Task(..task, state: state)
-}
-
-pub fn status(task: Task) -> TaskPhase {
-  task_state.to_status(task.state)
-}
-
-pub fn work_state(task: Task) -> WorkState {
-  task_state.to_work_state(task.state)
-}
-
-pub fn dependency_status(dependency: TaskDependency) -> TaskPhase {
-  task_state.to_status(dependency.state)
-}
-
-pub fn dependency_work_state(dependency: TaskDependency) -> WorkState {
-  task_state.to_work_state(dependency.state)
 }
 
 pub fn dependency_is_closed(dependency: TaskDependency) -> Bool {
