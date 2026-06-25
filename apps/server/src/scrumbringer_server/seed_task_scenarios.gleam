@@ -13,7 +13,7 @@ import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
 
 pub type StatusDistribution {
-  StatusDistribution(available: Int, claimed: Int, completed: Int)
+  StatusDistribution(available: Int, claimed: Int, closed: Int)
 }
 
 pub type Context {
@@ -61,7 +61,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
         False -> cards
       }
 
-      let card_all_done = list_at_int(usable_cards, 0, 0)
+      let card_closed_outcomes = list_at_int(usable_cards, 0, 0)
       let card_mixed = list_at_int(usable_cards, 1, 0)
       let card_single = list_at_int(usable_cards, 2, 0)
 
@@ -94,19 +94,19 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
         #(
           title_for(base_idx, "Task A"),
           bug_id,
-          done_state_template(),
-          Some(card_all_done),
+          closed_outcome_state_template(),
+          Some(card_closed_outcomes),
         ),
         #(
           title_for(base_idx + 1, "Task B"),
           feature_id,
-          done_state_template(),
-          Some(card_all_done),
+          closed_outcome_state_template(),
+          Some(card_closed_outcomes),
         ),
         #(
           title_for(base_idx + 2, "Task C"),
           bug_id,
-          done_state_template(),
+          closed_outcome_state_template(),
           Some(card_mixed),
         ),
         #(
@@ -169,7 +169,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
             base_days,
             idx,
           )
-        let #(claimed_by, claimed_at, completed_at) = case execution_state {
+        let #(claimed_by, claimed_at, closed_at) = case execution_state {
           task_state.Claimed(..) -> #(
             Some(claimed_user_for),
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
@@ -188,7 +188,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
             creator_for,
             claimed_by,
             claimed_at,
-            completed_at,
+            closed_at,
           )
         let created_at =
           days_ago_timestamp(int.max(1, base_days - { idx % 13 }))
@@ -358,16 +358,13 @@ fn seeded_last_entered_pool_at(
 fn execution_state_pool_from(
   distribution: StatusDistribution,
 ) -> List(task_state.TaskExecutionState) {
-  let StatusDistribution(
-    available: available,
-    claimed: claimed,
-    completed: completed,
-  ) = distribution
+  let StatusDistribution(available: available, claimed: claimed, closed: closed) =
+    distribution
   list.append(
     repeat_value(task_state.Available, available),
     list.append(
       repeat_value(claimed_state_template(task_state.Taken), claimed),
-      repeat_value(done_state_template(), completed),
+      repeat_value(closed_outcome_state_template(), closed),
     ),
   )
 }
@@ -398,7 +395,7 @@ fn hydrate_seed_execution_state(
   created_by: Int,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> task_state.TaskExecutionState {
   case execution_state {
     task_state.Available -> task_state.Available
@@ -411,7 +408,7 @@ fn hydrate_seed_execution_state(
     task_state.Closed(reason: reason, ..) ->
       task_state.Closed(
         reason: reason,
-        closed_at: option_string(completed_at, "NOW()"),
+        closed_at: option_string(closed_at, "NOW()"),
         closed_by: created_by,
       )
   }
@@ -423,7 +420,7 @@ fn claimed_state_template(
   task_state.Claimed(claimed_by: 0, claimed_at: "", mode: mode)
 }
 
-fn done_state_template() -> task_state.TaskExecutionState {
+fn closed_outcome_state_template() -> task_state.TaskExecutionState {
   task_state.Closed(reason: task_state.Done, closed_at: "", closed_by: 0)
 }
 

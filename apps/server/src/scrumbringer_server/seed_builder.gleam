@@ -70,7 +70,7 @@ pub type SeedConfig {
 
 /// Distribution of task statuses.
 pub type StatusDistribution {
-  StatusDistribution(available: Int, claimed: Int, completed: Int)
+  StatusDistribution(available: Int, claimed: Int, closed: Int)
 }
 
 /// Result of a seed run.
@@ -142,7 +142,7 @@ pub fn realistic_config() -> SeedConfig {
     status_distribution: StatusDistribution(
       available: 35,
       claimed: 40,
-      completed: 25,
+      closed: 25,
     ),
     cards_per_project: 6,
     empty_card_count: 1,
@@ -335,11 +335,8 @@ fn build_tasks(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let StatusDistribution(
-    available: available,
-    claimed: claimed,
-    completed: completed,
-  ) = config.status_distribution
+  let StatusDistribution(available: available, claimed: claimed, closed: closed) =
+    config.status_distribution
   use task_result <- result.try(seed_task_scenarios.build(
     db,
     seed_task_scenarios.Context(
@@ -354,7 +351,7 @@ fn build_tasks(
       status_distribution: seed_task_scenarios.StatusDistribution(
         available: available,
         claimed: claimed,
-        completed: completed,
+        closed: closed,
       ),
       empty_card_count: config.empty_card_count,
       date_range_days: config.date_range_days,

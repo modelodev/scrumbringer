@@ -45,7 +45,7 @@ pub fn metrics_config() -> seed_builder.SeedConfig {
     status_distribution: seed_builder.StatusDistribution(
       available: 25,
       claimed: 45,
-      completed: 30,
+      closed: 30,
     ),
     cards_per_project: 4,
     empty_card_count: 1,
