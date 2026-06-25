@@ -284,9 +284,7 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Result(Task, ServiceError) 
 }
 
 /// Map a close-transition query row to Task.
-pub fn from_complete_row(
-  row: sql.TasksCompleteRow,
-) -> Result(Task, ServiceError) {
+pub fn from_close_row(row: sql.TasksCompleteRow) -> Result(Task, ServiceError) {
   from_fields(
     id: row.id,
     project_id: row.project_id,

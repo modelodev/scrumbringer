@@ -982,7 +982,7 @@ fn close_task_for_owner(
   let _ =
     work_sessions_db.close_session_for_task(db, user_id, task_id, "task_closed")
 
-  case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
+  case tasks_queries.close_task(db, org_id, task_id, user_id, version) {
     Ok(task) -> close_task_success(db, task_id, user_id, org_id, current, task)
     Error(service_error.NotFound) -> Error(VersionConflict)
     Error(service_error.DbError(e)) -> Error(DbError(e))

@@ -402,7 +402,7 @@ pub fn release_all_tasks_for_user(
 }
 
 /// Close a claimed task.
-pub fn complete_task(
+pub fn close_task(
   db: pog.Connection,
   org_id: Int,
   task_id: Int,
@@ -419,9 +419,10 @@ pub fn complete_task(
         "task_closed",
       )
 
+    // The generated SQL name preserves the existing database/API transition term.
     case sql.tasks_complete(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
-        use task <- result.try(mappers.from_complete_row(row))
+        use task <- result.try(mappers.from_close_row(row))
 
         use _ <- result.try(
           audit_events_db.insert(
