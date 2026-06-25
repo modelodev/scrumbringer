@@ -281,6 +281,7 @@ seed_source_files() ->
         "apps/server/src/scrumbringer_server/seed_audit_events.gleam",
         "apps/server/src/scrumbringer_server/seed_automation_definitions.gleam",
         "apps/server/src/scrumbringer_server/seed_automation_diagnostics.gleam",
+        "apps/server/src/scrumbringer_server/seed_capability_scenarios.gleam",
         "apps/server/src/scrumbringer_server/seed_card_scenarios.gleam"
     ].
 

@@ -34,6 +34,7 @@ import scrumbringer_server/seed_activity_scenarios
 import scrumbringer_server/seed_audit_events
 import scrumbringer_server/seed_automation_definitions
 import scrumbringer_server/seed_automation_diagnostics
+import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
@@ -197,9 +198,7 @@ pub fn build_seed(
   // scenarios, then derived activity and diagnostics.
   use state <- result.try(build_users(db, state, config))
   use state <- result.try(build_projects(db, state, config))
-  use state <- result.try(build_capabilities(db, state, config))
-  use state <- result.try(build_task_types(db, state, config))
-  use state <- result.try(build_member_capabilities(db, state, config))
+  use state <- result.try(build_capability_scenarios(db, state, config))
   use state <- result.try(build_cards(db, state, config))
   use state <- result.try(build_automation_definitions(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
@@ -386,112 +385,26 @@ fn seeded_healthy_pool_limit(project_index: Int) -> Int {
   }
 }
 
-fn build_capabilities(
+fn build_capability_scenarios(
   db: pog.Connection,
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = active_project_ids(state)
-  let names = seed_pools.capability_names()
+  use capabilities <- result.try(seed_capability_scenarios.build(
+    db,
+    seed_capability_scenarios.Context(
+      active_project_ids: active_project_ids(state),
+      project_member_ids: state.project_member_ids,
+    ),
+  ))
 
-  use capability_ids <- result.try(
-    list.index_map(active_projects, fn(project_id, proj_idx) {
-      let bug_name = list_at(names, proj_idx, "Engineering")
-      let feature_name = list_at(names, proj_idx + 1, "Product")
-      let task_name = list_at(names, proj_idx + 2, "Operations")
-
-      use bug_cap <- result.try(seed_db.insert_capability(
-        db,
-        project_id,
-        bug_name,
-      ))
-      use feature_cap <- result.try(seed_db.insert_capability(
-        db,
-        project_id,
-        feature_name,
-      ))
-      use task_cap <- result.try(seed_db.insert_capability(
-        db,
-        project_id,
-        task_name,
-      ))
-      Ok(#(project_id, bug_cap, feature_cap, task_cap))
-    })
-    |> result.all,
+  Ok(
+    BuildState(
+      ..state,
+      capability_ids: capabilities.capability_ids,
+      task_type_ids: capabilities.task_type_ids,
+    ),
   )
-
-  Ok(BuildState(..state, capability_ids: capability_ids))
-}
-
-fn build_task_types(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use task_type_ids <- result.try(
-    list.try_map(state.capability_ids, fn(caps) {
-      let #(project_id, bug_cap, feature_cap, task_cap) = caps
-      use bug_id <- result.try(seed_db.insert_task_type_with_capability(
-        db,
-        project_id,
-        "Bug",
-        "bug-ant",
-        Some(bug_cap),
-      ))
-      use feature_id <- result.try(seed_db.insert_task_type_with_capability(
-        db,
-        project_id,
-        "Feature",
-        "sparkles",
-        Some(feature_cap),
-      ))
-      use task_id <- result.try(seed_db.insert_task_type_with_capability(
-        db,
-        project_id,
-        "Task",
-        "clipboard-document-check",
-        Some(task_cap),
-      ))
-      Ok(#(project_id, bug_id, feature_id, task_id))
-    }),
-  )
-
-  Ok(BuildState(..state, task_type_ids: task_type_ids))
-}
-
-fn build_member_capabilities(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use _ <- result.try(
-    list.try_map(state.capability_ids, fn(caps) {
-      let #(project_id, bug_cap, feature_cap, task_cap) = caps
-      let members = members_for_project(state.project_member_ids, project_id)
-
-      case members {
-        [] -> Ok(Nil)
-        _ ->
-          list.index_map(members, fn(user_id, idx) {
-            let cap_id = case idx % 3 {
-              0 -> bug_cap
-              1 -> feature_cap
-              _ -> task_cap
-            }
-            seed_db.insert_project_member_capability(
-              db,
-              project_id,
-              user_id,
-              cap_id,
-            )
-          })
-          |> result.all
-          |> result.map(fn(_) { Nil })
-      }
-    }),
-  )
-
-  Ok(state)
 }
 
 fn build_cards(
