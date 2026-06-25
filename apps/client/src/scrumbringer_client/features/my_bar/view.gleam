@@ -46,9 +46,7 @@ import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status.{
-  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
-}
+import domain/task_status.{Available, Claimed, Ongoing, Taken}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -254,7 +252,12 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
 
   let total = list.length(tasks)
   let completed =
-    list.count(tasks, fn(t) { task_state.to_status(t.state) == Done })
+    list.count(tasks, fn(t) {
+      case t.state {
+        task_state.Closed(..) -> True
+        _ -> False
+      }
+    })
 
   let header_title = case card_title {
     opt.Some(title) -> title
@@ -378,10 +381,6 @@ pub fn view_member_bar_task_row(
     card_color: card_color,
     ..,
   ) = task
-  let status = domain_task.status(task)
-
-  let is_mine = domain_task.claimed_by(task) == opt.Some(config.user_id)
-
   let type_label = task_type.name
 
   let type_icon = task_type.icon
@@ -436,9 +435,11 @@ pub fn view_member_bar_task_row(
     False -> start_action
   }
 
-  let actions = case status, is_mine {
-    Available, _ -> claim_action
-    Claimed(_), True -> [
+  let actions = case task.state {
+    task_state.Available -> claim_action
+    task_state.Claimed(claimed_by: claimed_by, ..)
+      if claimed_by == config.user_id
+    -> [
       now_working_action,
       ..task_actions.release_and_complete(
         task_state_ui.release_action(config.locale),
@@ -455,7 +456,7 @@ pub fn view_member_bar_task_row(
         opt.None,
       )
     ]
-    _, _ -> []
+    task_state.Claimed(..) | task_state.Closed(..) -> []
   }
 
   task_item.view(
@@ -492,12 +493,12 @@ pub fn view_member_bar_task_row(
 // Inline icon helper removed in favor of ui/task_type_icon.view
 
 /// Status rank for sorting (lower = higher priority).
-pub fn member_bar_status_rank(status: TaskPhase) -> Int {
-  case status {
-    Claimed(Ongoing) -> 0
-    Claimed(Taken) -> 1
-    Available -> 2
-    Done -> 3
+pub fn member_bar_status_rank(state: task_state.TaskExecutionState) -> Int {
+  case state {
+    task_state.Claimed(mode: task_state.Ongoing, ..) -> 0
+    task_state.Claimed(mode: task_state.Taken, ..) -> 1
+    task_state.Available -> 2
+    task_state.Closed(..) -> 3
   }
 }
 
@@ -508,15 +509,12 @@ pub fn compare_member_bar_tasks(
 ) -> order.Order {
   let domain_task.Task(priority: priority_a, created_at: created_at_a, ..) = a
   let domain_task.Task(priority: priority_b, created_at: created_at_b, ..) = b
-  let status_a = domain_task.status(a)
-  let status_b = domain_task.status(b)
-
   case int.compare(priority_b, priority_a) {
     order.Eq ->
       case
         int.compare(
-          member_bar_status_rank(status_a),
-          member_bar_status_rank(status_b),
+          member_bar_status_rank(a.state),
+          member_bar_status_rank(b.state),
         )
       {
         order.Eq -> string.compare(created_at_b, created_at_a)
