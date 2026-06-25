@@ -28,7 +28,7 @@ pub fn task_transitions_map_to_supported_triggers_test() {
       Some(7),
     )
 
-  let assert Ok(automation.TaskCompleted(Some(7))) =
+  let assert Ok(automation.TaskClosed(Some(7))) =
     automation.task_transition_trigger(
       Some(task_state.Claimed(1, "2026-01-15T10:00:00Z", task_state.Taken)),
       task_state.Closed(task_state.Done, "2026-01-15T10:30:00Z", 1),
@@ -55,7 +55,7 @@ pub fn event_keys_separate_different_facts_on_same_task_test() {
   let created = automation.TaskCreated(None)
   let claimed = automation.TaskClaimed(None)
   let released = automation.TaskReleased(None)
-  let done = automation.TaskCompleted(None)
+  let done = automation.TaskClosed(None)
 
   let assert "task_created:42" =
     automation.trigger_to_event_key(created, task_id)
@@ -107,7 +107,7 @@ pub fn trigger_kind_round_trips_to_supported_trigger_test() {
     automation.trigger_from_kind("task_claimed", Some(7), None)
   let assert Ok(automation.TaskReleased(Some(7))) =
     automation.trigger_from_kind("task_released", Some(7), None)
-  let assert Ok(automation.TaskCompleted(Some(7))) =
+  let assert Ok(automation.TaskClosed(Some(7))) =
     automation.trigger_from_kind("task_completed", Some(7), None)
   let assert Ok(automation.CardActivated(automation.AnyCard)) =
     automation.trigger_from_kind("card_activated", None, None)
@@ -133,7 +133,7 @@ pub fn trigger_to_db_values_preserves_card_depth_scope_test() {
 }
 
 pub fn available_variables_exclude_removed_and_due_date_values_test() {
-  let trigger = automation.TaskCompleted(None)
+  let trigger = automation.TaskClosed(None)
 
   let assert False =
     automation.template_uses_unknown_variables(
@@ -148,7 +148,7 @@ pub fn available_variables_exclude_removed_and_due_date_values_test() {
 }
 
 pub fn template_variables_depend_on_trigger_family_test() {
-  let task_trigger = automation.TaskCompleted(None)
+  let task_trigger = automation.TaskClosed(None)
   let card_trigger = automation.CardActivated(automation.AnyCard)
 
   let assert False =
@@ -169,7 +169,7 @@ pub fn template_variables_depend_on_trigger_family_test() {
 }
 
 pub fn unknown_template_variables_returns_concrete_blocking_variables_test() {
-  let task_trigger = automation.TaskCompleted(None)
+  let task_trigger = automation.TaskClosed(None)
 
   let assert ["card_title", "card_level", "due_date"] =
     automation.unknown_template_variables(
@@ -198,7 +198,7 @@ pub fn rule_draft_requires_engine_trigger_and_template_test() {
   let no_template =
     automation.RuleDraft(
       engine_id: Some(1),
-      trigger: Some(automation.TaskCompleted(None)),
+      trigger: Some(automation.TaskClosed(None)),
       template_id: None,
     )
 
@@ -210,7 +210,7 @@ pub fn rule_draft_rejects_invalid_template_id_test() {
   let draft =
     automation.RuleDraft(
       engine_id: Some(1),
-      trigger: Some(automation.TaskCompleted(None)),
+      trigger: Some(automation.TaskClosed(None)),
       template_id: Some(0),
     )
 
@@ -222,13 +222,13 @@ pub fn valid_rule_draft_creates_single_task_rule_test() {
   let draft =
     automation.RuleDraft(
       engine_id: Some(10),
-      trigger: Some(automation.TaskCompleted(Some(7))),
+      trigger: Some(automation.TaskClosed(Some(7))),
       template_id: Some(20),
     )
 
   let assert Ok(valid) = automation.validate_rule_draft(draft)
   let assert 10 = automation.valid_rule_draft_engine_id(valid)
-  let assert automation.TaskCompleted(Some(7)) =
+  let assert automation.TaskClosed(Some(7)) =
     automation.valid_rule_draft_trigger(valid)
   let assert automation.CreateTask(20) =
     automation.valid_rule_draft_action(valid)
@@ -237,7 +237,7 @@ pub fn valid_rule_draft_creates_single_task_rule_test() {
 
   let assert 30 = automation.rule_id(rule)
   let assert 10 = automation.rule_engine_id(rule)
-  let assert automation.TaskCompleted(Some(7)) = automation.rule_trigger(rule)
+  let assert automation.TaskClosed(Some(7)) = automation.rule_trigger(rule)
   let assert automation.CreateTask(20) = automation.rule_action(rule)
   let assert automation.Active = automation.rule_status(rule)
 }

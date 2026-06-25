@@ -820,7 +820,7 @@ pub type Text {
   RuleBuilderTaskTemplate
   RuleBuilderChooseTemplate
   RuleBuilderTaskCreatedEvent
-  RuleBuilderTaskCompletedEvent
+  RuleBuilderTaskClosedEvent
   RuleBuilderTaskClaimedEvent
   RuleBuilderTaskReleasedEvent
   RuleBuilderCardActivatedEvent
@@ -829,7 +829,7 @@ pub type Text {
   RulePreviewTaskCreated(subject: String)
   RulePreviewTaskClaimed(subject: String)
   RulePreviewTaskReleased(subject: String)
-  RulePreviewTaskCompleted(subject: String)
+  RulePreviewTaskClosed(subject: String)
   RulePreviewCardActivated(scope: String)
   RulePreviewCardClosed(scope: String)
   RulePreviewRequiresReview
@@ -841,7 +841,7 @@ pub type Text {
   RulePreviewTaskType(task_type_name: String)
   RulePreviewSelectedTaskType
   RuleTriggerTaskClaimedWord
-  RuleTriggerTaskCompletedWord
+  RuleTriggerTaskClosedWord
   RuleTriggerTaskCreatedWord
   RuleTriggerTaskReleasedWord
   RulePreviewTemplateWillCreate(template_name: String)

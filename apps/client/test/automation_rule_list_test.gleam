@@ -129,7 +129,7 @@ fn rule() -> Rule {
     workflow_id: 3,
     name: "Close bug workflow",
     goal: opt.Some("Create a follow-up when work closes"),
-    trigger: automation.TaskCompleted(opt.Some(5)),
+    trigger: automation.TaskClosed(opt.Some(5)),
     action: opt.Some(automation.CreateTask(11)),
     status: automation.Active,
     created_at: "2026-01-01T00:00:00Z",

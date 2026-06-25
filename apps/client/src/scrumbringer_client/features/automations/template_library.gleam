@@ -322,7 +322,7 @@ fn variable_token(variable: String) -> String {
 }
 
 fn template_variable_names() -> List(String) {
-  automation.available_template_variables(automation.TaskCompleted(opt.None))
+  automation.available_template_variables(automation.TaskClosed(opt.None))
   |> list.append(
     automation.available_template_variables(automation.CardActivated(
       automation.AnyCard,

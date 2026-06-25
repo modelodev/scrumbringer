@@ -990,7 +990,7 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderTaskTemplate -> "Rule task template"
     text.RuleBuilderChooseTemplate -> "Choose a template"
     text.RuleBuilderTaskCreatedEvent -> "is created"
-    text.RuleBuilderTaskCompletedEvent -> "is closed"
+    text.RuleBuilderTaskClosedEvent -> "is closed"
     text.RuleBuilderTaskClaimedEvent -> "is claimed"
     text.RuleBuilderTaskReleasedEvent -> "is released"
     text.RuleBuilderCardActivatedEvent -> "is activated"
@@ -1002,7 +1002,7 @@ pub fn translate(text: Text) -> String {
       "When " <> subject <> " is claimed, work is created in the Pool."
     text.RulePreviewTaskReleased(subject) ->
       "When " <> subject <> " is released, work is created in the Pool."
-    text.RulePreviewTaskCompleted(subject) ->
+    text.RulePreviewTaskClosed(subject) ->
       "When " <> subject <> " is closed, work is created in the Pool."
     text.RulePreviewCardActivated(scope) ->
       "When " <> scope <> " is activated, work is created in the Pool."
@@ -1020,7 +1020,7 @@ pub fn translate(text: Text) -> String {
       "a " <> task_type_name <> " task"
     text.RulePreviewSelectedTaskType -> "a selected task type"
     text.RuleTriggerTaskClaimedWord -> "claimed"
-    text.RuleTriggerTaskCompletedWord -> "closed"
+    text.RuleTriggerTaskClosedWord -> "closed"
     text.RuleTriggerTaskCreatedWord -> "created"
     text.RuleTriggerTaskReleasedWord -> "released"
     text.RulePreviewTemplateWillCreate(template_name) ->

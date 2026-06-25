@@ -14,7 +14,7 @@ pub fn rule_decoder_decodes_typed_task_target_test() {
     workflow_id: 2,
     name: "Complete task",
     goal: option.None,
-    trigger: automation.TaskCompleted(option.Some(7)),
+    trigger: automation.TaskClosed(option.Some(7)),
     action: option.Some(automation.CreateTask(11)),
     status: automation.Active,
     created_at: "2026-01-28T12:00:00Z",

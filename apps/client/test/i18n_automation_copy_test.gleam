@@ -55,14 +55,13 @@ pub fn automation_navigation_copy_uses_engine_vocabulary_test() {
 }
 
 pub fn automation_task_close_copy_uses_closed_lifecycle_terms_test() {
-  let en_event = i18n.t(locale.En, text.RuleBuilderTaskCompletedEvent)
-  let en_preview =
-    i18n.t(locale.En, text.RulePreviewTaskCompleted("a Bug task"))
-  let en_trigger = i18n.t(locale.En, text.RuleTriggerTaskCompletedWord)
-  let es_event = i18n.t(locale.Es, text.RuleBuilderTaskCompletedEvent)
+  let en_event = i18n.t(locale.En, text.RuleBuilderTaskClosedEvent)
+  let en_preview = i18n.t(locale.En, text.RulePreviewTaskClosed("a Bug task"))
+  let en_trigger = i18n.t(locale.En, text.RuleTriggerTaskClosedWord)
+  let es_event = i18n.t(locale.Es, text.RuleBuilderTaskClosedEvent)
   let es_preview =
-    i18n.t(locale.Es, text.RulePreviewTaskCompleted("una tarea Bug"))
-  let es_trigger = i18n.t(locale.Es, text.RuleTriggerTaskCompletedWord)
+    i18n.t(locale.Es, text.RulePreviewTaskClosed("una tarea Bug"))
+  let es_trigger = i18n.t(locale.Es, text.RuleTriggerTaskClosedWord)
 
   let assert "is closed" = en_event
   let assert True = string.contains(en_preview, "is closed")

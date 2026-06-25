@@ -75,7 +75,7 @@ pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
 
   let assert Ok(rule) = json.parse(from: body, using: decoder)
   let assert option.Some(5) = workflow.rule_task_type_id(rule)
-  let assert automation.TaskCompleted(option.Some(5)) = rule.trigger
+  let assert automation.TaskClosed(option.Some(5)) = rule.trigger
   let assert option.Some(template) = rule.template
   let assert "Review {{origin}}" = template.name
 }
@@ -124,7 +124,7 @@ pub fn rules_payload_decoder_decodes_list_test() {
   let assert Ok(rules) = json.parse(from: body, using: decoder)
   let assert [rule_a, rule_b] = rules
   let assert "Rule A" = rule_a.name
-  let assert automation.TaskCompleted(option.Some(1)) = rule_a.trigger
+  let assert automation.TaskClosed(option.Some(1)) = rule_a.trigger
   let assert "Rule B" = rule_b.name
   let assert automation.CardClosed(automation.AnyCard) = rule_b.trigger
 }

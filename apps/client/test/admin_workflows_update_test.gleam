@@ -33,7 +33,7 @@ fn rule(id: Int, name: String) -> Rule {
     workflow_id: 3,
     name: name,
     goal: opt.None,
-    trigger: automation.TaskCompleted(opt.None),
+    trigger: automation.TaskClosed(opt.None),
     action: opt.None,
     status: automation.RequiresReview(automation.TemplateMissing),
     created_at: "2026-01-01T00:00:00Z",

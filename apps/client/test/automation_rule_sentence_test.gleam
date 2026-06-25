@@ -71,7 +71,7 @@ pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
   let html =
     rule_sentence.view(
       locale.En,
-      rule(automation.TaskCompleted(opt.Some(5)), [
+      rule(automation.TaskClosed(opt.Some(5)), [
         template("Bug triage", 11),
       ]),
       opt.Some("Bug"),
@@ -86,7 +86,7 @@ pub fn rule_sentence_renders_spanish_task_completed_cause_test() {
   let html =
     rule_sentence.view(
       locale.Es,
-      rule(automation.TaskCompleted(opt.Some(5)), [
+      rule(automation.TaskClosed(opt.Some(5)), [
         template("Seguimiento", 11),
       ]),
       opt.Some("Bug"),

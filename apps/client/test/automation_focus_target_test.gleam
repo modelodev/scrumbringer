@@ -30,7 +30,7 @@ fn rule(id: Int) -> Rule {
     workflow_id: 3,
     name: "Close bug workflow",
     goal: opt.None,
-    trigger: automation.TaskCompleted(opt.None),
+    trigger: automation.TaskClosed(opt.None),
     action: opt.Some(automation.CreateTask(11)),
     status: automation.Active,
     created_at: "2026-01-01T00:00:00Z",

@@ -1017,7 +1017,7 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderTaskTemplate -> "Plantilla de tarea de la regla"
     text.RuleBuilderChooseTemplate -> "Elige una plantilla"
     text.RuleBuilderTaskCreatedEvent -> "se crea"
-    text.RuleBuilderTaskCompletedEvent -> "se cierra"
+    text.RuleBuilderTaskClosedEvent -> "se cierra"
     text.RuleBuilderTaskClaimedEvent -> "se reclama"
     text.RuleBuilderTaskReleasedEvent -> "se libera"
     text.RuleBuilderCardActivatedEvent -> "se activa"
@@ -1029,7 +1029,7 @@ pub fn translate(text: Text) -> String {
       "Cuando " <> subject <> " se reclame, se creará trabajo en el Pool."
     text.RulePreviewTaskReleased(subject) ->
       "Cuando " <> subject <> " se libere, se creará trabajo en el Pool."
-    text.RulePreviewTaskCompleted(subject) ->
+    text.RulePreviewTaskClosed(subject) ->
       "Cuando " <> subject <> " se cierre, se creará trabajo en el Pool."
     text.RulePreviewCardActivated(scope) ->
       "Cuando " <> scope <> " se active, se creará trabajo en el Pool."
@@ -1046,7 +1046,7 @@ pub fn translate(text: Text) -> String {
     text.RulePreviewTaskType(task_type_name) -> "una tarea " <> task_type_name
     text.RulePreviewSelectedTaskType -> "un tipo de tarea seleccionado"
     text.RuleTriggerTaskClaimedWord -> "reclamada"
-    text.RuleTriggerTaskCompletedWord -> "cerrada"
+    text.RuleTriggerTaskClosedWord -> "cerrada"
     text.RuleTriggerTaskCreatedWord -> "creada"
     text.RuleTriggerTaskReleasedWord -> "liberada"
     text.RulePreviewTemplateWillCreate(template_name) ->

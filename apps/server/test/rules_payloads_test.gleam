@@ -15,7 +15,7 @@ pub fn decode_create_payload_test() {
   let assert Ok(payloads.CreatePayload(
     name: "Rule",
     goal: "Ship",
-    trigger: automation.TaskCompleted(Some(7)),
+    trigger: automation.TaskClosed(Some(7)),
     action: automation.CreateTask(11),
     status: automation.Active,
   )) = payloads.decode_create(dynamic)
@@ -37,7 +37,7 @@ pub fn decode_create_payload_accepts_all_supported_triggers_test() {
   )) =
     decode_create_trigger("{\"type\":\"task_released\",\"task_type_id\":null}")
   let assert Ok(payloads.CreatePayload(
-    trigger: automation.TaskCompleted(Some(9)),
+    trigger: automation.TaskClosed(Some(9)),
     ..,
   )) = decode_create_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
   let assert Ok(payloads.CreatePayload(
@@ -108,7 +108,7 @@ pub fn decode_update_payload_accepts_all_supported_triggers_test() {
   )) =
     decode_update_trigger("{\"type\":\"task_released\",\"task_type_id\":null}")
   let assert Ok(payloads.UpdatePayload(
-    trigger: Some(automation.TaskCompleted(Some(9))),
+    trigger: Some(automation.TaskClosed(Some(9))),
     ..,
   )) = decode_update_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
   let assert Ok(payloads.UpdatePayload(

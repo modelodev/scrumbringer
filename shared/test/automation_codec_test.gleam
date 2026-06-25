@@ -7,7 +7,7 @@ pub fn task_trigger_codecs_roundtrip_supported_triggers_test() {
   let created = automation.TaskCreated(None)
   let claimed = automation.TaskClaimed(Some(7))
   let released = automation.TaskReleased(None)
-  let completed = automation.TaskCompleted(Some(9))
+  let completed = automation.TaskClosed(Some(9))
 
   let assert Ok(decoded_created) = roundtrip_trigger(created)
   let assert True = decoded_created == created
@@ -91,7 +91,7 @@ pub fn rule_draft_codec_roundtrips_builder_state_test() {
   let draft =
     automation.RuleDraft(
       engine_id: Some(10),
-      trigger: Some(automation.TaskCompleted(Some(7))),
+      trigger: Some(automation.TaskClosed(Some(7))),
       template_id: Some(20),
     )
 
@@ -102,7 +102,7 @@ pub fn rule_draft_codec_roundtrips_builder_state_test() {
     |> json.parse(automation_codec.rule_draft_decoder())
   let assert Ok(valid) = automation.validate_rule_draft(decoded)
   let assert 10 = automation.valid_rule_draft_engine_id(valid)
-  let assert automation.TaskCompleted(Some(7)) =
+  let assert automation.TaskClosed(Some(7)) =
     automation.valid_rule_draft_trigger(valid)
   let assert automation.CreateTask(20) =
     automation.valid_rule_draft_action(valid)

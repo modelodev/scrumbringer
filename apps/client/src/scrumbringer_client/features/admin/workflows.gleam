@@ -791,7 +791,7 @@ fn parse_rule_trigger_form(
       use task_type_id <- result.try(parse_rule_task_type_id(
         state.rule_form_task_type_id,
       ))
-      Ok(automation.TaskCompleted(task_type_id))
+      Ok(automation.TaskClosed(task_type_id))
     }
     "task_claimed" -> {
       use task_type_id <- result.try(parse_rule_task_type_id(
@@ -1072,7 +1072,7 @@ fn rule_trigger_form_values(
       "task_created",
       "",
     )
-    automation.TaskCompleted(task_type_id) -> #(
+    automation.TaskClosed(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
       "task_completed",

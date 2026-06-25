@@ -83,11 +83,11 @@ fn supported_trigger_sentence(
         task_type_name,
         i18n_text.RuleTriggerTaskClaimedWord,
       )
-    automation.TaskCompleted(_) ->
+    automation.TaskClosed(_) ->
       task_trigger_sentence(
         locale,
         task_type_name,
-        i18n_text.RuleTriggerTaskCompletedWord,
+        i18n_text.RuleTriggerTaskClosedWord,
       )
     automation.TaskCreated(_) ->
       task_trigger_sentence(
