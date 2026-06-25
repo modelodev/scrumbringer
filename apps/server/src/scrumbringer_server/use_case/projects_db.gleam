@@ -107,7 +107,7 @@ fn project_from_fields(
     my_role: my_role,
     members_count: members_count,
     card_depth_names: project_settings.default_card_depth_names(),
-    healthy_pool_limit: 20,
+    healthy_pool_limit: project_settings.default_healthy_pool_limit(),
   )
 }
 
@@ -359,16 +359,17 @@ fn healthy_pool_limit(
 
   use returned <- result.try(
     pog.query(
-      "\nselect coalesce(ps.healthy_pool_limit, 20)::int\nfrom projects p\nleft join project_settings ps on ps.project_id = p.id\nwhere p.id = $1",
+      "\nselect coalesce(ps.healthy_pool_limit, $2)::int\nfrom projects p\nleft join project_settings ps on ps.project_id = p.id\nwhere p.id = $1",
     )
     |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(project_settings.default_healthy_pool_limit()))
     |> pog.returning(decoder)
     |> pog.execute(db),
   )
 
   case returned.rows {
     [value, ..] -> Ok(value)
-    [] -> Ok(20)
+    [] -> Ok(project_settings.default_healthy_pool_limit())
   }
 }
 

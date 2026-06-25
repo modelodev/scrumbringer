@@ -41,7 +41,7 @@ pub fn project_decoder() -> decode.Decoder(Project) {
   )
   use healthy_pool_limit <- decode.optional_field(
     "healthy_pool_limit",
-    20,
+    settings.default_healthy_pool_limit(),
     decode.int,
   )
   decode.success(Project(
@@ -81,6 +81,6 @@ pub fn user_project_decoder() -> decode.Decoder(Project) {
     created_at: "",
     members_count: 0,
     card_depth_names: default_card_depth_names(),
-    healthy_pool_limit: 20,
+    healthy_pool_limit: settings.default_healthy_pool_limit(),
   ))
 }

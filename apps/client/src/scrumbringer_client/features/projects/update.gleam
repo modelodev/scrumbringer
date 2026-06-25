@@ -1324,7 +1324,9 @@ fn create_form(name: String) -> admin_projects.ProjectDialogForm {
     step: admin_projects.ProjectCreateGeneral,
     name: name,
     max_depth: int.to_string(list.length(depth_names)),
-    healthy_pool_limit: "20",
+    healthy_pool_limit: int.to_string(
+      project_settings.default_healthy_pool_limit(),
+    ),
     card_depth_names: depth_names,
   )
 }

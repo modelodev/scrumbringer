@@ -16,6 +16,7 @@ import domain/card.{
   UnknownCardColor, optional_color_to_string as shared_optional_color_to_string,
   parse_optional_color as shared_parse_optional_color,
 }
+import domain/project/settings as project_settings
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -421,7 +422,7 @@ fn activate_open_card(
        WHERE c.id = $1
      ),
      settings AS (
-       SELECT COALESCE(ps.healthy_pool_limit, 20)::int AS healthy_pool_limit
+       SELECT COALESCE(ps.healthy_pool_limit, $3)::int AS healthy_pool_limit
        FROM target
        LEFT JOIN project_settings ps ON ps.project_id = target.project_id
      ),
@@ -510,13 +511,15 @@ fn activate_open_card(
   )
   |> pog.parameter(pog.int(card_id))
   |> pog.parameter(pog.int(user_id))
+  |> pog.parameter(pog.int(project_settings.default_healthy_pool_limit()))
   |> pog.returning(card_action_impact_decoder())
   |> pog.execute(db)
   |> result.map_error(DbError)
   |> result.try(fn(returned) {
     case returned.rows {
       [impact] -> Ok(impact)
-      _ -> Ok(CardActionImpact(0, 0, 20))
+      _ ->
+        Ok(CardActionImpact(0, 0, project_settings.default_healthy_pool_limit()))
     }
   })
 }
@@ -550,7 +553,7 @@ fn close_open_card(
            WHERE c.id = $1
          ),
          settings AS (
-           SELECT COALESCE(ps.healthy_pool_limit, 20)::int AS healthy_pool_limit
+           SELECT COALESCE(ps.healthy_pool_limit, $3)::int AS healthy_pool_limit
            FROM target
            LEFT JOIN project_settings ps ON ps.project_id = target.project_id
          ),
@@ -639,13 +642,19 @@ fn close_open_card(
       )
       |> pog.parameter(pog.int(card_id))
       |> pog.parameter(pog.int(user_id))
+      |> pog.parameter(pog.int(project_settings.default_healthy_pool_limit()))
       |> pog.returning(card_action_impact_decoder())
       |> pog.execute(db)
       |> result.map_error(DbError)
       |> result.try(fn(returned) {
         case returned.rows {
           [impact] -> Ok(impact)
-          _ -> Ok(CardActionImpact(0, 0, 20))
+          _ ->
+            Ok(CardActionImpact(
+              0,
+              0,
+              project_settings.default_healthy_pool_limit(),
+            ))
         }
       })
   }
@@ -775,7 +784,7 @@ pub fn move_card(
        WHERE id = $1
      ),
      settings AS (
-       SELECT COALESCE(ps.healthy_pool_limit, 20)::int AS healthy_pool_limit
+       SELECT COALESCE(ps.healthy_pool_limit, $3)::int AS healthy_pool_limit
        FROM target
        LEFT JOIN project_settings ps ON ps.project_id = target.project_id
      ),
@@ -804,13 +813,15 @@ pub fn move_card(
   )
   |> pog.parameter(pog.int(card_id))
   |> pog.parameter(pog.nullable(pog.int, parent_card_id))
+  |> pog.parameter(pog.int(project_settings.default_healthy_pool_limit()))
   |> pog.returning(card_action_impact_decoder())
   |> pog.execute(db)
   |> result.map_error(DbError)
   |> result.try(fn(returned) {
     case returned.rows {
       [impact] -> Ok(impact)
-      _ -> Ok(CardActionImpact(0, 0, 20))
+      _ ->
+        Ok(CardActionImpact(0, 0, project_settings.default_healthy_pool_limit()))
     }
   })
 }

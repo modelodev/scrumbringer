@@ -519,7 +519,7 @@ fn create_project_structure(
     )
     _ -> #(
       int.to_string(list.length(project_settings.default_card_depth_names())),
-      "20",
+      int.to_string(project_settings.default_healthy_pool_limit()),
       project_settings.default_card_depth_names(),
     )
   }
@@ -620,7 +620,7 @@ fn edit_project_structure(
     )
     _ -> #(
       int.to_string(list.length(project_settings.default_card_depth_names())),
-      "20",
+      int.to_string(project_settings.default_healthy_pool_limit()),
       project_settings.default_card_depth_names(),
       projects_state.NoDepthReduction,
     )

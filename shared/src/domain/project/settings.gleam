@@ -27,6 +27,10 @@ pub fn default_card_depth_names() -> List(ProjectDepthName) {
   ]
 }
 
+pub fn default_healthy_pool_limit() -> Int {
+  20
+}
+
 pub fn healthy_pool_limit_from_int(
   value: Int,
 ) -> Result(HealthyPoolLimit, HealthyPoolLimitError) {

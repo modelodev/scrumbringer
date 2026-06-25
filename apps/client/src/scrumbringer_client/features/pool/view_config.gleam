@@ -9,6 +9,7 @@ import lustre/element.{type Element}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/note/entity.{type Note}
+import domain/project/settings as project_settings
 import domain/remote.{unwrap}
 import domain/task.{type Task, type WorkSession, Task}
 import domain/task/state as task_state
@@ -34,7 +35,9 @@ import scrumbringer_client/utils/card_queries
 
 // Project settings do not expose healthy_pool_limit to the client project model
 // yet. Keep the fallback at the root adapter so the view stays data-driven.
-const fallback_healthy_pool_limit = 20
+fn fallback_healthy_pool_limit() -> Int {
+  project_settings.default_healthy_pool_limit()
+}
 
 pub type Callbacks(msg) {
   Callbacks(
@@ -121,7 +124,7 @@ fn main_config(context: Context(msg)) -> pool_view.MainConfig(msg) {
     on_create_opened: context.callbacks.on_create_opened,
     available_tasks: available_tasks_config(context),
     control_bar: control_bar_config(context),
-    healthy_pool_limit: fallback_healthy_pool_limit,
+    healthy_pool_limit: fallback_healthy_pool_limit(),
     view_mode: context.pool.member_pool_view_mode,
     task_card_config: fn(task) { pool_task_card_config(context, task) },
     task_row_config: fn(task) { pool_task_row_config(context, task) },

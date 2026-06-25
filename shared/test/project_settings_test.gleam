@@ -13,6 +13,12 @@ pub fn default_card_depth_names_include_three_operational_levels_test() {
   let assert "Task groups" = third.plural_name
 }
 
+pub fn default_healthy_pool_limit_is_positive_test() {
+  let assert 20 = settings.default_healthy_pool_limit()
+  let assert Ok(_) =
+    settings.healthy_pool_limit_from_int(settings.default_healthy_pool_limit())
+}
+
 pub fn healthy_pool_limit_accepts_positive_values_test() {
   let assert Ok(limit) = settings.healthy_pool_limit_from_int(20)
   let assert 20 = settings.healthy_pool_limit_to_int(limit)
