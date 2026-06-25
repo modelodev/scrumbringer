@@ -5,7 +5,7 @@
 ////
 //// Responsibilities:
 //// - Organize cards by state into columns
-//// - Display card progress (completed/total tasks)
+//// - Display card progress (closed/total tasks)
 //// - Show context menu for PM/Admin (edit, delete)
 //// - Handle card selection
 ////

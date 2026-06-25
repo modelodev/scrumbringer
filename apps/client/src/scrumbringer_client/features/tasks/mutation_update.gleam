@@ -265,7 +265,7 @@ fn handle_release_clicked(
 }
 
 /// Handle complete button click with optimistic update.
-/// Immediately marks task as completed locally, sends API request.
+/// Immediately marks task as closed locally, sends API request.
 fn handle_complete_clicked(
   model: member_pool.Model,
   task_id: Int,

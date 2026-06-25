@@ -192,7 +192,7 @@ pub fn no_results(title: String, description: String) -> EmptyStateConfig(msg) {
   |> with_meaning(NoResults)
 }
 
-/// Empty state for all tasks completed (celebration).
+/// Empty state for all tasks closed (celebration).
 pub fn all_done(title: String, description: String) -> EmptyStateConfig(msg) {
   new("sparkles", title, description)
   |> with_meaning(HealthyEmpty)

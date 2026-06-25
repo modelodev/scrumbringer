@@ -136,7 +136,7 @@ pub fn get_variant(badge: Badge) -> BadgeVariant {
 /// ## Example
 ///
 /// ```gleam
-/// case badge.new("Done", badge.Success) {
+/// case badge.new("Closed", badge.Success) {
 ///   Ok(b) -> badge.view(b)
 ///   Error(msg) -> html.text(msg)
 /// }
@@ -209,7 +209,7 @@ pub fn quick(text_value: String, variant: BadgeVariant) -> Element(msg) {
 /// Create a status badge with predefined variants.
 pub fn status(status_text: String) -> Element(msg) {
   let variant = case string.lowercase(status_text) {
-    "done" | "completed" | "completada" | "terminada" -> Success
+    "closed" | "cerrada" | "cerrado" -> Success
     "active" | "activo" | "activa" | "in progress" | "en progreso" -> Primary
     "pending" | "pendiente" | "waiting" | "esperando" -> Warning
     "error" | "failed" | "fallido" | "fallida" -> Danger

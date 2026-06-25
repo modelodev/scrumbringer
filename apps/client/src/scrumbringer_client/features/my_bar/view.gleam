@@ -8,7 +8,7 @@
 //// ## Responsibilities
 ////
 //// - List of user's claimed tasks with actions
-//// - Personal metrics panel (claimed/released/completed counts)
+//// - Personal metrics panel (claimed/released/closed counts)
 //// - Task row rendering with action buttons
 //// - Task sorting by priority and status
 ////
