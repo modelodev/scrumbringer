@@ -68,7 +68,7 @@ pub fn activation_counts_descendant_available_tasks_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 
   let assert 2 = plan.pool_impact.opened_by_action
@@ -92,7 +92,7 @@ pub fn activation_propagates_down_not_up_test() {
       card_id.new(2),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 
   let assert option.Some(card_state.Draft) =
@@ -118,7 +118,7 @@ pub fn activating_empty_card_reports_zero_pool_impact_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 
   let assert 0 = plan.pool_impact.opened_by_action
@@ -137,7 +137,7 @@ pub fn activating_already_active_card_is_idempotent_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 
   let assert 0 = plan.pool_impact.opened_by_action
@@ -183,7 +183,7 @@ pub fn activation_excludes_closed_blocked_and_unclaimable_tasks_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 
   let assert 1 = plan.pool_impact.opened_by_action
@@ -202,7 +202,7 @@ pub fn activation_warns_when_pool_exceeds_project_healthy_limit_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(1),
+      healthy_pool_limit(1),
     )
 
   let assert 2 = plan.pool_impact.open_after
@@ -268,6 +268,11 @@ fn card_task(
     blocked: False,
     capability_allowed: True,
   )
+}
+
+fn healthy_pool_limit(value: Int) -> settings.HealthyPoolLimit {
+  let assert Ok(limit) = settings.healthy_pool_limit_from_int(value)
+  limit
 }
 
 fn manage_flow_actor() -> permissions.Authorized(permissions.ManageFlow) {

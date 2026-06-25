@@ -141,7 +141,7 @@ pub fn closed_card_cannot_be_reopened_test() {
       card_id.new(1),
       manage_flow_actor(),
       now,
-      settings.healthy_pool_limit_unchecked(20),
+      healthy_pool_limit(20),
     )
 }
 
@@ -229,6 +229,11 @@ fn card_task(
     blocked: False,
     capability_allowed: True,
   )
+}
+
+fn healthy_pool_limit(value: Int) -> settings.HealthyPoolLimit {
+  let assert Ok(limit) = settings.healthy_pool_limit_from_int(value)
+  limit
 }
 
 fn manage_flow_actor() -> permissions.Authorized(permissions.ManageFlow) {

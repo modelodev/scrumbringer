@@ -102,10 +102,6 @@ pub fn healthy_pool_limit_from_int(
   }
 }
 
-pub fn healthy_pool_limit_unchecked(value: Int) -> HealthyPoolLimit {
-  HealthyPoolLimit(value)
-}
-
 pub fn healthy_pool_limit_to_int(limit: HealthyPoolLimit) -> Int {
   let HealthyPoolLimit(value) = limit
   value
