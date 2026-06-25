@@ -795,24 +795,28 @@ Resultado no-doc contra el baseline de ejecucion:
 
 ```txt
 git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
-148 files changed, 2608 insertions(+), 11147 deletions(-)
+189 files changed, 3595 insertions(+), 15389 deletions(-)
 ```
 
-Reduccion neta no-doc: `-8.539` lineas.
+Reduccion neta no-doc: `-11.794` lineas.
 
 Distribucion de cambios no-doc:
 
 ```txt
-A 1
+A 6
+R098 6
 R099 1
-R100 1
-D 47
-M 98
+R100 4
+D 57
+R093 1
+R096 1
+M 113
 ```
 
-La ejecucion supera el objetivo minimo de `-8.000` lineas netas. No alcanza el
-objetivo preferente de `-12.000` a `-16.000` porque los siguientes bloques
-siguen conteniendo cobertura o comportamiento vivo y no se han borrado solo para
+La ejecucion supera el objetivo minimo de `-8.000` lineas netas y queda a 206
+lineas del borde inferior del objetivo preferente de `-12.000` a `-16.000`.
+No se fuerza el cruce exacto de 12k porque los siguientes bloques siguen
+conteniendo cobertura o comportamiento vivo y no se han borrado solo para
 mejorar la metrica:
 
 - `apps/server/test/tasks_http_test.gleam`
@@ -822,6 +826,10 @@ mejorar la metrica:
 - `apps/client/src/scrumbringer_client/features/plan/structure_view.gleam`
 - `apps/client/src/scrumbringer_client/client_state/member/pool.gleam`
 - `apps/server/src/scrumbringer_server/seed_db.gleam`
+- `shared/test/card_api_contracts_ht07_test.gleam`
+- `shared/test/task_api_contracts_ht08_test.gleam`
+- `apps/client/test/due_date_urgency_ht11_test.gleam`
+- `apps/client/test/card_due_date_ht11_test.gleam`
 
 Limpieza ejecutada:
 
@@ -837,6 +845,8 @@ Limpieza ejecutada:
   `close/closed/task_closed`;
 - movido Card Show de `components/` a `features/cards/show.gleam`;
 - eliminados tests/seeds duplicados o de compatibilidad interna;
+- eliminados tests unitarios de helpers `seed_db` dev-only;
+- eliminado el HT12 de codec de audit event que validaba naming/transicion;
 - eliminado el reporte transitorio `card_tree_migration_report` y las trazas
   activas `card_tree`;
 - renombradas metricas de estado de card modal de `tasks_completed` a
@@ -934,6 +944,53 @@ apps/client: gleam format src test && gleam test --target javascript
 1781 passed, no failures
 ```
 
+### Cierre de validacion final
+
+Validaciones finales ejecutadas despues de la ultima poda:
+
+```txt
+shared: gleam format --check src test && gleam test
+268 passed, no failures
+
+apps/client: gleam format --check src test && gleam test --target javascript
+1781 passed, no failures
+
+apps/server: gleam format --check src test && gleam test
+DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+SB_DB_WAIT_QUERY_TIMEOUT_MS=60000
+544 passed, no failures
+
+git diff --check -- ':!docs/'
+sin errores
+```
+
+Validacion final de migracion desde produccion:
+
+```txt
+DB: scrumbringer_test en localhost:5433
+produccion: 686908bfb7b2774a8c3949c0a4b07c1715b80e21
+schema_migrations_count=36
+```
+
+Secuencia reejecutada:
+
+```sh
+git archive 686908bfb7b2774a8c3949c0a4b07c1715b80e21 db/migrations | tar -x -C "$TMPDIR"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+dbmate --url "$DATABASE_URL" --migrations-dir "$TMPDIR/db/migrations" migrate
+dbmate --url "$DATABASE_URL" --migrations-dir db/migrations migrate
+psql "$DATABASE_URL" -tAc 'select count(*) from schema_migrations'
+```
+
+Metrica final no-doc:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+189 files changed, 3595 insertions(+), 15389 deletions(-)
+```
+
+Reduccion neta final no-doc: `-11.794` lineas.
+
 ### Fase 10 parcial: poda agresiva de seeds QA/transicionales
 
 Cambio ejecutado:
@@ -1022,6 +1079,72 @@ DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_te
 SB_DB_WAIT_QUERY_TIMEOUT_MS=60000
 544 passed, no failures
 ```
+
+### Fase 10 cierre: podar tests transicionales restantes
+
+Cambio ejecutado:
+
+- eliminado `apps/server/test/unit/use_case/seed_db_test.gleam`, porque
+  ejercia helpers internos de seed dev-only tras haber reducido la matriz de
+  seeds a datos core;
+- eliminado `shared/test/audit_event_kind_codec_ht12_test.gleam`, porque era
+  una comprobacion HT12 de codec/naming y rechazo de valor historico;
+- conservados explicamente los tests de contratos API y due date aunque tengan
+  sufijo HT, porque cubren comportamiento vivo:
+  - `shared/test/card_api_contracts_ht07_test.gleam`;
+  - `shared/test/task_api_contracts_ht08_test.gleam`;
+  - `apps/client/test/card_due_date_ht11_test.gleam`;
+  - `apps/client/test/due_date_urgency_ht11_test.gleam`.
+
+Metrica de la fase:
+
+```txt
+2 files changed, 276 deletions(-)
+```
+
+Metrica no-doc acumulada tras esta fase:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+189 files changed, 3595 insertions(+), 15389 deletions(-)
+```
+
+Reduccion neta no-doc acumulada: `-11.794` lineas.
+
+Validacion ejecutada:
+
+```txt
+shared: gleam format --check src test && gleam test
+268 passed, no failures
+
+apps/server: gleam format --check src test && gleam test
+DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+SB_DB_WAIT_QUERY_TIMEOUT_MS=60000
+544 passed, no failures
+```
+
+### Fase 8 auditoria: workflow como contrato vivo
+
+Decision:
+
+- `workflow` no se elimina en esta ronda porque sigue siendo entidad viva de
+  dominio/API/DB, no solo wrapper de compatibilidad interna;
+- `features/automations/*` ya opera como producto/UI final, mientras
+  `workflow`, `workflows`, `task_templates` y `rule_metrics` permanecen como
+  contrato interno/API que requiere una migracion semantica coordinada;
+- renombrar todo a `AutomationEngine` en este mismo corte implicaria tocar DB,
+  rutas, shared domain, tests HTTP, fixtures y codecs sin reduccion clara de
+  lineas ni de riesgo operativo.
+
+Guardarrail ejecutado:
+
+```sh
+rg -n "workflow|workflows|task_templates|rule_metrics" apps shared db -g "*.gleam" -g "*.sql"
+```
+
+Resultado: hay matches extensos en API, DB, shared domain, tests HTTP y
+fixtures. Se clasifican como contrato vivo pendiente de una migracion dedicada,
+no como legacy suelto seguro de borrar.
 
 ### Validacion DB/server ejecutada en PostgreSQL 5433
 
