@@ -178,7 +178,7 @@ fn build_release_project(
   admin_id: Int,
   project_id: Int,
 ) -> Result(Nil, String) {
-  use completed_id <- result.try(insert_seed_root_card(
+  use closed_id <- result.try(insert_seed_root_card(
     db,
     admin_id,
     project_id,
@@ -194,14 +194,14 @@ fn build_release_project(
   use _ <- result.try(seed_db.assign_cards_to_parent_card(
     db,
     project_id,
-    completed_id,
+    closed_id,
     2,
   ))
-  use completed_tasks_id <- result.try(insert_seed_child_card(
+  use closed_tasks_id <- result.try(insert_seed_child_card(
     db,
     admin_id,
     project_id,
-    completed_id,
+    closed_id,
     "Release 1.4 - Completion tasks",
     Some(
       "Closed task leaf preserving completed task coverage without mixing child kinds.",
@@ -214,7 +214,7 @@ fn build_release_project(
   use _ <- result.try(seed_db.assign_completed_pool_tasks_to_parent_card(
     db,
     project_id,
-    completed_tasks_id,
+    closed_tasks_id,
     4,
   ))
 
@@ -520,7 +520,7 @@ fn insert_seed_root_card(
   root_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(Int, String) {
   seed_db.insert_root_card(
     db,
@@ -532,7 +532,7 @@ fn insert_seed_root_card(
       created_by: admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,
-      completed_at: completed_at,
+      completed_at: closed_at,
     ),
   )
 }
@@ -547,7 +547,7 @@ fn insert_seed_child_card(
   child_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(Int, String) {
   use child_id <- result.try(insert_seed_root_card(
     db,
@@ -558,7 +558,7 @@ fn insert_seed_child_card(
     child_card_state,
     created_days_ago,
     activated_at,
-    completed_at,
+    closed_at,
   ))
   use _ <- result.try(seed_db.assign_card_to_parent_card(
     db,
