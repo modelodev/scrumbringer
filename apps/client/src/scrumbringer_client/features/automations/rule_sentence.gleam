@@ -13,7 +13,9 @@ import lustre/element/html.{div, span, text}
 
 import domain/automation
 import domain/workflow
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 
 pub fn view(
@@ -76,13 +78,29 @@ fn supported_trigger_sentence(
 ) -> String {
   case trigger {
     automation.TaskClaimed(_) ->
-      task_trigger_sentence(locale, task_type_name, "claimed", "reclamada")
+      task_trigger_sentence(
+        locale,
+        task_type_name,
+        i18n_text.RuleTriggerTaskClaimedWord,
+      )
     automation.TaskCompleted(_) ->
-      task_trigger_sentence(locale, task_type_name, "completed", "completada")
+      task_trigger_sentence(
+        locale,
+        task_type_name,
+        i18n_text.RuleTriggerTaskCompletedWord,
+      )
     automation.TaskCreated(_) ->
-      task_trigger_sentence(locale, task_type_name, "created", "creada")
+      task_trigger_sentence(
+        locale,
+        task_type_name,
+        i18n_text.RuleTriggerTaskCreatedWord,
+      )
     automation.TaskReleased(_) ->
-      task_trigger_sentence(locale, task_type_name, "released", "liberada")
+      task_trigger_sentence(
+        locale,
+        task_type_name,
+        i18n_text.RuleTriggerTaskReleasedWord,
+      )
     automation.CardActivated(scope) ->
       case locale {
         En -> "When " <> card_scope_sentence_en(scope) <> " is activated"
@@ -115,14 +133,15 @@ fn card_scope_sentence_es(scope: automation.CardAutomationScope) -> String {
 fn task_trigger_sentence(
   locale: Locale,
   task_type_name: opt.Option(String),
-  en_event: String,
-  es_event: String,
+  event_text: i18n_text.Text,
 ) -> String {
+  let localized_event = i18n.t(locale, event_text)
   case locale, task_type_name {
-    En, opt.Some(name) -> "When a " <> name <> " task is " <> en_event
-    En, opt.None -> "When any task is " <> en_event
-    Es, opt.Some(name) -> "Cuando una task " <> name <> " sea " <> es_event
-    Es, opt.None -> "Cuando cualquier task sea " <> es_event
+    En, opt.Some(name) -> "When a " <> name <> " task is " <> localized_event
+    En, opt.None -> "When any task is " <> localized_event
+    Es, opt.Some(name) ->
+      "Cuando una task " <> name <> " sea " <> localized_event
+    Es, opt.None -> "Cuando cualquier task sea " <> localized_event
   }
 }
 

@@ -1026,6 +1026,10 @@ pub fn translate(text: Text) -> String {
     text.RulePreviewTaskType(task_type_name) ->
       "a " <> task_type_name <> " task"
     text.RulePreviewSelectedTaskType -> "a selected task type"
+    text.RuleTriggerTaskClaimedWord -> "claimed"
+    text.RuleTriggerTaskCompletedWord -> "completed"
+    text.RuleTriggerTaskCreatedWord -> "created"
+    text.RuleTriggerTaskReleasedWord -> "released"
     text.RulePreviewTemplateWillCreate(template_name) ->
       "It will create \"" <> template_name <> "\" as available work."
     text.RulePreviewChooseTemplate ->

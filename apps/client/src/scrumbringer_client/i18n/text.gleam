@@ -847,6 +847,10 @@ pub type Text {
   RulePreviewAnyTask
   RulePreviewTaskType(task_type_name: String)
   RulePreviewSelectedTaskType
+  RuleTriggerTaskClaimedWord
+  RuleTriggerTaskCompletedWord
+  RuleTriggerTaskCreatedWord
+  RuleTriggerTaskReleasedWord
   RulePreviewTemplateWillCreate(template_name: String)
   RulePreviewChooseTemplate
   RulePreviewCardActivationNoiseWarning
