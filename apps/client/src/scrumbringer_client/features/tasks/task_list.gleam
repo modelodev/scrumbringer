@@ -41,6 +41,20 @@ pub fn replace(
   update(tasks, updated_task.id, fn(_task) { updated_task })
 }
 
+pub fn upsert(
+  tasks: Remote(List(Task)),
+  updated_task: Task,
+) -> Remote(List(Task)) {
+  case tasks {
+    Loaded(items) ->
+      case list.any(items, fn(task) { task.id == updated_task.id }) {
+        True -> replace(tasks, updated_task)
+        False -> Loaded([updated_task, ..items])
+      }
+    _ -> Loaded([updated_task])
+  }
+}
+
 pub fn remove(tasks: Remote(List(Task)), task_id: Int) -> Remote(List(Task)) {
   case tasks {
     Loaded(items) -> Loaded(list.filter(items, fn(task) { task.id != task_id }))

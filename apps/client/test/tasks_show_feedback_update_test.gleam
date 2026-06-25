@@ -29,6 +29,7 @@ fn error_context() -> show_update.ErrorContext(Nil) {
 
 fn open_context() -> show_update.Context(Nil) {
   show_update.Context(
+    on_task_fetched: fn(_result) { Nil },
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
     on_activity_fetched: fn(_result) { Nil },

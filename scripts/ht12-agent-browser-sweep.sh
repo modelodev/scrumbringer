@@ -686,6 +686,25 @@ assert_testid_count_ge() {
   assert_int_ge "${label}:${testid}" "$minimum" "$count"
 }
 
+wait_for_testid_count_ge() {
+  local label="$1"
+  local testid="$2"
+  local minimum="${3:-1}"
+  local attempts="${4:-20}"
+  local count="0"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
+    count="$(ab get count "[data-testid=\"${testid}\"]" | tr -d '\r')"
+    if [ "$count" -ge "$minimum" ]; then
+      return 0
+    fi
+    sleep 0.5
+  done
+
+  assert_int_ge "${label}:${testid}" "$minimum" "$count"
+}
+
 open_and_capture_route() {
   local label="$1"
   local url="$2"
@@ -861,7 +880,9 @@ EOF
   open_and_capture_route "automations-executions-route" "${BASE_URL}/config/workflows?project=${PROJECT_ID}&mode=executions&execution=${AUTOMATION_EXECUTION_ID}" "nav-automations" "mode=executions"
   assert_automation_executions_surface "automations-executions-route"
   open_and_capture_route "automation-created-task-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=pool&show=task&task=${AUTOMATION_CREATED_TASK_ID}" "nav-pool" "show=task"
-  assert_testid_count_ge "automation-created-task-route" "automation-created-task-origin"
+  wait_for_testid_count_ge "automation-created-task-route" "automation-created-task-origin"
+  ab snapshot -i >"${OUT_DIR}/automation-created-task-route.snapshot.txt"
+  ab screenshot "${OUT_DIR}/automation-created-task-route.png" >/dev/null
   open_and_capture_route "card-show-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&show=card&show_card=${ROOT_A_ID}" "nav-cards" "show=card"
   open_and_capture_route "card-scope-kanban-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=cards&plan_mode=kanban&work_scope=card&card=${ROOT_A_ID}" "nav-kanban" "work_scope=card"
   open_and_capture_route "card-scope-capabilities-route" "${BASE_URL}/app/pool?project=${PROJECT_ID}&view=capabilities&work_scope=card&card=${ROOT_A_ID}" "nav-capabilities-board" "work_scope=card"

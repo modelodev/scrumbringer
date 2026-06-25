@@ -133,16 +133,17 @@ state.
 
 Latest LAN evidence on this host:
 
-- App URL: `http://192.168.1.120:8443`
+- App URL: `http://127.0.0.1:8443`
 - Database: `postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable`
-- Sweep: `/tmp/scrumbringer-ht12-sweep-20260620143550`
-- Seeded project: `HT12143550`
-- Final URL: `http://192.168.1.120:8443/app/pool?project=55&view=pool`
+- Sweep: `/tmp/scrumbringer-ht12-sweep-20260625120639`
+- Seeded project: `HT12120639`
+- Final URL: `http://127.0.0.1:8443/app/pool?project=11&view=pool`
 - Result: static, plan, database, API lifecycle, route-active, and responsive
   captures passed. The Pool canvas uses horizontal scroll for persisted desktop
   coordinates and resets to a one-column touch layout on mobile, avoiding the
   previous card overlap/cropping. The sweep auto-detected `/usr/bin/chromium`,
   clicked through `Cards`, each depth view, and back to `Pool` from the sidebar,
+  verified the automation-created Task Show deep link exposes generated origin,
   recorded `localhost:5433 - aceptando conexiones`, and cleaned up its
   `ht12-sweep-*` browser session on exit.
 
@@ -387,3 +388,7 @@ Latest checks and sweep:
   templates, executions, generated task origin, responsive screenshots, and
   card-scoped routes. Evidence:
   `/tmp/scrumbringer-ht12-sweep-20260625005323`.
+- `BASE_URL=http://127.0.0.1:8443 API_BASE=http://127.0.0.1:8000 DATABASE_URL="postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable" bash scripts/ht12-agent-browser-sweep.sh`
+  passed after restarting `scripts/dev-hot.sh` and verified generated task
+  origin on the Task Show deep link. Evidence:
+  `/tmp/scrumbringer-ht12-sweep-20260625120639`.

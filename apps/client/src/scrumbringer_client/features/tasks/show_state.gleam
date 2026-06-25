@@ -267,7 +267,7 @@ pub fn task_updated(
 ) -> member_pool.Model {
   member_pool.Model(
     ..pool,
-    member_tasks: task_list.replace(pool.member_tasks, updated_task),
+    member_tasks: task_list.upsert(pool.member_tasks, updated_task),
     member_task_show_editing: False,
     member_task_show_edit_title: updated_task.title,
     member_task_show_edit_description: show_edit_form.task_description_text(

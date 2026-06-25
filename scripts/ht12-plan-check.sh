@@ -14,7 +14,7 @@ required_patterns=(
   "Activation And Pool Impact"
   "healthy_pool_limit"
   "exceeds_healthy_limit"
-  "Claim, Release, Complete"
+  "Claim, Release, Close"
   "CARD_HAS_CLAIMED_DESCENDANT"
   "Delete And Operational History"
   "Task Dependencies"

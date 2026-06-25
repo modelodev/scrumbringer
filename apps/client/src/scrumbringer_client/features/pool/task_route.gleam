@@ -499,6 +499,9 @@ fn task_show_dispatch_context(
 
 fn task_show_context() -> task_show_update.Context(client_state.Msg) {
   task_show_update.Context(
+    on_task_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.MemberTaskUpdated(result))
+    },
     on_notes_fetched: fn(result) {
       client_state.pool_msg(pool_messages.MemberNotesFetched(result))
     },

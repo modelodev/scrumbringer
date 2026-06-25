@@ -45,6 +45,7 @@ pub type Model {
 
 pub type Context(parent_msg) {
   Context(
+    on_task_fetched: fn(ApiResult(Task)) -> parent_msg,
     on_notes_fetched: fn(ApiResult(List(note_entity.Note))) -> parent_msg,
     on_dependencies_fetched: fn(ApiResult(List(TaskDependency))) -> parent_msg,
     on_activity_fetched: fn(ApiResult(activity_api.ActivityPage)) -> parent_msg,
@@ -230,7 +231,11 @@ fn handle_task_show_opened(
     )
   let activity_fx =
     activity_api.list_task_activity(task_id, context.on_activity_fetched)
-  #(next_model, effect.batch([notes_fx, deps_fx, activity_fx]))
+  let task_fx = case current_task {
+    opt.Some(_) -> effect.none()
+    opt.None -> task_operations_api.get_task(task_id, context.on_task_fetched)
+  }
+  #(next_model, effect.batch([task_fx, notes_fx, deps_fx, activity_fx]))
 }
 
 fn handle_activity_more_clicked(

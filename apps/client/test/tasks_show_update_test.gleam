@@ -45,6 +45,7 @@ fn error_context() -> show_update.ErrorContext(Nil) {
 
 fn show_context() -> show_update.Context(Nil) {
   show_update.Context(
+    on_task_fetched: fn(_result) { Nil },
     on_notes_fetched: fn(_result) { Nil },
     on_dependencies_fetched: fn(_result) { Nil },
     on_activity_fetched: fn(_result) { Nil },
@@ -147,6 +148,24 @@ pub fn try_update_error_checks_auth_after_local_feedback_test() {
   let assert False = next.pool.member_task_show_edit_in_flight
   let assert Some("boom") = next.pool.member_task_show_edit_error
   let assert True = auth_err == err
+  let assert True = fx != effect.none()
+}
+
+pub fn fetched_task_is_added_to_empty_show_cache_test() {
+  let task = sample_task()
+  let model = show_model(member_pool.default_model())
+
+  let assert Some(show_update.Update(next, fx, auth_policy)) =
+    show_update.try_update(
+      model,
+      pool_messages.MemberTaskUpdated(Ok(task)),
+      dispatch_context(),
+    )
+
+  let assert remote.Loaded([cached_task]) = next.pool.member_tasks
+  let assert 42 = cached_task.id
+  let assert "Prepare release" = next.pool.member_task_show_edit_title
+  let assert show_update.NoAuthCheck = auth_policy
   let assert True = fx != effect.none()
 }
 
