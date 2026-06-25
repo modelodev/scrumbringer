@@ -23,6 +23,12 @@ pub type TaskClosedReason {
   ClosedByAncestor
 }
 
+pub type TaskExecutionStateFilter {
+  FilterAvailable
+  FilterClaimed
+  FilterClosed
+}
+
 pub type TaskExecutionStateError {
   ClaimedMissingUser
   ClaimedMissingAt

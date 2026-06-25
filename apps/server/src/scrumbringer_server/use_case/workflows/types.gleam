@@ -18,7 +18,7 @@
 
 import domain/field_update
 import domain/task as domain_task
-import domain/task_status
+import domain/task/state as task_state
 import gleam/option.{type Option}
 import pog
 import scrumbringer_server/use_case/task_types_db
@@ -101,17 +101,13 @@ pub type Message {
 /// Task list filters.
 pub type TaskFilters {
   TaskFilters(
-    status: Option(TaskPhase),
+    status: Option(task_state.TaskExecutionStateFilter),
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),
     blocked: Option(Bool),
   )
 }
-
-/// Task status ADT for typed status handling.
-pub type TaskPhase =
-  task_status.TaskPhase
 
 /// Task update fields (ADT-based, no sentinels).
 pub type TaskUpdates {

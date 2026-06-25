@@ -17,7 +17,7 @@
 //// }
 //// ```
 
-import domain/task_status.{type TaskPhase}
+import domain/task/state as task_state
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -38,7 +38,7 @@ import wisp
 /// ```gleam
 /// let query = [#("status", "available"), #("type_id", "5")]
 /// case parse_task_filters(query) {
-///   Ok(TaskFilters(status: Some(Available), type_id: 5, ..)) -> // parsed
+///   Ok(TaskFilters(status: Some(FilterAvailable), type_id: 5, ..)) -> // parsed
 ///   Error(response) -> response
 /// }
 /// ```
@@ -65,18 +65,20 @@ pub fn parse_task_filters(
 
 /// Parse status filter: must be available, claimed, or completed.
 ///
-/// Returns None for empty/missing, Some(TaskPhase) for valid values,
+/// Returns None for empty/missing, Some(TaskExecutionStateFilter) for valid values,
 /// Error for invalid values.
 fn parse_status_filter(
   query: List(#(String, String)),
-) -> Result(Option(TaskPhase), wisp.Response) {
+) -> Result(Option(task_state.TaskExecutionStateFilter), wisp.Response) {
   case single_query_value(query, "status") {
     Ok(None) -> Ok(None)
 
     Ok(Some(value)) ->
-      case task_status.parse_filter(value) {
-        Ok(status) -> Ok(Some(status))
-        Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))
+      case value {
+        "available" -> Ok(Some(task_state.FilterAvailable))
+        "claimed" -> Ok(Some(task_state.FilterClaimed))
+        "completed" -> Ok(Some(task_state.FilterClosed))
+        _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))
       }
 
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))

@@ -25,7 +25,7 @@
 
 import domain/field_update
 import domain/task.{type Task}
-import domain/task_status
+import domain/task/state as task_state
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -62,7 +62,7 @@ pub fn list_tasks_for_project(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  status: Option(task_status.TaskPhase),
+  status: Option(task_state.TaskExecutionStateFilter),
   type_id: Option(Int),
   capability_id: Option(Int),
   q: Option(String),
@@ -72,7 +72,7 @@ pub fn list_tasks_for_project(
     sql.tasks_list(
       db,
       project_id,
-      status_filter_to_db_string(status),
+      status_filter_to_query_string(status),
       optional_id_filter_value(type_id),
       optional_id_filter_value(capability_id),
       search_filter_value(q),
@@ -94,10 +94,14 @@ fn blocked_filter_to_db(value: Option(Bool)) -> String {
   }
 }
 
-fn status_filter_to_db_string(status: Option(task_status.TaskPhase)) -> String {
+fn status_filter_to_query_string(
+  status: Option(task_state.TaskExecutionStateFilter),
+) -> String {
   case status {
     None -> ""
-    Some(value) -> task_status.to_db_status(value)
+    Some(task_state.FilterAvailable) -> "available"
+    Some(task_state.FilterClaimed) -> "claimed"
+    Some(task_state.FilterClosed) -> "completed"
   }
 }
 

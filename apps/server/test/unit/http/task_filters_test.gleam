@@ -1,6 +1,31 @@
+import domain/task/state as task_state
 import gleam/option.{None, Some}
 import scrumbringer_server/http/tasks/filters
 import support/assertions as expect
+
+pub fn parse_filters_accepts_available_status_test() {
+  case filters.parse_task_filters([#("status", "available")]) {
+    Ok(task_filters) ->
+      task_filters.status |> expect.equal(Some(task_state.FilterAvailable))
+    Error(_) -> expect.fail()
+  }
+}
+
+pub fn parse_filters_accepts_claimed_status_test() {
+  case filters.parse_task_filters([#("status", "claimed")]) {
+    Ok(task_filters) ->
+      task_filters.status |> expect.equal(Some(task_state.FilterClaimed))
+    Error(_) -> expect.fail()
+  }
+}
+
+pub fn parse_filters_accepts_completed_status_as_closed_filter_test() {
+  case filters.parse_task_filters([#("status", "completed")]) {
+    Ok(task_filters) ->
+      task_filters.status |> expect.equal(Some(task_state.FilterClosed))
+    Error(_) -> expect.fail()
+  }
+}
 
 pub fn parse_filters_rejects_invalid_status_test() {
   case filters.parse_task_filters([#("status", "unknown")]) {
