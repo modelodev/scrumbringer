@@ -11,7 +11,7 @@
 //// ## Responsibilities
 ////
 //// - Define seed configuration preset
-//// - Build complete scenarios with proper relationships
+//// - Build full scenarios with proper relationships
 //// - Manage data pools for realistic names/titles
 //// - HT-12 coverage: root pool, parent_card_id, due_date, closed, healthy,
 ////   saturated, hierarchy, manager, member, capability

@@ -57,14 +57,14 @@ fn close_card(
 }
 
 // =============================================================================
-// Core Integration Test: Complete Task -> Rules Fire -> Tasks Created
+// Core Integration Test: Close Task -> Rules Fire -> Tasks Created
 // =============================================================================
 
 // Justification: large function kept intact to preserve cohesive logic.
-/// Verifies that completing a task via HTTP API triggers rules and creates tasks.
-/// This is the critical end-to-end test that validates the complete flow.
+/// Verifies that closing a task via HTTP API triggers rules and creates tasks.
+/// This is the critical end-to-end test that validates the task close flow.
 pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
-  // Given: A project with a rule that creates tasks when Bug is completed
+  // Given: A project with a rule that creates tasks when Bug is closed.
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -656,7 +656,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
     )
   review_count_after_first |> expect.equal(1)
 
-  // Try to complete again (should fail because task is already completed)
+  // Try to close again (should fail because task is already closed).
   let complete_again_res =
     handler(
       simulate.request(
@@ -680,7 +680,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
   review_count_after_second |> expect.equal(1)
 }
 
-/// Verifies that inactive rules don't create tasks when task is completed via API.
+/// Verifies that inactive rules don't create tasks when a task is closed via API.
 pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app

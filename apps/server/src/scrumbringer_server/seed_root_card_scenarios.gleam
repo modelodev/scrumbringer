@@ -184,7 +184,7 @@ fn build_release_project(
     project_id,
     "Release 1.4 - Closed",
     Some(
-      "Recently completed root card used to exercise historical metrics and completed content sections.",
+      "Recently closed root card used to exercise historical metrics and closed content sections.",
     ),
     card.Closed,
     28,
@@ -202,9 +202,9 @@ fn build_release_project(
     admin_id,
     project_id,
     closed_id,
-    "Release 1.4 - Completion tasks",
+    "Release 1.4 - Closure tasks",
     Some(
-      "Closed task leaf preserving completed task coverage without mixing child kinds.",
+      "Closed task leaf preserving closed task coverage without mixing child kinds.",
     ),
     card.Closed,
     17,

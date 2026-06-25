@@ -53,7 +53,7 @@ pub type ProjectMetricsRow {
   )
 }
 
-/// Complete metrics overview.
+/// Full metrics overview.
 pub type MetricsOverview {
   MetricsOverview(
     window_days: Int,

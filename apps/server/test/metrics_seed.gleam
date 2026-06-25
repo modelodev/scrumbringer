@@ -4,7 +4,7 @@
 ////
 //// Creates a realistic dataset with projects, users, workflows, rules,
 //// tasks, and cards to validate:
-//// - Project metrics screens (claimed, released, completed counts)
+//// - Project metrics screens (claimed, released, closed counts)
 //// - Rule metrics screens (evaluated, applied, suppressed counts)
 ////
 //// ## Usage

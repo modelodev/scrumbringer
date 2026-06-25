@@ -1,7 +1,7 @@
 //// HTTP handler for current user metrics.
 ////
 //// Provides an endpoint to retrieve task activity metrics
-//// (claimed, released, completed counts) for the authenticated user.
+//// (claimed, released, closed counts) for the authenticated user.
 
 import gleam/http
 import gleam/int
