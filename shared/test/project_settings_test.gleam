@@ -19,6 +19,48 @@ pub fn default_healthy_pool_limit_is_positive_test() {
     settings.healthy_pool_limit_from_int(settings.default_healthy_pool_limit())
 }
 
+pub fn normalize_card_depth_names_uses_defaults_for_empty_lists_test() {
+  let assert [first, _, _] = settings.normalize_card_depth_names([])
+  let assert 1 = first.depth
+  let assert "Initiative" = first.singular_name
+}
+
+pub fn card_depth_names_for_count_truncates_or_extends_names_test() {
+  let depth_names = [
+    ProjectDepthName(1, "Goal", "Goals"),
+    ProjectDepthName(2, "Feature", "Features"),
+  ]
+
+  let assert [only_first] = settings.card_depth_names_for_count(depth_names, 1)
+  let assert "Goal" = only_first.singular_name
+
+  let assert [_, _, third, fourth] =
+    settings.card_depth_names_for_count(depth_names, 4)
+  let assert "Task group" = third.singular_name
+  let assert "Level 4" = fourth.singular_name
+  let assert "Level 4s" = fourth.plural_name
+}
+
+pub fn card_depth_names_for_count_handles_non_positive_counts_test() {
+  let assert [] = settings.card_depth_names_for_count([], 0)
+  let assert [] = settings.card_depth_names_for_count([], -1)
+}
+
+pub fn update_card_depth_name_updates_only_target_depth_test() {
+  let assert [first, second, third] =
+    settings.update_card_depth_name([], 2, fn(depth_name) {
+      ProjectDepthName(
+        ..depth_name,
+        singular_name: "Capability",
+        plural_name: "Capabilities",
+      )
+    })
+
+  let assert "Initiative" = first.singular_name
+  let assert "Capability" = second.singular_name
+  let assert "Task group" = third.singular_name
+}
+
 pub fn healthy_pool_limit_accepts_positive_values_test() {
   let assert Ok(limit) = settings.healthy_pool_limit_from_int(20)
   let assert 20 = settings.healthy_pool_limit_to_int(limit)

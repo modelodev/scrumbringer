@@ -346,7 +346,7 @@ fn view_project_create_review(
         ]),
         ul([], {
           depth_names
-          |> normalize_depth_names
+          |> project_settings.normalize_card_depth_names
           |> list.map(fn(depth_name) {
             li([], [
               text(
@@ -515,7 +515,7 @@ fn create_project_structure(
     ) -> #(
       max_depth,
       healthy_pool_limit,
-      normalize_depth_names(card_depth_names),
+      project_settings.normalize_card_depth_names(card_depth_names),
     )
     _ -> #(
       int.to_string(list.length(project_settings.default_card_depth_names())),
@@ -531,7 +531,7 @@ fn view_project_create_structure_settings(
   healthy_pool_limit: String,
   config: Config(msg),
 ) -> element.Element(msg) {
-  let depth_names = normalize_depth_names(depth_names)
+  let depth_names = project_settings.normalize_card_depth_names(depth_names)
 
   div(
     [
@@ -615,7 +615,7 @@ fn edit_project_structure(
     ) -> #(
       max_depth,
       healthy_pool_limit,
-      normalize_depth_names(card_depth_names),
+      project_settings.normalize_card_depth_names(card_depth_names),
       depth_reduction,
     )
     _ -> #(
@@ -634,7 +634,7 @@ fn view_project_structure_settings(
   depth_reduction: projects_state.DepthReductionState,
   config: Config(msg),
 ) -> element.Element(msg) {
-  let depth_names = normalize_depth_names(depth_names)
+  let depth_names = project_settings.normalize_card_depth_names(depth_names)
 
   div(
     [
@@ -836,15 +836,6 @@ fn view_depth_reduction_affected_card(
       text(t(config, i18n_text.ProjectDepthLevel(depth))),
     ]),
   ])
-}
-
-fn normalize_depth_names(
-  depth_names: List(ProjectDepthName),
-) -> List(ProjectDepthName) {
-  case depth_names {
-    [] -> project_settings.default_card_depth_names()
-    _ -> depth_names
-  }
 }
 
 fn view_depth_name(

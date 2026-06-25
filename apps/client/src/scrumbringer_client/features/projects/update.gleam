@@ -431,7 +431,7 @@ fn update_project_create_depth_name(
           name: name,
           max_depth: max_depth,
           healthy_pool_limit: healthy_pool_limit,
-          card_depth_names: update_depth_names(
+          card_depth_names: project_settings.update_card_depth_name(
             card_depth_names,
             depth,
             update_depth_name,
@@ -776,7 +776,8 @@ fn handle_project_edit_dialog_opened(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
-  let normalized_depth_names = normalize_depth_names(card_depth_names)
+  let normalized_depth_names =
+    project_settings.normalize_card_depth_names(card_depth_names)
 
   #(
     set_projects_dialog(
@@ -886,7 +887,8 @@ fn handle_project_edit_max_depth_changed(
       ),
       operation: op,
     ) -> {
-      let normalized = normalize_depth_names(card_depth_names)
+      let normalized =
+        project_settings.normalize_card_depth_names(card_depth_names)
       DialogOpen(
         form: admin_projects.ProjectDialogEdit(
           id: id,
@@ -948,7 +950,7 @@ fn update_project_edit_depth_name(
           name: name,
           max_depth: max_depth,
           healthy_pool_limit: healthy_pool_limit,
-          card_depth_names: update_depth_names(
+          card_depth_names: project_settings.update_card_depth_name(
             card_depth_names,
             depth,
             update_depth_name,
@@ -1248,7 +1250,8 @@ fn validate_depth_settings(
     Error(_) -> Error(maximum_depth_positive)
     Ok(value) if value <= 0 -> Error(maximum_depth_positive)
     Ok(value) -> {
-      let normalized = normalize_depth_names(card_depth_names)
+      let normalized =
+        project_settings.normalize_card_depth_names(card_depth_names)
       let current_depth = list.length(normalized)
       case value == current_depth {
         True -> validate_depth_names(healthy_pool_limit, normalized, context)
@@ -1302,19 +1305,10 @@ fn validate_depth_names(
   context: Context(parent_msg),
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
   let Context(depth_names_required:, ..) = context
-  let normalized = normalize_depth_names(card_depth_names)
+  let normalized = project_settings.normalize_card_depth_names(card_depth_names)
   case project_settings.valid_card_depth_names(normalized) {
     False -> Error(depth_names_required)
     True -> Ok(#(healthy_pool_limit, normalized))
-  }
-}
-
-fn normalize_depth_names(
-  card_depth_names: List(ProjectDepthName),
-) -> List(ProjectDepthName) {
-  case card_depth_names {
-    [] -> project_settings.default_card_depth_names()
-    _ -> card_depth_names
   }
 }
 
@@ -1337,58 +1331,9 @@ fn resize_depth_names(
 ) -> List(ProjectDepthName) {
   case int.parse(string.trim(max_depth)) {
     Ok(value) if value > 0 ->
-      depth_names_for_count(normalize_depth_names(card_depth_names), value)
-    _ -> normalize_depth_names(card_depth_names)
+      project_settings.card_depth_names_for_count(card_depth_names, value)
+    _ -> project_settings.normalize_card_depth_names(card_depth_names)
   }
-}
-
-fn depth_names_for_count(
-  card_depth_names: List(ProjectDepthName),
-  count: Int,
-) -> List(ProjectDepthName) {
-  case count <= list.length(card_depth_names) {
-    True -> list.take(card_depth_names, count)
-    False ->
-      depth_names_for_count(
-        list.append(card_depth_names, [
-          default_depth_name(list.length(card_depth_names) + 1),
-        ]),
-        count,
-      )
-  }
-}
-
-fn default_depth_name(depth: Int) -> ProjectDepthName {
-  case
-    project_settings.default_card_depth_names()
-    |> list.find(fn(depth_name) {
-      let ProjectDepthName(depth: candidate_depth, ..) = depth_name
-      candidate_depth == depth
-    })
-  {
-    Ok(depth_name) -> depth_name
-    Error(Nil) ->
-      ProjectDepthName(
-        depth: depth,
-        singular_name: "Level " <> int.to_string(depth),
-        plural_name: "Level " <> int.to_string(depth) <> "s",
-      )
-  }
-}
-
-fn update_depth_names(
-  card_depth_names: List(ProjectDepthName),
-  target_depth: Int,
-  update_depth_name: fn(ProjectDepthName) -> ProjectDepthName,
-) -> List(ProjectDepthName) {
-  normalize_depth_names(card_depth_names)
-  |> list.map(fn(depth_name) {
-    let ProjectDepthName(depth: depth, ..) = depth_name
-    case depth == target_depth {
-      True -> update_depth_name(depth_name)
-      False -> depth_name
-    }
-  })
 }
 
 fn depth_reduction_for_max_depth(
