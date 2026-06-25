@@ -32,9 +32,8 @@ import lustre/event
 import domain/card.{type Card, Closed, Draft}
 import domain/note/entity.{type Note}
 import domain/note/id as note_ids
-import domain/task.{type Task, claimed_by}
+import domain/task.{type Task}
 import domain/task/state as task_state
-import domain/task_status.{Available, Done}
 import domain/user/id as user_ids
 
 import domain/activity/entity as activity_entity
@@ -1461,17 +1460,17 @@ fn view_task_item(task: Task) -> Element(Msg) {
 }
 
 fn view_task_status(task: Task) -> Element(Msg) {
-  let status_icon = case task_state.to_status(task.state) {
-    Done -> "\u{2705}"
-    task_status.Claimed(_) -> "\u{1F7E1}"
-    Available -> "\u{26AA}"
+  let status_icon = case task.state {
+    task_state.Closed(..) -> "\u{2705}"
+    task_state.Claimed(..) -> "\u{1F7E1}"
+    task_state.Available -> "\u{26AA}"
   }
 
   span([attribute.class("card-task-status")], [text(status_icon)])
 }
 
 fn view_task_claim_status(task: Task) -> Element(Msg) {
-  let claimed_text = case claimed_by(task) {
+  let claimed_text = case task_state.claimed_by(task.state) {
     option.Some(_id) -> " (claimed)"
     option.None -> ""
   }
