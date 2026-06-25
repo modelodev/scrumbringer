@@ -4,7 +4,7 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/remote.{type Remote, Failed, Loaded}
 import domain/task as domain_task
-import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
+import domain/task/state as task_execution_state
 import domain/task_type.{type TaskType}
 import gleam/int
 import gleam/list
@@ -453,8 +453,8 @@ fn capability_board_error(locale: Locale, err: ApiError) -> String {
 }
 
 fn include_task_status(config: Config(msg), task: domain_task.Task) -> Bool {
-  case domain_task.status(task) {
-    Done -> include_closed(config)
+  case task.state {
+    task_execution_state.Closed(..) -> include_closed(config)
     _ -> True
   }
 }
@@ -995,9 +995,10 @@ fn view_task_item(
   config: Config(msg),
   task: domain_task.Task,
 ) -> element.Element(msg) {
-  let status_display = case domain_task.status(task) {
-    Claimed(_) -> {
-      let claimed_label = case domain_task.claimed_by(task) {
+  let status = task_execution_state.to_status(task.state)
+  let status_display = case task.state {
+    task_execution_state.Claimed(..) -> {
+      let claimed_label = case task_execution_state.claimed_by(task.state) {
         Some(user_id) ->
           case list.find(config.org_users, fn(user) { user.id == user_id }) {
             Ok(user) -> user.email
@@ -1006,7 +1007,7 @@ fn view_task_item(
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
 
-      let status_icon = task_status_utils.claimed_icon(domain_task.status(task))
+      let status_icon = task_status_utils.claimed_icon(status)
       span(
         [
           attribute.class("task-claimed-by"),
@@ -1023,18 +1024,18 @@ fn view_task_item(
         ],
       )
     }
-    Available ->
+    task_execution_state.Available ->
       span(
         [
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
-        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
+        [text(task_status_utils.label(config.locale, status))],
       )
-    Done -> task_item.empty_secondary()
+    task_execution_state.Closed(..) -> task_item.empty_secondary()
   }
 
   let #(card_title_opt, resolved_color) =
@@ -1045,10 +1046,10 @@ fn view_task_item(
     False -> ""
   }
 
-  let actions = case domain_task.status(task) {
-    Available ->
+  let actions = case task.state {
+    task_execution_state.Available ->
       task_item.single_action(task_actions.claim_icon(
-        task_state_ui.next_action(config.locale, domain_task.status(task)),
+        task_state_ui.next_action(config.locale, status),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,
@@ -1132,18 +1133,40 @@ fn loaded_tasks(tasks: Remote(List(domain_task.Task))) -> List(domain_task.Task)
 
 fn health_for_tasks(tasks: List(domain_task.Task)) -> CapabilityHealth {
   CapabilityHealth(
-    available: list.count(tasks, fn(task) {
-      domain_task.status(task) == Available
-    }),
-    claimed: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Taken)
-    }),
-    ongoing: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Ongoing)
-    }),
-    done: list.count(tasks, fn(task) { domain_task.status(task) == Done }),
+    available: list.count(tasks, is_available_task),
+    claimed: list.count(tasks, is_taken_task),
+    ongoing: list.count(tasks, is_ongoing_task),
+    done: list.count(tasks, is_closed_task),
     blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
   )
+}
+
+fn is_available_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Available -> True
+    _ -> False
+  }
+}
+
+fn is_taken_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_ongoing_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_closed_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Closed(..) -> True
+    _ -> False
+  }
 }
 
 fn health_total(health: CapabilityHealth) -> Int {
@@ -1181,12 +1204,14 @@ fn compare_tasks(a: domain_task.Task, b: domain_task.Task) -> order.Order {
 }
 
 fn task_rank(task: domain_task.Task) -> Int {
-  case task.blocked_count > 0, domain_task.status(task) {
+  case task.blocked_count > 0, task.state {
     True, _ -> 0
-    False, Available -> 1
-    False, Claimed(Ongoing) -> 2
-    False, Claimed(Taken) -> 3
-    False, Done -> 4
+    False, task_execution_state.Available -> 1
+    False, task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) ->
+      2
+    False, task_execution_state.Claimed(mode: task_execution_state.Taken, ..) ->
+      3
+    False, task_execution_state.Closed(..) -> 4
   }
 }
 
