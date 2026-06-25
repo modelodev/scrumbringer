@@ -1,7 +1,7 @@
-//// Integration tests for rules engine triggering on task completion.
+//// Integration tests for rules engine triggering on task close.
 ////
-//// These tests verify the COMPLETE flow:
-//// HTTP API -> handlers -> task completion -> rules engine -> task creation
+//// These tests verify the CLOSE flow:
+//// HTTP API -> handlers -> task close -> rules engine -> task creation
 ////
 //// This is critical because the rules engine is called "fire and forget"
 //// in handlers.gleam, so errors could be silently swallowed.
@@ -63,7 +63,7 @@ fn close_card(
 // Justification: large function kept intact to preserve cohesive logic.
 /// Verifies that closing a task via HTTP API triggers rules and creates tasks.
 /// This is the critical end-to-end test that validates the task close flow.
-pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
+pub fn close_task_via_api_triggers_rules_and_creates_tasks_test() {
   // Given: A project with a rule that creates tasks when Bug is closed.
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -99,7 +99,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Complete",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -114,7 +114,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       "Fix Login Bug",
     )
 
-  // Count tasks and rule_executions before completion
+  // Count tasks and rule_executions before close
   let assert Ok(task_count_before) =
     fixtures.query_int(
       db,
@@ -131,7 +131,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
   task_count_before |> expect.equal(0)
   exec_count_before |> expect.equal(0)
 
-  // When: Claim and complete the task via HTTP API
+  // When: Claim and close the task via HTTP API
   let claim_res =
     handler(
       simulate.request(
@@ -143,7 +143,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
     )
   expect.expect_status(claim_res, 200)
 
-  let complete_res =
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -154,7 +154,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
     )
 
   // Then: Task is closed.
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // And: Rule was executed
   let assert Ok(exec_count_after) =
@@ -438,7 +438,7 @@ pub fn claim_and_release_via_api_trigger_matching_rules_test() {
 }
 
 /// Verifies that selecting another template replaces the rule template.
-pub fn complete_task_uses_latest_selected_template_test() {
+pub fn close_task_uses_latest_selected_template_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -456,12 +456,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
     fixtures.create_task_type(handler, session, project_id, "QA", "magnifier")
 
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(
-      handler,
-      session,
-      project_id,
-      "Feature Complete WF",
-    )
+    fixtures.create_workflow(handler, session, project_id, "Feature Closed WF")
 
   // Create 3 templates and select each one in turn.
   let assert Ok(template1_id) =
@@ -539,7 +534,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
     )
   qa_count_before |> expect.equal(0)
 
-  // Claim and complete
+  // Claim and close
   let _ =
     handler(
       simulate.request(
@@ -550,7 +545,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
 
-  let complete_res =
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -560,7 +555,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // Then: one QA task was created from the selected template.
   let assert Ok(qa_count_after) =
@@ -579,8 +574,8 @@ pub fn complete_task_uses_latest_selected_template_test() {
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
-/// Verifies idempotency: completing the same task twice doesn't create duplicate tasks.
-pub fn completing_same_task_twice_is_idempotent_test() {
+/// Verifies idempotency: closing the same task twice doesn't create duplicate tasks.
+pub fn closing_same_task_twice_is_idempotent_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -613,7 +608,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Complete",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -627,7 +622,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       "Bug to Fix",
     )
 
-  // First completion
+  // First close
   let _ =
     handler(
       simulate.request(
@@ -657,7 +652,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
   review_count_after_first |> expect.equal(1)
 
   // Try to close again (should fail because task is already closed).
-  let complete_again_res =
+  let close_again_res =
     handler(
       simulate.request(
         http.Post,
@@ -668,7 +663,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
     )
 
   // Should return 422 (invalid transition or version conflict) not create more tasks
-  expect.expect_status(complete_again_res, 422)
+  expect.expect_status(close_again_res, 422)
 
   // Count should still be 1
   let assert Ok(review_count_after_second) =
@@ -681,7 +676,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
 }
 
 /// Verifies that inactive rules don't create tasks when a task is closed via API.
-pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
+pub fn inactive_rule_does_not_trigger_on_api_close_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -725,7 +720,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Task")
 
-  // Claim and complete
+  // Claim and close
   let _ =
     handler(
       simulate.request(
@@ -736,7 +731,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       |> simulate.json_body(json.object([#("version", json.int(1))])),
     )
 
-  let complete_res =
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -746,7 +741,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // No review tasks should be created (rule is inactive)
   let assert Ok(review_count) =
@@ -872,8 +867,8 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
 // =============================================================================
 
 // Justification: large function kept intact to preserve cohesive logic.
-/// Verifies that completing a task with a card creates child tasks with the same card.
-pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
+/// Verifies that closing a task with a card creates child tasks with the same card.
+pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -911,7 +906,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Complete",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -934,7 +929,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
     ])
   bug_card_id |> expect.equal(Some(card_id))
 
-  // Claim and complete the task
+  // Claim and close the task
   let claim_res =
     handler(
       simulate.request(
@@ -946,7 +941,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
     )
   expect.expect_status(claim_res, 200)
 
-  let complete_res =
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -955,7 +950,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // Verify rule was executed
   let assert Ok(exec_count) =
@@ -985,8 +980,8 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
   created_card_id |> expect.equal(Some(card_id))
 }
 
-/// Verifies that completing a task without a card creates child tasks without a card.
-pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
+/// Verifies that closing a task without a card creates child tasks without a card.
+pub fn close_task_without_card_creates_child_tasks_without_card_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -1021,7 +1016,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Complete",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1043,7 +1038,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
     ])
   bug_card_id |> expect.equal(None)
 
-  // Claim and complete the task
+  // Claim and close the task
   let claim_res =
     handler(
       simulate.request(
@@ -1055,7 +1050,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
     )
   expect.expect_status(claim_res, 200)
 
-  let complete_res =
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -1064,7 +1059,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // Verify review task was created
   let assert Ok(review_count) =
