@@ -49,9 +49,9 @@ pub fn execution_state_from_ongoing_test() {
   )
 }
 
-pub fn execution_state_from_completed_test() {
+pub fn execution_state_from_closed_test() {
   metrics_service.execution_state_from(
-    "completed",
+    "closed",
     False,
     None,
     None,
