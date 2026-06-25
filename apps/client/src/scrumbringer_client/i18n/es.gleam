@@ -678,7 +678,7 @@ pub fn translate(text: Text) -> String {
     text.InvalidateInviteConfirm(email) ->
       "¿Invalidar el link para " <> email <> "? Este link dejará de funcionar."
     // Invite link states (Story 4.8)
-    text.InviteStateActive -> "Draft"
+    text.InviteStateActive -> "Pendiente"
     text.InviteStateUsed -> "Usada"
     text.InviteStateExpired -> "Expirada"
     text.CopyLink -> "Copiar link"
