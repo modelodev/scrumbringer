@@ -15,7 +15,12 @@ import scrumbringer_client/features/pool/card_show_state
 import scrumbringer_client/features/pool/msg as pool_messages
 
 pub type Model {
-  Model(pool: member_pool.Model, cards: admin_cards.Model)
+  Model(
+    pool: member_pool.Model,
+    cards: admin_cards.Model,
+    card_show_open: option.Option(Int),
+    card_show_model: card_show.Model,
+  )
 }
 
 pub type Context(parent_msg) {
@@ -66,13 +71,13 @@ fn opened(
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
   let #(show_model, show_fx) = card_show.open(card_id)
-  let pool =
-    card_show_state.handle_opened(model.pool, card_id)
-    |> card_show_state.set_model(show_model)
+  let #(card_show_open, _) = card_show_state.handle_opened(card_id)
 
   #(
     Model(
-      pool: pool,
+      ..model,
+      card_show_open: card_show_open,
+      card_show_model: card_show_state.set_model(show_model),
       cards: cards_workflow.handle_card_viewed(model.cards, card_id),
     ),
     effect.batch([
@@ -83,8 +88,13 @@ fn opened(
 }
 
 fn closed(model: Model) -> #(Model, Effect(parent_msg)) {
+  let #(card_show_open, card_show_model) = card_show_state.handle_closed()
   #(
-    Model(..model, pool: card_show_state.handle_closed(model.pool)),
+    Model(
+      ..model,
+      card_show_open: card_show_open,
+      card_show_model: card_show_model,
+    ),
     effect.none(),
   )
 }
@@ -97,44 +107,38 @@ fn child_updated(
   case msg {
     card_show.CreateTaskClicked -> #(
       model,
-      dispatch_card_action(model.pool.card_show_open, context.on_create_task),
+      dispatch_card_action(model.card_show_open, context.on_create_task),
     )
     card_show.CreateCardClicked -> #(
       model,
-      dispatch_card_action(model.pool.card_show_open, context.on_create_card),
+      dispatch_card_action(model.card_show_open, context.on_create_card),
     )
     card_show.MoveRequested -> #(
       model,
-      dispatch_card_action(model.pool.card_show_open, context.on_move_card),
+      dispatch_card_action(model.card_show_open, context.on_move_card),
     )
     card_show.DeleteCardClicked -> #(
       model,
-      dispatch_card_action(model.pool.card_show_open, context.on_delete_card),
+      dispatch_card_action(model.card_show_open, context.on_delete_card),
     )
     card_show.CloseClicked -> #(
       model,
       effect.from(fn(dispatch) { dispatch(context.on_close) }),
     )
     card_show.ActivateCardConfirmed -> {
-      let #(show_model, show_fx) =
-        card_show.update(model.pool.card_show_model, msg)
-      let pool = card_show_state.set_model(model.pool, show_model)
+      let #(show_model, show_fx) = card_show.update(model.card_show_model, msg)
       #(
-        Model(..model, pool: pool),
+        Model(..model, card_show_model: card_show_state.set_model(show_model)),
         effect.batch([
           show_fx |> effect.map(context.on_card_show_msg),
-          dispatch_card_action(
-            model.pool.card_show_open,
-            context.on_activate_card,
-          ),
+          dispatch_card_action(model.card_show_open, context.on_activate_card),
         ]),
       )
     }
     _ -> {
-      let #(show_model, show_fx) =
-        card_show.update(model.pool.card_show_model, msg)
+      let #(show_model, show_fx) = card_show.update(model.card_show_model, msg)
       #(
-        Model(..model, pool: card_show_state.set_model(model.pool, show_model)),
+        Model(..model, card_show_model: card_show_state.set_model(show_model)),
         show_fx |> effect.map(context.on_card_show_msg),
       )
     }

@@ -347,7 +347,7 @@ fn current_route(model: client_state.Model) -> router.Route {
           url_state.with_card_work_scope(state, card_id)
         _, _ -> state
       }
-      let state = case model.member.pool.card_show_open {
+      let state = case model.member.card_show_open {
         opt.Some(card_id) -> url_state.with_card_show(state, card_id)
         opt.None ->
           case model.member.notes.member_notes_task_id {
@@ -791,7 +791,7 @@ fn route_show_effect(
 fn close_current_show_effect(
   model: client_state.Model,
 ) -> Effect(client_state.Msg) {
-  let card_fx = case model.member.pool.card_show_open {
+  let card_fx = case model.member.card_show_open {
     opt.Some(_) ->
       effect.from(fn(dispatch) {
         dispatch(client_state.pool_msg(pool_messages.CloseCardShow))

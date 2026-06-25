@@ -1,5 +1,7 @@
 //// Member-specific client state model.
 
+import gleam/option.{type Option}
+
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/member/notes as member_notes
@@ -7,6 +9,7 @@ import scrumbringer_client/client_state/member/now_working as member_now_working
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/client_state/member/skills as member_skills
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/tasks/show/model as task_show_model
 
 /// Represents pool member slice.
@@ -37,6 +40,10 @@ pub type NotesModel =
 pub type DependenciesModel =
   member_dependencies.Model
 
+/// Represents card show member slice.
+pub type CardShowModel =
+  card_show.Model
+
 /// Represents task show member slice.
 pub type TaskShowModel =
   task_show_model.Model
@@ -51,6 +58,8 @@ pub type MemberModel {
     positions: PositionsModel,
     notes: NotesModel,
     dependencies: DependenciesModel,
+    card_show_open: Option(Int),
+    card_show_model: CardShowModel,
     task_show: TaskShowModel,
   )
 }
@@ -65,6 +74,8 @@ pub fn default_model() -> MemberModel {
     positions: member_positions.default_model(),
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
+    card_show_open: option.None,
+    card_show_model: card_show.init_model(),
     task_show: task_show_model.default(),
   )
 }

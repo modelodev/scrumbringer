@@ -9,6 +9,7 @@ import domain/card.{type Card, Card, Draft}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/card_show_update
 import scrumbringer_client/features/pool/msg as pool_messages
 
@@ -16,6 +17,8 @@ fn local_model() -> card_show_update.Model {
   card_show_update.Model(
     pool: member_pool.default_model(),
     cards: admin_cards.default_model(),
+    card_show_open: None,
+    card_show_model: card_show.init_model(),
   )
 }
 
@@ -87,7 +90,7 @@ pub fn card_show_update_opened_updates_pool_cards_and_effects_test() {
   let assert Some(#(next, fx)) =
     card_show_update.try_update(model, pool_messages.OpenCardShow(7), context())
 
-  let assert Some(7) = next.pool.card_show_open
+  let assert Some(7) = next.card_show_open
   let assert Loaded([first, second]) = next.cards.cards
   let assert False = first.has_new_notes
   let assert True = second.has_new_notes
@@ -95,19 +98,12 @@ pub fn card_show_update_opened_updates_pool_cards_and_effects_test() {
 }
 
 pub fn card_show_update_closed_clears_pool_show_test() {
-  let model =
-    card_show_update.Model(
-      ..local_model(),
-      pool: member_pool.Model(
-        ..member_pool.default_model(),
-        card_show_open: Some(7),
-      ),
-    )
+  let model = card_show_update.Model(..local_model(), card_show_open: Some(7))
 
   let assert Some(#(next, fx)) =
     card_show_update.try_update(model, pool_messages.CloseCardShow, context())
 
-  let assert None = next.pool.card_show_open
+  let assert None = next.card_show_open
   let assert True = fx == effect.none()
 }
 
@@ -151,7 +147,7 @@ pub fn card_show_update_try_update_handles_open_message_test() {
       context(),
     )
 
-  let assert Some(7) = next.pool.card_show_open
+  let assert Some(7) = next.card_show_open
   let assert False = fx == effect.none()
 }
 

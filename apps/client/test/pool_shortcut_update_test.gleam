@@ -4,6 +4,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/shortcut_update
 import scrumbringer_client/pool_prefs
@@ -13,6 +14,8 @@ fn local_model() -> shortcut_update.Model {
     pool: member_pool.default_model(),
     notes: member_notes.default_model(),
     positions: member_positions.default_model(),
+    card_show_open: None,
+    card_show_model: card_show.init_model(),
   )
 }
 
@@ -102,18 +105,11 @@ pub fn shortcut_update_escape_closes_notes_detail_test() {
 }
 
 pub fn shortcut_update_escape_closes_card_show_test() {
-  let model =
-    shortcut_update.Model(
-      ..local_model(),
-      pool: member_pool.Model(
-        ..member_pool.default_model(),
-        card_show_open: Some(42),
-      ),
-    )
+  let model = shortcut_update.Model(..local_model(), card_show_open: Some(42))
 
   let next = shortcut(model, "Escape")
 
-  let assert None = next.pool.card_show_open
+  let assert None = next.card_show_open
 }
 
 pub fn shortcut_update_escape_closes_position_edit_test() {

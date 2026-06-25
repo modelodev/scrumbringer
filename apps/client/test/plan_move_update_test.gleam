@@ -46,13 +46,8 @@ fn context() -> plan_move_update.Context(Nil) {
   )
 }
 
-pub fn move_requested_enters_inline_mode_and_closes_detail_test() {
-  let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      card_show_open: opt.Some(3),
-    )
-
+pub fn move_requested_enters_inline_mode_test() {
+  let model = member_pool.default_model()
   let assert opt.Some(#(next, fx)) =
     plan_move_update.try_update(
       model,
@@ -62,7 +57,6 @@ pub fn move_requested_enters_inline_mode_and_closes_detail_test() {
 
   let assert member_pool.PlanMovingCard(3, "") = next.member_plan_move_mode
   let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
-  let assert opt.None = next.card_show_open
   let assert opt.None = next.member_plan_move_error
   let assert True = fx == effect.none()
 }

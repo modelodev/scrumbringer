@@ -12,7 +12,6 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/admin/view as admin_view
 
 fn assert_contains(text: String, fragment: String) {
@@ -162,7 +161,8 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(..pool, card_show_open: opt.Some(1)),
+        pool: pool,
+        card_show_open: opt.Some(1),
       )
     })
 

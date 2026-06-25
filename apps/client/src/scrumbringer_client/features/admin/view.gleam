@@ -402,7 +402,7 @@ fn view_card_show(model: Model, project: Project) -> Element(Msg) {
 
   show_entry.view(
     show_entry.Config(
-      model: model.member.pool.card_show_model,
+      model: model.member.card_show_model,
       card: selected_show_card(model),
       cards: admin_cards_list(model),
       tasks: selected_show_card_tasks(model),
@@ -425,7 +425,7 @@ fn admin_cards_list(model: Model) -> List(domain_card.Card) {
 }
 
 fn selected_show_card(model: Model) -> opt.Option(domain_card.Card) {
-  case model.member.pool.card_show_open {
+  case model.member.card_show_open {
     opt.Some(card_id) ->
       card_queries.find_card(
         model.member.pool.member_cards_store,
@@ -437,7 +437,7 @@ fn selected_show_card(model: Model) -> opt.Option(domain_card.Card) {
 }
 
 fn selected_show_card_tasks(model: Model) -> List(domain_task.Task) {
-  case model.member.pool.card_show_open {
+  case model.member.card_show_open {
     opt.Some(card_id) ->
       show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
     opt.None -> []

@@ -18,6 +18,8 @@ pub type Model {
     pool: member_pool.Model,
     notes: member_notes.Model,
     positions: member_positions.Model,
+    card_show_open: opt.Option(Int),
+    card_show_model: card_show.Model,
   )
 }
 
@@ -83,7 +85,7 @@ fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {
 fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
   case
     model.pool.member_plan_move_drag,
-    opt.is_some(model.pool.card_show_open),
+    opt.is_some(model.card_show_open),
     model.pool.member_create_dialog_mode,
     opt.is_some(model.notes.member_notes_task_id),
     opt.is_some(model.positions.member_position_edit_task)
@@ -101,11 +103,8 @@ fn close_dialog(model: Model) -> #(Model, Effect(parent_msg)) {
     _, True, _, _, _ -> #(
       Model(
         ..model,
-        pool: member_pool.Model(
-          ..model.pool,
-          card_show_open: opt.None,
-          card_show_model: card_show.reset(),
-        ),
+        card_show_open: opt.None,
+        card_show_model: card_show.reset(),
       ),
       effect.none(),
     )

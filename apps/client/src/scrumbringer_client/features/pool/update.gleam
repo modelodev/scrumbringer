@@ -35,6 +35,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
 import scrumbringer_client/features/pool/card_show_update
@@ -62,6 +63,8 @@ fn pool_shortcut_model(model: client_state.Model) -> shortcut_update.Model {
     pool: model.member.pool,
     notes: model.member.notes,
     positions: model.member.positions,
+    card_show_open: model.member.card_show_open,
+    card_show_model: model.member.card_show_model,
   )
 }
 
@@ -75,6 +78,8 @@ fn update_pool_shortcut_model(
       pool: local.pool,
       notes: local.notes,
       positions: local.positions,
+      card_show_open: local.card_show_open,
+      card_show_model: local.card_show_model,
     )
   })
 }
@@ -102,7 +107,12 @@ fn update_pool_drag_model(
 }
 
 fn pool_card_show_model(model: client_state.Model) -> card_show_update.Model {
-  card_show_update.Model(pool: model.member.pool, cards: model.admin.cards)
+  card_show_update.Model(
+    pool: model.member.pool,
+    cards: model.admin.cards,
+    card_show_open: model.member.card_show_open,
+    card_show_model: model.member.card_show_model,
+  )
 }
 
 fn update_pool_card_show_model(
@@ -111,7 +121,12 @@ fn update_pool_card_show_model(
 ) -> client_state.Model {
   let model =
     client_state.update_member(model, fn(member) {
-      member_state.MemberModel(..member, pool: local.pool)
+      member_state.MemberModel(
+        ..member,
+        pool: local.pool,
+        card_show_open: local.card_show_open,
+        card_show_model: local.card_show_model,
+      )
     })
 
   client_state.update_admin(model, fn(admin) {
@@ -452,7 +467,16 @@ fn try_pool_plan_move_update(
     opt.Some(#(pool, fx)) -> {
       let updated =
         client_state.update_member(model, fn(member) {
-          member_state.MemberModel(..member, pool: pool)
+          case inner {
+            pool_messages.MemberPlanMoveRequested(_) ->
+              member_state.MemberModel(
+                ..member,
+                pool: pool,
+                card_show_open: opt.None,
+                card_show_model: card_show.reset(),
+              )
+            _ -> member_state.MemberModel(..member, pool: pool)
+          }
         })
       opt.Some(apply_plan_move_refresh(updated, inner, fx, member_refresh))
     }

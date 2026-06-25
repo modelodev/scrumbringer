@@ -20,6 +20,8 @@ fn cards_config(model: client_state.Model) {
     model.ui.locale,
     [],
     model.member.pool,
+    model.member.card_show_model,
+    model.member.card_show_open,
     opt.None,
     model.core.user,
     opt.None,

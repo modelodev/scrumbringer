@@ -2035,6 +2035,8 @@ fn member_cards_config(
     model.ui.locale,
     project_cards(model),
     model.member.pool,
+    model.member.card_show_model,
+    model.member.card_show_open,
     selected_member_show_card(model),
     model.core.user,
     state_selectors.selected_project(model),
@@ -2044,7 +2046,7 @@ fn member_cards_config(
 }
 
 fn selected_member_show_card(model: client_state.Model) -> opt.Option(Card) {
-  case model.member.pool.card_show_open {
+  case model.member.card_show_open {
     opt.Some(card_id) -> find_card(model, card_id)
     opt.None -> opt.None
   }
