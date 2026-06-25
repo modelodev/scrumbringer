@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 TMP_DIR="$REPO_ROOT/.tmp"
 GENERATED_CADDYFILE="$TMP_DIR/dev-hot.Caddyfile"
+STATE_FILE="$TMP_DIR/dev-hot.state"
 
 # Dev runner: server + client hot reload + Caddy HTTP proxy.
 # - Server: Gleam app in apps/server
@@ -23,13 +24,20 @@ SB_COOKIE_SECURE="${SB_COOKIE_SECURE:-false}"
 
 CADDY_HTTP_HOST="${CADDY_HTTP_HOST:-0.0.0.0}"
 CADDY_HTTP_PORT="${CADDY_HTTP_PORT:-8443}"
+HEALTH_MONITOR_INTERVAL="${HEALTH_MONITOR_INTERVAL:-10}"
+HEALTH_MONITOR_FAILURES="${HEALTH_MONITOR_FAILURES:-3}"
 
 export DATABASE_URL
 export SB_HOST SB_PORT SB_UPSTREAM_HOST SB_SECRET_KEY_BASE SB_COOKIE_SECURE
 export DEV_HOST DEV_PORT DEV_UPSTREAM_HOST
 export CADDY_HTTP_HOST CADDY_HTTP_PORT
+export HEALTH_MONITOR_INTERVAL HEALTH_MONITOR_FAILURES
 
 PIDS=()
+LAST_STARTED_PID=""
+SERVER_PID=""
+CLIENT_PID=""
+CADDY_PID=""
 
 log() {
   printf '[dev-hot] %s\n' "$*"
@@ -82,6 +90,7 @@ cleanup() {
   done
 
   wait 2>/dev/null || true
+  rm -f "$STATE_FILE"
 }
 
 write_caddyfile() {
@@ -118,7 +127,60 @@ start_background() {
     cd "$workdir"
     exec "$@"
   ) &
+  LAST_STARTED_PID="$!"
+  PIDS+=("$LAST_STARTED_PID")
+}
+
+start_health_monitor() {
+  local root_pid="$$"
+
+  if [ "$HEALTH_MONITOR_INTERVAL" = "0" ]; then
+    log "Health monitor disabled"
+    return 0
+  fi
+
+  log "Starting health monitor every ${HEALTH_MONITOR_INTERVAL}s"
+  (
+    local failures=0
+
+    while sleep "$HEALTH_MONITOR_INTERVAL"; do
+      if APP_ORIGIN="$(local_app_url)" \
+        HEALTH_RETRIES=1 \
+        "$SCRIPT_DIR/dev-hot-health.sh" >/dev/null 2>&1; then
+        failures=0
+      else
+        failures=$((failures + 1))
+        log "Health monitor failure ${failures}/${HEALTH_MONITOR_FAILURES}"
+
+        if [ "$failures" -ge "$HEALTH_MONITOR_FAILURES" ]; then
+          log "Dev stack became unhealthy; stopping. Restart scripts/dev-hot.sh after client JS tests/builds."
+          kill -TERM "$root_pid" 2>/dev/null || true
+          exit 1
+        fi
+      fi
+    done
+  ) &
+
   PIDS+=("$!")
+}
+
+write_state() {
+  mkdir -p "$TMP_DIR"
+
+  {
+    printf 'REPO_ROOT=%q\n' "$REPO_ROOT"
+    printf 'APP_URL=%q\n' "$(local_app_url)"
+    printf 'DATABASE_URL=%q\n' "$DATABASE_URL"
+    printf 'SB_HOST=%q\n' "$SB_HOST"
+    printf 'SB_PORT=%q\n' "$SB_PORT"
+    printf 'DEV_HOST=%q\n' "$DEV_HOST"
+    printf 'DEV_PORT=%q\n' "$DEV_PORT"
+    printf 'CADDY_HTTP_HOST=%q\n' "$CADDY_HTTP_HOST"
+    printf 'CADDY_HTTP_PORT=%q\n' "$CADDY_HTTP_PORT"
+    printf 'SERVER_PID=%q\n' "$SERVER_PID"
+    printf 'CLIENT_PID=%q\n' "$CLIENT_PID"
+    printf 'CADDY_PID=%q\n' "$CADDY_PID"
+  } >"$STATE_FILE"
 }
 
 main() {
@@ -139,19 +201,32 @@ main() {
     "server on ${SB_HOST}:${SB_PORT}" \
     "$REPO_ROOT/apps/server" \
     gleam run -m main
+  SERVER_PID="$LAST_STARTED_PID"
 
   start_background \
     "Lustre dev server on ${DEV_HOST}:${DEV_PORT}" \
     "$REPO_ROOT/apps/client" \
     gleam run -m lustre/dev start --host="$DEV_HOST" --port="$DEV_PORT"
+  CLIENT_PID="$LAST_STARTED_PID"
 
   start_background \
     "Caddy on ${CADDY_HTTP_HOST}:${CADDY_HTTP_PORT}" \
     "$REPO_ROOT" \
     caddy run --config "$GENERATED_CADDYFILE" --adapter caddyfile
+  CADDY_PID="$LAST_STARTED_PID"
+
+  write_state
+
+  log "Waiting for dev stack health"
+  APP_ORIGIN="$(local_app_url)" \
+    HEALTH_RETRIES="${HEALTH_RETRIES:-60}" \
+    HEALTH_SLEEP="${HEALTH_SLEEP:-1}" \
+    "$SCRIPT_DIR/dev-hot-health.sh"
+  start_health_monitor
 
   printf '\n'
   log "Dev stack running"
+  log "State: $STATE_FILE"
   log "App local: $(local_app_url)"
   lan_app_urls | while read -r url; do
     log "App LAN: ${url}"
