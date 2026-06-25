@@ -91,7 +91,7 @@ fn audit_event_options_for_seed(
   let claim_time = timestamp_days_hours(days_ago, 2 + { idx % 4 })
   let release_time = timestamp_days_hours(days_ago, 6 + { idx % 5 })
   let reclaim_time = timestamp_days_hours(days_ago, 10 + { idx % 6 })
-  let complete_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
+  let close_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
 
   let claim_event = case seed.execution_state {
     task_state.Claimed(..) ->
@@ -141,7 +141,7 @@ fn audit_event_options_for_seed(
     False -> None
   }
 
-  let complete_event = case seed.execution_state {
+  let close_event = case seed.execution_state {
     task_state.Closed(..) ->
       Some(seed_db.AuditEventInsertOptions(
         org_id: context.org_id,
@@ -149,12 +149,12 @@ fn audit_event_options_for_seed(
         task_id: seed.task_id,
         actor_user_id: actor_id,
         event_type: audit_events_db.TaskClosed,
-        created_at: Some(complete_time),
+        created_at: Some(close_time),
       ))
     task_state.Available | task_state.Claimed(..) -> None
   }
 
-  compact_options([claim_event, release_event, reclaim_event, complete_event])
+  compact_options([claim_event, release_event, reclaim_event, close_event])
 }
 
 fn first_claim_events_for_users(
