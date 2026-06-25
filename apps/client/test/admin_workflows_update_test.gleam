@@ -658,7 +658,7 @@ pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
 pub fn try_engines_update_created_updates_project_scope_and_emits_feedback_test() {
   let existing = engine(1, "Existing", opt.Some(7))
   let created = engine(2, "Created", opt.Some(7))
-  let workflows =
+  let engines =
     admin_workflows.Model(
       engines_org: Loaded([]),
       engines_project: Loaded([existing]),
@@ -673,7 +673,7 @@ pub fn try_engines_update_created_updates_project_scope_and_emits_feedback_test(
     )
 
   let #(next, fx, auth_policy) =
-    engine_update(workflows, pool_messages.EngineSaved(Ok(created)))
+    engine_update(engines, pool_messages.EngineSaved(Ok(created)))
 
   let assert True = next.engines_project == Loaded([created, existing])
   let assert True = next.engines_org == Loaded([])

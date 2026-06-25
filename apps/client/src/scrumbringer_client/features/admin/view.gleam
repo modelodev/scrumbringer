@@ -13,7 +13,7 @@
 ////
 //// ## Structure Note
 ////
-//// Members and workflow-related views live in `features/admin/views/*`.
+//// Members and automation-related views live in `features/admin/views/*`.
 //// This module keeps core admin views and delegates to those submodules.
 ////
 //// ## Relations

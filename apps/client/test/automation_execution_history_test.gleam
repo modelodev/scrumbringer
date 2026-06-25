@@ -17,7 +17,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn workflow_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
+fn engine_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
   api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: 11,
     workflow_name: "Escalation workflow",
@@ -39,7 +39,7 @@ fn rule_summary() -> api_rule_metrics.RuleMetricsSummary {
   )
 }
 
-fn workflow_metrics() -> api_rule_metrics.WorkflowMetrics {
+fn engine_metrics() -> api_rule_metrics.WorkflowMetrics {
   api_rule_metrics.WorkflowMetrics(
     workflow_id: 11,
     workflow_name: "Escalation workflow",
@@ -160,7 +160,7 @@ fn config() -> execution_history.Config(String) {
     locale: locale.En,
     model: admin_metrics.Model(
       ..admin_metrics.default_model(),
-      admin_rule_metrics: Loaded([workflow_summary()]),
+      admin_rule_metrics: Loaded([engine_summary()]),
       admin_project_rule_executions: Loaded(project_executions_response()),
       admin_rule_metrics_from: "2026-06-01",
       admin_rule_metrics_to: "2026-06-08",
@@ -280,7 +280,7 @@ pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
         model: admin_metrics.Model(
           ..config().model,
           admin_rule_metrics_expanded_engine: option.Some(11),
-          admin_rule_metrics_engine_details: Loaded(workflow_metrics()),
+          admin_rule_metrics_engine_details: Loaded(engine_metrics()),
         ),
       ),
     )

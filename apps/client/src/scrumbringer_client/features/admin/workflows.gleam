@@ -277,8 +277,8 @@ pub fn try_engines_update(
   feedback: EngineFeedbackContext(parent_msg),
 ) -> opt.Option(EngineUpdate(parent_msg)) {
   case inner {
-    pool_messages.EnginesProjectFetched(Ok(workflows)) ->
-      engines_project_fetched_ok(state, workflows)
+    pool_messages.EnginesProjectFetched(Ok(engines)) ->
+      engines_project_fetched_ok(state, engines)
       |> without_engine_auth_check
 
     pool_messages.EnginesProjectFetched(Error(err)) ->
@@ -373,9 +373,9 @@ fn with_engine_effect(
 
 fn engines_project_fetched_ok(
   state: admin_workflows.Model,
-  workflows: List(Workflow),
+  engines: List(Workflow),
 ) -> admin_workflows.Model {
-  admin_workflows.Model(..state, engines_project: Loaded(workflows))
+  admin_workflows.Model(..state, engines_project: Loaded(engines))
 }
 
 fn engines_project_fetched_error(

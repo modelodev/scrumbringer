@@ -27,7 +27,7 @@ fn update(
   update
 }
 
-fn workflow_summary(id: Int) -> api_rule_metrics.OrgWorkflowMetricsSummary {
+fn engine_summary(id: Int) -> api_rule_metrics.OrgWorkflowMetricsSummary {
   api_rule_metrics.OrgWorkflowMetricsSummary(
     workflow_id: id,
     workflow_name: "Workflow",
@@ -176,7 +176,7 @@ pub fn quick_range_sets_dates_and_fetches_test() {
 }
 
 pub fn fetched_ok_sets_loaded_metrics_test() {
-  let metrics = [workflow_summary(7)]
+  let metrics = [engine_summary(7)]
 
   let rule_metrics.Update(next, fx, _) =
     update(
