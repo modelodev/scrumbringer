@@ -179,7 +179,7 @@ pub fn local_engine_crud_transitions_update_scopes_test() {
   let #(editing, fx, auth_policy) =
     engine_update(
       after_create,
-      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(created)),
+      pool_messages.OpenEngineDialog(admin_workflows.EngineDialogEdit(created)),
     )
   let assert True = fx == effect.none()
   let assert automations_update.NoEngineAuthCheck = auth_policy
@@ -193,9 +193,7 @@ pub fn local_engine_crud_transitions_update_scopes_test() {
   let #(deleting, fx, auth_policy) =
     engine_update(
       after_update,
-      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogDelete(
-        updated,
-      )),
+      pool_messages.OpenEngineDialog(admin_workflows.EngineDialogDelete(updated)),
     )
   let assert True = fx == effect.none()
   let assert automations_update.NoEngineAuthCheck = auth_policy
@@ -232,7 +230,7 @@ pub fn local_engine_fetch_and_dialog_transitions_test() {
   let #(opened, fx, auth_policy) =
     engine_update(
       after_error,
-      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
+      pool_messages.OpenEngineDialog(admin_workflows.EngineDialogEdit(item)),
     )
   let assert True =
     opened.engine_dialog_mode
@@ -241,7 +239,7 @@ pub fn local_engine_fetch_and_dialog_transitions_test() {
   let assert automations_update.NoEngineAuthCheck = auth_policy
 
   let #(closed, fx, auth_policy) =
-    engine_update(opened, pool_messages.CloseWorkflowDialog)
+    engine_update(opened, pool_messages.CloseEngineDialog)
   let assert opt.None = closed.engine_dialog_mode
   let assert True = fx == effect.none()
   let assert automations_update.NoEngineAuthCheck = auth_policy
@@ -269,7 +267,7 @@ pub fn try_engines_update_open_dialog_returns_local_update_test() {
   let assert opt.Some(automations_update.EngineUpdate(next, fx, auth_policy)) =
     automations_update.try_engines_update(
       admin_workflows.default_model(),
-      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
+      pool_messages.OpenEngineDialog(admin_workflows.EngineDialogEdit(item)),
       engine_feedback_context(),
     )
 

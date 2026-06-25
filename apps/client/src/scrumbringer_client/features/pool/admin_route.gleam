@@ -238,7 +238,7 @@ fn automation_panel_focus_target(
   inner: client_state.PoolMsg,
 ) -> opt.Option(String) {
   case inner {
-    pool_messages.CloseWorkflowDialog
+    pool_messages.CloseEngineDialog
     | pool_messages.WorkflowSaved(Ok(_))
     | pool_messages.WorkflowDeleteFinished(_, Ok(_)) ->
       engine_dialog_focus_target(model.admin.workflows.engine_dialog_mode)

@@ -293,11 +293,11 @@ pub fn try_engines_update(
       admin_workflows.Model(..state, engine_status_filter: status)
       |> without_engine_auth_check
 
-    pool_messages.OpenWorkflowDialog(mode) ->
+    pool_messages.OpenEngineDialog(mode) ->
       open_engine_dialog(state, mode)
       |> without_engine_auth_check
 
-    pool_messages.CloseWorkflowDialog ->
+    pool_messages.CloseEngineDialog ->
       close_engine_dialog(state)
       |> without_engine_auth_check
 

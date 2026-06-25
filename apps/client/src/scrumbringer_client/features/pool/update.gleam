@@ -949,8 +949,8 @@ fn update_without_view_mode(
     pool_messages.WorkflowsProjectFetched(_)
     | pool_messages.WorkflowsSearchChanged(_)
     | pool_messages.WorkflowsStatusFilterChanged(_)
-    | pool_messages.OpenWorkflowDialog(_)
-    | pool_messages.CloseWorkflowDialog
+    | pool_messages.OpenEngineDialog(_)
+    | pool_messages.CloseEngineDialog
     | pool_messages.WorkflowNameChanged(_)
     | pool_messages.WorkflowDescriptionChanged(_)
     | pool_messages.WorkflowActiveChanged(_)

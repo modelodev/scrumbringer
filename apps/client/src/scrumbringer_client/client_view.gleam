@@ -556,7 +556,7 @@ fn view_automations_console(
     primary_action: opt.Some(
       button.icon_text(
         i18n.t(model.ui.locale, i18n_text.CreateAutomationEngine),
-        client_state.pool_msg(pool_messages.OpenWorkflowDialog(
+        client_state.pool_msg(pool_messages.OpenEngineDialog(
           admin_workflows.EngineDialogCreate,
         )),
         icons.Plus,
@@ -929,7 +929,7 @@ fn admin_workflow_callbacks(
   model: client_state.Model,
 ) -> engine_list_config.Callbacks(client_state.Msg) {
   engine_list_config.Callbacks(
-    on_create_clicked: client_state.pool_msg(pool_messages.OpenWorkflowDialog(
+    on_create_clicked: client_state.pool_msg(pool_messages.OpenEngineDialog(
       admin_workflows.EngineDialogCreate,
     )),
     on_search_changed: fn(value) {
@@ -943,14 +943,14 @@ fn admin_workflow_callbacks(
     },
     on_edit_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(
+        pool_messages.OpenEngineDialog(admin_workflows.EngineDialogEdit(
           workflow,
         )),
       )
     },
     on_delete_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogDelete(
+        pool_messages.OpenEngineDialog(admin_workflows.EngineDialogDelete(
           workflow,
         )),
       )
@@ -970,7 +970,7 @@ fn admin_workflow_callbacks(
     on_delete_confirmed: client_state.pool_msg(
       pool_messages.WorkflowDeleteConfirmed,
     ),
-    on_closed: client_state.pool_msg(pool_messages.CloseWorkflowDialog),
+    on_closed: client_state.pool_msg(pool_messages.CloseEngineDialog),
     rules: admin_workflow_rule_callbacks(model),
   )
 }
