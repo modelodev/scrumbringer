@@ -21,7 +21,7 @@ pub fn status_maps_closed_to_success_test() {
   let assert True = string.contains(html, "badge-success")
 }
 
-pub fn status_keeps_obsolete_completed_alias_neutral_test() {
+pub fn status_does_not_treat_completed_as_closed_test() {
   let html = badge.status("Completed") |> element.to_document_string
 
   let assert True = string.contains(html, "badge-neutral")
