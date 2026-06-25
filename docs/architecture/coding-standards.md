@@ -11,7 +11,7 @@
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Modules | snake_case | `task_service.gleam` |
+| Modules | snake_case | `task_lifecycle.gleam` |
 | Types | PascalCase | `Task`, `UserCapability` |
 | Functions | snake_case | `get_pool_tasks`, `claim_task` |
 | Constants | snake_case | `max_priority` |
@@ -34,7 +34,7 @@ pub type Task {
 pub type Status {
   Available
   Claimed(by: Int)
-  Done
+  Closed
 }
 
 // 3. Constants
@@ -94,7 +94,7 @@ pub fn status_label(status: Status) -> String {
   case status {
     Available -> "Available"
     Claimed(by: _) -> "In Progress"
-    Done -> "Done"
+    Closed -> "Closed"
   }
 }
 
@@ -393,35 +393,40 @@ data_table.view_remote(model.projects, loading_msg: "...", empty_msg: "...", con
 
 ### Query Files
 
-Place SQL queries in `src/queries/`:
+Place Squirrel SQL query files in `apps/server/src/scrumbringer_server/sql/`.
+The generated Gleam module lives at `scrumbringer_server/sql.gleam`; repository
+modules wrap those generated functions and map rows into domain records.
 
 ```
-src/queries/
-├── tasks.sql
-├── users.sql
-└── projects.sql
+apps/server/src/scrumbringer_server/sql/
+├── tasks_list.sql
+├── tasks_claim.sql
+└── projects_for_user.sql
 ```
 
 ### Query Format
 
 ```sql
--- src/queries/tasks.sql
+-- apps/server/src/scrumbringer_server/sql/tasks_list.sql
 
--- name: get_pool_tasks
--- Get all available tasks for a project
+-- name: list_tasks_for_project
+-- Get all available tasks for a project.
 SELECT
     t.id,
     t.title,
-    t.description,
+    COALESCE(t.description, '') AS description,
     t.priority,
-    t.status,
+    CASE
+      WHEN t.execution_state = 'closed' THEN 'completed'
+      ELSE t.execution_state
+    END AS status,
     t.created_at,
     t.version,
     tt.name AS type_name,
     tt.icon AS type_icon
 FROM tasks t
 JOIN task_types tt ON t.type_id = tt.id
-WHERE t.status = 'available'
+WHERE t.execution_state = 'available'
   AND t.project_id = $1
 ORDER BY t.priority DESC, t.created_at ASC;
 
@@ -430,10 +435,11 @@ ORDER BY t.priority DESC, t.created_at ASC;
 UPDATE tasks
 SET claimed_by = $1,
     claimed_at = NOW(),
-    status = 'claimed',
+    claimed_mode = 'taken',
+    execution_state = 'claimed',
     version = version + 1
 WHERE id = $2
-  AND status = 'available'
+  AND execution_state = 'available'
   AND version = $3
 RETURNING *;
 ```
@@ -461,11 +467,15 @@ src/
 ├── pages/                   # Page-level components
 │   ├── login.gleam
 │   └── dashboard.gleam
-├── services/                # Business logic
-│   ├── task_service.gleam
-│   └── auth_service.gleam
-├── queries/                 # SQL files for Squirrel
-│   └── tasks.sql
+├── use_case/                # Business use cases
+│   ├── task_claim.gleam
+│   └── auth_session.gleam
+├── repository/              # Persistence adapters and row mappers
+│   └── tasks/
+│       ├── queries.gleam
+│       └── mappers.gleam
+├── sql/                     # SQL files consumed by Squirrel
+│   └── tasks_claim.sql
 └── types/                   # Shared type definitions
     ├── task.gleam
     └── error.gleam
@@ -486,7 +496,7 @@ apps/server/test/
 │   ├── test_helpers.gleam           # Factory functions for domain objects
 │   └── test_db.gleam                # Transaction isolation helpers
 ├── unit/                            # Unit tests (no HTTP, isolated)
-│   ├── services/                    # DB service tests
+│   ├── persistence/                 # Repository and DB adapter tests
 │   └── http/                        # HTTP handler tests
 ├── integration/                     # Full integration tests
 └── *_http_test.gleam                # HTTP endpoint tests (existing)
@@ -523,7 +533,6 @@ For tests that need full HTTP request/response cycle:
 
 ```gleam
 import fixtures
-import gleeunit/should
 import gleam/http
 import wisp/simulate
 
@@ -538,7 +547,7 @@ pub fn create_task_succeeds_test() {
     ])),
   )
 
-  res.status |> should.equal(200)
+  let assert 200 = res.status
 }
 ```
 
@@ -550,16 +559,15 @@ For tests that need direct DB access with rollback:
 import support/test_db
 import fixtures
 import scrumbringer_server
-import gleeunit/should
 
-pub fn workflow_crud_test() {
+pub fn rule_engine_crud_test() {
   let assert Ok(#(app, _, _)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
   test_db.with_test_transaction(db, fn(tx) {
     // All operations here will be rolled back after the test
     let result = workflows_db.create_workflow(tx, 1, None, "Test", "desc", True, 1)
-    result |> should.be_ok()
+    let assert Ok(_) = result
   })
 }
 ```
@@ -570,16 +578,15 @@ For tests that don't need database access:
 
 ```gleam
 import support/test_helpers
-import gleeunit/should
 
 pub fn make_test_user_has_correct_role_test() {
   let user = test_helpers.make_test_user()
-  user.org_role |> should.equal(org_role.Member)
+  let assert org_role.Member = user.org_role
 }
 
 pub fn make_test_admin_has_admin_role_test() {
   let admin = test_helpers.make_test_admin()
-  admin.org_role |> should.equal(org_role.Admin)
+  let assert org_role.Admin = admin.org_role
 }
 ```
 
@@ -618,7 +625,7 @@ test_db.with_test_transaction(db, fn(tx) {
 ### Test Framework
 
 - **Framework:** gleeunit
-- **Assertions:** `gleeunit/should` module
+- **Assertions:** `let assert` pattern assertions
 - **HTTP simulation:** `wisp/simulate`
 
 ### Test Requirements
