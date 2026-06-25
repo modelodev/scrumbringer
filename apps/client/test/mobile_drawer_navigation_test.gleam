@@ -1,6 +1,8 @@
 import domain/view_mode
 import gleam/option as opt
+import lustre/effect
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_update
@@ -100,4 +102,47 @@ pub fn navigate_to_card_work_scope_sets_plan_scope_card_test() {
   next_model.member.pool.member_plan_scope_kind
   |> assert_equal(member_pool.PlanScopeCard)
   next_model.member.pool.member_plan_scope_card_id |> assert_equal(opt.Some(42))
+}
+
+pub fn navigate_to_current_route_is_noop_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(
+        ..core,
+        page: client_state.Member,
+        selected_project_id: opt.Some(7),
+      )
+    })
+    |> client_state.update_member(fn(member) {
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..member.pool,
+          view_mode: view_mode.People,
+          member_plan_scope_kind: member_pool.PlanScopeCard,
+          member_plan_scope_card_id: opt.Some(42),
+        ),
+      )
+    })
+    |> client_state.update_ui(fn(ui) {
+      ui_state.UiModel(..ui, mobile_drawer: ui_state.DrawerLeftOpen)
+    })
+  let route =
+    url_state.empty()
+    |> url_state.with_project(7)
+    |> url_state.with_view(view_mode.People)
+    |> url_state.with_card_work_scope(42)
+    |> router.Member
+
+  let #(next_model, fx) =
+    client_update.update(
+      model,
+      client_state.NavigateTo(route, client_state.Push),
+    )
+
+  next_model.ui.mobile_drawer |> assert_equal(ui_state.DrawerLeftOpen)
+  next_model.member.pool.member_plan_scope_card_id
+  |> assert_equal(opt.Some(42))
+  let assert True = fx == effect.none()
 }
