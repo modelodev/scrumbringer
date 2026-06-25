@@ -59,8 +59,8 @@ pub fn catalog() -> List(CatalogIcon) {
     CatalogIcon("shield-check", "Security", Tasks),
     CatalogIcon("chart-bar", "Analytics", Tasks),
     // Status (states)
-    CatalogIcon("check-circle", "Done", Status),
-    CatalogIcon("check", "Complete", Status),
+    CatalogIcon("check-circle", "Closed", Status),
+    CatalogIcon("check", "Check", Status),
     CatalogIcon("x-circle", "Cancelled", Status),
     CatalogIcon("pause-circle", "Paused", Status),
     CatalogIcon("play-circle", "In Progress", Status),

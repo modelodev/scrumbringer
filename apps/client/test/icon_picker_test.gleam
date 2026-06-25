@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/string
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icon_picker.{
   InvalidIconCategory, active_category_or_default, category_to_string,
@@ -38,4 +39,13 @@ pub fn category_ids_round_trip_test() {
 
 pub fn active_category_or_default_recovers_invalid_category_test() {
   let assert icon_catalog.All = active_category_or_default("everything")
+}
+
+pub fn status_icon_labels_avoid_task_lifecycle_legacy_terms_test() {
+  icon_catalog.by_category(icon_catalog.Status)
+  |> list.each(fn(icon) {
+    let icon_catalog.CatalogIcon(label: label, ..) = icon
+    let assert False = string.contains(label, "Done")
+    let assert False = string.contains(label, "Complete")
+  })
 }
