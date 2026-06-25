@@ -3,7 +3,7 @@ import scrumbringer_client/client_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/ui/toast
 
-pub fn toast_action_view_task_maps_to_member_task_show_opened_test() {
+pub fn toast_action_view_task_maps_to_task_show_opened_test() {
   let assert True =
     client_update.toast_action_to_msg(toast.ViewTask(42))
     == client_state.pool_msg(pool_messages.MemberTaskShowOpened(42))

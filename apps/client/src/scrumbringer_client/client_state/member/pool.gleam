@@ -14,9 +14,9 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/show_tabs
 
 import scrumbringer_client/features/people/state as people_state
 
@@ -158,15 +158,7 @@ pub type Model {
     member_pool_preview_task_id: Option(Int),
     card_show_open: Option(Int),
     card_show_model: card_show.Model,
-    member_task_show_tab: show_tabs.TaskShowTab,
-    member_task_show_editing: Bool,
-    member_task_show_edit_title: String,
-    member_task_show_edit_description: String,
-    member_task_show_edit_priority: String,
-    member_task_show_edit_type_id: String,
-    member_task_show_edit_card_id: String,
-    member_task_show_edit_in_flight: Bool,
-    member_task_show_edit_error: Option(String),
+    task_show: task_show_model.Model,
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
     people_expansions: Dict(Int, people_state.RowExpansion),
@@ -231,15 +223,7 @@ pub fn default_model() -> Model {
     member_pool_preview_task_id: option.None,
     card_show_open: option.None,
     card_show_model: card_show.init_model(),
-    member_task_show_tab: show_tabs.TaskDetailsTab,
-    member_task_show_editing: False,
-    member_task_show_edit_title: "",
-    member_task_show_edit_description: "",
-    member_task_show_edit_priority: "3",
-    member_task_show_edit_type_id: "",
-    member_task_show_edit_card_id: "",
-    member_task_show_edit_in_flight: False,
-    member_task_show_edit_error: option.None,
+    task_show: task_show_model.default(),
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,
     people_expansions: dict.new(),

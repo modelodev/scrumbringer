@@ -10,6 +10,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/show_tabs
 
@@ -119,7 +120,7 @@ pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskActivityTab = next.pool.member_task_show_tab
+  let assert show_tabs.TaskActivityTab = next.pool.task_show.active_tab
   let assert True = next.notes == model.notes
   let assert True = next.dependencies == model.dependencies
   let assert show_update.NoAuthCheck = auth_policy
@@ -132,8 +133,11 @@ pub fn try_update_error_checks_auth_after_local_feedback_test() {
     show_model(
       member_pool.Model(
         ..member_pool.default_model(),
-        member_task_show_edit_in_flight: True,
-        member_task_show_edit_error: None,
+        task_show: task_show_model.Model(
+          ..member_pool.default_model().task_show,
+          edit_in_flight: True,
+          edit_error: None,
+        ),
       ),
     )
 
@@ -145,8 +149,8 @@ pub fn try_update_error_checks_auth_after_local_feedback_test() {
     )
   let assert show_update.CheckAuthAfter(auth_err) = auth_policy
 
-  let assert False = next.pool.member_task_show_edit_in_flight
-  let assert Some("boom") = next.pool.member_task_show_edit_error
+  let assert False = next.pool.task_show.edit_in_flight
+  let assert Some("boom") = next.pool.task_show.edit_error
   let assert True = auth_err == err
   let assert True = fx != effect.none()
 }
@@ -164,7 +168,7 @@ pub fn fetched_task_is_added_to_empty_show_cache_test() {
 
   let assert remote.Loaded([cached_task]) = next.pool.member_tasks
   let assert 42 = cached_task.id
-  let assert "Prepare release" = next.pool.member_task_show_edit_title
+  let assert "Prepare release" = next.pool.task_show.edit_title
   let assert show_update.NoAuthCheck = auth_policy
   let assert True = fx != effect.none()
 }
@@ -186,7 +190,7 @@ pub fn local_task_show_tab_clicked_sets_tab_test() {
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskActivityTab = next.member_task_show_tab
+  let assert show_tabs.TaskActivityTab = next.task_show.active_tab
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -199,10 +203,10 @@ pub fn local_task_show_edit_started_sets_edit_values_when_allowed_test() {
       dispatch_context_with_edit(Some(sample_task()), True),
     )
 
-  let assert True = next.member_task_show_editing
-  let assert "Prepare release" = next.member_task_show_edit_title
-  let assert "Review checklist." = next.member_task_show_edit_description
-  let assert None = next.member_task_show_edit_error
+  let assert True = next.task_show.editing
+  let assert "Prepare release" = next.task_show.edit_title
+  let assert "Review checklist." = next.task_show.edit_description
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -215,7 +219,7 @@ pub fn local_task_show_edit_started_ignores_disallowed_task_test() {
       dispatch_context_with_edit(Some(sample_task()), False),
     )
 
-  let assert False = next.member_task_show_editing
+  let assert False = next.task_show.editing
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -224,11 +228,14 @@ pub fn local_task_show_edit_cancelled_restores_task_values_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_editing: True,
-      member_task_show_edit_title: "Changed",
-      member_task_show_edit_description: "Changed description",
-      member_task_show_edit_in_flight: True,
-      member_task_show_edit_error: Some("error"),
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        editing: True,
+        edit_title: "Changed",
+        edit_description: "Changed description",
+        edit_in_flight: True,
+        edit_error: Some("error"),
+      ),
     )
 
   let #(next, fx, policy) =
@@ -238,11 +245,11 @@ pub fn local_task_show_edit_cancelled_restores_task_values_test() {
       dispatch_context_with_edit(Some(sample_task()), True),
     )
 
-  let assert False = next.member_task_show_editing
-  let assert "Prepare release" = next.member_task_show_edit_title
-  let assert "Review checklist." = next.member_task_show_edit_description
-  let assert False = next.member_task_show_edit_in_flight
-  let assert None = next.member_task_show_edit_error
+  let assert False = next.task_show.editing
+  let assert "Prepare release" = next.task_show.edit_title
+  let assert "Review checklist." = next.task_show.edit_description
+  let assert False = next.task_show.edit_in_flight
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -251,8 +258,11 @@ pub fn local_task_show_edit_title_changed_clears_error_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_edit_title: "Old",
-      member_task_show_edit_error: Some("error"),
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        edit_title: "Old",
+        edit_error: Some("error"),
+      ),
     )
 
   let #(next, fx, policy) =
@@ -262,8 +272,8 @@ pub fn local_task_show_edit_title_changed_clears_error_test() {
       dispatch_context(),
     )
 
-  let assert "New" = next.member_task_show_edit_title
-  let assert None = next.member_task_show_edit_error
+  let assert "New" = next.task_show.edit_title
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -272,8 +282,11 @@ pub fn local_task_show_edit_submitted_blank_title_sets_error_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_edit_title: "   ",
-      member_task_show_edit_description: "Review checklist.",
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        edit_title: "   ",
+        edit_description: "Review checklist.",
+      ),
     )
 
   let #(next, fx, policy) =
@@ -283,8 +296,8 @@ pub fn local_task_show_edit_submitted_blank_title_sets_error_test() {
       dispatch_context_with_edit(Some(sample_task()), True),
     )
 
-  let assert Some("Title required") = next.member_task_show_edit_error
-  let assert False = next.member_task_show_edit_in_flight
+  let assert Some("Title required") = next.task_show.edit_error
+  let assert False = next.task_show.edit_in_flight
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -293,12 +306,15 @@ pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_editing: True,
-      member_task_show_edit_title: "Prepare release",
-      member_task_show_edit_description: "Review checklist.",
-      member_task_show_edit_priority: "2",
-      member_task_show_edit_type_id: "1",
-      member_task_show_edit_error: Some("old"),
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        editing: True,
+        edit_title: "Prepare release",
+        edit_description: "Review checklist.",
+        edit_priority: "2",
+        edit_type_id: "1",
+        edit_error: Some("old"),
+      ),
     )
 
   let #(next, fx, policy) =
@@ -308,10 +324,10 @@ pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
       dispatch_context_with_edit(Some(sample_task()), True),
     )
 
-  let assert False = next.member_task_show_editing
-  let assert "Prepare release" = next.member_task_show_edit_title
-  let assert "Review checklist." = next.member_task_show_edit_description
-  let assert None = next.member_task_show_edit_error
+  let assert False = next.task_show.editing
+  let assert "Prepare release" = next.task_show.edit_title
+  let assert "Review checklist." = next.task_show.edit_description
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx == effect.none()
 }
@@ -320,11 +336,14 @@ pub fn local_task_show_edit_submitted_changed_sets_in_flight_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_editing: True,
-      member_task_show_edit_title: " Updated title ",
-      member_task_show_edit_description: "Updated description",
-      member_task_show_edit_priority: "2",
-      member_task_show_edit_type_id: "1",
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        editing: True,
+        edit_title: " Updated title ",
+        edit_description: "Updated description",
+        edit_priority: "2",
+        edit_type_id: "1",
+      ),
     )
 
   let #(next, fx, policy) =
@@ -334,10 +353,10 @@ pub fn local_task_show_edit_submitted_changed_sets_in_flight_test() {
       dispatch_context_with_edit(Some(sample_task()), True),
     )
 
-  let assert "Updated title" = next.member_task_show_edit_title
-  let assert "Updated description" = next.member_task_show_edit_description
-  let assert True = next.member_task_show_edit_in_flight
-  let assert None = next.member_task_show_edit_error
+  let assert "Updated title" = next.task_show.edit_title
+  let assert "Updated description" = next.task_show.edit_description
+  let assert True = next.task_show.edit_in_flight
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
@@ -354,9 +373,12 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
     member_pool.Model(
       ..member_pool.default_model(),
       member_tasks: remote.Loaded([sample_task()]),
-      member_task_show_editing: True,
-      member_task_show_edit_in_flight: True,
-      member_task_show_edit_error: Some("old"),
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        editing: True,
+        edit_in_flight: True,
+        edit_error: Some("old"),
+      ),
     )
 
   let #(next, fx, policy) =
@@ -367,11 +389,11 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
     )
 
   let assert True = next.member_tasks == remote.Loaded([updated])
-  let assert False = next.member_task_show_editing
-  let assert "Updated title" = next.member_task_show_edit_title
-  let assert "Updated description" = next.member_task_show_edit_description
-  let assert False = next.member_task_show_edit_in_flight
-  let assert None = next.member_task_show_edit_error
+  let assert False = next.task_show.editing
+  let assert "Updated title" = next.task_show.edit_title
+  let assert "Updated description" = next.task_show.edit_description
+  let assert False = next.task_show.edit_in_flight
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
@@ -380,8 +402,11 @@ pub fn local_task_updated_error_sets_edit_error_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_edit_in_flight: True,
-      member_task_show_edit_error: None,
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        edit_in_flight: True,
+        edit_error: None,
+      ),
     )
 
   let err = sample_error()
@@ -392,8 +417,8 @@ pub fn local_task_updated_error_sets_edit_error_test() {
       dispatch_context(),
     )
 
-  let assert False = next.member_task_show_edit_in_flight
-  let assert Some("boom") = next.member_task_show_edit_error
+  let assert False = next.task_show.edit_in_flight
+  let assert Some("boom") = next.task_show.edit_error
   let assert show_update.CheckAuthAfter(auth_err) = policy
   let assert True = auth_err == err
   let assert True = fx != effect.none()

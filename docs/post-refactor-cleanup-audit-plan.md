@@ -866,12 +866,61 @@ git diff --check -- ':!docs/'
 sin errores
 ```
 
-Validacion pendiente por entorno:
+Validacion DB/server reabierta tras confirmar PostgreSQL local en `5433`:
 
 ```txt
-pg_isready -h localhost -p 5432
-localhost:5432 - sin respuesta
+pg_isready -p 5433
+/var/run/postgresql:5433 - aceptando conexiones
 ```
 
 Los tests HTTP/integracion de server y la prueba real de migracion con dbmate
-quedan pendientes hasta tener Postgres local disponible.
+deben ejecutarse contra este puerto antes de cerrar el goal.
+
+### Fase 6 ejecutada: Task Show fuera de Pool
+
+Cambio ejecutado:
+
+- creado `features/tasks/show/model.gleam` como estado local del detalle de
+  tarea;
+- movidos los presenters `task_show*` desde `features/pool/` a
+  `features/tasks/show/`;
+- actualizado `member_pool.Model` para conservar solo un submodelo
+  `task_show`, eliminando los campos `member_task_show_*`;
+- actualizados update/state/config/tests para acceder al estado desde la
+  feature de Task Show;
+- renombrados tests `pool_task_show_*` a `tasks_show_*`;
+- actualizados comentarios y nombres de tests que conservaban ownership antiguo.
+
+Metrica no-doc contra el baseline de ejecucion tras esta fase:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+172 files changed, 2933 insertions(+), 13816 deletions(-)
+```
+
+Reduccion neta no-doc acumulada: `-10.883` lineas.
+
+Distribucion acumulada de cambios no-doc:
+
+```txt
+A 1
+R099 1
+R100 1
+D 58
+M 111
+```
+
+Guardarrails ejecutados:
+
+```sh
+rg -n "features/pool/task_show|pool/task_show|member_task_show_|import scrumbringer_client/features/pool/task_show|pool_task_show" apps/client/src apps/client/test --glob '!**/build/**' --glob '!apps/client/dist/**'
+```
+
+Resultado: sin coincidencias.
+
+Validacion ejecutada:
+
+```txt
+apps/client: gleam format src test && gleam test --target javascript
+1781 passed, no failures
+```

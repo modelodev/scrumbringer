@@ -421,7 +421,7 @@ pub fn format_member_card_show_deep_link_test() {
   )
 }
 
-pub fn format_member_task_show_deep_link_test() {
+pub fn format_task_show_deep_link_test() {
   let state =
     url_state.empty()
     |> url_state.with_project(2)
@@ -568,7 +568,7 @@ pub fn roundtrip_member_card_show_deep_link_test() {
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
-pub fn roundtrip_member_task_show_deep_link_test() {
+pub fn roundtrip_task_show_deep_link_test() {
   let state =
     url_state.empty()
     |> url_state.with_project(2)

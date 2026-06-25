@@ -11,6 +11,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/show_tabs
 
@@ -104,10 +105,10 @@ pub fn local_task_show_opened_sets_show_state_and_fetches_test() {
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.pool.member_task_show_tab
-  let assert False = next.pool.member_task_show_editing
-  let assert "Prepare release" = next.pool.member_task_show_edit_title
-  let assert "Review checklist." = next.pool.member_task_show_edit_description
+  let assert show_tabs.TaskDetailsTab = next.pool.task_show.active_tab
+  let assert False = next.pool.task_show.editing
+  let assert "Prepare release" = next.pool.task_show.edit_title
+  let assert "Review checklist." = next.pool.task_show.edit_description
   let assert Some(42) = next.notes.member_notes_task_id
   let assert True = next.notes.member_notes == remote.Loading
   let assert True = next.dependencies.member_dependencies == remote.Loading
@@ -135,10 +136,10 @@ pub fn local_task_show_opened_uses_project_cache_when_active_list_misses_task_te
       dispatch_context(),
     )
 
-  let assert "Prepare release" = next.pool.member_task_show_edit_title
-  let assert "Review checklist." = next.pool.member_task_show_edit_description
-  let assert "2" = next.pool.member_task_show_edit_priority
-  let assert "1" = next.pool.member_task_show_edit_type_id
+  let assert "Prepare release" = next.pool.task_show.edit_title
+  let assert "Review checklist." = next.pool.task_show.edit_description
+  let assert "2" = next.pool.task_show.edit_priority
+  let assert "1" = next.pool.task_show.edit_type_id
 }
 
 pub fn local_task_show_closed_resets_show_state_test() {
@@ -146,12 +147,15 @@ pub fn local_task_show_closed_resets_show_state_test() {
     show_update.Model(
       pool: member_pool.Model(
         ..member_pool.default_model(),
-        member_task_show_tab: show_tabs.TaskActivityTab,
-        member_task_show_editing: True,
-        member_task_show_edit_title: "Changed",
-        member_task_show_edit_description: "Changed description",
-        member_task_show_edit_in_flight: True,
-        member_task_show_edit_error: Some("old"),
+        task_show: task_show_model.Model(
+          ..member_pool.default_model().task_show,
+          active_tab: show_tabs.TaskActivityTab,
+          editing: True,
+          edit_title: "Changed",
+          edit_description: "Changed description",
+          edit_in_flight: True,
+          edit_error: Some("old"),
+        ),
       ),
       notes: member_notes.Model(
         ..member_notes.default_model(),
@@ -180,10 +184,10 @@ pub fn local_task_show_closed_resets_show_state_test() {
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.pool.member_task_show_tab
-  let assert False = next.pool.member_task_show_editing
-  let assert "" = next.pool.member_task_show_edit_title
-  let assert "" = next.pool.member_task_show_edit_description
+  let assert show_tabs.TaskDetailsTab = next.pool.task_show.active_tab
+  let assert False = next.pool.task_show.editing
+  let assert "" = next.pool.task_show.edit_title
+  let assert "" = next.pool.task_show.edit_description
   let assert None = next.notes.member_notes_task_id
   let assert True = next.notes.member_notes == remote.NotAsked
   let assert "" = next.notes.member_note_content

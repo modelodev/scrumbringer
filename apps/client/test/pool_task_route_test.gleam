@@ -13,6 +13,7 @@ import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/task_route
+import scrumbringer_client/features/tasks/show/model as task_show_model
 
 fn no_refresh(model: client_state.Model) {
   #(model, effect.none())
@@ -47,10 +48,13 @@ fn model_with_open_task_show(task_id: Int) -> client_state.Model {
       ..member,
       pool: member_pool.Model(
         ..member.pool,
-        member_task_show_edit_title: "Open task",
-        member_task_show_edit_description: "Details",
-        member_task_show_edit_priority: "2",
-        member_task_show_edit_type_id: "5",
+        task_show: task_show_model.Model(
+          ..member.pool.task_show,
+          edit_title: "Open task",
+          edit_description: "Details",
+          edit_priority: "2",
+          edit_type_id: "5",
+        ),
       ),
       notes: member_notes.Model(
         ..member.notes,
@@ -116,8 +120,8 @@ pub fn task_delete_success_closes_deleted_task_show_test() {
     )
 
   let assert opt.None = next.member.notes.member_notes_task_id
-  let assert "" = next.member.pool.member_task_show_edit_title
-  let assert "3" = next.member.pool.member_task_show_edit_priority
+  let assert "" = next.member.pool.task_show.edit_title
+  let assert "3" = next.member.pool.task_show.edit_priority
 }
 
 pub fn task_delete_success_keeps_other_task_show_open_test() {
@@ -129,8 +133,8 @@ pub fn task_delete_success_keeps_other_task_show_open_test() {
     )
 
   let assert opt.Some(99) = next.member.notes.member_notes_task_id
-  let assert "Open task" = next.member.pool.member_task_show_edit_title
-  let assert "2" = next.member.pool.member_task_show_edit_priority
+  let assert "Open task" = next.member.pool.task_show.edit_title
+  let assert "2" = next.member.pool.task_show.edit_priority
 }
 
 pub fn task_release_success_refresh_preserves_loaded_tasks_test() {

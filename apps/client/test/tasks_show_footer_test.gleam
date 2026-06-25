@@ -5,7 +5,7 @@ import lustre/element
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_show_footer
+import scrumbringer_client/features/tasks/show/footer as task_show_footer
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {

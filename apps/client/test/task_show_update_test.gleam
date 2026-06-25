@@ -23,8 +23,9 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/pool/task_show_config
 import scrumbringer_client/features/pool/update as pool_update
+import scrumbringer_client/features/tasks/show/config as task_show_config
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/ui/show_tabs
 
 fn assert_contains(text: String, fragment: String) {
@@ -189,11 +190,11 @@ pub fn task_show_open_sets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_show_tab
-  let assert False = next.member.pool.member_task_show_editing
-  let assert "Prepare release" = next.member.pool.member_task_show_edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.pool.task_show.active_tab
+  let assert False = next.member.pool.task_show.editing
+  let assert "Prepare release" = next.member.pool.task_show.edit_title
   let assert "Review release checklist." =
-    next.member.pool.member_task_show_edit_description
+    next.member.pool.task_show.edit_description
 }
 
 pub fn task_show_config_uses_project_cache_when_active_list_misses_task_test() {
@@ -248,7 +249,10 @@ pub fn task_show_close_resets_default_tasks_tab_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_task_show_tab: show_tabs.TaskActivityTab,
+          task_show: task_show_model.Model(
+            ..pool.task_show,
+            active_tab: show_tabs.TaskActivityTab,
+          ),
         ),
       )
     })
@@ -260,9 +264,9 @@ pub fn task_show_close_resets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.member_task_show_tab
-  let assert False = next.member.pool.member_task_show_editing
-  let assert "" = next.member.pool.member_task_show_edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.pool.task_show.active_tab
+  let assert False = next.member.pool.task_show.editing
+  let assert "" = next.member.pool.task_show.edit_title
 }
 
 pub fn task_show_edit_submit_blank_title_sets_error_test() {
@@ -303,9 +307,9 @@ pub fn task_show_edit_submit_blank_title_sets_error_test() {
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_show_editing
+  let assert True = next.member.pool.task_show.editing
   let assert opt.Some("Title is required") =
-    next.member.pool.member_task_show_edit_error
+    next.member.pool.task_show.edit_error
 }
 
 pub fn task_show_surface_renders_edit_controls_for_owner_test() {
@@ -332,7 +336,10 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
         ..member,
         pool: member_pool.Model(
           ..pool,
-          member_task_show_tab: show_tabs.TaskActivityTab,
+          task_show: task_show_model.Model(
+            ..pool.task_show,
+            active_tab: show_tabs.TaskActivityTab,
+          ),
         ),
         notes: member_notes.Model(
           ..notes,
@@ -399,7 +406,7 @@ pub fn task_show_edit_started_allows_unclaimed_task_test() {
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_show_editing
+  let assert True = next.member.pool.task_show.editing
 }
 
 pub fn task_show_edit_started_uses_project_cache_when_active_list_misses_task_test() {
@@ -425,6 +432,6 @@ pub fn task_show_edit_started_uses_project_cache_when_active_list_misses_task_te
       test_context(),
     )
 
-  let assert True = next.member.pool.member_task_show_editing
-  let assert "1" = next.member.pool.member_task_show_edit_type_id
+  let assert True = next.member.pool.task_show.editing
+  let assert "1" = next.member.pool.task_show.edit_type_id
 }

@@ -13,6 +13,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/features/tasks/mutation_state
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/ui/toast
 
@@ -358,7 +359,7 @@ fn handle_task_deleted_ok(
   #(
     member_pool.Model(
       ..clear_optimistic_state(model),
-      member_task_show_editing: False,
+      task_show: task_show_model.Model(..model.task_show, editing: False),
     ),
     effect.none(),
   )

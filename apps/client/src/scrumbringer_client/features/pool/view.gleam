@@ -12,7 +12,7 @@
 //// ## Non-responsibilities
 ////
 //// - Root `client_state.Model` adaptation (see `features/pool/view_config.gleam`)
-//// - Task Show (see `features/pool/task_show.gleam`)
+//// - Task Show (see `features/tasks/show/view.gleam`)
 
 import gleam/int
 import gleam/list

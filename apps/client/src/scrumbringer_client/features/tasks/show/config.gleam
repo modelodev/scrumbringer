@@ -12,7 +12,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
 import scrumbringer_client/client_state/member/pool as pool_state
-import scrumbringer_client/features/pool/task_show
+import scrumbringer_client/features/tasks/show/view as task_show
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/ui/show_tabs
@@ -99,7 +99,7 @@ pub fn from_state(
     parent_card: parent_card(cards, task),
     capability_name: capability_name(pool.member_task_types, capabilities, task),
     current_user_id: current_user_id,
-    active_tab: pool.member_task_show_tab,
+    active_tab: pool.task_show.active_tab,
     dependencies: dependencies_config(dependencies, callbacks),
     editor: editor_config(pool, cards, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),
@@ -177,14 +177,14 @@ fn editor_config(
   callbacks: Callbacks(msg),
 ) -> task_show.TaskEditorConfig(msg) {
   task_show.TaskEditorConfig(
-    editing: pool.member_task_show_editing,
-    edit_title: pool.member_task_show_edit_title,
-    edit_description: pool.member_task_show_edit_description,
-    edit_priority: pool.member_task_show_edit_priority,
-    edit_type_id: pool.member_task_show_edit_type_id,
-    edit_card_id: pool.member_task_show_edit_card_id,
-    edit_error: pool.member_task_show_edit_error,
-    edit_in_flight: pool.member_task_show_edit_in_flight,
+    editing: pool.task_show.editing,
+    edit_title: pool.task_show.edit_title,
+    edit_description: pool.task_show.edit_description,
+    edit_priority: pool.task_show.edit_priority,
+    edit_type_id: pool.task_show.edit_type_id,
+    edit_card_id: pool.task_show.edit_card_id,
+    edit_error: pool.task_show.edit_error,
+    edit_in_flight: pool.task_show.edit_in_flight,
     task_types: pool.member_task_types,
     cards: cards,
     parent_card_title: parent_card_title(cards, task),
@@ -228,8 +228,8 @@ fn actions_config(
 ) -> task_show.TaskActionsConfig(msg) {
   task_show.TaskActionsConfig(
     disable_actions: pool.member_task_mutation_in_flight
-      || pool.member_task_show_editing
-      || pool.member_task_show_edit_in_flight,
+      || pool.task_show.editing
+      || pool.task_show.edit_in_flight,
     on_claim: callbacks.on_claim,
     on_start_work: callbacks.on_start_work,
     on_release: callbacks.on_release,

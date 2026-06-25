@@ -6,7 +6,7 @@ import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/features/pool/task_show_header
+import scrumbringer_client/features/tasks/show/header as task_show_header
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(html: String, fragment: String) {

@@ -9,7 +9,7 @@ import lustre/element/html.{div, text}
 import domain/remote.{type Remote}
 import domain/task.{type Task, type TaskDependency}
 
-import scrumbringer_client/features/pool/task_show_summary
+import scrumbringer_client/features/tasks/show/summary as task_show_summary
 import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}

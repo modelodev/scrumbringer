@@ -4,7 +4,7 @@
 ////
 //// Provides a consistent, accessible close button for modals and dialogs.
 //// Extracted to eliminate duplication across dialog.gleam, note_dialog.gleam,
-//// cards/show.gleam, and pool/task_show.gleam.
+//// cards/show.gleam, and tasks/show/view.gleam.
 ////
 //// ## Usage
 ////

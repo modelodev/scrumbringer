@@ -10,6 +10,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/toast
 
@@ -98,9 +99,12 @@ pub fn show_update_ok_replaces_task_and_emits_success_toast_test() {
     member_pool.Model(
       ..member_pool.default_model(),
       member_tasks: remote.Loaded([sample_task()]),
-      member_task_show_editing: True,
-      member_task_show_edit_in_flight: True,
-      member_task_show_edit_error: Some("old"),
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        editing: True,
+        edit_in_flight: True,
+        edit_error: Some("old"),
+      ),
     )
 
   let assert Some(show_update.Update(next, fx, policy)) =
@@ -111,9 +115,9 @@ pub fn show_update_ok_replaces_task_and_emits_success_toast_test() {
     )
 
   let assert True = next.pool.member_tasks == remote.Loaded([updated])
-  let assert False = next.pool.member_task_show_editing
-  let assert False = next.pool.member_task_show_edit_in_flight
-  let assert None = next.pool.member_task_show_edit_error
+  let assert False = next.pool.task_show.editing
+  let assert False = next.pool.task_show.edit_in_flight
+  let assert None = next.pool.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
@@ -123,8 +127,11 @@ pub fn show_update_error_sets_local_error_and_emits_feedback_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
-      member_task_show_edit_in_flight: True,
-      member_task_show_edit_error: None,
+      task_show: task_show_model.Model(
+        ..member_pool.default_model().task_show,
+        edit_in_flight: True,
+        edit_error: None,
+      ),
     )
 
   let assert Some(show_update.Update(next, fx, policy)) =
@@ -134,8 +141,8 @@ pub fn show_update_error_sets_local_error_and_emits_feedback_test() {
       dispatch_context(),
     )
 
-  let assert False = next.pool.member_task_show_edit_in_flight
-  let assert Some("boom") = next.pool.member_task_show_edit_error
+  let assert False = next.pool.task_show.edit_in_flight
+  let assert Some("boom") = next.pool.task_show.edit_error
   let assert show_update.CheckAuthAfter(auth_err) = policy
   let assert True = auth_err == err
   let assert True = fx != effect.none()

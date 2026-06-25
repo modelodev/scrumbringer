@@ -87,10 +87,10 @@ import scrumbringer_client/features/plan/kanban_view as plan_kanban_view
 import scrumbringer_client/features/plan/structure_view as plan_structure_view
 import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
-import scrumbringer_client/features/pool/task_show_config
 import scrumbringer_client/features/pool/view_config as pool_view
 import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
+import scrumbringer_client/features/tasks/show/config as task_show_config
 
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions

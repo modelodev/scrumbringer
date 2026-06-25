@@ -367,7 +367,7 @@ fn handle_task_show_edit_submitted(
   model: member_pool.Model,
   context: EditContext(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  case model.member_task_show_edit_in_flight {
+  case model.task_show.edit_in_flight {
     True -> #(model, effect.none())
     False -> submit_task_show_edit(model, context)
   }
@@ -383,11 +383,11 @@ fn submit_task_show_edit(
         show_edit_form.evaluate(
           current_task,
           show_edit_form.Input(
-            title: model.member_task_show_edit_title,
-            description: model.member_task_show_edit_description,
-            priority: model.member_task_show_edit_priority,
-            type_id: model.member_task_show_edit_type_id,
-            card_id: model.member_task_show_edit_card_id,
+            title: model.task_show.edit_title,
+            description: model.task_show.edit_description,
+            priority: model.task_show.edit_priority,
+            type_id: model.task_show.edit_type_id,
+            card_id: model.task_show.edit_card_id,
           ),
           show_edit_form.Labels(
             title_required: context.title_required,

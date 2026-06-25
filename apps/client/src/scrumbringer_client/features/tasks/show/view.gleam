@@ -38,9 +38,9 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/features/pool/task_notes
-import scrumbringer_client/features/pool/task_show_details
-import scrumbringer_client/features/pool/task_show_footer
-import scrumbringer_client/features/pool/task_show_header
+import scrumbringer_client/features/tasks/show/details as task_show_details
+import scrumbringer_client/features/tasks/show/footer as task_show_footer
+import scrumbringer_client/features/tasks/show/header as task_show_header
 import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}

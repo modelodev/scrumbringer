@@ -8,7 +8,7 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/features/pool/task_show
+import scrumbringer_client/features/tasks/show/view as task_show
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/show_tabs
 
