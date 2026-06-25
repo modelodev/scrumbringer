@@ -602,7 +602,7 @@ pub type RuleReviewReason {
   TemplateMissing
   TaskTypeMissing
   CardDepthNoLongerExists
-  InvalidMigratedData
+  MultipleTemplatesSelected
 }
 ```
 

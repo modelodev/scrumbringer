@@ -358,7 +358,7 @@ fn apply_rule_with_invalid_template_selection(
   Ok(RuleResult(
     rule.id,
     automation.Skipped(automation.RuleRequiresReview(
-      automation.InvalidMigratedData,
+      automation.MultipleTemplatesSelected,
     )),
   ))
 }

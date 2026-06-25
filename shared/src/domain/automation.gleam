@@ -65,7 +65,7 @@ pub type RuleReviewReason {
   TemplateMissing
   TaskTypeMissing
   CardDepthNoLongerExists
-  InvalidMigratedData
+  MultipleTemplatesSelected
 }
 
 pub opaque type AutomationRule {

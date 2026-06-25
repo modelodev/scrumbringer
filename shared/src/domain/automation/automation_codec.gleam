@@ -175,8 +175,10 @@ fn review_reason_decoder() -> decode.Decoder(automation.RuleReviewReason) {
     "task_type_missing" -> decode.success(automation.TaskTypeMissing)
     "card_depth_no_longer_exists" ->
       decode.success(automation.CardDepthNoLongerExists)
-    "invalid_migrated_data" -> decode.success(automation.InvalidMigratedData)
-    _ -> decode.failure(automation.InvalidMigratedData, "RuleReviewReason")
+    "multiple_templates_selected" ->
+      decode.success(automation.MultipleTemplatesSelected)
+    _ ->
+      decode.failure(automation.MultipleTemplatesSelected, "RuleReviewReason")
   }
 }
 
@@ -186,7 +188,8 @@ fn review_reason_to_json(reason: automation.RuleReviewReason) -> Json {
     automation.TaskTypeMissing -> json.string("task_type_missing")
     automation.CardDepthNoLongerExists ->
       json.string("card_depth_no_longer_exists")
-    automation.InvalidMigratedData -> json.string("invalid_migrated_data")
+    automation.MultipleTemplatesSelected ->
+      json.string("multiple_templates_selected")
   }
 }
 

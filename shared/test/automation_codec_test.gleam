@@ -69,6 +69,24 @@ pub fn rule_status_codec_roundtrips_requires_review_reason_test() {
   let assert True = decoded == status
 }
 
+pub fn rule_status_codec_roundtrips_multiple_templates_reason_test() {
+  let status = automation.RequiresReview(automation.MultipleTemplatesSelected)
+
+  let assert Ok(decoded) =
+    status
+    |> automation_codec.rule_status_to_json
+    |> json.to_string
+    |> json.parse(automation_codec.rule_status_decoder())
+  let assert True = decoded == status
+}
+
+pub fn rule_status_decoder_rejects_migration_repair_reason_test() {
+  let body =
+    "{\"type\":\"requires_review\",\"reason\":\"invalid_migrated_data\"}"
+
+  let assert Error(_) = json.parse(body, automation_codec.rule_status_decoder())
+}
+
 pub fn rule_draft_codec_roundtrips_builder_state_test() {
   let draft =
     automation.RuleDraft(
