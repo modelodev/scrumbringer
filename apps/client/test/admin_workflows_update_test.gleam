@@ -57,13 +57,13 @@ fn workflow_metrics(workflow_id: Int) -> api_rule_metrics.WorkflowMetrics {
   )
 }
 
-fn workflow_feedback_context() -> workflows_update.WorkflowFeedbackContext(
+fn engine_feedback_context() -> workflows_update.EngineFeedbackContext(
   client_state.Msg,
 ) {
-  workflows_update.WorkflowFeedbackContext(
-    workflow_created: "Workflow created",
-    workflow_updated: "Workflow updated",
-    workflow_deleted: "Workflow deleted",
+  workflows_update.EngineFeedbackContext(
+    engine_created: "Engine created",
+    engine_updated: "Engine updated",
+    engine_deleted: "Engine deleted",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
     on_workflow_saved: fn(result) {
       client_state.pool_msg(pool_messages.WorkflowSaved(result))
@@ -138,11 +138,7 @@ fn workflow_update(
   workflows_update.WorkflowAuthPolicy,
 ) {
   let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
-    workflows_update.try_workflows_update(
-      state,
-      msg,
-      workflow_feedback_context(),
-    )
+    workflows_update.try_workflows_update(state, msg, engine_feedback_context())
 
   #(next, fx, auth_policy)
 }
@@ -262,7 +258,7 @@ pub fn try_workflows_update_fetch_error_requests_auth_check_test() {
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
       pool_messages.WorkflowsProjectFetched(Error(err)),
-      workflow_feedback_context(),
+      engine_feedback_context(),
     )
   let assert workflows_update.CheckWorkflowAuth(auth_err) = auth_policy
 
@@ -278,7 +274,7 @@ pub fn try_workflows_update_open_dialog_returns_local_update_test() {
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
       pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(item)),
-      workflow_feedback_context(),
+      engine_feedback_context(),
     )
 
   let assert True =
@@ -297,7 +293,7 @@ pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
     workflows_update.try_workflows_update(
       state,
       pool_messages.WorkflowSaved(Ok(created)),
-      workflow_feedback_context(),
+      engine_feedback_context(),
     )
 
   let assert True = next.workflows_project == Loaded([created, existing])
@@ -335,7 +331,7 @@ pub fn try_workflows_update_ignores_non_workflow_messages_test() {
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
       pool_messages.MemberPoolVisibilityChanged("all-open"),
-      workflow_feedback_context(),
+      engine_feedback_context(),
     )
 }
 

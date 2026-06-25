@@ -38,17 +38,17 @@ import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 
-type WorkflowSuccess {
-  WorkflowCreated
-  WorkflowUpdated
-  WorkflowDeleted
+type EngineCrudSuccess {
+  EngineCreated
+  EngineUpdated
+  EngineDeleted
 }
 
-pub type WorkflowFeedbackContext(parent_msg) {
-  WorkflowFeedbackContext(
-    workflow_created: String,
-    workflow_updated: String,
-    workflow_deleted: String,
+pub type EngineFeedbackContext(parent_msg) {
+  EngineFeedbackContext(
+    engine_created: String,
+    engine_updated: String,
+    engine_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
     on_workflow_saved: fn(ApiResult(Workflow)) -> parent_msg,
     on_workflow_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
@@ -274,7 +274,7 @@ pub type WorkflowUpdate(parent_msg) {
 pub fn try_workflows_update(
   state: admin_workflows.Model,
   inner: pool_messages.Msg,
-  feedback: WorkflowFeedbackContext(parent_msg),
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   case inner {
     pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
@@ -319,8 +319,8 @@ pub fn try_workflows_update(
 
     pool_messages.WorkflowSaved(Ok(workflow)) ->
       workflow_saved(state, workflow)
-      |> with_workflow_effect(workflow_success_effect(
-        success_for_workflow_saved(state),
+      |> with_workflow_effect(engine_success_effect(
+        success_for_engine_saved(state),
         feedback,
       ))
 
@@ -333,8 +333,8 @@ pub fn try_workflows_update(
       |> without_workflow_tuple_auth_check
 
     pool_messages.WorkflowDeleteFinished(workflow_id, Ok(_)) ->
-      workflow_deleted(state, workflow_id)
-      |> with_workflow_effect(workflow_success_effect(WorkflowDeleted, feedback))
+      engine_deleted(state, workflow_id)
+      |> with_workflow_effect(engine_success_effect(EngineDeleted, feedback))
 
     pool_messages.WorkflowDeleteFinished(_workflow_id, Error(err)) ->
       workflow_form_error(state, err.message)
@@ -439,7 +439,7 @@ fn optional_text(value: opt.Option(String)) -> String {
 fn submit_workflow_form(
   state: admin_workflows.Model,
   selected_project_id: opt.Option(Int),
-  feedback: WorkflowFeedbackContext(parent_msg),
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
   case state.workflows_dialog_mode {
     opt.Some(admin_workflows.WorkflowDialogCreate) ->
@@ -453,7 +453,7 @@ fn submit_workflow_form(
 fn submit_workflow_create(
   state: admin_workflows.Model,
   selected_project_id: opt.Option(Int),
-  feedback: WorkflowFeedbackContext(parent_msg),
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
   case selected_project_id {
     opt.None -> #(
@@ -480,7 +480,7 @@ fn submit_workflow_create(
 fn submit_workflow_update(
   state: admin_workflows.Model,
   workflow_id: Int,
-  feedback: WorkflowFeedbackContext(parent_msg),
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
   case parse_workflow_form(state) {
     Error(message) -> #(workflow_form_error(state, message), effect.none())
@@ -499,7 +499,7 @@ fn submit_workflow_update(
 
 fn confirm_workflow_delete(
   state: admin_workflows.Model,
-  feedback: WorkflowFeedbackContext(parent_msg),
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
   case state.workflows_dialog_mode {
     opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) -> #(
@@ -552,10 +552,10 @@ fn workflow_form_error(
   )
 }
 
-fn success_for_workflow_saved(state: admin_workflows.Model) -> WorkflowSuccess {
+fn success_for_engine_saved(state: admin_workflows.Model) -> EngineCrudSuccess {
   case state.workflows_dialog_mode {
-    opt.Some(admin_workflows.WorkflowDialogEdit(_)) -> WorkflowUpdated
-    _ -> WorkflowCreated
+    opt.Some(admin_workflows.WorkflowDialogEdit(_)) -> EngineUpdated
+    _ -> EngineCreated
   }
 }
 
@@ -565,12 +565,12 @@ fn workflow_saved(
 ) -> admin_workflows.Model {
   case state.workflows_dialog_mode {
     opt.Some(admin_workflows.WorkflowDialogEdit(_)) ->
-      workflow_updated(state, workflow)
-    _ -> workflow_created(state, workflow)
+      engine_updated(state, workflow)
+    _ -> engine_created(state, workflow)
   }
 }
 
-fn workflow_created(
+fn engine_created(
   state: admin_workflows.Model,
   workflow: Workflow,
 ) -> admin_workflows.Model {
@@ -595,7 +595,7 @@ fn workflow_created(
   )
 }
 
-fn workflow_updated(
+fn engine_updated(
   state: admin_workflows.Model,
   updated_workflow: Workflow,
 ) -> admin_workflows.Model {
@@ -622,7 +622,7 @@ fn workflow_updated(
   )
 }
 
-fn workflow_deleted(
+fn engine_deleted(
   state: admin_workflows.Model,
   workflow_id: Int,
 ) -> admin_workflows.Model {
@@ -1124,14 +1124,14 @@ fn optional_int_text(value: opt.Option(Int)) -> String {
   }
 }
 
-fn workflow_success_effect(
-  success: WorkflowSuccess,
-  feedback: WorkflowFeedbackContext(parent_msg),
+fn engine_success_effect(
+  success: EngineCrudSuccess,
+  feedback: EngineFeedbackContext(parent_msg),
 ) -> Effect(parent_msg) {
   let message = case success {
-    WorkflowCreated -> feedback.workflow_created
-    WorkflowUpdated -> feedback.workflow_updated
-    WorkflowDeleted -> feedback.workflow_deleted
+    EngineCreated -> feedback.engine_created
+    EngineUpdated -> feedback.engine_updated
+    EngineDeleted -> feedback.engine_deleted
   }
 
   feedback.on_success_toast(message)

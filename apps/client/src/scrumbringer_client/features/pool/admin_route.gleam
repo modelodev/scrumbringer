@@ -118,7 +118,7 @@ fn try_workflow_crud_update(
     workflows_workflow.try_workflows_update(
       model.admin.workflows,
       inner,
-      workflow_crud_feedback_context(model),
+      engine_crud_feedback_context(model),
     )
   {
     opt.Some(update) -> opt.Some(apply_workflows_update(model, inner, update))
@@ -389,13 +389,13 @@ fn card_crud_feedback_context(
   )
 }
 
-fn workflow_crud_feedback_context(
+fn engine_crud_feedback_context(
   model: client_state.Model,
-) -> workflows_workflow.WorkflowFeedbackContext(client_state.Msg) {
-  workflows_workflow.WorkflowFeedbackContext(
-    workflow_created: i18n.t(model.ui.locale, i18n_text.AutomationEngineCreated),
-    workflow_updated: i18n.t(model.ui.locale, i18n_text.AutomationEngineUpdated),
-    workflow_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
+) -> workflows_workflow.EngineFeedbackContext(client_state.Msg) {
+  workflows_workflow.EngineFeedbackContext(
+    engine_created: i18n.t(model.ui.locale, i18n_text.AutomationEngineCreated),
+    engine_updated: i18n.t(model.ui.locale, i18n_text.AutomationEngineUpdated),
+    engine_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
     on_success_toast: app_effects.toast_success,
     on_workflow_saved: fn(result) {
       client_state.pool_msg(pool_messages.WorkflowSaved(result))
