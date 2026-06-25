@@ -378,20 +378,6 @@ pub type Text {
   HierarchyCardTasksRegion(name: String)
   HierarchyNoSelection
   HierarchyNoSelectionHint
-  HierarchyCardsCount(cards_count: Int)
-  HierarchyLooseTasksCount(tasks_count: Int)
-  HierarchyBlockedTasksCount(tasks_count: Int)
-  HierarchyEmptyCardsCount(cards_count: Int)
-  HierarchyCardsWithoutProgressCount(cards_count: Int)
-  HierarchyStructureComplete
-  HierarchyLooseTasksDiagnostic(tasks_count: Int)
-  HierarchyBlockedTasksDiagnostic(tasks_count: Int)
-  HierarchyEmptyCardsDiagnostic(cards_count: Int)
-  HierarchyCardsWithoutProgressDiagnostic(cards_count: Int)
-  HierarchyCardEmpty
-  HierarchyCardNoProgress
-  HierarchyCardBlocked
-  HierarchyCardComplete
   OpenIn
   ViewInPlan
   ViewInKanban

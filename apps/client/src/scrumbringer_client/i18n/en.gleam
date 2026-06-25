@@ -441,29 +441,6 @@ pub fn translate(text: Text) -> String {
     text.HierarchyNoSelection -> "Select a hierarchy"
     text.HierarchyNoSelectionHint ->
       "Choose a hierarchy from the list to inspect its content"
-    text.HierarchyCardsCount(cards_count) ->
-      int.to_string(cards_count) <> " cards"
-    text.HierarchyLooseTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " loose tasks"
-    text.HierarchyBlockedTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " blocked tasks"
-    text.HierarchyEmptyCardsCount(cards_count) ->
-      int.to_string(cards_count) <> " empty cards"
-    text.HierarchyCardsWithoutProgressCount(cards_count) ->
-      int.to_string(cards_count) <> " cards without progress"
-    text.HierarchyStructureComplete -> "Structure complete"
-    text.HierarchyLooseTasksDiagnostic(tasks_count) ->
-      int.to_string(tasks_count) <> " tasks are not grouped inside cards yet"
-    text.HierarchyBlockedTasksDiagnostic(tasks_count) ->
-      int.to_string(tasks_count) <> " blocked tasks need attention"
-    text.HierarchyEmptyCardsDiagnostic(cards_count) ->
-      int.to_string(cards_count) <> " empty cards need content"
-    text.HierarchyCardsWithoutProgressDiagnostic(cards_count) ->
-      int.to_string(cards_count) <> " cards have not started moving"
-    text.HierarchyCardEmpty -> "Empty"
-    text.HierarchyCardNoProgress -> "No progress"
-    text.HierarchyCardBlocked -> "Blocked"
-    text.HierarchyCardComplete -> "Complete"
     text.OpenIn -> "Open in"
     text.ViewInPlan -> "View in Plan"
     text.ViewInKanban -> "View in Kanban"

@@ -448,31 +448,6 @@ pub fn translate(text: Text) -> String {
     text.HierarchyNoSelection -> "Selecciona una jerarquía"
     text.HierarchyNoSelectionHint ->
       "Elige una jerarquía de la lista para inspeccionar su contenido"
-    text.HierarchyCardsCount(cards_count) ->
-      int.to_string(cards_count) <> " tarjetas"
-    text.HierarchyLooseTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " tareas sueltas"
-    text.HierarchyBlockedTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " tareas bloqueadas"
-    text.HierarchyEmptyCardsCount(cards_count) ->
-      int.to_string(cards_count) <> " tarjetas vacías"
-    text.HierarchyCardsWithoutProgressCount(cards_count) ->
-      int.to_string(cards_count) <> " tarjetas sin avance"
-    text.HierarchyStructureComplete -> "Estructura completa"
-    text.HierarchyLooseTasksDiagnostic(tasks_count) ->
-      int.to_string(tasks_count)
-      <> " tareas todavía no están agrupadas en tarjetas"
-    text.HierarchyBlockedTasksDiagnostic(tasks_count) ->
-      int.to_string(tasks_count) <> " tareas bloqueadas requieren atención"
-    text.HierarchyEmptyCardsDiagnostic(cards_count) ->
-      int.to_string(cards_count) <> " tarjetas vacías necesitan contenido"
-    text.HierarchyCardsWithoutProgressDiagnostic(cards_count) ->
-      int.to_string(cards_count)
-      <> " tarjetas todavía no han empezado a moverse"
-    text.HierarchyCardEmpty -> "Vacía"
-    text.HierarchyCardNoProgress -> "Sin avance"
-    text.HierarchyCardBlocked -> "Bloqueada"
-    text.HierarchyCardComplete -> "Completa"
     text.OpenIn -> "Abrir en"
     text.ViewInPlan -> "Ver en Plan"
     text.ViewInKanban -> "Ver en Kanban"
