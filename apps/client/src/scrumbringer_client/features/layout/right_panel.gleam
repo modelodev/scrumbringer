@@ -74,7 +74,7 @@ pub type RightPanelConfig(msg) {
     task_card_color: fn(Task) -> Option(card.CardColor),
     on_task_start: fn(Int) -> msg,
     on_task_pause: fn(Int) -> msg,
-    on_task_complete: fn(Int) -> msg,
+    on_task_close: fn(Int) -> msg,
     on_task_release: fn(Int) -> msg,
     on_task_click: fn(Int) -> msg,
     on_card_click: fn(Int) -> msg,
@@ -209,7 +209,7 @@ fn view_active_task_card(
         },
         task_actions.complete_icon(
           i18n.t(config.locale, i18n_text.TaskNextActionClose),
-          config.on_task_complete(active.task_id),
+          config.on_task_close(active.task_id),
           action_buttons.SizeXs,
           config.disable_actions,
           "",

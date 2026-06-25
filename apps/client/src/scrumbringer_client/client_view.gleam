@@ -1949,7 +1949,7 @@ fn build_right_panel(
     on_task_pause: fn(_task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked)
     },
-    on_task_complete: fn(task_id) {
+    on_task_close: fn(task_id) {
       case
         right_panel_data.find_loaded_task(
           model.member.pool.member_tasks,

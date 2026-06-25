@@ -34,7 +34,7 @@ fn base_config(
     task_card_color: fn(task) { task.card_color },
     on_task_start: fn(id) { id },
     on_task_pause: fn(id) { id },
-    on_task_complete: fn(id) { id },
+    on_task_close: fn(id) { id },
     on_task_release: fn(id) { id },
     on_task_click: fn(id) { id },
     on_card_click: fn(id) { id },
