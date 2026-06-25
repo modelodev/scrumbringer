@@ -14,7 +14,7 @@
 //// ## Non-responsibilities
 ////
 //// - Database queries (see `queries.gleam`)
-//// - Business logic (see `use_case/task_workflow_actor.gleam`)
+//// - Task workflow coordination (see `use_case/workflows/handlers.gleam`)
 ////
 //// ## Relations
 ////

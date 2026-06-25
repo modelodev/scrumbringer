@@ -4,7 +4,7 @@
 ////
 //// Provides HTTP route handlers for task-related operations including
 //// task types, tasks, and task state transitions (claim, release, complete).
-//// Delegates business logic to task_workflow_actor.
+//// Delegates business logic to `use_case/workflows/handlers.gleam`.
 ////
 //// ## Responsibilities
 ////

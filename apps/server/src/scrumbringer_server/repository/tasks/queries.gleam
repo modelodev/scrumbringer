@@ -15,7 +15,7 @@
 ////
 //// - Row-to-domain mapping (see `mappers.gleam`)
 //// - HTTP handling (see `http/tasks.gleam`)
-//// - Business validation (see `use_case/task_workflow_actor.gleam`)
+//// - Business validation (see `use_case/workflows/validation.gleam`)
 ////
 //// ## Relations
 ////
