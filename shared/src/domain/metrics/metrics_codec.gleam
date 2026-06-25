@@ -3,6 +3,7 @@
 import gleam/dynamic/decode
 import gleam/option
 
+import domain/due_date as due_date_domain
 import domain/metrics.{
   type MetricsProjectTask, type MyMetrics, type OrgMetricsBucket,
   type OrgMetricsOverview, type OrgMetricsProjectOverview,
@@ -243,7 +244,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
   use due_date <- decode.optional_field(
     "due_date",
     option.None,
-    decode.optional(decode.string),
+    optional_due_date_decoder(),
   )
   use version <- decode.field("version", decode.int)
 
@@ -307,6 +308,19 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     complete_count: complete_count,
     first_claim_at: first_claim_at,
   ))
+}
+
+fn optional_due_date_decoder() -> decode.Decoder(option.Option(String)) {
+  use raw <- decode.then(decode.optional(decode.string))
+  case raw {
+    option.None | option.Some("") -> decode.success(option.None)
+    option.Some(value) ->
+      case due_date_domain.parse(value) {
+        Ok(parsed) ->
+          decode.success(option.Some(due_date_domain.to_string(parsed)))
+        Error(_) -> decode.failure(option.None, "DueDate")
+      }
+  }
 }
 
 /// Decoder for OrgMetricsUserOverview.
