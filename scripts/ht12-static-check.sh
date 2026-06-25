@@ -233,7 +233,7 @@ else
 fi
 
 if grep -Eq "can_delete_without_visible_history" apps/client/src/scrumbringer_client/features/tasks/mutation_update.gleam \
-  && grep -Eq "task_status\.WorkAvailable, 0 -> True" apps/client/src/scrumbringer_client/features/tasks/mutation_update.gleam \
+  && grep -Eq "task_state\.Available, 0 -> True" apps/client/src/scrumbringer_client/features/tasks/mutation_update.gleam \
   && grep -Eq "MemberDeleteTaskClicked" apps/client/test/tasks_mutation_update_test.gleam \
   && grep -Eq "claimed_task_does_not_submit|blocked_task_does_not_submit" apps/client/test/tasks_mutation_update_test.gleam; then
   echo "ht12-static:task_delete:client_guards_operational_history=ok"

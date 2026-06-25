@@ -8,7 +8,6 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/task.{type Task}
 import domain/task/state as task_state
-import domain/task_status
 import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -319,8 +318,8 @@ fn submit_delete(
 }
 
 fn can_delete_without_visible_history(task: Task) -> Bool {
-  case task_state.to_work_state(task.state), task.blocked_count {
-    task_status.WorkAvailable, 0 -> True
+  case task.state, task.blocked_count {
+    task_state.Available, 0 -> True
     _, _ -> False
   }
 }
