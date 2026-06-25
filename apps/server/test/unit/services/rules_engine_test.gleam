@@ -50,7 +50,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
 
   // When: Fire event that matches rule criteria
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -106,7 +106,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -156,7 +156,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -219,7 +219,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,

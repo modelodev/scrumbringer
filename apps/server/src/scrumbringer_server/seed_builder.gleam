@@ -2670,7 +2670,7 @@ fn trigger_rule_executions(
       use _ <- result.try(
         list.try_map(tasks_to_trigger, fn(task_id) {
           let event =
-            rules_engine.task_event(
+            rules_engine.task_trigger(
               rules_engine.TaskContext(
                 task_id: task_id,
                 project_id: project_id,

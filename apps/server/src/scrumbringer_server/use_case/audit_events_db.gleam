@@ -2,7 +2,7 @@
 ////
 //// ## Mission
 ////
-//// Persist task and card events for audit trails and activity feeds.
+//// Persist audit events for task and card lifecycle activity feeds.
 ////
 //// ## Responsibilities
 ////

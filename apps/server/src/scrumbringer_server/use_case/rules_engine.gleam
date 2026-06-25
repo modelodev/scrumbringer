@@ -129,7 +129,7 @@ type CardTemplateContext {
 // =============================================================================
 
 /// Build a state change event for a task transition.
-pub fn task_event(
+pub fn task_trigger(
   ctx: TaskContext,
   user_id: Int,
   from_state: option.Option(task_state.TaskExecutionState),
@@ -146,7 +146,7 @@ pub fn task_event(
 
 /// Build a state change event for a card state change.
 /// Cards don't inherit card_id (they are the parent).
-pub fn card_event(
+pub fn card_trigger(
   card_id: Int,
   project_id: Int,
   org_id: Int,

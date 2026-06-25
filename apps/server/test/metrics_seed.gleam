@@ -351,7 +351,7 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(resolved_bugs, fn(bug_id) {
       let event =
-        fixtures.task_event_state(
+        fixtures.task_trigger_state(
           bug_id,
           alpha_id,
           org_id,
@@ -376,7 +376,7 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(closed_bugs, fn(bug_id) {
       let event =
-        fixtures.task_event_state(
+        fixtures.task_trigger_state(
           bug_id,
           alpha_id,
           org_id,
@@ -401,7 +401,7 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(done_features, fn(feature_id) {
       let event =
-        fixtures.task_event_state(
+        fixtures.task_trigger_state(
           feature_id,
           alpha_id,
           org_id,
@@ -426,7 +426,7 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(archived_cards, fn(card_id) {
       let event =
-        fixtures.card_event_state(
+        fixtures.card_trigger_state(
           card_id,
           alpha_id,
           org_id,
@@ -450,7 +450,7 @@ pub fn seed() -> Result(SeedResult, String) {
   use _ <- result.try(
     list.try_map(beta_bug_ids, fn(bug_id) {
       let event =
-        fixtures.task_event_state(
+        fixtures.task_trigger_state(
           bug_id,
           beta_id,
           org_id,
@@ -471,7 +471,7 @@ pub fn seed() -> Result(SeedResult, String) {
   io.println("\n--- Testing Suppression ---")
   let assert [first_bug, ..] = bug_ids
   let event_idem =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       first_bug,
       alpha_id,
       org_id,

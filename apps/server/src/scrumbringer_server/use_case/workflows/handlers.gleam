@@ -1090,7 +1090,8 @@ fn evaluate_task_rules(
   from_state: task_state.TaskExecutionState,
   to_state: task_state.TaskExecutionState,
 ) -> Nil {
-  let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
+  let event =
+    rules_engine.task_trigger(ctx, user_id, Some(from_state), to_state)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -1102,7 +1103,8 @@ fn evaluate_task_rules_created(
   ctx: rules_engine.TaskContext,
   user_id: Int,
 ) -> Nil {
-  let event = rules_engine.task_event(ctx, user_id, None, task_state.Available)
+  let event =
+    rules_engine.task_trigger(ctx, user_id, None, task_state.Available)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -1135,7 +1137,7 @@ fn evaluate_card_rules_for_task(
     Error(_) -> Nil
     Ok(card) -> {
       let event =
-        rules_engine.card_event(
+        rules_engine.card_trigger(
           card_id,
           project_id,
           org_id,

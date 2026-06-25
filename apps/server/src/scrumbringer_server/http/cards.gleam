@@ -443,7 +443,7 @@ fn evaluate_card_rules_after_transition(
     True -> Nil
     False -> {
       let event =
-        rules_engine.card_event(
+        rules_engine.card_trigger(
           existing_card.id,
           existing_card.project_id,
           org_id,

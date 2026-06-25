@@ -76,7 +76,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
 
   // Fire the event
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -138,7 +138,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -190,7 +190,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
 
   // Event with user_triggered = False
   let event =
-    fixtures.task_event_state_full(
+    fixtures.task_trigger_state_full(
       task_id,
       project_id,
       org_id,
@@ -234,7 +234,7 @@ pub fn evaluate_rules_card_resource_type_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       card_id,
       project_id,
       org_id,
@@ -286,7 +286,7 @@ pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let root_event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       root_card_id,
       project_id,
       org_id,
@@ -297,7 +297,7 @@ pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
   let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
 
   let child_event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       child_card_id,
       project_id,
       org_id,
@@ -346,7 +346,7 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let root_event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       root_card_id,
       project_id,
       org_id,
@@ -357,7 +357,7 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
   let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
 
   let child_event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       child_card_id,
       project_id,
       org_id,
@@ -417,7 +417,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -494,7 +494,7 @@ pub fn variable_origin_card_resolves_to_link_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       card_id,
       project_id,
       org_id,
@@ -564,7 +564,7 @@ pub fn variable_trigger_resolves_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -629,7 +629,7 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
 
   // Task creation event (None -> available)
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -696,7 +696,7 @@ pub fn variable_project_resolves_to_name_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -755,7 +755,7 @@ pub fn variable_user_resolves_to_email_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -839,7 +839,7 @@ pub fn task_trigger_variables_combined_test() {
 
   // Fire the event
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -981,7 +981,7 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1052,7 +1052,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
 
   let bug_event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       bug_task_id,
       project_id,
       org_id,
@@ -1077,7 +1077,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
     )
 
   let feature_event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       feature_task_id,
       project_id,
       org_id,
@@ -1129,7 +1129,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1181,7 +1181,7 @@ pub fn inactive_rule_does_not_fire_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1242,7 +1242,7 @@ pub fn wrong_task_type_does_not_match_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1289,7 +1289,7 @@ pub fn wrong_to_state_does_not_match_test() {
 
   // Event with 'claimed' state (not 'completed')
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1336,7 +1336,7 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
     )
 
   let created_event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1351,7 +1351,7 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
   created_matched |> expect.equal(created_rule_id)
 
   let released_event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1417,7 +1417,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project2_id,
       org_id,
@@ -1432,7 +1432,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
   let assert Ok([]) = result
 }
 
-pub fn task_rule_does_not_fire_for_card_event_test() {
+pub fn task_rule_does_not_fire_for_card_trigger_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -1469,7 +1469,7 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
 
   // CARD event (not task)
   let event =
-    fixtures.card_event_state(
+    fixtures.card_trigger_state(
       card_id,
       project_id,
       org_id,
@@ -1481,7 +1481,7 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
   let result = rules_engine.evaluate_rules(db, event)
   result |> expect.ok
 
-  // Task rule should not match card event
+  // Task rule should not match card trigger
   let assert Ok([]) = result
 
   let assert Ok(final_count) =
@@ -1574,7 +1574,7 @@ pub fn rule_execution_applied_is_persisted_test() {
     fixtures.query_int(db, "select count(*)::int from rule_executions", [])
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,
@@ -1646,7 +1646,7 @@ pub fn rule_execution_idempotency_enforced_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_state(
+    fixtures.task_trigger_state(
       task_id,
       project_id,
       org_id,

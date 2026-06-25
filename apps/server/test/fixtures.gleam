@@ -1147,7 +1147,7 @@ pub fn with_bearer(req: wisp.Request, token: String) -> wisp.Request {
 }
 
 /// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
-pub fn task_event_state(
+pub fn task_trigger_state(
   task_id: Int,
   project_id: Int,
   org_id: Int,
@@ -1156,7 +1156,7 @@ pub fn task_event_state(
   to_state: task_state.TaskExecutionState,
   task_type_id: Int,
 ) -> rules_engine.StateChange {
-  task_event_state_with_card(
+  task_trigger_state_with_card(
     task_id,
     project_id,
     org_id,
@@ -1169,7 +1169,7 @@ pub fn task_event_state(
 }
 
 /// Create a StateChange for a task resource with card_id.
-pub fn task_event_state_with_card(
+pub fn task_trigger_state_with_card(
   task_id: Int,
   project_id: Int,
   org_id: Int,
@@ -1179,7 +1179,7 @@ pub fn task_event_state_with_card(
   task_type_id: Int,
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
-  task_event_state_full(
+  task_trigger_state_full(
     task_id,
     project_id,
     org_id,
@@ -1193,7 +1193,7 @@ pub fn task_event_state_with_card(
 }
 
 /// Create a StateChange for a task with full control (user_triggered, card_id).
-pub fn task_event_state_full(
+pub fn task_trigger_state_full(
   task_id: Int,
   project_id: Int,
   org_id: Int,
@@ -1245,7 +1245,7 @@ fn task_state_to_trigger_string(state: task_state.TaskExecutionState) -> String 
 }
 
 /// Create a StateChange for a card resource (user_triggered defaults to True).
-pub fn card_event_state(
+pub fn card_trigger_state(
   card_id: Int,
   project_id: Int,
   org_id: Int,
@@ -1253,7 +1253,7 @@ pub fn card_event_state(
   from_state: Option(domain_card.CardPhase),
   to_state: domain_card.CardPhase,
 ) -> rules_engine.StateChange {
-  card_event_state_full(
+  card_trigger_state_full(
     card_id,
     project_id,
     org_id,
@@ -1265,7 +1265,7 @@ pub fn card_event_state(
 }
 
 /// Create a StateChange for a card resource with explicit user_triggered.
-pub fn card_event_state_full(
+pub fn card_trigger_state_full(
   card_id: Int,
   project_id: Int,
   org_id: Int,
