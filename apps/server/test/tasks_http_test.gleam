@@ -668,7 +668,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   expect.expect_status(release_ok_res, 200)
   count_audit_events_for_task(db, task_id) |> expect.equal(3)
 
-  let complete_bad_req =
+  let close_bad_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/complete",
@@ -678,9 +678,9 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
     |> request.set_header("X-CSRF", member_csrf)
     |> simulate.json_body(json.object([#("version", json.int(3))]))
 
-  let complete_bad_res = handler(complete_bad_req)
-  expect.expect_status(complete_bad_res, 422)
-  string.contains(simulate.read_body(complete_bad_res), "VALIDATION_ERROR")
+  let close_bad_res = handler(close_bad_req)
+  expect.expect_status(close_bad_res, 422)
+  string.contains(simulate.read_body(close_bad_res), "VALIDATION_ERROR")
   |> expect.is_true
   count_audit_events_for_task(db, task_id) |> expect.equal(3)
 }
@@ -723,7 +723,7 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   count_audit_events(db, task_id, "task_released") |> expect.equal(1)
 
   claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
-  complete_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
+  close_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
   count_audit_events(db, task_id, "task_closed") |> expect.equal(1)
 }
 
@@ -1252,7 +1252,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
   |> expect.is_true
 }
 
-pub fn task_dependencies_reject_completed_dependency_test() {
+pub fn task_dependencies_reject_closed_dependency_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -1284,7 +1284,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       1,
       type_id,
     )
-  let task_completed =
+  let task_closed =
     create_task(
       handler,
       session,
@@ -1301,22 +1301,22 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       handler,
       session,
       csrf,
-      task_completed,
-      task_version(db, task_completed),
+      task_closed,
+      task_version(db, task_closed),
     )
   claim_status |> expect.equal(200)
 
-  let complete_status =
-    complete_task(
+  let close_status =
+    close_task(
       handler,
       session,
       csrf,
-      task_completed,
-      task_version(db, task_completed),
+      task_closed,
+      task_version(db, task_closed),
     )
-  complete_status |> expect.equal(200)
+  close_status |> expect.equal(200)
 
-  let completed_req =
+  let closed_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_blocked) <> "/dependencies",
@@ -1325,12 +1325,12 @@ pub fn task_dependencies_reject_completed_dependency_test() {
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
     |> simulate.json_body(
-      json.object([#("depends_on_task_id", json.int(task_completed))]),
+      json.object([#("depends_on_task_id", json.int(task_closed))]),
     )
 
-  let completed_res = handler(completed_req)
-  expect.expect_status(completed_res, 422)
-  simulate.read_body(completed_res)
+  let closed_res = handler(closed_req)
+  expect.expect_status(closed_res, 422)
+  simulate.read_body(closed_res)
   |> string.contains("Dependency task is already closed")
   |> expect.is_true
 }
@@ -1380,7 +1380,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   task_claimed_by(db, task_blocked) |> expect.equal(0)
 }
 
-pub fn blocked_task_claim_succeeds_after_dependency_completed_test() {
+pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -1420,7 +1420,7 @@ pub fn blocked_task_claim_succeeds_after_dependency_completed_test() {
     task_version(db, task_blocker),
   )
   |> expect.equal(200)
-  complete_task(
+  close_task(
     handler,
     session,
     csrf,
@@ -1626,7 +1626,7 @@ pub fn dependency_unblocks_when_dependency_closed_test() {
   |> expect.equal(200)
   claim_task(handler, session, csrf, blocker, task_version(db, blocker))
   |> expect.equal(200)
-  complete_task(handler, session, csrf, blocker, task_version(db, blocker))
+  close_task(handler, session, csrf, blocker, task_version(db, blocker))
   |> expect.equal(200)
 
   let unblocked_res =
@@ -1701,7 +1701,7 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   |> expect.equal(200)
 
   let other_close =
-    complete_task_response(
+    close_task_response(
       handler,
       other_session,
       other_csrf,
@@ -1710,7 +1710,7 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
     )
   expect.expect_status(other_close, 403)
 
-  complete_task(
+  close_task(
     handler,
     owner_session,
     owner_csrf,
@@ -1884,7 +1884,7 @@ pub fn me_metrics_returns_counts_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  complete_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
+  close_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
@@ -1911,12 +1911,12 @@ pub fn me_metrics_returns_counts_test() {
 
   let response_decoder = decode.field("data", data_decoder, decode.success)
 
-  let assert Ok(#(claimed, released, completed)) =
+  let assert Ok(#(claimed, released, closed)) =
     decode.run(dynamic, response_decoder)
 
   claimed |> expect.equal(1)
   released |> expect.equal(0)
-  completed |> expect.equal(1)
+  closed |> expect.equal(1)
 }
 
 pub fn org_metrics_overview_requires_org_admin_test() {
@@ -2005,7 +2005,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
     use claim_count <- decode.field("claim_count", decode.int)
     use release_count <- decode.field("release_count", decode.int)
-    use complete_count <- decode.field("complete_count", decode.int)
+    use close_count <- decode.field("complete_count", decode.int)
     use first_claim_at <- decode.field(
       "first_claim_at",
       decode.optional(decode.string),
@@ -2015,7 +2015,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
       id,
       claim_count,
       release_count,
-      complete_count,
+      close_count,
       first_claim_at,
     ))
   }
@@ -2030,11 +2030,11 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let assert Ok(tasks) = decode.run(dynamic, response_decoder)
 
   case tasks {
-    [#(id, claim_count, release_count, complete_count, first_claim_at), ..] -> {
+    [#(id, claim_count, release_count, close_count, first_claim_at), ..] -> {
       id |> expect.equal(task_id)
       claim_count |> expect.equal(1)
       release_count |> expect.equal(0)
-      complete_count |> expect.equal(0)
+      close_count |> expect.equal(0)
       let _ = first_claim_at |> expect.some
       Nil
     }
@@ -2109,7 +2109,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
   let assert Ok(users) = decode.run(dynamic, response_decoder)
 
   case users {
-    [#(_user_id, email, _claimed, _released, _completed, _ongoing), ..] -> {
+    [#(_user_id, email, _claimed, _released, _closed, _ongoing), ..] -> {
       email |> expect.equal("admin@example.com")
       Nil
     }
@@ -2265,12 +2265,12 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       chore_type_id,
     )
 
-  let completed_id =
+  let closed_id =
     create_task(handler, session, csrf, project_id, "Done", "", 3, bug_type_id)
 
   claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
-  claim_task(handler, session, csrf, completed_id, 1) |> expect.equal(200)
-  complete_task(handler, session, csrf, completed_id, 2) |> expect.equal(200)
+  claim_task(handler, session, csrf, closed_id, 1) |> expect.equal(200)
+  close_task(handler, session, csrf, closed_id, 2) |> expect.equal(200)
 
   let available_res =
     handler(
@@ -2304,7 +2304,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   decode_task_titles(simulate.read_body(claimed_res))
   |> expect.equal(["Claimed"])
 
-  let completed_res =
+  let completed_filter_res =
     handler(
       simulate.request(
         http.Get,
@@ -2316,8 +2316,8 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  expect.expect_status(completed_res, 200)
-  decode_task_titles(simulate.read_body(completed_res))
+  expect.expect_status(completed_filter_res, 200)
+  decode_task_titles(simulate.read_body(completed_filter_res))
   |> expect.equal(["Done"])
 
   let type_res =
@@ -2513,7 +2513,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   expect.expect_status(release_other_res, 403)
 
-  let complete_other_res =
+  let close_other_res =
     handler(
       simulate.request(
         http.Post,
@@ -2525,7 +2525,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
-  expect.expect_status(complete_other_res, 403)
+  expect.expect_status(close_other_res, 403)
 }
 
 pub fn patch_rejects_blank_title_test() {
@@ -2788,7 +2788,7 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   |> expect.equal(True)
 }
 
-pub fn me_work_session_clears_before_release_and_complete_test() {
+pub fn me_work_session_clears_before_release_and_close_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -2835,16 +2835,16 @@ pub fn me_work_session_clears_before_release_and_complete_test() {
   decode_work_session_task_id(simulate.read_body(active_after_release))
   |> expect.equal(option.None)
 
-  // Re-claim + start, then complete.
+  // Re-claim + start, then close.
   let version = task_version(db, task_id)
   claim_task(handler, session, csrf, task_id, version) |> expect.equal(200)
   expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
 
   let version = task_version(db, task_id)
-  complete_task(handler, session, csrf, task_id, version) |> expect.equal(200)
+  close_task(handler, session, csrf, task_id, version) |> expect.equal(200)
 
-  let active_after_complete = get_active_work_sessions(handler, session, csrf)
-  decode_work_session_task_id(simulate.read_body(active_after_complete))
+  let active_after_close = get_active_work_sessions(handler, session, csrf)
+  decode_work_session_task_id(simulate.read_body(active_after_close))
   |> expect.equal(option.None)
 }
 
@@ -3151,18 +3151,18 @@ fn release_task(
   res.status
 }
 
-fn complete_task(
+fn close_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res = complete_task_response(handler, session, csrf, task_id, version)
+  let res = close_task_response(handler, session, csrf, task_id, version)
   res.status
 }
 
-fn complete_task_response(
+fn close_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
