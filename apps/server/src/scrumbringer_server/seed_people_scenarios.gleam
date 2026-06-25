@@ -347,7 +347,7 @@ fn insert_people_task(
   created_days_ago: Int,
 ) -> Result(TaskSeed, String) {
   let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case execution_state {
+  let #(claimed_by, claimed_at, closed_at) = case execution_state {
     task_state.Claimed(..) -> #(
       claimed_by,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
@@ -366,7 +366,7 @@ fn insert_people_task(
       created_by,
       claimed_by,
       claimed_at,
-      completed_at,
+      closed_at,
     )
 
   use task_id <- result.try(seed_db.insert_task(
@@ -407,7 +407,7 @@ fn insert_seed_root_card(
   root_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(Int, String) {
   seed_db.insert_root_card(
     db,
@@ -419,7 +419,7 @@ fn insert_seed_root_card(
       created_by: admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,
-      completed_at: completed_at,
+      completed_at: closed_at,
     ),
   )
 }
@@ -434,7 +434,7 @@ fn insert_seed_child_card(
   child_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(Int, String) {
   use child_id <- result.try(insert_seed_root_card(
     db,
@@ -445,7 +445,7 @@ fn insert_seed_child_card(
     child_card_state,
     created_days_ago,
     activated_at,
-    completed_at,
+    closed_at,
   ))
   use _ <- result.try(seed_db.assign_card_to_parent_card(
     db,
@@ -491,7 +491,7 @@ fn hydrate_seed_execution_state(
   created_by: Int,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> task_state.TaskExecutionState {
   case execution_state {
     task_state.Available -> task_state.Available
@@ -504,7 +504,7 @@ fn hydrate_seed_execution_state(
     task_state.Closed(reason: reason, ..) ->
       task_state.Closed(
         reason: reason,
-        closed_at: option_string(completed_at, "NOW()"),
+        closed_at: option_string(closed_at, "NOW()"),
         closed_by: created_by,
       )
   }
