@@ -55,7 +55,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Done",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -127,7 +127,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       session,
       workflow_id,
       Some(type_id),
-      "Feature Done",
+      "Feature Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -178,7 +178,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -406,7 +406,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Done",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -553,7 +553,7 @@ pub fn variable_trigger_resolves_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -685,7 +685,7 @@ pub fn variable_project_resolves_to_name_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -736,7 +736,7 @@ pub fn variable_user_resolves_to_email_test() {
       session,
       project_id,
       type_id,
-      "Done by {{user}}",
+      "Closed by {{user}}",
     )
   let assert Ok(_rule_id) =
     fixtures.create_rule(
@@ -744,7 +744,7 @@ pub fn variable_user_resolves_to_email_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -771,12 +771,12 @@ pub fn variable_user_resolves_to_email_test() {
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
-      "select title from tasks where title = 'Done by admin@example.com'",
+      "select title from tasks where title = 'Closed by admin@example.com'",
       [],
     )
 
   // {{user}} resolves to email
-  created_title |> expect.equal("Done by admin@example.com")
+  created_title |> expect.equal("Closed by admin@example.com")
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -818,7 +818,7 @@ pub fn task_trigger_variables_combined_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Done",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -943,7 +943,7 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
       session,
       workflow_id,
       Some(bug_type_id),
-      "Bug Done",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template1_id,
     )
@@ -1039,7 +1039,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1118,7 +1118,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1398,7 +1398,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1452,7 +1452,7 @@ pub fn task_rule_does_not_fire_for_card_trigger_test() {
       session,
       workflow_id,
       None,
-      "Task Done",
+      "Task Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1560,7 +1560,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       session,
       workflow_id,
       Some(type_id),
-      "Feature Done",
+      "Feature Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1635,7 +1635,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )

@@ -496,7 +496,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
       session,
       workflow_id,
       Some(feature_type_id),
-      "Feature Done",
+      "Feature Closed",
       fixtures.task_closed_done(),
       template1_id,
     )
@@ -714,7 +714,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       session,
       workflow_id,
       Some(type_id),
-      "Task Done",
+      "Task Closed",
       fixtures.task_closed_done(),
       template_id,
     )

@@ -145,7 +145,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       session,
       workflow_id,
       Some(type_id),
-      "Feature Done",
+      "Feature Closed",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -203,7 +203,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       session,
       workflow_id,
       None,
-      "Any Done",
+      "Any Closed",
       fixtures.task_closed_done(),
       template_id,
     )

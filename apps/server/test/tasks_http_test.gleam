@@ -1285,7 +1285,16 @@ pub fn task_dependencies_reject_completed_dependency_test() {
       type_id,
     )
   let task_completed =
-    create_task(handler, session, csrf, project_id, "Task Done", "", 1, type_id)
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_id,
+      "Task Closed",
+      "",
+      1,
+      type_id,
+    )
 
   let claim_status =
     claim_task(
