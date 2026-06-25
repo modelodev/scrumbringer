@@ -2,7 +2,7 @@
 
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/task as domain_task
-import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
+import domain/task/state as task_execution_state
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
@@ -1302,7 +1302,7 @@ fn summary_for_rows(
   types.CardRollup(
     ..rollup,
     pool_impact: list.count(tasks, fn(task) {
-      domain_task.status(task) == Available
+      is_available_task(task)
       && list.any(row_cards, fn(card) {
         card.state == Draft
         && card_queries.task_in_card_subtree(task, card.id, config.cards)
@@ -1314,27 +1314,46 @@ fn summary_for_rows(
 fn rollup_for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
   types.CardRollup(
     total_tasks: list.length(tasks),
-    completed_tasks: list.count(tasks, fn(task) {
-      domain_task.status(task) == Done
-    }),
-    available_tasks: list.count(tasks, fn(task) {
-      domain_task.status(task) == Available
-    }),
-    claimed_tasks: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Taken)
-    }),
-    ongoing_tasks: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Ongoing)
-    }),
+    completed_tasks: list.count(tasks, is_closed_task),
+    available_tasks: list.count(tasks, is_available_task),
+    claimed_tasks: list.count(tasks, is_taken_task),
+    ongoing_tasks: list.count(tasks, is_ongoing_task),
     blocked_tasks: list.count(tasks, fn(task) { task.blocked_count > 0 }),
     pool_impact: 0,
   )
 }
 
+fn is_available_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Available -> True
+    _ -> False
+  }
+}
+
+fn is_taken_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_ongoing_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_closed_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Closed(..) -> True
+    _ -> False
+  }
+}
+
 fn rollup_pool_impact(card: Card, tasks: List(domain_task.Task)) -> Int {
   case card.state {
-    Draft ->
-      list.count(tasks, fn(task) { domain_task.status(task) == Available })
+    Draft -> list.count(tasks, is_available_task)
     Active | Closed -> 0
   }
 }
@@ -1518,8 +1537,8 @@ fn has_claimed_or_ongoing_descendants(config: Config(msg), card: Card) -> Bool {
     card_queries.task_in_card_subtree(task, card.id, config.cards)
   })
   |> list.any(fn(task) {
-    case domain_task.status(task) {
-      Claimed(Taken) | Claimed(Ongoing) -> True
+    case task.state {
+      task_execution_state.Claimed(..) -> True
       _ -> False
     }
   })
@@ -1806,11 +1825,13 @@ fn plan_sort_value(sort: member_pool.PlanSort) -> String {
 }
 
 fn task_status_label(task: domain_task.Task) -> String {
-  case domain_task.status(task) {
-    Available -> "disponible"
-    Claimed(Taken) -> "reclamada"
-    Claimed(Ongoing) -> "en curso"
-    Done -> "completada"
+  case task.state {
+    task_execution_state.Available -> "disponible"
+    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) ->
+      "reclamada"
+    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) ->
+      "en curso"
+    task_execution_state.Closed(..) -> "completada"
   }
 }
 
