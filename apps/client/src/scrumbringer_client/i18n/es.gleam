@@ -239,7 +239,7 @@ pub fn translate(text: Text) -> String {
     text.PlanCapabilityMode -> "Modo"
     text.PlanCapabilityList -> "Lista"
     text.PlanCapabilityMatrix -> "Matriz"
-    text.PlanClosed -> "Closed"
+    text.PlanClosed -> "Cerradas"
     text.PoolPurpose ->
       "Tareas activas disponibles para que el equipo las reclame."
     text.PoolVisibilityLabel -> "Ver"
@@ -909,7 +909,7 @@ pub fn translate(text: Text) -> String {
     text.CardPhase -> "Estado"
     text.CardPhaseDraft -> "Draft"
     text.CardPhaseActive -> "En curso"
-    text.CardPhaseClosed -> "Closed"
+    text.CardPhaseClosed -> "Cerrada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
