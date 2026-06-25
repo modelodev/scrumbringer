@@ -33,6 +33,7 @@ import scrumbringer_client/api/projects as api_projects
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
 import domain/project/project_codec
+import domain/project/settings as project_settings
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
   type DialogState, type OperationState, DialogClosed, DialogOpen,
@@ -1303,19 +1304,10 @@ fn validate_depth_names(
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
   let Context(depth_names_required:, ..) = context
   let normalized = normalize_depth_names(card_depth_names)
-  case list.any(normalized, invalid_depth_name) {
-    True -> Error(depth_names_required)
-    False -> Ok(#(healthy_pool_limit, normalized))
+  case project_settings.valid_card_depth_names(normalized) {
+    False -> Error(depth_names_required)
+    True -> Ok(#(healthy_pool_limit, normalized))
   }
-}
-
-fn invalid_depth_name(depth_name: ProjectDepthName) -> Bool {
-  let ProjectDepthName(
-    depth: depth,
-    singular_name: singular,
-    plural_name: plural,
-  ) = depth_name
-  depth <= 0 || string.trim(singular) == "" || string.trim(plural) == ""
 }
 
 fn normalize_depth_names(

@@ -22,6 +22,7 @@
 
 import domain/project.{type ProjectDepthName, ProjectDepthName}
 import domain/project/project_codec
+import domain/project/settings as project_settings
 import domain/project_role.{type ProjectRole}
 import gleam/dynamic/decode
 import gleam/list
@@ -175,7 +176,12 @@ pub fn create_project(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
 ) -> Result(ProjectRecord, CreateProjectError) {
-  case valid_project_settings(healthy_pool_limit, card_depth_names) {
+  case
+    project_settings.valid_project_settings(
+      healthy_pool_limit,
+      card_depth_names,
+    )
+  {
     False -> Error(InvalidCreateProjectSettings)
     True ->
       do_create_project(
@@ -760,7 +766,12 @@ pub fn update_project(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
 ) -> Result(ProjectRecord, UpdateProjectError) {
-  case valid_project_settings(healthy_pool_limit, card_depth_names) {
+  case
+    project_settings.valid_project_settings(
+      healthy_pool_limit,
+      card_depth_names,
+    )
+  {
     False -> Error(InvalidProjectSettings)
     True ->
       do_update_project(
@@ -1021,38 +1032,6 @@ fn update_project_record(
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateProjectNotFound)
     Error(e) -> Error(UpdateProjectDbError(e))
-  }
-}
-
-fn depth_numbers(depth_names: List(ProjectDepthName)) -> List(Int) {
-  list.map(depth_names, fn(depth_name) {
-    let ProjectDepthName(depth: depth, ..) = depth_name
-    depth
-  })
-}
-
-fn valid_project_settings(
-  healthy_pool_limit: Int,
-  card_depth_names: List(ProjectDepthName),
-) -> Bool {
-  healthy_pool_limit > 0
-  && !list.is_empty(card_depth_names)
-  && depth_numbers(card_depth_names)
-  == expected_depth_numbers(1, list.length(card_depth_names))
-  && !list.any(card_depth_names, fn(depth_name) {
-    let ProjectDepthName(
-      depth: depth,
-      singular_name: singular,
-      plural_name: plural,
-    ) = depth_name
-    depth <= 0 || string.trim(singular) == "" || string.trim(plural) == ""
-  })
-}
-
-fn expected_depth_numbers(next_depth: Int, max_depth: Int) -> List(Int) {
-  case next_depth > max_depth {
-    True -> []
-    False -> [next_depth, ..expected_depth_numbers(next_depth + 1, max_depth)]
   }
 }
 
