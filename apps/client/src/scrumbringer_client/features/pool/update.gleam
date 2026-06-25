@@ -15,7 +15,7 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Task mutations (claim/release/complete - see features/tasks/mutation_update.gleam)
+//// - Task mutations (claim/release/close - see features/tasks/mutation_update.gleam)
 //// - Task creation (see features/tasks/create_update.gleam)
 //// - View rendering (see features/pool/view.gleam)
 ////

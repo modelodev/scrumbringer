@@ -3,7 +3,7 @@
 //// ## Mission
 ////
 //// Provides HTTP route handlers for task-related operations including
-//// task types, tasks, and task state transitions (claim, release, complete).
+//// task types, tasks, and task state transitions (claim, release, close).
 //// Delegates business logic to `use_case/workflows/handlers.gleam`.
 ////
 //// ## Responsibilities
@@ -26,7 +26,7 @@
 //// - `tasks/task_types_handlers`: task type list/create/update/delete
 //// - `tasks/tasks_list_create`: task list/create endpoints
 //// - `tasks/tasks_get_patch`: task get/patch endpoints
-//// - `tasks/tasks_transitions`: claim/release/complete endpoints
+//// - `tasks/tasks_transitions`: claim/release/close endpoints
 //// - `tasks/task_dependencies`: dependencies list/create/delete endpoints
 //// - `tasks/presenters`: JSON serialization functions
 //// - `tasks/filters`: Query parameter parsing
@@ -144,7 +144,7 @@ pub fn handle_release(
   tasks_transitions.handle_task_release(req, ctx, task_id)
 }
 
-/// Handle task complete (POST).
+/// Handle task close (POST).
 pub fn handle_complete(
   req: wisp.Request,
   ctx: auth.Ctx,

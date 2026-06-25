@@ -256,7 +256,7 @@ fn view_task_item(
         [text(task_status_utils.label(config.locale, status))],
       )
     task_execution_state.Closed(..) ->
-      // Done - show status label
+      // Closed - show status label
       span(
         [
           attribute.class("task-status"),
