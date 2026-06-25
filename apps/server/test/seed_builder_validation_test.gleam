@@ -25,7 +25,8 @@ pub fn realistic_seed_marks_healthy_and_stress_pool_projects_test() {
 }
 
 pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
-  // Covers the seed_automation_diagnostics scenario module.
+  // Covers the seed_automation_definitions and seed_automation_diagnostics
+  // scenario modules.
   let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(selected_rule_count) =

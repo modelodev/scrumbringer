@@ -21,7 +21,6 @@
 //// - Direct SQL operations (see seed_db.gleam)
 //// - CLI or output (see seed.gleam)
 
-import domain/automation
 import domain/card
 import domain/org_role
 import domain/project_role
@@ -33,6 +32,7 @@ import gleam/result
 import pog
 import scrumbringer_server/seed_activity_scenarios
 import scrumbringer_server/seed_audit_events
+import scrumbringer_server/seed_automation_definitions
 import scrumbringer_server/seed_automation_diagnostics
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
@@ -211,7 +211,8 @@ pub fn build_seed(
       rule_executions_count: 0,
     )
 
-  // Build in order: users -> projects -> capabilities -> task types -> cards -> tasks -> workflows -> rules
+  // Build in dependency order: core records, automation definitions, tasks, QA
+  // scenarios, then derived activity and diagnostics.
   use state <- result.try(build_users(db, state, config))
   use state <- result.try(build_projects(db, state, config))
   use state <- result.try(build_capabilities(db, state, config))
@@ -219,8 +220,7 @@ pub fn build_seed(
   use state <- result.try(build_member_capabilities(db, state, config))
   use state <- result.try(build_cards(db, state, config))
   use state <- result.try(build_templates(db, state, config))
-  use state <- result.try(build_workflows(db, state, config))
-  use state <- result.try(build_rules(db, state, config))
+  use state <- result.try(build_automation_definitions(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
   use state <- result.try(build_plan_qa_scenarios(db, state, config))
   use state <- result.try(build_people_qa_scenarios(db, state, config))
@@ -620,233 +620,33 @@ fn build_templates(
   )
 }
 
-fn build_workflows(
+fn build_automation_definitions(
   db: pog.Connection,
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = active_project_ids(state)
-  let wf_names = seed_pools.automation_engine_names()
-
-  use workflow_ids_by_project <- result.try(
-    list.index_map(active_projects, fn(project_id, proj_idx) {
-      let wf_count = config.workflows_per_project
-      use wf_ids <- result.try(
-        list.range(0, wf_count - 1)
-        |> list.try_map(fn(idx) {
-          let name =
-            list_at(wf_names, idx, "Workflow " <> int.to_string(idx + 1))
-          let is_inactive = idx >= wf_count - config.inactive_workflow_count
-
-          seed_db.insert_workflow(
-            db,
-            seed_db.WorkflowInsertOptions(
-              org_id: state.org_id,
-              project_id: project_id,
-              name: name <> " " <> int.to_string(proj_idx + 1),
-              description: None,
-              active: !is_inactive,
-              created_by: state.admin_id,
-              created_at: None,
-            ),
-          )
-        }),
-      )
-      Ok(#(project_id, wf_ids))
-    })
-    |> result.all,
-  )
-
-  let workflow_ids =
-    list.map(workflow_ids_by_project, fn(pair) {
-      let #(_project_id, ids) = pair
-      ids
-    })
-    |> list.flatten
-
+  use definitions <- result.try(seed_automation_definitions.build(
+    db,
+    seed_automation_definitions.Context(
+      org_id: state.org_id,
+      admin_id: state.admin_id,
+      active_project_ids: active_project_ids(state),
+      workflows_per_project: config.workflows_per_project,
+      inactive_workflow_count: config.inactive_workflow_count,
+      empty_workflow_count: config.empty_workflow_count,
+      task_type_ids: state.task_type_ids,
+      template_ids_by_project: state.template_ids_by_project,
+    ),
+  ))
   Ok(
     BuildState(
       ..state,
-      workflow_ids: workflow_ids,
-      workflow_ids_by_project: workflow_ids_by_project,
+      workflow_ids: definitions.workflow_ids,
+      workflow_ids_by_project: definitions.workflow_ids_by_project,
+      rule_ids: definitions.rule_ids,
+      rule_ids_by_project: definitions.rule_ids_by_project,
     ),
   )
-}
-
-fn build_rules(
-  db: pog.Connection,
-  state: BuildState,
-  config: SeedConfig,
-) -> Result(BuildState, String) {
-  use rule_ids_by_project <- result.try(
-    list.index_map(state.workflow_ids_by_project, fn(pair, project_idx) {
-      let #(project_id, wf_ids) = pair
-      let task_types = task_types_for_project(state.task_type_ids, project_id)
-      let templates =
-        templates_for_project(state.template_ids_by_project, project_id)
-      let wf_ids = list.drop(wf_ids, config.empty_workflow_count)
-
-      case wf_ids, task_types {
-        [], _ -> Ok(#(project_id, []))
-        _, None -> Ok(#(project_id, []))
-        [active_wf, inactive_wf], Some(#(bug_id, feature_id, _task_id)) -> {
-          use active_rule <- result.try(seed_db.insert_rule(
-            db,
-            seed_rule_options(
-              workflow_id: active_wf,
-              name: "On Task Done (Active)",
-              goal: Some("Auto action on completion"),
-              trigger: automation.TaskCompleted(Some(bug_id)),
-              active: True,
-              created_at: None,
-            ),
-          ))
-          use _ <- result.try(select_seed_template(
-            db,
-            active_rule,
-            templates,
-            0,
-          ))
-
-          use inactive_rule <- result.try(seed_db.insert_rule(
-            db,
-            seed_rule_options(
-              workflow_id: inactive_wf,
-              name: "On Task Done (Inactive)",
-              goal: Some("Should not trigger"),
-              trigger: automation.TaskCompleted(Some(feature_id)),
-              active: True,
-              created_at: None,
-            ),
-          ))
-          use _ <- result.try(select_seed_template(
-            db,
-            inactive_rule,
-            templates,
-            1,
-          ))
-
-          use warning_rules <- result.try(seed_review_warning_rules(
-            db,
-            project_idx,
-            active_wf,
-            bug_id,
-          ))
-
-          Ok(#(project_id, [active_rule, inactive_rule, ..warning_rules]))
-        }
-        [single_wf], Some(#(bug_id, _feature_id, _task_id)) -> {
-          use rule_id <- result.try(seed_db.insert_rule(
-            db,
-            seed_rule_options(
-              workflow_id: single_wf,
-              name: "On Task Done",
-              goal: Some("Auto action on completion"),
-              trigger: automation.TaskCompleted(Some(bug_id)),
-              active: True,
-              created_at: None,
-            ),
-          ))
-          use _ <- result.try(select_seed_template(db, rule_id, templates, 0))
-          use warning_rules <- result.try(seed_review_warning_rules(
-            db,
-            project_idx,
-            single_wf,
-            bug_id,
-          ))
-          Ok(#(project_id, [rule_id, ..warning_rules]))
-        }
-        _, _ -> Ok(#(project_id, []))
-      }
-    })
-    |> result.all,
-  )
-
-  let rule_ids =
-    rule_ids_by_project
-    |> list.map(fn(pair) {
-      let #(_project_id, ids) = pair
-      ids
-    })
-    |> list.flatten
-
-  Ok(
-    BuildState(
-      ..state,
-      rule_ids: rule_ids,
-      rule_ids_by_project: rule_ids_by_project,
-    ),
-  )
-}
-
-fn select_seed_template(
-  db: pog.Connection,
-  rule_id: Int,
-  templates: List(Int),
-  index: Int,
-) -> Result(Nil, String) {
-  case list.drop(templates, index) {
-    [template_id, ..] ->
-      seed_db.select_rule_template(db, rule_id, template_id, 1)
-    [] -> Ok(Nil)
-  }
-}
-
-fn seed_review_warning_rules(
-  db: pog.Connection,
-  project_idx: Int,
-  workflow_id: Int,
-  task_type_id: Int,
-) -> Result(List(Int), String) {
-  case project_idx {
-    2 -> {
-      use rule_id <- result.try(seed_db.insert_rule(
-        db,
-        seed_rule_options(
-          workflow_id: workflow_id,
-          name: "Seed warning - template missing",
-          goal: Some("Shows requires-review automation state in stress data"),
-          trigger: automation.TaskCompleted(Some(task_type_id)),
-          active: True,
-          created_at: None,
-        ),
-      ))
-      Ok([rule_id])
-    }
-    _ -> Ok([])
-  }
-}
-
-fn seed_rule_options(
-  workflow_id workflow_id: Int,
-  name name: String,
-  goal goal: Option(String),
-  trigger trigger: automation.AutomationTrigger,
-  active active: Bool,
-  created_at created_at: Option(String),
-) -> seed_db.RuleInsertOptions {
-  let #(resource_type, _task_type_id, card_depth, to_state) =
-    automation.trigger_to_db_values(trigger)
-
-  seed_db.RuleInsertOptions(
-    workflow_id: workflow_id,
-    name: name,
-    goal: goal,
-    resource_type: resource_type,
-    trigger_kind: automation.trigger_kind(trigger),
-    task_type_id: automation.trigger_task_type_id(trigger),
-    card_depth: option_from_positive_int(card_depth),
-    to_state: to_state,
-    active: active,
-    created_at: created_at,
-  )
-}
-
-fn option_from_positive_int(value: Int) -> Option(Int) {
-  case value {
-    n if n > 0 -> Some(n)
-    _ -> None
-  }
 }
 
 fn build_tasks(
@@ -2591,21 +2391,6 @@ fn cards_for_project(
     })
   {
     Ok(#(_pid, cards)) -> cards
-    Error(_) -> []
-  }
-}
-
-fn templates_for_project(
-  template_ids_by_project: List(#(Int, List(Int))),
-  project_id: Int,
-) -> List(Int) {
-  case
-    list.find(template_ids_by_project, fn(pair) {
-      let #(pid, _templates) = pair
-      pid == project_id
-    })
-  {
-    Ok(#(_pid, templates)) -> templates
     Error(_) -> []
   }
 }
