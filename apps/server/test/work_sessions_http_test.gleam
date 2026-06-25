@@ -65,7 +65,7 @@ pub fn start_rejects_unclaimed_task_test() {
   |> expect.is_true
 }
 
-pub fn start_rejects_completed_task_test() {
+pub fn start_rejects_closed_task_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
