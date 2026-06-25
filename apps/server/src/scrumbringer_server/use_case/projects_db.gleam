@@ -21,7 +21,6 @@
 //// - Shares `ProjectRole` with domain types
 
 import domain/project.{type ProjectDepthName, ProjectDepthName}
-import domain/project/project_codec
 import domain/project/settings as project_settings
 import domain/project_role.{type ProjectRole}
 import gleam/dynamic/decode
@@ -107,7 +106,7 @@ fn project_from_fields(
     created_at: created_at,
     my_role: my_role,
     members_count: members_count,
-    card_depth_names: project_codec.default_card_depth_names(),
+    card_depth_names: project_settings.default_card_depth_names(),
     healthy_pool_limit: 20,
   )
 }
@@ -344,7 +343,7 @@ fn list_card_depth_names(
   )
 
   case returned.rows {
-    [] -> Ok(project_codec.default_card_depth_names())
+    [] -> Ok(project_settings.default_card_depth_names())
     rows -> Ok(rows)
   }
 }
@@ -757,7 +756,7 @@ pub type DeleteProjectError {
 /// Updates a project's editable settings.
 ///
 /// Example:
-///   update_project(db, project_id, user_id, "New name", 20, project_codec.default_card_depth_names())
+///   update_project(db, project_id, user_id, "New name", 20, project_settings.default_card_depth_names())
 pub fn update_project(
   db: pog.Connection,
   project_id: Int,

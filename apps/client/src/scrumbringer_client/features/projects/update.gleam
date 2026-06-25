@@ -32,7 +32,6 @@ import scrumbringer_client/api/projects as api_projects
 // Domain types
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
-import domain/project/project_codec
 import domain/project/settings as project_settings
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
@@ -1314,13 +1313,13 @@ fn normalize_depth_names(
   card_depth_names: List(ProjectDepthName),
 ) -> List(ProjectDepthName) {
   case card_depth_names {
-    [] -> project_codec.default_card_depth_names()
+    [] -> project_settings.default_card_depth_names()
     _ -> card_depth_names
   }
 }
 
 fn create_form(name: String) -> admin_projects.ProjectDialogForm {
-  let depth_names = project_codec.default_card_depth_names()
+  let depth_names = project_settings.default_card_depth_names()
   admin_projects.ProjectDialogCreate(
     step: admin_projects.ProjectCreateGeneral,
     name: name,
@@ -1359,7 +1358,7 @@ fn depth_names_for_count(
 
 fn default_depth_name(depth: Int) -> ProjectDepthName {
   case
-    project_codec.default_card_depth_names()
+    project_settings.default_card_depth_names()
     |> list.find(fn(depth_name) {
       let ProjectDepthName(depth: candidate_depth, ..) = depth_name
       candidate_depth == depth

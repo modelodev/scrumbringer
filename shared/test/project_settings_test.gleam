@@ -1,6 +1,18 @@
 import domain/project.{ProjectDepthName}
 import domain/project/settings
 
+pub fn default_card_depth_names_include_three_operational_levels_test() {
+  let assert [first, second, third] = settings.default_card_depth_names()
+
+  let assert 1 = first.depth
+  let assert "Initiatives" = first.plural_name
+  let assert 2 = second.depth
+  let assert "Features" = second.plural_name
+  let assert 3 = third.depth
+  let assert "Task group" = third.singular_name
+  let assert "Task groups" = third.plural_name
+}
+
 pub fn healthy_pool_limit_accepts_positive_values_test() {
   let assert Ok(limit) = settings.healthy_pool_limit_from_int(20)
   let assert 20 = settings.healthy_pool_limit_to_int(limit)

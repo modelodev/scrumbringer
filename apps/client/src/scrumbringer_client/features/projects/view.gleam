@@ -26,7 +26,7 @@ import lustre/element/html.{div, form, input, label, li, p, span, text, ul}
 import lustre/event
 
 import domain/project.{type Project, type ProjectDepthName, ProjectDepthName}
-import domain/project/project_codec
+import domain/project/settings as project_settings
 import domain/project_role
 import domain/remote.{type Remote}
 import scrumbringer_client/api/projects as api_projects
@@ -518,9 +518,9 @@ fn create_project_structure(
       normalize_depth_names(card_depth_names),
     )
     _ -> #(
-      int.to_string(list.length(project_codec.default_card_depth_names())),
+      int.to_string(list.length(project_settings.default_card_depth_names())),
       "20",
-      project_codec.default_card_depth_names(),
+      project_settings.default_card_depth_names(),
     )
   }
 }
@@ -619,9 +619,9 @@ fn edit_project_structure(
       depth_reduction,
     )
     _ -> #(
-      int.to_string(list.length(project_codec.default_card_depth_names())),
+      int.to_string(list.length(project_settings.default_card_depth_names())),
       "20",
-      project_codec.default_card_depth_names(),
+      project_settings.default_card_depth_names(),
       projects_state.NoDepthReduction,
     )
   }
@@ -842,7 +842,7 @@ fn normalize_depth_names(
   depth_names: List(ProjectDepthName),
 ) -> List(ProjectDepthName) {
   case depth_names {
-    [] -> project_codec.default_card_depth_names()
+    [] -> project_settings.default_card_depth_names()
     _ -> depth_names
   }
 }

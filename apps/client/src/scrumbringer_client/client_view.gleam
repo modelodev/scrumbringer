@@ -40,7 +40,7 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
 import domain/project.{type Project, type ProjectDepthName}
-import domain/project/project_codec
+import domain/project/settings as project_settings
 import domain/remote
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
@@ -1490,7 +1490,7 @@ fn project_depth_names(
 }
 
 fn default_depth_names() -> List(scope_view.DepthName) {
-  project_depth_names(project_codec.default_card_depth_names())
+  project_depth_names(project_settings.default_card_depth_names())
 }
 
 fn left_panel_member_route_config(

@@ -242,8 +242,8 @@ else
   failures=1
 fi
 
-if grep -Eq 'ProjectDepthName\(1, "Initiative", "Initiatives"\)' shared/src/domain/project/project_codec.gleam \
-  && grep -Eq 'ProjectDepthName\(2, "Feature", "Features"\)' shared/src/domain/project/project_codec.gleam \
+if grep -Eq 'ProjectDepthName\(1, "Initiative", "Initiatives"\)' shared/src/domain/project/settings.gleam \
+  && grep -Eq 'ProjectDepthName\(2, "Feature", "Features"\)' shared/src/domain/project/settings.gleam \
   && grep -Eq "\(1, 'Initiative', 'Initiatives'\)" apps/server/src/scrumbringer_server/sql/projects_create.sql \
   && grep -Eq "\(2, 'Feature', 'Features'\)" apps/server/src/scrumbringer_server/sql/projects_create.sql \
   && grep -Eq "20260620107000" scripts/ht12-db-schema-check.sh; then

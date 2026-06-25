@@ -6,14 +6,11 @@ import domain/project.{
   type Project, type ProjectDepthName, type ProjectMember, Project,
   ProjectDepthName, ProjectMember,
 }
+import domain/project/settings
 import domain/project_role/project_role_codec
 
 pub fn default_card_depth_names() -> List(ProjectDepthName) {
-  [
-    ProjectDepthName(1, "Initiative", "Initiatives"),
-    ProjectDepthName(2, "Feature", "Features"),
-    ProjectDepthName(3, "Task group", "Task groups"),
-  ]
+  settings.default_card_depth_names()
 }
 
 fn project_depth_name_decoder() -> decode.Decoder(ProjectDepthName) {

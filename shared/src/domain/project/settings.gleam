@@ -19,6 +19,14 @@ pub type CardDepthNamesError {
   BlankCardDepthName(depth: Int)
 }
 
+pub fn default_card_depth_names() -> List(ProjectDepthName) {
+  [
+    ProjectDepthName(1, "Initiative", "Initiatives"),
+    ProjectDepthName(2, "Feature", "Features"),
+    ProjectDepthName(3, "Task group", "Task groups"),
+  ]
+}
+
 pub fn healthy_pool_limit_from_int(
   value: Int,
 ) -> Result(HealthyPoolLimit, HealthyPoolLimitError) {
