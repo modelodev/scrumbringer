@@ -3,7 +3,7 @@ import gleam/option.{type Option}
 
 import domain/remote as rem
 import domain/task as domain_task
-import domain/task_status.{Available}
+import domain/task/state as task_state
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
@@ -56,7 +56,7 @@ pub fn state(config: Config) -> State {
 }
 
 pub fn is_open_pool_task(task: domain_task.Task) -> Bool {
-  domain_task.status(task) == Available
+  task.state == task_state.Available
 }
 
 pub fn matches_visibility(
