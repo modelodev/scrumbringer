@@ -50,7 +50,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
   assert_contains(html, "Blocked by 2 tasks")
   assert_contains(html, "OAuth setup")
   assert_contains(html, "API review")
-  assert_not_contains(html, "Done blocker")
+  assert_not_contains(html, "Closed blocker")
   assert_contains(html, "3 blockers out of view due to filters")
   assert_contains(html, "Recent notes")
   assert_contains(html, "You")
@@ -131,7 +131,7 @@ fn sample_task() {
       ),
       TaskDependency(
         depends_on_task_id: 3,
-        title: "Done blocker",
+        title: "Closed blocker",
         state: task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7),
         claimed_by: None,
       ),

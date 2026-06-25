@@ -153,10 +153,10 @@ pub fn available_tasks_never_includes_claimed_or_closed_test() {
         mode: task_state.Taken,
       ),
     )
-  let done =
+  let closed =
     task(
       2,
-      "Done",
+      "Closed",
       1,
       task_state.Closed(task_state.Done, "2026-01-02T00:00:00Z", 7),
     )
@@ -164,7 +164,7 @@ pub fn available_tasks_never_includes_claimed_or_closed_test() {
   let state =
     available_tasks.state(
       available_tasks.Config(
-        ..config(Loaded([claimed, done])),
+        ..config(Loaded([claimed, closed])),
         visibility: AllOpen,
       ),
     )

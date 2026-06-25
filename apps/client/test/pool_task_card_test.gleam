@@ -32,7 +32,7 @@ pub fn task_card_renders_blocked_canvas_card_test() {
           ),
           TaskDependency(
             depends_on_task_id: 10,
-            title: "Done dependency",
+            title: "Closed dependency",
             state: task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7),
             claimed_by: None,
           ),
@@ -63,7 +63,7 @@ pub fn task_card_renders_blocked_canvas_card_test() {
   assert_contains(html, "aria-disabled=\"true\"")
   assert_not_contains(html, "task-blocked-card")
   assert_not_contains(html, "Task has incomplete dependencies")
-  assert_not_contains(html, "Done dependency")
+  assert_not_contains(html, "Closed dependency")
 }
 
 pub fn task_card_renders_due_today_signal_without_canvas_text_test() {
