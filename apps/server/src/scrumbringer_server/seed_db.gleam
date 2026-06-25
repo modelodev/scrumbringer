@@ -998,8 +998,8 @@ pub fn assign_claimed_pool_tasks_to_parent_card(
   )
 }
 
-/// Assign completed root-pool tasks (card_id is null) to a card.
-pub fn assign_completed_pool_tasks_to_parent_card(
+/// Assign closed root-pool tasks (card_id is null) to a card.
+pub fn assign_closed_pool_tasks_to_parent_card(
   db: pog.Connection,
   project_id: Int,
   card_id: Int,

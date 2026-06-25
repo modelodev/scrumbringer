@@ -211,7 +211,7 @@ fn build_release_project(
     Some(days_ago_timestamp(16)),
     Some(days_ago_timestamp(6)),
   ))
-  use _ <- result.try(seed_db.assign_completed_pool_tasks_to_parent_card(
+  use _ <- result.try(seed_db.assign_closed_pool_tasks_to_parent_card(
     db,
     project_id,
     closed_tasks_id,
