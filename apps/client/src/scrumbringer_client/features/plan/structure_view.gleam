@@ -1,6 +1,6 @@
 //// Plan / Structure explorer.
 
-import domain/card.{type Card, Active, Closed, Draft}
+import domain/card.{type Card}
 import domain/task as domain_task
 import domain/task/state as task_execution_state
 import gleam/dynamic/decode
@@ -26,14 +26,15 @@ import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/features/plan/structure_filters
 import scrumbringer_client/features/plan/structure_move
 import scrumbringer_client/features/plan/structure_policy
+import scrumbringer_client/features/plan/structure_presentation
 import scrumbringer_client/features/plan/structure_rollups
+import scrumbringer_client/features/plan/structure_tree
 import scrumbringer_client/features/plan/tree_table
 import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
-import scrumbringer_client/ui/card_state as card_state_ui
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/tone
@@ -665,7 +666,10 @@ fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
 
 fn view_state_cell(locale: Locale, row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, ..) = row
-  signal_chip.text(card_state_label(locale, card), card_state_tone(card))
+  signal_chip.text(
+    structure_presentation.card_state_label(locale, card),
+    structure_presentation.card_state_tone(card),
+  )
   |> signal_chip.with_class("plan-state-chip")
   |> signal_chip.view
 }
@@ -683,21 +687,10 @@ fn view_task_count_cell(row: types.StructureRow) -> Element(msg) {
 
 fn view_pool_impact_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, rollup:, ..) = row
-  let label = case card.state {
-    Draft ->
-      case rollup.pool_impact {
-        0 -> "0"
-        impact -> "+" <> int.to_string(impact) <> " tareas"
-      }
-    Active -> "ya activo"
-    Closed -> "-"
-  }
-  let tone_value = case card.state {
-    Draft -> tone.Warning
-    Active -> tone.Available
-    Closed -> tone.Neutral
-  }
-  signal_chip.text(label, tone_value)
+  signal_chip.text(
+    structure_presentation.pool_impact_label(card, rollup),
+    structure_presentation.pool_impact_tone(card),
+  )
   |> signal_chip.with_class("plan-pool-chip")
   |> signal_chip.view
 }
@@ -990,7 +983,7 @@ fn view_detail(
         h4([], [text(card.title)]),
         span([], [
           text(
-            card_state_label(config.locale, card)
+            structure_presentation.card_state_label(config.locale, card)
             <> " - "
             <> level_label(config, card),
           ),
@@ -1031,7 +1024,9 @@ fn view_detail_subcards(
           ],
           [text(card.title)],
         ),
-        span([], [text(card_state_label(config.locale, card))]),
+        span([], [
+          text(structure_presentation.card_state_label(config.locale, card)),
+        ]),
       ])
     }),
   )
@@ -1076,7 +1071,10 @@ fn view_detail_rollup(card: Card, rollup: types.CardRollup) -> Element(msg) {
       |> signal_chip.view,
     signal_chip.metric_int("bloqueadas", rollup.blocked_tasks, tone.Blocked)
       |> signal_chip.view,
-    signal_chip.text(pool_impact_label(card, rollup), tone.Warning)
+    signal_chip.text(
+      structure_presentation.pool_impact_label(card, rollup),
+      tone.Warning,
+    )
       |> signal_chip.view,
   ])
 }
@@ -1184,7 +1182,11 @@ fn tree_rows(
   let children =
     scoped_cards
     |> list.filter(fn(child) {
-      nearest_visible_parent_id(child, scoped_cards, config.cards)
+      structure_tree.nearest_visible_parent_id(
+        child,
+        scoped_cards,
+        config.cards,
+      )
       == Some(card.id)
     })
     |> list.sort(fn(a, b) { compare_cards(config, config.cards, a, b) })
@@ -1207,7 +1209,8 @@ fn roots_for_scope(cards: List(Card), config: Config(msg)) -> List(Card) {
     _, _ -> {
       case
         list.filter(cards, fn(card) {
-          nearest_visible_parent_id(card, cards, config.cards) == None
+          structure_tree.nearest_visible_parent_id(card, cards, config.cards)
+          == None
         })
       {
         [] -> card_queries.top_level_cards(cards)
@@ -1215,42 +1218,6 @@ fn roots_for_scope(cards: List(Card), config: Config(msg)) -> List(Card) {
       }
       |> list.sort(fn(a, b) { compare_cards(config, config.cards, a, b) })
     }
-  }
-}
-
-fn nearest_visible_parent_id(
-  card: Card,
-  visible_cards: List(Card),
-  all_cards: List(Card),
-) -> Option(Int) {
-  nearest_visible_parent_id_from(
-    card.parent_card_id,
-    list.map(visible_cards, fn(visible_card) { visible_card.id }),
-    all_cards,
-  )
-}
-
-fn nearest_visible_parent_id_from(
-  parent_id: Option(Int),
-  visible_ids: List(Int),
-  all_cards: List(Card),
-) -> Option(Int) {
-  case parent_id {
-    None -> None
-    Some(id) ->
-      case list.contains(visible_ids, id) {
-        True -> Some(id)
-        False ->
-          case list.find(all_cards, fn(card) { card.id == id }) {
-            Ok(parent) ->
-              nearest_visible_parent_id_from(
-                parent.parent_card_id,
-                visible_ids,
-                all_cards,
-              )
-            Error(_) -> None
-          }
-      }
   }
 }
 
@@ -1500,28 +1467,4 @@ fn level_label(config: Config(msg), card: Card) -> String {
     config.depth_names,
     card_queries.card_depth(card, config.cards),
   )
-}
-
-fn card_state_label(locale: Locale, card: Card) -> String {
-  card_state_ui.label(locale, card.state)
-}
-
-fn card_state_tone(card: Card) -> tone.Tone {
-  case card.state {
-    Draft -> tone.Warning
-    Active -> tone.Available
-    Closed -> tone.Neutral
-  }
-}
-
-fn pool_impact_label(card: Card, rollup: types.CardRollup) -> String {
-  case card.state {
-    Draft ->
-      case rollup.pool_impact {
-        0 -> "0"
-        impact -> "+" <> int.to_string(impact) <> " tareas"
-      }
-    Active -> "ya activo"
-    Closed -> "-"
-  }
 }

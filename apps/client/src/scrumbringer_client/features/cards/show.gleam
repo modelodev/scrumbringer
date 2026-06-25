@@ -43,6 +43,8 @@ import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/scoped_navigation
+import scrumbringer_client/features/cards/show/hierarchy as show_hierarchy
+import scrumbringer_client/features/cards/show/notes as show_notes
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -331,7 +333,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         note_in_flight: False,
         note_content: "",
         note_error: option.None,
-        notes: Loaded(append_note(model.notes, note)),
+        notes: Loaded(show_notes.append(model.notes, note)),
       ),
       effect.none(),
     )
@@ -351,7 +353,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         note_error: option.None,
-        notes: Loaded(remove_note(model.notes, note_id)),
+        notes: Loaded(show_notes.remove(model.notes, note_id)),
       ),
       effect.none(),
     )
@@ -368,7 +370,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         ..model,
         note_pin_in_flight: option.None,
         note_error: option.None,
-        notes: Loaded(replace_note(model.notes, note)),
+        notes: Loaded(show_notes.replace(model.notes, note)),
       ),
       effect.none(),
     )
@@ -508,34 +510,6 @@ fn handle_pin_note(
   }
 }
 
-fn append_note(notes: Remote(List(Note)), note: Note) -> List(Note) {
-  case notes {
-    Loaded(existing) -> list.append(existing, [note])
-    _ -> [note]
-  }
-}
-
-fn remove_note(notes: Remote(List(Note)), note_id: Int) -> List(Note) {
-  case notes {
-    Loaded(existing) ->
-      list.filter(existing, fn(note) { note_ids.to_int(note.id) != note_id })
-    _ -> []
-  }
-}
-
-fn replace_note(notes: Remote(List(Note)), updated_note: Note) -> List(Note) {
-  case notes {
-    Loaded(existing) ->
-      list.map(existing, fn(note) {
-        case note.id == updated_note.id {
-          True -> updated_note
-          False -> note
-        }
-      })
-    _ -> [updated_note]
-  }
-}
-
 // =============================================================================
 // View
 // =============================================================================
@@ -649,7 +623,7 @@ fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
           text(t(
             model.locale,
             i18n_text.HierarchyActivationBody(
-              affected_card_count(card, model.cards),
+              show_hierarchy.affected_card_count(card, model.cards),
               card.task_count,
             ),
           )),
@@ -679,34 +653,6 @@ fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
       ],
     ),
   ])
-}
-
-fn affected_card_count(card: Card, cards: List(Card)) -> Int {
-  1
-  + list.length(
-    list.filter(cards, fn(candidate) {
-      is_descendant_of(candidate, card, cards)
-    }),
-  )
-}
-
-fn is_descendant_of(candidate: Card, ancestor: Card, cards: List(Card)) -> Bool {
-  case candidate.parent_card_id {
-    option.Some(parent_id) if parent_id == ancestor.id -> True
-    option.Some(parent_id) ->
-      case find_card_by_id(cards, parent_id) {
-        option.Some(parent) -> is_descendant_of(parent, ancestor, cards)
-        option.None -> False
-      }
-    option.None -> False
-  }
-}
-
-fn find_card_by_id(cards: List(Card), card_id: Int) -> option.Option(Card) {
-  case list.find(cards, fn(card) { card.id == card_id }) {
-    Ok(card) -> option.Some(card)
-    Error(_) -> option.None
-  }
 }
 
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
@@ -779,7 +725,7 @@ fn view_card_path(model: Model, card: Card) -> Element(Msg) {
       attribute.class("card-header-path"),
       attribute.attribute("data-testid", "card-header-path"),
     ],
-    path_labels(model.cards, card)
+    show_hierarchy.path_labels(model.cards, card)
       |> list.index_map(fn(label, idx) {
         span([attribute.class(path_part_class(idx))], [
           text(path_part_text(label, idx)),
@@ -799,32 +745,6 @@ fn path_part_text(label: String, index: Int) -> String {
   case index {
     0 -> label
     _ -> " > " <> label
-  }
-}
-
-fn path_labels(cards: List(Card), card: Card) -> List(String) {
-  card_path(cards, card)
-  |> list.map(fn(path_card) { path_card.title })
-}
-
-fn card_path(cards: List(Card), card: Card) -> List(Card) {
-  collect_path(cards, card, [])
-}
-
-fn collect_path(
-  cards: List(Card),
-  card: Card,
-  collected: List(Card),
-) -> List(Card) {
-  let next = [card, ..collected]
-
-  case card.parent_card_id {
-    option.Some(parent_id) ->
-      case find_card_by_id(cards, parent_id) {
-        option.Some(parent) -> collect_path(cards, parent, next)
-        option.None -> next
-      }
-    option.None -> next
   }
 }
 
