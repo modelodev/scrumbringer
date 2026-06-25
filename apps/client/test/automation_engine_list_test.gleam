@@ -20,7 +20,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn workflow(id: Int, name: String, active: Bool) -> Workflow {
+fn engine(id: Int, name: String, active: Bool) -> Workflow {
   Workflow(
     id: id,
     org_id: 1,
@@ -52,7 +52,7 @@ fn config() -> engine_list.Config(String) {
     selected_project: opt.Some(selected_project()),
     selected_project_id: opt.Some(7),
     selected_rules_view: opt.None,
-    engines: Loaded([workflow(3, "Release automation", True)]),
+    engines: Loaded([engine(3, "Release automation", True)]),
     selected_engine_id: opt.None,
     selected_rule_id: opt.None,
     search_query: "",
@@ -114,8 +114,8 @@ pub fn automation_engine_list_filters_by_status_test() {
       engine_list.Config(
         ..config(),
         engines: Loaded([
-          workflow(3, "Release automation", True),
-          workflow(4, "Paused intake", False),
+          engine(3, "Release automation", True),
+          engine(4, "Paused intake", False),
         ]),
         status_filter: "paused",
       ),
@@ -184,11 +184,7 @@ pub fn automation_engine_list_localizes_panel_actions_test() {
         ..config(),
         locale: locale.Es,
         dialog_mode: opt.Some(
-          admin_workflows.EngineDialogEdit(workflow(
-            3,
-            "Release automation",
-            True,
-          )),
+          admin_workflows.EngineDialogEdit(engine(3, "Release automation", True)),
         ),
         form_name: "Release automation",
         form_description: "Creates follow-up work",
@@ -212,7 +208,7 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
       engine_list.Config(
         ..config(),
         dialog_mode: opt.Some(
-          admin_workflows.EngineDialogDelete(workflow(
+          admin_workflows.EngineDialogDelete(engine(
             3,
             "Release automation",
             True,

@@ -29,7 +29,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn workflow(id: Int, name: String) -> Workflow {
+fn engine(id: Int, name: String) -> Workflow {
   Workflow(
     id: id,
     org_id: 1,
@@ -170,7 +170,7 @@ fn config() -> rule_list.Config(String) {
     engine_name: "Release automation",
     rules: rules_state(),
     engines_org: NotAsked,
-    engines_project: Loaded([workflow(3, "Release automation")]),
+    engines_project: Loaded([engine(3, "Release automation")]),
     task_types: Loaded([task_type()]),
     task_templates_org: Loaded([]),
     task_templates_project: Loaded([task_template()]),

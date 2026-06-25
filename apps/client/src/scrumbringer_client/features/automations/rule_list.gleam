@@ -162,10 +162,10 @@ fn view_rules_heading(config: Config(msg)) -> Element(msg) {
 }
 
 fn find_engine_name(
-  workflows: Remote(List(Workflow)),
+  engines: Remote(List(Workflow)),
   workflow_id: Int,
 ) -> opt.Option(String) {
-  case workflows {
+  case engines {
     Loaded(list) ->
       list
       |> list.find(fn(w) { w.id == workflow_id })
