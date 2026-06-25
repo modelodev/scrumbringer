@@ -104,27 +104,6 @@ pub fn require_read_history(
   require_member_privilege(actor, project_id)
 }
 
-pub fn authorize_manage_flow_unchecked(
-  user_id: user_id.UserId,
-  project_id: project_id.ProjectId,
-) -> Authorized(ManageFlow) {
-  Authorized(user_id: user_id, project_id: project_id)
-}
-
-pub fn authorize_manage_structure_unchecked(
-  user_id: user_id.UserId,
-  project_id: project_id.ProjectId,
-) -> Authorized(ManageStructure) {
-  Authorized(user_id: user_id, project_id: project_id)
-}
-
-pub fn authorize_execute_work_unchecked(
-  user_id: user_id.UserId,
-  project_id: project_id.ProjectId,
-) -> Authorized(ExecuteWork) {
-  Authorized(user_id: user_id, project_id: project_id)
-}
-
 pub fn user_id(auth: Authorized(privilege)) -> user_id.UserId {
   let Authorized(user_id: user_id, ..) = auth
   user_id

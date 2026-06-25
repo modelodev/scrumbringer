@@ -6,9 +6,11 @@ import domain/card/entity as card_entity
 import domain/card/id as card_id
 import domain/card/state as card_state
 import domain/card/structure as card_structure
+import domain/org_role
 import domain/project/id as project_id
 import domain/project/permissions
 import domain/project/settings
+import domain/project_role
 import domain/task/claimability
 import domain/task/entity as task_entity
 import domain/task/id as task_id
@@ -276,7 +278,16 @@ fn healthy_pool_limit(value: Int) -> settings.HealthyPoolLimit {
 }
 
 fn manage_flow_actor() -> permissions.Authorized(permissions.ManageFlow) {
-  permissions.authorize_manage_flow_unchecked(user_id.new(7), project_id.new(1))
+  let actor =
+    permissions.project_actor(
+      user_id.new(7),
+      project_id.new(1),
+      org_role.Member,
+      option.Some(project_role.Manager),
+    )
+  let assert Ok(auth) =
+    permissions.require_manage_flow(actor, project_id.new(1))
+  auth
 }
 
 fn card_state_for(

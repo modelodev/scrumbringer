@@ -4,8 +4,10 @@ import domain/card/entity as card_entity
 import domain/card/id as card_id
 import domain/card/state as card_state
 import domain/card/structure as card_structure
+import domain/org_role
 import domain/project/id as project_id
 import domain/project/permissions
+import domain/project_role
 import domain/task/id as task_id
 import domain/user/id as user_id
 
@@ -95,11 +97,7 @@ pub fn moving_card_under_descendant_is_rejected_test() {
 
   let hierarchy = card_entity.CardHierarchy([root, child])
 
-  let auth =
-    permissions.authorize_manage_structure_unchecked(
-      user_id.new(7),
-      project_id.new(1),
-    )
+  let auth = manage_structure_actor()
   let assert Error(card_entity.MoveWouldCreateCycle) =
     card_entity.move_card_to_parent(
       root,
@@ -115,11 +113,7 @@ pub fn moving_root_card_under_valid_card_is_allowed_test() {
   let root = draft_card(root_id, project_id.new(1), option.None)
   let destination = draft_card(destination_id, project_id.new(1), option.None)
   let hierarchy = card_entity.CardHierarchy([root, destination])
-  let auth =
-    permissions.authorize_manage_structure_unchecked(
-      user_id.new(7),
-      project_id.new(1),
-    )
+  let auth = manage_structure_actor()
 
   let assert Ok(updated) =
     card_entity.move_card_to_parent(
@@ -138,11 +132,7 @@ pub fn moving_child_card_to_project_root_is_allowed_test() {
   let root = draft_card(root_id, project_id.new(1), option.None)
   let child = draft_card(child_id, project_id.new(1), option.Some(root_id))
   let hierarchy = card_entity.CardHierarchy([root, child])
-  let auth =
-    permissions.authorize_manage_structure_unchecked(
-      user_id.new(7),
-      project_id.new(1),
-    )
+  let auth = manage_structure_actor()
 
   let assert Ok(updated) =
     card_entity.move_card_to_parent(child, auth, option.None, hierarchy)
@@ -179,4 +169,19 @@ fn closed_card(
       closed_by: card_state.ClosedByUser(user_id.new(7)),
     ),
   )
+}
+
+fn manage_structure_actor() -> permissions.Authorized(
+  permissions.ManageStructure,
+) {
+  let actor =
+    permissions.project_actor(
+      user_id.new(7),
+      project_id.new(1),
+      org_role.Member,
+      option.Some(project_role.Manager),
+    )
+  let assert Ok(auth) =
+    permissions.require_manage_structure(actor, project_id.new(1))
+  auth
 }
