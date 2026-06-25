@@ -6,6 +6,8 @@ import scrumbringer_server/seed_builder
 import support/assertions as expect
 
 pub fn realistic_seed_marks_healthy_and_stress_pool_projects_test() {
+  // Covers the seed_workspace_scenarios module for project settings and
+  // healthy/stress pool limits.
   let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(healthy_project_id) =
@@ -209,8 +211,8 @@ pub fn realistic_seed_covers_cards_tasks_and_due_dates_test() {
 }
 
 pub fn realistic_seed_covers_people_capabilities_notes_and_activity_test() {
-  // Covers seed_capability_scenarios, seed_activity_scenarios, and
-  // seed_audit_events support modules.
+  // Covers seed_workspace_scenarios, seed_capability_scenarios,
+  // seed_activity_scenarios, and seed_audit_events support modules.
   let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(active_user_count) =

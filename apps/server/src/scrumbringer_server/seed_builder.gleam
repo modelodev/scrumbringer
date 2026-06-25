@@ -22,8 +22,6 @@
 //// - CLI or output (see seed.gleam)
 
 import domain/card
-import domain/org_role
-import domain/project_role
 import domain/task/state as task_state
 import gleam/int
 import gleam/list
@@ -38,6 +36,7 @@ import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
+import scrumbringer_server/seed_workspace_scenarios
 import scrumbringer_server/use_case/rules_engine
 
 // =============================================================================
@@ -196,8 +195,7 @@ pub fn build_seed(
 
   // Build in dependency order: core records, automation definitions, tasks, QA
   // scenarios, then derived activity and diagnostics.
-  use state <- result.try(build_users(db, state, config))
-  use state <- result.try(build_projects(db, state, config))
+  use state <- result.try(build_workspace_scenarios(db, state, config))
   use state <- result.try(build_capability_scenarios(db, state, config))
   use state <- result.try(build_cards(db, state, config))
   use state <- result.try(build_automation_definitions(db, state, config))
@@ -227,162 +225,33 @@ pub fn build_seed(
 // Builder Steps
 // =============================================================================
 
-fn build_users(
+fn build_workspace_scenarios(
   db: pog.Connection,
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let emails = list.take(seed_pools.user_emails(), config.user_count - 1)
-  let active_count = config.user_count - 1 - config.inactive_user_count
-
-  use user_ids <- result.try(
-    list.index_map(emails, fn(email, idx) {
-      let first_login = case idx < active_count {
-        True -> Some(days_ago_timestamp(config.date_range_days / 2))
-        False -> None
-      }
-      seed_db.insert_user(
-        db,
-        seed_db.UserInsertOptions(
-          org_id: state.org_id,
-          email: email,
-          org_role: org_role.Member,
-          first_login_at: first_login,
-          created_at: Some(days_ago_timestamp(config.date_range_days)),
-        ),
-      )
-    })
-    |> result.all,
-  )
-
-  Ok(BuildState(..state, user_ids: list.append(state.user_ids, user_ids)))
-}
-
-fn build_projects(
-  db: pog.Connection,
-  state: BuildState,
-  config: SeedConfig,
-) -> Result(BuildState, String) {
-  let default_project_id = 1
-  let project_names = [
-    "Healthy Validation Project",
-    "Stress Validation Project",
-    "Project Gamma",
-  ]
-  let names = list.take(project_names, config.project_count)
-  let empty_start = int.max(0, list.length(names) - config.empty_project_count)
-  let other_users = list.drop(state.user_ids, 1)
-  let assignable_users = other_users
-  let default_project_members = [state.admin_id, ..assignable_users]
-
-  use _ <- result.try(
-    list.try_map(default_project_members, fn(user_id) {
-      let role = case user_id == state.admin_id {
-        True -> project_role.Manager
-        False -> project_role.Member
-      }
-      seed_db.insert_member(db, default_project_id, user_id, role)
-    }),
-  )
-
-  use project_results <- result.try(
-    list.index_map(names, fn(name, idx) {
-      let is_empty = idx >= empty_start
-      let days_ago = config.date_range_days - { idx * 5 }
-      use project_id <- result.try(seed_db.insert_project(
-        db,
-        state.org_id,
-        name,
-        Some(days_ago_timestamp(days_ago)),
-      ))
-
-      case is_empty {
-        True -> Ok(#(project_id, True))
-        False -> {
-          // Add admin as manager for visibility in admin views
-          use _ <- result.try(seed_db.insert_member(
-            db,
-            project_id,
-            state.admin_id,
-            project_role.Manager,
-          ))
-
-          use _ <- result.try(
-            list.try_map(assignable_users, fn(user_id) {
-              seed_db.insert_member(
-                db,
-                project_id,
-                user_id,
-                project_role.Member,
-              )
-            }),
-          )
-
-          Ok(#(project_id, False))
-        }
-      }
-    })
-    |> result.all,
-  )
-
-  let project_ids = [
-    default_project_id,
-    ..list.map(project_results, fn(pair) {
-      let #(id, _) = pair
-      id
-    })
-  ]
-
-  use _ <- result.try(
-    list.index_map(project_ids, fn(project_id, idx) {
-      seed_db.upsert_project_settings(
-        db,
-        project_id,
-        seeded_healthy_pool_limit(idx),
-      )
-    })
-    |> result.all,
-  )
-
-  let empty_project_ids =
-    project_results
-    |> list.fold([], fn(acc, pair) {
-      let #(id, is_empty) = pair
-      case is_empty {
-        True -> [id, ..acc]
-        False -> acc
-      }
-    })
-    |> list.reverse
-
-  let project_members =
-    list.map(project_ids, fn(project_id) {
-      case project_id == default_project_id {
-        True -> #(project_id, default_project_members)
-        False ->
-          case list.contains(empty_project_ids, project_id) {
-            True -> #(project_id, [])
-            False -> #(project_id, [state.admin_id, ..assignable_users])
-          }
-      }
-    })
+  use workspace <- result.try(seed_workspace_scenarios.build(
+    db,
+    seed_workspace_scenarios.Context(
+      org_id: state.org_id,
+      admin_id: state.admin_id,
+      user_count: config.user_count,
+      inactive_user_count: config.inactive_user_count,
+      project_count: config.project_count,
+      empty_project_count: config.empty_project_count,
+      date_range_days: config.date_range_days,
+    ),
+  ))
 
   Ok(
     BuildState(
       ..state,
-      project_ids: project_ids,
-      empty_project_ids: empty_project_ids,
-      project_member_ids: project_members,
+      user_ids: workspace.user_ids,
+      project_ids: workspace.project_ids,
+      empty_project_ids: workspace.empty_project_ids,
+      project_member_ids: workspace.project_member_ids,
     ),
   )
-}
-
-fn seeded_healthy_pool_limit(project_index: Int) -> Int {
-  case project_index {
-    1 -> 40
-    2 -> 6
-    _ -> 20
-  }
 }
 
 fn build_capability_scenarios(
