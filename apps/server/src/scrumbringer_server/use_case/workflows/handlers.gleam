@@ -1022,11 +1022,11 @@ fn close_task_success(
       org_id,
       user_id,
     )
-  let _ = maybe_rollup_card_after_complete(db, current.card_id, user_id)
+  let _ = maybe_rollup_card_after_close(db, current.card_id, user_id)
   Ok(TaskResult(task))
 }
 
-fn maybe_rollup_card_after_complete(
+fn maybe_rollup_card_after_close(
   db: pog.Connection,
   card_id: Option(Int),
   user_id: Int,

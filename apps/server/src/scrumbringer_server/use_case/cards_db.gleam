@@ -678,7 +678,7 @@ fn rollup_closed_cards_loop(
   case depth > 64 {
     True -> Ok(closed_count)
     False ->
-      case rollup_card_if_complete(db, card_id, user_id) {
+      case rollup_card_if_closable(db, card_id, user_id) {
         Error(e) -> Error(e)
         Ok(None) -> Ok(closed_count)
         Ok(Some(parent_card_id)) ->
@@ -693,7 +693,7 @@ fn rollup_closed_cards_loop(
   }
 }
 
-fn rollup_card_if_complete(
+fn rollup_card_if_closable(
   db: pog.Connection,
   card_id: Int,
   user_id: Int,
