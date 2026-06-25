@@ -667,10 +667,15 @@ fn view_task_secondary(
         attribute.class("task-status-muted"),
         attribute.attribute(
           "title",
-          task_state_ui.hint(config.locale, domain_task.status(task)),
+          task_state_ui.hint(config.locale, task_state.to_status(task.state)),
         ),
       ],
-      [text(task_state_ui.label(config.locale, domain_task.status(task)))],
+      [
+        text(task_state_ui.label(
+          config.locale,
+          task_state.to_status(task.state),
+        )),
+      ],
     ),
   ])
 }

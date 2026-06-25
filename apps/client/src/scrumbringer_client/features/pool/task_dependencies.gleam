@@ -272,7 +272,8 @@ fn dependency_candidate_item(
   task: domain_task.Task,
 ) -> Element(msg) {
   let is_selected = config.selected_task_id == opt.Some(task.id)
-  let status = task_state.label(config.locale, domain_task.status(task))
+  let status =
+    task_state.label(config.locale, task_execution_state.to_status(task.state))
 
   button(
     [
