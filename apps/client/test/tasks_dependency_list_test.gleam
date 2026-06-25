@@ -21,28 +21,27 @@ pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
     == #(Loaded([second]), 1)
 }
 
-pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
-  let completed = sample_dependency(10, closed_done_state())
+pub fn remove_from_remote_reports_zero_delta_for_closed_or_missing_test() {
+  let closed = sample_dependency(10, closed_done_state())
 
   let assert True =
-    dependency_list.remove_from_remote(Loaded([completed]), 10)
-    == #(Loaded([]), 0)
+    dependency_list.remove_from_remote(Loaded([closed]), 10) == #(Loaded([]), 0)
   let assert True =
-    dependency_list.remove_from_remote(Loaded([completed]), 99)
-    == #(Loaded([completed]), 0)
+    dependency_list.remove_from_remote(Loaded([closed]), 99)
+    == #(Loaded([closed]), 0)
 }
 
 pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test() {
   let task = sample_task()
   let blocker = sample_dependency(10, task_state.Available)
-  let completed = sample_dependency(11, closed_done_state())
+  let closed = sample_dependency(11, closed_done_state())
 
   let assert True =
     dependency_list.add_to_task(task, blocker)
     == Task(..task, blocked_count: 1, dependencies: [blocker])
   let assert True =
-    dependency_list.add_to_task(task, completed)
-    == Task(..task, blocked_count: 0, dependencies: [completed])
+    dependency_list.add_to_task(task, closed)
+    == Task(..task, blocked_count: 0, dependencies: [closed])
 }
 
 pub fn remove_from_task_clamps_blocked_count_test() {

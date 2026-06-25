@@ -83,7 +83,7 @@ pub fn mutation_state_start_release_sets_available_state_test() {
   let assert True = next.member_tasks_snapshot == Some([task])
 }
 
-pub fn mutation_state_start_complete_sets_completed_state_test() {
+pub fn mutation_state_start_complete_sets_closed_state_test() {
   let task =
     sample_task(
       42,

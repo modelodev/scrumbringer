@@ -22,7 +22,7 @@ pub fn other_user_cannot_edit_claimed_task_test() {
   let assert False = show_permissions.can_edit(Some(8), task(claimed_by(7)))
 }
 
-pub fn completed_task_is_read_only_for_claimant_test() {
+pub fn closed_task_is_read_only_for_claimant_test() {
   let assert False =
     show_permissions.can_edit(
       Some(7),

@@ -6,7 +6,7 @@ import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/blocking
 
-pub fn incomplete_dependencies_excludes_completed_dependencies_test() {
+pub fn incomplete_dependencies_excludes_closed_dependencies_test() {
   let task =
     sample_task(1, [
       dependency(2, task_state.Available),
