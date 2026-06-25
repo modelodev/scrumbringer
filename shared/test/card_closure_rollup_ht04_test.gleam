@@ -148,13 +148,13 @@ pub fn closed_card_cannot_be_reopened_test() {
     )
 }
 
-pub fn closed_task_cannot_be_claimed_or_completed_again_test() {
+pub fn closed_task_cannot_be_claimed_or_closed_again_test() {
   let task = root_task(task_state.Closed(task_state.Done, now, 7))
 
   let assert Error(transitions.TaskAlreadyClosed) =
     transitions.claim_task(task, user_id.new(9), now, task_state.Taken)
   let assert Error(transitions.TaskAlreadyClosed) =
-    transitions.complete_task(task, user_id.new(7), now)
+    transitions.close_task(task, user_id.new(7), now)
 }
 
 fn draft_card(

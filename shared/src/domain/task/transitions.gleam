@@ -32,7 +32,7 @@ pub fn claim_task(
   }
 }
 
-pub fn complete_task(
+pub fn close_task(
   task: task_entity.Task,
   actor_id: user_id.UserId,
   now: String,
