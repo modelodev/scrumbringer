@@ -63,19 +63,19 @@ pub fn rollup_closes_parent_when_all_direct_children_closed_test() {
   let assert True = actual_card_state == expected_card_state
 }
 
-pub fn closed_done_counts_as_completed_test() {
+pub fn closed_done_counts_as_done_close_test() {
   let task = root_task(task_state.Closed(task_state.Done, now, 7))
 
-  let assert True = closure.task_counts_as_completed(task)
+  let assert True = closure.task_closed_with_done_reason(task)
 }
 
-pub fn closed_manually_does_not_count_as_completed_test() {
+pub fn closed_manually_does_not_count_as_done_close_test() {
   let task = root_task(task_state.Closed(task_state.ManuallyClosed, now, 7))
 
-  let assert False = closure.task_counts_as_completed(task)
+  let assert False = closure.task_closed_with_done_reason(task)
 }
 
-pub fn closed_card_outcome_completed_when_all_leaves_done_test() {
+pub fn closed_card_outcome_all_tasks_done_when_all_leaves_done_test() {
   let card =
     closed_card_with_structure(
       1,
@@ -91,10 +91,11 @@ pub fn closed_card_outcome_completed_when_all_leaves_done_test() {
     card_task(2, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
   let tree = activation.WorkTree(cards: [card], tasks: [task_a, task_b])
 
-  let assert option.Some(closure.Done) = closure.closed_card_outcome(card, tree)
+  let assert option.Some(closure.AllTasksDone) =
+    closure.closed_card_outcome(card, tree)
 }
 
-pub fn closed_card_outcome_not_completed_when_any_leaf_closed_without_done_test() {
+pub fn closed_card_outcome_without_all_tasks_done_when_any_leaf_uses_other_reason_test() {
   let card =
     closed_card_with_structure(
       1,
@@ -114,7 +115,7 @@ pub fn closed_card_outcome_not_completed_when_any_leaf_closed_without_done_test(
     )
   let tree = activation.WorkTree(cards: [card], tasks: [done, manual])
 
-  let assert option.Some(closure.ClosedWithoutCompletion) =
+  let assert option.Some(closure.ClosedWithoutAllTasksDone) =
     closure.closed_card_outcome(card, tree)
 }
 

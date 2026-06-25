@@ -1,4 +1,4 @@
-//// Card closure, rollup, and completion outcome rules.
+//// Card closure, rollup, and closed-task outcome rules.
 
 import domain/card/activation.{type WorkTree}
 import domain/card/entity as card_entity
@@ -33,8 +33,8 @@ pub type RollupError {
 }
 
 pub type ClosedCardOutcome {
-  Done
-  ClosedWithoutCompletion
+  AllTasksDone
+  ClosedWithoutAllTasksDone
 }
 
 pub fn close_card_manually(
@@ -84,7 +84,7 @@ pub fn rollup_closed_card(
   }
 }
 
-pub fn task_counts_as_completed(task: task_entity.Task) -> Bool {
+pub fn task_closed_with_done_reason(task: task_entity.Task) -> Bool {
   case task.execution_state {
     task_state.Closed(task_state.Done, _, _) -> True
     _ -> False
@@ -99,11 +99,11 @@ pub fn closed_card_outcome(
     card_state.Closed(..) -> {
       let leaves = descendant_tasks(card.id, tree)
       case leaves {
-        [] -> Some(ClosedWithoutCompletion)
+        [] -> Some(ClosedWithoutAllTasksDone)
         _ ->
-          case list.all(leaves, task_counts_as_completed) {
-            True -> Some(Done)
-            False -> Some(ClosedWithoutCompletion)
+          case list.all(leaves, task_closed_with_done_reason) {
+            True -> Some(AllTasksDone)
+            False -> Some(ClosedWithoutAllTasksDone)
           }
       }
     }
