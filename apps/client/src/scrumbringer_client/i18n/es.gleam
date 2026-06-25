@@ -71,7 +71,7 @@ pub fn translate(text: Text) -> String {
     // Task mutation errors
     text.TaskClaimFailed -> "No se pudo reclamar la tarea"
     text.TaskReleaseFailed -> "No se pudo liberar la tarea"
-    text.TaskCompleteFailed -> "No se pudo cerrar la tarea"
+    text.TaskCloseFailed -> "No se pudo cerrar la tarea"
     text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
     text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
     text.TaskBlockedByDependencies -> "La tarea tiene dependencias abiertas"
@@ -1084,7 +1084,7 @@ pub fn translate(text: Text) -> String {
     text.TaskNextActionClaim -> "Reclamar a Mis tareas"
     text.TaskNextActionStart -> "Empezar a trabajar"
     text.TaskNextActionPause -> "Pausar trabajo"
-    text.TaskNextActionComplete -> "Cerrar tarea"
+    text.TaskNextActionClose -> "Cerrar tarea"
     text.TaskNextActionRelease -> "Devolver al Pool"
     text.TaskNextActionOpen -> "Abrir tarea"
 

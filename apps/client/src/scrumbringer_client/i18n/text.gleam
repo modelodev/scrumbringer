@@ -60,7 +60,7 @@ pub type Text {
   // Task mutation errors
   TaskClaimFailed
   TaskReleaseFailed
-  TaskCompleteFailed
+  TaskCloseFailed
   TaskVersionConflict
   TaskAlreadyClaimed
   TaskBlockedByDependencies
@@ -869,7 +869,7 @@ pub type Text {
   TaskNextActionClaim
   TaskNextActionStart
   TaskNextActionPause
-  TaskNextActionComplete
+  TaskNextActionClose
   TaskNextActionRelease
   TaskNextActionOpen
 

@@ -54,7 +54,7 @@ pub fn ongoing_hint(locale: Locale) -> String {
 }
 
 pub fn complete_action(locale: Locale) -> String {
-  i18n.t(locale, i18n_text.TaskNextActionComplete)
+  i18n.t(locale, i18n_text.TaskNextActionClose)
 }
 
 pub fn release_action(locale: Locale) -> String {

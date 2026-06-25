@@ -22,7 +22,7 @@ pub fn i18n_smoke_selected_texts_en_test() {
   assert_non_empty(i18n.t(locale.En, text.CreatedAgoDays(1)))
   let assert "Capabilities saved" = i18n.t(locale.En, text.SkillsSaved)
   let assert "My capabilities" = i18n.t(locale.En, text.MySkills)
-  let assert "Could not close task" = i18n.t(locale.En, text.TaskCompleteFailed)
+  let assert "Could not close task" = i18n.t(locale.En, text.TaskCloseFailed)
 }
 
 pub fn i18n_smoke_selected_texts_es_test() {
@@ -38,5 +38,5 @@ pub fn i18n_smoke_selected_texts_es_test() {
   let assert "Tarea cerrada" = i18n.t(locale.Es, text.TaskDone)
   let assert "en curso" = i18n.t(locale.Es, text.InProgress)
   let assert "No se pudo cerrar la tarea" =
-    i18n.t(locale.Es, text.TaskCompleteFailed)
+    i18n.t(locale.Es, text.TaskCloseFailed)
 }

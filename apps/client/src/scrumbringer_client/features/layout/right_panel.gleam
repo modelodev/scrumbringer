@@ -208,7 +208,7 @@ fn view_active_task_card(
             )
         },
         task_actions.complete_icon(
-          i18n.t(config.locale, i18n_text.TaskNextActionComplete),
+          i18n.t(config.locale, i18n_text.TaskNextActionClose),
           config.on_task_complete(active.task_id),
           action_buttons.SizeXs,
           config.disable_actions,

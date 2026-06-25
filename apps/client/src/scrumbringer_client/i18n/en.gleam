@@ -70,7 +70,7 @@ pub fn translate(text: Text) -> String {
     // Task mutation errors
     text.TaskClaimFailed -> "Could not claim task"
     text.TaskReleaseFailed -> "Could not release task"
-    text.TaskCompleteFailed -> "Could not close task"
+    text.TaskCloseFailed -> "Could not close task"
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
     text.TaskBlockedByDependencies -> "Task has open dependencies"
@@ -1058,7 +1058,7 @@ pub fn translate(text: Text) -> String {
     text.TaskNextActionClaim -> "Claim to My Tasks"
     text.TaskNextActionStart -> "Start working"
     text.TaskNextActionPause -> "Pause work"
-    text.TaskNextActionComplete -> "Close task"
+    text.TaskNextActionClose -> "Close task"
     text.TaskNextActionRelease -> "Release back to Pool"
     text.TaskNextActionOpen -> "Open task"
 

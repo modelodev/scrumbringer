@@ -106,7 +106,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
       case is_mine {
         True -> [
           text_button(
-            t(config, i18n_text.TaskNextActionComplete),
+            t(config, i18n_text.TaskNextActionClose),
             config.on_complete(task.id, task.version),
             button.Primary,
             config.disable_actions,
