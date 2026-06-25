@@ -65,7 +65,7 @@ pub type Task {
     card_color: Option(card.CardColor),
     /// Story 5.4 AC4: True if task has notes newer than user's last view.
     has_new_notes: Bool,
-    /// Story 5.6: Number of incomplete dependencies blocking this task.
+    /// Story 5.6: Number of open dependencies blocking this task.
     blocked_count: Int,
     /// Story 5.6: Dependencies blocking this task.
     dependencies: List(TaskDependency),

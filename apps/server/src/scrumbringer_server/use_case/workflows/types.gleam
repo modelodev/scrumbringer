@@ -171,7 +171,7 @@ pub type Error {
   /// Task is already claimed by someone else.
   AlreadyClaimed
 
-  /// Task cannot be claimed while dependencies are incomplete.
+  /// Task cannot be claimed while dependencies are open.
   TaskBlockedByDependencies(blocked_count: Int)
 
   /// Task is not currently released to the Pool.

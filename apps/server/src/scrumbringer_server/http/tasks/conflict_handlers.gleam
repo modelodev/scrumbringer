@@ -51,7 +51,7 @@ pub fn handle_claim_conflict(
         task_state.Closed(..), _ ->
           api.error(422, "VALIDATION_ERROR", "Invalid transition")
         task_state.Available, count if count > 0 ->
-          api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
+          api.error(409, "CONFLICT_BLOCKED", "Task has open dependencies")
         task_state.Available, _ ->
           api.error(409, "CONFLICT_VERSION", "Version conflict")
       }

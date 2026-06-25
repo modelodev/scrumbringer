@@ -249,7 +249,7 @@ fn claimed_conflict_response() -> wisp.Response {
 }
 
 fn blocked_conflict_response() -> wisp.Response {
-  api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
+  api.error(409, "CONFLICT_BLOCKED", "Task has open dependencies")
 }
 
 fn not_claimable_response() -> wisp.Response {
