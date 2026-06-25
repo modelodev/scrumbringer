@@ -4,7 +4,6 @@ import gleam/option as opt
 
 import lustre/effect
 
-import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
@@ -41,7 +40,7 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let projects_update.Update(projects, fx, auth_policy, core_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
+  route_support.apply_auth_check(model, auth_check(auth_policy), fn() {
     let model = apply_core_policy(model, core_policy)
     #(
       client_state.update_admin(model, fn(admin) {
@@ -52,10 +51,10 @@ fn apply_update(
   })
 }
 
-fn auth_error(policy: projects_update.AuthPolicy) -> opt.Option(ApiError) {
+fn auth_check(policy: projects_update.AuthPolicy) -> route_support.AuthCheck {
   case policy {
-    projects_update.NoAuthCheck -> opt.None
-    projects_update.CheckAuth(err) -> opt.Some(err)
+    projects_update.NoAuthCheck -> route_support.NoAuthCheck
+    projects_update.CheckAuth(err) -> route_support.CheckAuthBefore(err)
   }
 }
 
