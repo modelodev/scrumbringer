@@ -141,7 +141,7 @@ fn build_rules(
           seed_rule_options(
             workflow_id: active_workflow,
             name: "On Task Closed (Active)",
-            goal: Some("Auto action on completion"),
+            goal: Some("Auto action on task close"),
             trigger: automation.TaskCompleted(Some(bug_id)),
             active: True,
             created_at: None,
@@ -182,7 +182,7 @@ fn build_rules(
           seed_rule_options(
             workflow_id: single_workflow,
             name: "On Task Closed",
-            goal: Some("Auto action on completion"),
+            goal: Some("Auto action on task close"),
             trigger: automation.TaskCompleted(Some(bug_id)),
             active: True,
             created_at: None,

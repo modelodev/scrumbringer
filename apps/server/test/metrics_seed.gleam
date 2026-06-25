@@ -220,11 +220,11 @@ pub fn seed() -> Result(SeedResult, String) {
     session,
     wf_feature_id,
     Some(alpha_feature_type),
-    "On Feature Done",
+    "On Feature Closed",
     fixtures.task_closed_done(),
     alpha_review_tmpl,
   ))
-  io.println("  [+] Rule: On Feature Done -> Review template")
+  io.println("  [+] Rule: On Feature Closed -> Review template")
 
   use wf_card_id <- result.try(fixtures.create_workflow(
     handler,
@@ -417,7 +417,7 @@ pub fn seed() -> Result(SeedResult, String) {
     }),
   )
   io.println(
-    "[OK] Triggered 'On Feature Done' for "
+    "[OK] Triggered 'On Feature Closed' for "
     <> int.to_string(list.length(done_features))
     <> " features",
   )
