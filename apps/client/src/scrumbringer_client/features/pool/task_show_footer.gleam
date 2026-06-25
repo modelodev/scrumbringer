@@ -10,7 +10,6 @@ import lustre/element/html.{div}
 
 import domain/task.{type Task, claimed_by}
 import domain/task/state as task_state
-import domain/task_status
 
 import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/i18n/i18n
@@ -88,13 +87,13 @@ fn edit_actions(config: Config(msg)) -> List(Element(msg)) {
 fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
   let is_mine = claimed_by(task) == config.current_user_id
 
-  case task_state.to_work_state(task.state) {
-    task_status.WorkAvailable -> [
+  case task.state {
+    task_state.Available -> [
       claim_button(config, task),
       secondary_actions_menu(config, task, allow_release: False),
     ]
 
-    task_status.WorkClaimed ->
+    task_state.Claimed(mode: task_state.Taken, ..) ->
       case is_mine {
         True -> [
           start_work_button(config, task),
@@ -103,7 +102,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         False -> [secondary_actions_menu(config, task, allow_release: False)]
       }
 
-    task_status.WorkOngoing ->
+    task_state.Claimed(mode: task_state.Ongoing, ..) ->
       case is_mine {
         True -> [
           text_button(
@@ -119,7 +118,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         False -> [secondary_actions_menu(config, task, allow_release: False)]
       }
 
-    task_status.WorkDone -> [
+    task_state.Closed(..) -> [
       secondary_actions_menu(config, task, allow_release: False),
     ]
   }
