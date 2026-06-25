@@ -14,7 +14,7 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
-import scrumbringer_client/features/admin/workflows as workflows_workflow
+import scrumbringer_client/features/admin/workflows as automations_update
 import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
@@ -29,15 +29,15 @@ pub fn try_update(
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case try_cards_update(model, inner, close_focus_target) {
     opt.Some(result) -> opt.Some(result)
-    opt.None -> try_workflows_update(model, inner)
+    opt.None -> try_automation_admin_update(model, inner)
   }
 }
 
-fn try_workflows_update(
+fn try_automation_admin_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
-  case try_workflow_crud_update(model, inner) {
+  case try_engine_crud_update(model, inner) {
     opt.Some(result) -> opt.Some(result)
     opt.None -> try_rules_update(model, inner)
   }
@@ -110,32 +110,32 @@ fn apply_cards_focus_policy(
   }
 }
 
-fn try_workflow_crud_update(
+fn try_engine_crud_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    workflows_workflow.try_workflows_update(
+    automations_update.try_workflows_update(
       model.admin.workflows,
       inner,
       engine_crud_feedback_context(model),
     )
   {
-    opt.Some(update) -> opt.Some(apply_workflows_update(model, inner, update))
+    opt.Some(update) -> opt.Some(apply_engine_update(model, inner, update))
     opt.None -> opt.None
   }
 }
 
-fn apply_workflows_update(
+fn apply_engine_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
-  update: workflows_workflow.WorkflowUpdate(client_state.Msg),
+  update: automations_update.WorkflowUpdate(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let workflows_workflow.WorkflowUpdate(workflows, fx, auth_policy) = update
+  let automations_update.WorkflowUpdate(workflows, fx, auth_policy) = update
 
   route_support.apply_auth_check_before(
     model,
-    workflow_auth_error(auth_policy),
+    engine_auth_error(auth_policy),
     fn() {
       #(
         root.set_admin_workflows(model, workflows),
@@ -150,7 +150,7 @@ fn try_rule_update(
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    workflows_workflow.try_rules_update(
+    automations_update.try_rules_update(
       model.admin.rules,
       inner,
       rules_context(model),
@@ -165,9 +165,9 @@ fn try_rule_update(
 fn apply_rules_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
-  update: workflows_workflow.RulesUpdate(client_state.Msg),
+  update: automations_update.RulesUpdate(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let workflows_workflow.RulesUpdate(rules, fx, auth_policy) = update
+  let automations_update.RulesUpdate(rules, fx, auth_policy) = update
 
   route_support.apply_auth_check_before(
     model,
@@ -241,7 +241,7 @@ fn automation_panel_focus_target(
     pool_messages.CloseWorkflowDialog
     | pool_messages.WorkflowSaved(Ok(_))
     | pool_messages.WorkflowDeleteFinished(_, Ok(_)) ->
-      workflow_dialog_focus_target(model.admin.workflows.workflows_dialog_mode)
+      engine_dialog_focus_target(model.admin.workflows.workflows_dialog_mode)
 
     pool_messages.CloseRuleDialog
     | pool_messages.RuleSaved(Ok(_))
@@ -259,13 +259,13 @@ fn automation_panel_focus_target(
   }
 }
 
-pub fn workflow_dialog_focus_target_for_test(
+pub fn engine_dialog_focus_target_for_test(
   mode: opt.Option(admin_workflows.WorkflowDialogMode),
 ) -> opt.Option(String) {
-  workflow_dialog_focus_target(mode)
+  engine_dialog_focus_target(mode)
 }
 
-fn workflow_dialog_focus_target(
+fn engine_dialog_focus_target(
   mode: opt.Option(admin_workflows.WorkflowDialogMode),
 ) -> opt.Option(String) {
   case mode {
@@ -363,8 +363,8 @@ fn rule_builder_is_open(mode: opt.Option(admin_rules.RuleDialogMode)) -> Bool {
 
 fn rules_context(
   model: client_state.Model,
-) -> workflows_workflow.RulesContext(client_state.Msg) {
-  workflows_workflow.RulesContext(
+) -> automations_update.RulesContext(client_state.Msg) {
+  automations_update.RulesContext(
     selected_project_id: model.core.selected_project_id,
     on_rules_fetched: fn(result) {
       client_state.pool_msg(pool_messages.RulesFetched(result))
@@ -391,8 +391,8 @@ fn card_crud_feedback_context(
 
 fn engine_crud_feedback_context(
   model: client_state.Model,
-) -> workflows_workflow.EngineFeedbackContext(client_state.Msg) {
-  workflows_workflow.EngineFeedbackContext(
+) -> automations_update.EngineFeedbackContext(client_state.Msg) {
+  automations_update.EngineFeedbackContext(
     engine_created: i18n.t(model.ui.locale, i18n_text.AutomationEngineCreated),
     engine_updated: i18n.t(model.ui.locale, i18n_text.AutomationEngineUpdated),
     engine_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
@@ -411,8 +411,8 @@ fn engine_crud_feedback_context(
 
 fn rule_feedback_context(
   model: client_state.Model,
-) -> workflows_workflow.RuleFeedbackContext(client_state.Msg) {
-  workflows_workflow.RuleFeedbackContext(
+) -> automations_update.RuleFeedbackContext(client_state.Msg) {
+  automations_update.RuleFeedbackContext(
     rule_created: i18n.t(model.ui.locale, i18n_text.RuleCreated),
     rule_updated: i18n.t(model.ui.locale, i18n_text.RuleUpdated),
     rule_deleted: i18n.t(model.ui.locale, i18n_text.RuleDeleted),
@@ -462,21 +462,21 @@ fn cards_auth_error(policy: cards_workflow.AuthPolicy) -> opt.Option(ApiError) {
   }
 }
 
-fn workflow_auth_error(
-  policy: workflows_workflow.WorkflowAuthPolicy,
+fn engine_auth_error(
+  policy: automations_update.WorkflowAuthPolicy,
 ) -> opt.Option(ApiError) {
   case policy {
-    workflows_workflow.NoWorkflowAuthCheck -> opt.None
-    workflows_workflow.CheckWorkflowAuth(err) -> opt.Some(err)
+    automations_update.NoWorkflowAuthCheck -> opt.None
+    automations_update.CheckWorkflowAuth(err) -> opt.Some(err)
   }
 }
 
 fn rules_auth_error(
-  policy: workflows_workflow.RulesAuthPolicy,
+  policy: automations_update.RulesAuthPolicy,
 ) -> opt.Option(ApiError) {
   case policy {
-    workflows_workflow.NoRulesAuthCheck -> opt.None
-    workflows_workflow.CheckRulesAuth(err) -> opt.Some(err)
+    automations_update.NoRulesAuthCheck -> opt.None
+    automations_update.CheckRulesAuth(err) -> opt.Some(err)
   }
 }
 
