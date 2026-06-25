@@ -1,19 +1,19 @@
-//// Admin workflows update handlers.
+//// Admin automation update handlers.
 ////
 //// ## Mission
 ////
-//// Handles workflow and rule CRUD operations in the admin panel.
+//// Handles automation engine and rule CRUD operations in the admin panel.
 ////
 //// ## Responsibilities
 ////
-//// - Workflow list fetch and CRUD
-//// - Rule list fetch and CRUD within workflows
+//// - Automation engine list fetch and CRUD
+//// - Rule list fetch and CRUD for the selected engine
 //// - Rule expansion and builder state
 ////
 //// ## Relations
 ////
 //// - **update.gleam**: Main update module that delegates to handlers here
-//// - **view.gleam**: Renders the workflows UI using model state
+//// - **view.gleam**: Renders the automations UI using model state
 
 import gleam/int
 import gleam/option as opt
