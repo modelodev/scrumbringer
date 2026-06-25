@@ -25,7 +25,7 @@ import lustre/event
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/task as domain_task
-import domain/task_status.{Available, Claimed, Done}
+import domain/task/state as task_execution_state
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -84,7 +84,13 @@ type CardGroup {
 pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
   // Filter out completed tasks if hide_completed is true
   let filtered_tasks = case config.hide_completed {
-    True -> list.filter(config.tasks, fn(t) { domain_task.status(t) != Done })
+    True ->
+      list.filter(config.tasks, fn(task) {
+        case task.state {
+          task_execution_state.Closed(..) -> False
+          _ -> True
+        }
+      })
     False -> config.tasks
   }
 
@@ -207,10 +213,11 @@ fn view_task_item(
   card_border_class: String,
 ) -> Element(msg) {
   // AC7: Show claimed by user when task is Claimed (based on status, not claimed_by)
-  let status_display = case domain_task.status(task) {
-    Claimed(_) -> {
+  let status = task_execution_state.to_status(task.state)
+  let status_display = case task.state {
+    task_execution_state.Claimed(..) -> {
       // Task is claimed - try to find who claimed it
-      let claimed_email = case domain_task.claimed_by(task) {
+      let claimed_email = case task_execution_state.claimed_by(task.state) {
         Some(user_id) ->
           list.find(config.org_users, fn(u) { u.id == user_id })
           |> option.from_result
@@ -218,13 +225,13 @@ fn view_task_item(
           |> claimed_email_or_unknown(config)
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
-      let status_icon = task_status_utils.claimed_icon(domain_task.status(task))
+      let status_icon = task_status_utils.claimed_icon(status)
       span(
         [
           attribute.class("task-claimed-by"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
         [
@@ -237,38 +244,38 @@ fn view_task_item(
         ],
       )
     }
-    Available ->
+    task_execution_state.Available ->
       span(
         [
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
-        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
+        [text(task_status_utils.label(config.locale, status))],
       )
-    Done ->
+    task_execution_state.Closed(..) ->
       // Done - show status label
       span(
         [
           attribute.class("task-status"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
-        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
+        [text(task_status_utils.label(config.locale, status))],
       )
     // Available tasks: no label needed (claim icon is sufficient indicator)
   }
 
   let type_icon = task.task_type.icon
 
-  let actions = case domain_task.status(task) {
-    Available ->
+  let actions = case task.state {
+    task_execution_state.Available ->
       task_item.single_action(task_actions.claim_icon(
-        task_state_ui.next_action(config.locale, domain_task.status(task)),
+        task_state_ui.next_action(config.locale, status),
         config.on_task_claim(task.id, task.version),
         action_buttons.SizeXs,
         False,
@@ -352,7 +359,12 @@ fn group_tasks_by_card(
     let #(card_id, card_tasks) = pair
     let card = dict.get(card_map, card_id) |> option.from_result
     let completed =
-      list.count(card_tasks, fn(t) { domain_task.status(t) == Done })
+      list.count(card_tasks, fn(task) {
+        case task.state {
+          task_execution_state.Closed(..) -> True
+          _ -> False
+        }
+      })
     let total = list.length(card_tasks)
     CardGroup(
       card: card,

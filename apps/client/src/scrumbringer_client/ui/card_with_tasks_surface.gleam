@@ -1,7 +1,7 @@
 import domain/card.{type Card, Closed}
 import domain/org.{type OrgUser}
 import domain/task as domain_task
-import domain/task_status.{Available, Claimed, Done}
+import domain/task/state as task_execution_state
 import gleam/list
 import gleam/option
 import gleam/order
@@ -237,39 +237,41 @@ fn view_task(config: Config(msg), task: domain_task.Task) -> Element(msg) {
 }
 
 fn status_display(config: Config(msg), task: domain_task.Task) -> Element(msg) {
-  case domain_task.status(task) {
-    Claimed(_) ->
+  let status = task_execution_state.to_status(task.state)
+
+  case task.state {
+    task_execution_state.Claimed(..) ->
       span(
         [
           attribute.class("task-claimed-by"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
         [text(compact_claimed_name(config, task))],
       )
-    Available ->
+    task_execution_state.Available ->
       span(
         [
           attribute.class("task-status-muted"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
-        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
+        [text(task_status_utils.label(config.locale, status))],
       )
-    Done ->
+    task_execution_state.Closed(..) ->
       span(
         [
           attribute.class("task-status"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, domain_task.status(task)),
+            task_state_ui.hint(config.locale, status),
           ),
         ],
-        [text(task_status_utils.label(config.locale, domain_task.status(task)))],
+        [text(task_status_utils.label(config.locale, status))],
       )
   }
 }
@@ -285,7 +287,7 @@ fn claimed_email(
   config: Config(msg),
   task: domain_task.Task,
 ) -> option.Option(String) {
-  case domain_task.claimed_by(task) {
+  case task_execution_state.claimed_by(task.state) {
     option.Some(user_id) ->
       list.find(config.org_users, fn(user) { user.id == user_id })
       |> option.from_result
@@ -298,10 +300,13 @@ fn task_actions_for(
   config: Config(msg),
   task: domain_task.Task,
 ) -> List(Element(msg)) {
-  case domain_task.status(task) {
-    Available ->
+  case task.state {
+    task_execution_state.Available ->
       task_item.single_action(task_actions.claim_icon_with_class(
-        task_state_ui.next_action(config.locale, domain_task.status(task)),
+        task_state_ui.next_action(
+          config.locale,
+          task_execution_state.to_status(task.state),
+        ),
         config.on_task_claim(task.id, task.version),
         icons.XSmall,
         False,
