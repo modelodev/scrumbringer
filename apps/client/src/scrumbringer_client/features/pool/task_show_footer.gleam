@@ -111,7 +111,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
             button.Primary,
             config.disable_actions,
           )
-            |> button.with_testid("task-show-primary-complete")
+            |> button.with_testid("task-show-primary-close")
             |> button.view,
           secondary_actions_menu(config, task, allow_release: True),
         ]

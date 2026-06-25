@@ -56,7 +56,7 @@ pub fn task_show_footer_renders_owner_claimed_actions_test() {
     |> element.to_document_string
 
   assert_not_contains(html, ">Close<")
-  assert_not_contains(html, "data-testid=\"task-show-primary-complete\"")
+  assert_not_contains(html, "data-testid=\"task-show-primary-close\"")
   assert_contains(html, "Start working")
   assert_contains(html, "data-testid=\"task-show-primary-start\"")
   assert_contains(html, "data-testid=\"task-show-secondary-delete\"")
@@ -68,7 +68,7 @@ pub fn task_show_footer_renders_owner_claimed_actions_test() {
   assert_not_contains(html, "Claim task")
 }
 
-pub fn task_show_footer_renders_owner_ongoing_complete_as_primary_test() {
+pub fn task_show_footer_renders_owner_ongoing_close_as_primary_test() {
   let html =
     task_show_footer.view(config(
       Some(ongoing_task(claimed_by: 7)),
@@ -77,7 +77,7 @@ pub fn task_show_footer_renders_owner_ongoing_complete_as_primary_test() {
     |> element.to_document_string
 
   assert_contains(html, "Close task")
-  assert_contains(html, "data-testid=\"task-show-primary-complete\"")
+  assert_contains(html, "data-testid=\"task-show-primary-close\"")
   assert_contains(html, "Release back to Pool")
   assert_not_contains(html, "Start working")
   assert_not_contains(html, ">Close<")
