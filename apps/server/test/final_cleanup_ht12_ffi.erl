@@ -87,7 +87,31 @@ architecture_boundary_violations(Root) ->
         "apps/server/src/scrumbringer_server/services",
         "apps/server/src/scrumbringer_server/persistence",
         "apps/client/src/scrumbringer_client/features/" ++ legacy_plural()
-    ]).
+    ]) ++ task_status_boundary_violations(Root).
+
+task_status_boundary_violations(Root) ->
+    Allowed = allowed_task_status_files(),
+    [bin(["task_status used outside presentation/filter boundary: ", Rel])
+     || Path <- all_files(Root, active_code_roots(), source_exts()),
+        {ok, Text} <- [read_file(Path)],
+        binary:match(Text, <<"domain/task_status">>) =/= nomatch,
+        Rel <- [rel(Root, Path)],
+        not lists:member(Rel, Allowed)].
+
+allowed_task_status_files() ->
+    [
+        "shared/src/domain/task_status.gleam",
+        "shared/src/domain/task/state.gleam",
+        "shared/src/domain/task/task_codec.gleam",
+        "apps/server/src/scrumbringer_server/http/metrics_presenters.gleam",
+        "apps/server/src/scrumbringer_server/http/tasks/presenters.gleam",
+        "apps/client/src/scrumbringer_client/api/tasks/operations.gleam",
+        "apps/client/src/scrumbringer_client/features/metrics/view.gleam",
+        "apps/client/src/scrumbringer_client/features/pool/task_dependencies.gleam",
+        "apps/client/src/scrumbringer_client/ui/task_blocked_badge.gleam",
+        "apps/client/src/scrumbringer_client/ui/task_state.gleam",
+        "apps/client/src/scrumbringer_client/ui/task_status_utils.gleam"
+    ].
 
 domain_type_duplication_violations(Root) ->
     files_containing(Root, [
