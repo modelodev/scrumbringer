@@ -167,3 +167,20 @@ pub fn rule_sentence_renders_card_depth_scope_test() {
   assert_contains(html, "When a card at level 2 is closed")
   assert_contains(html, "-&gt; Create Delivery review in the Pool")
 }
+
+pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
+  let assert Ok(depth) = automation.card_depth_from_int(2)
+
+  let html =
+    rule_sentence.view(
+      locale.Es,
+      rule(automation.CardClosed(automation.AtDepth(depth)), [
+        template("Revisión de entrega", 11),
+      ]),
+      opt.None,
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Cuando una card de nivel 2 se finalice")
+  assert_contains(html, "-&gt; Crear Revisión de entrega en el Pool")
+}

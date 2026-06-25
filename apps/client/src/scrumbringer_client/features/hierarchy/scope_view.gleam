@@ -66,7 +66,7 @@ fn view_header(config: Config(msg)) -> Element(msg) {
         attribute.attribute("data-testid", "include-closed-toggle"),
         event.on_click(config.on_include_closed_toggled),
       ],
-      [text("Incluir cerradas")],
+      [text("Incluir finalizadas")],
     ),
   ])
 }

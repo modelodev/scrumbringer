@@ -187,7 +187,10 @@ pub fn create_dialog_closed_context_uses_spanish_locale_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Las tarjetas cerradas no pueden recibir tareas nuevas")
+  assert_contains(
+    html,
+    "Las tarjetas finalizadas no pueden recibir tareas nuevas",
+  )
   assert_contains(html, "disabled")
   assert_not_contains(html, "Closed cards cannot receive new tasks")
 }

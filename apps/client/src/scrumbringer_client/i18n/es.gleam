@@ -103,9 +103,9 @@ pub fn translate(text: Text) -> String {
     text.TaskCreateActiveCardHint ->
       "Esta tarea entrará en el Pool al crearse y quedará disponible para alguien con la capacidad correspondiente. No se reclamará automáticamente."
     text.TaskCreateClosedCard ->
-      "Las tarjetas cerradas no pueden recibir tareas nuevas."
+      "Las tarjetas finalizadas no pueden recibir tareas nuevas."
     text.CardClosedCannotReceiveChildren ->
-      "Las tarjetas cerradas no pueden recibir tarjetas hijas ni tareas nuevas."
+      "Las tarjetas finalizadas no pueden recibir tarjetas hijas ni tareas nuevas."
     text.CardHasOperationalHistory ->
       "Esta tarjeta tiene historial operativo. Ciérrala en lugar de eliminarla."
     text.ActivateHierarchyManagerOnly ->
@@ -239,7 +239,7 @@ pub fn translate(text: Text) -> String {
     text.PlanCapabilityMode -> "Modo"
     text.PlanCapabilityList -> "Lista"
     text.PlanCapabilityMatrix -> "Matriz"
-    text.PlanClosed -> "Cerradas"
+    text.PlanClosed -> "Finalizadas"
     text.PoolPurpose ->
       "Tareas activas disponibles para que el equipo las reclame."
     text.PoolVisibilityLabel -> "Ver"
@@ -909,7 +909,7 @@ pub fn translate(text: Text) -> String {
     text.CardPhase -> "Estado"
     text.CardPhaseDraft -> "Draft"
     text.CardPhaseActive -> "En curso"
-    text.CardPhaseClosed -> "Cerrada"
+    text.CardPhaseClosed -> "Finalizada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
@@ -924,7 +924,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanEmptyColumn -> "Sin tarjetas aquí"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
-    text.KanbanEmptyClosed -> "Las tarjetas cerradas aparecerán aquí"
+    text.KanbanEmptyClosed -> "Las tarjetas finalizadas aparecerán aquí"
     text.KanbanSurfacePurpose ->
       "Flujo de cards por estado, con fricción y próximo trabajo visibles."
     text.KanbanSummaryCards -> "Tarjetas"
@@ -1024,7 +1024,7 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderTaskClaimedEvent -> "se reclama"
     text.RuleBuilderTaskReleasedEvent -> "se libera"
     text.RuleBuilderCardActivatedEvent -> "se activa"
-    text.RuleBuilderCardClosedEvent -> "se cierra"
+    text.RuleBuilderCardClosedEvent -> "se finaliza"
     text.RuleBuilderPreview -> "Vista previa"
     text.RulePreviewTaskCreated(subject) ->
       "Cuando " <> subject <> " se cree, se creará trabajo en el Pool."
@@ -1037,7 +1037,7 @@ pub fn translate(text: Text) -> String {
     text.RulePreviewCardActivated(scope) ->
       "Cuando " <> scope <> " se active, se creará trabajo en el Pool."
     text.RulePreviewCardClosed(scope) ->
-      "Cuando " <> scope <> " se cierre, se creará trabajo en el Pool."
+      "Cuando " <> scope <> " se finalice, se creará trabajo en el Pool."
     text.RulePreviewRequiresReview ->
       "Esta regla usa un objetivo que requiere revisión antes de ejecutarse."
     text.RulePreviewAnyCard -> "cualquier card"
