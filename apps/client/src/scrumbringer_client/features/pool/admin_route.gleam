@@ -78,9 +78,9 @@ fn apply_cards_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let cards_workflow.Update(cards, fx, auth_policy, focus_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    cards_auth_error(auth_policy),
+    route_support.auth_check_before(cards_auth_error(auth_policy)),
     fn() {
       #(
         root.set_admin_cards(model, cards),
@@ -133,9 +133,9 @@ fn apply_engine_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let automations_update.EngineUpdate(workflows, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    engine_auth_error(auth_policy),
+    route_support.auth_check_before(engine_auth_error(auth_policy)),
     fn() {
       #(
         root.set_admin_workflows(model, workflows),
@@ -169,9 +169,9 @@ fn apply_rules_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let automations_update.RulesUpdate(rules, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    rules_auth_error(auth_policy),
+    route_support.auth_check_before(rules_auth_error(auth_policy)),
     fn() {
       #(
         root.set_admin_rules(model, rules),
@@ -205,9 +205,9 @@ fn apply_task_templates_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_templates_workflow.Update(task_templates, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    task_templates_auth_error(auth_policy),
+    route_support.auth_check_before(task_templates_auth_error(auth_policy)),
     fn() {
       let updated = root.set_admin_task_templates(model, task_templates)
       #(
