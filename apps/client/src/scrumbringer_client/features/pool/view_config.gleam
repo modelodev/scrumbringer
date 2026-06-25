@@ -269,7 +269,7 @@ fn my_bar_task_row_config(
     on_start: context.callbacks.on_now_working_start,
     on_pause: context.callbacks.on_now_working_pause,
     on_release: context.callbacks.on_release,
-    on_complete: context.callbacks.on_close,
+    on_close: context.callbacks.on_close,
     on_task_open: context.callbacks.on_open,
   )
 }

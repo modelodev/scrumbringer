@@ -78,8 +78,8 @@ fn config() -> my_bar_view.TaskRowConfig(String) {
     on_release: fn(task_id, version) {
       "release:" <> int.to_string(task_id) <> ":" <> int.to_string(version)
     },
-    on_complete: fn(task_id, version) {
-      "complete:" <> int.to_string(task_id) <> ":" <> int.to_string(version)
+    on_close: fn(task_id, version) {
+      "close:" <> int.to_string(task_id) <> ":" <> int.to_string(version)
     },
     on_task_open: fn(task_id) { "open:" <> int.to_string(task_id) },
   )

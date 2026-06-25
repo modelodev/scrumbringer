@@ -88,7 +88,7 @@ pub type TaskRowConfig(msg) {
     on_start: fn(Int) -> msg,
     on_pause: msg,
     on_release: fn(Int, Int) -> msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_close: fn(Int, Int) -> msg,
     on_task_open: fn(Int) -> msg,
   )
 }
@@ -441,7 +441,7 @@ pub fn view_member_bar_task_row(
         task_state_ui.release_action(config.locale),
         config.on_release(id, version),
         task_state_ui.close_action(config.locale),
-        config.on_complete(id, version),
+        config.on_close(id, version),
         action_buttons.SizeXs,
         config.disable_actions,
         "",
