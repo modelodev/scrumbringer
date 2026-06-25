@@ -151,7 +151,7 @@ fn transition_message(
     Claim -> workflow_types.ClaimTask(task_id, user.id, user.org_id, version)
     Release ->
       workflow_types.ReleaseTask(task_id, user.id, user.org_id, version)
-    Close -> workflow_types.CompleteTask(task_id, user.id, user.org_id, version)
+    Close -> workflow_types.CloseTask(task_id, user.id, user.org_id, version)
   }
 }
 

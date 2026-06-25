@@ -42,7 +42,7 @@ import scrumbringer_server/use_case/workflows/authorization
 import scrumbringer_server/use_case/workflows/types.{
   type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
   AlreadyClaimed, CardHasChildCards, ClaimOwnershipConflict, ClaimTask,
-  CompleteTask, CreateTask, CreateTaskType, DbError, DeleteTask, DeleteTaskType,
+  CloseTask, CreateTask, CreateTaskType, DbError, DeleteTask, DeleteTaskType,
   GetTask, InvalidTransition, ListTaskTypes, ListTasks, NotAuthorized, NotFound,
   ReleaseTask, TaskBlockedByDependencies, TaskDeleted, TaskHasOperationalHistory,
   TaskNotClaimable, TaskResult, TaskTypeAlreadyExists, TaskTypeCreated,
@@ -118,8 +118,8 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
     ReleaseTask(task_id, user_id, org_id, version) ->
       handle_release_task(db, task_id, user_id, org_id, version)
 
-    CompleteTask(task_id, user_id, org_id, version) ->
-      handle_complete_task(db, task_id, user_id, org_id, version)
+    CloseTask(task_id, user_id, org_id, version) ->
+      handle_close_task(db, task_id, user_id, org_id, version)
   }
 }
 
@@ -918,7 +918,7 @@ fn release_task_success(
   Ok(TaskResult(task))
 }
 
-fn handle_complete_task(
+fn handle_close_task(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
@@ -937,11 +937,11 @@ fn handle_complete_task(
     Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
-      complete_task_for_current(db, task_id, user_id, org_id, version, current)
+      close_task_for_current(db, task_id, user_id, org_id, version, current)
   }
 }
 
-fn complete_task_for_current(
+fn close_task_for_current(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
@@ -952,11 +952,11 @@ fn complete_task_for_current(
   case current.state {
     task_state.Available | task_state.Closed(..) -> Error(InvalidTransition)
     task_state.Claimed(..) ->
-      complete_task_for_claimed(db, task_id, user_id, org_id, version, current)
+      close_task_for_claimed(db, task_id, user_id, org_id, version, current)
   }
 }
 
-fn complete_task_for_claimed(
+fn close_task_for_claimed(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
@@ -966,12 +966,12 @@ fn complete_task_for_claimed(
 ) -> Result(Response, Error) {
   case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
-      complete_task_for_owner(db, task_id, user_id, org_id, version, current)
+      close_task_for_owner(db, task_id, user_id, org_id, version, current)
     _ -> Error(NotAuthorized)
   }
 }
 
-fn complete_task_for_owner(
+fn close_task_for_owner(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
@@ -983,8 +983,7 @@ fn complete_task_for_owner(
     work_sessions_db.close_session_for_task(db, user_id, task_id, "task_closed")
 
   case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
-    Ok(task) ->
-      complete_task_success(db, task_id, user_id, org_id, current, task)
+    Ok(task) -> close_task_success(db, task_id, user_id, org_id, current, task)
     Error(service_error.NotFound) -> Error(VersionConflict)
     Error(service_error.DbError(e)) -> Error(DbError(e))
     Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
@@ -997,7 +996,7 @@ fn complete_task_for_owner(
   }
 }
 
-fn complete_task_success(
+fn close_task_success(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,

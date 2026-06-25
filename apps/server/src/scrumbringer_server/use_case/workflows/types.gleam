@@ -95,7 +95,7 @@ pub type Message {
   ReleaseTask(task_id: Int, user_id: Int, org_id: Int, version: Int)
 
   /// Close a claimed task (owner only).
-  CompleteTask(task_id: Int, user_id: Int, org_id: Int, version: Int)
+  CloseTask(task_id: Int, user_id: Int, org_id: Int, version: Int)
 }
 
 /// Task list filters.
