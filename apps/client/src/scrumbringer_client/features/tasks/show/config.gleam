@@ -12,6 +12,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
 import scrumbringer_client/client_state/member/pool as pool_state
+import scrumbringer_client/features/tasks/show/model as show_model
 import scrumbringer_client/features/tasks/show/view as task_show
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -55,6 +56,7 @@ pub type Callbacks(msg) {
 pub fn view(
   locale: Locale,
   pool: pool_state.Model,
+  task_show: show_model.Model,
   dependencies: dependencies_state.Model,
   notes: notes_state.Model,
   current_user_id: opt.Option(Int),
@@ -67,6 +69,7 @@ pub fn view(
   task_show.view_task_show(from_state(
     locale,
     pool,
+    task_show,
     dependencies,
     notes,
     current_user_id,
@@ -81,6 +84,7 @@ pub fn view(
 pub fn from_state(
   locale: Locale,
   pool: pool_state.Model,
+  task_show: show_model.Model,
   dependencies: dependencies_state.Model,
   notes: notes_state.Model,
   current_user_id: opt.Option(Int),
@@ -99,15 +103,15 @@ pub fn from_state(
     parent_card: parent_card(cards, task),
     capability_name: capability_name(pool.member_task_types, capabilities, task),
     current_user_id: current_user_id,
-    active_tab: pool.task_show.active_tab,
+    active_tab: task_show.active_tab,
     dependencies: dependencies_config(dependencies, callbacks),
-    editor: editor_config(pool, cards, task, callbacks),
+    editor: editor_config(pool, task_show, cards, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),
     activity: activity_config(notes),
     activity_total: notes.member_activity_total,
     activity_loading_more: notes.member_activity_loading_more,
     on_activity_more: callbacks.on_activity_more,
-    actions: actions_config(pool, callbacks),
+    actions: actions_config(pool, task_show, callbacks),
     on_close: callbacks.on_close,
     on_open_parent_card: callbacks.on_open_parent_card,
     on_tab_clicked: callbacks.on_tab_clicked,
@@ -172,19 +176,20 @@ fn dependencies_config(
 
 fn editor_config(
   pool: pool_state.Model,
+  task_show: show_model.Model,
   cards: List(Card),
   task: opt.Option(Task),
   callbacks: Callbacks(msg),
 ) -> task_show.TaskEditorConfig(msg) {
   task_show.TaskEditorConfig(
-    editing: pool.task_show.editing,
-    edit_title: pool.task_show.edit_title,
-    edit_description: pool.task_show.edit_description,
-    edit_priority: pool.task_show.edit_priority,
-    edit_type_id: pool.task_show.edit_type_id,
-    edit_card_id: pool.task_show.edit_card_id,
-    edit_error: pool.task_show.edit_error,
-    edit_in_flight: pool.task_show.edit_in_flight,
+    editing: task_show.editing,
+    edit_title: task_show.edit_title,
+    edit_description: task_show.edit_description,
+    edit_priority: task_show.edit_priority,
+    edit_type_id: task_show.edit_type_id,
+    edit_card_id: task_show.edit_card_id,
+    edit_error: task_show.edit_error,
+    edit_in_flight: task_show.edit_in_flight,
     task_types: pool.member_task_types,
     cards: cards,
     parent_card_title: parent_card_title(cards, task),
@@ -224,12 +229,13 @@ fn notes_config(
 
 fn actions_config(
   pool: pool_state.Model,
+  task_show: show_model.Model,
   callbacks: Callbacks(msg),
 ) -> task_show.TaskActionsConfig(msg) {
   task_show.TaskActionsConfig(
     disable_actions: pool.member_task_mutation_in_flight
-      || pool.task_show.editing
-      || pool.task_show.edit_in_flight,
+      || task_show.editing
+      || task_show.edit_in_flight,
     on_claim: callbacks.on_claim,
     on_start_work: callbacks.on_start_work,
     on_release: callbacks.on_release,

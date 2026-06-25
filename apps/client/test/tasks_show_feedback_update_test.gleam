@@ -58,9 +58,13 @@ fn dispatch_context() -> show_update.DispatchContext(Nil) {
   )
 }
 
-fn show_model(pool: member_pool.Model) -> show_update.Model {
+fn show_model_with_task_show(
+  pool: member_pool.Model,
+  task_show: task_show_model.Model,
+) -> show_update.Model {
   show_update.Model(
     pool: pool,
+    task_show: task_show,
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
   )
@@ -99,50 +103,49 @@ pub fn show_update_ok_replaces_task_and_emits_success_toast_test() {
     member_pool.Model(
       ..member_pool.default_model(),
       member_tasks: remote.Loaded([sample_task()]),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
-        editing: True,
-        edit_in_flight: True,
-        edit_error: Some("old"),
-      ),
+    )
+  let task_show =
+    task_show_model.Model(
+      ..task_show_model.default(),
+      editing: True,
+      edit_in_flight: True,
+      edit_error: Some("old"),
     )
 
   let assert Some(show_update.Update(next, fx, policy)) =
     show_update.try_update(
-      show_model(model),
+      show_model_with_task_show(model, task_show),
       pool_messages.MemberTaskUpdated(Ok(updated)),
       dispatch_context(),
     )
 
   let assert True = next.pool.member_tasks == remote.Loaded([updated])
-  let assert False = next.pool.task_show.editing
-  let assert False = next.pool.task_show.edit_in_flight
-  let assert None = next.pool.task_show.edit_error
+  let assert False = next.task_show.editing
+  let assert False = next.task_show.edit_in_flight
+  let assert None = next.task_show.edit_error
   let assert show_update.NoAuthCheck = policy
   let assert True = fx != effect.none()
 }
 
 pub fn show_update_error_sets_local_error_and_emits_feedback_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
-  let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
-        edit_in_flight: True,
-        edit_error: None,
-      ),
+  let model = member_pool.default_model()
+  let task_show =
+    task_show_model.Model(
+      ..task_show_model.default(),
+      edit_in_flight: True,
+      edit_error: None,
     )
 
   let assert Some(show_update.Update(next, fx, policy)) =
     show_update.try_update(
-      show_model(model),
+      show_model_with_task_show(model, task_show),
       pool_messages.MemberTaskUpdated(Error(err)),
       dispatch_context(),
     )
 
-  let assert False = next.pool.task_show.edit_in_flight
-  let assert Some("boom") = next.pool.task_show.edit_error
+  let assert False = next.task_show.edit_in_flight
+  let assert Some("boom") = next.task_show.edit_error
   let assert show_update.CheckAuthAfter(auth_err) = policy
   let assert True = auth_err == err
   let assert True = fx != effect.none()

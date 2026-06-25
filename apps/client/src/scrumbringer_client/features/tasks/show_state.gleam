@@ -8,35 +8,30 @@ import domain/task.{type Task}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
-import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/show/model as show_model
 import scrumbringer_client/features/tasks/show_edit_form
-import scrumbringer_client/features/tasks/task_list
 import scrumbringer_client/ui/show_tabs
 
 pub fn open(
-  pool: member_pool.Model,
+  _task_show: show_model.Model,
   notes: member_notes.Model,
   dependencies: member_dependencies.Model,
   task_id: Int,
   maybe_task: opt.Option(Task),
-) -> #(member_pool.Model, member_notes.Model, member_dependencies.Model) {
+) -> #(show_model.Model, member_notes.Model, member_dependencies.Model) {
   let fields = edit_fields(maybe_task)
 
   #(
-    member_pool.Model(
-      ..pool,
-      task_show: show_model.Model(
-        active_tab: show_tabs.TaskDetailsTab,
-        editing: False,
-        edit_title: fields.title,
-        edit_description: fields.description,
-        edit_priority: fields.priority,
-        edit_type_id: fields.type_id,
-        edit_card_id: fields.card_id,
-        edit_in_flight: False,
-        edit_error: opt.None,
-      ),
+    show_model.Model(
+      active_tab: show_tabs.TaskDetailsTab,
+      editing: False,
+      edit_title: fields.title,
+      edit_description: fields.description,
+      edit_priority: fields.priority,
+      edit_type_id: fields.type_id,
+      edit_card_id: fields.card_id,
+      edit_in_flight: False,
+      edit_error: opt.None,
     ),
     member_notes.Model(
       ..notes,
@@ -90,11 +85,10 @@ fn edit_fields(maybe_task: opt.Option(Task)) -> EditFields {
 }
 
 pub fn close(
-  pool: member_pool.Model,
   notes: member_notes.Model,
-) -> #(member_pool.Model, member_notes.Model, member_dependencies.Model) {
+) -> #(show_model.Model, member_notes.Model, member_dependencies.Model) {
   #(
-    member_pool.Model(..pool, task_show: show_model.default()),
+    show_model.default(),
     member_notes.Model(
       ..notes,
       member_notes_task_id: opt.None,
@@ -113,194 +107,141 @@ pub fn close(
 }
 
 pub fn select_tab(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   tab: show_tabs.TaskShowTab,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(..pool.task_show, active_tab: tab),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, active_tab: tab)
 }
 
 pub fn start_edit(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   maybe_task: opt.Option(Task),
   can_edit: Bool,
-) -> member_pool.Model {
+) -> show_model.Model {
   case maybe_task, can_edit {
-    opt.Some(_), True -> apply_edit_fields(pool, edit_fields(maybe_task), True)
-    _, _ -> pool
+    opt.Some(_), True ->
+      apply_edit_fields(task_show, edit_fields(maybe_task), True)
+    _, _ -> task_show
   }
 }
 
 pub fn cancel_edit(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   maybe_task: opt.Option(Task),
-) -> member_pool.Model {
+) -> show_model.Model {
   case maybe_task {
-    opt.Some(_) -> apply_edit_fields(pool, edit_fields(maybe_task), False)
-    opt.None -> pool
+    opt.Some(_) -> apply_edit_fields(task_show, edit_fields(maybe_task), False)
+    opt.None -> task_show
   }
 }
 
 fn apply_edit_fields(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   fields: EditFields,
   editing: Bool,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      editing: editing,
-      edit_title: fields.title,
-      edit_description: fields.description,
-      edit_priority: fields.priority,
-      edit_type_id: fields.type_id,
-      edit_card_id: fields.card_id,
-      edit_in_flight: False,
-      edit_error: opt.None,
-    ),
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    editing: editing,
+    edit_title: fields.title,
+    edit_description: fields.description,
+    edit_priority: fields.priority,
+    edit_type_id: fields.type_id,
+    edit_card_id: fields.card_id,
+    edit_in_flight: False,
+    edit_error: opt.None,
   )
 }
 
 pub fn change_edit_title(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_title: value,
-      edit_error: opt.None,
-    ),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_title: value, edit_error: opt.None)
 }
 
 pub fn change_edit_description(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_description: value,
-      edit_error: opt.None,
-    ),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_description: value, edit_error: opt.None)
 }
 
 pub fn change_edit_priority(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_priority: value,
-      edit_error: opt.None,
-    ),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_priority: value, edit_error: opt.None)
 }
 
 pub fn change_edit_type_id(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_type_id: value,
-      edit_error: opt.None,
-    ),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_type_id: value, edit_error: opt.None)
 }
 
 pub fn change_edit_card_id(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   value: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_card_id: value,
-      edit_error: opt.None,
-    ),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_card_id: value, edit_error: opt.None)
 }
 
 pub fn edit_invalid(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   message: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(..pool.task_show, edit_error: opt.Some(message)),
-  )
+) -> show_model.Model {
+  show_model.Model(..task_show, edit_error: opt.Some(message))
 }
 
 pub fn edit_unchanged(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   submission: show_edit_form.Submission,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      editing: False,
-      edit_title: submission.title,
-      edit_description: submission.description,
-      edit_priority: int.to_string(submission.priority),
-      edit_type_id: int.to_string(submission.type_id),
-      edit_card_id: id_to_form_value(submission.card_id),
-      edit_in_flight: False,
-      edit_error: opt.None,
-    ),
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    editing: False,
+    edit_title: submission.title,
+    edit_description: submission.description,
+    edit_priority: int.to_string(submission.priority),
+    edit_type_id: int.to_string(submission.type_id),
+    edit_card_id: id_to_form_value(submission.card_id),
+    edit_in_flight: False,
+    edit_error: opt.None,
   )
 }
 
 pub fn edit_started_submit(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   submission: show_edit_form.Submission,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_title: submission.title,
-      edit_description: submission.description,
-      edit_priority: int.to_string(submission.priority),
-      edit_type_id: int.to_string(submission.type_id),
-      edit_card_id: id_to_form_value(submission.card_id),
-      edit_in_flight: True,
-      edit_error: opt.None,
-    ),
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    edit_title: submission.title,
+    edit_description: submission.description,
+    edit_priority: int.to_string(submission.priority),
+    edit_type_id: int.to_string(submission.type_id),
+    edit_card_id: id_to_form_value(submission.card_id),
+    edit_in_flight: True,
+    edit_error: opt.None,
   )
 }
 
 pub fn task_updated(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   updated_task: Task,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    member_tasks: task_list.upsert(pool.member_tasks, updated_task),
-    task_show: show_model.Model(
-      ..pool.task_show,
-      editing: False,
-      edit_title: updated_task.title,
-      edit_description: show_edit_form.task_description_text(updated_task),
-      edit_priority: int.to_string(updated_task.priority),
-      edit_type_id: int.to_string(show_edit_form.task_type_id(updated_task)),
-      edit_card_id: id_to_form_value(updated_task.card_id),
-      edit_in_flight: False,
-      edit_error: opt.None,
-    ),
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    editing: False,
+    edit_title: updated_task.title,
+    edit_description: show_edit_form.task_description_text(updated_task),
+    edit_priority: int.to_string(updated_task.priority),
+    edit_type_id: int.to_string(show_edit_form.task_type_id(updated_task)),
+    edit_card_id: id_to_form_value(updated_task.card_id),
+    edit_in_flight: False,
+    edit_error: opt.None,
   )
 }
 
@@ -312,15 +253,12 @@ fn id_to_form_value(id: opt.Option(Int)) -> String {
 }
 
 pub fn task_update_failed(
-  pool: member_pool.Model,
+  task_show: show_model.Model,
   message: String,
-) -> member_pool.Model {
-  member_pool.Model(
-    ..pool,
-    task_show: show_model.Model(
-      ..pool.task_show,
-      edit_in_flight: False,
-      edit_error: opt.Some(message),
-    ),
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    edit_in_flight: False,
+    edit_error: opt.Some(message),
   )
 }

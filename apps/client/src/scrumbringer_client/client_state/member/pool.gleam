@@ -14,7 +14,6 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
-import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 
@@ -158,7 +157,6 @@ pub type Model {
     member_pool_preview_task_id: Option(Int),
     card_show_open: Option(Int),
     card_show_model: card_show.Model,
-    task_show: task_show_model.Model,
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
     people_expansions: Dict(Int, people_state.RowExpansion),
@@ -223,7 +221,6 @@ pub fn default_model() -> Model {
     member_pool_preview_task_id: option.None,
     card_show_open: option.None,
     card_show_model: card_show.init_model(),
-    task_show: task_show_model.default(),
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,
     people_expansions: dict.new(),

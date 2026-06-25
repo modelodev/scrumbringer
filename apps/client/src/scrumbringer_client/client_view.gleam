@@ -200,6 +200,7 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
         task_show_config.view(
           model.ui.locale,
           model.member.pool,
+          model.member.task_show,
           model.member.dependencies,
           model.member.notes,
           model.core.user |> opt.map(fn(user) { user.id }),

@@ -256,12 +256,13 @@ fn close_deleted_task_show_if_open(
       opt.Some(open_task_id)
       if deleted_task_id == open_task_id
     -> {
-      let #(pool, notes, dependencies) =
-        show_state.close(model.member.pool, model.member.notes)
+      let #(task_show, notes, dependencies) =
+        show_state.close(model.member.notes)
       set_task_show_model(
         model,
         task_show_update.Model(
-          pool: pool,
+          pool: model.member.pool,
+          task_show: task_show,
           notes: notes,
           dependencies: dependencies,
         ),
@@ -672,6 +673,7 @@ fn set_member_notes(
 fn task_show_model(model: client_state.Model) -> task_show_update.Model {
   task_show_update.Model(
     pool: model.member.pool,
+    task_show: model.member.task_show,
     notes: model.member.notes,
     dependencies: model.member.dependencies,
   )
@@ -685,6 +687,7 @@ fn set_task_show_model(
     member_state.MemberModel(
       ..member,
       pool: local.pool,
+      task_show: local.task_show,
       notes: local.notes,
       dependencies: local.dependencies,
     )

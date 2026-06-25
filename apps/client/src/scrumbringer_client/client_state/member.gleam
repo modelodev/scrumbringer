@@ -7,6 +7,7 @@ import scrumbringer_client/client_state/member/now_working as member_now_working
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/client_state/member/skills as member_skills
+import scrumbringer_client/features/tasks/show/model as task_show_model
 
 /// Represents pool member slice.
 pub type PoolModel =
@@ -36,6 +37,10 @@ pub type NotesModel =
 pub type DependenciesModel =
   member_dependencies.Model
 
+/// Represents task show member slice.
+pub type TaskShowModel =
+  task_show_model.Model
+
 /// Represents MemberModel.
 pub type MemberModel {
   MemberModel(
@@ -46,6 +51,7 @@ pub type MemberModel {
     positions: PositionsModel,
     notes: NotesModel,
     dependencies: DependenciesModel,
+    task_show: TaskShowModel,
   )
 }
 
@@ -59,6 +65,7 @@ pub fn default_model() -> MemberModel {
     positions: member_positions.default_model(),
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
+    task_show: task_show_model.default(),
   )
 }
 

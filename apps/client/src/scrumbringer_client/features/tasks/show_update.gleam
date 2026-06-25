@@ -17,8 +17,10 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/show_edit_form
 import scrumbringer_client/features/tasks/show_state
+import scrumbringer_client/features/tasks/task_list
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/ui/toast
@@ -38,6 +40,7 @@ pub type EditContext(parent_msg) {
 pub type Model {
   Model(
     pool: member_pool.Model,
+    task_show: task_show_model.Model,
     notes: member_notes.Model,
     dependencies: member_dependencies.Model,
   )
@@ -99,59 +102,59 @@ pub fn try_update(
       |> without_auth_check
 
     pool_messages.MemberTaskShowTabClicked(tab) ->
-      handle_task_show_tab_clicked(model.pool, tab)
-      |> pool_result(model)
+      handle_task_show_tab_clicked(model.task_show, tab)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditStarted ->
       handle_task_show_edit_started(
-        model.pool,
+        model.task_show,
         context.edit_context.current_task,
         context.edit_context.can_edit,
       )
-      |> pool_result(model)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditCancelled ->
       handle_task_show_edit_cancelled(
-        model.pool,
+        model.task_show,
         context.edit_context.current_task,
       )
-      |> pool_result(model)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditTitleChanged(value) ->
-      handle_task_show_edit_title_changed(model.pool, value)
-      |> pool_result(model)
+      handle_task_show_edit_title_changed(model.task_show, value)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditDescriptionChanged(value) ->
-      handle_task_show_edit_description_changed(model.pool, value)
-      |> pool_result(model)
+      handle_task_show_edit_description_changed(model.task_show, value)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditPriorityChanged(value) ->
-      handle_task_show_edit_priority_changed(model.pool, value)
-      |> pool_result(model)
+      handle_task_show_edit_priority_changed(model.task_show, value)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditTypeIdChanged(value) ->
-      handle_task_show_edit_type_id_changed(model.pool, value)
-      |> pool_result(model)
+      handle_task_show_edit_type_id_changed(model.task_show, value)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditCardIdChanged(value) ->
-      handle_task_show_edit_card_id_changed(model.pool, value)
-      |> pool_result(model)
+      handle_task_show_edit_card_id_changed(model.task_show, value)
+      |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditSubmitted ->
-      handle_task_show_edit_submitted(model.pool, context.edit_context)
-      |> pool_result(model)
+      handle_task_show_edit_submitted(model.task_show, context.edit_context)
+      |> task_show_result(model)
 
     pool_messages.MemberActivityMoreClicked ->
       handle_activity_more_clicked(model, context.open_context)
       |> without_auth_check
 
     pool_messages.MemberTaskUpdated(Ok(task)) ->
-      updated_ok(model.pool, task, context.success_context)
-      |> pool_result(model)
+      updated_ok(model, task, context.success_context)
+      |> without_auth_check
 
     pool_messages.MemberTaskUpdated(Error(err)) ->
-      updated_error(model.pool, err, context.error_context)
-      |> pool_result_after_auth(model, err)
+      updated_error(model, err, context.error_context)
+      |> model_result_after_auth(err)
 
     pool_messages.MemberActivityFetched(Ok(page)) ->
       #(
@@ -183,21 +186,12 @@ fn model_result_after_auth(
   opt.Some(Update(model, fx, CheckAuthAfter(err)))
 }
 
-fn pool_result(
-  result: #(member_pool.Model, Effect(parent_msg)),
+fn task_show_result(
+  result: #(task_show_model.Model, Effect(parent_msg)),
   model: Model,
 ) -> opt.Option(Update(parent_msg)) {
-  let #(pool, fx) = result
-  opt.Some(Update(Model(..model, pool: pool), fx, NoAuthCheck))
-}
-
-fn pool_result_after_auth(
-  result: #(member_pool.Model, Effect(parent_msg)),
-  model: Model,
-  err: ApiError,
-) -> opt.Option(Update(parent_msg)) {
-  let #(pool, fx) = result
-  opt.Some(Update(Model(..model, pool: pool), fx, CheckAuthAfter(err)))
+  let #(task_show, fx) = result
+  opt.Some(Update(Model(..model, task_show: task_show), fx, NoAuthCheck))
 }
 
 /// Open Task Show and fetch notes, dependencies, and activity.
@@ -212,15 +206,21 @@ fn handle_task_show_opened(
       model.pool.member_tasks_by_project,
       task_id,
     )
-  let #(pool, notes, dependencies) =
+  let #(task_show, notes, dependencies) =
     show_state.open(
-      model.pool,
+      model.task_show,
       model.notes,
       model.dependencies,
       task_id,
       current_task,
     )
-  let next_model = Model(pool: pool, notes: notes, dependencies: dependencies)
+  let next_model =
+    Model(
+      ..model,
+      task_show: task_show,
+      notes: notes,
+      dependencies: dependencies,
+    )
 
   let notes_fx =
     task_notes_api.list_task_notes(task_id, context.on_notes_fetched)
@@ -302,92 +302,100 @@ fn activity_failed(
 
 /// Close Task Show.
 fn handle_task_show_closed(model: Model) -> #(Model, Effect(parent_msg)) {
-  let #(pool, notes, dependencies) = show_state.close(model.pool, model.notes)
-  #(Model(pool: pool, notes: notes, dependencies: dependencies), effect.none())
+  let #(task_show, notes, dependencies) = show_state.close(model.notes)
+  #(
+    Model(
+      ..model,
+      task_show: task_show,
+      notes: notes,
+      dependencies: dependencies,
+    ),
+    effect.none(),
+  )
 }
 
 fn handle_task_show_tab_clicked(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   tab: show_tabs.TaskShowTab,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.select_tab(model, tab), effect.none())
 }
 
 fn handle_task_show_edit_started(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   maybe_task: opt.Option(Task),
   can_edit: Bool,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.start_edit(model, maybe_task, can_edit), effect.none())
 }
 
 fn handle_task_show_edit_cancelled(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   maybe_task: opt.Option(Task),
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.cancel_edit(model, maybe_task), effect.none())
 }
 
 fn handle_task_show_edit_title_changed(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.change_edit_title(model, value), effect.none())
 }
 
 fn handle_task_show_edit_description_changed(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.change_edit_description(model, value), effect.none())
 }
 
 fn handle_task_show_edit_priority_changed(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.change_edit_priority(model, value), effect.none())
 }
 
 fn handle_task_show_edit_type_id_changed(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.change_edit_type_id(model, value), effect.none())
 }
 
 fn handle_task_show_edit_card_id_changed(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   value: String,
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   #(show_state.change_edit_card_id(model, value), effect.none())
 }
 
 fn handle_task_show_edit_submitted(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   context: EditContext(parent_msg),
-) -> #(member_pool.Model, Effect(parent_msg)) {
-  case model.task_show.edit_in_flight {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
+  case model.edit_in_flight {
     True -> #(model, effect.none())
     False -> submit_task_show_edit(model, context)
   }
 }
 
 fn submit_task_show_edit(
-  model: member_pool.Model,
+  model: task_show_model.Model,
   context: EditContext(parent_msg),
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(task_show_model.Model, Effect(parent_msg)) {
   case context.current_task, context.can_edit {
     opt.Some(current_task), True -> {
       case
         show_edit_form.evaluate(
           current_task,
           show_edit_form.Input(
-            title: model.task_show.edit_title,
-            description: model.task_show.edit_description,
-            priority: model.task_show.edit_priority,
-            type_id: model.task_show.edit_type_id,
-            card_id: model.task_show.edit_card_id,
+            title: model.edit_title,
+            description: model.edit_description,
+            priority: model.edit_priority,
+            type_id: model.edit_type_id,
+            card_id: model.edit_card_id,
           ),
           show_edit_form.Labels(
             title_required: context.title_required,
@@ -427,23 +435,36 @@ fn submit_task_show_edit(
 }
 
 fn updated_ok(
-  model: member_pool.Model,
+  model: Model,
   updated_task: Task,
   context: SuccessContext(parent_msg),
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(Model, Effect(parent_msg)) {
+  let pool =
+    member_pool.Model(
+      ..model.pool,
+      member_tasks: task_list.upsert(model.pool.member_tasks, updated_task),
+    )
+
   #(
-    show_state.task_updated(model, updated_task),
+    Model(
+      ..model,
+      pool: pool,
+      task_show: show_state.task_updated(model.task_show, updated_task),
+    ),
     context.on_success_toast(context.task_updated),
   )
 }
 
 fn updated_error(
-  model: member_pool.Model,
+  model: Model,
   err: ApiError,
   context: ErrorContext(parent_msg),
-) -> #(member_pool.Model, Effect(parent_msg)) {
+) -> #(Model, Effect(parent_msg)) {
   #(
-    show_state.task_update_failed(model, err.message),
+    Model(
+      ..model,
+      task_show: show_state.task_update_failed(model.task_show, err.message),
+    ),
     error_effect(err, context),
   )
 }

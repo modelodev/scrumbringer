@@ -6,7 +6,6 @@ import domain/remote.{Loaded}
 import domain/task.{type Task}
 import domain/task/state as task_state
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/task_list
 
 pub fn start_claim(
@@ -74,11 +73,6 @@ pub fn start_delete(model: member_pool.Model, task_id: Int) -> member_pool.Model
     member_task_mutation_in_flight: True,
     member_task_mutation_task_id: opt.Some(task_id),
     member_tasks_snapshot: task_list.snapshot(model.member_tasks),
-    task_show: task_show_model.Model(
-      ..model.task_show,
-      editing: False,
-      edit_error: opt.None,
-    ),
   )
 }
 

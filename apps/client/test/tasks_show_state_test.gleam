@@ -7,7 +7,6 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
-import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/features/tasks/show_edit_form
 import scrumbringer_client/features/tasks/show_state
@@ -51,21 +50,21 @@ fn submission(title: String, description: String) -> show_edit_form.Submission {
 }
 
 pub fn show_state_open_sets_loading_show_state_test() {
-  let #(pool, notes, dependencies) =
+  let #(task_show, notes, dependencies) =
     show_state.open(
-      member_pool.default_model(),
+      task_show_model.default(),
       member_notes.default_model(),
       member_dependencies.default_model(),
       42,
       Some(sample_task()),
     )
 
-  let assert show_tabs.TaskDetailsTab = pool.task_show.active_tab
-  let assert "Prepare release" = pool.task_show.edit_title
-  let assert "Review checklist." = pool.task_show.edit_description
-  let assert "4" = pool.task_show.edit_priority
-  let assert "7" = pool.task_show.edit_type_id
-  let assert "9" = pool.task_show.edit_card_id
+  let assert show_tabs.TaskDetailsTab = task_show.active_tab
+  let assert "Prepare release" = task_show.edit_title
+  let assert "Review checklist." = task_show.edit_description
+  let assert "4" = task_show.edit_priority
+  let assert "7" = task_show.edit_type_id
+  let assert "9" = task_show.edit_card_id
   let assert Some(42) = notes.member_notes_task_id
   let assert True = notes.member_notes == remote.Loading
   let assert True = dependencies.member_dependencies == remote.Loading
@@ -73,34 +72,19 @@ pub fn show_state_open_sets_loading_show_state_test() {
 
 pub fn show_state_open_uses_inline_task_type_when_type_id_is_invalid_test() {
   let task = Task(..sample_task(), type_id: 0)
-  let #(pool, _, _) =
+  let #(task_show, _, _) =
     show_state.open(
-      member_pool.default_model(),
+      task_show_model.default(),
       member_notes.default_model(),
       member_dependencies.default_model(),
       42,
       Some(task),
     )
 
-  let assert "7" = pool.task_show.edit_type_id
+  let assert "7" = task_show.edit_type_id
 }
 
 pub fn show_state_close_resets_show_state_test() {
-  let pool =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        active_tab: show_tabs.TaskActivityTab,
-        editing: True,
-        edit_title: "Changed",
-        edit_description: "Changed description",
-        edit_priority: "5",
-        edit_type_id: "3",
-        edit_card_id: "9",
-        edit_in_flight: True,
-        edit_error: Some("old"),
-      ),
-    )
   let notes =
     member_notes.Model(
       ..member_notes.default_model(),
@@ -110,13 +94,12 @@ pub fn show_state_close_resets_show_state_test() {
       member_note_dialog_mode: dialog_mode.DialogCreate,
     )
 
-  let #(next_pool, next_notes, next_dependencies) =
-    show_state.close(pool, notes)
+  let #(task_show, next_notes, next_dependencies) = show_state.close(notes)
 
-  let assert show_tabs.TaskDetailsTab = next_pool.task_show.active_tab
-  let assert False = next_pool.task_show.editing
-  let assert "" = next_pool.task_show.edit_title
-  let assert "" = next_pool.task_show.edit_description
+  let assert show_tabs.TaskDetailsTab = task_show.active_tab
+  let assert False = task_show.editing
+  let assert "" = task_show.edit_title
+  let assert "" = task_show.edit_description
   let assert None = next_notes.member_notes_task_id
   let assert True = next_notes.member_notes == remote.NotAsked
   let assert "" = next_notes.member_note_content
@@ -126,52 +109,45 @@ pub fn show_state_close_resets_show_state_test() {
 
 pub fn show_state_start_edit_sets_canonical_task_values_test() {
   let next =
-    show_state.start_edit(
-      member_pool.default_model(),
-      Some(sample_task()),
-      True,
-    )
+    show_state.start_edit(task_show_model.default(), Some(sample_task()), True)
 
-  let assert True = next.task_show.editing
-  let assert "Prepare release" = next.task_show.edit_title
-  let assert "Review checklist." = next.task_show.edit_description
-  let assert None = next.task_show.edit_error
+  let assert True = next.editing
+  let assert "Prepare release" = next.edit_title
+  let assert "Review checklist." = next.edit_description
+  let assert None = next.edit_error
 }
 
 pub fn show_state_start_edit_ignores_disallowed_task_test() {
-  let model = member_pool.default_model()
+  let model = task_show_model.default()
   let next = show_state.start_edit(model, Some(sample_task()), False)
 
   let assert True = next == model
 }
 
 pub fn show_state_edit_decisions_update_form_state_test() {
-  let invalid = show_state.edit_invalid(member_pool.default_model(), "Required")
+  let invalid = show_state.edit_invalid(task_show_model.default(), "Required")
   let unchanged =
     show_state.edit_unchanged(
-      member_pool.Model(
-        ..invalid,
-        task_show: task_show_model.Model(..invalid.task_show, editing: True),
-      ),
+      task_show_model.Model(..invalid, editing: True),
       submission("Prepare release", "Review checklist."),
     )
   let started =
     show_state.edit_started_submit(
-      member_pool.default_model(),
+      task_show_model.default(),
       submission("Updated", "Updated description"),
     )
 
-  let assert Some("Required") = invalid.task_show.edit_error
-  let assert False = unchanged.task_show.editing
-  let assert "Prepare release" = unchanged.task_show.edit_title
-  let assert "2" = unchanged.task_show.edit_priority
-  let assert "1" = unchanged.task_show.edit_type_id
-  let assert None = unchanged.task_show.edit_error
-  let assert True = started.task_show.edit_in_flight
-  let assert "Updated" = started.task_show.edit_title
+  let assert Some("Required") = invalid.edit_error
+  let assert False = unchanged.editing
+  let assert "Prepare release" = unchanged.edit_title
+  let assert "2" = unchanged.edit_priority
+  let assert "1" = unchanged.edit_type_id
+  let assert None = unchanged.edit_error
+  let assert True = started.edit_in_flight
+  let assert "Updated" = started.edit_title
 }
 
-pub fn show_state_task_updated_replaces_task_and_stops_editing_test() {
+pub fn show_state_task_updated_stops_editing_test() {
   let original = sample_task()
   let updated =
     Task(
@@ -181,23 +157,19 @@ pub fn show_state_task_updated_replaces_task_and_stops_editing_test() {
       version: 4,
     )
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      member_tasks: remote.Loaded([original]),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
-        editing: True,
-        edit_in_flight: True,
-        edit_error: Some("old"),
-      ),
+    task_show_model.Model(
+      ..task_show_model.default(),
+      editing: True,
+      edit_in_flight: True,
+      edit_error: Some("old"),
     )
 
   let next = show_state.task_updated(model, updated)
 
-  let assert True = next.member_tasks == remote.Loaded([updated])
-  let assert False = next.task_show.editing
-  let assert "Updated title" = next.task_show.edit_title
-  let assert "Updated description" = next.task_show.edit_description
-  let assert False = next.task_show.edit_in_flight
-  let assert None = next.task_show.edit_error
+  let assert True = original.id == updated.id
+  let assert False = next.editing
+  let assert "Updated title" = next.edit_title
+  let assert "Updated description" = next.edit_description
+  let assert False = next.edit_in_flight
+  let assert None = next.edit_error
 }

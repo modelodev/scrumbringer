@@ -2315,13 +2315,13 @@ fn normalize_show_stack(
 }
 
 fn close_task_show_in_model(model: client_state.Model) -> client_state.Model {
-  let #(pool, notes, dependencies) =
-    task_show_state.close(model.member.pool, model.member.notes)
+  let #(task_show, notes, dependencies) =
+    task_show_state.close(model.member.notes)
 
   client_state.update_member(model, fn(member) {
     member_state.MemberModel(
       ..member,
-      pool: pool,
+      task_show: task_show,
       notes: notes,
       dependencies: dependencies,
     )

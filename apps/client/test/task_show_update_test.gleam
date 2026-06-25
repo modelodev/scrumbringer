@@ -74,6 +74,7 @@ fn task_show_view(model: client_state.Model, task_id: Int) {
   task_show_config.view(
     model.ui.locale,
     model.member.pool,
+    model.member.task_show,
     model.member.dependencies,
     model.member.notes,
     model.core.user |> opt.map(fn(user) { user.id }),
@@ -190,11 +191,11 @@ pub fn task_show_open_sets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.task_show.active_tab
-  let assert False = next.member.pool.task_show.editing
-  let assert "Prepare release" = next.member.pool.task_show.edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.task_show.active_tab
+  let assert False = next.member.task_show.editing
+  let assert "Prepare release" = next.member.task_show.edit_title
   let assert "Review release checklist." =
-    next.member.pool.task_show.edit_description
+    next.member.task_show.edit_description
 }
 
 pub fn task_show_config_uses_project_cache_when_active_list_misses_task_test() {
@@ -225,6 +226,7 @@ pub fn task_show_config_uses_project_cache_when_active_list_misses_task_test() {
     task_show_config.from_state(
       model.ui.locale,
       model.member.pool,
+      model.member.task_show,
       model.member.dependencies,
       model.member.notes,
       model.core.user |> opt.map(fn(user) { user.id }),
@@ -244,15 +246,11 @@ pub fn task_show_close_resets_default_tasks_tab_test() {
   let model =
     client_state.default_model()
     |> client_state.update_member(fn(member) {
-      let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          task_show: task_show_model.Model(
-            ..pool.task_show,
-            active_tab: show_tabs.TaskActivityTab,
-          ),
+        task_show: task_show_model.Model(
+          ..member.task_show,
+          active_tab: show_tabs.TaskActivityTab,
         ),
       )
     })
@@ -264,9 +262,9 @@ pub fn task_show_close_resets_default_tasks_tab_test() {
       test_context(),
     )
 
-  let assert show_tabs.TaskDetailsTab = next.member.pool.task_show.active_tab
-  let assert False = next.member.pool.task_show.editing
-  let assert "" = next.member.pool.task_show.edit_title
+  let assert show_tabs.TaskDetailsTab = next.member.task_show.active_tab
+  let assert False = next.member.task_show.editing
+  let assert "" = next.member.task_show.edit_title
 }
 
 pub fn task_show_edit_submit_blank_title_sets_error_test() {
@@ -307,9 +305,8 @@ pub fn task_show_edit_submit_blank_title_sets_error_test() {
       test_context(),
     )
 
-  let assert True = next.member.pool.task_show.editing
-  let assert opt.Some("Title is required") =
-    next.member.pool.task_show.edit_error
+  let assert True = next.member.task_show.editing
+  let assert opt.Some("Title is required") = next.member.task_show.edit_error
 }
 
 pub fn task_show_surface_renders_edit_controls_for_owner_test() {
@@ -330,16 +327,12 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
     model_with_task()
     |> model_with_notes_task_id(42)
     |> client_state.update_member(fn(member) {
-      let pool = member.pool
       let notes = member.notes
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          task_show: task_show_model.Model(
-            ..pool.task_show,
-            active_tab: show_tabs.TaskActivityTab,
-          ),
+        task_show: task_show_model.Model(
+          ..member.task_show,
+          active_tab: show_tabs.TaskActivityTab,
         ),
         notes: member_notes.Model(
           ..notes,
@@ -406,7 +399,7 @@ pub fn task_show_edit_started_allows_unclaimed_task_test() {
       test_context(),
     )
 
-  let assert True = next.member.pool.task_show.editing
+  let assert True = next.member.task_show.editing
 }
 
 pub fn task_show_edit_started_uses_project_cache_when_active_list_misses_task_test() {
@@ -432,6 +425,6 @@ pub fn task_show_edit_started_uses_project_cache_when_active_list_misses_task_te
       test_context(),
     )
 
-  let assert True = next.member.pool.task_show.editing
-  let assert "1" = next.member.pool.task_show.edit_type_id
+  let assert True = next.member.task_show.editing
+  let assert "1" = next.member.task_show.edit_type_id
 }

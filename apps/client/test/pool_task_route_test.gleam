@@ -46,15 +46,12 @@ fn model_with_open_task_show(task_id: Int) -> client_state.Model {
   client_state.update_member(client_state.default_model(), fn(member) {
     member_state.MemberModel(
       ..member,
-      pool: member_pool.Model(
-        ..member.pool,
-        task_show: task_show_model.Model(
-          ..member.pool.task_show,
-          edit_title: "Open task",
-          edit_description: "Details",
-          edit_priority: "2",
-          edit_type_id: "5",
-        ),
+      task_show: task_show_model.Model(
+        ..member.task_show,
+        edit_title: "Open task",
+        edit_description: "Details",
+        edit_priority: "2",
+        edit_type_id: "5",
       ),
       notes: member_notes.Model(
         ..member.notes,
@@ -120,8 +117,8 @@ pub fn task_delete_success_closes_deleted_task_show_test() {
     )
 
   let assert opt.None = next.member.notes.member_notes_task_id
-  let assert "" = next.member.pool.task_show.edit_title
-  let assert "3" = next.member.pool.task_show.edit_priority
+  let assert "" = next.member.task_show.edit_title
+  let assert "3" = next.member.task_show.edit_priority
 }
 
 pub fn task_delete_success_keeps_other_task_show_open_test() {
@@ -133,8 +130,8 @@ pub fn task_delete_success_keeps_other_task_show_open_test() {
     )
 
   let assert opt.Some(99) = next.member.notes.member_notes_task_id
-  let assert "Open task" = next.member.pool.task_show.edit_title
-  let assert "2" = next.member.pool.task_show.edit_priority
+  let assert "Open task" = next.member.task_show.edit_title
+  let assert "2" = next.member.task_show.edit_priority
 }
 
 pub fn task_release_success_refresh_preserves_loaded_tasks_test() {

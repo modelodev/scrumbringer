@@ -72,12 +72,31 @@ fn dispatch_context_with_edit(
 fn apply_pool_update(model, message, context) {
   let assert Some(show_update.Update(next, fx, policy)) =
     show_update.try_update(show_model(model), message, context)
-  #(next.pool, fx, policy)
+  #(next, fx, policy)
+}
+
+fn apply_show_update(model, message, context) {
+  let assert Some(show_update.Update(next, fx, policy)) =
+    show_update.try_update(model, message, context)
+  #(next, fx, policy)
 }
 
 fn show_model(pool: member_pool.Model) -> show_update.Model {
   show_update.Model(
     pool: pool,
+    task_show: task_show_model.default(),
+    notes: member_notes.default_model(),
+    dependencies: member_dependencies.default_model(),
+  )
+}
+
+fn show_model_with_task_show(
+  pool: member_pool.Model,
+  task_show: task_show_model.Model,
+) -> show_update.Model {
+  show_update.Model(
+    pool: pool,
+    task_show: task_show,
     notes: member_notes.default_model(),
     dependencies: member_dependencies.default_model(),
   )
@@ -120,7 +139,7 @@ pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
       dispatch_context(),
     )
 
-  let assert show_tabs.TaskActivityTab = next.pool.task_show.active_tab
+  let assert show_tabs.TaskActivityTab = next.task_show.active_tab
   let assert True = next.notes == model.notes
   let assert True = next.dependencies == model.dependencies
   let assert show_update.NoAuthCheck = auth_policy
@@ -130,14 +149,12 @@ pub fn try_update_tab_clicked_sets_tab_without_auth_test() {
 pub fn try_update_error_checks_auth_after_local_feedback_test() {
   let err = sample_error()
   let model =
-    show_model(
-      member_pool.Model(
-        ..member_pool.default_model(),
-        task_show: task_show_model.Model(
-          ..member_pool.default_model().task_show,
-          edit_in_flight: True,
-          edit_error: None,
-        ),
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
+        edit_in_flight: True,
+        edit_error: None,
       ),
     )
 
@@ -149,8 +166,8 @@ pub fn try_update_error_checks_auth_after_local_feedback_test() {
     )
   let assert show_update.CheckAuthAfter(auth_err) = auth_policy
 
-  let assert False = next.pool.task_show.edit_in_flight
-  let assert Some("boom") = next.pool.task_show.edit_error
+  let assert False = next.task_show.edit_in_flight
+  let assert Some("boom") = next.task_show.edit_error
   let assert True = auth_err == err
   let assert True = fx != effect.none()
 }
@@ -168,7 +185,7 @@ pub fn fetched_task_is_added_to_empty_show_cache_test() {
 
   let assert remote.Loaded([cached_task]) = next.pool.member_tasks
   let assert 42 = cached_task.id
-  let assert "Prepare release" = next.pool.task_show.edit_title
+  let assert "Prepare release" = next.task_show.edit_title
   let assert show_update.NoAuthCheck = auth_policy
   let assert True = fx != effect.none()
 }
@@ -226,10 +243,10 @@ pub fn local_task_show_edit_started_ignores_disallowed_task_test() {
 
 pub fn local_task_show_edit_cancelled_restores_task_values_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         editing: True,
         edit_title: "Changed",
         edit_description: "Changed description",
@@ -239,7 +256,7 @@ pub fn local_task_show_edit_cancelled_restores_task_values_test() {
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskShowEditCancelled,
       dispatch_context_with_edit(Some(sample_task()), True),
@@ -256,17 +273,17 @@ pub fn local_task_show_edit_cancelled_restores_task_values_test() {
 
 pub fn local_task_show_edit_title_changed_clears_error_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         edit_title: "Old",
         edit_error: Some("error"),
       ),
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskShowEditTitleChanged("New"),
       dispatch_context(),
@@ -280,17 +297,17 @@ pub fn local_task_show_edit_title_changed_clears_error_test() {
 
 pub fn local_task_show_edit_submitted_blank_title_sets_error_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         edit_title: "   ",
         edit_description: "Review checklist.",
       ),
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskShowEditSubmitted,
       dispatch_context_with_edit(Some(sample_task()), True),
@@ -304,10 +321,10 @@ pub fn local_task_show_edit_submitted_blank_title_sets_error_test() {
 
 pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         editing: True,
         edit_title: "Prepare release",
         edit_description: "Review checklist.",
@@ -318,7 +335,7 @@ pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskShowEditSubmitted,
       dispatch_context_with_edit(Some(sample_task()), True),
@@ -334,10 +351,10 @@ pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
 
 pub fn local_task_show_edit_submitted_changed_sets_in_flight_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         editing: True,
         edit_title: " Updated title ",
         edit_description: "Updated description",
@@ -347,7 +364,7 @@ pub fn local_task_show_edit_submitted_changed_sets_in_flight_test() {
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskShowEditSubmitted,
       dispatch_context_with_edit(Some(sample_task()), True),
@@ -370,11 +387,13 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
       version: 4,
     )
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      member_tasks: remote.Loaded([sample_task()]),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.Model(
+        ..member_pool.default_model(),
+        member_tasks: remote.Loaded([sample_task()]),
+      ),
+      task_show_model.Model(
+        ..task_show_model.default(),
         editing: True,
         edit_in_flight: True,
         edit_error: Some("old"),
@@ -382,13 +401,13 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
     )
 
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskUpdated(Ok(updated)),
       dispatch_context(),
     )
 
-  let assert True = next.member_tasks == remote.Loaded([updated])
+  let assert True = next.pool.member_tasks == remote.Loaded([updated])
   let assert False = next.task_show.editing
   let assert "Updated title" = next.task_show.edit_title
   let assert "Updated description" = next.task_show.edit_description
@@ -400,10 +419,10 @@ pub fn local_task_updated_ok_replaces_task_and_stops_editing_test() {
 
 pub fn local_task_updated_error_sets_edit_error_test() {
   let model =
-    member_pool.Model(
-      ..member_pool.default_model(),
-      task_show: task_show_model.Model(
-        ..member_pool.default_model().task_show,
+    show_model_with_task_show(
+      member_pool.default_model(),
+      task_show_model.Model(
+        ..task_show_model.default(),
         edit_in_flight: True,
         edit_error: None,
       ),
@@ -411,7 +430,7 @@ pub fn local_task_updated_error_sets_edit_error_test() {
 
   let err = sample_error()
   let #(next, fx, policy) =
-    apply_pool_update(
+    apply_show_update(
       model,
       pool_messages.MemberTaskUpdated(Error(err)),
       dispatch_context(),
