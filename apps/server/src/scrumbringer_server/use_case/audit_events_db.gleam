@@ -34,7 +34,7 @@ pub type EventType {
   DueDateChanged
 }
 
-/// Converts a task event type to its DB string value.
+/// Converts an audit event type to its DB string value.
 ///
 /// Example:
 ///   event_type_to_string(TaskClaimed)
@@ -51,7 +51,7 @@ pub fn event_type_to_string(event_type: EventType) -> String {
   }
 }
 
-/// Inserts a new task event record into the database.
+/// Inserts a new audit event record into the database.
 ///
 /// ## Example
 /// ```gleam

@@ -1465,8 +1465,8 @@ pub fn insert_member_db(
   seed_db.insert_member(db, project_id, user_id, role)
 }
 
-/// Insert a task event directly to DB.
-pub fn insert_task_event_db(
+/// Insert an audit event directly to DB.
+pub fn insert_audit_event_db(
   db: pog.Connection,
   org_id: Int,
   project_id: Int,
@@ -1474,7 +1474,7 @@ pub fn insert_task_event_db(
   user_id: Int,
   event_type: String,
 ) -> Result(Nil, String) {
-  seed_db.insert_task_event_simple(
+  seed_db.insert_audit_event_simple(
     db,
     org_id,
     project_id,

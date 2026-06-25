@@ -162,7 +162,7 @@ pub fn include_metrics_task_returns_expected_counts_test() {
     )
 
   let _ =
-    fixtures.insert_task_event_db(
+    fixtures.insert_audit_event_db(
       db,
       org_id,
       project_id,
@@ -171,7 +171,7 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       "task_claimed",
     )
   let _ =
-    fixtures.insert_task_event_db(
+    fixtures.insert_audit_event_db(
       db,
       org_id,
       project_id,
@@ -180,7 +180,7 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       "task_released",
     )
   let _ =
-    fixtures.insert_task_event_db(
+    fixtures.insert_audit_event_db(
       db,
       org_id,
       project_id,

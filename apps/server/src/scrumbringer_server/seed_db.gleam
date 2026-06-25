@@ -136,9 +136,9 @@ pub type TemplateInsertOptions {
   )
 }
 
-/// Options for inserting a task event.
-pub type TaskEventInsertOptions {
-  TaskEventInsertOptions(
+/// Options for inserting an audit event.
+pub type AuditEventInsertOptions {
+  AuditEventInsertOptions(
     org_id: Int,
     project_id: Int,
     task_id: Int,
@@ -1291,15 +1291,15 @@ pub fn insert_template_simple(
 }
 
 // =============================================================================
-// Task Event Operations
+// Audit Event Operations
 // =============================================================================
 
-/// Insert a task event with optional timestamp.
-pub fn insert_task_event(
+/// Insert an audit event with optional timestamp.
+pub fn insert_audit_event(
   db: pog.Connection,
-  opts: TaskEventInsertOptions,
+  opts: AuditEventInsertOptions,
 ) -> Result(Nil, String) {
-  insert_task_event_raw(
+  insert_audit_event_raw(
     db,
     opts.org_id,
     opts.project_id,
@@ -1310,7 +1310,7 @@ pub fn insert_task_event(
   )
 }
 
-fn insert_task_event_raw(
+fn insert_audit_event_raw(
   db: pog.Connection,
   org_id: Int,
   project_id: Int,
@@ -1346,11 +1346,11 @@ fn insert_task_event_raw(
   apply_timestamp_params(base_query, params)
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(e) { "insert_task_event: " <> string.inspect(e) })
+  |> result.map_error(fn(e) { "insert_audit_event: " <> string.inspect(e) })
 }
 
-/// Simple task event insert.
-pub fn insert_task_event_simple(
+/// Simple audit event insert.
+pub fn insert_audit_event_simple(
   db: pog.Connection,
   org_id: Int,
   project_id: Int,
@@ -1358,7 +1358,7 @@ pub fn insert_task_event_simple(
   user_id: Int,
   event_type: String,
 ) -> Result(Nil, String) {
-  insert_task_event_raw(
+  insert_audit_event_raw(
     db,
     org_id,
     project_id,

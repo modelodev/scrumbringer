@@ -84,7 +84,7 @@ pub type SeedResult {
   )
 }
 
-/// Seed metadata for task event generation.
+/// Seed metadata for audit event generation.
 pub type TaskSeedInfo {
   TaskSeedInfo(
     task_id: Int,
@@ -1927,7 +1927,7 @@ fn build_audit_events(
       let created_events =
         seeds
         |> list.map(fn(seed) {
-          seed_db.TaskEventInsertOptions(
+          seed_db.AuditEventInsertOptions(
             org_id: state.org_id,
             project_id: seed.project_id,
             task_id: seed.task_id,
@@ -1940,7 +1940,7 @@ fn build_audit_events(
       let per_audit_events =
         seeds
         |> list.index_map(fn(seed, idx) {
-          task_event_options_for_seed(seed, idx, state, config)
+          audit_event_options_for_seed(seed, idx, state, config)
         })
         |> list.flatten
 
@@ -1953,7 +1953,7 @@ fn build_audit_events(
 
       use _ <- result.try(
         list.try_map(all_events, fn(opts) {
-          seed_db.insert_task_event(db, opts)
+          seed_db.insert_audit_event(db, opts)
         }),
       )
 
@@ -3084,12 +3084,12 @@ fn task_seed_at(
   list_at_helper(items, idx, default)
 }
 
-fn task_event_options_for_seed(
+fn audit_event_options_for_seed(
   seed: TaskSeedInfo,
   idx: Int,
   state: BuildState,
   config: SeedConfig,
-) -> List(seed_db.TaskEventInsertOptions) {
+) -> List(seed_db.AuditEventInsertOptions) {
   let actor_id = case seed.claimed_by {
     Some(user_id) -> user_id
     None -> seed.created_by
@@ -3102,7 +3102,7 @@ fn task_event_options_for_seed(
 
   let claim_event = case seed.execution_state {
     task_state.Claimed(..) ->
-      Some(seed_db.TaskEventInsertOptions(
+      Some(seed_db.AuditEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
@@ -3111,7 +3111,7 @@ fn task_event_options_for_seed(
         created_at: Some(claim_time),
       ))
     task_state.Closed(..) ->
-      Some(seed_db.TaskEventInsertOptions(
+      Some(seed_db.AuditEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
@@ -3124,7 +3124,7 @@ fn task_event_options_for_seed(
 
   let release_event = case idx % 4 == 0 {
     True ->
-      Some(seed_db.TaskEventInsertOptions(
+      Some(seed_db.AuditEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
@@ -3137,7 +3137,7 @@ fn task_event_options_for_seed(
 
   let reclaim_event = case idx % 6 == 0 {
     True ->
-      Some(seed_db.TaskEventInsertOptions(
+      Some(seed_db.AuditEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
@@ -3150,7 +3150,7 @@ fn task_event_options_for_seed(
 
   let complete_event = case seed.execution_state {
     task_state.Closed(..) ->
-      Some(seed_db.TaskEventInsertOptions(
+      Some(seed_db.AuditEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
         task_id: seed.task_id,
@@ -3168,7 +3168,7 @@ fn first_claim_events_for_users(
   state: BuildState,
   seeds: List(TaskSeedInfo),
   config: SeedConfig,
-) -> List(seed_db.TaskEventInsertOptions) {
+) -> List(seed_db.AuditEventInsertOptions) {
   let active_count = config.user_count - 1 - config.inactive_user_count
   let active_users =
     list.drop(state.user_ids, 1)
@@ -3192,7 +3192,7 @@ fn first_claim_events_for_users(
         ),
       )
     let hours = list_at_int(offsets, idx, 2)
-    seed_db.TaskEventInsertOptions(
+    seed_db.AuditEventInsertOptions(
       org_id: state.org_id,
       project_id: seed.project_id,
       task_id: seed.task_id,

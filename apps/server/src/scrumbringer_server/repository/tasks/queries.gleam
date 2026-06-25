@@ -9,7 +9,7 @@
 ////
 //// - Execute SQL queries via squirrel-generated modules
 //// - Handle transactions for multi-step operations
-//// - Record task events for audit trail
+//// - Record audit events for task lifecycle changes
 ////
 //// ## Non-responsibilities
 ////
