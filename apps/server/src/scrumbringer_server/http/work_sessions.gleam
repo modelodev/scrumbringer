@@ -55,7 +55,7 @@ fn work_session_internal_error_response(
   case error {
     work_sessions_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
     work_sessions_db.NotClaimed
-    | work_sessions_db.TaskDone
+    | work_sessions_db.TaskClosed
     | work_sessions_db.SessionNotFound ->
       api.error(500, "INTERNAL", "Unexpected error")
   }
@@ -154,7 +154,7 @@ fn start_session(
     Error(work_sessions_db.NotClaimed) ->
       api.error(409, "CONFLICT_CLAIMED", "Task is not claimed by you")
 
-    Error(work_sessions_db.TaskDone) ->
+    Error(work_sessions_db.TaskClosed) ->
       api.error(409, "CONFLICT_INVALID_STATE", "Task is closed")
 
     Error(error) -> work_session_internal_error_response(error)

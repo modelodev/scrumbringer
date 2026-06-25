@@ -49,7 +49,7 @@ pub type WorkSessionError {
   /// Task is not claimed by this user.
   NotClaimed
   /// Task is closed (cannot start session).
-  TaskDone
+  TaskClosed
   /// No active session found for heartbeat.
   SessionNotFound
   /// Database error.
@@ -101,7 +101,7 @@ pub fn start_session(
 
   case task_validation {
     TaskNotClaimed -> Error(NotClaimed)
-    TaskIsClosed -> Error(TaskDone)
+    TaskIsClosed -> Error(TaskClosed)
     TaskValidForSession -> {
       // Try to insert new session, handle conflict (already exists)
       case insert_session(db, user_id, task_id) {
