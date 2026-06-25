@@ -60,7 +60,7 @@ pub fn permission_hint(
   case current_task.state, can_edit_task(config, current_task) {
     _, True -> opt.None
     task_state.Closed(task_state.Done, _, _), False ->
-      opt.Some(i18n.t(config.locale, i18n_text.TaskEditDoneReadOnly))
+      opt.Some(i18n.t(config.locale, i18n_text.TaskEditClosedReadOnly))
     _, False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
   }
 }

@@ -1300,8 +1300,8 @@ pub fn translate(text: Text) -> String {
     text.TaskEditKeyboardHint -> "Ctrl/Cmd+Enter saves. Esc cancels."
     text.TaskEditRequiresClaim ->
       "You can edit unclaimed tasks, or claim the task to keep editing it while in progress."
-    text.TaskEditDoneReadOnly ->
-      "Done tasks are read-only. Reopen or duplicate the work before changing details."
+    text.TaskEditClosedReadOnly ->
+      "Closed tasks are read-only. Reopen or duplicate the work before changing details."
     text.HierarchyLabel -> "Hierarchy"
     text.NoHierarchy -> "No hierarchy"
     text.TaskHierarchyInheritedFromCard -> "Hierarchy inherited from the card"

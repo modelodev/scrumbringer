@@ -1082,7 +1082,7 @@ pub type Text {
   TaskEditLocation
   TaskEditKeyboardHint
   TaskEditRequiresClaim
-  TaskEditDoneReadOnly
+  TaskEditClosedReadOnly
   HierarchyLabel
   NoHierarchy
   TaskHierarchyInheritedFromCard

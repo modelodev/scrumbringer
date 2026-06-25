@@ -1329,8 +1329,8 @@ pub fn translate(text: Text) -> String {
     text.TaskEditKeyboardHint -> "Ctrl/Cmd+Enter guarda. Esc cancela."
     text.TaskEditRequiresClaim ->
       "Puedes editar tareas sin reclamar, o reclamarla para seguir editándola mientras está en curso."
-    text.TaskEditDoneReadOnly ->
-      "Las tareas completadas son de solo lectura. Reabre o duplica el trabajo antes de cambiar detalles."
+    text.TaskEditClosedReadOnly ->
+      "Las tareas cerradas son de solo lectura. Reabre o duplica el trabajo antes de cambiar detalles."
     text.HierarchyLabel -> "Jerarquía"
     text.NoHierarchy -> "Sin jerarquía"
     text.TaskHierarchyInheritedFromCard -> "Jerarquía heredada de la tarjeta"

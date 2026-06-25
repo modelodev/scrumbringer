@@ -102,16 +102,16 @@ pub fn show_editor_hides_edit_for_other_claimed_task_test() {
   assert_contains(html, "claim the task to keep editing")
 }
 
-pub fn show_editor_hides_edit_for_completed_task_test() {
-  let completed_state =
+pub fn show_editor_hides_edit_for_closed_task_test() {
+  let closed_state =
     task_state.Closed(task_state.Done, "2026-06-14T12:00:00Z", 7)
-  let task = Task(..claimed_task(), state: completed_state)
+  let task = Task(..claimed_task(), state: closed_state)
   let html =
     show_editor.view_readonly_fields(config(Some(7)), task)
     |> element.to_document_string
 
   assert_not_contains(html, "Edit task")
-  assert_contains(html, "Done tasks are read-only")
+  assert_contains(html, "Closed tasks are read-only")
   assert_not_contains(html, "claim the task to keep editing")
 }
 
