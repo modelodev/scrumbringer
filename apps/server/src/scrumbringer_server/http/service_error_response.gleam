@@ -21,8 +21,8 @@ pub fn to_response(error: ServiceError) -> wisp.Response {
   }
 }
 
-/// Maps shared service errors where unexpected repository state is exposed as a
-/// database error for backwards-compatible endpoint responses.
+/// Maps shared service errors for endpoints whose public contract groups
+/// unexpected repository state with database failures.
 pub fn to_database_response(error: ServiceError) -> wisp.Response {
   case error {
     Unexpected(_) -> api.error(500, "INTERNAL", "Database error")
