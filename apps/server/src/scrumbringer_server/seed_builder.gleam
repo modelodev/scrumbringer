@@ -32,12 +32,12 @@ import scrumbringer_server/seed_activity_scenarios
 import scrumbringer_server/seed_audit_events
 import scrumbringer_server/seed_automation_definitions
 import scrumbringer_server/seed_automation_diagnostics
+import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
 import scrumbringer_server/seed_workspace_scenarios
-import scrumbringer_server/use_case/rules_engine
 
 // =============================================================================
 // Types
@@ -205,7 +205,7 @@ pub fn build_seed(
   use state <- result.try(build_root_cards(db, state, config))
   use state <- result.try(build_audit_events(db, state, config))
   use state <- result.try(build_activity_support_scenarios(db, state, config))
-  use state <- result.try(trigger_rule_executions(db, state, config))
+  use state <- result.try(build_automation_executions(db, state, config))
   use state <- result.try(build_automation_diagnostics(db, state, config))
 
   Ok(SeedResult(
@@ -1964,46 +1964,24 @@ fn insert_seed_child_card(
   Ok(child_id)
 }
 
-fn trigger_rule_executions(
+fn build_automation_executions(
   db: pog.Connection,
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  // Trigger some rule executions for tasks
-  let tasks_to_trigger = list.take(state.task_ids, 3)
-  let active_projects = active_project_ids(state)
+  use context <- result.try(seed_automation_executions.build(
+    db,
+    seed_automation_executions.Context(
+      org_id: state.org_id,
+      admin_id: state.admin_id,
+      task_ids: state.task_ids,
+      active_project_ids: active_project_ids(state),
+      task_type_ids: state.task_type_ids,
+      rule_executions_count: state.rule_executions_count,
+    ),
+  ))
 
-  case active_projects, state.task_type_ids {
-    [project_id, ..], [#(_proj, bug_type_id, _feat, _task), ..] -> {
-      use _ <- result.try(
-        list.try_map(tasks_to_trigger, fn(task_id) {
-          let event =
-            rules_engine.task_trigger(
-              rules_engine.TaskContext(
-                task_id: task_id,
-                project_id: project_id,
-                org_id: state.org_id,
-                type_id: bug_type_id,
-                card_id: None,
-              ),
-              state.admin_id,
-              Some(task_state.Claimed(state.admin_id, "", task_state.Taken)),
-              task_state.Closed(task_state.Done, "", state.admin_id),
-            )
-          rules_engine.evaluate_rules(db, event)
-          |> result.map_error(fn(_) { "Rule evaluation failed" })
-        }),
-      )
-
-      Ok(
-        BuildState(
-          ..state,
-          rule_executions_count: list.length(tasks_to_trigger),
-        ),
-      )
-    }
-    _, _ -> Ok(state)
-  }
+  Ok(BuildState(..state, rule_executions_count: context.rule_executions_count))
 }
 
 fn build_automation_diagnostics(
