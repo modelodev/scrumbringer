@@ -161,9 +161,9 @@ Largest modules that must be considered in the final refactor:
 | Flow | Current shape | Cleanup target | Valor | Complejidad | Riesgo |
 | --- | --- | --- | --- | --- | --- |
 | Card lifecycle | DB uses `draft`/`active`/`closed`; shared has typed card state; card close contract still accepts raw reason string. | Use `domain/card/state.gleam` and typed `CardClosedReason` through shared contracts, mappers, presenters, and client API. | Alto | Media | Alto |
-| Task lifecycle | `domain/task/state.gleam` has `Available`/`Claimed`/`Closed`; `task_state`/`task_status` still expose `Done`/`completed`. | Make `domain/task/state.gleam` canonical; keep `task_status` only for presentation/filter; migrate or remove `task_state`. | Alto | Alta | Alto |
+| Task lifecycle | `domain/task/state.gleam` has `Available`/`Claimed`/`Closed`; `task_status` maps closed presentation filters to the external `completed` value only at the boundary. | Keep `domain/task/state.gleam` canonical; keep `task_status` only for presentation/filter projection; remove or isolate any remaining lifecycle compatibility names. | Alto | Alta | Alto |
 | Due dates | Card contracts, Pool urgency, card overdue surfaces, audit events, seeds, and UI labels all touch due-date semantics. | Define Date/project-timezone semantics, codecs, DB mapping, `DueDateChanged` activity, visual urgency rules, seeds, and browser validations. | Alto | Media | Alto |
-| Pool claimability | Claim/release/complete is split across task route, now-working, drag, and Pool fallback arms. | Pool owns canvas/filter/drag context; task mutation route owns lifecycle; fallback arms are removed by owner tests. | Alto | Alta | Medio |
+| Pool claimability | Claim/release/close is split across task route, now-working, drag, and Pool fallback arms. | Pool owns canvas/filter/drag context; task mutation route owns lifecycle; fallback arms are removed by owner tests. | Alto | Alta | Medio |
 | Plan/tree | `structure_view.gleam` combines scope, filters, move validity, rollups, labels, and DOM. | Extract selectors, rollups, action availability, and move view model before DOM split. | Alto | Media | Medio |
 | Kanban | Board depends on lifecycle summaries and visibility. | Reuse lifecycle selectors; do not introduce a generic board abstraction. | Medio | Media | Medio |
 | Capabilities | Capability board computes status visibility and actions. | Share task display/action helpers; keep capability-specific layout local. | Medio | Media | Bajo |
@@ -188,7 +188,8 @@ Shared/domain:
   state. It should absorb `Available`, `Claimed`, `Closed`, close reasons, claim
   mode, and closed metadata.
 - `shared/src/domain/task_status.gleam` remains useful only as a UI/filter
-  projection: available, claimed, ongoing, done/completed labels.
+  projection: available, claimed, ongoing, and closed labels, with `completed`
+  retained only as an external filter value.
 - `task_status.gleam` is allowed in final code only for UI labels, filter values,
   and presentation projections. It is prohibited as the domain execution model,
   persistence representation, repository truth, automation/rules-engine state,
@@ -616,13 +617,13 @@ Styles:
 | Baseline/docs | Recompute `HEAD`, diff stat, layer inventory, largest modules, current test baseline, `git diff --check`, and grep for deleted modules in current architecture docs. |
 | Lifecycle contracts | Shared tests for task/card state codecs, card close reason decode, task close response, compatibility projections. |
 | Due dates | Shared/API codec tests, DB mapper tests, project timezone/overdue selector tests, `DueDateChanged` activity tests, Pool/Card visual urgency tests. |
-| Persistence/repository | Server tests for claim/release/complete/close-by-ancestor, card activate/close/rollup/move, dependency blocking. |
+| Persistence/repository | Server tests for claim/release/close/close-by-ancestor, card activate/close/rollup/move, dependency blocking. |
 | HTTP/API | Server HTTP tests for lifecycle conflicts, validation, auth/API token permissions, project settings errors. |
 | Routing/URL/hydration | Encode/decode round-trip tests, redirect-resource decision tests, no-redundant-history-write tests, deep link tests for Card Show, Task Show, Plan scopes, automations, and startup hydration. |
 | Feature update policies | Tests for auth policy timing, refresh/no-refresh, core-selection policy, root/focus policy, route-support adapters, and effect ordering. |
 | Project settings/assignments | Client update/view tests, server project settings tests, assignments update tests, permissions matrix tests, wizard/depth behavior. |
 | Client update/Pool | Route owner tests, show-stack tests, project switching tests, Pool fallback removal tests. |
-| Card/Task Show | Component/update tests for tabs, notes, activity, dependencies, create/edit/close/activate/claim/release/complete. |
+| Card/Task Show | Component/update tests for tabs, notes, activity, dependencies, create/edit/close/activate/claim/release. |
 | Plan/Kanban/Capabilities/People | Selector tests for visibility, rollups, status labels, ownership, move validity, action availability. |
 | Automations | Rule engine matrix tests, outcome ADT tests, handler tests, HTTP workflow/rule/template tests, client builder/list/history tests. |
 | I18n/copy | Key coverage tests for `text`, `en`, `es`; terminology grep for legacy terms. |
@@ -646,7 +647,7 @@ Large-test work inventory:
 | `apps/server/test/fixtures.gleam` | 1523 | scenario fixtures, auth users, hierarchy data, automation data. |
 | `apps/server/test/rule_metrics_http_test.gleam` | 1224 | org/project metrics, drilldowns, date ranges, permission-negative paths. |
 | `apps/server/test/rules_http_test.gleam` | 1133 | rule CRUD, payload compatibility, automation contracts. |
-| `apps/server/test/integration/rules_trigger_on_complete_test.gleam` | 1087 | lifecycle-trigger integration matrix. |
+| `apps/server/test/integration/rules_trigger_on_close_test.gleam` | 1087 | lifecycle-trigger integration matrix. |
 | `apps/client/test/people_view_test.gleam` | 1030 | roster, ownership, task status labels, capability filters. |
 | `apps/server/test/cards_http_test.gleam` | 1020 | card lifecycle, move, close, due dates, operational history. |
 | `apps/server/test/task_templates_http_test.gleam` | 1004 | template CRUD, automation usage, archive/delete behavior. |
@@ -705,7 +706,7 @@ visual result, and the automated test to add if a reproducible defect appears.
 | Scenario | User | Initial URL | Seed expectation | Key testid | Action | Expected result | Bug becomes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Hierarchy with draft/active/closed cards | Project manager | `/member?view=plan` | Tree contains draft, active, and closed cards | `plan-structure-view` | Scope by depth/card, move card, activate subtree, close card, toggle closed | Tree, rollups, disabled reasons, and show-closed state update without layout overlap | Plan selector/update test or card HTTP lifecycle test |
-| Claimable task leaves | Member | `/member?view=pool` | Available, claimed, ongoing, and closed task leaves | Pool task/card testids | Claim, release, complete/close, drag-to-claim, start/pause work | Pool and now-working state refresh correctly and no invalid action remains enabled | Task mutation update test or server task transition test |
+| Claimable task leaves | Member | `/member?view=pool` | Available, claimed, ongoing, and closed task leaves | Pool task/card testids | Claim, release, close, drag-to-claim, start/pause work | Pool and now-working state refresh correctly and no invalid action remains enabled | Task mutation update test or server task transition test |
 | Due dates and overdue work | Member and project manager | `/member?view=pool` and `/member?view=plan` | Cards/tasks include future, today, overdue, and no due date | Due-date/urgency labels | Create/change/remove due date and refresh | Timezone-aware urgency, overdue tone, sorting, and `DueDateChanged` activity are correct | Due-date selector, API contract, activity, or card/task HTTP test |
 | Dependencies/blockers | Member | Task Show deep link | Task has open and closed dependencies | dependency list/dialog testids | Add/remove dependency and close dependency | Blocked badge and available actions update correctly | Dependency update/API test |
 | Notes/activity | Member | Card Show and Task Show deep links | Notes and activity exist for card and task targets | notes/activity testids | Add/delete/pin note and paginate activity | Target-specific notes/activity update and survive refresh | Notes update/API or activity HTTP test |

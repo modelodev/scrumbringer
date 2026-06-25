@@ -1,4 +1,4 @@
-//// Unit tests for task claim/release/complete queries.
+//// Unit tests for task claim/release/close queries.
 ////
 //// Tests the core task lifecycle operations via HTTP API with fixtures.
 //// Uses fixtures.gleam for test setup and authentication.
@@ -136,7 +136,7 @@ pub fn claim_task_fails_with_version_mismatch_test() {
   expect.expect_status(res, 409)
 }
 
-pub fn claim_task_query_rejects_incomplete_dependencies_test() {
+pub fn claim_task_query_rejects_open_dependencies_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 

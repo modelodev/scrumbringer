@@ -47,16 +47,16 @@ AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chrome make ht12-sweep-lan
 
 The script performs preflight checks, logs in through the public API, creates a
 fresh project with a three-level card hierarchy, creates RootPool and card-scoped
-tasks, exercises activation, move, claim, release, complete, task delete,
+tasks, exercises activation, move, claim, release, close, task delete,
 task-delete-with-history, card delete, card-delete-with-children, and
 card-delete-with-history paths. It also creates enough RootPool pressure to push
 the project over `healthy_pool_limit`, verifies the activation response reports
 `pool_open_after`, `healthy_pool_limit`, and `pool_health`, and checks that a
 manual card close is rejected while a descendant task is claimed. It creates a
 task under an already active card and proves that task enters the Pool
-immediately, can be claimed, and can be completed. It also closes an
+immediately, can be claimed, and can be closed. It also closes an
 available-only branch and verifies the descendant card is closed and its task is
-completed, with the server-side `closed_by_ancestor` reason covered by the HTTP
+closed, with the server-side `closed_by_ancestor` reason covered by the HTTP
 tests. The same API phase creates task-to-task dependencies, proves a blocked
 task cannot be claimed, proves it becomes claimable after the dependency closes
 or is removed, and verifies cycle and cross-project dependency rejections. Then
@@ -71,7 +71,7 @@ behavior.
 The automation API phase creates an engine, templates, and rules for every
 supported trigger family: `task_created`, `task_claimed`, `task_released`,
 `task_completed`, `card_activated`, and `card_closed`. It verifies generated
-task origins, rule execution records, duplicate completion suppression, missing
+task origins, rule execution records, duplicate close suppression, missing
 template rejection, and the non-cascading guard that prevents
 automation-created tasks from firing `task_created` rules.
 
@@ -212,7 +212,7 @@ Latest LAN evidence on this host:
   available, unblocked, and under an active card.
 - Expected: Activation does not activate ancestors.
 
-### 5. Claim, Release, Complete
+### 5. Claim, Release, Close
 
 - Open a Pool task detail.
 - Claim the task.
@@ -220,13 +220,13 @@ Latest LAN evidence on this host:
   current user without a generic database error.
 - Release the task.
 - Expected: it returns to the Pool as available and records a release event.
-- Claim it again, then complete it.
-- Expected: it becomes done/completed and no longer appears as claimable work.
+- Claim it again, then close it.
+- Expected: it becomes closed and no longer appears as claimable work.
 - While a descendant task is claimed, attempt to close the parent branch.
 - Expected: the server returns `CARD_HAS_CLAIMED_DESCENDANT` and the UI explains
-  that the task must be completed, released, or closed before closing the branch.
+  that the task must be closed or released before closing the branch.
 - Close an active available-only branch.
-- Expected: the branch closes, descendant available tasks are completed instead
+- Expected: the branch closes, descendant available tasks are closed instead
   of hard-deleted, and the server records the close reason as
   `closed_by_ancestor`.
 
@@ -239,7 +239,7 @@ Latest LAN evidence on this host:
 - Activate an otherwise empty card, then attempt delete.
 - Expected: delete is disabled with contextual help, or the server returns
   `TASK_HAS_OPERATIONAL_HISTORY` and the UI restores the task without losing
-  state. A claimed task is closed/released/completed, not hard-deleted.
+  state. A claimed task is closed or released, not hard-deleted.
 - Expected: stale or alternate delete clicks in the client submit DELETE only
   for visible available tasks with no dependency blockers; claimed, done, or
   blocked tasks are ignored locally. The backend remains authoritative for
@@ -254,8 +254,8 @@ Latest LAN evidence on this host:
 - Create a task that depends on another open task in the same project.
 - Attempt to claim the blocked task.
 - Expected: the server returns `CONFLICT_BLOCKED`; the UI explains that
-  incomplete dependencies block claiming.
-- Complete the dependency task, then claim the previously blocked task.
+  open dependencies block claiming.
+- Close the dependency task, then claim the previously blocked task.
 - Expected: the task is claimable again without creating a new visual state.
 - Create and then remove another dependency.
 - Expected: the dependent task is claimable after the relation is removed.
@@ -282,7 +282,7 @@ Latest LAN evidence on this host:
 - Create a task template for generated follow-up work.
 - Create an active rule that triggers on `task_completed` and creates a task
   from that template.
-- Complete a matching origin task.
+- Close a matching origin task.
 - Expected: rule executions include an applied execution with
   `template_version`, `created_task_id`, and the generated task.
 - Expected: opening the generated task in Task Show exposes its
