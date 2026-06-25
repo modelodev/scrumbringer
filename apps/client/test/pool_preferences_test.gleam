@@ -42,7 +42,7 @@ pub fn try_update_handles_hide_closed_without_persistence_test() {
   let assert Some(#(pool, preferences.NoPersistence)) =
     preferences.try_update(
       visible_closed,
-      pool_messages.MemberListHideDoneToggled,
+      pool_messages.MemberListHideClosedToggled,
     )
 
   let assert True = pool.member_list_hide_closed

@@ -68,7 +68,7 @@ pub type Msg {
   MemberTaskFocused(Int)
   MemberTaskBlurred
   MemberTaskHoverNotesFetched(Int, ApiResult(List(note_entity.Note)))
-  MemberListHideDoneToggled
+  MemberListHideClosedToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)

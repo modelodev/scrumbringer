@@ -116,7 +116,7 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
               attribute.checked(config.hide_closed),
               event.on_click(config.on_toggle_hide_closed),
             ]),
-            text(i18n.t(config.locale, i18n_text.HideDoneTasks)),
+            text(i18n.t(config.locale, i18n_text.HideClosedTasks)),
           ]),
         ]),
       ])

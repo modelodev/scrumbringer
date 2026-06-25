@@ -250,7 +250,7 @@ pub type Text {
   NoBlockedPoolTasksBody
   ViewBlockedTasks
   ViewOpenTasks
-  HideDoneTasks
+  HideClosedTasks
   TypeNumber(type_id: Int)
   MetaType
   MetaPriority

@@ -294,7 +294,7 @@ pub fn translate(text: Text) -> String {
       "Blockers will appear here when an unfinished dependency prevents claiming."
     text.ViewBlockedTasks -> "View blocked"
     text.ViewOpenTasks -> "View open"
-    text.HideDoneTasks -> "Hide closed tasks"
+    text.HideClosedTasks -> "Hide closed tasks"
     text.TypeNumber(type_id) -> "Type #" <> int.to_string(type_id)
     text.MetaType -> "type: "
     text.MetaPriority -> "priority: "

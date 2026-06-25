@@ -297,7 +297,7 @@ pub fn translate(text: Text) -> String {
       "Los bloqueos aparecerán aquí cuando una dependencia impida reclamar."
     text.ViewBlockedTasks -> "Ver bloqueadas"
     text.ViewOpenTasks -> "Ver abiertas"
-    text.HideDoneTasks -> "Ocultar tareas cerradas"
+    text.HideClosedTasks -> "Ocultar tareas cerradas"
     text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
     text.MetaType -> "tipo: "
     text.MetaPriority -> "prioridad: "
