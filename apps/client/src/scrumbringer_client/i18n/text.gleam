@@ -398,9 +398,6 @@ pub type Text {
   ViewInCapabilities
   ViewInPeople
   HierarchyTotalTasksCount(tasks_count: Int)
-  HierarchyTaskPhaseAvailable
-  HierarchyTaskPhaseClaimed
-  HierarchyTaskPhaseDone
   ExpandHierarchyCard(name: String)
   CollapseHierarchyCard(name: String)
   ExpandHierarchy(name: String)

@@ -471,9 +471,6 @@ pub fn translate(text: Text) -> String {
     text.ViewInPeople -> "View in People"
     text.HierarchyTotalTasksCount(tasks_count) ->
       int.to_string(tasks_count) <> " total tasks"
-    text.HierarchyTaskPhaseAvailable -> "available"
-    text.HierarchyTaskPhaseClaimed -> "claimed"
-    text.HierarchyTaskPhaseDone -> "completed"
     text.ExpandHierarchyCard(name) -> "Show tasks for " <> name
     text.CollapseHierarchyCard(name) -> "Hide tasks for " <> name
     text.ExpandHierarchy(name) -> "Expand hierarchy " <> name
