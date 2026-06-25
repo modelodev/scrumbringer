@@ -98,6 +98,26 @@ fn context(
       ))
     },
     name_required: i18n.t(model.ui.locale, i18n_text.NameRequired),
+    pool_soft_limit_positive: i18n.t(
+      model.ui.locale,
+      i18n_text.ProjectPoolSoftLimitPositive,
+    ),
+    maximum_depth_positive: i18n.t(
+      model.ui.locale,
+      i18n_text.ProjectMaximumDepthPositive,
+    ),
+    add_level_names_before_increasing_depth: i18n.t(
+      model.ui.locale,
+      i18n_text.ProjectAddLevelNamesBeforeIncreasingDepth,
+    ),
+    review_affected_cards_before_lowering_depth: i18n.t(
+      model.ui.locale,
+      i18n_text.ProjectReviewAffectedCardsBeforeLoweringDepth,
+    ),
+    depth_names_required: i18n.t(
+      model.ui.locale,
+      i18n_text.ProjectDepthNamesRequired,
+    ),
   )
 }
 

@@ -76,6 +76,11 @@ fn context() -> projects_update.Context(Nil) {
     on_project_deleted: fn(_result) { Nil },
     on_depth_reduction_previewed: fn(_result) { Nil },
     name_required: "Name required",
+    pool_soft_limit_positive: "Pool soft limit must be a positive number",
+    maximum_depth_positive: "Maximum depth must be a positive number",
+    add_level_names_before_increasing_depth: "Add level names before increasing maximum depth",
+    review_affected_cards_before_lowering_depth: "Review affected cards before saving a lower maximum depth",
+    depth_names_required: "Every level needs singular and plural names",
   )
 }
 

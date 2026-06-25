@@ -866,6 +866,16 @@ pub fn translate(text: Text) -> String {
       "Reducción de profundidad a "
       <> int.to_string(new_max_depth)
       <> " niveles confirmada."
+    text.ProjectPoolSoftLimitPositive ->
+      "El límite blando del Pool debe ser un número positivo"
+    text.ProjectMaximumDepthPositive ->
+      "La profundidad máxima debe ser un número positivo"
+    text.ProjectAddLevelNamesBeforeIncreasingDepth ->
+      "Añade nombres de nivel antes de aumentar la profundidad máxima"
+    text.ProjectReviewAffectedCardsBeforeLoweringDepth ->
+      "Revisa las tarjetas afectadas antes de guardar una profundidad menor"
+    text.ProjectDepthNamesRequired ->
+      "Cada nivel necesita nombres singular y plural"
 
     // Contextual hints (Story 4.9 AC21-22)
     text.RulesHintTemplates ->

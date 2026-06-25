@@ -694,6 +694,11 @@ pub type Text {
   ProjectDepthReductionAffectedCards
   ProjectDepthReductionConfirm
   ProjectDepthReductionConfirmed(new_max_depth: Int)
+  ProjectPoolSoftLimitPositive
+  ProjectMaximumDepthPositive
+  ProjectAddLevelNamesBeforeIncreasingDepth
+  ProjectReviewAffectedCardsBeforeLoweringDepth
+  ProjectDepthNamesRequired
 
   // Contextual hints (Story 4.9 AC21-22)
   RulesHintTemplates

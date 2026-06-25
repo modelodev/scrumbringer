@@ -842,6 +842,16 @@ pub fn translate(text: Text) -> String {
       "Depth reduction to "
       <> int.to_string(new_max_depth)
       <> " levels confirmed."
+    text.ProjectPoolSoftLimitPositive ->
+      "Pool soft limit must be a positive number"
+    text.ProjectMaximumDepthPositive ->
+      "Maximum depth must be a positive number"
+    text.ProjectAddLevelNamesBeforeIncreasingDepth ->
+      "Add level names before increasing maximum depth"
+    text.ProjectReviewAffectedCardsBeforeLoweringDepth ->
+      "Review affected cards before saving a lower maximum depth"
+    text.ProjectDepthNamesRequired ->
+      "Every level needs singular and plural names"
 
     // Contextual hints (Story 4.9 AC21-22)
     text.RulesHintTemplates ->

@@ -50,6 +50,11 @@ pub type Context(parent_msg) {
     ) ->
       parent_msg,
     name_required: String,
+    pool_soft_limit_positive: String,
+    maximum_depth_positive: String,
+    add_level_names_before_increasing_depth: String,
+    review_affected_cards_before_lowering_depth: String,
+    depth_names_required: String,
   )
 }
 
@@ -531,6 +536,7 @@ fn advance_project_create_step(
         max_depth,
         healthy_pool_limit,
         card_depth_names,
+        context,
       )
 
     admin_projects.ProjectCreateCapabilities ->
@@ -578,6 +584,7 @@ fn advance_project_create_structure(
   max_depth: String,
   healthy_pool_limit: String,
   card_depth_names: List(ProjectDepthName),
+  context: Context(parent_msg),
 ) -> #(admin_projects.Model, Effect(parent_msg)) {
   case
     validate_project_settings(
@@ -585,6 +592,7 @@ fn advance_project_create_structure(
       healthy_pool_limit,
       card_depth_names,
       admin_projects.NoDepthReduction,
+      context,
     )
   {
     Error(message) -> #(
@@ -687,6 +695,7 @@ fn submit_project_create_settings(
       healthy_pool_limit,
       card_depth_names,
       admin_projects.NoDepthReduction,
+      context,
     )
   {
     Error(message) -> #(
@@ -1183,6 +1192,7 @@ fn submit_project_edit_settings(
       healthy_pool_limit,
       card_depth_names,
       depth_reduction,
+      context,
     )
   {
     Error(message) -> #(
@@ -1209,17 +1219,19 @@ fn validate_project_settings(
   healthy_pool_limit: String,
   card_depth_names: List(ProjectDepthName),
   depth_reduction: admin_projects.DepthReductionState,
+  context: Context(parent_msg),
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
+  let Context(pool_soft_limit_positive:, ..) = context
   case int.parse(string.trim(healthy_pool_limit)) {
-    Error(_) -> Error("Pool soft limit must be a positive number")
-    Ok(value) if value <= 0 ->
-      Error("Pool soft limit must be a positive number")
+    Error(_) -> Error(pool_soft_limit_positive)
+    Ok(value) if value <= 0 -> Error(pool_soft_limit_positive)
     Ok(value) ->
       validate_depth_settings(
         max_depth,
         value,
         card_depth_names,
         depth_reduction,
+        context,
       )
   }
 }
@@ -1229,15 +1241,17 @@ fn validate_depth_settings(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
   depth_reduction: admin_projects.DepthReductionState,
+  context: Context(parent_msg),
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
+  let Context(maximum_depth_positive:, ..) = context
   case int.parse(string.trim(max_depth)) {
-    Error(_) -> Error("Maximum depth must be a positive number")
-    Ok(value) if value <= 0 -> Error("Maximum depth must be a positive number")
+    Error(_) -> Error(maximum_depth_positive)
+    Ok(value) if value <= 0 -> Error(maximum_depth_positive)
     Ok(value) -> {
       let normalized = normalize_depth_names(card_depth_names)
       let current_depth = list.length(normalized)
       case value == current_depth {
-        True -> validate_depth_names(healthy_pool_limit, normalized)
+        True -> validate_depth_names(healthy_pool_limit, normalized, context)
         False ->
           validate_pending_depth_change(
             value,
@@ -1245,6 +1259,7 @@ fn validate_depth_settings(
             healthy_pool_limit,
             normalized,
             depth_reduction,
+            context,
           )
       }
     }
@@ -1257,9 +1272,15 @@ fn validate_pending_depth_change(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
   depth_reduction: admin_projects.DepthReductionState,
+  context: Context(parent_msg),
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
+  let Context(
+    add_level_names_before_increasing_depth:,
+    review_affected_cards_before_lowering_depth:,
+    ..,
+  ) = context
   case max_depth > current_depth {
-    True -> Error("Add level names before increasing maximum depth")
+    True -> Error(add_level_names_before_increasing_depth)
     False ->
       case depth_reduction {
         admin_projects.DepthReductionConfirmed(confirmed_depth)
@@ -1268,8 +1289,9 @@ fn validate_pending_depth_change(
           validate_depth_names(
             healthy_pool_limit,
             list.take(card_depth_names, max_depth),
+            context,
           )
-        _ -> Error("Review affected cards before saving a lower maximum depth")
+        _ -> Error(review_affected_cards_before_lowering_depth)
       }
   }
 }
@@ -1277,10 +1299,12 @@ fn validate_pending_depth_change(
 fn validate_depth_names(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
+  context: Context(parent_msg),
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
+  let Context(depth_names_required:, ..) = context
   let normalized = normalize_depth_names(card_depth_names)
   case list.any(normalized, invalid_depth_name) {
-    True -> Error("Every level needs singular and plural names")
+    True -> Error(depth_names_required)
     False -> Ok(#(healthy_pool_limit, normalized))
   }
 }

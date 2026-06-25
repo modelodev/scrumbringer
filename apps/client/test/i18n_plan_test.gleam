@@ -55,3 +55,20 @@ pub fn plan_labels_en_test() {
     "Create a card or change the scope to review another part of the plan.",
   )
 }
+
+pub fn project_settings_validation_es_test() {
+  i18n.t(locale.Es, text.ProjectPoolSoftLimitPositive)
+  |> assert_equal("El límite blando del Pool debe ser un número positivo")
+  i18n.t(locale.Es, text.ProjectMaximumDepthPositive)
+  |> assert_equal("La profundidad máxima debe ser un número positivo")
+  i18n.t(locale.Es, text.ProjectAddLevelNamesBeforeIncreasingDepth)
+  |> assert_equal(
+    "Añade nombres de nivel antes de aumentar la profundidad máxima",
+  )
+  i18n.t(locale.Es, text.ProjectReviewAffectedCardsBeforeLoweringDepth)
+  |> assert_equal(
+    "Revisa las tarjetas afectadas antes de guardar una profundidad menor",
+  )
+  i18n.t(locale.Es, text.ProjectDepthNamesRequired)
+  |> assert_equal("Cada nivel necesita nombres singular y plural")
+}
