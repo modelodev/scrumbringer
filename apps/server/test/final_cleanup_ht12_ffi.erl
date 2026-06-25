@@ -383,6 +383,7 @@ obsolete_code_violations(Root) ->
         "shared/src/domain/" ++ legacy_root(),
         "apps/client/src/scrumbringer_client/features/" ++ legacy_plural()
     ]) ++ require_empty_glob(Root, "apps/server/src/scrumbringer_server/sql/" ++ legacy_plural() ++ "_") ++
+    require_empty_glob(Root, "apps/client/src/scrumbringer_client/api/payload_fields.gleam") ++
     files_containing(Root, [
         "apps/server/src/scrumbringer_server/repository/tasks/queries.gleam",
         "apps/server/src/scrumbringer_server/sql/tasks_list.sql",
