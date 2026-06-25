@@ -216,7 +216,7 @@ pub fn move_card_dialog_explains_invalid_destinations_test() {
       task_group,
     ])
 
-  assert_contains(explanation, "Contiene tasks directas")
+  assert_contains(explanation, "Contiene tareas directas")
 }
 
 pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
@@ -273,7 +273,7 @@ pub fn moving_card_to_root_is_blocked_only_when_already_root_test() {
   let assert opt.Some(card_policy.AlreadyAtProjectRoot) = reason
   assert_contains(
     card_policy.move_blocked_reason_label(card_policy.AlreadyAtProjectRoot),
-    "raiz",
+    "raíz",
   )
 }
 

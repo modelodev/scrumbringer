@@ -142,9 +142,9 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"project-structure-settings\"")
-  assert_contains(html, "Elige cuanta profundidad")
-  assert_contains(html, "Ejemplos: Card -&gt; Task")
-  assert_contains(html, "Este limite nunca bloquea")
+  assert_contains(html, "Elige cuánta profundidad")
+  assert_contains(html, "Ejemplos: Tarjeta -&gt; Tarea")
+  assert_contains(html, "Este límite nunca bloquea")
   assert_contains(html, "aria-label=\"Profundidad maxima\"")
   assert_contains(html, "aria-label=\"Limite blando del Pool\"")
 }
@@ -283,7 +283,7 @@ pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
   assert_contains(html, "Estructura y Pool")
   assert_contains(html, "Profundidad maxima")
   assert_contains(html, "Limite blando del Pool")
-  assert_contains(html, "Este limite nunca bloquea")
+  assert_contains(html, "Este límite nunca bloquea")
   assert_contains(html, "Nivel 1")
   assert_contains(html, "aria-label=\"Nombre singular del nivel 1\"")
   assert_not_contains(html, "Structure and Pool")
@@ -333,11 +333,11 @@ pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
-  assert_contains(html, "4 cards y 3 tasks disponibles")
-  assert_contains(html, "Cards afectadas")
+  assert_contains(html, "4 tarjetas y 3 tareas disponibles")
+  assert_contains(html, "Tarjetas afectadas")
   assert_contains(html, "Historia profunda")
   assert_contains(html, "Nivel 3")
-  assert_contains(html, "Confirmar reduccion de profundidad")
+  assert_contains(html, "Confirmar reducción de profundidad")
   assert_contains(html, "btn-danger")
   assert_not_contains(html, "Confirm depth reduction")
 }

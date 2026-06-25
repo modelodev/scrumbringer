@@ -7,27 +7,27 @@ fn assert_equal(actual: String, expected: String) {
 }
 
 pub fn plan_labels_es_test() {
-  i18n.t(locale.Es, text.PlanScope) |> assert_equal("Scope")
+  i18n.t(locale.Es, text.PlanScope) |> assert_equal("Alcance")
   i18n.t(locale.Es, text.PlanScopeProject) |> assert_equal("Proyecto")
   i18n.t(locale.Es, text.PlanScopeLevel) |> assert_equal("Nivel")
-  i18n.t(locale.Es, text.PlanScopeCard) |> assert_equal("Card")
+  i18n.t(locale.Es, text.PlanScopeCard) |> assert_equal("Tarjeta")
   i18n.t(locale.Es, text.PlanScopeSelectCard)
-  |> assert_equal("Selecciona una card activa")
+  |> assert_equal("Selecciona una tarjeta activa")
   i18n.t(locale.Es, text.PlanScopeNoActiveCards)
-  |> assert_equal("Sin cards activas")
+  |> assert_equal("Sin tarjetas activas")
   i18n.t(locale.Es, text.PlanMode) |> assert_equal("Modo")
   i18n.t(locale.Es, text.PlanModeStructure) |> assert_equal("Estructura")
   i18n.t(locale.Es, text.PlanModeKanban) |> assert_equal("Kanban")
   i18n.t(locale.Es, text.PlanClosed) |> assert_equal("Finalizadas")
   i18n.t(locale.Es, text.PlanEmptyCardScopeBody)
   |> assert_equal(
-    "Busca una card para ver su subarbol, capacidades, tasks y riesgo.",
+    "Busca una tarjeta para ver su subárbol, capacidades, tareas y riesgo.",
   )
   i18n.t(locale.Es, text.PlanEmptyScopeTitle)
-  |> assert_equal("No hay cards en este scope.")
+  |> assert_equal("No hay tarjetas en este alcance.")
   i18n.t(locale.Es, text.PlanEmptyScopeBody)
   |> assert_equal(
-    "Crea una card o cambia el scope para revisar otra parte del plan.",
+    "Crea una tarjeta o cambia el alcance para revisar otra parte del plan.",
   )
 }
 

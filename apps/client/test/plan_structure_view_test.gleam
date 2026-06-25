@@ -124,9 +124,9 @@ pub fn card_scope_with_subcards_prioritizes_subcards_detail_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-structure-detail\"")
-  assert_contains(html, "Contenido: subcards")
+  assert_contains(html, "Contenido: subtarjetas")
   assert_contains(html, "Portal Feature")
-  assert_not_contains(html, "Contenido: tasks")
+  assert_not_contains(html, "Contenido: tareas")
 }
 
 pub fn card_scope_without_selection_shows_empty_state_not_full_tree_test() {
@@ -157,9 +157,9 @@ pub fn card_scope_with_tasks_prioritizes_tasks_detail_test() {
       ),
     )
 
-  assert_contains(html, "Contenido: tasks")
+  assert_contains(html, "Contenido: tareas")
   assert_contains(html, "Implement API")
-  assert_not_contains(html, "Contenido: subcards")
+  assert_not_contains(html, "Contenido: subtarjetas")
 }
 
 pub fn card_scope_selection_shows_only_selected_subtree_test() {
@@ -249,7 +249,7 @@ pub fn incompatible_actions_are_disabled_with_reason_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-action-create-task\"")
-  assert_contains(html, "Esta card contiene subcards")
+  assert_contains(html, "Esta tarjeta contiene subtarjetas")
   assert_contains(html, "data-testid=\"plan-action-delete-card\"")
   assert_contains(html, "Tiene historial operativo")
 }
@@ -278,7 +278,7 @@ pub fn detail_actions_keep_close_and_delete_disabled_reasons_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-action-close-card\"")
-  assert_contains(html, "Hay tasks reclamadas o en curso debajo")
+  assert_contains(html, "Hay tareas reclamadas o en curso debajo")
   assert_contains(html, "data-testid=\"plan-action-delete-card\"")
   assert_contains(html, "Tiene historial operativo")
 }
@@ -353,7 +353,7 @@ pub fn inline_move_mode_shows_invalid_reason_test() {
     )
 
   assert_contains(html, "data-testid=\"plan-move-invalid\"")
-  assert_contains(html, "Ya esta dentro de esta card.")
+  assert_contains(html, "Ya está dentro de esta tarjeta.")
 }
 
 pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() {
@@ -370,7 +370,7 @@ pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() 
     )
 
   assert_contains(html, "data-testid=\"plan-move-invalid\"")
-  assert_contains(html, "Ya esta dentro de esta card.")
+  assert_contains(html, "Ya está dentro de esta tarjeta.")
   assert_not_contains(html, "Soltar dentro de Portal Feature")
 }
 

@@ -83,7 +83,7 @@ pub fn translate(text: Text) -> String {
 
     // Validation
     text.NameRequired -> "El nombre es obligatorio"
-    text.ScopeRequired -> "Selecciona al menos un scope"
+    text.ScopeRequired -> "Selecciona al menos un alcance"
     text.TitleRequired -> "El título es obligatorio"
     text.TypeRequired -> "El tipo es obligatorio"
     text.SelectProjectFirst -> "Selecciona un proyecto primero"
@@ -220,22 +220,22 @@ pub fn translate(text: Text) -> String {
     text.Hierarchies -> "Jerarquías"
     text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "Vista"
-    text.PlanScope -> "Scope"
+    text.PlanScope -> "Alcance"
     text.PlanScopeProject -> "Proyecto"
     text.PlanScopeLevel -> "Nivel"
-    text.PlanScopeCard -> "Card"
+    text.PlanScopeCard -> "Tarjeta"
     text.PlanScopeAllLevels -> "Todos los niveles"
-    text.PlanScopeSelectCard -> "Selecciona una card activa"
-    text.PlanScopeNoActiveCards -> "Sin cards activas"
+    text.PlanScopeSelectCard -> "Selecciona una tarjeta activa"
+    text.PlanScopeNoActiveCards -> "Sin tarjetas activas"
     text.PlanMode -> "Modo"
     text.PlanModeStructure -> "Estructura"
     text.PlanModeKanban -> "Kanban"
     text.KanbanColumnPending -> "Por iniciar"
     text.PlanEmptyCardScopeBody ->
-      "Busca una card para ver su subarbol, capacidades, tasks y riesgo."
-    text.PlanEmptyScopeTitle -> "No hay cards en este scope."
+      "Busca una tarjeta para ver su subárbol, capacidades, tareas y riesgo."
+    text.PlanEmptyScopeTitle -> "No hay tarjetas en este alcance."
     text.PlanEmptyScopeBody ->
-      "Crea una card o cambia el scope para revisar otra parte del plan."
+      "Crea una tarjeta o cambia el alcance para revisar otra parte del plan."
     text.PlanCapabilityMode -> "Modo"
     text.PlanCapabilityList -> "Lista"
     text.PlanCapabilityMatrix -> "Matriz"
@@ -283,17 +283,17 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
     text.NoTasksMatchYourFilters -> "Ninguna tarea coincide con tus filtros"
-    text.NoOpenPoolTasks -> "No hay tasks abiertas en el Pool"
+    text.NoOpenPoolTasks -> "No hay tareas abiertas en el Pool"
     text.NoOpenPoolTasksBody ->
       "El trabajo abierto aparecerá aquí cuando esté listo para que el equipo lo reclame."
-    text.NoClaimablePoolTasks -> "No hay tasks reclamables ahora"
+    text.NoClaimablePoolTasks -> "No hay tareas reclamables ahora"
     text.NoClaimablePoolTasksBlockedBody(count) ->
       "Hay "
       <> int.to_string(count)
-      <> " tasks bloqueadas que necesitan dependencias o conversación del equipo."
+      <> " tareas bloqueadas que necesitan dependencias o conversación del equipo."
     text.NoClaimablePoolTasksBody ->
       "El Pool está despejado para tus filtros actuales."
-    text.NoBlockedPoolTasks -> "No hay tasks bloqueadas"
+    text.NoBlockedPoolTasks -> "No hay tareas bloqueadas"
     text.NoBlockedPoolTasksBody ->
       "Los bloqueos aparecerán aquí cuando una dependencia impida reclamar."
     text.ViewBlockedTasks -> "Ver bloqueadas"
@@ -327,11 +327,11 @@ pub fn translate(text: Text) -> String {
     text.PeopleClaimedTotal(count) -> int.to_string(count) <> " reclamadas"
     text.PeopleOngoingCount(count) -> int.to_string(count) <> " en curso"
     text.PeopleClaimedCount(count) -> int.to_string(count) <> " reclamadas"
-    text.PeopleCardsCount(count) -> int.to_string(count) <> " cards"
+    text.PeopleCardsCount(count) -> int.to_string(count) <> " tarjetas"
     text.PeopleLoadWarning -> "Carga alta"
     text.PeopleAvailableCapacity -> "Capacidad disponible"
     text.PeopleNoClaimedTasks -> "Sin tareas reclamadas"
-    text.PeopleNoCardContext -> "Sin card"
+    text.PeopleNoCardContext -> "Sin tarjeta"
     text.PeopleShowLabel -> "Mostrar"
     text.PeopleFilterEveryone -> "Todos"
     text.PeopleFilterWithWork -> "Con trabajo"
@@ -341,7 +341,8 @@ pub fn translate(text: Text) -> String {
     text.PeopleSortAttention -> "Atencion"
     text.PeopleSortName -> "Nombre"
     text.PeopleSortClaimed -> "Mas reclamadas"
-    text.PeopleCardScopeNoWork -> "Sin trabajo reclamado en este scope de card"
+    text.PeopleCardScopeNoWork ->
+      "Sin trabajo reclamado en este alcance de tarjeta"
     text.CapabilityBoardLoading -> "Cargando capacidades..."
     text.CapabilityBoardEmpty -> "No hay tareas activas por capacidad"
     text.CapabilityBoardNoResults ->
@@ -352,8 +353,8 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardEmptyClaimed -> "Sin tareas reclamadas"
     text.CapabilityBoardEmptyOngoing -> "Sin tareas en curso"
     text.CapabilityBoardPurpose ->
-      "Capacidad por card, derivada de tareas descendientes reales."
-    text.CapabilityBoardCardColumn -> "Card"
+      "Capacidad por tarjeta, derivada de tareas descendientes reales."
+    text.CapabilityBoardCardColumn -> "Tarjeta"
     text.CapabilityBoardLevelColumn -> "Nivel"
     text.CapabilityBoardTotal -> "Total"
     text.CapabilityBoardComplete -> "completas"
@@ -369,7 +370,7 @@ pub fn translate(text: Text) -> String {
       "No hay jerarquías que coincidan con los filtros"
     text.HierarchiesLoadError -> "No se pudieron cargar las jerarquías"
     text.HierarchiesPurpose ->
-      "Estructura de entrega por objetivo, trabajo suelto y avance de cards."
+      "Estructura de entrega por objetivo, trabajo suelto y avance de tarjetas."
     text.CreateHierarchy -> "Crear jerarquía"
     text.CreateFirstHierarchy -> "Crear primera jerarquía"
     text.HierarchyCreated -> "Jerarquía creada"
@@ -431,10 +432,10 @@ pub fn translate(text: Text) -> String {
     text.HierarchyStructureSummary -> "Resumen estructural"
     text.HierarchyActions -> "Acciones"
     text.HierarchySearchPlaceholder -> "Buscar jerarquías"
-    text.HierarchyLooseTasksNotice -> "Tareas sin card"
+    text.HierarchyLooseTasksNotice -> "Tareas sin tarjeta"
     text.HierarchyLooseTasksHint ->
       "Estas tareas todavía no están agrupadas dentro de una tarjeta"
-    text.HierarchyCardTasksEmpty -> "Esta card todavía no tiene tareas"
+    text.HierarchyCardTasksEmpty -> "Esta tarjeta todavía no tiene tareas"
     text.HierarchyCardTasksRegion(name) -> "Tareas de " <> name
     text.HierarchyNoSelection -> "Selecciona una jerarquía"
     text.HierarchyNoSelectionHint ->
@@ -518,7 +519,7 @@ pub fn translate(text: Text) -> String {
     text.IntegrationIdentityHint ->
       "Los nombres existentes se reutilizan; los nuevos crean una identidad técnica."
     text.ApiTokenGrantsImmutable ->
-      "Los permisos son inmutables. Revoca y crea otro token para cambiar scopes, proyecto o expiración."
+      "Los permisos son inmutables. Revoca y crea otro token para cambiar alcances, proyecto o expiración."
     text.RenameApiToken -> "Renombrar token API"
     text.Integrations -> "Integraciones"
     text.NoIntegrationUsersYet -> "Aún no hay identidades de integración"
@@ -815,45 +816,45 @@ pub fn translate(text: Text) -> String {
     // Project structure and Pool settings
     text.ProjectStructureAndPool -> "Estructura y Pool"
     text.ProjectStructureCreateHint ->
-      "Elige cuanta profundidad pueden tener las cards antes de que el trabajo llegue al Pool."
+      "Elige cuánta profundidad pueden tener las tarjetas antes de que el trabajo llegue al Pool."
     text.ProjectStructureEditHint ->
-      "Los nombres visibles de nivel definen como se agrupan las cards antes de llegar al Pool."
+      "Los nombres visibles de nivel definen cómo se agrupan las tarjetas antes de llegar al Pool."
     text.ProjectMaximumDepth -> "Profundidad maxima"
     text.ProjectPoolSoftLimit -> "Limite blando del Pool"
     text.ProjectStructureExamples ->
-      "Ejemplos: Card -> Task para equipos pequenos, Hito -> Entrega -> Historia para trabajo de producto."
+      "Ejemplos: Tarjeta -> Tarea para equipos pequeños, Hito -> Entrega -> Historia para trabajo de producto."
     text.ProjectPoolSoftLimitHint ->
-      "Este limite nunca bloquea. Sirve para evitar saturacion y frustracion del equipo cuando hay demasiadas tasks disponibles en el Pool."
+      "Este límite nunca bloquea. Sirve para evitar saturación y frustración del equipo cuando hay demasiadas tareas disponibles en el Pool."
     text.ProjectDepthLevel(depth) -> "Nivel " <> int.to_string(depth)
     text.ProjectDepthLevelSingularName(depth) ->
       "Nombre singular del nivel " <> int.to_string(depth)
     text.ProjectDepthLevelPluralName(depth) ->
       "Nombre plural del nivel " <> int.to_string(depth)
     text.ProjectDepthReductionHidden ->
-      "La confirmacion de reduccion de profundidad aparece antes de cerrar cards fuera del nuevo limite."
+      "La confirmación de reducción de profundidad aparece antes de cerrar tarjetas fuera del nuevo límite."
     text.ProjectDepthReductionNeedsReview(new_max_depth) ->
       "Reducir la profundidad a "
       <> int.to_string(new_max_depth)
-      <> " niveles requiere revisar cards afectadas antes de cerrar nada."
-    text.ProjectDepthReductionReviewCards -> "Revisar cards afectadas"
+      <> " niveles requiere revisar tarjetas afectadas antes de cerrar nada."
+    text.ProjectDepthReductionReviewCards -> "Revisar tarjetas afectadas"
     text.ProjectDepthReductionLoading(new_max_depth) ->
-      "Comprobando cards por debajo de "
+      "Comprobando tarjetas por debajo de "
       <> int.to_string(new_max_depth)
       <> " niveles..."
     text.ProjectDepthReductionBlocked(cards_count, claimed_tasks_count) ->
       int.to_string(cards_count)
-      <> " cards quedan por debajo del nuevo limite, pero "
+      <> " tarjetas quedan por debajo del nuevo límite, pero "
       <> int.to_string(claimed_tasks_count)
-      <> " tasks reclamadas o en curso deben liberarse o cerrarse primero."
+      <> " tareas reclamadas o en curso deben liberarse o cerrarse primero."
     text.ProjectDepthReductionReady(cards_count, available_tasks_count) ->
       int.to_string(cards_count)
-      <> " cards y "
+      <> " tarjetas y "
       <> int.to_string(available_tasks_count)
-      <> " tasks disponibles quedan por debajo del nuevo limite."
-    text.ProjectDepthReductionAffectedCards -> "Cards afectadas"
-    text.ProjectDepthReductionConfirm -> "Confirmar reduccion de profundidad"
+      <> " tareas disponibles quedan por debajo del nuevo límite."
+    text.ProjectDepthReductionAffectedCards -> "Tarjetas afectadas"
+    text.ProjectDepthReductionConfirm -> "Confirmar reducción de profundidad"
     text.ProjectDepthReductionConfirmed(new_max_depth) ->
-      "Reduccion de profundidad a "
+      "Reducción de profundidad a "
       <> int.to_string(new_max_depth)
       <> " niveles confirmada."
 
@@ -862,7 +863,7 @@ pub fn translate(text: Text) -> String {
       "Las reglas usan plantillas para crear tareas. Gestiona plantillas en "
     text.RulesHintTemplatesLink -> "Plantillas"
     text.TemplatesHintRules ->
-      "Las plantillas definen qué tasks crear. Las reglas determinan cuándo cada plantilla crea trabajo."
+      "Las plantillas definen qué tareas crear. Las reglas determinan cuándo cada plantilla crea trabajo."
     text.TemplatesHintRulesLink -> "Reglas"
 
     text.IdentitySection -> "Identidad"
@@ -879,7 +880,7 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskTypeHint ->
       "Crea el primer tipo de tarea abajo para empezar a usar el Pool."
     text.TaskTypesExplain ->
-      "Los tipos de tarea definen qué tarjetas se pueden crear (p.ej. Bug, Feature)."
+      "Los tipos de tarea definen qué tareas se pueden crear (p.ej. Bug, Feature)."
     text.HeroiconSearchPlaceholder -> "Busca nombre de heroicon (p.ej. bug-ant)"
     text.WaitForIconPreview -> "Espera la previsualización del icono"
     text.TitleTooLongMax56 -> "Título demasiado largo (máx 56 caracteres)"
@@ -928,7 +929,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
     text.KanbanEmptyClosed -> "Las tarjetas finalizadas aparecerán aquí"
     text.KanbanSurfacePurpose ->
-      "Flujo de cards por estado, con fricción y próximo trabajo visibles."
+      "Flujo de tarjetas por estado, con fricción y próximo trabajo visibles."
     text.KanbanSummaryCards -> "Tarjetas"
     text.KanbanSummaryOngoing -> "En curso"
 
@@ -967,7 +968,7 @@ pub fn translate(text: Text) -> String {
     text.AutomationSummaryActiveEngines -> "motores activos"
     text.AutomationSummaryRules -> "reglas"
     text.AutomationSummaryTemplates -> "plantillas"
-    text.AutomationSummaryCreatedTasks -> "tasks creadas"
+    text.AutomationSummaryCreatedTasks -> "tareas creadas"
     text.AutomationModeAriaLabel -> "Modo de automatizaciones"
     text.AutomationModeEngines -> "Motores"
     text.AutomationModeTemplates -> "Plantillas"
@@ -1101,7 +1102,7 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplatesProjectTitle(project_name) ->
       "Biblioteca de plantillas - " <> project_name
     text.AutomationTemplatesDescription ->
-      "Gestiona plantillas reutilizables para reglas. Las tasks generadas quedan disponibles en el Pool."
+      "Gestiona plantillas reutilizables para reglas. Las tareas generadas quedan disponibles en el Pool."
     text.AutomationTemplatesSearchPlaceholder -> "Buscar plantillas"
     text.TaskTemplateName -> "Nombre"
     text.TaskTemplateDescription -> "Descripción"
@@ -1125,9 +1126,9 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleteRulesWarning ->
       "Las reglas que usan esta plantilla deben pausarse o actualizarse primero."
     text.TaskTemplateEditFutureTasksWarning ->
-      "Esta plantilla se usa en reglas activas. Los cambios afectan solo a futuras tasks generadas; las tasks ya creadas conservan su contenido y origen originales."
+      "Esta plantilla se usa en reglas activas. Los cambios afectan solo a futuras tareas generadas; las tareas ya creadas conservan su contenido y origen originales."
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{origin}} (tarea/tarjeta origen), {{trigger}} (trigger de automatización), {{project}} (nombre del proyecto), {{user}} (usuario que disparó), {{task_title}} y {{task_type}} cuando el trigger es de task, {{card_title}} y {{card_level}} cuando el trigger es de card"
+      "Variables: {{origin}} (tarea/tarjeta origen), {{trigger}} (trigger de automatización), {{project}} (nombre del proyecto), {{user}} (usuario que disparó), {{task_title}} y {{task_type}} cuando el trigger es de tarea, {{card_title}} y {{card_level}} cuando el trigger es de tarjeta"
     text.TaskTemplateDescriptionHint ->
       "Usa variables en la descripción: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}"
     text.AvailableVariables -> "Variables disponibles"
@@ -1139,7 +1140,7 @@ pub fn translate(text: Text) -> String {
     text.AdminRuleMetrics -> "Ejecuciones"
     text.RuleMetricsTitle -> "Ejecuciones"
     text.RuleMetricsDescription ->
-      "Revisa ejecuciones de automatización, tasks creadas y eventos ignorados."
+      "Revisa ejecuciones de automatización, tareas creadas y eventos ignorados."
     text.RuleMetricsHelp ->
       "Selecciona un rango de fechas (máx 90 días) para revisar ejecuciones y eventos ignorados."
     text.RuleMetricsFrom -> "Desde"
@@ -1177,7 +1178,7 @@ pub fn translate(text: Text) -> String {
     text.ProjectExecutionsTemplateColumn -> "Plantilla"
     text.ProjectExecutionsOriginColumn -> "Origen"
     text.ProjectExecutionsOutcomeColumn -> "Resultado"
-    text.ProjectExecutionsTaskColumn -> "Task"
+    text.ProjectExecutionsTaskColumn -> "Tarea"
     text.FirstPage -> "Primera pagina"
     text.PreviousPage -> "Pagina anterior"
     text.NextPage -> "Pagina siguiente"
@@ -1212,9 +1213,10 @@ pub fn translate(text: Text) -> String {
 
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"
-    text.CardAddSubcard -> "Añadir subcard"
-    text.CardEmptyWorkTitle -> "Esta card todavía no tiene trabajo"
-    text.CardEmptyWorkBody -> "Elige si esta card contendrá tareas o subcards."
+    text.CardAddSubcard -> "Añadir subtarjeta"
+    text.CardEmptyWorkTitle -> "Esta tarjeta todavía no tiene trabajo"
+    text.CardEmptyWorkBody ->
+      "Elige si esta tarjeta contendrá tareas o subtarjetas."
     text.CardTasksEmpty -> "No hay tareas"
     text.CardTasksDone -> "completadas"
     text.TaskType -> "Tipo de tarea"

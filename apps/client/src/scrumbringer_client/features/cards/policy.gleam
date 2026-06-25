@@ -199,15 +199,16 @@ pub fn move_blocked_reason(
 
 pub fn move_blocked_reason_label(reason: MoveBlockedReason) -> String {
   case reason {
-    SourceClosed -> "La card cerrada no se puede mover."
-    AlreadyAtProjectRoot -> "Ya esta en la raiz del proyecto."
-    SameParent -> "Ya esta dentro de esta card."
-    ClosedDestination -> "La card de destino esta cerrada."
+    SourceClosed -> "La tarjeta cerrada no se puede mover."
+    AlreadyAtProjectRoot -> "Ya está en la raíz del proyecto."
+    SameParent -> "Ya está dentro de esta tarjeta."
+    ClosedDestination -> "La tarjeta de destino está cerrada."
     DestinationContainsTasks ->
-      "Contiene tasks directas y no puede recibir subcards."
-    SelfOrDescendant -> "No se puede elegir la propia card ni una descendiente."
-    DestinationNotFound -> "No se encontro el destino seleccionado."
-    NoAvailableDestination -> "No hay destinos disponibles para esta card."
+      "Contiene tareas directas y no puede recibir subtarjetas."
+    SelfOrDescendant ->
+      "No se puede elegir la propia tarjeta ni una descendiente."
+    DestinationNotFound -> "No se encontró el destino seleccionado."
+    NoAvailableDestination -> "No hay destinos disponibles para esta tarjeta."
   }
 }
 

@@ -342,7 +342,7 @@ pub fn automation_execution_history_localizes_drilldown_table_columns_test() {
 
   assert_contains(html, "Origen")
   assert_contains(html, "Resultado")
-  assert_contains(html, ">Task<")
+  assert_contains(html, ">Tarea<")
   assert_contains(html, "Plantilla")
   assert_not_contains(html, "Created task")
   assert_not_contains(html, ">Template<")

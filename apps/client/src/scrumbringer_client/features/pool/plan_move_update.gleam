@@ -103,7 +103,7 @@ fn move_requested(
         ..model,
         member_plan_move_mode: member_pool.PlanNotMoving,
         member_plan_move_drag: member_pool.PlanMoveNotDragging,
-        member_plan_move_error: opt.Some("No se encontro la card a mover."),
+        member_plan_move_error: opt.Some("No se encontró la tarjeta a mover."),
         member_plan_move_in_flight: False,
       ),
       effect.none(),
@@ -188,7 +188,9 @@ fn destination_selected(
           member_pool.Model(
             ..model,
             member_plan_move_drag: member_pool.PlanMoveNotDragging,
-            member_plan_move_error: opt.Some("No se encontro la card a mover."),
+            member_plan_move_error: opt.Some(
+              "No se encontró la tarjeta a mover.",
+            ),
           ),
           effect.none(),
         )
@@ -265,7 +267,7 @@ fn moved_ok(
       member_plan_move_in_flight: False,
       member_plan_move_error: opt.None,
     ),
-    context.on_success_toast("Card movida: " <> title),
+    context.on_success_toast("Tarjeta movida: " <> title),
   )
 }
 
@@ -274,7 +276,7 @@ fn moved_error(
   message: String,
   context: Context(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  let feedback = "No se pudo mover la card: " <> message
+  let feedback = "No se pudo mover la tarjeta: " <> message
   #(
     member_pool.Model(
       ..model,

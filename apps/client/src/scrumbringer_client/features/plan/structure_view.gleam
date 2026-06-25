@@ -131,7 +131,7 @@ fn view_surface_header(
 ) -> Element(msg) {
   work_surface.header(work_surface.HeaderConfig(
     title: "Plan",
-    purpose: "Estructura de cards y trabajo preparado.",
+    purpose: "Estructura de tarjetas y trabajo preparado.",
     summary: [
       work_surface.summary_chip(
         i18n.t(config.locale, i18n_text.KanbanSummaryCards),
@@ -139,7 +139,7 @@ fn view_surface_header(
         tone.Neutral,
       ),
       work_surface.summary_chip(
-        "Tasks",
+        "Tareas",
         int.to_string(summary.total_tasks),
         tone.Neutral,
       ),
@@ -352,7 +352,7 @@ fn view_move_root_option(config: Config(msg)) -> Element(msg) {
                 text("Mover a raiz"),
               ]),
               span([attribute.class("plan-card-picker-meta")], [
-                text("Quedara como card principal del proyecto"),
+                text("Quedará como tarjeta principal del proyecto"),
               ]),
             ],
           )
@@ -490,7 +490,7 @@ fn view_table(
           "plan-cell-state",
         ),
         tree_table.column(
-          "Tasks",
+          "Tareas",
           fn(row) { view_task_count_cell(row) },
           "plan-col-tasks",
           "plan-cell-tasks",
@@ -559,7 +559,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
             int.to_string(rollup.completed_tasks)
             <> "/"
             <> int.to_string(rollup.total_tasks)
-            <> " tasks",
+            <> " tareas",
           ),
         ]),
         view_pool_impact_cell(row),
@@ -690,7 +690,7 @@ fn view_pool_impact_cell(row: types.StructureRow) -> Element(msg) {
     Draft ->
       case rollup.pool_impact {
         0 -> "0"
-        impact -> "+" <> int.to_string(impact) <> " tasks"
+        impact -> "+" <> int.to_string(impact) <> " tareas"
       }
     Active -> "ya activo"
     Closed -> "-"
@@ -960,12 +960,12 @@ fn view_detail(
   let #(card, title, body) = case detail {
     types.SubcardsDetail(card, subcards, rollup) -> #(
       card,
-      "Contenido: subcards",
+      "Contenido: subtarjetas",
       view_detail_subcards(config, subcards, rollup),
     )
     types.TasksDetail(card, tasks, rollup) -> #(
       card,
-      "Contenido: tasks",
+      "Contenido: tareas",
       view_detail_tasks(config.locale, tasks, rollup),
     )
     types.EmptyCardContent(card, rollup) -> #(
@@ -1055,13 +1055,13 @@ fn view_detail_tasks(
 
 fn view_detail_empty(_rollup: types.CardRollup) -> Element(msg) {
   div([attribute.class("plan-detail-empty")], [
-    p([], [text("Esta card no contiene subcards ni tasks directas.")]),
+    p([], [text("Esta tarjeta no contiene subtarjetas ni tareas directas.")]),
   ])
 }
 
 fn view_detail_rollup(card: Card, rollup: types.CardRollup) -> Element(msg) {
   div([attribute.class("plan-detail-rollup")], [
-    signal_chip.metric_int("tasks", rollup.total_tasks, tone.Neutral)
+    signal_chip.metric_int("tareas", rollup.total_tasks, tone.Neutral)
       |> signal_chip.view,
     signal_chip.metric_int(
       "disponibles",
@@ -1131,7 +1131,7 @@ fn view_empty_state(config: Config(msg)) -> Element(msg) {
               attribute.class("plan-action-btn plan-action-primary"),
               event.on_click(config.on_create_subcard(0)),
             ],
-            [text("+ Subcard")],
+            [text("+ Subtarjeta")],
           )
         False -> element.none()
       },
@@ -1484,7 +1484,7 @@ fn first_column_label(config: Config(msg)) -> String {
   case config.scope_kind, config.selected_depth {
     member_pool.PlanScopeLevel, Some(depth) ->
       card_queries.depth_singular_label(config.depth_names, depth)
-    _, _ -> "Card / Arbol"
+    _, _ -> "Tarjeta / Árbol"
   }
 }
 
@@ -1512,20 +1512,20 @@ fn action_availability(
     types.CreateSubcard ->
       case config.is_pm_or_admin, has_direct_tasks {
         False, _ -> types.Disabled("Solo managers pueden modificar estructura")
-        _, True -> types.Disabled("Esta card ya contiene tasks directas")
+        _, True -> types.Disabled("Esta tarjeta ya contiene tareas directas")
         _, False -> types.Available
       }
     types.CreateTask ->
       case has_subcards {
-        True -> types.Disabled("Esta card contiene subcards")
+        True -> types.Disabled("Esta tarjeta contiene subtarjetas")
         False -> types.Available
       }
     types.ActivateSubtree ->
       case config.is_pm_or_admin, card.state {
-        False, _ -> types.Disabled("Solo managers pueden activar subarboles")
+        False, _ -> types.Disabled("Solo managers pueden activar subárboles")
         _, Draft -> types.Available
         _, Active -> types.Disabled("Ya activo")
-        _, Closed -> types.Disabled("La card esta cerrada")
+        _, Closed -> types.Disabled("La tarjeta está cerrada")
       }
     types.MoveCard ->
       case
@@ -1535,15 +1535,15 @@ fn action_availability(
         True, None -> types.Available
         True, Some(reason) ->
           types.Disabled(card_policy.move_blocked_reason_label(reason))
-        False, _ -> types.Disabled("Solo managers pueden mover cards")
+        False, _ -> types.Disabled("Solo managers pueden mover tarjetas")
       }
     types.CloseCard ->
       case
         config.is_pm_or_admin,
         has_claimed_or_ongoing_descendants(config, card)
       {
-        False, _ -> types.Disabled("Solo managers pueden cerrar cards")
-        _, True -> types.Disabled("Hay tasks reclamadas o en curso debajo")
+        False, _ -> types.Disabled("Solo managers pueden cerrar tarjetas")
+        _, True -> types.Disabled("Hay tareas reclamadas o en curso debajo")
         _, False -> types.Available
       }
     types.DeleteCard ->
@@ -1574,10 +1574,10 @@ fn action_event(
   action: types.CardAction,
 ) -> #(String, msg) {
   case action {
-    types.CreateSubcard -> #("+ Subcard", config.on_create_subcard(card.id))
-    types.CreateTask -> #("+ Task", config.on_create_task_in_card(card.id))
+    types.CreateSubcard -> #("+ Subtarjeta", config.on_create_subcard(card.id))
+    types.CreateTask -> #("+ Tarea", config.on_create_task_in_card(card.id))
     types.ActivateSubtree -> #(
-      "Activar subarbol",
+      "Activar subárbol",
       config.on_card_click(card.id),
     )
     types.MoveCard -> #("Mover a...", config.on_move_requested(card.id))
@@ -1849,7 +1849,7 @@ fn pool_impact_label(card: Card, rollup: types.CardRollup) -> String {
     Draft ->
       case rollup.pool_impact {
         0 -> "0"
-        impact -> "+" <> int.to_string(impact) <> " tasks"
+        impact -> "+" <> int.to_string(impact) <> " tareas"
       }
     Active -> "ya activo"
     Closed -> "-"

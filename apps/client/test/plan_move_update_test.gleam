@@ -188,7 +188,7 @@ pub fn root_destination_is_rejected_when_source_is_already_root_test() {
     )
 
   let assert False = next.member_plan_move_in_flight
-  let assert opt.Some("Ya esta en la raiz del proyecto.") =
+  let assert opt.Some("Ya está en la raíz del proyecto.") =
     next.member_plan_move_error
   let assert True = fx == effect.none()
 }
@@ -231,7 +231,7 @@ pub fn invalid_destination_keeps_mode_and_sets_reason_test() {
     )
 
   let assert member_pool.PlanMovingCard(3, "") = next.member_plan_move_mode
-  let assert opt.Some("Ya esta dentro de esta card.") =
+  let assert opt.Some("Ya está dentro de esta tarjeta.") =
     next.member_plan_move_error
   let assert True = fx == effect.none()
 }
@@ -256,7 +256,7 @@ pub fn invalid_drop_does_not_call_api_and_clears_drag_test() {
 
   let assert False = next.member_plan_move_in_flight
   let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
-  let assert opt.Some("Ya esta dentro de esta card.") =
+  let assert opt.Some("Ya está dentro de esta tarjeta.") =
     next.member_plan_move_error
   let assert True = fx == effect.none()
 }
@@ -303,7 +303,7 @@ pub fn api_error_keeps_move_mode_and_shows_feedback_test() {
   let assert member_pool.PlanMovingCard(3, "New") = next.member_plan_move_mode
   let assert member_pool.PlanMoveNotDragging = next.member_plan_move_drag
   let assert False = next.member_plan_move_in_flight
-  let assert opt.Some("No se pudo mover la card: No") =
+  let assert opt.Some("No se pudo mover la tarjeta: No") =
     next.member_plan_move_error
 }
 
