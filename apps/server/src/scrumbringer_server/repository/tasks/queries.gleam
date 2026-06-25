@@ -3,7 +3,7 @@
 //// ## Mission
 ////
 //// Provides database access for tasks including CRUD operations,
-//// state transitions (claim, release, complete), and listing with filters.
+//// state transitions (claim, release, close), and listing with filters.
 ////
 //// ## Responsibilities
 ////
@@ -401,7 +401,7 @@ pub fn release_all_tasks_for_user(
   |> result.map_error(transaction_error_to_release_all_error)
 }
 
-/// Complete a claimed task.
+/// Close a claimed task.
 pub fn complete_task(
   db: pog.Connection,
   org_id: Int,
@@ -410,7 +410,7 @@ pub fn complete_task(
   version: Int,
 ) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
-    // Best effort: close any active work session before complete.
+    // Best effort: close any active work session before closing the task.
     let _ =
       work_sessions_db.close_session_for_task(
         tx,

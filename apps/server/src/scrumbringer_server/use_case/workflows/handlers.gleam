@@ -1111,7 +1111,7 @@ fn evaluate_task_rules_created(
 }
 
 /// Evaluate card rules if task belongs to a card and its state might have changed.
-/// Card states: pendiente (no progress), en_curso (some progress), cerrada (all complete)
+/// Card states: pendiente (no progress), en_curso (some progress), cerrada (all closed)
 fn maybe_evaluate_card_rules(
   db: pog.Connection,
   card_id: Option(Int),

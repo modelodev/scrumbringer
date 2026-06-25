@@ -2,7 +2,7 @@
 ////
 //// ## Mission
 ////
-//// Provide claim, release, and complete endpoints for tasks.
+//// Provide claim, release, and close endpoints for tasks.
 ////
 //// ## Responsibilities
 ////
@@ -64,7 +64,7 @@ pub fn handle_task_release(
   handle_transition(req, ctx, task_id, Release)
 }
 
-/// Completes a task for the current user.
+/// Closes a task for the current user.
 ///
 /// Example:
 ///   handle_task_complete(req, ctx, "10")
