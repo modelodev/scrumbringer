@@ -32,8 +32,8 @@ pub type TaskExecutionStateFilter {
 pub type TaskExecutionStateError {
   ClaimedMissingUser
   ClaimedMissingAt
-  DoneMissingAt
-  DoneWithClaim
+  ClosedMissingAt
+  ClosedWithClaim
   AvailableWithClaim
   UnknownStatus(String)
 }
@@ -106,11 +106,11 @@ pub fn from_db(
 
     "completed" | "closed" ->
       case claimed_by, completed_at {
-        Some(_), _ -> Error(DoneWithClaim)
+        Some(_), _ -> Error(ClosedWithClaim)
         // Older task-list payloads do not carry closed_by. Repository code that
         // has closed_by available should construct Closed directly.
         None, Some(at) -> Ok(Closed(reason: Done, closed_at: at, closed_by: 0))
-        None, None -> Error(DoneMissingAt)
+        None, None -> Error(ClosedMissingAt)
       }
 
     other -> Error(UnknownStatus(other))

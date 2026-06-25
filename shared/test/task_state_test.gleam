@@ -55,7 +55,7 @@ pub fn from_db_rejects_unknown_status_test() {
 }
 
 pub fn from_db_rejects_completed_with_claim_test() {
-  let assert Error(task_state.DoneWithClaim) =
+  let assert Error(task_state.ClosedWithClaim) =
     task_state.from_db(
       "completed",
       False,

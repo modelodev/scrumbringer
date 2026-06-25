@@ -447,8 +447,8 @@ fn invalid_task_state_error(
     task_state.UnknownStatus(value) -> "unknown status " <> value
     task_state.ClaimedMissingUser -> "claimed missing user"
     task_state.ClaimedMissingAt -> "claimed missing at"
-    task_state.DoneMissingAt -> "completed missing at"
-    task_state.DoneWithClaim -> "completed with claim"
+    task_state.ClosedMissingAt -> "closed missing at"
+    task_state.ClosedWithClaim -> "closed with claim"
     task_state.AvailableWithClaim -> "available with claim"
   }
 
