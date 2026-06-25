@@ -50,7 +50,7 @@ pub fn card_metrics_response(
 pub fn card_metrics(metrics: metrics_db.CardMetrics) -> json.Json {
   let metrics_db.CardMetrics(
     tasks_total: tasks_total,
-    tasks_completed: tasks_completed,
+    tasks_completed: tasks_closed,
     tasks_available: tasks_available,
     tasks_claimed: tasks_claimed,
     tasks_ongoing: tasks_ongoing,
@@ -70,10 +70,10 @@ pub fn card_metrics(metrics: metrics_db.CardMetrics) -> json.Json {
       "progress",
       json.object([
         #("tasks_total", json.int(tasks_total)),
-        #("tasks_completed", json.int(tasks_completed)),
+        #("tasks_completed", json.int(tasks_closed)),
         #(
           "tasks_percent",
-          json.int(metrics_db.percent(tasks_completed, tasks_total)),
+          json.int(metrics_db.percent(tasks_closed, tasks_total)),
         ),
       ]),
     ),
@@ -83,7 +83,7 @@ pub fn card_metrics(metrics: metrics_db.CardMetrics) -> json.Json {
         #("available", json.int(tasks_available)),
         #("claimed", json.int(tasks_claimed)),
         #("ongoing", json.int(tasks_ongoing)),
-        #("completed", json.int(tasks_completed)),
+        #("completed", json.int(tasks_closed)),
       ]),
     ),
     #(

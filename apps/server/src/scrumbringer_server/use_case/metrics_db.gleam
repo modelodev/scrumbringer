@@ -343,9 +343,9 @@ fn string_to_option(value: String) -> Option(String) {
   }
 }
 
-pub fn percent(completed: Int, total: Int) -> Int {
+pub fn percent(numerator: Int, total: Int) -> Int {
   case total {
     0 -> 0
-    _ -> completed * 100 / total
+    _ -> numerator * 100 / total
   }
 }

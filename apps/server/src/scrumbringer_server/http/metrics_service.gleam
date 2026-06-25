@@ -153,13 +153,13 @@ pub fn get_org_overview(
     -> {
       let claimed = totals_row.claimed_count
       let released = totals_row.released_count
-      let completed = totals_row.completed_count
+      let closed = totals_row.completed_count
       let available = totals_row.available_count
       let ongoing = totals_row.ongoing_count
       let wip_count = totals_row.wip_count
 
       let release_rate_percent = percent(released, claimed)
-      let pool_flow_ratio_percent = percent(completed, claimed)
+      let pool_flow_ratio_percent = percent(closed, claimed)
 
       let time_to_first_claim_p50_ms = case p50_row.sample_size {
         0 -> None
@@ -184,7 +184,7 @@ pub fn get_org_overview(
         claimed_count: claimed,
         ongoing_count: ongoing,
         released_count: released,
-        completed_count: completed,
+        completed_count: closed,
         release_rate_percent: release_rate_percent,
         pool_flow_ratio_percent: pool_flow_ratio_percent,
         time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
