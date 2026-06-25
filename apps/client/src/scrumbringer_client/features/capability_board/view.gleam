@@ -92,7 +92,7 @@ type CapabilityHealth {
     available: Int,
     claimed: Int,
     ongoing: Int,
-    done: Int,
+    closed: Int,
     blocked: Int,
   )
 }
@@ -666,9 +666,9 @@ fn view_list_section(
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.CapabilityBoardComplete),
-            health.done,
+            health.closed,
             tone.Neutral,
-            "done",
+            "closed",
           ),
           view_summary_chip(
             i18n.t(config.locale, i18n_text.Blocked),
@@ -914,7 +914,7 @@ fn view_matrix_health_cell(
           <> " / "
           <> i18n.t(config.locale, i18n_text.CapabilityBoardComplete)
           <> " "
-          <> int.to_string(health.done),
+          <> int.to_string(health.closed),
         ),
       ]),
     ],
@@ -1136,7 +1136,7 @@ fn health_for_tasks(tasks: List(domain_task.Task)) -> CapabilityHealth {
     available: list.count(tasks, is_available_task),
     claimed: list.count(tasks, is_taken_task),
     ongoing: list.count(tasks, is_ongoing_task),
-    done: list.count(tasks, is_closed_task),
+    closed: list.count(tasks, is_closed_task),
     blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
   )
 }
@@ -1170,7 +1170,7 @@ fn is_closed_task(task: domain_task.Task) -> Bool {
 }
 
 fn health_total(health: CapabilityHealth) -> Int {
-  health.available + health.claimed + health.ongoing + health.done
+  health.available + health.claimed + health.ongoing + health.closed
 }
 
 fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {
