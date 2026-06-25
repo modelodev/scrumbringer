@@ -108,7 +108,7 @@ Task rules:
 - Creating tasks: any **project member**.
 - Editing available tasks: any **project member**.
 - Editing claimed tasks: only the **claimer**.
-- Editing completed tasks: not available in the normal workflow.
+- Editing closed/completed tasks: not available in the normal workflow.
 - Claim/Release/Complete: only valid when the caller is a **project member**; Release/Complete require the caller to be the **claimer**.
 - Notes can be added by any **project member** and deleted by their author or a project/org admin; note content is not edited in place.
 - Positions are per-user and can only be written by the **current user**.
@@ -195,6 +195,12 @@ Task rules:
 ```
 
 ### Task
+
+The public Task payload keeps `status`, `work_state`, and `completed_at` as
+presentation/API compatibility fields derived from the canonical task execution
+state. Internal domain and persistence code use `execution_state`, `closed_at`,
+and `closed_reason`; those internal fields do not replace the public Task
+projection unless a versioned API contract changes.
 
 ```json
 {
@@ -1334,19 +1340,26 @@ Project rule metrics:
 
 #### State machine
 
-A task has a `status` field with these allowed values:
+The public task list/detail payload exposes a `status` projection with these
+allowed values:
 
 - `available`
 - `claimed`
 - `completed`
 
+`completed` means the canonical task execution state is `closed` with reason
+`done`. Non-done closed reasons remain domain/audit data unless exposed by a
+specific endpoint contract.
+
 Allowed transitions:
 
 - `available` → `claimed` via `POST /tasks/:task_id/claim`
 - `claimed` → `available` via `POST /tasks/:task_id/release`
-- `claimed` → `completed` via `POST /tasks/:task_id/complete`
+- `claimed` → `completed` via `POST /tasks/:task_id/complete` (stored as
+  `execution_state='closed'`, `closed_reason='done'`)
 
-Invalid transitions return `422 VALIDATION_ERROR`.
+Invalid transitions return `422 VALIDATION_ERROR` or the endpoint-specific
+conflict response documented below.
 
 ---
 
@@ -1388,6 +1401,7 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - auth: **task must be claimed by caller**
   - body: `{ version }`
   - 200: `{ data: { task } }`
+  - response task status: `completed`; canonical storage state: `closed`
 
 ### Task Dependencies
 
