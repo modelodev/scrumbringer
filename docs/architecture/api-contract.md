@@ -46,6 +46,13 @@ All IDs are integer (`BIGSERIAL` in PostgreSQL).
 
 ISO-8601 strings (UTC), e.g. `2026-01-12T17:00:00Z`.
 
+### Date-Only Due Dates
+
+Task and card due dates are date-only strings in `YYYY-MM-DD` format, not
+instants. Overdue and urgency calculations compare them with the project-local
+calendar day. Shared code should parse due dates with `domain/due_date`; UI
+urgency treats invalid date strings as no due date.
+
 ### Versioning / Concurrency
 
 Mutable resources include a `version` integer.

@@ -55,7 +55,7 @@
 │ id            │ title         │ description               │
 │ priority      │ exec_state    │ type_id (FK)              │
 │ project_id    │ created_by    │ claimed_by (FK)?          │
-│ claimed_at?   │ closed_at?    │ created_at                │
+│ claimed_at?   │ closed_at?    │ due_date?                 │
 │ version       │               │                           │
 └───────────────────────────────────────────────────────────┘
        │                              │
@@ -232,6 +232,10 @@ CREATE INDEX idx_tasks_project_execution_state
 CREATE INDEX idx_tasks_project ON tasks(project_id);
 CREATE INDEX idx_tasks_claimed_by ON tasks(claimed_by);
 ```
+
+`due_date` is a date-only value. PostgreSQL stores it as `DATE`, API payloads
+represent it as `YYYY-MM-DD`, and urgency comparisons use the project-local
+calendar day rather than UTC timestamps.
 
 ### TaskNote
 ```sql

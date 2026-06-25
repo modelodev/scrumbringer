@@ -1,7 +1,7 @@
+import domain/due_date as due_date_domain
 import gleam/int
 import gleam/option.{type Option}
 import gleam/order
-import gleam/string
 
 pub type Severity {
   Neutral
@@ -49,12 +49,23 @@ pub fn due_date_severity(
   due_date due_date: Option(String),
   project_today project_today: String,
 ) -> Severity {
-  case due_date {
-    option.Some(date) ->
-      case string.compare(date, project_today) {
-        order.Lt -> High
-        _ -> Neutral
+  case due_date, due_date_domain.parse(project_today) {
+    option.Some(date), Ok(today) ->
+      case due_date_domain.parse(date) {
+        Ok(parsed_due_date) ->
+          due_date_severity_for_dates(parsed_due_date, today)
+        Error(_) -> Neutral
       }
+    _, _ -> Neutral
+  }
+}
+
+fn due_date_severity_for_dates(
+  due_date: due_date_domain.DueDate,
+  project_today: due_date_domain.DueDate,
+) -> Severity {
+  case due_date_domain.compare(due_date, project_today) {
+    order.Lt -> High
     _ -> Neutral
   }
 }

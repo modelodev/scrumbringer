@@ -57,3 +57,23 @@ pub fn missing_due_date_has_neutral_urgency_test() {
       project_today: "2026-06-19",
     )
 }
+
+pub fn invalid_due_date_has_neutral_urgency_test() {
+  let assert urgency.Neutral =
+    urgency.due_date_severity(
+      due_date: Some("2026-02-31"),
+      project_today: "2026-06-19",
+    )
+
+  let assert "" =
+    urgency.shake_class(
+      age_days: 1,
+      due_date: Some("not-a-date"),
+      project_today: "2026-06-19",
+    )
+}
+
+pub fn invalid_project_today_has_neutral_due_date_urgency_test() {
+  let assert urgency.Neutral =
+    urgency.due_date_severity(due_date: Some("2026-06-18"), project_today: "")
+}
