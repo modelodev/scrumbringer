@@ -27,9 +27,6 @@
 import domain/field_update
 import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status.{
-  type ClaimedState, type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
-}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -686,11 +683,12 @@ fn claim_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case domain_task.status(current), current.blocked_count {
-    Claimed(_), _ -> Error(AlreadyClaimed)
-    Done, _ -> Error(InvalidTransition)
-    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
-    Available, _ ->
+  case current.state, current.blocked_count {
+    task_state.Claimed(..), _ -> Error(AlreadyClaimed)
+    task_state.Closed(..), _ -> Error(InvalidTransition)
+    task_state.Available, count if count > 0 ->
+      Error(TaskBlockedByDependencies(count))
+    task_state.Available, _ ->
       claim_available_task(db, task_id, user_id, org_id, version, current)
   }
 }
@@ -794,14 +792,7 @@ fn claim_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ =
-    evaluate_task_rules(
-      db,
-      ctx,
-      user_id,
-      domain_task.status(current),
-      domain_task.status(task),
-    )
+  let _ = evaluate_task_rules(db, ctx, user_id, current.state, task.state)
 
   let _ =
     maybe_evaluate_card_rules(
@@ -845,9 +836,9 @@ fn release_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case domain_task.status(current) {
-    Available | Done -> Error(InvalidTransition)
-    Claimed(_) ->
+  case current.state {
+    task_state.Available | task_state.Closed(..) -> Error(InvalidTransition)
+    task_state.Claimed(..) ->
       release_task_for_claimed(db, task_id, user_id, org_id, version, current)
   }
 }
@@ -914,14 +905,7 @@ fn release_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ =
-    evaluate_task_rules(
-      db,
-      ctx,
-      user_id,
-      domain_task.status(current),
-      domain_task.status(task),
-    )
+  let _ = evaluate_task_rules(db, ctx, user_id, current.state, task.state)
 
   let _ =
     maybe_evaluate_card_rules(
@@ -965,9 +949,9 @@ fn complete_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case domain_task.status(current) {
-    Available | Done -> Error(InvalidTransition)
-    Claimed(_) ->
+  case current.state {
+    task_state.Available | task_state.Closed(..) -> Error(InvalidTransition)
+    task_state.Claimed(..) ->
       complete_task_for_claimed(db, task_id, user_id, org_id, version, current)
   }
 }
@@ -1029,14 +1013,7 @@ fn complete_task_success(
       current.type_id,
       current.card_id,
     )
-  let _ =
-    evaluate_task_rules(
-      db,
-      ctx,
-      user_id,
-      domain_task.status(current),
-      domain_task.status(task),
-    )
+  let _ = evaluate_task_rules(db, ctx, user_id, current.state, task.state)
 
   let _ =
     maybe_evaluate_card_rules(
@@ -1089,11 +1066,12 @@ fn detect_conflict(
 }
 
 fn conflict_from_task(current: domain_task.Task) -> Result(Response, Error) {
-  case domain_task.status(current), current.blocked_count {
-    Claimed(_), _ ->
+  case current.state, current.blocked_count {
+    task_state.Claimed(..), _ ->
       Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
-    Available, count if count > 0 -> Error(TaskBlockedByDependencies(count))
-    Available, _ -> Error(TaskNotClaimable)
+    task_state.Available, count if count > 0 ->
+      Error(TaskBlockedByDependencies(count))
+    task_state.Available, _ -> Error(TaskNotClaimable)
     _, _ -> Error(VersionConflict)
   }
 }
@@ -1109,16 +1087,10 @@ fn evaluate_task_rules(
   db: pog.Connection,
   ctx: rules_engine.TaskContext,
   user_id: Int,
-  from_state: TaskPhase,
-  to_state: TaskPhase,
+  from_state: task_state.TaskExecutionState,
+  to_state: task_state.TaskExecutionState,
 ) -> Nil {
-  let event =
-    rules_engine.task_event(
-      ctx,
-      user_id,
-      Some(task_phase_to_execution_state(from_state, user_id)),
-      task_phase_to_execution_state(to_state, user_id),
-    )
+  let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -1134,27 +1106,6 @@ fn evaluate_task_rules_created(
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
-}
-
-fn task_phase_to_execution_state(
-  phase: TaskPhase,
-  user_id: Int,
-) -> task_state.TaskExecutionState {
-  case phase {
-    Available -> task_state.Available
-    Claimed(mode) ->
-      task_state.Claimed(user_id, "", claimed_mode_to_execution_mode(mode))
-    Done -> task_state.Closed(task_state.Done, "", user_id)
-  }
-}
-
-fn claimed_mode_to_execution_mode(
-  mode: ClaimedState,
-) -> task_state.TaskClaimMode {
-  case mode {
-    Taken -> task_state.Taken
-    Ongoing -> task_state.Ongoing
-  }
 }
 
 /// Evaluate card rules if task belongs to a card and its state might have changed.
