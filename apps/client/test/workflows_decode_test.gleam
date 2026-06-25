@@ -338,8 +338,13 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let assert option.Some(12) = execution_a.template_id
   let assert option.Some(3) = execution_a.template_version
   let assert option.Some(102) = execution_a.created_task_id
-  let assert api_rule_metrics.SuppressedRuleExecution("idempotent") =
-    execution_b.outcome
+  let assert api_rule_metrics.SuppressedRuleExecution(option.Some(
+    api_rule_metrics.IdempotentSuppression,
+  )) = execution_b.outcome
+  let assert option.Some("idempotent") =
+    api_rule_metrics.execution_outcome_suppression_reason_name(
+      execution_b.outcome,
+    )
   let assert 2 = response.pagination.total
 }
 
@@ -372,4 +377,44 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
   let assert api_rule_metrics.AppliedRuleExecution = execution.outcome
   let assert 0 = execution.user_id
   let assert "" = execution.user_email
+}
+
+pub fn rule_executions_response_decoder_decodes_suppressed_without_reason_test() {
+  let body =
+    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"task_id\":100,\"outcome\":\"suppressed\",\"created_at\":\"2026-01-19T10:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
+
+  let assert Ok(response) =
+    json.parse(
+      from: body,
+      using: api_rule_metrics.rule_executions_response_decoder(),
+    )
+  let assert [execution] = response.executions
+  let assert api_rule_metrics.SuppressedRuleExecution(option.None) =
+    execution.outcome
+  let assert option.None =
+    api_rule_metrics.execution_outcome_suppression_reason_name(
+      execution.outcome,
+    )
+}
+
+pub fn rule_executions_response_decoder_preserves_unknown_outcome_reason_test() {
+  let body =
+    "{\"rule_id\":1,\"executions\":[{\"id\":1,\"task_id\":100,\"outcome\":\"queued\",\"suppression_reason\":\"manual\",\"created_at\":\"2026-01-19T10:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
+
+  let assert Ok(response) =
+    json.parse(
+      from: body,
+      using: api_rule_metrics.rule_executions_response_decoder(),
+    )
+  let assert [execution] = response.executions
+  let assert api_rule_metrics.UnknownRuleExecution(
+    raw: "queued",
+    suppression_reason: option.Some(api_rule_metrics.UnknownSuppressionReason(
+      "manual",
+    )),
+  ) = execution.outcome
+  let assert option.Some("manual") =
+    api_rule_metrics.execution_outcome_suppression_reason_name(
+      execution.outcome,
+    )
 }

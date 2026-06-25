@@ -756,7 +756,7 @@ fn outcome_class_for(outcome: api_rule_metrics.RuleExecutionOutcome) -> String {
   case outcome {
     api_rule_metrics.AppliedRuleExecution -> "outcome-applied"
     api_rule_metrics.SuppressedRuleExecution(_) -> "outcome-suppressed"
-    api_rule_metrics.UnknownRuleExecution(_) -> ""
+    api_rule_metrics.UnknownRuleExecution(..) -> ""
   }
 }
 
@@ -776,7 +776,7 @@ fn outcome_text_for_outcome(
     api_rule_metrics.SuppressedRuleExecution(reason) ->
       t(config, i18n_text.OutcomeSuppressed)
       <> suppression_reason_suffix(reason)
-    api_rule_metrics.UnknownRuleExecution(raw) -> raw
+    api_rule_metrics.UnknownRuleExecution(raw:, ..) -> raw
   }
 }
 
@@ -822,10 +822,13 @@ fn view_project_executions_pagination(
   )
 }
 
-fn suppression_reason_suffix(reason: String) -> String {
+fn suppression_reason_suffix(
+  reason: opt.Option(api_rule_metrics.RuleSuppressionReason),
+) -> String {
   case reason {
-    "" -> ""
-    _ -> " (" <> reason <> ")"
+    opt.None -> ""
+    opt.Some(value) ->
+      " (" <> api_rule_metrics.rule_suppression_reason_name(value) <> ")"
   }
 }
 

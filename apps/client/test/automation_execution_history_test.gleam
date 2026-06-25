@@ -83,7 +83,9 @@ fn ignored_execution() -> api_rule_metrics.RuleExecution {
     id: 102,
     task_id: option.Some(42),
     card_id: option.None,
-    outcome: api_rule_metrics.SuppressedRuleExecution("idempotent"),
+    outcome: api_rule_metrics.SuppressedRuleExecution(option.Some(
+      api_rule_metrics.IdempotentSuppression,
+    )),
     user_id: 7,
     user_email: "member@example.com",
     template_id: option.None,
@@ -135,7 +137,9 @@ fn project_ignored_execution() -> api_rule_metrics.ProjectRuleExecution {
     task_title: "Blocked backend task",
     card_id: option.None,
     card_title: "",
-    outcome: api_rule_metrics.SuppressedRuleExecution("idempotent"),
+    outcome: api_rule_metrics.SuppressedRuleExecution(option.Some(
+      api_rule_metrics.IdempotentSuppression,
+    )),
     user_id: 7,
     user_email: "member@example.com",
     template_id: option.Some(12),
