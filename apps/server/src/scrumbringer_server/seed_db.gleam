@@ -22,7 +22,7 @@
 import domain/card
 import domain/org_role
 import domain/project_role
-import domain/task_status
+import domain/task/state as task_state
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
@@ -56,16 +56,13 @@ pub type TaskInsertOptions {
     title: String,
     description: String,
     priority: Int,
-    status: task_status.TaskPhase,
+    execution_state: task_state.TaskExecutionState,
     created_by: Int,
-    claimed_by: Option(Int),
     card_id: Option(Int),
     created_from_rule_id: Option(Int),
     pool_lifetime_s: Int,
     due_date: Option(String),
     created_at: Option(String),
-    claimed_at: Option(String),
-    completed_at: Option(String),
     last_entered_pool_at: Option(String),
   )
 }
@@ -540,13 +537,13 @@ pub fn insert_task(
   db: pog.Connection,
   opts: TaskInsertOptions,
 ) -> Result(Int, String) {
-  let execution_state = task_execution_state(opts.status)
-  let claimed_mode = task_claimed_mode(opts.status)
-  let claimed_by = task_claimed_by(opts.status, opts.claimed_by)
-  let claimed_at = task_claimed_at(opts.status, opts.claimed_at)
-  let closed_at = task_closed_at(opts.status, opts.completed_at)
-  let closed_by = task_closed_by(opts.status, opts.claimed_by, opts.created_by)
-  let closed_reason = task_closed_reason(opts.status)
+  let execution_state = task_execution_state(opts.execution_state)
+  let claimed_mode = task_claimed_mode(opts.execution_state)
+  let claimed_by = task_state.claimed_by(opts.execution_state)
+  let claimed_at = task_state.claimed_at(opts.execution_state)
+  let closed_at = task_closed_at(opts.execution_state)
+  let closed_by = task_closed_by(opts.execution_state)
+  let closed_reason = task_closed_reason(opts.execution_state)
 
   let base_cols =
     "project_id, type_id, title, description, priority, execution_state, claimed_mode, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s, closed_by, closed_reason"
@@ -638,131 +635,102 @@ pub fn insert_task_simple(
       title: title,
       description: "Seeded",
       priority: 3,
-      status: task_status.Available,
+      execution_state: task_state.Available,
       created_by: created_by,
-      claimed_by: None,
       card_id: card_id,
       created_from_rule_id: None,
       pool_lifetime_s: 0,
       due_date: None,
       created_at: None,
-      claimed_at: None,
-      completed_at: None,
       last_entered_pool_at: None,
     ),
   )
 }
 
-/// Update a task's status.
-pub fn update_task_status(
+/// Update a task's execution state.
+pub fn update_task_execution_state(
   db: pog.Connection,
   task_id: Int,
-  status: task_status.TaskPhase,
-  claimed_by: Option(Int),
+  execution_state: task_state.TaskExecutionState,
 ) -> Result(Nil, String) {
-  let execution_state = task_execution_state(status)
-  case status {
-    task_status.Claimed(mode) -> {
-      case claimed_by {
-        Some(claimed_user_id) ->
-          pog.query(
-            "UPDATE tasks SET execution_state = $1, claimed_mode = $2, claimed_by = $3, claimed_at = NOW(), closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $4",
-          )
-          |> pog.parameter(pog.text(execution_state))
-          |> pog.parameter(pog.text(claim_mode_to_string(mode)))
-          |> pog.parameter(pog.int(claimed_user_id))
-          |> pog.parameter(pog.int(task_id))
-          |> pog.execute(db)
-          |> result.map(fn(_) { Nil })
-          |> result.map_error(fn(e) {
-            "update_task_status: " <> string.inspect(e)
-          })
-        None -> Error("update_task_status: claimed_by is required")
-      }
-    }
-    task_status.Done -> {
+  let db_state = task_execution_state(execution_state)
+  case execution_state {
+    task_state.Claimed(claimed_by: claimed_user_id, mode: mode, ..) -> {
       pog.query(
-        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, closed_at = NOW(), closed_by = $2, closed_reason = 'done' WHERE id = $3",
+        "UPDATE tasks SET execution_state = $1, claimed_mode = $2, claimed_by = $3, claimed_at = NOW(), closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $4",
       )
-      |> pog.parameter(pog.text(execution_state))
-      |> pog.parameter(pog.nullable(pog.int, claimed_by))
+      |> pog.parameter(pog.text(db_state))
+      |> pog.parameter(pog.text(claim_mode_to_string(mode)))
+      |> pog.parameter(pog.int(claimed_user_id))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
-      |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
+      |> result.map_error(fn(e) {
+        "update_task_execution_state: " <> string.inspect(e)
+      })
     }
-    task_status.Available -> {
+    task_state.Closed(reason: reason, closed_by: closed_by, ..) -> {
+      pog.query(
+        "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, closed_at = NOW(), closed_by = $2, closed_reason = $3 WHERE id = $4",
+      )
+      |> pog.parameter(pog.text(db_state))
+      |> pog.parameter(pog.int(closed_by))
+      |> pog.parameter(pog.text(closed_reason_to_string(reason)))
+      |> pog.parameter(pog.int(task_id))
+      |> pog.execute(db)
+      |> result.map(fn(_) { Nil })
+      |> result.map_error(fn(e) {
+        "update_task_execution_state: " <> string.inspect(e)
+      })
+    }
+    task_state.Available -> {
       pog.query(
         "UPDATE tasks SET execution_state = $1, claimed_mode = NULL, claimed_by = NULL, claimed_at = NULL, closed_at = NULL, closed_by = NULL, closed_reason = NULL WHERE id = $2",
       )
-      |> pog.parameter(pog.text(execution_state))
+      |> pog.parameter(pog.text(db_state))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })
-      |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
+      |> result.map_error(fn(e) {
+        "update_task_execution_state: " <> string.inspect(e)
+      })
     }
   }
 }
 
-fn task_execution_state(status: task_status.TaskPhase) -> String {
-  case status {
-    task_status.Available -> "available"
-    task_status.Claimed(_) -> "claimed"
-    task_status.Done -> "closed"
+fn task_execution_state(state: task_state.TaskExecutionState) -> String {
+  case state {
+    task_state.Available -> "available"
+    task_state.Claimed(..) -> "claimed"
+    task_state.Closed(..) -> "closed"
   }
 }
 
-fn task_claimed_mode(status: task_status.TaskPhase) -> Option(String) {
-  case status {
-    task_status.Claimed(mode) -> Some(claim_mode_to_string(mode))
+fn task_claimed_mode(state: task_state.TaskExecutionState) -> Option(String) {
+  case state {
+    task_state.Claimed(mode: mode, ..) -> Some(claim_mode_to_string(mode))
     _ -> None
   }
 }
 
-fn task_claimed_by(
-  status: task_status.TaskPhase,
-  claimed_by: Option(Int),
-) -> Option(Int) {
-  case status {
-    task_status.Claimed(_) -> claimed_by
+fn task_closed_at(state: task_state.TaskExecutionState) -> Option(String) {
+  case state {
+    task_state.Closed(closed_at: closed_at, ..) -> Some(closed_at)
     _ -> None
   }
 }
 
-fn task_claimed_at(
-  status: task_status.TaskPhase,
-  claimed_at: Option(String),
-) -> Option(String) {
-  case status {
-    task_status.Claimed(_) -> default_timestamp(claimed_at)
+fn task_closed_by(state: task_state.TaskExecutionState) -> Option(Int) {
+  case state {
+    task_state.Closed(closed_by: closed_by, ..) -> Some(closed_by)
     _ -> None
   }
 }
 
-fn task_closed_at(
-  status: task_status.TaskPhase,
-  completed_at: Option(String),
-) -> Option(String) {
-  case status {
-    task_status.Done -> default_timestamp(completed_at)
-    _ -> None
-  }
-}
-
-fn task_closed_by(
-  status: task_status.TaskPhase,
-  claimed_by: Option(Int),
-  created_by: Int,
-) -> Option(Int) {
-  case status {
-    task_status.Done -> Some(option_to_int(claimed_by, created_by))
-    _ -> None
-  }
-}
-
-fn task_closed_reason(status: task_status.TaskPhase) -> Option(String) {
-  case status {
-    task_status.Done -> Some("done")
+fn task_closed_reason(state: task_state.TaskExecutionState) -> Option(String) {
+  case state {
+    task_state.Closed(reason: reason, ..) ->
+      Some(closed_reason_to_string(reason))
     _ -> None
   }
 }
@@ -775,24 +743,18 @@ fn root_card_execution_state(state: card.CardPhase) -> String {
   }
 }
 
-fn claim_mode_to_string(mode: task_status.ClaimedState) -> String {
+fn claim_mode_to_string(mode: task_state.TaskClaimMode) -> String {
   case mode {
-    task_status.Taken -> "taken"
-    task_status.Ongoing -> "ongoing"
+    task_state.Taken -> "taken"
+    task_state.Ongoing -> "ongoing"
   }
 }
 
-fn default_timestamp(value: Option(String)) -> Option(String) {
-  case value {
-    Some(_) -> value
-    None -> Some("NOW()")
-  }
-}
-
-fn option_to_int(value: Option(Int), default: Int) -> Int {
-  case value {
-    Some(inner) -> inner
-    None -> default
+fn closed_reason_to_string(reason: task_state.TaskClosedReason) -> String {
+  case reason {
+    task_state.Done -> "done"
+    task_state.ManuallyClosed -> "manually_closed"
+    task_state.ClosedByAncestor -> "closed_by_ancestor"
   }
 }
 
@@ -1013,7 +975,8 @@ pub fn assign_available_pool_tasks_to_parent_card(
     db,
     project_id,
     card_id,
-    task_status.Available,
+    "available",
+    None,
     limit,
   )
 }
@@ -1029,7 +992,8 @@ pub fn assign_claimed_pool_tasks_to_parent_card(
     db,
     project_id,
     card_id,
-    task_status.Claimed(task_status.Taken),
+    "claimed",
+    Some("taken"),
     limit,
   )
 }
@@ -1045,7 +1009,8 @@ pub fn assign_completed_pool_tasks_to_parent_card(
     db,
     project_id,
     card_id,
-    task_status.Done,
+    "closed",
+    None,
     limit,
   )
 }
@@ -1054,13 +1019,12 @@ fn assign_pool_tasks_to_parent_card_by_status(
   db: pog.Connection,
   project_id: Int,
   card_id: Int,
-  status: task_status.TaskPhase,
+  execution_state: String,
+  claimed_mode: Option(String),
   limit: Int,
 ) -> Result(Nil, String) {
   use _ <- result.try(require_parent_card_accepts_tasks(db, card_id))
 
-  let execution_state = task_execution_state(status)
-  let claimed_mode = task_claimed_mode(status)
   pog.query(
     "UPDATE tasks
      SET card_id = $2

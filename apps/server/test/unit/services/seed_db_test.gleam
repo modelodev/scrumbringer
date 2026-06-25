@@ -1,5 +1,5 @@
 import domain/org_role
-import domain/task_status
+import domain/task/state as task_state
 import fixtures
 import gleam/option.{None, Some}
 import pog
@@ -94,16 +94,13 @@ pub fn insert_task_accepts_sql_timestamp_test() {
         title: "Task",
         description: "Desc",
         priority: 3,
-        status: task_status.Available,
+        execution_state: task_state.Available,
         created_by: user_id,
-        claimed_by: None,
         card_id: None,
         created_from_rule_id: None,
         pool_lifetime_s: 0,
         due_date: None,
         created_at: Some("NOW()"),
-        claimed_at: None,
-        completed_at: None,
         last_entered_pool_at: None,
       ),
     )

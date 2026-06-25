@@ -21,11 +21,11 @@
 ////
 //// - Uses `pog` for DB access
 
-import domain/task_status
+import domain/task/state as task_state
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import pog
 import scrumbringer_server/use_case/persisted_field
@@ -93,9 +93,13 @@ pub fn start_session(
   task_id: Int,
 ) -> Result(WorkSessionsState, WorkSessionError) {
   // First validate the task is claimed by this user and not completed
-  use task_status <- result.try(validate_task_for_session(db, user_id, task_id))
+  use task_validation <- result.try(validate_task_for_session(
+    db,
+    user_id,
+    task_id,
+  ))
 
-  case task_status {
+  case task_validation {
     TaskNotClaimed -> Error(NotClaimed)
     TaskIsDone -> Error(TaskDone)
     TaskValidForSession -> {
@@ -300,36 +304,39 @@ type TaskValidation {
 type TaskClaimState {
   Available
   ClaimedBy(user_id: Int)
-  Done
+  Closed
 }
 
 type TaskClaimRow {
-  TaskClaimRow(status: String, claimed_by: Option(Int))
+  TaskClaimRow(
+    status: String,
+    claimed_by: Option(Int),
+    claimed_at: Option(String),
+    closed_at: Option(String),
+  )
 }
 
 fn task_claim_state(
   status: String,
   claimed_by: Option(Int),
+  claimed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(TaskClaimState, WorkSessionError) {
-  use parsed_status <- result.try(
-    task_status.from_db(status, False)
+  use execution_state <- result.try(
+    task_state.from_db(status, False, claimed_by, claimed_at, closed_at)
     |> result.map_error(fn(_) {
       DbError(pog.PostgresqlError(
         code: "INVALID_TASK_STATUS",
-        name: "invalid_task_status",
+        name: "invalid_task_execution_state",
         message: "Invalid task status: " <> status,
       ))
     }),
   )
 
-  case parsed_status {
-    task_status.Done -> Ok(Done)
-    task_status.Claimed(_) ->
-      case claimed_by {
-        Some(user_id) -> Ok(ClaimedBy(user_id))
-        None -> Ok(Available)
-      }
-    task_status.Available -> Ok(Available)
+  case execution_state {
+    task_state.Closed(..) -> Ok(Closed)
+    task_state.Claimed(claimed_by: user_id, ..) -> Ok(ClaimedBy(user_id))
+    task_state.Available -> Ok(Available)
   }
 }
 
@@ -340,15 +347,14 @@ fn validate_task_for_session(
 ) -> Result(TaskValidation, WorkSessionError) {
   let query =
     "
-    SELECT
-      case
-        when execution_state = 'closed' then 'completed'
-        else execution_state
-      end as status,
-      claimed_by
-    FROM tasks
-    WHERE id = $1
-  "
+	    SELECT
+	      execution_state as status,
+	      claimed_by,
+	      TO_CHAR(claimed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as claimed_at,
+	      TO_CHAR(closed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as closed_at
+	    FROM tasks
+	    WHERE id = $1
+	  "
 
   case
     pog.query(query)
@@ -358,11 +364,19 @@ fn validate_task_for_session(
   {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotClaimed)
-    Ok(pog.Returned(rows: [TaskClaimRow(status:, claimed_by:), ..], ..)) -> {
-      use state <- result.try(task_claim_state(status, claimed_by))
+    Ok(pog.Returned(
+      rows: [TaskClaimRow(status:, claimed_by:, claimed_at:, closed_at:), ..],
+      ..,
+    )) -> {
+      use state <- result.try(task_claim_state(
+        status,
+        claimed_by,
+        claimed_at,
+        closed_at,
+      ))
 
       case state {
-        Done -> Ok(TaskIsDone)
+        Closed -> Ok(TaskIsDone)
         ClaimedBy(id) if id == user_id -> Ok(TaskValidForSession)
         _ -> Ok(TaskNotClaimed)
       }
@@ -513,7 +527,9 @@ fn contributor_time_decoder() -> decode.Decoder(ContributorTime) {
 fn task_claim_row_decoder() -> decode.Decoder(TaskClaimRow) {
   use status <- decode.field(0, decode.string)
   use claimed_by <- decode.field(1, decode.optional(decode.int))
-  decode.success(TaskClaimRow(status:, claimed_by:))
+  use claimed_at <- decode.field(2, decode.optional(decode.string))
+  use closed_at <- decode.field(3, decode.optional(decode.string))
+  decode.success(TaskClaimRow(status:, claimed_by:, claimed_at:, closed_at:))
 }
 
 fn active_session_decoder() -> decode.Decoder(ActiveSession) {

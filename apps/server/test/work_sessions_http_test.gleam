@@ -1,4 +1,4 @@
-import domain/task_status
+import domain/task/state as task_state
 import fixtures
 import gleam/http
 import gleam/http/request
@@ -84,16 +84,17 @@ pub fn start_rejects_completed_task_test() {
         title: "Done",
         description: "Done",
         priority: 3,
-        status: task_status.Done,
+        execution_state: task_state.Closed(
+          reason: task_state.Done,
+          closed_at: "NOW()",
+          closed_by: user_id,
+        ),
         created_by: user_id,
-        claimed_by: opt.Some(user_id),
         card_id: opt.None,
         created_from_rule_id: opt.None,
         pool_lifetime_s: 0,
         due_date: opt.None,
         created_at: opt.None,
-        claimed_at: opt.None,
-        completed_at: opt.None,
         last_entered_pool_at: opt.None,
       ),
     )
