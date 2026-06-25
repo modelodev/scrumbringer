@@ -928,26 +928,28 @@ pub fn translate(text: Text) -> String {
     text.KanbanSummaryOngoing -> "Ongoing"
 
     // Automations
-    text.AdminWorkflows -> "Automations"
-    text.WorkflowsTitle -> "Automations"
-    text.WorkflowsOrgTitle -> "Organization automations"
-    text.WorkflowsProjectTitle(project_name) -> "Engines - " <> project_name
-    text.SelectProjectForWorkflows -> "Select a project to manage automations"
-    text.WorkflowName -> "Name"
-    text.WorkflowDescription -> "Description"
-    text.WorkflowScope -> "Scope"
-    text.WorkflowScopeOrg -> "Organization"
-    text.WorkflowScopeProject -> "Project"
-    text.WorkflowRules -> "Rules"
-    text.WorkflowActive -> "Active"
-    text.WorkflowCreated -> "Engine created"
-    text.WorkflowUpdated -> "Engine updated"
-    text.CreateWorkflow -> "Create engine"
-    text.EditWorkflow -> "Edit engine"
-    text.DeleteWorkflow -> "Delete engine"
-    text.WorkflowDeleteConfirm(name) -> "Delete engine \"" <> name <> "\"?"
-    text.NoWorkflowsYet -> "No engines yet"
-    text.WorkflowDeleted -> "Engine deleted"
+    text.AdminAutomations -> "Automations"
+    text.AutomationsTitle -> "Automations"
+    text.OrganizationAutomationsTitle -> "Organization automations"
+    text.AutomationEnginesProjectTitle(project_name) ->
+      "Engines - " <> project_name
+    text.SelectProjectForAutomations -> "Select a project to manage automations"
+    text.AutomationEngineName -> "Name"
+    text.AutomationEngineDescription -> "Description"
+    text.AutomationEngineScope -> "Scope"
+    text.AutomationEngineScopeOrg -> "Organization"
+    text.AutomationEngineScopeProject -> "Project"
+    text.AutomationEngineRules -> "Rules"
+    text.AutomationEngineActive -> "Active"
+    text.AutomationEngineCreated -> "Engine created"
+    text.AutomationEngineUpdated -> "Engine updated"
+    text.CreateAutomationEngine -> "Create engine"
+    text.EditAutomationEngine -> "Edit engine"
+    text.DeleteAutomationEngine -> "Delete engine"
+    text.AutomationEngineDeleteConfirm(name) ->
+      "Delete engine \"" <> name <> "\"?"
+    text.NoAutomationEnginesYet -> "No engines yet"
+    text.AutomationEngineDeleted -> "Engine deleted"
     text.AutomationEnginesDescription ->
       "Group automation rules that create work in the Pool without assigning it."
     text.AutomationEnginesSearchPlaceholder ->
@@ -1345,7 +1347,7 @@ pub fn translate(text: Text) -> String {
     text.MetricsSessionCount -> "Session count"
     text.MetricsTotalWorkTime -> "Total work time"
     text.MetricsAvgExecutors -> "Avg executors"
-    text.MetricsWorkflows -> "Automations"
+    text.MetricsAutomations -> "Automations"
     text.MetricsMostActivated -> "Most activated"
     text.MetricsNotAvailable -> "Not available"
     text.MetricsEmptyState -> "Not enough data for metrics"
@@ -1358,7 +1360,7 @@ pub fn translate(text: Text) -> String {
     text.ErrorLoadingTasks -> "Error loading tasks"
 
     // Automations / Rules
-    text.BackToWorkflows -> "← Back to Automations"
+    text.BackToAutomations -> "← Back to Automations"
     text.ResourceTypeTask -> "task"
     text.RuleMetricsNoExecutions ->
       "No automation executions found in the selected range."

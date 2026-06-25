@@ -555,7 +555,7 @@ fn view_automations_console(
     created_tasks_count: created_tasks_count(model),
     primary_action: opt.Some(
       button.icon_text(
-        i18n.t(model.ui.locale, i18n_text.CreateWorkflow),
+        i18n.t(model.ui.locale, i18n_text.CreateAutomationEngine),
         client_state.pool_msg(pool_messages.OpenWorkflowDialog(
           admin_workflows.WorkflowDialogCreate,
         )),
@@ -1214,13 +1214,13 @@ fn admin_mobile_title_key(section: permissions.AdminSection) -> i18n_text.Text {
     permissions.Team -> i18n_text.Team
     permissions.ApiTokens -> i18n_text.AdminApiTokens
     permissions.Metrics -> i18n_text.AdminMetrics
-    permissions.RuleMetrics -> i18n_text.AdminWorkflows
+    permissions.RuleMetrics -> i18n_text.AdminAutomations
     permissions.Members -> i18n_text.AdminMembers
     permissions.Capabilities -> i18n_text.Capabilities
     permissions.Cards -> i18n_text.MemberCards
     permissions.TaskTypes -> i18n_text.TaskTypes
-    permissions.Workflows -> i18n_text.AdminWorkflows
-    permissions.TaskTemplates -> i18n_text.AdminWorkflows
+    permissions.Workflows -> i18n_text.AdminAutomations
+    permissions.TaskTemplates -> i18n_text.AdminAutomations
   }
 }
 

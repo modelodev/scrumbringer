@@ -762,26 +762,26 @@ pub type Text {
   KanbanSummaryOngoing
 
   // Automations
-  AdminWorkflows
-  WorkflowsTitle
-  WorkflowsOrgTitle
-  WorkflowsProjectTitle(project_name: String)
-  SelectProjectForWorkflows
-  WorkflowName
-  WorkflowDescription
-  WorkflowScope
-  WorkflowScopeOrg
-  WorkflowScopeProject
-  WorkflowRules
-  WorkflowActive
-  WorkflowCreated
-  WorkflowUpdated
-  CreateWorkflow
-  EditWorkflow
-  DeleteWorkflow
-  WorkflowDeleteConfirm(engine_name: String)
-  NoWorkflowsYet
-  WorkflowDeleted
+  AdminAutomations
+  AutomationsTitle
+  OrganizationAutomationsTitle
+  AutomationEnginesProjectTitle(project_name: String)
+  SelectProjectForAutomations
+  AutomationEngineName
+  AutomationEngineDescription
+  AutomationEngineScope
+  AutomationEngineScopeOrg
+  AutomationEngineScopeProject
+  AutomationEngineRules
+  AutomationEngineActive
+  AutomationEngineCreated
+  AutomationEngineUpdated
+  CreateAutomationEngine
+  EditAutomationEngine
+  DeleteAutomationEngine
+  AutomationEngineDeleteConfirm(engine_name: String)
+  NoAutomationEnginesYet
+  AutomationEngineDeleted
   AutomationEnginesDescription
   AutomationEnginesSearchPlaceholder
   AutomationEngineStatus
@@ -1123,7 +1123,7 @@ pub type Text {
   MetricsSessionCount
   MetricsTotalWorkTime
   MetricsAvgExecutors
-  MetricsWorkflows
+  MetricsAutomations
   MetricsMostActivated
   MetricsNotAvailable
   MetricsEmptyState
@@ -1136,7 +1136,7 @@ pub type Text {
   ErrorLoadingTasks
 
   // Automations / Rules
-  BackToWorkflows
+  BackToAutomations
   ResourceTypeTask
   RuleMetricsNoExecutions
   RuleMetricsResults

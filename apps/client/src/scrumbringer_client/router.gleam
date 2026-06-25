@@ -716,7 +716,7 @@ fn config_section_title(
   locale: i18n_locale.Locale,
 ) -> String {
   case is_automation_section(section) {
-    True -> i18n.t(locale, i18n_text.AdminWorkflows)
+    True -> i18n.t(locale, i18n_text.AdminAutomations)
     False -> admin_section_title(section, locale)
   }
 }
@@ -746,7 +746,7 @@ fn admin_section_title(
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes
     permissions.Cards -> i18n_text.AdminCards
-    permissions.Workflows -> i18n_text.AdminWorkflows
+    permissions.Workflows -> i18n_text.AdminAutomations
     permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
   }
   i18n.t(locale, text)

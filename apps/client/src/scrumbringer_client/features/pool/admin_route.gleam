@@ -393,9 +393,9 @@ fn workflow_crud_feedback_context(
   model: client_state.Model,
 ) -> workflows_workflow.WorkflowFeedbackContext(client_state.Msg) {
   workflows_workflow.WorkflowFeedbackContext(
-    workflow_created: i18n.t(model.ui.locale, i18n_text.WorkflowCreated),
-    workflow_updated: i18n.t(model.ui.locale, i18n_text.WorkflowUpdated),
-    workflow_deleted: i18n.t(model.ui.locale, i18n_text.WorkflowDeleted),
+    workflow_created: i18n.t(model.ui.locale, i18n_text.AutomationEngineCreated),
+    workflow_updated: i18n.t(model.ui.locale, i18n_text.AutomationEngineUpdated),
+    workflow_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
     on_success_toast: app_effects.toast_success,
     on_workflow_saved: fn(result) {
       client_state.pool_msg(pool_messages.WorkflowSaved(result))

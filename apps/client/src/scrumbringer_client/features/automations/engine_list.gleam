@@ -79,7 +79,7 @@ fn view_list(config: Config(msg)) -> Element(msg) {
     opt.None ->
       div([attribute.class("automation-engines-mode")], [
         div([attribute.class("empty")], [
-          text(t(config, i18n_text.SelectProjectForWorkflows)),
+          text(t(config, i18n_text.SelectProjectForAutomations)),
         ]),
       ])
     opt.Some(project) -> {
@@ -89,7 +89,10 @@ fn view_list(config: Config(msg)) -> Element(msg) {
         div(dialog.panel_background_attributes(panel_open), [
           div([attribute.class("automation-engines-heading")], [
             h2([], [
-              text(t(config, i18n_text.WorkflowsProjectTitle(project.name))),
+              text(t(
+                config,
+                i18n_text.AutomationEnginesProjectTitle(project.name),
+              )),
             ]),
             p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
           ]),
@@ -164,7 +167,10 @@ fn view_content(
 
       case filtered {
         [] ->
-          empty_state.simple("cog-6-tooth", t(config, i18n_text.NoWorkflowsYet))
+          empty_state.simple(
+            "cog-6-tooth",
+            t(config, i18n_text.NoAutomationEnginesYet),
+          )
         _ ->
           keyed.element(
             "div",
@@ -207,7 +213,7 @@ fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
           text(
             int.to_string(workflow.rule_count)
             <> " "
-            <> t(config, i18n_text.WorkflowRules),
+            <> t(config, i18n_text.AutomationEngineRules),
           ),
         ]),
       ]),
@@ -246,12 +252,12 @@ fn workflow_status_badge(
 fn view_actions(config: Config(msg), workflow: Workflow) -> Element(msg) {
   div([attribute.class("btn-group")], [
     action_buttons.settings_button_with_testid(
-      t(config, i18n_text.WorkflowRules),
+      t(config, i18n_text.AutomationEngineRules),
       config.on_rules_clicked(workflow.id),
       "workflow-rules-btn",
     ),
     ui_button.icon(
-      t(config, i18n_text.EditWorkflow),
+      t(config, i18n_text.EditAutomationEngine),
       config.on_edit_clicked(workflow),
       icons.Pencil,
       ui_button.Neutral,
@@ -261,7 +267,7 @@ fn view_actions(config: Config(msg), workflow: Workflow) -> Element(msg) {
       |> ui_button.with_id(automation_focus.engine_edit_trigger_id(workflow.id))
       |> ui_button.view,
     ui_button.icon(
-      t(config, i18n_text.DeleteWorkflow),
+      t(config, i18n_text.DeleteAutomationEngine),
       config.on_delete_clicked(workflow),
       icons.Trash,
       ui_button.Danger,
@@ -326,12 +332,16 @@ fn view_form_panel(
 ) -> Element(msg) {
   let title_id = "automation-engine-panel-title"
   let title = case mode {
-    admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
-    admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.EditWorkflow)
-    admin_workflows.WorkflowDialogDelete(_) -> t(config, i18n_text.EditWorkflow)
+    admin_workflows.WorkflowDialogCreate ->
+      t(config, i18n_text.CreateAutomationEngine)
+    admin_workflows.WorkflowDialogEdit(_) ->
+      t(config, i18n_text.EditAutomationEngine)
+    admin_workflows.WorkflowDialogDelete(_) ->
+      t(config, i18n_text.EditAutomationEngine)
   }
   let submit_label = case mode {
-    admin_workflows.WorkflowDialogCreate -> t(config, i18n_text.CreateWorkflow)
+    admin_workflows.WorkflowDialogCreate ->
+      t(config, i18n_text.CreateAutomationEngine)
     admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.Save)
     admin_workflows.WorkflowDialogDelete(_) -> t(config, i18n_text.Save)
   }
@@ -359,14 +369,14 @@ fn view_form_panel(
         ],
         [
           form_field.view(
-            t(config, i18n_text.WorkflowName),
+            t(config, i18n_text.AutomationEngineName),
             input([
               attribute.type_("text"),
               attribute.required(True),
               attribute.value(config.form_name),
               attribute.attribute(
                 "aria-label",
-                t(config, i18n_text.WorkflowName),
+                t(config, i18n_text.AutomationEngineName),
               ),
               attribute.attribute("data-testid", "automation-engine-name"),
               attribute.autofocus(True),
@@ -374,13 +384,13 @@ fn view_form_panel(
             ]),
           ),
           form_field.view(
-            t(config, i18n_text.WorkflowDescription),
+            t(config, i18n_text.AutomationEngineDescription),
             input([
               attribute.type_("text"),
               attribute.value(config.form_description),
               attribute.attribute(
                 "aria-label",
-                t(config, i18n_text.WorkflowDescription),
+                t(config, i18n_text.AutomationEngineDescription),
               ),
               attribute.attribute(
                 "data-testid",
@@ -390,7 +400,7 @@ fn view_form_panel(
             ]),
           ),
           form_field.view_checkbox(
-            t(config, i18n_text.WorkflowActive),
+            t(config, i18n_text.AutomationEngineActive),
             input([
               attribute.type_("checkbox"),
               attribute.checked(config.form_active),
@@ -422,17 +432,19 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
     [
       panel_header(
         title_id,
-        t(config, i18n_text.DeleteWorkflow),
+        t(config, i18n_text.DeleteAutomationEngine),
         config.on_closed,
         t(config, i18n_text.Close),
         True,
       ),
       view_form_error(config),
-      p([], [text(t(config, i18n_text.WorkflowDeleteConfirm(workflow.name)))]),
+      p([], [
+        text(t(config, i18n_text.AutomationEngineDeleteConfirm(workflow.name))),
+      ]),
       panel_actions(
         cancel: config.on_closed,
         submit: config.on_delete_confirmed,
-        submit_label: t(config, i18n_text.DeleteWorkflow),
+        submit_label: t(config, i18n_text.DeleteAutomationEngine),
         submitting: config.form_submitting,
         cancel_label: t(config, i18n_text.Cancel),
         submitting_label: t(config, i18n_text.Saving),

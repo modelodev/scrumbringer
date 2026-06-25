@@ -33,12 +33,12 @@ pub fn rule_builder_spanish_copy_uses_localized_domain_terms_test() {
 }
 
 pub fn automation_navigation_copy_uses_engine_vocabulary_test() {
-  let en_title = i18n.t(locale.En, text.WorkflowsProjectTitle("Core"))
-  let es_title = i18n.t(locale.Es, text.WorkflowsProjectTitle("Core"))
+  let en_title = i18n.t(locale.En, text.AutomationEnginesProjectTitle("Core"))
+  let es_title = i18n.t(locale.Es, text.AutomationEnginesProjectTitle("Core"))
   let en_rules = i18n.t(locale.En, text.RulesTitle("Release automation"))
   let es_rules = i18n.t(locale.Es, text.RulesTitle("Release automation"))
-  let en_back = i18n.t(locale.En, text.BackToWorkflows)
-  let es_back = i18n.t(locale.Es, text.BackToWorkflows)
+  let en_back = i18n.t(locale.En, text.BackToAutomations)
+  let es_back = i18n.t(locale.Es, text.BackToAutomations)
 
   let assert "Engines - Core" = en_title
   let assert "Motores - Core" = es_title

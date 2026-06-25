@@ -42,7 +42,7 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   let header =
     work_surface.HeaderConfig(
-      title: t(config, i18n_text.AdminWorkflows),
+      title: t(config, i18n_text.AdminAutomations),
       purpose: t(config, i18n_text.AutomationConsolePurpose),
       summary: summary(config),
       actions: header_actions(config),

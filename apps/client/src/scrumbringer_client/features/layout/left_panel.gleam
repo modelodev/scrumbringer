@@ -554,7 +554,7 @@ fn view_config_items(config: LeftPanelConfig(msg)) -> Element(msg) {
       permissions.Workflows,
       "nav-automations",
       icons.Automation,
-      i18n_text.AdminWorkflows,
+      i18n_text.AdminAutomations,
       config.on_navigate_config_rules,
     ),
   ])

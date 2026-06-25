@@ -953,27 +953,29 @@ pub fn translate(text: Text) -> String {
     text.KanbanSummaryOngoing -> "En curso"
 
     // Automatizaciones
-    text.AdminWorkflows -> "Automatizaciones"
-    text.WorkflowsTitle -> "Automatizaciones"
-    text.WorkflowsOrgTitle -> "Automatizaciones de la organización"
-    text.WorkflowsProjectTitle(project_name) -> "Motores - " <> project_name
-    text.SelectProjectForWorkflows ->
+    text.AdminAutomations -> "Automatizaciones"
+    text.AutomationsTitle -> "Automatizaciones"
+    text.OrganizationAutomationsTitle -> "Automatizaciones de la organización"
+    text.AutomationEnginesProjectTitle(project_name) ->
+      "Motores - " <> project_name
+    text.SelectProjectForAutomations ->
       "Selecciona un proyecto para gestionar automatizaciones"
-    text.WorkflowName -> "Nombre"
-    text.WorkflowDescription -> "Descripción"
-    text.WorkflowScope -> "Alcance"
-    text.WorkflowScopeOrg -> "Organización"
-    text.WorkflowScopeProject -> "Proyecto"
-    text.WorkflowRules -> "Reglas"
-    text.WorkflowActive -> "Activo"
-    text.WorkflowCreated -> "Motor creado"
-    text.WorkflowUpdated -> "Motor actualizado"
-    text.CreateWorkflow -> "Crear motor"
-    text.EditWorkflow -> "Editar motor"
-    text.DeleteWorkflow -> "Eliminar motor"
-    text.WorkflowDeleteConfirm(name) -> "¿Eliminar el motor \"" <> name <> "\"?"
-    text.NoWorkflowsYet -> "Aún no hay motores"
-    text.WorkflowDeleted -> "Motor eliminado"
+    text.AutomationEngineName -> "Nombre"
+    text.AutomationEngineDescription -> "Descripción"
+    text.AutomationEngineScope -> "Alcance"
+    text.AutomationEngineScopeOrg -> "Organización"
+    text.AutomationEngineScopeProject -> "Proyecto"
+    text.AutomationEngineRules -> "Reglas"
+    text.AutomationEngineActive -> "Activo"
+    text.AutomationEngineCreated -> "Motor creado"
+    text.AutomationEngineUpdated -> "Motor actualizado"
+    text.CreateAutomationEngine -> "Crear motor"
+    text.EditAutomationEngine -> "Editar motor"
+    text.DeleteAutomationEngine -> "Eliminar motor"
+    text.AutomationEngineDeleteConfirm(name) ->
+      "¿Eliminar el motor \"" <> name <> "\"?"
+    text.NoAutomationEnginesYet -> "Aún no hay motores"
+    text.AutomationEngineDeleted -> "Motor eliminado"
     text.AutomationEnginesDescription ->
       "Agrupa reglas de automatización que crean trabajo en el Pool sin asignarlo."
     text.AutomationEnginesSearchPlaceholder ->
@@ -1374,7 +1376,7 @@ pub fn translate(text: Text) -> String {
     text.MetricsSessionCount -> "Sesiones de trabajo"
     text.MetricsTotalWorkTime -> "Tiempo total trabajado"
     text.MetricsAvgExecutors -> "Ejecutores promedio"
-    text.MetricsWorkflows -> "Automatizaciones"
+    text.MetricsAutomations -> "Automatizaciones"
     text.MetricsMostActivated -> "Más activado"
     text.MetricsNotAvailable -> "No disponible"
     text.MetricsEmptyState -> "Sin datos suficientes para métricas"
@@ -1387,7 +1389,7 @@ pub fn translate(text: Text) -> String {
     text.ErrorLoadingTasks -> "Error al cargar tareas"
 
     // Automatizaciones / Reglas
-    text.BackToWorkflows -> "← Volver a Automatizaciones"
+    text.BackToAutomations -> "← Volver a Automatizaciones"
     text.ResourceTypeTask -> "tarea"
     text.RuleMetricsNoExecutions ->
       "No se encontraron ejecuciones de automatizaciones en el rango seleccionado."

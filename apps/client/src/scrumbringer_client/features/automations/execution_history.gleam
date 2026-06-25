@@ -315,7 +315,7 @@ fn view_execution_summary_table_loaded(
             tr([], [
               th([], []),
               th([], [
-                text(t(config, i18n_text.WorkflowName)),
+                text(t(config, i18n_text.AutomationEngineName)),
               ]),
               th([], [
                 text(t(config, i18n_text.RuleMetricsRuleCount)),

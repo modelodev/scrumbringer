@@ -131,7 +131,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     [
       div(dialog.panel_background_attributes(panel_open), [
         ui_button.text(
-          t(config, i18n_text.BackToWorkflows),
+          t(config, i18n_text.BackToAutomations),
           config.on_back_clicked,
           ui_button.Secondary,
           ui_button.ViewAction,
