@@ -1195,46 +1195,6 @@ pub fn insert_rule(
   })
 }
 
-/// Simple rule insert with defaults.
-pub fn insert_rule_simple(
-  db: pog.Connection,
-  workflow_id: Int,
-  name: String,
-  resource_type: String,
-  task_type_id: Option(Int),
-  to_state: String,
-) -> Result(Int, String) {
-  insert_rule(
-    db,
-    RuleInsertOptions(
-      workflow_id: workflow_id,
-      name: name,
-      goal: None,
-      resource_type: resource_type,
-      trigger_kind: trigger_kind_from_rule_values(resource_type, to_state),
-      task_type_id: task_type_id,
-      card_depth: None,
-      to_state: to_state,
-      active: True,
-      created_at: None,
-    ),
-  )
-}
-
-fn trigger_kind_from_rule_values(
-  resource_type: String,
-  to_state: String,
-) -> String {
-  case resource_type, to_state {
-    "task", "available" -> "task_created"
-    "task", "claimed" -> "task_claimed"
-    "task", "completed" | "task", "done" -> "task_completed"
-    "card", "en_curso" -> "card_activated"
-    "card", "cerrada" -> "card_closed"
-    _, _ -> "invalid_migrated_rule"
-  }
-}
-
 /// Select the template used by a rule.
 pub fn select_rule_template(
   db: pog.Connection,

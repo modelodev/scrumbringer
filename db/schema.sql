@@ -822,7 +822,7 @@ CREATE TABLE public.rules (
     card_depth integer,
     CONSTRAINT rules_card_depth_check CHECK (((card_depth IS NULL) OR (card_depth > 0))),
     CONSTRAINT rules_resource_type_check CHECK ((resource_type = ANY (ARRAY['task'::text, 'card'::text]))),
-    CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text, 'invalid_migrated_rule'::text])))
+    CONSTRAINT rules_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['task_created'::text, 'task_claimed'::text, 'task_released'::text, 'task_completed'::text, 'card_activated'::text, 'card_closed'::text])))
 );
 
 

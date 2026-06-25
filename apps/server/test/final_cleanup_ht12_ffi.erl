@@ -201,7 +201,9 @@ forbidden_schema_terms(Text) ->
     ],
     [bin(["db/schema.sql contains forbidden final-schema term: ", Term])
      || Term <- Forbidden,
-        binary:match(LegacyStateText, Term) =/= nomatch].
+        binary:match(LegacyStateText, Term) =/= nomatch] ++
+    [<<"db/schema.sql contains forbidden final-schema term: invalid_migrated_rule">>
+     || binary:match(Text, <<"invalid_migrated_rule">>) =/= nomatch].
 
 schema_text_without_rule_trigger_kinds(Text) ->
     Lines = binary:split(Text, <<"\n">>, [global]),
