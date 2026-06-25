@@ -49,6 +49,32 @@ pub fn from_db_completed_test() {
     )
 }
 
+pub fn from_db_closed_test() {
+  let assert Ok(task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 0)) =
+    task_state.from_db(
+      "closed",
+      False,
+      option.None,
+      option.None,
+      option.Some("2026-01-01T00:00:00Z"),
+    )
+}
+
+pub fn to_db_closed_uses_canonical_closed_string_test() {
+  let assert #(
+    "closed",
+    False,
+    option.None,
+    option.None,
+    option.Some("2026-01-01T00:00:00Z"),
+  ) =
+    task_state.to_db(task_state.Closed(
+      task_state.Done,
+      "2026-01-01T00:00:00Z",
+      7,
+    ))
+}
+
 pub fn from_db_rejects_unknown_status_test() {
   let assert Error(task_state.UnknownStatus("archived")) =
     task_state.from_db("archived", False, option.None, option.None, option.None)
