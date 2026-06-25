@@ -40,7 +40,7 @@ pub fn apply_auth_check(
   }
 }
 
-pub fn apply_auth_check_before(
+fn apply_auth_check_before(
   model: client_state.Model,
   auth_error: opt.Option(ApiError),
   apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
@@ -51,7 +51,7 @@ pub fn apply_auth_check_before(
   }
 }
 
-pub fn apply_auth_check_after(
+fn apply_auth_check_after(
   auth_error: opt.Option(ApiError),
   apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {

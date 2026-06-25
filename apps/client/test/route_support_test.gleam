@@ -11,9 +11,11 @@ pub fn apply_auth_check_before_401_skips_local_update_test() {
   let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
 
   let #(next, _) =
-    route_support.apply_auth_check_before(model, Some(err), fn() {
-      #(mark_auth_checked(model), effect.none())
-    })
+    route_support.apply_auth_check(
+      model,
+      route_support.CheckAuthBefore(err),
+      fn() { #(mark_auth_checked(model), effect.none()) },
+    )
 
   let client_state.Model(core: core, ..) = next
   let client_state.CoreModel(page: page, user: user, auth_checked: checked, ..) =
@@ -29,9 +31,11 @@ pub fn apply_auth_check_after_401_keeps_local_update_before_reset_test() {
   let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
 
   let #(next, _) =
-    route_support.apply_auth_check_after(Some(err), fn() {
-      #(mark_auth_checked(model), effect.none())
-    })
+    route_support.apply_auth_check(
+      model,
+      route_support.CheckAuthAfter(err),
+      fn() { #(mark_auth_checked(model), effect.none()) },
+    )
 
   let client_state.Model(core: core, ..) = next
   let client_state.CoreModel(page: page, user: user, auth_checked: checked, ..) =
