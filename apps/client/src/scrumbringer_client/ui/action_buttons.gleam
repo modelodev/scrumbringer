@@ -146,7 +146,7 @@ pub fn task_icon_button(
   )
 }
 
-/// Generic task action button with full class control for legacy layouts.
+/// Generic task action button with full class control for specialized layouts.
 pub fn task_icon_button_with_class(
   title: String,
   on_click: msg,

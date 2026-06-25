@@ -201,7 +201,7 @@ pub fn with_autofocus(config: Config(msg), autofocus: Bool) -> Config(msg) {
   Config(..config, autofocus:)
 }
 
-/// Adds a compatibility class owned by the consuming feature.
+/// Adds an extra CSS class owned by the consuming feature.
 pub fn with_class(config: Config(msg), extra_class: String) -> Config(msg) {
   let Config(extra_class: existing_class, ..) = config
   let combined_class = case existing_class {

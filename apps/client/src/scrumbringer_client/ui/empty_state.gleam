@@ -141,7 +141,7 @@ pub fn notice(
   ])
 }
 
-/// Compact one-line state with a feature-specific compatibility class.
+/// Compact one-line state with a feature-specific extra class.
 pub fn notice_with_class(
   icon_id: String,
   description: String,

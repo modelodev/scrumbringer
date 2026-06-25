@@ -74,7 +74,7 @@ pub fn with_extra_class(chip: SignalChip, extra_class: String) -> SignalChip {
   SignalChip(..chip, extra_class: Some(extra_class))
 }
 
-/// Override metric value and label classes for compatibility with existing CSS.
+/// Override metric value and label classes for specialized layouts.
 pub fn with_parts(
   chip: SignalChip,
   value_class: String,

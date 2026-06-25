@@ -60,7 +60,7 @@ pub type ExtendedConfig(msg) {
     on_button_click: msg,
     /// Optional container CSS class (defaults to "card-section-header")
     container_class: Option(String),
-    /// Optional compatibility class appended to the shared button classes.
+    /// Optional extra class appended to the shared button classes.
     button_class: Option(String),
   )
 }
@@ -126,12 +126,12 @@ fn view_internal(
       button.EntityAction,
     )
       |> button.with_disabled(button_disabled)
-      |> with_compat_class(button_class)
+      |> with_optional_class(button_class)
       |> button.view,
   ])
 }
 
-fn with_compat_class(
+fn with_optional_class(
   config: button.Config(msg),
   class_name: Option(String),
 ) -> button.Config(msg) {

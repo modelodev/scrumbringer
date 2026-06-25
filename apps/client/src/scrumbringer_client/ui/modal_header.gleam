@@ -111,7 +111,7 @@ pub type Config(msg) {
 }
 
 /// Extended configuration with customizable CSS classes and title ID.
-/// Use this when integrating with existing CSS that uses different class names.
+/// Use this when a modal needs feature-owned class names.
 pub type ExtendedConfig(msg) {
   ExtendedConfig(
     /// The main title text
@@ -180,7 +180,7 @@ pub fn view_simple(title: String, on_close: msg) -> Element(msg) {
 }
 
 /// Render a modal header with custom CSS classes.
-/// Use this when integrating with existing CSS patterns.
+/// Use this when a modal needs feature-owned class names.
 pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
   view_extended_with_close_label(config, "Close")
 }

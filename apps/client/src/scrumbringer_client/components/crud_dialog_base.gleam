@@ -157,7 +157,7 @@ pub fn view_cancel_button_with_class(
     ui_button.Secondary,
     ui_button.EntityAction,
   )
-  |> with_compat_class(class_name)
+  |> with_extra_class(class_name)
   |> ui_button.view
 }
 
@@ -178,7 +178,7 @@ fn with_loading_class(
   }
 }
 
-fn with_compat_class(
+fn with_extra_class(
   button: ui_button.Config(msg),
   class_name: String,
 ) -> ui_button.Config(msg) {
@@ -188,12 +188,12 @@ fn with_compat_class(
   }
 }
 
-fn with_loading_or_compat_class(
+fn with_loading_or_extra_class(
   button: ui_button.Config(msg),
   in_flight: Bool,
   class_name: String,
 ) -> ui_button.Config(msg) {
-  with_compat_class(button, class_name)
+  with_extra_class(button, class_name)
   |> with_loading_class(in_flight)
 }
 
@@ -205,7 +205,7 @@ fn primary_action_button(
 ) -> ui_button.Config(msg) {
   ui_button.text(label, on_click_msg, ui_button.Primary, ui_button.EntityAction)
   |> ui_button.with_disabled(in_flight)
-  |> with_loading_or_compat_class(in_flight, class_name)
+  |> with_loading_or_extra_class(in_flight, class_name)
 }
 
 /// Renders the standard CRUD dialog error block.
@@ -408,7 +408,7 @@ pub fn view_danger_action_button(
     ui_button.EntityAction,
   )
   |> ui_button.with_disabled(disabled)
-  |> with_loading_or_compat_class(in_flight, class_name)
+  |> with_loading_or_extra_class(in_flight, class_name)
   |> ui_button.view
 }
 

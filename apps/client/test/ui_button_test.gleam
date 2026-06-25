@@ -99,7 +99,7 @@ pub fn submit_button_can_target_external_form_test() {
   let assert False = string.contains(html, "data-")
 }
 
-pub fn compatibility_classes_are_accumulated_test() {
+pub fn extra_classes_are_accumulated_test() {
   let html =
     button.text("Save", "msg", button.Primary, button.EntityAction)
     |> button.with_class("btn-compact")

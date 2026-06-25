@@ -218,13 +218,13 @@ pub fn view_danger_action_button_renders_extra_disabled_state_test() {
       True,
       "Delete",
       "Deleting",
-      "danger-compat",
+      "danger-extra",
     )
     |> element.to_document_string
 
   assert_contains(html, "type=\"button\"")
   assert_contains(html, "disabled")
   assert_contains(html, "btn-danger")
-  assert_contains(html, "danger-compat")
+  assert_contains(html, "danger-extra")
   assert_contains(html, "Delete")
 }

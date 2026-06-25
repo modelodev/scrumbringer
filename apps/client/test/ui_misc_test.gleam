@@ -112,7 +112,7 @@ pub fn card_section_header_uses_shared_button_classes_test() {
   let assert False = string.contains(html, "btn btn-sm btn-primary")
 }
 
-pub fn card_section_header_extended_keeps_compat_button_class_test() {
+pub fn card_section_header_extended_keeps_extra_button_class_test() {
   let html =
     card_section_header.view_extended(card_section_header.ExtendedConfig(
       title: "Tasks",
