@@ -88,7 +88,7 @@ fn view_overview_loaded(
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
     released_count: released_count,
-    completed_count: completed_count,
+    completed_count: closed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
     time_to_first_claim: time_to_first_claim,
@@ -115,7 +115,7 @@ fn view_overview_loaded(
       claimed_count,
       ongoing_count,
       released_count,
-      completed_count,
+      closed_count,
       release_rate_percent,
       pool_flow_ratio_percent,
       wip_count,
@@ -148,7 +148,7 @@ fn view_summary_table(
   claimed_count: Int,
   ongoing_count: Int,
   released_count: Int,
-  completed_count: Int,
+  closed_count: Int,
   release_rate_percent: opt.Option(Int),
   pool_flow_ratio_percent: opt.Option(Int),
   wip_count: Int,
@@ -158,7 +158,7 @@ fn view_summary_table(
     claimed_count,
     ongoing_count,
     released_count,
-    completed_count,
+    closed_count,
     release_rate_percent,
     pool_flow_ratio_percent,
     wip_count,
@@ -183,8 +183,8 @@ fn view_summary_table(
       text(int.to_string(released))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.Closed), fn(r) {
-      let #(_, _, _, _, completed, _, _, _) = r
-      text(int.to_string(completed))
+      let #(_, _, _, _, closed, _, _, _) = r
+      text(int.to_string(closed))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.ReleasePercent), fn(r) {
       let #(_, _, _, _, _, release_rate, _, _) = r
@@ -382,8 +382,8 @@ fn view_by_project_table(
           text(int.to_string(released))
         }),
         data_table.column(i18n.t(config.locale, i18n_text.Closed), fn(p) {
-          let OrgMetricsProjectOverview(completed_count: completed, ..) = p
-          text(int.to_string(completed))
+          let OrgMetricsProjectOverview(completed_count: closed, ..) = p
+          text(int.to_string(closed))
         }),
         data_table.column(
           i18n.t(config.locale, i18n_text.ReleasePercent),
