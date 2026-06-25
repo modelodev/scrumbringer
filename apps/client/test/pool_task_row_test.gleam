@@ -68,7 +68,7 @@ pub fn task_row_localizes_automation_origin_chip_test() {
           rule_id: 8,
           workflow_id: Some(3),
           workflow_name: Some("Release flow"),
-          rule_name: Some("Development completed"),
+          rule_name: Some("Development closed"),
           execution_id: Some(101),
           template_id: Some(12),
           template_name: Some("QA Verification"),

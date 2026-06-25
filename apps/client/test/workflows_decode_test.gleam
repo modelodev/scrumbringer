@@ -68,7 +68,7 @@ pub fn workflows_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Done\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
+    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Closed\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -259,7 +259,7 @@ pub fn templates_payload_decoder_decodes_empty_list_test() {
 
 pub fn workflow_metrics_decoder_decodes_with_rules_test() {
   let body =
-    "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Done\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
+    "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Closed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
 
   let assert Ok(metrics) =
     json.parse(from: body, using: api_rule_metrics.workflow_metrics_decoder())
@@ -296,7 +296,7 @@ pub fn org_workflow_metrics_summary_decoder_decodes_test() {
 
 pub fn rule_metrics_detailed_decoder_decodes_with_breakdown_test() {
   let body =
-    "{\"rule_id\":1,\"rule_name\":\"Task Done\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
+    "{\"rule_id\":1,\"rule_name\":\"Task Closed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
 
   let assert Ok(metrics) =
     json.parse(

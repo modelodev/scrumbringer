@@ -127,8 +127,8 @@ fn rule() -> Rule {
   Rule(
     id: 9,
     workflow_id: 3,
-    name: "Complete bug workflow",
-    goal: opt.Some("Create a follow-up when work completes"),
+    name: "Close bug workflow",
+    goal: opt.Some("Create a follow-up when work closes"),
     trigger: automation.TaskCompleted(opt.Some(5)),
     action: opt.Some(automation.CreateTask(11)),
     status: automation.Active,
@@ -150,7 +150,7 @@ fn rules_state() -> admin_rules.Model {
         rules: [
           api_rule_metrics.RuleMetricsSummary(
             rule_id: 9,
-            rule_name: "Complete bug workflow",
+            rule_name: "Close bug workflow",
             evaluated_count: 6,
             applied_count: 4,
             suppressed_count: 2,
@@ -314,7 +314,7 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
   assert_contains(html, "automation-rules-heading")
   assert_contains(html, automation_focus.create_rule_trigger_id)
   assert_contains(html, "automation-rule-list")
-  assert_contains(html, "Complete bug workflow")
+  assert_contains(html, "Close bug workflow")
   assert_contains(html, "When a Bug task is closed")
   assert_contains(html, "-&gt; Create Bug triage in the Pool")
   assert_contains(html, "Engine:")

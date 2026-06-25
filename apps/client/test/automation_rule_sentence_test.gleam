@@ -39,7 +39,7 @@ fn rule(
   Rule(
     id: 9,
     workflow_id: 3,
-    name: "Complete bug workflow",
+    name: "Close bug workflow",
     goal: opt.None,
     trigger: trigger,
     action: option_action(template),

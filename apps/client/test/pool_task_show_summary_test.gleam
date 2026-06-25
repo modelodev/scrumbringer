@@ -64,7 +64,7 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
           rule_id: 8,
           workflow_id: Some(3),
           workflow_name: Some("Release flow"),
-          rule_name: Some("Development completed"),
+          rule_name: Some("Development closed"),
           execution_id: Some(101),
           template_id: Some(12),
           template_name: Some("QA Verification"),
@@ -80,7 +80,7 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
   assert_contains(html, "Created by automation")
   assert_contains(
     html,
-    "Release flow -&gt; Development completed -&gt; QA Verification v3",
+    "Release flow -&gt; Development closed -&gt; QA Verification v3",
   )
   assert_contains(html, "data-testid=\"automation-created-task-origin\"")
   assert_contains(
@@ -114,7 +114,7 @@ pub fn task_show_summary_localizes_automation_origin_test() {
           rule_id: 8,
           workflow_id: Some(3),
           workflow_name: Some("Release flow"),
-          rule_name: Some("Development completed"),
+          rule_name: Some("Development closed"),
           execution_id: Some(101),
           template_id: Some(12),
           template_name: Some("QA Verification"),

@@ -28,7 +28,7 @@ fn rule(id: Int) -> Rule {
   Rule(
     id: id,
     workflow_id: 3,
-    name: "Complete bug workflow",
+    name: "Close bug workflow",
     goal: opt.None,
     trigger: automation.TaskCompleted(opt.None),
     action: opt.Some(automation.CreateTask(11)),
