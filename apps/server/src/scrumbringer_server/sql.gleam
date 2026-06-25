@@ -8167,10 +8167,7 @@ where t.project_id = $1
   and (t.card_id is null or c.execution_state = 'active')
   and (
     $2 = ''
-    or case
-      when t.execution_state = 'closed' then 'completed'
-      else t.execution_state
-    end = $2
+    or t.execution_state = $2
   )
   and ($3 <= 0 or t.type_id = $3)
   and ($4 <= 0 or tt.capability_id = $4)

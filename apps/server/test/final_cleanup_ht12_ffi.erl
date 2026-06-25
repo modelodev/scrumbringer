@@ -382,7 +382,15 @@ obsolete_code_violations(Root) ->
     forbid_dirs(Root, [
         "shared/src/domain/" ++ legacy_root(),
         "apps/client/src/scrumbringer_client/features/" ++ legacy_plural()
-    ]) ++ require_empty_glob(Root, "apps/server/src/scrumbringer_server/sql/" ++ legacy_plural() ++ "_").
+    ]) ++ require_empty_glob(Root, "apps/server/src/scrumbringer_server/sql/" ++ legacy_plural() ++ "_") ++
+    files_containing(Root, [
+        "apps/server/src/scrumbringer_server/repository/tasks/queries.gleam",
+        "apps/server/src/scrumbringer_server/sql/tasks_list.sql",
+        "apps/server/src/scrumbringer_server/sql.gleam"
+    ], [
+        <<"Some(task_state.FilterClosed) -> \"completed\"">>,
+        <<"end = $2">>
+    ], [".gleam", ".sql"]).
 
 active_code_roots() ->
     [

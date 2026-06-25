@@ -101,7 +101,7 @@ fn status_filter_to_query_string(
     None -> ""
     Some(task_state.FilterAvailable) -> "available"
     Some(task_state.FilterClaimed) -> "claimed"
-    Some(task_state.FilterClosed) -> "completed"
+    Some(task_state.FilterClosed) -> "closed"
   }
 }
 
