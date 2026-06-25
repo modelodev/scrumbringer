@@ -98,8 +98,8 @@ pub fn try_rules_update(
   feedback: RuleFeedbackContext(parent_msg),
 ) -> opt.Option(RulesUpdate(parent_msg)) {
   case inner {
-    pool_messages.WorkflowRulesClicked(workflow_id) ->
-      workflow_rules_clicked(state, workflow_id, context)
+    pool_messages.WorkflowRulesClicked(engine_id) ->
+      engine_rules_clicked(state, engine_id, context)
       |> without_rules_auth_check
 
     pool_messages.RulesFetched(Ok(rules)) ->
@@ -210,12 +210,12 @@ pub fn try_rules_update(
   }
 }
 
-fn workflow_rules_clicked(
+fn engine_rules_clicked(
   state: admin_rules.Model,
-  workflow_id: Int,
+  engine_id: Int,
   context: RulesContext(parent_msg),
 ) -> #(admin_rules.Model, Effect(parent_msg)) {
-  let state = workflow_rules_opened(state, workflow_id)
+  let state = engine_rules_opened(state, engine_id)
   let task_types_effect = case context.selected_project_id {
     opt.Some(project_id) ->
       task_types_api.list_task_types(project_id, context.on_task_types_fetched)
@@ -225,9 +225,9 @@ fn workflow_rules_clicked(
   #(
     state,
     effect.batch([
-      api_rules.list_rules(workflow_id, context.on_rules_fetched),
+      api_rules.list_rules(engine_id, context.on_rules_fetched),
       api_rule_metrics.get_workflow_metrics(
-        workflow_id,
+        engine_id,
         context.on_rule_metrics_fetched,
       ),
       task_types_effect,
@@ -689,7 +689,7 @@ fn submit_rule_create(
   state: admin_rules.Model,
   feedback: RuleFeedbackContext(parent_msg),
 ) -> #(admin_rules.Model, Effect(parent_msg)) {
-  case state.rules_workflow_id {
+  case state.rules_engine_id {
     opt.None -> #(rule_form_error(state, "Open an engine first"), effect.none())
     opt.Some(workflow_id) ->
       case parse_rule_form(state) {
@@ -944,13 +944,13 @@ fn rule_deleted(state: admin_rules.Model, rule_id: Int) -> admin_rules.Model {
   )
 }
 
-fn workflow_rules_opened(
+fn engine_rules_opened(
   state: admin_rules.Model,
-  workflow_id: Int,
+  engine_id: Int,
 ) -> admin_rules.Model {
   admin_rules.Model(
     ..state,
-    rules_workflow_id: opt.Some(workflow_id),
+    rules_engine_id: opt.Some(engine_id),
     rules: Loading,
     rules_metrics: Loading,
   )
@@ -987,7 +987,7 @@ fn rule_metrics_fetched_error(
 fn rules_back_clicked(state: admin_rules.Model) -> admin_rules.Model {
   admin_rules.Model(
     ..state,
-    rules_workflow_id: opt.None,
+    rules_engine_id: opt.None,
     rules: NotAsked,
     rules_metrics: NotAsked,
   )

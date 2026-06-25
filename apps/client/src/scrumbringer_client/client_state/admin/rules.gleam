@@ -17,7 +17,7 @@ pub type RuleDialogMode {
 /// Represents rule admin state.
 pub type Model {
   Model(
-    rules_workflow_id: Option(Int),
+    rules_engine_id: Option(Int),
     rules: Remote(List(Rule)),
     rules_dialog_mode: Option(RuleDialogMode),
     rule_form_name: String,
@@ -39,7 +39,7 @@ pub type Model {
 /// Provides default rule admin state.
 pub fn default_model() -> Model {
   Model(
-    rules_workflow_id: option.None,
+    rules_engine_id: option.None,
     rules: NotAsked,
     rules_dialog_mode: option.None,
     rule_form_name: "",

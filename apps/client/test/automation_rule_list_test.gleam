@@ -140,7 +140,7 @@ fn rule() -> Rule {
 fn rules_state() -> admin_rules.Model {
   admin_rules.Model(
     ..admin_rules.default_model(),
-    rules_workflow_id: opt.Some(3),
+    rules_engine_id: opt.Some(3),
     rules: Loaded([rule()]),
     rules_expanded: set.from_list([9]),
     rules_metrics: Loaded(

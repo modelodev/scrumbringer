@@ -728,7 +728,7 @@ fn apply_automation_selection(
           ..admin,
           rules: admin_rules.Model(
             ..admin.rules,
-            rules_workflow_id: opt.Some(engine_id),
+            rules_engine_id: opt.Some(engine_id),
             rules: Loading,
             rules_metrics: Loading,
             rules_expanded: set.insert(admin.rules.rules_expanded, rule_id),

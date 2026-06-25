@@ -48,7 +48,7 @@ pub fn from_state(
   selection: opt.Option(automation_deep_link.Selection),
   callbacks: Callbacks(msg),
 ) -> engine_list.Config(msg) {
-  let selected_rules_view = case rules.rules_workflow_id {
+  let selected_rules_view = case rules.rules_engine_id {
     opt.Some(workflow_id) ->
       opt.Some(
         rule_list.view(rule_list_config.from_state(

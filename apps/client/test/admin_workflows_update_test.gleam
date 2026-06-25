@@ -338,7 +338,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
     admin_rules.Model(
       ..admin_rules.default_model(),
       rules: Loaded([existing]),
-      rules_workflow_id: opt.Some(3),
+      rules_engine_id: opt.Some(3),
     )
 
   let #(create_opened, fx, auth_policy) =
@@ -410,7 +410,7 @@ pub fn local_rule_fetch_navigation_and_dialog_transitions_test() {
 
   let #(opened, fx, auth_policy) =
     rules_update(state, pool_messages.WorkflowRulesClicked(3), opt.None)
-  let assert opt.Some(3) = opened.rules_workflow_id
+  let assert opt.Some(3) = opened.rules_engine_id
   let assert Loading = opened.rules
   let assert Loading = opened.rules_metrics
   let assert True = fx != effect.none()
@@ -471,7 +471,7 @@ pub fn local_rule_fetch_navigation_and_dialog_transitions_test() {
 
   let #(back, fx, auth_policy) =
     rules_update(dialog_closed, pool_messages.RulesBackClicked, opt.None)
-  let assert opt.None = back.rules_workflow_id
+  let assert opt.None = back.rules_engine_id
   let assert NotAsked = back.rules
   let assert NotAsked = back.rules_metrics
   let assert True = fx == effect.none()
@@ -487,7 +487,7 @@ pub fn try_rules_update_engine_rules_clicked_returns_loading_and_effects_test() 
       rule_feedback_context(),
     )
 
-  let assert opt.Some(3) = next.rules_workflow_id
+  let assert opt.Some(3) = next.rules_engine_id
   let assert Loading = next.rules
   let assert Loading = next.rules_metrics
   let assert True = fx != effect.none()
@@ -584,7 +584,7 @@ pub fn try_rules_update_invalid_card_depth_blocks_submit_test() {
     admin_rules.Model(
       ..admin_rules.default_model(),
       rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-      rules_workflow_id: opt.Some(3),
+      rules_engine_id: opt.Some(3),
       rule_form_name: "Bad card scope",
       rule_form_subject: "card",
       rule_form_event: "card_activated",
