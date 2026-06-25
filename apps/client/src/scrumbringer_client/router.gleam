@@ -149,7 +149,7 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
       let parsed = config_parse_result(section, result, selection)
       case
         invalid_config_mode(slug, search)
-        || legacy_config_slug_redirect_needed(slug, section)
+        || external_automation_slug_redirect_needed(slug, section)
         || selection_redirect_needed(slug, section, selection)
         || result.is_error(selection_result)
       {
@@ -516,7 +516,11 @@ fn selection_redirect_needed(
   }
 }
 
-fn legacy_config_slug_redirect_needed(
+/// Redirects old public automation URLs to the canonical console route.
+///
+/// This is an external URL adapter only. Internal links are formatted through
+/// `/config/workflows` with `mode` or selection query params.
+fn external_automation_slug_redirect_needed(
   slug: String,
   section: permissions.AdminSection,
 ) -> Bool {

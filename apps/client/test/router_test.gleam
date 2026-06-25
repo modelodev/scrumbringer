@@ -158,7 +158,17 @@ pub fn page_title_for_automation_modes_uses_single_console_title_test() {
   )
 }
 
-pub fn parse_config_templates_slug_redirects_to_automation_mode_test() {
+pub fn parse_invalid_automation_rule_selection_redirects_test() {
+  let parsed =
+    router.parse_uri(build_uri("/config/workflows", "?project=2&rule=nope"))
+
+  assert_equal(
+    parsed,
+    router.Redirect(router.Config(permissions.Workflows, Some(2))),
+  )
+}
+
+pub fn parse_config_templates_external_slug_redirects_to_automation_mode_test() {
   let parsed = router.parse_uri(build_uri("/config/templates", "?project=2"))
 
   assert_equal(
@@ -167,7 +177,7 @@ pub fn parse_config_templates_slug_redirects_to_automation_mode_test() {
   )
 }
 
-pub fn parse_config_template_selection_on_old_slug_redirects_to_console_test() {
+pub fn parse_config_template_selection_on_external_slug_redirects_to_console_test() {
   let parsed =
     router.parse_uri(build_uri("/config/templates", "?project=2&template=12"))
 
@@ -181,7 +191,7 @@ pub fn parse_config_template_selection_on_old_slug_redirects_to_console_test() {
   )
 }
 
-pub fn parse_config_rule_metrics_slug_redirects_to_automation_mode_test() {
+pub fn parse_config_rule_metrics_external_slug_redirects_to_automation_mode_test() {
   let parsed = router.parse_uri(build_uri("/config/rule-metrics", "?project=2"))
 
   assert_equal(
@@ -190,7 +200,7 @@ pub fn parse_config_rule_metrics_slug_redirects_to_automation_mode_test() {
   )
 }
 
-pub fn parse_config_execution_selection_on_old_slug_redirects_to_console_test() {
+pub fn parse_config_execution_selection_on_external_slug_redirects_to_console_test() {
   let parsed =
     router.parse_uri(build_uri(
       "/config/rule-metrics",
@@ -499,6 +509,28 @@ pub fn roundtrip_config_templates_mode_test() {
 
 pub fn roundtrip_config_executions_mode_test() {
   let route = router.Config(permissions.RuleMetrics, Some(2))
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_config_automation_rule_selection_test() {
+  let route =
+    router.ConfigAutomation(
+      permissions.Workflows,
+      Some(2),
+      automation_deep_link.SelectedRule(8, Some(3)),
+    )
+
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_config_automation_execution_selection_test() {
+  let route =
+    router.ConfigAutomation(
+      permissions.RuleMetrics,
+      Some(2),
+      automation_deep_link.SelectedExecution(101),
+    )
+
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
