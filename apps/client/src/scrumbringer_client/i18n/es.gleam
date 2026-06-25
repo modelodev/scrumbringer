@@ -425,10 +425,10 @@ pub fn translate(text: Text) -> String {
     text.HierarchyMoveTo -> "Mover"
     text.HierarchyCardsLabel -> "Tarjetas"
     text.HierarchyTasksLabel -> "Tareas"
-    text.HierarchyCardsProgress(completed, total) ->
-      "Tarjetas " <> int.to_string(completed) <> "/" <> int.to_string(total)
-    text.HierarchyTasksProgress(completed, total) ->
-      "Tareas " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.HierarchyCardsProgress(closed, total) ->
+      "Tarjetas " <> int.to_string(closed) <> "/" <> int.to_string(total)
+    text.HierarchyTasksProgress(closed, total) ->
+      "Tareas " <> int.to_string(closed) <> "/" <> int.to_string(total)
     text.HierarchyStructureSummary -> "Resumen estructural"
     text.HierarchyActions -> "Acciones"
     text.HierarchySearchPlaceholder -> "Buscar jerarquías"
@@ -938,8 +938,8 @@ pub fn translate(text: Text) -> String {
     text.CardDeleteConfirm(card_title) ->
       "¿Eliminar la tarjeta \"" <> card_title <> "\"?"
     text.NoCardsYet -> "Aún no hay tarjetas"
-    text.CardTaskCount(completed, total) ->
-      int.to_string(completed) <> "/" <> int.to_string(total)
+    text.CardTaskCount(closed, total) ->
+      int.to_string(closed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "Sin tarjetas aquí"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
@@ -1226,8 +1226,8 @@ pub fn translate(text: Text) -> String {
 
     // Card grouping
     text.UngroupedTasks -> "Sin tarjeta"
-    text.CardProgressCount(completed, total) ->
-      int.to_string(completed) <> "/" <> int.to_string(total)
+    text.CardProgressCount(closed, total) ->
+      int.to_string(closed) <> "/" <> int.to_string(total)
 
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"

@@ -361,8 +361,8 @@ pub type Text {
   HierarchyMoveTo
   HierarchyCardsLabel
   HierarchyTasksLabel
-  HierarchyCardsProgress(completed: Int, total: Int)
-  HierarchyTasksProgress(completed: Int, total: Int)
+  HierarchyCardsProgress(closed: Int, total: Int)
+  HierarchyTasksProgress(closed: Int, total: Int)
   HierarchyStructureSummary
   HierarchyActions
   HierarchySearchPlaceholder
@@ -749,7 +749,7 @@ pub type Text {
   CardDeleteBlocked
   CardDeleteConfirm(card_title: String)
   NoCardsYet
-  CardTaskCount(completed: Int, total: Int)
+  CardTaskCount(closed: Int, total: Int)
   KanbanEmptyColumn
   KanbanEmptyDraft
   KanbanEmptyActive
@@ -990,7 +990,7 @@ pub type Text {
 
   // Card grouping
   UngroupedTasks
-  CardProgressCount(completed: Int, total: Int)
+  CardProgressCount(closed: Int, total: Int)
 
   // Card detail (member)
   CardAddTask
