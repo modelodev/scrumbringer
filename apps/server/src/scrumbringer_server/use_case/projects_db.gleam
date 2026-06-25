@@ -175,23 +175,33 @@ pub fn create_project(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
 ) -> Result(ProjectRecord, CreateProjectError) {
-  case
-    project_settings.valid_project_settings(
-      healthy_pool_limit,
-      card_depth_names,
-    )
-  {
-    False -> Error(InvalidCreateProjectSettings)
-    True ->
-      do_create_project(
-        db,
-        org_id,
-        created_by,
-        name,
-        healthy_pool_limit,
-        card_depth_names,
-      )
-  }
+  use _ <- result.try(
+    validate_project_settings(healthy_pool_limit, card_depth_names)
+    |> result.map_error(fn(_) { InvalidCreateProjectSettings }),
+  )
+  do_create_project(
+    db,
+    org_id,
+    created_by,
+    name,
+    healthy_pool_limit,
+    card_depth_names,
+  )
+}
+
+fn validate_project_settings(
+  healthy_pool_limit: Int,
+  card_depth_names: List(ProjectDepthName),
+) -> Result(Nil, Nil) {
+  use _ <- result.try(
+    project_settings.healthy_pool_limit_from_int(healthy_pool_limit)
+    |> result.map_error(fn(_) { Nil }),
+  )
+  use _ <- result.try(
+    project_settings.validate_card_depth_names(card_depth_names)
+    |> result.map_error(fn(_) { Nil }),
+  )
+  Ok(Nil)
 }
 
 fn do_create_project(
@@ -766,23 +776,18 @@ pub fn update_project(
   healthy_pool_limit: Int,
   card_depth_names: List(ProjectDepthName),
 ) -> Result(ProjectRecord, UpdateProjectError) {
-  case
-    project_settings.valid_project_settings(
-      healthy_pool_limit,
-      card_depth_names,
-    )
-  {
-    False -> Error(InvalidProjectSettings)
-    True ->
-      do_update_project(
-        db,
-        project_id,
-        actor_user_id,
-        name,
-        healthy_pool_limit,
-        card_depth_names,
-      )
-  }
+  use _ <- result.try(
+    validate_project_settings(healthy_pool_limit, card_depth_names)
+    |> result.map_error(fn(_) { InvalidProjectSettings }),
+  )
+  do_update_project(
+    db,
+    project_id,
+    actor_user_id,
+    name,
+    healthy_pool_limit,
+    card_depth_names,
+  )
 }
 
 pub fn preview_depth_reduction(

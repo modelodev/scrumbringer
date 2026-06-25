@@ -108,14 +108,3 @@ pub fn card_depth_names_rejects_blank_labels_test() {
   let assert Error(settings.BlankCardDepthName(2)) =
     settings.validate_card_depth_names(depth_names)
 }
-
-pub fn project_settings_require_positive_limit_and_valid_depths_test() {
-  let depth_names = [
-    ProjectDepthName(1, "Initiative", "Initiatives"),
-    ProjectDepthName(2, "Feature", "Features"),
-  ]
-
-  let assert True = settings.valid_project_settings(20, depth_names)
-  let assert False = settings.valid_project_settings(0, depth_names)
-  let assert False = settings.valid_project_settings(20, [])
-}

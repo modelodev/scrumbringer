@@ -127,16 +127,6 @@ pub fn valid_card_depth_names(card_depth_names: List(ProjectDepthName)) -> Bool 
   }
 }
 
-pub fn valid_project_settings(
-  healthy_pool_limit: Int,
-  card_depth_names: List(ProjectDepthName),
-) -> Bool {
-  case healthy_pool_limit_from_int(healthy_pool_limit) {
-    Error(_) -> False
-    Ok(_) -> valid_card_depth_names(card_depth_names)
-  }
-}
-
 fn validate_card_depth_names_loop(
   card_depth_names: List(ProjectDepthName),
   expected_depth: Int,
