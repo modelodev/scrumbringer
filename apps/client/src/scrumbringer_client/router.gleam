@@ -216,7 +216,7 @@ fn parse_org_section_query(
   search: String,
 ) -> ParseResult {
   let context = case section {
-    permissions.Team -> url_state.OrgAssignments
+    permissions.Team -> url_state.OrgTeam
     _ -> url_state.Org
   }
   let result = url_state.parse_query(search_to_query(search), context)
@@ -394,7 +394,7 @@ pub fn format_team(
     None -> url_state.empty()
   }
   let query =
-    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
+    query_option(url_state.to_query_string_for(url_state.OrgTeam, state))
 
   case query {
     None -> base

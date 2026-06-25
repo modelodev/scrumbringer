@@ -278,9 +278,9 @@ pub fn config_context_rejects_capability_scope_test() {
   state |> url_state.project |> assert_equal(Some(8))
 }
 
-pub fn org_assignments_accepts_users_view_test() {
+pub fn org_team_accepts_users_view_test() {
   let assert url_state.Parsed(state) =
-    url_state.parse_query("view=users", url_state.OrgAssignments)
+    url_state.parse_query("view=users", url_state.OrgTeam)
 
   state
   |> url_state.assignments_view

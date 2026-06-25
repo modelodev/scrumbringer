@@ -27,7 +27,7 @@ pub type QueryContext {
   Member
   Config
   Org
-  OrgAssignments
+  OrgTeam
 }
 
 /// Parametro de vista soportado por la URL.
@@ -494,7 +494,7 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
       state.project |> option.map(fn(p) { "project=" <> int.to_string(p) }),
     ]
 
-    OrgAssignments -> [
+    OrgTeam -> [
       assignments_view_param(state)
       |> option.map(fn(v) { "view=" <> assignments_view_mode.to_param(v) }),
     ]
@@ -649,7 +649,7 @@ fn context_errors(
         },
       )
 
-    OrgAssignments ->
+    OrgTeam ->
       list.filter_map(
         [
           #(has("mode"), "mode"),

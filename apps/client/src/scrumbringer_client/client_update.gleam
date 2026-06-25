@@ -1058,7 +1058,7 @@ fn apply_assignments_view_from_url(
 ) -> client_state.Model {
   case route {
     router.Org(permissions.Team) ->
-      case url_state.parse(uri, url_state.OrgAssignments) {
+      case url_state.parse(uri, url_state.OrgTeam) {
         url_state.Parsed(state) | url_state.Redirect(state) ->
           case url_state.assignments_view_param(state) {
             opt.Some(view_mode) ->
