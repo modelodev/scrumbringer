@@ -14,9 +14,7 @@
 //// conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
 //// ```
 
-import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status.{Available, Claimed, Done}
 import gleam/option.{type Option, Some}
 import pog
 import scrumbringer_server/http/api
@@ -47,13 +45,15 @@ pub fn handle_claim_conflict(
     Error(error) -> service_error_response.to_database_response(error)
 
     Ok(current) ->
-      case domain_task.status(current), current.blocked_count {
-        Claimed(_), _ ->
+      case current.state, current.blocked_count {
+        task_state.Claimed(..), _ ->
           api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-        Done, _ -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
-        Available, count if count > 0 ->
+        task_state.Closed(..), _ ->
+          api.error(422, "VALIDATION_ERROR", "Invalid transition")
+        task_state.Available, count if count > 0 ->
           api.error(409, "CONFLICT_BLOCKED", "Task has incomplete dependencies")
-        Available, _ -> api.error(409, "CONFLICT_VERSION", "Version conflict")
+        task_state.Available, _ ->
+          api.error(409, "CONFLICT_VERSION", "Version conflict")
       }
   }
 }
@@ -78,13 +78,13 @@ pub fn handle_version_or_claim_conflict(
     Error(error) -> service_error_response.to_database_response(error)
 
     Ok(current) ->
-      case domain_task.status(current) {
-        Claimed(_) ->
+      case current.state {
+        task_state.Claimed(..) ->
           claimed_conflict_response(
             task_state.claimed_by(current.state),
             user_id,
           )
-        Available | Done ->
+        task_state.Available | task_state.Closed(..) ->
           api.error(422, "VALIDATION_ERROR", "Invalid transition")
       }
   }
