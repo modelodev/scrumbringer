@@ -308,7 +308,7 @@ fn blocking_label(config: Config, count: Int) -> String {
 
 fn blocking_count(config: Config) -> Int {
   case config.dependencies {
-    Loaded(dependencies) -> blocking.incomplete_dependency_count(dependencies)
+    Loaded(dependencies) -> blocking.open_dependency_count(dependencies)
     _ -> config.task.blocked_count
   }
 }

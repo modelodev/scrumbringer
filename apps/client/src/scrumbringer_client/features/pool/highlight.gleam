@@ -48,7 +48,7 @@ fn blocking_state_for_task(
 ) -> member_pool.HighlightState {
   case task {
     option.Some(task) -> {
-      let blocker_ids = blocking.incomplete_dependency_ids(task)
+      let blocker_ids = blocking.open_dependency_ids(task)
       case blocker_ids {
         [] -> member_pool.NoHighlight
         _ -> {

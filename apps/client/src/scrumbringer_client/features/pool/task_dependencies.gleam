@@ -79,7 +79,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 fn header_title(config: Config(msg)) -> String {
   let title = t(config, i18n_text.Dependencies)
   let count = case config.dependencies {
-    Loaded(deps) -> blocking.incomplete_dependency_count(deps)
+    Loaded(deps) -> blocking.open_dependency_count(deps)
     _ -> 0
   }
 

@@ -6,28 +6,28 @@ import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/blocking
 
-pub fn incomplete_dependencies_excludes_closed_dependencies_test() {
+pub fn open_dependencies_excludes_closed_dependencies_test() {
   let task =
     sample_task(1, [
       dependency(2, task_state.Available),
       dependency(3, closed_done_state()),
     ])
 
-  let assert [dep] = blocking.incomplete_dependencies(task)
+  let assert [dep] = blocking.open_dependencies(task)
   let assert 2 = dep.depends_on_task_id
-  let assert [2] = blocking.incomplete_dependency_ids(task)
+  let assert [2] = blocking.open_dependency_ids(task)
   let assert 1 =
-    blocking.incomplete_dependency_count([
+    blocking.open_dependency_count([
       dependency(2, task_state.Available),
       dependency(3, closed_done_state()),
     ])
 }
 
-pub fn incomplete_dependencies_or_empty_defaults_missing_task_test() {
-  let assert [] = blocking.incomplete_dependencies_or_empty(None)
+pub fn open_dependencies_or_empty_defaults_missing_task_test() {
+  let assert [] = blocking.open_dependencies_or_empty(None)
 
   let task = sample_task(1, [dependency(2, task_state.Available)])
-  let assert [dep] = blocking.incomplete_dependencies_or_empty(Some(task))
+  let assert [dep] = blocking.open_dependencies_or_empty(Some(task))
   let assert 2 = dep.depends_on_task_id
 }
 

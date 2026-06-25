@@ -31,7 +31,7 @@ pub fn remove_from_remote_reports_zero_delta_for_closed_or_missing_test() {
     == #(Loaded([closed]), 0)
 }
 
-pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test() {
+pub fn add_to_task_increments_blocked_count_only_for_open_dependency_test() {
   let task = sample_task()
   let blocker = sample_dependency(10, task_state.Available)
   let closed = sample_dependency(11, closed_done_state())

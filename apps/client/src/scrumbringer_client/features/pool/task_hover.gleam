@@ -80,7 +80,7 @@ fn task_description(task: domain_task.Task) -> String {
 }
 
 fn blocked_label(locale: Locale, task: domain_task.Task) -> Option(String) {
-  let count = list.length(blocking.incomplete_dependencies(task))
+  let count = list.length(blocking.open_dependencies(task))
   case count > 0 {
     True -> Some(pool_labels.blocked_by_tasks(locale, count))
     False -> None
@@ -88,7 +88,7 @@ fn blocked_label(locale: Locale, task: domain_task.Task) -> Option(String) {
 }
 
 fn blocked_items(locale: Locale, task: domain_task.Task) -> List(String) {
-  blocking.incomplete_dependencies(task)
+  blocking.open_dependencies(task)
   |> list.take(2)
   |> list.map(fn(dep) {
     dep.title

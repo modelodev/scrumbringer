@@ -176,7 +176,7 @@ fn blocking_chip(config: Config(msg), count: Int) -> Element(msg) {
 
 fn blocking_count(config: Config(msg), task: domain_task.Task) -> Int {
   case config.dependencies {
-    Loaded(dependencies) -> blocking.incomplete_dependency_count(dependencies)
+    Loaded(dependencies) -> blocking.open_dependency_count(dependencies)
     _ -> task.blocked_count
   }
 }
