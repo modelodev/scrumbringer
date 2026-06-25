@@ -94,7 +94,7 @@ pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
       capability_name: None,
       dependencies: Loaded([
         dependency(11, task_state.Available),
-        dependency(12, done_state()),
+        dependency(12, closed_done_state()),
       ]),
       on_close: "close",
     ))
@@ -151,6 +151,6 @@ fn dependency(id: Int, state: task_state.TaskExecutionState) -> TaskDependency {
   )
 }
 
-fn done_state() -> task_state.TaskExecutionState {
+fn closed_done_state() -> task_state.TaskExecutionState {
   task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
 }

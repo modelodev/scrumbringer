@@ -14,7 +14,7 @@ pub fn add_to_remote_starts_loaded_list_when_not_loaded_test() {
 
 pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
   let first = sample_dependency(10, task_state.Available)
-  let second = sample_dependency(11, done_state())
+  let second = sample_dependency(11, closed_done_state())
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([first, second]), 10)
@@ -22,7 +22,7 @@ pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
 }
 
 pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
-  let completed = sample_dependency(10, done_state())
+  let completed = sample_dependency(10, closed_done_state())
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([completed]), 10)
@@ -35,7 +35,7 @@ pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
 pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test() {
   let task = sample_task()
   let blocker = sample_dependency(10, task_state.Available)
-  let completed = sample_dependency(11, done_state())
+  let completed = sample_dependency(11, closed_done_state())
 
   let assert True =
     dependency_list.add_to_task(task, blocker)
@@ -65,7 +65,7 @@ fn sample_dependency(
   )
 }
 
-fn done_state() -> task_state.TaskExecutionState {
+fn closed_done_state() -> task_state.TaskExecutionState {
   task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
 }
 

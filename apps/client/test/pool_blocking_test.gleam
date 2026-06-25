@@ -10,7 +10,7 @@ pub fn incomplete_dependencies_excludes_completed_dependencies_test() {
   let task =
     sample_task(1, [
       dependency(2, task_state.Available),
-      dependency(3, done_state()),
+      dependency(3, closed_done_state()),
     ])
 
   let assert [dep] = blocking.incomplete_dependencies(task)
@@ -19,7 +19,7 @@ pub fn incomplete_dependencies_excludes_completed_dependencies_test() {
   let assert 1 =
     blocking.incomplete_dependency_count([
       dependency(2, task_state.Available),
-      dependency(3, done_state()),
+      dependency(3, closed_done_state()),
     ])
 }
 
@@ -47,7 +47,7 @@ fn dependency(id: Int, state: task_state.TaskExecutionState) -> TaskDependency {
   )
 }
 
-fn done_state() -> task_state.TaskExecutionState {
+fn closed_done_state() -> task_state.TaskExecutionState {
   task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
 }
 
