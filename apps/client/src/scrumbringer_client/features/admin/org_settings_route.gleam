@@ -38,10 +38,14 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let org_settings.Update(members, local_fx, auth_policy, root_policy) = update
 
-  member_root.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    let model = member_root.set_members(model, members)
-    apply_root_policy(model, local_fx, root_policy)
-  })
+  member_root.apply_auth_check(
+    model,
+    member_root.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      let model = member_root.set_members(model, members)
+      apply_root_policy(model, local_fx, root_policy)
+    },
+  )
 }
 
 fn auth_error(policy: org_settings.AuthPolicy) -> opt.Option(ApiError) {

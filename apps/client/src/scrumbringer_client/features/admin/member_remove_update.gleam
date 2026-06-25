@@ -41,14 +41,18 @@ fn apply_update(
   let member_remove.Update(members, local_fx, auth_policy, refresh_policy) =
     update
 
-  member_root.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    let model = member_root.set_members(model, members)
-    let #(model, refresh_fx) = case refresh_policy {
-      member_remove.NoRefresh -> #(model, effect.none())
-      member_remove.RefreshSection -> refresh_section(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
+  member_root.apply_auth_check(
+    model,
+    member_root.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      let model = member_root.set_members(model, members)
+      let #(model, refresh_fx) = case refresh_policy {
+        member_remove.NoRefresh -> #(model, effect.none())
+        member_remove.RefreshSection -> refresh_section(model)
+      }
+      #(model, effect.batch([local_fx, refresh_fx]))
+    },
+  )
 }
 
 fn auth_error(policy: member_remove.AuthPolicy) -> opt.Option(ApiError) {

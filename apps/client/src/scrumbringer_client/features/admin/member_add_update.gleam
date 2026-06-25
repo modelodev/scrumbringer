@@ -40,14 +40,18 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let member_add.Update(members, local_fx, auth_policy, refresh_policy) = update
 
-  member_root.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    let model = member_root.set_members(model, members)
-    let #(model, refresh_fx) = case refresh_policy {
-      member_add.NoRefresh -> #(model, effect.none())
-      member_add.RefreshSection -> refresh_section(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
+  member_root.apply_auth_check(
+    model,
+    member_root.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      let model = member_root.set_members(model, members)
+      let #(model, refresh_fx) = case refresh_policy {
+        member_add.NoRefresh -> #(model, effect.none())
+        member_add.RefreshSection -> refresh_section(model)
+      }
+      #(model, effect.batch([local_fx, refresh_fx]))
+    },
+  )
 }
 
 fn auth_error(policy: member_add.AuthPolicy) -> opt.Option(ApiError) {

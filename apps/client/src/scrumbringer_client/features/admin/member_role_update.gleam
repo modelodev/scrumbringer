@@ -48,9 +48,11 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let member_role.Update(members, local_fx, auth_policy) = update
 
-  member_root.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    member_root.apply_members_result(model, members, local_fx)
-  })
+  member_root.apply_auth_check(
+    model,
+    member_root.auth_check_before(auth_error(auth_policy)),
+    fn() { member_root.apply_members_result(model, members, local_fx) },
+  )
 }
 
 fn auth_error(policy: member_role.AuthPolicy) -> opt.Option(ApiError) {

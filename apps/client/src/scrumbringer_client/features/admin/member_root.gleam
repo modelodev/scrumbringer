@@ -26,10 +26,16 @@ pub fn apply_members_result(
   #(set_members(model, members), fx)
 }
 
-pub fn apply_auth_check_before(
-  model: client_state.Model,
+pub fn auth_check_before(
   auth_error: opt.Option(ApiError),
+) -> route_support.AuthCheck {
+  route_support.auth_check_before(auth_error)
+}
+
+pub fn apply_auth_check(
+  model: client_state.Model,
+  auth_check: route_support.AuthCheck,
   apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  route_support.apply_auth_check_before(model, auth_error, apply_update)
+  route_support.apply_auth_check(model, auth_check, apply_update)
 }
