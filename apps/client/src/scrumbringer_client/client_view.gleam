@@ -933,13 +933,13 @@ fn admin_workflow_callbacks(
       admin_workflows.EngineDialogCreate,
     )),
     on_search_changed: fn(value) {
-      client_state.pool_msg(pool_messages.WorkflowsSearchChanged(value))
+      client_state.pool_msg(pool_messages.EnginesSearchChanged(value))
     },
     on_status_filter_changed: fn(value) {
-      client_state.pool_msg(pool_messages.WorkflowsStatusFilterChanged(value))
+      client_state.pool_msg(pool_messages.EnginesStatusFilterChanged(value))
     },
     on_rules_clicked: fn(workflow_id) {
-      client_state.pool_msg(pool_messages.WorkflowRulesClicked(workflow_id))
+      client_state.pool_msg(pool_messages.EngineRulesClicked(workflow_id))
     },
     on_edit_clicked: fn(workflow) {
       client_state.pool_msg(
@@ -956,19 +956,19 @@ fn admin_workflow_callbacks(
       )
     },
     on_name_changed: fn(value) {
-      client_state.pool_msg(pool_messages.WorkflowNameChanged(value))
+      client_state.pool_msg(pool_messages.EngineNameChanged(value))
     },
     on_description_changed: fn(value) {
-      client_state.pool_msg(pool_messages.WorkflowDescriptionChanged(value))
+      client_state.pool_msg(pool_messages.EngineDescriptionChanged(value))
     },
     on_active_changed: fn(value) {
-      client_state.pool_msg(pool_messages.WorkflowActiveChanged(value))
+      client_state.pool_msg(pool_messages.EngineActiveChanged(value))
     },
     on_submitted: fn(project_id) {
-      client_state.pool_msg(pool_messages.WorkflowFormSubmitted(project_id))
+      client_state.pool_msg(pool_messages.EngineFormSubmitted(project_id))
     },
     on_delete_confirmed: client_state.pool_msg(
-      pool_messages.WorkflowDeleteConfirmed,
+      pool_messages.EngineDeleteConfirmed,
     ),
     on_closed: client_state.pool_msg(pool_messages.CloseEngineDialog),
     rules: admin_workflow_rule_callbacks(model),

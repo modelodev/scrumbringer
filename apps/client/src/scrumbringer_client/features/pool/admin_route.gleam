@@ -239,8 +239,8 @@ fn automation_panel_focus_target(
 ) -> opt.Option(String) {
   case inner {
     pool_messages.CloseEngineDialog
-    | pool_messages.WorkflowSaved(Ok(_))
-    | pool_messages.WorkflowDeleteFinished(_, Ok(_)) ->
+    | pool_messages.EngineSaved(Ok(_))
+    | pool_messages.EngineDeleteFinished(_, Ok(_)) ->
       engine_dialog_focus_target(model.admin.workflows.engine_dialog_mode)
 
     pool_messages.CloseRuleDialog
@@ -398,10 +398,10 @@ fn engine_crud_feedback_context(
     engine_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
     on_success_toast: app_effects.toast_success,
     on_engine_saved: fn(result) {
-      client_state.pool_msg(pool_messages.WorkflowSaved(result))
+      client_state.pool_msg(pool_messages.EngineSaved(result))
     },
     on_engine_deleted: fn(workflow_id, result) {
-      client_state.pool_msg(pool_messages.WorkflowDeleteFinished(
+      client_state.pool_msg(pool_messages.EngineDeleteFinished(
         workflow_id,
         result,
       ))

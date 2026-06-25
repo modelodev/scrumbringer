@@ -98,7 +98,7 @@ pub fn try_rules_update(
   feedback: RuleFeedbackContext(parent_msg),
 ) -> opt.Option(RulesUpdate(parent_msg)) {
   case inner {
-    pool_messages.WorkflowRulesClicked(engine_id) ->
+    pool_messages.EngineRulesClicked(engine_id) ->
       engine_rules_clicked(state, engine_id, context)
       |> without_rules_auth_check
 
@@ -277,19 +277,19 @@ pub fn try_engines_update(
   feedback: EngineFeedbackContext(parent_msg),
 ) -> opt.Option(EngineUpdate(parent_msg)) {
   case inner {
-    pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
+    pool_messages.EnginesProjectFetched(Ok(workflows)) ->
       engines_project_fetched_ok(state, workflows)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowsProjectFetched(Error(err)) ->
+    pool_messages.EnginesProjectFetched(Error(err)) ->
       engines_project_fetched_error(state, err)
       |> with_engine_auth_check(err)
 
-    pool_messages.WorkflowsSearchChanged(query) ->
+    pool_messages.EnginesSearchChanged(query) ->
       admin_workflows.Model(..state, engine_search: query)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowsStatusFilterChanged(status) ->
+    pool_messages.EnginesStatusFilterChanged(status) ->
       admin_workflows.Model(..state, engine_status_filter: status)
       |> without_engine_auth_check
 
@@ -301,42 +301,42 @@ pub fn try_engines_update(
       close_engine_dialog(state)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowNameChanged(value) ->
+    pool_messages.EngineNameChanged(value) ->
       admin_workflows.Model(..state, engine_form_name: value)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowDescriptionChanged(value) ->
+    pool_messages.EngineDescriptionChanged(value) ->
       admin_workflows.Model(..state, engine_form_description: value)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowActiveChanged(value) ->
+    pool_messages.EngineActiveChanged(value) ->
       admin_workflows.Model(..state, engine_form_active: value)
       |> without_engine_auth_check
 
-    pool_messages.WorkflowFormSubmitted(project_id) ->
+    pool_messages.EngineFormSubmitted(project_id) ->
       submit_engine_form(state, project_id, feedback)
       |> without_engine_tuple_auth_check
 
-    pool_messages.WorkflowSaved(Ok(workflow)) ->
+    pool_messages.EngineSaved(Ok(workflow)) ->
       engine_saved(state, workflow)
       |> with_engine_effect(engine_success_effect(
         success_for_engine_saved(state),
         feedback,
       ))
 
-    pool_messages.WorkflowSaved(Error(err)) ->
+    pool_messages.EngineSaved(Error(err)) ->
       engine_form_error(state, err.message)
       |> with_engine_auth_check(err)
 
-    pool_messages.WorkflowDeleteConfirmed ->
+    pool_messages.EngineDeleteConfirmed ->
       confirm_engine_delete(state, feedback)
       |> without_engine_tuple_auth_check
 
-    pool_messages.WorkflowDeleteFinished(workflow_id, Ok(_)) ->
+    pool_messages.EngineDeleteFinished(workflow_id, Ok(_)) ->
       engine_deleted(state, workflow_id)
       |> with_engine_effect(engine_success_effect(EngineDeleted, feedback))
 
-    pool_messages.WorkflowDeleteFinished(_workflow_id, Error(err)) ->
+    pool_messages.EngineDeleteFinished(_workflow_id, Error(err)) ->
       engine_form_error(state, err.message)
       |> with_engine_auth_check(err)
 

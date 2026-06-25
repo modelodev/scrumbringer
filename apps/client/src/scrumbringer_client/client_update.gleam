@@ -1777,7 +1777,7 @@ fn fetch_workflows(
         })
       let fx =
         api_workflows.list_project_workflows(project_id, fn(result) {
-          client_state.pool_msg(pool_messages.WorkflowsProjectFetched(result))
+          client_state.pool_msg(pool_messages.EnginesProjectFetched(result))
         })
 
       #(model, fx)

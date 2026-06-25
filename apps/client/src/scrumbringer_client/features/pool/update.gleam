@@ -946,21 +946,21 @@ fn update_without_view_mode(
     | pool_messages.CardActivated(_) -> #(model, effect.none())
 
     // Handled by the automation engine admin adapter before this dispatch.
-    pool_messages.WorkflowsProjectFetched(_)
-    | pool_messages.WorkflowsSearchChanged(_)
-    | pool_messages.WorkflowsStatusFilterChanged(_)
+    pool_messages.EnginesProjectFetched(_)
+    | pool_messages.EnginesSearchChanged(_)
+    | pool_messages.EnginesStatusFilterChanged(_)
     | pool_messages.OpenEngineDialog(_)
     | pool_messages.CloseEngineDialog
-    | pool_messages.WorkflowNameChanged(_)
-    | pool_messages.WorkflowDescriptionChanged(_)
-    | pool_messages.WorkflowActiveChanged(_)
-    | pool_messages.WorkflowFormSubmitted(_)
-    | pool_messages.WorkflowSaved(_)
-    | pool_messages.WorkflowDeleteConfirmed
-    | pool_messages.WorkflowDeleteFinished(_, _) -> #(model, effect.none())
+    | pool_messages.EngineNameChanged(_)
+    | pool_messages.EngineDescriptionChanged(_)
+    | pool_messages.EngineActiveChanged(_)
+    | pool_messages.EngineFormSubmitted(_)
+    | pool_messages.EngineSaved(_)
+    | pool_messages.EngineDeleteConfirmed
+    | pool_messages.EngineDeleteFinished(_, _) -> #(model, effect.none())
 
     // Handled by the automation rules admin adapter before this dispatch.
-    pool_messages.WorkflowRulesClicked(_)
+    pool_messages.EngineRulesClicked(_)
     | pool_messages.RulesFetched(_)
     | pool_messages.RulesBackClicked
     | pool_messages.RuleMetricsFetched(_)
