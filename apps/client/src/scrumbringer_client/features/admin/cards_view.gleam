@@ -218,7 +218,7 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
           input([
             attribute.type_("checkbox"),
             attribute.checked(config.model.cards_show_closed),
-            attribute.attribute("data-testid", "show-completed-cards"),
+            attribute.attribute("data-testid", "show-closed-cards"),
             event.on_check(fn(_) { config.on_show_closed_toggled }),
           ]),
           text(t(config, i18n_text.ShowDoneCards)),
