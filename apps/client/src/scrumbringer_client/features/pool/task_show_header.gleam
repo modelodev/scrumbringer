@@ -9,6 +9,7 @@ import lustre/element/html.{div, span, text}
 
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
+import domain/task/state as task_execution_state
 
 import scrumbringer_client/features/pool/blocking
 import scrumbringer_client/i18n/i18n
@@ -95,7 +96,10 @@ fn task_meta(config: Config(msg), task: domain_task.Task) -> Element(msg) {
     ]),
     div([attribute.class("detail-meta-group")], [
       span([attribute.class("task-meta-chip task-meta-status")], [
-        text(task_state.label(config.locale, domain_task.status(task))),
+        text(task_state.label(
+          config.locale,
+          task_execution_state.to_status(task.state),
+        )),
       ]),
       assignee(config, task),
       due_date(config, task),
@@ -130,7 +134,7 @@ fn capability_chip(config: Config(msg)) -> Element(msg) {
 }
 
 fn assignee(config: Config(msg), task: domain_task.Task) -> Element(msg) {
-  case domain_task.claimed_by(task) {
+  case task_execution_state.claimed_by(task.state) {
     opt.Some(_user_id) ->
       span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),

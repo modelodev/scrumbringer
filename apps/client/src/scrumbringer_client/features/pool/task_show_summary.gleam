@@ -11,6 +11,7 @@ import lustre/element/html.{a, div, text}
 
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
+import domain/task/state as task_execution_state
 
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/pool/blocking
@@ -43,7 +44,10 @@ pub fn view(config: Config) -> Element(msg) {
       [
         summary_item(
           t(config.locale, i18n_text.Status),
-          task_state.label(config.locale, domain_task.status(config.task)),
+          task_state.label(
+            config.locale,
+            task_execution_state.to_status(config.task.state),
+          ),
           False,
         ),
         summary_item(
@@ -285,14 +289,14 @@ fn card_is_empty(config: Config) -> Bool {
 }
 
 fn owner_label(config: Config) -> String {
-  case domain_task.claimed_by(config.task) {
+  case task_execution_state.claimed_by(config.task.state) {
     opt.Some(_) -> t(config.locale, i18n_text.Assigned)
     opt.None -> t(config.locale, i18n_text.Unassigned)
   }
 }
 
 fn owner_is_empty(config: Config) -> Bool {
-  domain_task.claimed_by(config.task) == opt.None
+  task_execution_state.claimed_by(config.task.state) == opt.None
 }
 
 fn blocking_label(config: Config, count: Int) -> String {

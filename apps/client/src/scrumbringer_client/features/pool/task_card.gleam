@@ -340,7 +340,7 @@ fn claim_blocked_action(locale: Locale, config: Config(msg)) -> Element(msg) {
 
 fn claim_primary_action(locale: Locale, config: Config(msg)) -> Element(msg) {
   let descriptive_label =
-    task_state_ui.next_action(locale, domain_task.status(config.task))
+    task_state_ui.next_action(locale, task_state.to_status(config.task.state))
 
   task_actions.claim_icon(
     descriptive_label,

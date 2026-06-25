@@ -3,6 +3,7 @@ import gleam/option.{type Option, None, Some}
 
 import domain/note/entity.{type Note}
 import domain/task as domain_task
+import domain/task/state as task_execution_state
 import domain/user/id as user_ids
 import lustre/element.{type Element}
 
@@ -30,18 +31,14 @@ pub type Config(msg) {
 }
 
 pub fn view(config: Config(msg)) -> Element(msg) {
+  let status = task_execution_state.to_status(config.task.state)
+
   task_hover_popup.view(task_hover_popup.TaskHoverConfig(
     card_label: pool_labels.parent_card(config.locale),
     card_title: config.card_title,
     status_label: i18n.t(config.locale, i18n_text.Status),
-    status_value: task_state_ui.label(
-      config.locale,
-      domain_task.status(config.task),
-    ),
-    status_hint: task_state_ui.hint(
-      config.locale,
-      domain_task.status(config.task),
-    ),
+    status_value: task_state_ui.label(config.locale, status),
+    status_hint: task_state_ui.hint(config.locale, status),
     next_action_label: i18n.t(config.locale, i18n_text.TaskNextActionLabel),
     next_action_value: next_action_value(config),
     age_label: pool_labels.age(config.locale),
@@ -68,7 +65,10 @@ fn next_action_value(config: Config(msg)) -> String {
   {
     False, Some(_) -> pool_labels.open_task(config.locale)
     _, _ ->
-      task_state_ui.next_action(config.locale, domain_task.status(config.task))
+      task_state_ui.next_action(
+        config.locale,
+        task_execution_state.to_status(config.task.state),
+      )
   }
 }
 
