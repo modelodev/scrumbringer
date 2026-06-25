@@ -227,15 +227,6 @@ pub fn css_vars(theme: Theme) -> String {
   string.join(parts, ";") <> ";"
 }
 
-/// Returns the legacy CSS filter value for icons.
-/// Icons should prefer currentColor or token-based styling.
-pub fn icon_filter(theme: Theme) -> String {
-  case theme {
-    Default -> "none"
-    Dark -> "none"
-  }
-}
-
 /// Theme-independent design tokens injected into :root.
 /// These do not change between light/dark themes.
 pub fn design_tokens() -> String {
