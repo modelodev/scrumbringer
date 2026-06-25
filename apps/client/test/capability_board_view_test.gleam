@@ -180,7 +180,7 @@ fn claimed_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
   task_with(id, title, type_id, state, card_id)
 }
 
-fn completed_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
+fn closed_done_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
   let state = task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 7)
   task_with(id, title, type_id, state, card_id)
 }
@@ -192,7 +192,7 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
         available_task(1, "Frontend polish", 1, 1),
         claimed_task(2, "Backend API", 2, 2),
         available_task(3, "Docs refresh", 3, 2),
-        completed_task(4, "Done task", 1, 1),
+        closed_done_task(4, "Closed task", 1, 1),
       ]),
     )
     |> capability_board.view
@@ -217,7 +217,7 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
   assert_contains(html, "Frontend polish")
   assert_contains(html, "Backend API")
   assert_contains(html, "Docs refresh")
-  assert_not_contains(html, "Done task")
+  assert_not_contains(html, "Closed task")
   assert_contains(html, "task-claim-btn")
   assert_contains(html, "Claimed by admin@example.com")
 }
@@ -268,13 +268,13 @@ pub fn capability_board_card_scope_rows_direct_children_test() {
   assert_contains(html, "Checkout")
 }
 
-pub fn capability_board_show_closed_includes_completed_tasks_test() {
+pub fn capability_board_show_closed_includes_closed_tasks_test() {
   let html =
     capability_board.Config(
       ..base_config(
         remote.Loaded([
           available_task(1, "Frontend polish", 1, 1),
-          completed_task(2, "Done task", 1, 1),
+          closed_done_task(2, "Closed task", 1, 1),
         ]),
       ),
       show_closed: Some(True),
@@ -282,7 +282,7 @@ pub fn capability_board_show_closed_includes_completed_tasks_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Done task")
+  assert_contains(html, "Closed task")
   assert_contains(html, "complete")
 }
 

@@ -183,10 +183,10 @@ fn blocked_task() -> Task {
   )
 }
 
-fn completed_task() -> Task {
+fn closed_done_task() -> Task {
   let state = task_state.Closed(task_state.Done, "2026-01-03T00:00:00Z", 7)
 
-  Task(..available_task(), id: 5, title: "Done task", state: state)
+  Task(..available_task(), id: 5, title: "Closed task", state: state)
 }
 
 pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
@@ -359,7 +359,7 @@ pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
       claimed_taken_task(),
       claimed_task(),
       blocked_task(),
-      completed_task(),
+      closed_done_task(),
     ])
     |> kanban_board.view
     |> element.to_document_string
@@ -370,16 +370,16 @@ pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
   assert_contains(html, "title=\"Ongoing: 1\"")
   assert_contains(html, "title=\"Blocked: 1\"")
   assert_contains(html, "Blocked dependency")
-  assert_not_contains(html, "Done task")
+  assert_not_contains(html, "Closed task")
 }
 
-pub fn kanban_completed_only_card_still_shows_task_context_test() {
+pub fn kanban_closed_only_card_still_shows_task_context_test() {
   let html =
-    base_config([completed_task()])
+    base_config([closed_done_task()])
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Done task")
+  assert_contains(html, "Closed task")
   assert_not_contains(html, "No tasks yet")
 }
 
