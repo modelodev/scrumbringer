@@ -23,6 +23,12 @@ fn assert_not_contains(text: String, fragment: String) {
   let assert False = string.contains(text, fragment)
 }
 
+fn assert_before(text: String, first: String, second: String) {
+  let assert Ok(#(_, after_first)) = string.split_once(text, first)
+  let assert Ok(#(_, _)) = string.split_once(after_first, second)
+  Nil
+}
+
 fn render(config: structure_view.Config(Int)) -> String {
   structure_view.view(config) |> element.to_document_string
 }
@@ -212,6 +218,35 @@ pub fn closed_status_filter_still_respects_closed_toggle_test() {
   assert_contains(shown, "Closed Outcome")
   assert_not_contains(shown, "plan-tree-title\">Root Initiative")
   assert_not_contains(shown, "plan-tree-title\">Draft Checkout")
+}
+
+pub fn due_date_sort_uses_valid_date_values_before_invalid_or_missing_test() {
+  let html =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        cards: [
+          Card(
+            ..card(10, None, "Invalid Date", Active),
+            due_date: Some("not-a-date"),
+          ),
+          Card(..card(11, None, "No Date", Active), due_date: None),
+          Card(
+            ..card(12, None, "Later Date", Active),
+            due_date: Some("2026-07-01"),
+          ),
+          Card(
+            ..card(13, None, "Soon Date", Active),
+            due_date: Some("2026-06-19"),
+          ),
+        ],
+        sort_order: member_pool.PlanSortDueDate,
+      ),
+    )
+
+  assert_before(html, "Soon Date", "Later Date")
+  assert_before(html, "Later Date", "Invalid Date")
+  assert_before(html, "Later Date", "No Date")
 }
 
 pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {

@@ -1,6 +1,7 @@
 //// Plan / Structure explorer.
 
 import domain/card.{type Card, Active, Closed, Draft}
+import domain/due_date as due_date_domain
 import domain/task as domain_task
 import domain/task/state as task_execution_state
 import gleam/dynamic/decode
@@ -1821,10 +1822,16 @@ fn card_state_rank(card: Card) -> Int {
 
 fn due_date_sort_value(card: Card) -> String {
   case card.due_date {
-    Some(value) -> value
-    None -> "9999-12-31"
+    Some(value) ->
+      case due_date_domain.parse(value) {
+        Ok(parsed) -> due_date_domain.to_string(parsed)
+        Error(_) -> no_due_date_sort_value
+      }
+    None -> no_due_date_sort_value
   }
 }
+
+const no_due_date_sort_value = "9999-12-31"
 
 fn plan_status_value(status: member_pool.PlanStatusFilter) -> String {
   case status {
