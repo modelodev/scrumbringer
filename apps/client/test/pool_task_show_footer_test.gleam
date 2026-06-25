@@ -76,7 +76,7 @@ pub fn task_show_footer_renders_owner_ongoing_complete_as_primary_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Complete task")
+  assert_contains(html, "Close task")
   assert_contains(html, "data-testid=\"task-show-primary-complete\"")
   assert_contains(html, "Release back to Pool")
   assert_not_contains(html, "Start working")

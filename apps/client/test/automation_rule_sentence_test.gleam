@@ -78,7 +78,7 @@ pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When a Bug task is completed")
+  assert_contains(html, "When a Bug task is closed")
   assert_contains(html, "-&gt; Create Bug triage in the Pool")
 }
 
@@ -93,7 +93,7 @@ pub fn rule_sentence_renders_spanish_task_completed_cause_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Cuando una tarea Bug sea completada")
+  assert_contains(html, "Cuando una tarea Bug sea cerrada")
   assert_contains(html, "-&gt; Crear Seguimiento en el Pool")
 }
 
@@ -196,6 +196,6 @@ pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Cuando una tarjeta de nivel 2 se finalice")
+  assert_contains(html, "Cuando una tarjeta de nivel 2 se cierre")
   assert_contains(html, "-&gt; Crear Revisión de entrega en el Pool")
 }

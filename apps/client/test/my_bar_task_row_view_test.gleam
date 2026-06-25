@@ -114,7 +114,7 @@ pub fn member_bar_task_row_renders_from_config_test() {
   assert_contains(html, "Bug")
   assert_contains(html, "Start")
   assert_contains(html, "Release")
-  assert_contains(html, "Complete")
+  assert_contains(html, "Close task")
 }
 
 pub fn my_bar_section_renders_from_config_test() {

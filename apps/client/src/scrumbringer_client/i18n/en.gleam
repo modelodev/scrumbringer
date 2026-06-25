@@ -1014,7 +1014,7 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderTaskTemplate -> "Rule task template"
     text.RuleBuilderChooseTemplate -> "Choose a template"
     text.RuleBuilderTaskCreatedEvent -> "is created"
-    text.RuleBuilderTaskCompletedEvent -> "is completed"
+    text.RuleBuilderTaskCompletedEvent -> "is closed"
     text.RuleBuilderTaskClaimedEvent -> "is claimed"
     text.RuleBuilderTaskReleasedEvent -> "is released"
     text.RuleBuilderCardActivatedEvent -> "is activated"
@@ -1027,7 +1027,7 @@ pub fn translate(text: Text) -> String {
     text.RulePreviewTaskReleased(subject) ->
       "When " <> subject <> " is released, work is created in the Pool."
     text.RulePreviewTaskCompleted(subject) ->
-      "When " <> subject <> " is completed, work is created in the Pool."
+      "When " <> subject <> " is closed, work is created in the Pool."
     text.RulePreviewCardActivated(scope) ->
       "When " <> scope <> " is activated, work is created in the Pool."
     text.RulePreviewCardClosed(scope) ->
@@ -1044,7 +1044,7 @@ pub fn translate(text: Text) -> String {
       "a " <> task_type_name <> " task"
     text.RulePreviewSelectedTaskType -> "a selected task type"
     text.RuleTriggerTaskClaimedWord -> "claimed"
-    text.RuleTriggerTaskCompletedWord -> "completed"
+    text.RuleTriggerTaskCompletedWord -> "closed"
     text.RuleTriggerTaskCreatedWord -> "created"
     text.RuleTriggerTaskReleasedWord -> "released"
     text.RulePreviewTemplateWillCreate(template_name) ->
@@ -1082,7 +1082,7 @@ pub fn translate(text: Text) -> String {
     text.TaskNextActionClaim -> "Claim to My Tasks"
     text.TaskNextActionStart -> "Start working"
     text.TaskNextActionPause -> "Pause work"
-    text.TaskNextActionComplete -> "Complete task"
+    text.TaskNextActionComplete -> "Close task"
     text.TaskNextActionRelease -> "Release back to Pool"
     text.TaskNextActionOpen -> "Open task"
 

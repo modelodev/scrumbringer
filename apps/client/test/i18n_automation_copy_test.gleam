@@ -53,3 +53,27 @@ pub fn automation_navigation_copy_uses_engine_vocabulary_test() {
     let assert False = string.contains(copy, "Workflow")
   })
 }
+
+pub fn automation_task_close_copy_uses_closed_lifecycle_terms_test() {
+  let en_event = i18n.t(locale.En, text.RuleBuilderTaskCompletedEvent)
+  let en_preview =
+    i18n.t(locale.En, text.RulePreviewTaskCompleted("a Bug task"))
+  let en_trigger = i18n.t(locale.En, text.RuleTriggerTaskCompletedWord)
+  let es_event = i18n.t(locale.Es, text.RuleBuilderTaskCompletedEvent)
+  let es_preview =
+    i18n.t(locale.Es, text.RulePreviewTaskCompleted("una tarea Bug"))
+  let es_trigger = i18n.t(locale.Es, text.RuleTriggerTaskCompletedWord)
+
+  let assert "is closed" = en_event
+  let assert True = string.contains(en_preview, "is closed")
+  let assert "closed" = en_trigger
+  let assert "se cierra" = es_event
+  let assert True = string.contains(es_preview, "se cierre")
+  let assert "cerrada" = es_trigger
+
+  [en_event, en_preview, en_trigger, es_event, es_preview, es_trigger]
+  |> list.each(fn(copy) {
+    let assert False = string.contains(copy, "completed")
+    let assert False = string.contains(copy, "complet")
+  })
+}

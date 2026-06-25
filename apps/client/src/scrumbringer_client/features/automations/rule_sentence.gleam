@@ -109,7 +109,7 @@ fn supported_trigger_sentence(
     automation.CardClosed(scope) ->
       case locale {
         En -> "When " <> card_scope_sentence_en(scope) <> " is closed"
-        Es -> "Cuando " <> card_scope_sentence_es(scope) <> " se finalice"
+        Es -> "Cuando " <> card_scope_sentence_es(scope) <> " se cierre"
       }
   }
 }

@@ -172,7 +172,7 @@ pub fn task_card_renders_claimed_owner_actions_test() {
 
   assert_contains(html, "task-card")
   assert_contains(html, "Release")
-  assert_contains(html, "Complete")
+  assert_contains(html, "Close task")
   assert_not_contains(html, "task-card-primary-action")
 }
 
