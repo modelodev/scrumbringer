@@ -50,7 +50,12 @@ type PersonTaskKind {
 }
 
 type ReservedGroup {
-  ReservedGroup(key: String, title: String, tasks: List(PersonWorkloadTask))
+  ReservedGroup(
+    key: String,
+    title: String,
+    card_id: Option(Int),
+    tasks: List(PersonWorkloadTask),
+  )
 }
 
 pub type Config(msg) {
@@ -77,6 +82,7 @@ pub type Config(msg) {
     on_sort_change: fn(String) -> msg,
     on_person_toggle: fn(Int) -> msg,
     on_task_click: fn(Int) -> msg,
+    on_card_click: fn(Int) -> msg,
     on_now_working_start: fn(Int) -> msg,
     on_now_working_pause: msg,
     on_task_release: fn(Int, Int) -> msg,
@@ -791,7 +797,7 @@ fn view_scope(
       ])
     None ->
       span([attribute.class("people-roster-muted")], [
-        text(i18n.t(config.locale, i18n_text.PeopleCanPullFromPool)),
+        text(i18n.t(config.locale, i18n_text.PeopleNoOwnedWork)),
       ])
   }
 }
@@ -923,9 +929,64 @@ fn view_person_tray(
       span([attribute.class("people-person-tray-title")], [
         text(i18n.t(config.locale, i18n_text.PeopleTrayTitle(person_label))),
       ]),
+      span([attribute.class("people-person-tray-summary")], [
+        text(person_tray_summary(config, active_tasks, reserved_tasks)),
+      ]),
     ]),
-    view_now_section(config, active_tasks),
+    view_focus_summary(config, active_tasks, reserved_tasks),
+    case active_tasks {
+      [] -> element.none()
+      _ -> view_now_section(config, active_tasks)
+    },
     view_reserved_section(config, reserved_tasks),
+  ])
+}
+
+fn person_tray_summary(
+  config: Config(msg),
+  active_tasks: List(PersonWorkloadTask),
+  reserved_tasks: List(PersonWorkloadTask),
+) -> String {
+  let active_count = list.length(active_tasks)
+  let reserved_count = list.length(reserved_tasks)
+  let card_count = distinct_card_count(reserved_tasks)
+
+  []
+  |> append_load_part(
+    active_tasks != [],
+    i18n.t(config.locale, i18n_text.PeopleOngoingCount(active_count)),
+  )
+  |> append_load_part(
+    reserved_tasks != [],
+    i18n.t(config.locale, i18n_text.PeopleReservedCount(reserved_count)),
+  )
+  |> append_load_part(
+    card_count > 0,
+    i18n.t(config.locale, i18n_text.PeopleCardsCount(card_count)),
+  )
+  |> load_parts_to_label(config)
+}
+
+fn view_focus_summary(
+  config: Config(msg),
+  active_tasks: List(PersonWorkloadTask),
+  reserved_tasks: List(PersonWorkloadTask),
+) -> Element(msg) {
+  let focus = case active_tasks {
+    [] -> i18n.t(config.locale, i18n_text.PeopleNoActiveFocus)
+    _ -> i18n.t(config.locale, i18n_text.PeopleWorkingNowState)
+  }
+  let reserved = case reserved_tasks {
+    [] -> i18n.t(config.locale, i18n_text.PeopleNoReservedWork)
+    _ ->
+      i18n.t(
+        config.locale,
+        i18n_text.PeopleReservedCount(list.length(reserved_tasks)),
+      )
+  }
+
+  p([attribute.class("people-person-focus-summary")], [
+    text(focus <> " · " <> reserved),
   ])
 }
 
@@ -937,10 +998,7 @@ fn view_now_section(
     "people-tray-now",
     i18n.t(config.locale, i18n_text.PeopleNowSection),
     i18n.t(config.locale, i18n_text.PeopleNowDescription),
-    case active_tasks {
-      [] -> view_tray_empty(config, i18n_text.PeopleNoActiveFocus)
-      _ -> view_task_list(config, active_tasks, NowTask)
-    },
+    view_task_list(config, active_tasks, NowTask, True),
   )
 }
 
@@ -988,7 +1046,7 @@ fn view_reserved_tasks(
 ) -> Element(msg) {
   case should_group_reserved(config, reserved_tasks) {
     True -> view_reserved_groups(config, reserved_tasks)
-    False -> view_task_list(config, reserved_tasks, ReservedTask)
+    False -> view_task_list(config, reserved_tasks, ReservedTask, True)
   }
 }
 
@@ -1012,22 +1070,53 @@ fn view_reserved_groups(
       #(
         group.key,
         li([attribute.class("people-task-group")], [
-          div([attribute.class("people-task-group-header")], [
-            span([attribute.class("people-task-group-title")], [
-              text(group.title),
-            ]),
-            span([attribute.class("people-task-group-count")], [
-              text(i18n.t(
-                config.locale,
-                i18n_text.PeopleReservedGroupCount(list.length(group.tasks)),
-              )),
-            ]),
-          ]),
-          view_task_list(config, group.tasks, ReservedTask),
+          view_reserved_group_header(config, group),
+          view_task_list(config, group.tasks, ReservedTask, False),
         ]),
       )
     }),
   )
+}
+
+fn view_reserved_group_header(
+  config: Config(msg),
+  group: ReservedGroup,
+) -> Element(msg) {
+  div([attribute.class("people-task-group-header")], [
+    div([attribute.class("people-task-group-heading")], [
+      span([attribute.class("people-task-group-title")], [
+        text(group.title),
+      ]),
+      case group_outside_active_scope(group) {
+        True ->
+          span([attribute.class("people-task-group-chip")], [
+            text(i18n.t(config.locale, i18n_text.PeopleOutsideActiveWorkScope)),
+          ])
+        False -> element.none()
+      },
+    ]),
+    div([attribute.class("people-task-group-actions")], [
+      span([attribute.class("people-task-group-count")], [
+        text(i18n.t(
+          config.locale,
+          i18n_text.PeopleReservedGroupCount(list.length(group.tasks)),
+        )),
+      ]),
+      case group.card_id {
+        Some(card_id) ->
+          action_button(
+            "people-task-action people-task-action-secondary people-card-action-open",
+            i18n.t(config.locale, i18n_text.OpenCard),
+            config.on_card_click(card_id),
+          )
+        None -> element.none()
+      },
+    ]),
+  ])
+}
+
+fn group_outside_active_scope(group: ReservedGroup) -> Bool {
+  list.any(group.tasks, fn(task) { task.outside_active_work_scope })
 }
 
 fn group_reserved_tasks(
@@ -1077,9 +1166,12 @@ fn new_reserved_group(
   key: String,
   task: PersonWorkloadTask,
 ) -> ReservedGroup {
-  ReservedGroup(key: key, title: reserved_group_title(config, task), tasks: [
-    task,
-  ])
+  ReservedGroup(
+    key: key,
+    title: reserved_group_title(config, task),
+    card_id: task.card_id,
+    tasks: [task],
+  )
 }
 
 fn reserved_group_key(task: PersonWorkloadTask) -> String {
@@ -1101,6 +1193,7 @@ fn view_task_list(
   config: Config(msg),
   tasks: List(PersonWorkloadTask),
   kind: PersonTaskKind,
+  include_scope: Bool,
 ) -> Element(msg) {
   keyed.ul(
     [attribute.class("people-task-list")],
@@ -1108,7 +1201,7 @@ fn view_task_list(
       #(
         int.to_string(task.task_id),
         li([attribute.class("people-task-item")], [
-          view_task_item(config, task, kind),
+          view_task_item(config, task, kind, include_scope),
         ]),
       )
     }),
@@ -1119,20 +1212,21 @@ fn view_task_item(
   config: Config(msg),
   task: PersonWorkloadTask,
   kind: PersonTaskKind,
+  include_scope: Bool,
 ) -> Element(msg) {
   task_item.view(
     task_item.Config(
       container_class: "task-item",
       content_class: "task-item-content",
       leading: None,
-      on_click: Some(config.on_task_click(task.task_id)),
+      on_click: None,
       content_title: None,
       content_label: None,
       icon: None,
       icon_class: None,
       title: task.title,
       title_class: None,
-      secondary: view_task_secondary(config, task, kind),
+      secondary: view_task_secondary(config, task, kind, include_scope),
       actions: view_task_actions(config, task, kind),
       reserve_actions_slot: False,
       action_slot_class: None,
@@ -1147,24 +1241,31 @@ fn view_task_secondary(
   config: Config(msg),
   task: PersonWorkloadTask,
   kind: PersonTaskKind,
+  include_scope: Bool,
 ) -> Element(msg) {
-  let context = task_scope_label(config, task)
-  let label = case task.blocked, task.outside_active_work_scope, kind {
-    True, _, _ ->
-      i18n.t(config.locale, i18n_text.PeopleTaskBlockedMeta(context))
-    False, True, _ ->
-      i18n.t(
-        config.locale,
-        i18n_text.PeopleTaskReservedMeta(
-          context
-          <> " · "
-          <> i18n.t(config.locale, i18n_text.PeopleOutsideActiveWorkScope),
-        ),
+  let context = task_line_context(config, task, include_scope)
+  let label = case task.blocked, kind {
+    True, _ ->
+      task_meta_label(
+        config,
+        i18n_text.PeopleTaskBlockedMeta,
+        i18n_text.PeopleNeedsAttentionState,
+        context,
       )
-    False, False, NowTask ->
-      i18n.t(config.locale, i18n_text.PeopleTaskNowMeta(context))
-    False, False, ReservedTask ->
-      i18n.t(config.locale, i18n_text.PeopleTaskReservedMeta(context))
+    False, NowTask ->
+      task_meta_label(
+        config,
+        i18n_text.PeopleTaskNowMeta,
+        i18n_text.PeopleWorkingNowState,
+        context,
+      )
+    False, ReservedTask ->
+      task_meta_label(
+        config,
+        i18n_text.PeopleTaskReservedMeta,
+        i18n_text.PeopleReservedSection,
+        context,
+      )
   }
 
   div([attribute.class("task-item-meta people-task-meta")], [
@@ -1176,6 +1277,41 @@ fn view_task_secondary(
       [text(label)],
     ),
   ])
+}
+
+fn task_line_context(
+  config: Config(msg),
+  task: PersonWorkloadTask,
+  include_scope: Bool,
+) -> Option(String) {
+  case include_scope, task.capability_name {
+    False, Some(capability) -> Some(capability)
+    False, None -> None
+    True, _ -> {
+      let base = task_scope_label(config, task)
+      case task.outside_active_work_scope {
+        True ->
+          Some(
+            base
+            <> " · "
+            <> i18n.t(config.locale, i18n_text.PeopleOutsideActiveWorkScope),
+          )
+        False -> Some(base)
+      }
+    }
+  }
+}
+
+fn task_meta_label(
+  config: Config(msg),
+  label: fn(String) -> i18n_text.Text,
+  fallback: i18n_text.Text,
+  context: Option(String),
+) -> String {
+  case context {
+    Some(value) -> i18n.t(config.locale, label(value))
+    None -> i18n.t(config.locale, fallback)
+  }
 }
 
 fn view_task_actions(

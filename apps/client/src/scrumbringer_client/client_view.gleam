@@ -1841,6 +1841,9 @@ fn people_config(
     on_task_click: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
+    on_card_click: fn(card_id) {
+      client_state.pool_msg(pool_messages.OpenCardShow(card_id))
+    },
     on_now_working_start: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
     },

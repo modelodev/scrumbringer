@@ -322,7 +322,6 @@ pub type Text {
   PeopleOutsideActiveWorkScope
   PeopleBlockedBy(title: String)
   PeopleOpenDependencies
-  PeopleCanPullFromPool
   PeopleScopeAdditionalCards(title: String, count: Int)
   PeopleShowLabel
   PeopleFilterEveryone

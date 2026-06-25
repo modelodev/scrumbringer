@@ -41,6 +41,22 @@ fn assert_not_contains(text: String, fragment: String) {
   let assert False = string.contains(text, fragment)
 }
 
+fn assert_occurrences(text: String, fragment: String, expected: Int) {
+  let actual = count_occurrences(text, fragment)
+  let assert True = actual == expected
+}
+
+fn count_occurrences(text: String, fragment: String) -> Int {
+  count_occurrences_loop(text, fragment, 0)
+}
+
+fn count_occurrences_loop(text: String, fragment: String, count: Int) -> Int {
+  case string.split_once(text, fragment) {
+    Ok(#(_before, after)) -> count_occurrences_loop(after, fragment, count + 1)
+    Error(_) -> count
+  }
+}
+
 fn make_task(
   id: Int,
   title: String,
@@ -193,6 +209,7 @@ fn people_config_with_cards(
     on_sort_change: fn(_value) { 0 },
     on_person_toggle: fn(user_id) { user_id },
     on_task_click: fn(task_id) { task_id },
+    on_card_click: fn(card_id) { card_id + 4000 },
     on_now_working_start: fn(task_id) { task_id + 1000 },
     on_now_working_pause: -1,
     on_task_release: fn(task_id, _version) { task_id + 2000 },
@@ -690,7 +707,9 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
   assert_contains(html, "Checkout")
   assert_contains(html, "Onboarding")
   assert_contains(html, "Billing")
-  assert_contains(html, "Work tray for ana@example.com")
+  assert_contains(html, "Work for ana@example.com")
+  assert_contains(html, "1 ongoing · 2 reserved · 2 cards")
+  assert_contains(html, "Working now · 2 reserved")
   assert_contains(html, "Now")
   assert_contains(html, "Reserved")
   assert_contains(html, "In progress · Checkout")
@@ -724,6 +743,74 @@ pub fn people_view_groups_many_reserved_tasks_by_card_test() {
   assert_contains(html, "2 tasks")
   assert_contains(html, "Release")
   assert_contains(html, "1 task")
+  assert_occurrences(html, "Open card", 2)
+  assert_occurrences(html, "Open task", 3)
+  assert_not_contains(html, "class=\"task-item-content\" type=\"button\"")
+}
+
+pub fn people_view_grouped_reserved_cta_matrix_test() {
+  let tasks = [
+    make_task(1, "Unscoped follow-up", 10, task_state.Taken),
+    make_task(2, "Patch alert", 10, task_state.Taken)
+      |> task_on_card(101, "Observability", card.Purple),
+    make_task(3, "Plan rollout", 10, task_state.Taken)
+      |> task_on_card(102, "Release", card.Blue),
+  ]
+
+  let model =
+    base_model()
+    |> with_people_workload(remote.Loaded([person(10)]))
+    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_workload_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let html = render_people(model)
+
+  assert_contains(html, "No card")
+  assert_contains(html, "Observability")
+  assert_contains(html, "Release")
+  assert_occurrences(html, "Open task", 3)
+  assert_occurrences(html, "Open card", 2)
+}
+
+pub fn people_view_grouped_reserved_tasks_lift_scope_to_group_header_test() {
+  let task =
+    PersonWorkloadTask(
+      ..task_to_workload_task(
+        make_task(1, "Patch release checklist", 10, task_state.Taken)
+        |> task_on_card(101, "Release", card.Blue),
+      ),
+      capability_name: Some("Security"),
+      outside_active_work_scope: True,
+    )
+  let person =
+    PersonWorkload(
+      ..available_person(10, "ana@example.com"),
+      state: WorkloadReserved,
+      reserved: [
+        task,
+        PersonWorkloadTask(..task, task_id: 2, title: "Review rollout notes"),
+        PersonWorkloadTask(..task, task_id: 3, title: "Check release window"),
+      ],
+      summary: PersonWorkloadSummary(
+        working_now_count: 0,
+        reserved_count: 3,
+        attention_count: 0,
+      ),
+    )
+
+  let model =
+    base_model()
+    |> with_people_workload(remote.Loaded([person]))
+    |> with_people_expanded(10)
+
+  let html = render_people(model)
+
+  assert_contains(html, "Release")
+  assert_contains(html, "outside active work")
+  assert_contains(html, "Reserved · Security")
+  assert_contains(html, "Open card")
+  assert_not_contains(html, "Reserved · Security · outside active work")
 }
 
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
@@ -745,7 +832,7 @@ pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
 
   assert_contains(html, "No active focus")
   assert_contains(html, "No reserved work")
-  assert_contains(html, "Can pull from Pool")
+  assert_contains(html, "Available")
 }
 
 pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {

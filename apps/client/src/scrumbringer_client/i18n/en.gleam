@@ -327,7 +327,7 @@ pub fn translate(text: Text) -> String {
     text.PeopleBlockedCount(count) -> int.to_string(count) <> " blocked"
     text.PeopleCardsCount(count) -> int.to_string(count) <> " cards"
     text.PeopleLoadWarning -> "High load"
-    text.PeopleTrayTitle(person) -> "Work tray for " <> person
+    text.PeopleTrayTitle(person) -> "Work for " <> person
     text.PeopleNowSection -> "Now"
     text.PeopleNowDescription ->
       "Active focus. Reserved work waits until this is paused, closed, or released."
@@ -374,7 +374,6 @@ pub fn translate(text: Text) -> String {
     text.PeopleOutsideActiveWorkScope -> "outside active work"
     text.PeopleBlockedBy(title) -> "Blocked by: " <> title
     text.PeopleOpenDependencies -> "open dependencies"
-    text.PeopleCanPullFromPool -> "Can pull from Pool"
     text.PeopleScopeAdditionalCards(title, count) ->
       title
       <> " +"

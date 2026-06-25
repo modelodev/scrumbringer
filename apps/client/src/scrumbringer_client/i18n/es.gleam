@@ -338,7 +338,7 @@ pub fn translate(text: Text) -> String {
       }
     text.PeopleCardsCount(count) -> int.to_string(count) <> " tarjetas"
     text.PeopleLoadWarning -> "Carga alta"
-    text.PeopleTrayTitle(person) -> "Bandeja de " <> person
+    text.PeopleTrayTitle(person) -> "Trabajo de " <> person
     text.PeopleNowSection -> "Ahora"
     text.PeopleNowDescription ->
       "Foco activo. Las reservadas esperan hasta pausar, cerrar o liberar."
@@ -385,7 +385,6 @@ pub fn translate(text: Text) -> String {
     text.PeopleOutsideActiveWorkScope -> "fuera del trabajo activo"
     text.PeopleBlockedBy(title) -> "Bloqueada por: " <> title
     text.PeopleOpenDependencies -> "dependencias abiertas"
-    text.PeopleCanPullFromPool -> "Puede tirar del Pool"
     text.PeopleScopeAdditionalCards(title, count) ->
       title
       <> " +"
