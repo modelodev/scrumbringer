@@ -95,7 +95,7 @@ fn claim_task(
   )
 }
 
-fn complete_task(
+fn close_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: fixtures.Session,
   task_id: Int,
@@ -646,7 +646,7 @@ pub fn claim_task_rejects_draft_card_task_until_activation_test() {
   expect.expect_status(claim_task(handler, session, task_id), 200)
 }
 
-pub fn complete_task_rolls_up_direct_parent_cards_test() {
+pub fn close_task_rolls_up_direct_parent_cards_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
@@ -668,7 +668,7 @@ pub fn complete_task_rolls_up_direct_parent_cards_test() {
 
   expect.expect_status(activate_card(handler, session, root_id), 200)
   expect.expect_status(claim_task(handler, session, task_id), 200)
-  expect.expect_status(complete_task(handler, session, task_id, 2), 200)
+  expect.expect_status(close_task(handler, session, task_id, 2), 200)
 
   let assert Ok(child_state) =
     fixtures.query_string(
@@ -701,7 +701,7 @@ pub fn complete_task_rolls_up_direct_parent_cards_test() {
   root_reason |> expect.equal("rollup")
 }
 
-pub fn complete_task_does_not_roll_up_when_child_card_stays_open_test() {
+pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
@@ -726,7 +726,7 @@ pub fn complete_task_does_not_roll_up_when_child_card_stays_open_test() {
 
   expect.expect_status(activate_card(handler, session, root_id), 200)
   expect.expect_status(claim_task(handler, session, task_id), 200)
-  expect.expect_status(complete_task(handler, session, task_id, 2), 200)
+  expect.expect_status(close_task(handler, session, task_id, 2), 200)
 
   let assert Ok(root_state) =
     fixtures.query_string(
