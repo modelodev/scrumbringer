@@ -168,47 +168,6 @@ pub fn parse_invalid_automation_rule_selection_redirects_test() {
   )
 }
 
-pub fn parse_config_templates_external_slug_redirects_to_members_test() {
-  let parsed = router.parse_uri(build_uri("/config/templates", "?project=2"))
-
-  assert_equal(
-    parsed,
-    router.Redirect(router.Config(permissions.Members, Some(2))),
-  )
-}
-
-pub fn parse_config_template_selection_on_external_slug_redirects_to_members_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/templates", "?project=2&template=12"))
-
-  assert_equal(
-    parsed,
-    router.Redirect(router.Config(permissions.Members, Some(2))),
-  )
-}
-
-pub fn parse_config_rule_metrics_external_slug_redirects_to_members_test() {
-  let parsed = router.parse_uri(build_uri("/config/rule-metrics", "?project=2"))
-
-  assert_equal(
-    parsed,
-    router.Redirect(router.Config(permissions.Members, Some(2))),
-  )
-}
-
-pub fn parse_config_execution_selection_on_external_slug_redirects_to_members_test() {
-  let parsed =
-    router.parse_uri(build_uri(
-      "/config/rule-metrics",
-      "?project=2&execution=101",
-    ))
-
-  assert_equal(
-    parsed,
-    router.Redirect(router.Config(permissions.Members, Some(2))),
-  )
-}
-
 pub fn parse_config_mode_outside_automations_redirects_test() {
   let parsed =
     router.parse_uri(build_uri("/config/members", "?project=2&mode=templates"))
@@ -256,12 +215,6 @@ pub fn parse_accept_invite_token_test() {
   assert_equal(parsed, router.Parsed(router.AcceptInvite("il_token")))
 }
 
-pub fn parse_org_assignments_redirects_to_team_test() {
-  let parsed = router.parse_uri(build_uri("/org/assignments", ""))
-
-  assert_equal(parsed, router.Redirect(router.Org(permissions.Team)))
-}
-
 pub fn parse_org_team_test() {
   let parsed = router.parse_uri(build_uri("/org/team", ""))
 
@@ -301,12 +254,6 @@ pub fn parse_member_removed_list_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
 
   assert_equal(parsed, router.Redirect(member_route(None, None)))
-}
-
-pub fn parse_org_assignments_invalid_view_redirects_to_team_test() {
-  let parsed = router.parse_uri(build_uri("/org/assignments", "?view=pool"))
-
-  assert_equal(parsed, router.Redirect(router.Org(permissions.Team)))
 }
 
 // Story 4.4: Mobile keeps pool route in 3-panel layout

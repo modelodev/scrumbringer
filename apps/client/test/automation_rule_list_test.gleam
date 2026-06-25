@@ -400,7 +400,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
-          rule_form_event: "task_completed",
+          rule_form_event: "task_closed",
           rule_form_template_id: "12",
         ),
       ),
@@ -450,7 +450,7 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
-          rule_form_event: "task_completed",
+          rule_form_event: "task_closed",
         ),
       ),
     )
@@ -484,7 +484,7 @@ pub fn automation_rule_builder_offers_only_supported_task_events_test() {
   assert_contains(html, "value=\"task_created\"")
   assert_contains(html, "value=\"task_claimed\"")
   assert_contains(html, "value=\"task_released\"")
-  assert_contains(html, "value=\"task_completed\"")
+  assert_contains(html, "value=\"task_closed\"")
   assert_contains(html, ">is created<")
   assert_contains(html, ">is claimed<")
   assert_contains(html, ">is released<")
@@ -522,7 +522,7 @@ pub fn automation_rule_builder_offers_only_supported_card_events_test() {
   assert_not_contains(html, "task_created")
   assert_not_contains(html, "task_claimed")
   assert_not_contains(html, "task_released")
-  assert_not_contains(html, "task_completed")
+  assert_not_contains(html, "task_closed")
   assert_not_contains(html, "subtree")
   assert_not_contains(html, "card_type")
 }
@@ -539,7 +539,7 @@ pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
-          rule_form_event: "task_completed",
+          rule_form_event: "task_closed",
           rule_form_template_id: "14",
         ),
       ),
@@ -619,7 +619,7 @@ pub fn automation_rule_list_template_picker_filters_and_previews_test() {
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
-          rule_form_event: "task_completed",
+          rule_form_event: "task_closed",
           rule_form_template_search: "Follow",
           rule_form_template_id: "12",
         ),
@@ -646,7 +646,7 @@ pub fn automation_rule_list_template_picker_empty_filter_state_test() {
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
-          rule_form_event: "task_completed",
+          rule_form_event: "task_closed",
           rule_form_template_search: "Missing",
         ),
       ),

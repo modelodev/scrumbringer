@@ -247,7 +247,7 @@ pub fn close_task(
   let decoder = decode.field("task", decoders.task_decoder(), decode.success)
   core.request(
     core.Post,
-    "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
     option.Some(body),
     decoder,
     to_msg,

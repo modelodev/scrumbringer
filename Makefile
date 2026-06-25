@@ -1,4 +1,4 @@
-.PHONY: help deps build build-prod ci ht12-db-check ht12-plan-check ht12-static-check ht12-sweep ht12-sweep-lan smoke-staging pre-go-live release-check migrate squirrel test verify fmt format
+.PHONY: help deps build build-prod ci smoke-staging pre-go-live release-check migrate squirrel test verify fmt format
 
 # Default local DB URL. CI should override `DATABASE_URL`.
 # Note: `dbmate migrate` does NOT create the database.
@@ -19,11 +19,6 @@ help:
 	@echo "  make build      # build all Gleam packages/apps"
 	@echo "  make build-prod # build all + client dist bundle"
 	@echo "  make ci         # deps + build + test"
-	@echo "  make ht12-db-check # diagnose Card tree + Task leaves DB schema"
-	@echo "  make ht12-plan-check # verify HT-12 sweep plan coverage"
-	@echo "  make ht12-static-check # verify HT-12 static lifecycle guards"
-	@echo "  make ht12-sweep # run HT-12 agent-browser sweep against BASE_URL"
-	@echo "  make ht12-sweep-lan # run HT-12 sweep against LAN_BASE_URL"
 	@echo "  make smoke-staging # run smoke checks against STAGING_BASE_URL"
 	@echo "  make pre-go-live   # release-check + optional staging smoke"
 	@echo "  make release-check # ci (+ optional smoke when RUN_SMOKE=1)"
@@ -56,22 +51,6 @@ build-prod:
 	@ROOT_DIR="$(ROOT)" GLEAM_BIN="$(GLEAN_BIN)" bash scripts/build-prod.sh
 
 ci: deps build test
-
-ht12-db-check:
-	@bash scripts/ht12-db-schema-check.sh
-
-ht12-plan-check:
-	@bash scripts/ht12-plan-check.sh
-	@bash scripts/ht12-static-check.sh
-
-ht12-static-check:
-	@bash scripts/ht12-static-check.sh
-
-ht12-sweep:
-	@bash scripts/ht12-agent-browser-sweep.sh
-
-ht12-sweep-lan:
-	@BASE_URL="$(LAN_BASE_URL)" bash scripts/ht12-agent-browser-sweep.sh
 
 release-check: ci
 	@if [ "$(RUN_SMOKE)" = "1" ]; then \

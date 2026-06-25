@@ -7,7 +7,7 @@ import lustre/element as el
 import domain/card.{type Card}
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/i18n/locale.{type Locale}
 
 /// Data and parent callback needed to render Card Show.

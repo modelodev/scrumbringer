@@ -104,7 +104,7 @@ fn close_task(
   handler(
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
     )
     |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("version", json.int(version))])),

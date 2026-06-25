@@ -294,7 +294,7 @@ pub fn trigger_kind(trigger: AutomationTrigger) -> String {
     TaskClaimed(_) -> "task_claimed"
     TaskReleased(_) -> "task_released"
     // Historical wire kind retained for existing rule payloads.
-    TaskClosed(_) -> "task_completed"
+    TaskClosed(_) -> "task_closed"
     CardActivated(_) -> "card_activated"
     CardClosed(_) -> "card_closed"
   }
@@ -309,7 +309,7 @@ pub fn trigger_from_kind(
     "task_created" -> Ok(TaskCreated(task_type_id))
     "task_claimed" -> Ok(TaskClaimed(task_type_id))
     "task_released" -> Ok(TaskReleased(task_type_id))
-    "task_completed" -> Ok(TaskClosed(task_type_id))
+    "task_closed" -> Ok(TaskClosed(task_type_id))
     "card_activated" -> {
       use scope <- result.try(scope_from_depth(card_depth))
       Ok(CardActivated(scope))
@@ -346,8 +346,7 @@ pub fn trigger_to_state_string(trigger: AutomationTrigger) -> String {
   case trigger {
     TaskCreated(_) | TaskReleased(_) -> "available"
     TaskClaimed(_) -> "claimed"
-    // Historical persisted trigger state retained for existing rules.
-    TaskClosed(_) -> "completed"
+    TaskClosed(_) -> "closed"
     CardActivated(_) -> "en_curso"
     CardClosed(_) -> "cerrada"
   }

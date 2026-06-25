@@ -11,8 +11,8 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store

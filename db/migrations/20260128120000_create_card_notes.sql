@@ -8,8 +8,3 @@ CREATE TABLE card_notes (
 );
 
 CREATE INDEX idx_card_notes_card ON card_notes(card_id);
-
--- migrate:down
-DROP INDEX idx_card_notes_card;
-
-DROP TABLE card_notes;

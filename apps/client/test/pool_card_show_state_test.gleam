@@ -1,7 +1,7 @@
 import gleam/option.{None, Some}
 
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/card_show_state
 
 fn default_pool() -> member_pool.Model {

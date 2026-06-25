@@ -8,7 +8,7 @@ import domain/task.{type Task}
 import domain/user.{type User}
 
 import scrumbringer_client/client_state/member/pool as pool_state
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/cards/view
 import scrumbringer_client/i18n/locale.{type Locale}

@@ -65,8 +65,7 @@ fn project_id_for_request(
     _, ["api", "v1", "tasks", task_id, "claim"] -> task_project_id(db, task_id)
     _, ["api", "v1", "tasks", task_id, "release"] ->
       task_project_id(db, task_id)
-    _, ["api", "v1", "tasks", task_id, "complete"] ->
-      task_project_id(db, task_id)
+    _, ["api", "v1", "tasks", task_id, "close"] -> task_project_id(db, task_id)
     _, ["api", "v1", "tasks", task_id, "notes"] -> task_project_id(db, task_id)
     _, ["api", "v1", "tasks", task_id, "notes", _, "pin"] ->
       task_project_id(db, task_id)

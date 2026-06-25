@@ -17,8 +17,9 @@ import domain/card/id as card_id
 import domain/project/id as project_id
 import domain/remote.{Loaded, NotAsked}
 import domain/user/id as user_id
-import scrumbringer_client/components/card_show.{
+import scrumbringer_client/features/cards/show.{
   type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
+  view,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
 import scrumbringer_client/ui/show_tabs
@@ -138,7 +139,7 @@ pub fn card_activity_tab_renders_load_more_when_more_events_exist_test() {
       activity: Loaded([sample_activity(1)]),
       activity_total: 2,
     )
-    |> card_show.view
+    |> view
     |> element.to_document_string
 
   let assert True = string.contains(html, "activity-feed-more")
@@ -148,7 +149,7 @@ pub fn card_activity_tab_renders_load_more_when_more_events_exist_test() {
 pub fn card_show_renders_as_panel_not_modal_test() {
   let html =
     Model(..make_model(), card: option.Some(make_card(42)))
-    |> card_show.view
+    |> view
     |> element.to_document_string
 
   let assert True = string.contains(html, "card-show-panel")

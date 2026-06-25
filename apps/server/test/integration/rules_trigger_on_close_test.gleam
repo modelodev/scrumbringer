@@ -147,7 +147,7 @@ pub fn close_task_via_api_triggers_rules_and_creates_tasks_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -549,7 +549,7 @@ pub fn close_task_uses_latest_selected_template_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(feature_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(feature_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -637,7 +637,7 @@ pub fn closing_same_task_twice_is_idempotent_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -656,7 +656,7 @@ pub fn closing_same_task_twice_is_idempotent_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(3))])),
@@ -735,7 +735,7 @@ pub fn inactive_rule_does_not_trigger_on_api_close_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -945,7 +945,7 @@ pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -1054,7 +1054,7 @@ pub fn close_task_without_card_creates_child_tasks_without_card_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(bug_task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),

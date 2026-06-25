@@ -3,7 +3,7 @@
 import gleam/option as opt
 
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 
 pub fn handle_opened(
   model: member_pool.Model,

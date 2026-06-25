@@ -27,7 +27,7 @@ pub fn required_scope(
       write(api_token_scope.Tasks)
     http.Post, ["api", "v1", "tasks", _, "release"] ->
       write(api_token_scope.Tasks)
-    http.Post, ["api", "v1", "tasks", _, "complete"] ->
+    http.Post, ["api", "v1", "tasks", _, "close"] ->
       write(api_token_scope.Tasks)
 
     http.Get, ["api", "v1", "projects", _, "cards"] ->

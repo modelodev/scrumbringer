@@ -173,8 +173,8 @@ pub fn many_cards_in_depth_remain_scannable_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "card-tree-grid card-tree-grid-dense")
-  assert_contains(html, "data-testid=\"card-tree-card\"")
+  assert_contains(html, "hierarchy-scope-grid hierarchy-scope-grid-dense")
+  assert_contains(html, "data-testid=\"hierarchy-scope-card\"")
 }
 
 pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
@@ -183,5 +183,5 @@ pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-scope=\"card:2\"")
-  assert_contains(html, "card-tree-scope-shell")
+  assert_contains(html, "hierarchy-scope-scope-shell")
 }

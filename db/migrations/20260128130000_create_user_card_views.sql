@@ -7,8 +7,3 @@ CREATE TABLE user_card_views (
 );
 
 CREATE INDEX idx_user_card_views_card ON user_card_views(card_id);
-
--- migrate:down
-DROP INDEX idx_user_card_views_card;
-
-DROP TABLE user_card_views;

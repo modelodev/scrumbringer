@@ -12,7 +12,3 @@ CREATE TABLE user_task_now_working_time (
 
 CREATE INDEX idx_user_task_now_working_time_task_id
     ON user_task_now_working_time(task_id);
-
--- migrate:down
-DROP INDEX idx_user_task_now_working_time_task_id;
-DROP TABLE user_task_now_working_time;

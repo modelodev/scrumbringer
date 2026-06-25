@@ -17,8 +17,3 @@ WHERE project_id IS NULL;
 CREATE UNIQUE INDEX idx_workflows_project_scope_name
 ON workflows (org_id, project_id, name)
 WHERE project_id IS NOT NULL;
-
--- migrate:down
-
-DROP INDEX IF EXISTS idx_workflows_project_scope_name;
-DROP INDEX IF EXISTS idx_workflows_org_scope_name;

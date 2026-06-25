@@ -30,7 +30,7 @@ CREATE TABLE rules (
     name TEXT NOT NULL,
     goal TEXT,
     resource_type TEXT NOT NULL CHECK (resource_type IN ('task', 'card')),
-    trigger_kind TEXT NOT NULL CHECK (trigger_kind IN ('task_created', 'task_claimed', 'task_released', 'task_completed', 'card_activated', 'card_closed', 'invalid_migrated_rule')),
+    trigger_kind TEXT NOT NULL CHECK (trigger_kind IN ('task_created', 'task_claimed', 'task_released', 'task_closed', 'card_activated', 'card_closed')),
     task_type_id BIGINT REFERENCES task_types(id),
     to_state TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
@@ -89,24 +89,3 @@ CREATE TABLE rule_executions (
 
 CREATE INDEX idx_rule_executions_rule ON rule_executions(rule_id);
 CREATE INDEX idx_rule_executions_origin ON rule_executions(origin_type, origin_id);
-
--- migrate:down
-
-DROP INDEX idx_rule_executions_origin;
-DROP INDEX idx_rule_executions_rule;
-DROP TABLE rule_executions;
-
-DROP TABLE rule_templates;
-
-DROP INDEX idx_task_templates_project;
-DROP INDEX idx_task_templates_org;
-DROP TABLE task_templates;
-
-DROP INDEX idx_rules_active;
-DROP INDEX idx_rules_trigger_kind;
-DROP INDEX idx_rules_workflow;
-DROP TABLE rules;
-
-DROP INDEX idx_workflows_project;
-DROP INDEX idx_workflows_org;
-DROP TABLE workflows;

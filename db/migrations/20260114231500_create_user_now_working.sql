@@ -12,8 +12,3 @@ CREATE TABLE user_now_working (
 
 CREATE INDEX idx_user_now_working_task_id ON user_now_working(task_id);
 CREATE INDEX idx_user_now_working_project_id ON user_now_working(project_id);
-
--- migrate:down
-DROP INDEX idx_user_now_working_project_id;
-DROP INDEX idx_user_now_working_task_id;
-DROP TABLE user_now_working;

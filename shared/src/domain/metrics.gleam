@@ -230,7 +230,7 @@ pub type ModalExecutionHealth {
 pub type CardModalMetrics {
   CardModalMetrics(
     tasks_total: Int,
-    tasks_completed: Int,
+    tasks_closed: Int,
     tasks_percent: Int,
     tasks_available: Int,
     tasks_claimed: Int,

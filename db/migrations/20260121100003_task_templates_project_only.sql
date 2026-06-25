@@ -12,8 +12,3 @@ DELETE FROM task_templates WHERE project_id IS NULL;
 
 -- Make project_id NOT NULL
 ALTER TABLE task_templates ALTER COLUMN project_id SET NOT NULL;
-
--- migrate:down
--- WARNING: Cannot restore deleted org-scoped templates
-
-ALTER TABLE task_templates ALTER COLUMN project_id DROP NOT NULL;

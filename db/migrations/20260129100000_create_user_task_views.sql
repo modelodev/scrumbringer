@@ -7,8 +7,3 @@ CREATE TABLE user_task_views (
 );
 
 CREATE INDEX idx_user_task_views_task ON user_task_views(task_id);
-
--- migrate:down
-DROP INDEX idx_user_task_views_task;
-
-DROP TABLE user_task_views;

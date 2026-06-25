@@ -19,8 +19,8 @@ pub fn parse_filters_accepts_claimed_status_test() {
   }
 }
 
-pub fn parse_filters_accepts_completed_status_as_closed_filter_test() {
-  case filters.parse_task_filters([#("status", "completed")]) {
+pub fn parse_filters_accepts_closed_status_as_closed_filter_test() {
+  case filters.parse_task_filters([#("status", "closed")]) {
     Ok(task_filters) ->
       task_filters.status |> expect.equal(Some(task_state.FilterClosed))
     Error(_) -> expect.fail()

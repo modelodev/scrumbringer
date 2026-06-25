@@ -25,7 +25,7 @@ pub type ExecutionHealth {
 pub type CardMetrics {
   CardMetrics(
     tasks_total: Int,
-    tasks_completed: Int,
+    tasks_closed: Int,
     tasks_available: Int,
     tasks_claimed: Int,
     tasks_ongoing: Int,
@@ -58,7 +58,7 @@ pub fn get_card_metrics(
 
   Ok(CardMetrics(
     tasks_total: summary.tasks_total,
-    tasks_completed: summary.tasks_completed,
+    tasks_closed: summary.tasks_closed,
     tasks_available: summary.tasks_available,
     tasks_claimed: summary.tasks_claimed,
     tasks_ongoing: summary.tasks_ongoing,
@@ -136,7 +136,7 @@ pub fn get_task_metrics(
 type CardSummary {
   CardSummary(
     tasks_total: Int,
-    tasks_completed: Int,
+    tasks_closed: Int,
     tasks_available: Int,
     tasks_claimed: Int,
     tasks_ongoing: Int,
@@ -175,7 +175,7 @@ fn fetch_card_summary(
     )
     select
       (select count(*)::int from tasks_scope) as tasks_total,
-      (select count(*)::int from tasks_scope where status = 'closed') as tasks_completed,
+      (select count(*)::int from tasks_scope where status = 'closed') as tasks_closed,
       (select count(*)::int from tasks_scope where status = 'available') as tasks_available,
       (select count(*)::int from tasks_scope where status = 'claimed' and not is_ongoing) as tasks_claimed,
       (select count(*)::int from tasks_scope where status = 'claimed' and is_ongoing) as tasks_ongoing,
@@ -301,7 +301,7 @@ fn task_metrics_decoder() -> decode.Decoder(TaskMetrics) {
 
 fn card_summary_decoder() -> decode.Decoder(CardSummary) {
   use tasks_total <- decode.field(0, decode.int)
-  use tasks_completed <- decode.field(1, decode.int)
+  use tasks_closed <- decode.field(1, decode.int)
   use tasks_available <- decode.field(2, decode.int)
   use tasks_claimed <- decode.field(3, decode.int)
   use tasks_ongoing <- decode.field(4, decode.int)
@@ -310,7 +310,7 @@ fn card_summary_decoder() -> decode.Decoder(CardSummary) {
   use avg_executors <- decode.field(7, decode.int)
   decode.success(CardSummary(
     tasks_total:,
-    tasks_completed:,
+    tasks_closed:,
     tasks_available:,
     tasks_claimed:,
     tasks_ongoing:,

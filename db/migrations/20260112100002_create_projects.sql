@@ -5,6 +5,3 @@ CREATE TABLE projects (
   org_id BIGINT NOT NULL REFERENCES organizations(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- migrate:down
-DROP TABLE projects;

@@ -7068,14 +7068,14 @@ left join lateral (
   |> pog.execute(db)
 }
 
-/// A row you get from running the `tasks_complete` query
-/// defined in `./src/scrumbringer_server/sql/tasks_complete.sql`.
+/// A row you get from running the `tasks_close` query
+/// defined in `./src/scrumbringer_server/sql/tasks_close.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type TasksCompleteRow {
-  TasksCompleteRow(
+pub type TasksCloseRow {
+  TasksCloseRow(
     id: Int,
     project_id: Int,
     type_id: Int,
@@ -7113,17 +7113,17 @@ pub type TasksCompleteRow {
   )
 }
 
-/// name: complete_task
+/// name: close_task
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn tasks_complete(
+pub fn tasks_close(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-) -> Result(pog.Returned(TasksCompleteRow), pog.QueryError) {
+) -> Result(pog.Returned(TasksCloseRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
@@ -7159,7 +7159,7 @@ pub fn tasks_complete(
     use card_color <- decode.field(31, decode.string)
     use dependencies <- decode.field(32, decode.string)
     use blocked_count <- decode.field(33, decode.int)
-    decode.success(TasksCompleteRow(
+    decode.success(TasksCloseRow(
       id:,
       project_id:,
       type_id:,
@@ -7197,7 +7197,7 @@ pub fn tasks_complete(
     ))
   }
 
-  "-- name: complete_task
+  "-- name: close_task
 with updated as (
   update tasks
   set

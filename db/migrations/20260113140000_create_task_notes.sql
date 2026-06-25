@@ -8,8 +8,3 @@ CREATE TABLE task_notes (
 );
 
 CREATE INDEX idx_task_notes_task ON task_notes(task_id);
-
--- migrate:down
-DROP INDEX idx_task_notes_task;
-
-DROP TABLE task_notes;

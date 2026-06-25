@@ -4,6 +4,3 @@ CREATE TABLE organizations (
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- migrate:down
-DROP TABLE organizations;

@@ -68,7 +68,7 @@ pub fn workflows_payload_decoder_decodes_list_test() {
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
   let body =
-    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Closed\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
+    "{\"data\":{\"rule\":{\"id\":1,\"workflow_id\":1,\"name\":\"Task Closed\",\"goal\":\"Auto review\",\"trigger\":{\"type\":\"task_closed\",\"task_type_id\":5},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:30:00Z\",\"template\":{\"id\":11,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{origin}}\",\"description\":\"Auto review\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\",\"execution_order\":1}}}}"
 
   let decoder =
     decode.field("data", api_rules.rule_payload_decoder(), decode.success)
@@ -116,7 +116,7 @@ pub fn rule_payload_decoder_rejects_missing_trigger_test() {
 
 pub fn rules_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":1},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":{\"type\":\"create_task\",\"template_id\":12},\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
+    "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"trigger\":{\"type\":\"task_closed\",\"task_type_id\":1},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"},\"created_at\":\"2026-01-15T10:00:00Z\",\"template\":null},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"trigger\":{\"type\":\"card_closed\",\"scope\":{\"type\":\"any_card\"}},\"action\":{\"type\":\"create_task\",\"template_id\":12},\"status\":{\"type\":\"paused\"},\"created_at\":\"2026-01-15T11:00:00Z\",\"template\":null}]}}"
 
   let decoder =
     decode.field("data", api_rules.rules_payload_decoder(), decode.success)

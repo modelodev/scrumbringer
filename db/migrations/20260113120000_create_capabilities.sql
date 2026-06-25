@@ -16,10 +16,3 @@ CREATE TABLE user_capabilities (
 );
 
 CREATE INDEX idx_user_capabilities_user ON user_capabilities(user_id);
-
--- migrate:down
-DROP INDEX idx_user_capabilities_user;
-DROP TABLE user_capabilities;
-
-DROP INDEX idx_capabilities_org;
-DROP TABLE capabilities;

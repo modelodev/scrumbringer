@@ -326,7 +326,7 @@ pub fn include_metrics_card_return_expected_counts_test() {
   expect.expect_status(card_res, 200)
   let card_body = simulate.read_body(card_res)
   string.contains(card_body, "\"tasks_total\":1") |> expect.is_true
-  string.contains(card_body, "\"tasks_completed\":1") |> expect.is_true
+  string.contains(card_body, "\"tasks_closed\":1") |> expect.is_true
   string.contains(card_body, "\"tasks_percent\":100") |> expect.is_true
 }
 

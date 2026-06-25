@@ -23,11 +23,3 @@ CREATE INDEX idx_cards_project ON cards(project_id);
 ALTER TABLE tasks ADD COLUMN card_id BIGINT REFERENCES cards(id);
 
 CREATE INDEX idx_tasks_card ON tasks(card_id);
-
--- migrate:down
-
-DROP INDEX idx_tasks_card;
-ALTER TABLE tasks DROP COLUMN card_id;
-
-DROP INDEX idx_cards_project;
-DROP TABLE cards;

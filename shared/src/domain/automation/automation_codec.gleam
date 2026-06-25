@@ -16,7 +16,7 @@ pub fn trigger_decoder() -> decode.Decoder(automation.AutomationTrigger) {
     "task_created" -> task_trigger_decoder(automation.TaskCreated)
     "task_claimed" -> task_trigger_decoder(automation.TaskClaimed)
     "task_released" -> task_trigger_decoder(automation.TaskReleased)
-    "task_completed" -> task_trigger_decoder(automation.TaskClosed)
+    "task_closed" -> task_trigger_decoder(automation.TaskClosed)
     "card_activated" -> card_trigger_decoder(automation.CardActivated)
     "card_closed" -> card_trigger_decoder(automation.CardClosed)
     _ -> decode.failure(automation.TaskClosed(None), "AutomationTrigger")
@@ -51,7 +51,7 @@ pub fn trigger_to_json(trigger: automation.AutomationTrigger) -> Json {
     automation.TaskReleased(task_type_id) ->
       task_trigger_to_json("task_released", task_type_id)
     automation.TaskClosed(task_type_id) ->
-      task_trigger_to_json("task_completed", task_type_id)
+      task_trigger_to_json("task_closed", task_type_id)
     automation.CardActivated(scope) ->
       card_trigger_to_json("card_activated", scope)
     automation.CardClosed(scope) -> card_trigger_to_json("card_closed", scope)

@@ -297,7 +297,7 @@ pub fn close_task_succeeds_for_claimer_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
@@ -348,7 +348,7 @@ pub fn close_task_fails_for_non_claimer_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(other_session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),

@@ -7,7 +7,7 @@ import domain/remote.{Loaded, Loading}
 import domain/task.{Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/locale
 

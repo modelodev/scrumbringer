@@ -653,7 +653,7 @@ fn rule_subject_changed(
     "task", "task_created" -> "task_created"
     "task", "task_claimed" -> "task_claimed"
     "task", "task_released" -> "task_released"
-    "task", _ -> "task_completed"
+    "task", _ -> "task_closed"
     "card", "card_closed" -> "card_closed"
     "card", _ -> "card_activated"
     _, _ -> state.rule_form_event
@@ -787,7 +787,7 @@ fn parse_rule_trigger_form(
       ))
       Ok(automation.TaskCreated(task_type_id))
     }
-    "task_completed" -> {
+    "task_closed" -> {
       use task_type_id <- result.try(parse_rule_task_type_id(
         state.rule_form_task_type_id,
       ))
@@ -1006,7 +1006,7 @@ fn open_rule_dialog(
         rule_form_goal: "",
         rule_form_subject: "task",
         rule_form_task_type_id: "",
-        rule_form_event: "task_completed",
+        rule_form_event: "task_closed",
         rule_form_card_scope: "",
         rule_form_template_search: "",
         rule_form_template_id: "",
@@ -1075,7 +1075,7 @@ fn rule_trigger_form_values(
     automation.TaskClosed(task_type_id) -> #(
       "task",
       optional_int_text(task_type_id),
-      "task_completed",
+      "task_closed",
       "",
     )
     automation.TaskClaimed(task_type_id) -> #(

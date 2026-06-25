@@ -8,7 +8,3 @@ CREATE TABLE project_members (
 );
 
 CREATE INDEX idx_project_members_user ON project_members(user_id);
-
--- migrate:down
-DROP INDEX idx_project_members_user;
-DROP TABLE project_members;

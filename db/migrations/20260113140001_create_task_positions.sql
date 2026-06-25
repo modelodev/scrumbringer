@@ -7,6 +7,3 @@ CREATE TABLE task_positions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (task_id, user_id)
 );
-
--- migrate:down
-DROP TABLE task_positions;

@@ -12,9 +12,3 @@ CREATE TABLE task_dependencies (
 CREATE INDEX idx_task_dependencies_task_id ON task_dependencies(task_id);
 CREATE INDEX idx_task_dependencies_depends_on_task_id
   ON task_dependencies(depends_on_task_id);
-
--- migrate:down
-DROP INDEX idx_task_dependencies_depends_on_task_id;
-DROP INDEX idx_task_dependencies_task_id;
-
-DROP TABLE task_dependencies;

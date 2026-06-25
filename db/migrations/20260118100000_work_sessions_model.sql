@@ -15,7 +15,7 @@ CREATE TABLE user_task_work_session (
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,                    -- NULL = active session
-    ended_reason TEXT,                       -- 'user_pause' | 'stale_timeout' | 'task_completed' | 'task_released'
+    ended_reason TEXT,                       -- 'user_pause' | 'stale_timeout' | 'task_closed' | 'task_released'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -70,51 +70,3 @@ DROP TABLE user_task_now_working_time;
 DROP INDEX idx_user_now_working_project_id;
 DROP INDEX idx_user_now_working_task_id;
 DROP TABLE user_now_working;
-
--- migrate:down
--- Reverse: recreate old tables, migrate data back, drop new tables
-
--- Recreate old tables
-CREATE TABLE user_now_working (
-    user_id BIGINT PRIMARY KEY REFERENCES users(id),
-    task_id BIGINT REFERENCES tasks(id),
-    project_id BIGINT REFERENCES projects(id),
-    started_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_user_now_working_task_id ON user_now_working(task_id);
-CREATE INDEX idx_user_now_working_project_id ON user_now_working(project_id);
-
-CREATE TABLE user_task_now_working_time (
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    task_id BIGINT NOT NULL REFERENCES tasks(id),
-    accumulated_s BIGINT NOT NULL DEFAULT 0,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, task_id),
-    CONSTRAINT user_task_now_working_time_accumulated_nonnegative CHECK (accumulated_s >= 0)
-);
-
-CREATE INDEX idx_user_task_now_working_time_task_id
-    ON user_task_now_working_time(task_id);
-
--- Migrate data back (accumulated)
-INSERT INTO user_task_now_working_time (user_id, task_id, accumulated_s, updated_at)
-SELECT user_id, task_id, accumulated_s, updated_at
-FROM user_task_work_total;
-
--- Migrate active sessions back (only the first active session per user)
-INSERT INTO user_now_working (user_id, task_id, started_at, updated_at)
-SELECT DISTINCT ON (user_id) user_id, task_id, started_at, last_heartbeat_at
-FROM user_task_work_session
-WHERE ended_at IS NULL
-ORDER BY user_id, started_at;
-
--- Drop new tables
-DROP INDEX idx_work_total_task_id;
-DROP TABLE user_task_work_total;
-
-DROP INDEX idx_work_session_stale;
-DROP INDEX idx_work_session_user_active;
-DROP INDEX idx_work_session_active_task;
-DROP TABLE user_task_work_session;

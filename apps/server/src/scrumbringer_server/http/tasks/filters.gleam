@@ -63,7 +63,7 @@ pub fn parse_task_filters(
 // Individual Parsers
 // =============================================================================
 
-/// Parse status filter: must be available, claimed, or completed.
+/// Parse status filter: must be available, claimed, or closed.
 ///
 /// Returns None for empty/missing, Some(TaskExecutionStateFilter) for valid values,
 /// Error for invalid values.
@@ -77,7 +77,7 @@ fn parse_status_filter(
       case value {
         "available" -> Ok(Some(task_state.FilterAvailable))
         "claimed" -> Ok(Some(task_state.FilterClaimed))
-        "completed" -> Ok(Some(task_state.FilterClosed))
+        "closed" -> Ok(Some(task_state.FilterClosed))
         _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))
       }
 

@@ -30,7 +30,7 @@
 ///
 /// - `Available`: Task is open and can be claimed
 /// - `Claimed(ClaimedState)`: Task is assigned to someone
-/// - `Closed`: Task is closed, exposed as the historical `completed` filter value
+/// - `Closed`: Task is closed
 ///
 /// ## Example
 ///
@@ -98,8 +98,7 @@ pub type TaskPhaseParseError {
 
 /// Parse an external task status/filter string into TaskPhase.
 ///
-/// The `"completed"` value is retained for API/filter compatibility and maps
-/// to the closed presentation phase.
+/// The `"closed"` value maps to the closed presentation phase.
 ///
 /// ## Example
 ///
@@ -107,7 +106,7 @@ pub type TaskPhaseParseError {
 /// parse_task_status("available")  // -> Ok(Available)
 /// parse_task_status("claimed")    // -> Ok(Claimed(Taken))
 /// parse_task_status("ongoing")    // -> Ok(Claimed(Ongoing))
-/// parse_task_status("completed")  // -> Ok(Closed)
+/// parse_task_status("closed")     // -> Ok(Closed)
 /// parse_task_status("invalid")    // -> Error(UnknownTaskPhase("invalid"))
 /// ```
 pub fn parse_task_status(
@@ -117,7 +116,7 @@ pub fn parse_task_status(
     "available" -> Ok(Available)
     "claimed" -> Ok(Claimed(Taken))
     "ongoing" -> Ok(Claimed(Ongoing))
-    "completed" -> Ok(Closed)
+    "closed" -> Ok(Closed)
     other -> Error(UnknownTaskPhase(other))
   }
 }
@@ -130,21 +129,20 @@ pub fn parse_task_status(
 /// task_status_to_string(Available)        // -> "available"
 /// task_status_to_string(Claimed(Taken))   // -> "claimed"
 /// task_status_to_string(Claimed(Ongoing)) // -> "ongoing"
-/// task_status_to_string(Closed)           // -> "completed"
+/// task_status_to_string(Closed)           // -> "closed"
 /// ```
 pub fn task_status_to_string(status: TaskPhase) -> String {
   case status {
     Available -> "available"
     Claimed(Taken) -> "claimed"
     Claimed(Ongoing) -> "ongoing"
-    Closed -> "completed"
+    Closed -> "closed"
   }
 }
 
 /// Parse an external work-state string into WorkState.
 ///
-/// The `"completed"` value is retained for API/filter compatibility and maps
-/// to the closed presentation work state.
+/// The `"closed"` value maps to the closed presentation work state.
 ///
 /// ## Example
 ///
@@ -152,7 +150,7 @@ pub fn task_status_to_string(status: TaskPhase) -> String {
 /// parse_work_state("available")  // -> Ok(WorkAvailable)
 /// parse_work_state("claimed")    // -> Ok(WorkClaimed)
 /// parse_work_state("ongoing")    // -> Ok(WorkOngoing)
-/// parse_work_state("completed")  // -> Ok(WorkClosed)
+/// parse_work_state("closed")     // -> Ok(WorkClosed)
 /// parse_work_state("invalid")    // -> Error(UnknownWorkState("invalid"))
 /// ```
 pub fn parse_work_state(value: String) -> Result(WorkState, TaskPhaseParseError) {
@@ -160,7 +158,7 @@ pub fn parse_work_state(value: String) -> Result(WorkState, TaskPhaseParseError)
     "available" -> Ok(WorkAvailable)
     "claimed" -> Ok(WorkClaimed)
     "ongoing" -> Ok(WorkOngoing)
-    "completed" -> Ok(WorkClosed)
+    "closed" -> Ok(WorkClosed)
     other -> Error(UnknownWorkState(other))
   }
 }
@@ -185,7 +183,7 @@ pub fn work_state_to_string(state: WorkState) -> String {
     WorkAvailable -> "available"
     WorkClaimed -> "claimed"
     WorkOngoing -> "ongoing"
-    WorkClosed -> "completed"
+    WorkClosed -> "closed"
   }
 }
 

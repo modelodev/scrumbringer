@@ -7,7 +7,7 @@ pub fn task_trigger_codecs_roundtrip_supported_triggers_test() {
   let created = automation.TaskCreated(None)
   let claimed = automation.TaskClaimed(Some(7))
   let released = automation.TaskReleased(None)
-  let completed = automation.TaskClosed(Some(9))
+  let closed = automation.TaskClosed(Some(9))
 
   let assert Ok(decoded_created) = roundtrip_trigger(created)
   let assert True = decoded_created == created
@@ -15,8 +15,8 @@ pub fn task_trigger_codecs_roundtrip_supported_triggers_test() {
   let assert True = decoded_claimed == claimed
   let assert Ok(decoded_released) = roundtrip_trigger(released)
   let assert True = decoded_released == released
-  let assert Ok(decoded_completed) = roundtrip_trigger(completed)
-  let assert True = decoded_completed == completed
+  let assert Ok(decoded_closed) = roundtrip_trigger(closed)
+  let assert True = decoded_closed == closed
 }
 
 pub fn card_trigger_codecs_roundtrip_allowed_scopes_test() {

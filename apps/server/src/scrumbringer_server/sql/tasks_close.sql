@@ -1,4 +1,4 @@
--- name: complete_task
+-- name: close_task
 with updated as (
   update tasks
   set

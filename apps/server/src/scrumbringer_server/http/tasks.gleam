@@ -145,7 +145,7 @@ pub fn handle_release(
 }
 
 /// Handle task close (POST).
-pub fn handle_complete(
+pub fn handle_close(
   req: wisp.Request,
   ctx: auth.Ctx,
   task_id: String,

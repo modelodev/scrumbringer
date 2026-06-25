@@ -345,7 +345,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
   let assert opt.Some(admin_rules.RuleDialogCreate) =
     create_opened.rules_dialog_mode
   let assert "" = create_opened.rule_form_name
-  let assert "task_completed" = create_opened.rule_form_event
+  let assert "task_closed" = create_opened.rule_form_event
   let assert "" = create_opened.rule_form_template_search
   let assert True = fx == effect.none()
   let assert automations_update.NoRulesAuthCheck = auth_policy
@@ -364,7 +364,7 @@ pub fn local_rule_form_transitions_update_loaded_rules_test() {
       opt.None,
     )
   let assert "Created" = edit_opened.rule_form_name
-  let assert "task_completed" = edit_opened.rule_form_event
+  let assert "task_closed" = edit_opened.rule_form_event
   let assert "" = edit_opened.rule_form_template_search
   let assert True = fx == effect.none()
   let assert automations_update.NoRulesAuthCheck = auth_policy

@@ -541,8 +541,8 @@ fn task_trigger_type(to_state: String) -> String {
   case to_state {
     "available" -> "task_created"
     "claimed" | "ongoing" -> "task_claimed"
-    "completed" -> "task_completed"
-    _ -> "task_completed"
+    "closed" -> "task_closed"
+    _ -> "task_closed"
   }
 }
 
@@ -1240,7 +1240,7 @@ fn task_state_to_trigger_string(state: task_state.TaskExecutionState) -> String 
     task_state.Available -> "available"
     task_state.Claimed(mode: task_state.Taken, ..) -> "claimed"
     task_state.Claimed(mode: task_state.Ongoing, ..) -> "ongoing"
-    task_state.Closed(..) -> "completed"
+    task_state.Closed(..) -> "closed"
   }
 }
 

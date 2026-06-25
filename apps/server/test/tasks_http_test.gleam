@@ -671,7 +671,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let close_bad_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/complete",
+      "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
     )
     |> request.set_cookie("sb_session", member_session)
     |> request.set_cookie("sb_csrf", member_csrf)
@@ -2313,20 +2313,20 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   decode_task_titles(simulate.read_body(claimed_res))
   |> expect.equal(["Claimed"])
 
-  let completed_filter_res =
+  let closed_filter_res =
     handler(
       simulate.request(
         http.Get,
         "/api/v1/projects/"
           <> int_to_string(project_id)
-          <> "/tasks?status=completed",
+          <> "/tasks?status=closed",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  expect.expect_status(completed_filter_res, 200)
-  decode_task_titles(simulate.read_body(completed_filter_res))
+  expect.expect_status(closed_filter_res, 200)
+  decode_task_titles(simulate.read_body(closed_filter_res))
   |> expect.equal(["Closed"])
 
   let type_res =
@@ -2526,7 +2526,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
       )
       |> request.set_cookie("sb_session", other_session)
       |> request.set_cookie("sb_csrf", other_csrf)
@@ -3182,7 +3182,7 @@ fn close_task_response(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)

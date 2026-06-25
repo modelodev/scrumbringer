@@ -420,7 +420,7 @@ pub fn close_task(
       )
 
     // The generated SQL name preserves the existing database/API transition term.
-    case sql.tasks_complete(tx, task_id, user_id, version) {
+    case sql.tasks_close(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
         use task <- result.try(mappers.from_close_row(row))
 

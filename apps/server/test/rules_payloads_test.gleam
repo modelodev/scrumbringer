@@ -8,7 +8,7 @@ import scrumbringer_server/http/rules/payloads
 pub fn decode_create_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"trigger\":{\"type\":\"task_completed\",\"task_type_id\":7},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"}}",
+      "{\"name\":\"Rule\",\"goal\":\"Ship\",\"trigger\":{\"type\":\"task_closed\",\"task_type_id\":7},\"action\":{\"type\":\"create_task\",\"template_id\":11},\"status\":{\"type\":\"active\"}}",
       decode.dynamic,
     )
 
@@ -39,7 +39,7 @@ pub fn decode_create_payload_accepts_all_supported_triggers_test() {
   let assert Ok(payloads.CreatePayload(
     trigger: automation.TaskClosed(Some(9)),
     ..,
-  )) = decode_create_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
+  )) = decode_create_trigger("{\"type\":\"task_closed\",\"task_type_id\":9}")
   let assert Ok(payloads.CreatePayload(
     trigger: automation.CardActivated(automation.AnyCard),
     ..,
@@ -110,7 +110,7 @@ pub fn decode_update_payload_accepts_all_supported_triggers_test() {
   let assert Ok(payloads.UpdatePayload(
     trigger: Some(automation.TaskClosed(Some(9))),
     ..,
-  )) = decode_update_trigger("{\"type\":\"task_completed\",\"task_type_id\":9}")
+  )) = decode_update_trigger("{\"type\":\"task_closed\",\"task_type_id\":9}")
   let assert Ok(payloads.UpdatePayload(
     trigger: Some(automation.CardActivated(automation.AnyCard)),
     ..,

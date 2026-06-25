@@ -288,13 +288,13 @@ pub fn ongoing_by_json(value: Option(OngoingBy)) -> json.Json {
 /// status_to_string(Available)        // "available"
 /// status_to_string(Claimed(Taken))   // "claimed"
 /// status_to_string(Claimed(Ongoing)) // "claimed"
-/// status_to_string(Closed)        // "completed"
+/// status_to_string(Closed)        // "closed"
 /// ```
 fn status_to_string(status: TaskPhase) -> String {
   case status {
     Available -> "available"
     Claimed(_) -> "claimed"
-    Closed -> "completed"
+    Closed -> "closed"
   }
 }
 
@@ -309,7 +309,7 @@ fn status_to_string(status: TaskPhase) -> String {
 /// status_to_work_state(Available)        // "available"
 /// status_to_work_state(Claimed(Taken))   // "claimed"
 /// status_to_work_state(Claimed(Ongoing)) // "ongoing"
-/// status_to_work_state(Closed)        // "completed"
+/// status_to_work_state(Closed)        // "closed"
 /// ```
 fn work_state_to_string(work_state: WorkState) -> String {
   task_status.work_state_to_string(work_state)

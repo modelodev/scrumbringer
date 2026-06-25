@@ -350,13 +350,8 @@ fn state_from_public_fields(
   claimed_at: option.Option(String),
   completed_at: option.Option(String),
 ) -> Result(task_state.TaskExecutionState, task_state.TaskExecutionStateError) {
-  let canonical_status = case status_raw {
-    "completed" -> "closed"
-    other -> other
-  }
-
   task_state.from_db(
-    canonical_status,
+    status_raw,
     is_ongoing,
     claimed_by,
     claimed_at,

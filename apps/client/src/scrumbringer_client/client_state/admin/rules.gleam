@@ -46,7 +46,7 @@ pub fn default_model() -> Model {
     rule_form_goal: "",
     rule_form_subject: "task",
     rule_form_task_type_id: "",
-    rule_form_event: "task_completed",
+    rule_form_event: "task_closed",
     rule_form_card_scope: "",
     rule_form_template_search: "",
     rule_form_template_id: "",

@@ -903,7 +903,7 @@ fn view_rule_event_select(config: Config(msg)) -> Element(msg) {
     ]
     _ -> [
       #("task_created", t(config, i18n_text.RuleBuilderTaskCreatedEvent)),
-      #("task_completed", t(config, i18n_text.RuleBuilderTaskClosedEvent)),
+      #("task_closed", t(config, i18n_text.RuleBuilderTaskClosedEvent)),
       #("task_claimed", t(config, i18n_text.RuleBuilderTaskClaimedEvent)),
       #("task_released", t(config, i18n_text.RuleBuilderTaskReleasedEvent)),
     ]
@@ -958,7 +958,7 @@ fn rule_preview_sentence(config: Config(msg)) -> String {
       t(config, i18n_text.RulePreviewTaskClaimed(task_subject_label(config)))
     "task_released" ->
       t(config, i18n_text.RulePreviewTaskReleased(task_subject_label(config)))
-    "task_completed" ->
+    "task_closed" ->
       t(config, i18n_text.RulePreviewTaskClosed(task_subject_label(config)))
     "card_activated" ->
       t(config, i18n_text.RulePreviewCardActivated(card_scope_label(config)))
@@ -1201,7 +1201,7 @@ fn current_rule_trigger(
   case config.rules.rule_form_event {
     "task_created" ->
       opt.Some(automation.TaskCreated(current_rule_task_type_id(config)))
-    "task_completed" ->
+    "task_closed" ->
       opt.Some(automation.TaskClosed(current_rule_task_type_id(config)))
     "task_claimed" ->
       opt.Some(automation.TaskClaimed(current_rule_task_type_id(config)))

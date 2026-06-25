@@ -1,4 +1,4 @@
-//// Card tree scope views for member navigation.
+//// Hierarchy scope views for member navigation.
 
 import domain/card.{type Card, Closed}
 import domain/task.{type Task}
@@ -40,8 +40,8 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   section(
     [
-      attribute.class("card-tree-scope-shell"),
-      attribute.attribute("data-testid", "card-tree-scope"),
+      attribute.class("hierarchy-scope-scope-shell"),
+      attribute.attribute("data-testid", "hierarchy-scope-scope"),
       attribute.attribute("data-scope", scope_id(config.scope)),
     ],
     [
@@ -55,10 +55,10 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_header(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("card-tree-header")], [
+  div([attribute.class("hierarchy-scope-header")], [
     div([], [
       h3([], [text(scope_title(config))]),
-      span([attribute.class("card-tree-subtitle")], [
+      span([attribute.class("hierarchy-scope-subtitle")], [
         text(i18n.t(config.locale, i18n_text.HierarchyScopeSubtitle)),
       ]),
     ]),
@@ -92,7 +92,7 @@ fn view_card_scope(config: Config(msg), card_id: Int) -> Element(msg) {
     config.tasks
     |> list.filter(fn(task) { task.card_id == Some(card_id) })
 
-  div([attribute.class("card-tree-card-scope")], [
+  div([attribute.class("hierarchy-scope-card-scope")], [
     view_card_grid(config, direct_cards),
     view_tasks(
       i18n.t(config.locale, i18n_text.HierarchyScopeDirectTasks),
@@ -104,11 +104,11 @@ fn view_card_scope(config: Config(msg), card_id: Int) -> Element(msg) {
 
 fn view_card_grid(config: Config(msg), cards: List(Card)) -> Element(msg) {
   let dense_class = case list.length(cards) > 4 {
-    True -> " card-tree-grid-dense"
+    True -> " hierarchy-scope-grid-dense"
     False -> ""
   }
   div(
-    [attribute.class("card-tree-grid" <> dense_class)],
+    [attribute.class("hierarchy-scope-grid" <> dense_class)],
     list.map(cards, fn(card) { view_card(config, card) }),
   )
 }
@@ -116,13 +116,13 @@ fn view_card_grid(config: Config(msg), cards: List(Card)) -> Element(msg) {
 fn view_card(config: Config(msg), card: Card) -> Element(msg) {
   button(
     [
-      attribute.class("card-tree-card"),
-      attribute.attribute("data-testid", "card-tree-card"),
+      attribute.class("hierarchy-scope-card"),
+      attribute.attribute("data-testid", "hierarchy-scope-card"),
       event.on_click(config.on_card_opened(card.id)),
     ],
     [
-      span([attribute.class("card-tree-card-title")], [text(card.title)]),
-      span([attribute.class("card-tree-card-meta")], [
+      span([attribute.class("hierarchy-scope-card-title")], [text(card.title)]),
+      span([attribute.class("hierarchy-scope-card-meta")], [
         text(depth_label(
           config.locale,
           config.depth_names,
@@ -138,15 +138,15 @@ fn view_tasks(
   tasks: List(Task),
   on_task_opened: fn(Int) -> msg,
 ) -> Element(msg) {
-  div([attribute.class("card-tree-task-group")], [
+  div([attribute.class("hierarchy-scope-task-group")], [
     h4([], [text(title)]),
     div(
-      [attribute.class("card-tree-task-list")],
+      [attribute.class("hierarchy-scope-task-list")],
       list.map(tasks, fn(task) {
         button(
           [
-            attribute.class("card-tree-task"),
-            attribute.attribute("data-testid", "card-tree-task"),
+            attribute.class("hierarchy-scope-task"),
+            attribute.attribute("data-testid", "hierarchy-scope-task"),
             event.on_click(on_task_opened(task.id)),
           ],
           [text(task.title)],
@@ -158,7 +158,7 @@ fn view_tasks(
 
 fn view_empty_depth(config: Config(msg), depth: Int) -> Element(msg) {
   let name = depth_label(config.locale, config.depth_names, depth)
-  div([attribute.class("card-tree-empty")], [
+  div([attribute.class("hierarchy-scope-empty")], [
     h4([], [
       text(i18n.t(config.locale, i18n_text.HierarchyScopeEmptyDepthTitle)),
     ]),

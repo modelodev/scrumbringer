@@ -17,9 +17,3 @@ CREATE INDEX idx_org_invite_links_email ON org_invite_links(email);
 CREATE UNIQUE INDEX idx_org_invite_links_active_email
   ON org_invite_links(org_id, email)
   WHERE used_at IS NULL AND invalidated_at IS NULL;
-
--- migrate:down
-DROP INDEX idx_org_invite_links_active_email;
-DROP INDEX idx_org_invite_links_email;
-DROP INDEX idx_org_invite_links_org;
-DROP TABLE org_invite_links;

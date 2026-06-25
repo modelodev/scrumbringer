@@ -16,7 +16,7 @@
 //// - **client_view.gleam**: Imports and renders this component
 //// - **features/cards/view_config.gleam**: Builds configs from root state
 //// - **api/cards.gleam**: Handles card data fetching
-//// - **components/card_show.gleam**: Card Show component
+//// - **features/cards/show.gleam**: Card Show component
 
 import gleam/option.{type Option}
 
@@ -26,8 +26,8 @@ import lustre/element/html.{div}
 
 import domain/card.{type Card}
 import domain/task.{type Task}
-import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/list_view
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}

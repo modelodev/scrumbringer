@@ -52,14 +52,3 @@ CREATE TABLE api_token_audit_log (
   endpoint TEXT NOT NULL,
   status INT NOT NULL
 );
-
--- migrate:down
-DROP TABLE api_token_audit_log;
-DROP TABLE api_token_scopes;
-DROP TABLE api_tokens;
-
-ALTER TABLE users
-DROP CONSTRAINT users_password_for_humans_check,
-DROP CONSTRAINT users_user_kind_check,
-ALTER COLUMN password_hash SET NOT NULL,
-DROP COLUMN user_kind;

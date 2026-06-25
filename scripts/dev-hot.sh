@@ -53,25 +53,6 @@ require_free_port() {
   fi
 }
 
-require_migrated_database() {
-  log "Checking database schema"
-  if ! bash "$REPO_ROOT/scripts/ht12-db-schema-check.sh"; then
-    cat >&2 <<EOF
-
-Database schema check failed for:
-  ${DATABASE_URL}
-
-The dev stack would start, but task claim and Pool flows can fail later as
-generic database errors when HT-12 migrations are missing. Apply migrations:
-
-  dbmate --url "${DATABASE_URL}" migrate
-
-Then run scripts/dev-hot.sh again.
-EOF
-    exit 1
-  fi
-}
-
 local_app_url() {
   printf 'http://127.0.0.1:%s' "$CADDY_HTTP_PORT"
 }
@@ -146,8 +127,6 @@ main() {
   require_cmd gleam
   require_cmd caddy
   require_cmd ss
-
-  require_migrated_database
 
   require_free_port "$SB_HOST" "$SB_PORT" "server"
   require_free_port "$DEV_HOST" "$DEV_PORT" "client dev server"

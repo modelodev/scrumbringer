@@ -477,7 +477,7 @@ fn insert_rule(db: pog.Connection, workflow_id: Int) -> Int {
 
   let assert Ok(pog.Returned(rows: [rule_id, ..], ..)) =
     pog.query(
-      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_completed', null, 'completed', true) returning id",
+      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_closed', null, 'closed', true) returning id",
     )
     |> pog.parameter(pog.int(workflow_id))
     |> pog.returning(decoder)

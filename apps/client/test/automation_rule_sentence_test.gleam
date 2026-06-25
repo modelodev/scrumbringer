@@ -67,7 +67,7 @@ fn rule_status(
   }
 }
 
-pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
+pub fn rule_sentence_renders_task_closed_cause_and_effect_test() {
   let html =
     rule_sentence.view(
       locale.En,
@@ -82,7 +82,7 @@ pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
   assert_contains(html, "-&gt; Create Bug triage in the Pool")
 }
 
-pub fn rule_sentence_renders_spanish_task_completed_cause_test() {
+pub fn rule_sentence_renders_spanish_task_closed_cause_test() {
   let html =
     rule_sentence.view(
       locale.Es,

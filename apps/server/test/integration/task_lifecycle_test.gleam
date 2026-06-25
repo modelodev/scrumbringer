@@ -68,7 +68,7 @@ pub fn full_lifecycle_create_claim_close_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),

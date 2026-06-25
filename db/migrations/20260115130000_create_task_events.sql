@@ -10,7 +10,7 @@ CREATE TABLE task_events (
       'task_created',
       'task_claimed',
       'task_released',
-      'task_completed'
+      'task_closed'
     )
   ),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -20,11 +20,3 @@ CREATE INDEX idx_task_events_org_created_at ON task_events(org_id, created_at);
 CREATE INDEX idx_task_events_project_created_at ON task_events(project_id, created_at);
 CREATE INDEX idx_task_events_actor_created_at ON task_events(actor_user_id, created_at);
 CREATE INDEX idx_task_events_task_created_at ON task_events(task_id, created_at);
-
--- migrate:down
-DROP INDEX idx_task_events_task_created_at;
-DROP INDEX idx_task_events_actor_created_at;
-DROP INDEX idx_task_events_project_created_at;
-DROP INDEX idx_task_events_org_created_at;
-
-DROP TABLE task_events;

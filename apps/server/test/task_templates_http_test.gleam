@@ -643,7 +643,7 @@ fn create_rule(
           #(
             "trigger",
             json.object([
-              #("type", json.string("task_completed")),
+              #("type", json.string("task_closed")),
               #("task_type_id", json.int(type_id)),
             ]),
           ),
@@ -670,7 +670,7 @@ fn insert_rule_without_template(
   single_int(
     db,
     "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active)
-     values ($1, 'Historical rule', 'Historical execution only', 'task', 'task_completed', $2, 'completed', false)
+     values ($1, 'Historical rule', 'Historical execution only', 'task', 'task_closed', $2, 'closed', false)
      returning id",
     [pog.int(workflow_id), pog.int(type_id)],
   )

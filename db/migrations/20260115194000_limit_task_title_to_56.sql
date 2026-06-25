@@ -9,7 +9,3 @@ WHERE char_length(title) > 56;
 ALTER TABLE tasks
 ADD CONSTRAINT tasks_title_max_56
 CHECK (char_length(title) <= 56);
-
--- migrate:down
-ALTER TABLE tasks
-DROP CONSTRAINT tasks_title_max_56;

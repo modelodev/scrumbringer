@@ -40,6 +40,7 @@ inventory.
 ## Active Refactor Planning
 
 - [Codebase refactor cleanup plan](./codebase_refactor_cleanup_plan.md)
+- [Post-refactor cleanup audit plan](./post-refactor-cleanup-audit-plan.md)
 
 ## Historical Planning And Audit Context
 

@@ -9,7 +9,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
-import scrumbringer_client/components/card_show
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/pool_prefs
 

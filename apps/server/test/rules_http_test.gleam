@@ -319,7 +319,7 @@ pub fn rule_create_without_template_returns_400_test() {
           #(
             "trigger",
             json.object([
-              #("type", json.string("task_completed")),
+              #("type", json.string("task_closed")),
               #("task_type_id", json.int(type_id)),
             ]),
           ),
@@ -687,7 +687,7 @@ fn create_rule(
           #(
             "trigger",
             json.object([
-              #("type", json.string("task_completed")),
+              #("type", json.string("task_closed")),
               #("task_type_id", json.int(type_id)),
             ]),
           ),
@@ -714,7 +714,7 @@ fn rule_create_json(name: String, type_id: Int, template_id: Int) -> json.Json {
     #(
       "trigger",
       json.object([
-        #("type", json.string("task_completed")),
+        #("type", json.string("task_closed")),
         #("task_type_id", json.int(type_id)),
       ]),
     ),

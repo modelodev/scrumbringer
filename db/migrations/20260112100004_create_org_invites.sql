@@ -11,8 +11,3 @@ CREATE TABLE org_invites (
 
 CREATE INDEX idx_org_invites_org ON org_invites(org_id);
 CREATE INDEX idx_org_invites_used_at ON org_invites(used_at);
-
--- migrate:down
-DROP INDEX idx_org_invites_used_at;
-DROP INDEX idx_org_invites_org;
-DROP TABLE org_invites;

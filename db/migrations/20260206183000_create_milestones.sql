@@ -66,37 +66,3 @@ ALTER TABLE tasks
 
 UPDATE tasks
 SET last_entered_pool_at = CASE WHEN status = 'available' THEN created_at ELSE NULL END;
-
--- migrate:down
-
-ALTER TABLE tasks DROP CONSTRAINT tasks_project_milestone_fk;
-ALTER TABLE tasks DROP CONSTRAINT tasks_project_card_fk;
-ALTER TABLE tasks DROP CONSTRAINT tasks_pool_lifetime_non_negative;
-ALTER TABLE tasks DROP CONSTRAINT task_milestone_exclusive;
-
-DROP INDEX idx_tasks_created_from_rule;
-DROP INDEX idx_tasks_card_status;
-DROP INDEX idx_tasks_project_milestone_status;
-DROP INDEX idx_tasks_milestone;
-
-ALTER TABLE tasks
-  DROP COLUMN created_from_rule_id,
-  DROP COLUMN last_entered_pool_at,
-  DROP COLUMN pool_lifetime_s,
-  DROP COLUMN milestone_id;
-
-ALTER TABLE cards DROP CONSTRAINT cards_project_milestone_fk;
-ALTER TABLE cards DROP CONSTRAINT cards_project_id_id_unique;
-
-DROP INDEX idx_cards_project_milestone;
-DROP INDEX idx_cards_milestone;
-
-ALTER TABLE cards DROP COLUMN milestone_id;
-
-ALTER TABLE milestones DROP CONSTRAINT milestones_project_id_id_unique;
-
-DROP INDEX idx_milestones_one_active;
-DROP INDEX idx_milestones_project_state_position;
-DROP INDEX idx_milestones_project;
-
-DROP TABLE milestones;

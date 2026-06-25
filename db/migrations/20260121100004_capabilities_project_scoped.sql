@@ -59,32 +59,3 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_check_capability_project
   BEFORE INSERT OR UPDATE ON project_member_capabilities
   FOR EACH ROW EXECUTE FUNCTION check_capability_project();
-
--- migrate:down
--- WARNING: This will not restore org-scoped data
-
-DROP TRIGGER IF EXISTS trg_check_capability_project ON project_member_capabilities;
-DROP FUNCTION IF EXISTS check_capability_project();
-
-DROP INDEX IF EXISTS idx_project_member_capabilities_capability;
-DROP INDEX IF EXISTS idx_project_member_capabilities_user;
-DROP TABLE IF EXISTS project_member_capabilities;
-
-ALTER TABLE task_types DROP CONSTRAINT IF EXISTS task_types_capability_id_fkey;
-
-DROP INDEX IF EXISTS idx_capabilities_project;
-ALTER TABLE capabilities DROP CONSTRAINT capabilities_name_project_id_key;
-ALTER TABLE capabilities DROP COLUMN project_id;
-ALTER TABLE capabilities ADD COLUMN org_id BIGINT NOT NULL REFERENCES organizations(id);
-ALTER TABLE capabilities ADD CONSTRAINT capabilities_name_org_id_key UNIQUE(name, org_id);
-CREATE INDEX idx_capabilities_org ON capabilities(org_id);
-
-ALTER TABLE task_types ADD CONSTRAINT task_types_capability_id_fkey
-  FOREIGN KEY (capability_id) REFERENCES capabilities(id);
-
-CREATE TABLE user_capabilities (
-  user_id BIGINT NOT NULL REFERENCES users(id),
-  capability_id BIGINT NOT NULL REFERENCES capabilities(id),
-  PRIMARY KEY (user_id, capability_id)
-);
-CREATE INDEX idx_user_capabilities_user ON user_capabilities(user_id);

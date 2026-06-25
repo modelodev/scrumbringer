@@ -9,8 +9,8 @@ import domain/api_error.{type ApiError, type ApiResult}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/components/card_show
 import scrumbringer_client/features/admin/cards as cards_workflow
+import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/card_show_state
 import scrumbringer_client/features/pool/msg as pool_messages
 

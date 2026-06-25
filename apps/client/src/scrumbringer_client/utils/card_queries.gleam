@@ -115,7 +115,7 @@ pub fn top_level_cards(cards: List(Card)) -> List(Card) {
   }
 }
 
-/// Determine a card depth from the loaded card tree. Root cards are depth 1.
+/// Determine a card depth from the loaded hierarchy. Root cards are depth 1.
 pub fn card_depth(card: Card, cards: List(Card)) -> Int {
   case card.parent_card_id {
     option.None -> 1

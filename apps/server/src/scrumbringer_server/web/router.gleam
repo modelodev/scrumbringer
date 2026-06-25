@@ -374,8 +374,8 @@ fn route_tasks(
       Some(tasks.handle_claim(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "release"] ->
       Some(tasks.handle_release(req, auth_ctx, task_id))
-    ["api", "v1", "tasks", task_id, "complete"] ->
-      Some(tasks.handle_complete(req, auth_ctx, task_id))
+    ["api", "v1", "tasks", task_id, "close"] ->
+      Some(tasks.handle_close(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "dependencies"] ->
       Some(tasks.handle_task_dependencies(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "dependencies", dep_task_id] ->
