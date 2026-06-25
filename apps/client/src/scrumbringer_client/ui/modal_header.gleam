@@ -38,8 +38,8 @@
 //// modal_header.view(modal_header.Config(
 ////   title: card.title,
 ////   icon: None,
-////   badges: [badge.view("Draft", badge.Warning)],
-////   meta: Some(text("2/10 completadas")),
+////   badges: [badge.view("Review", badge.Warning)],
+////   meta: Some(text("2 of 10 items")),
 ////   progress: Some(progress_bar.view(0.2)),
 ////   on_close: CloseClicked,
 //// ))
@@ -101,7 +101,7 @@ pub type Config(msg) {
     icon: Option(Element(msg)),
     /// List of badge elements to display (e.g., status badges)
     badges: List(Element(msg)),
-    /// Optional metadata element (e.g., "2/10 completadas")
+    /// Optional metadata element (e.g., "2 of 10 items")
     meta: Option(Element(msg)),
     /// Optional progress indicator element
     progress: Option(Element(msg)),
@@ -124,7 +124,7 @@ pub type ExtendedConfig(msg) {
     icon: Option(Element(msg)),
     /// List of badge elements to display (e.g., status badges)
     badges: List(Element(msg)),
-    /// Optional metadata element (e.g., "2/10 completadas")
+    /// Optional metadata element (e.g., "2 of 10 items")
     meta: Option(Element(msg)),
     /// Optional progress indicator element
     progress: Option(Element(msg)),
@@ -335,7 +335,7 @@ pub type DetailConfig(msg) {
     title: String,
     /// Optional icon element
     icon: Option(Element(msg)),
-    /// Optional metadata element (e.g., "2/10 completadas")
+    /// Optional metadata element (e.g., "2 of 10 items")
     meta: Option(Element(msg)),
     /// Optional progress indicator element
     progress: Option(Element(msg)),

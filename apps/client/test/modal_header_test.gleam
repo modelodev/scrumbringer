@@ -88,7 +88,7 @@ pub fn renders_icon_when_provided_test() {
 
 pub fn renders_badges_when_provided_test() {
   // Given: Config with badges
-  let badge = span([], [text("Draft")])
+  let badge = span([], [text("Review")])
   let config = Config(..default_config(), badges: [badge])
 
   // When: Render
@@ -96,7 +96,7 @@ pub fn renders_badges_when_provided_test() {
 
   // Then: Badges container is present
   assert_contains(html, "modal-header-badges")
-  assert_contains(html, "Draft")
+  assert_contains(html, "Review")
 }
 
 pub fn hides_badges_when_empty_test() {
@@ -112,7 +112,7 @@ pub fn hides_badges_when_empty_test() {
 
 pub fn renders_meta_when_provided_test() {
   // Given: Config with meta
-  let meta = text("2/10 completadas")
+  let meta = text("2 of 10 items")
   let config = Config(..default_config(), meta: Some(meta))
 
   // When: Render
@@ -120,7 +120,7 @@ pub fn renders_meta_when_provided_test() {
 
   // Then: Meta is rendered
   assert_contains(html, "modal-header-meta")
-  assert_contains(html, "2/10 completadas")
+  assert_contains(html, "2 of 10 items")
 }
 
 pub fn renders_progress_when_provided_test() {
@@ -388,7 +388,7 @@ pub fn view_detail_with_meta_and_progress_test() {
     modal_header.DetailConfig(
       title: "With Meta",
       icon: None,
-      meta: Some(text("2/5 completadas")),
+      meta: Some(text("2 of 5 items")),
       progress: Some(span([], [text("40%")])),
       on_close: Nil,
       class_prefix: "task-show",
@@ -398,7 +398,7 @@ pub fn view_detail_with_meta_and_progress_test() {
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Meta and progress are rendered
-  assert_contains(html, "2/5 completadas")
+  assert_contains(html, "2 of 5 items")
   assert_contains(html, "40%")
   assert_contains(html, "modal-header-meta")
 }
