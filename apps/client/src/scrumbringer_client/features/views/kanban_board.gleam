@@ -26,7 +26,7 @@ import lustre/element/keyed
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/org.{type OrgUser}
 import domain/task as domain_task
-import domain/task_status.{Available, Claimed, Done, Ongoing, Taken}
+import domain/task/state as task_execution_state
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/client_ffi
@@ -549,8 +549,7 @@ fn compute_progress(
       list.filter(tasks, fn(task) {
         card_queries.task_in_card_subtree(task, card.id, all_cards)
       })
-    let completed =
-      list.count(card_tasks, fn(t) { domain_task.status(t) == Done })
+    let completed = list.count(card_tasks, is_closed_task)
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,
@@ -603,8 +602,8 @@ fn show_closed(
 
 fn has_work_in_progress(tasks: List(domain_task.Task)) -> Bool {
   list.any(tasks, fn(task) {
-    case domain_task.status(task) {
-      Claimed(Taken) | Claimed(Ongoing) -> True
+    case task.state {
+      task_execution_state.Claimed(..) -> True
       _ -> False
     }
   })
@@ -625,23 +624,45 @@ fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
 
 fn task_health(tasks: List(domain_task.Task)) -> TaskHealth {
   TaskHealth(
-    available: list.count(tasks, fn(task) {
-      domain_task.status(task) == Available
-    }),
-    claimed: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Taken)
-    }),
-    ongoing: list.count(tasks, fn(task) {
-      domain_task.status(task) == Claimed(Ongoing)
-    }),
+    available: list.count(tasks, is_available_task),
+    claimed: list.count(tasks, is_taken_task),
+    ongoing: list.count(tasks, is_ongoing_task),
     blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
   )
+}
+
+fn is_available_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Available -> True
+    _ -> False
+  }
+}
+
+fn is_taken_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_ongoing_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
+    _ -> False
+  }
+}
+
+fn is_closed_task(task: domain_task.Task) -> Bool {
+  case task.state {
+    task_execution_state.Closed(..) -> True
+    _ -> False
+  }
 }
 
 fn next_relevant_tasks(tasks: List(domain_task.Task)) -> List(domain_task.Task) {
   let active =
     tasks
-    |> list.filter(fn(task) { domain_task.status(task) != Done })
+    |> list.filter(fn(task) { !is_closed_task(task) })
     |> list.sort(by: compare_relevant_tasks)
 
   case active {
@@ -669,11 +690,13 @@ fn compare_relevant_tasks(
 }
 
 fn task_rank(task: domain_task.Task) -> Int {
-  case task.blocked_count > 0, domain_task.status(task) {
+  case task.blocked_count > 0, task.state {
     True, _ -> 0
-    False, Available -> 1
-    False, Claimed(Ongoing) -> 2
-    False, Claimed(Taken) -> 3
-    False, Done -> 4
+    False, task_execution_state.Available -> 1
+    False, task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) ->
+      2
+    False, task_execution_state.Claimed(mode: task_execution_state.Taken, ..) ->
+      3
+    False, task_execution_state.Closed(..) -> 4
   }
 }
