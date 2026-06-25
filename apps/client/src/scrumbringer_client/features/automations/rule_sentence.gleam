@@ -124,9 +124,10 @@ fn card_scope_sentence_en(scope: automation.CardAutomationScope) -> String {
 
 fn card_scope_sentence_es(scope: automation.CardAutomationScope) -> String {
   case scope {
-    automation.AnyCard -> "cualquier card"
+    automation.AnyCard -> "cualquier tarjeta"
     automation.AtDepth(depth) ->
-      "una card de nivel " <> int.to_string(automation.card_depth_to_int(depth))
+      "una tarjeta de nivel "
+      <> int.to_string(automation.card_depth_to_int(depth))
   }
 }
 
@@ -140,8 +141,8 @@ fn task_trigger_sentence(
     En, opt.Some(name) -> "When a " <> name <> " task is " <> localized_event
     En, opt.None -> "When any task is " <> localized_event
     Es, opt.Some(name) ->
-      "Cuando una task " <> name <> " sea " <> localized_event
-    Es, opt.None -> "Cuando cualquier task sea " <> localized_event
+      "Cuando una tarea " <> name <> " sea " <> localized_event
+    Es, opt.None -> "Cuando cualquier tarea sea " <> localized_event
   }
 }
 

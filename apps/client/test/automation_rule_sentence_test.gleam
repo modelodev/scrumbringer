@@ -82,6 +82,21 @@ pub fn rule_sentence_renders_task_completed_cause_and_effect_test() {
   assert_contains(html, "-&gt; Create Bug triage in the Pool")
 }
 
+pub fn rule_sentence_renders_spanish_task_completed_cause_test() {
+  let html =
+    rule_sentence.view(
+      locale.Es,
+      rule(automation.TaskCompleted(opt.Some(5)), [
+        template("Seguimiento", 11),
+      ]),
+      opt.Some("Bug"),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Cuando una tarea Bug sea completada")
+  assert_contains(html, "-&gt; Crear Seguimiento en el Pool")
+}
+
 pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
   let html =
     rule_sentence.view(
@@ -181,6 +196,6 @@ pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Cuando una card de nivel 2 se finalice")
+  assert_contains(html, "Cuando una tarjeta de nivel 2 se finalice")
   assert_contains(html, "-&gt; Crear Revisión de entrega en el Pool")
 }

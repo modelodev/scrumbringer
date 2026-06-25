@@ -1011,15 +1011,16 @@ pub fn translate(text: Text) -> String {
     text.RuleBuilderSaveRule -> "Guardar regla"
     text.RuleBuilderWhen -> "Cuando"
     text.RuleBuilderEvent -> "Evento"
-    text.RuleBuilderCreateTaskFrom -> "Crear task desde"
-    text.RuleBuilderCardScope -> "Alcance de automatización de card"
-    text.RuleBuilderAnyCard -> "Cualquier card"
-    text.RuleBuilderCardsAtLevel(level_name) -> "Cards de nivel: " <> level_name
+    text.RuleBuilderCreateTaskFrom -> "Crear trabajo desde"
+    text.RuleBuilderCardScope -> "Alcance de automatización de tarjeta"
+    text.RuleBuilderAnyCard -> "Cualquier tarjeta"
+    text.RuleBuilderCardsAtLevel(level_name) ->
+      "Tarjetas de nivel: " <> level_name
     text.RuleBuilderSubject -> "Sujeto de la regla"
-    text.RuleBuilderTask -> "Task"
-    text.RuleBuilderCard -> "Card"
-    text.RuleBuilderAnyTaskType -> "Cualquier tipo de task"
-    text.RuleBuilderTaskTemplate -> "Plantilla de task de la regla"
+    text.RuleBuilderTask -> "Tarea"
+    text.RuleBuilderCard -> "Tarjeta"
+    text.RuleBuilderAnyTaskType -> "Cualquier tipo de tarea"
+    text.RuleBuilderTaskTemplate -> "Plantilla de tarea de la regla"
     text.RuleBuilderChooseTemplate -> "Elige una plantilla"
     text.RuleBuilderTaskCreatedEvent -> "se crea"
     text.RuleBuilderTaskCompletedEvent -> "se completa"
@@ -1042,14 +1043,14 @@ pub fn translate(text: Text) -> String {
       "Cuando " <> scope <> " se finalice, se creará trabajo en el Pool."
     text.RulePreviewRequiresReview ->
       "Esta regla usa un objetivo que requiere revisión antes de ejecutarse."
-    text.RulePreviewAnyCard -> "cualquier card"
+    text.RulePreviewAnyCard -> "cualquier tarjeta"
     text.RulePreviewCardLevel(level_name) -> "una " <> level_name
     text.RulePreviewFallbackCardLevel(depth) ->
-      "una card de nivel " <> int.to_string(depth)
-    text.RulePreviewSelectedCardLevel -> "un nivel de card seleccionado"
-    text.RulePreviewAnyTask -> "cualquier task"
-    text.RulePreviewTaskType(task_type_name) -> "una task " <> task_type_name
-    text.RulePreviewSelectedTaskType -> "un tipo de task seleccionado"
+      "una tarjeta de nivel " <> int.to_string(depth)
+    text.RulePreviewSelectedCardLevel -> "un nivel de tarjeta seleccionado"
+    text.RulePreviewAnyTask -> "cualquier tarea"
+    text.RulePreviewTaskType(task_type_name) -> "una tarea " <> task_type_name
+    text.RulePreviewSelectedTaskType -> "un tipo de tarea seleccionado"
     text.RuleTriggerTaskClaimedWord -> "reclamada"
     text.RuleTriggerTaskCompletedWord -> "completada"
     text.RuleTriggerTaskCreatedWord -> "creada"
@@ -1059,15 +1060,15 @@ pub fn translate(text: Text) -> String {
     text.RulePreviewChooseTemplate ->
       "Elige una plantilla antes de guardar esta regla."
     text.RulePreviewCardActivationNoiseWarning ->
-      "Aviso: activar una card con muchas subcards puede crear mucho trabajo en el Pool."
+      "Aviso: activar una tarjeta con muchas subtarjetas puede crear mucho trabajo en el Pool."
     text.RuleBuilderTemplateVariablesUnavailable(variables) ->
       "Esta plantilla usa variables no disponibles para el trigger seleccionado: "
       <> variables
       <> ". Cambia el trigger o elige otra plantilla."
     text.RuleBuilderCardScopeUnavailable(depth) ->
-      "El nivel de card "
+      "El nivel de tarjeta "
       <> int.to_string(depth)
-      <> " ya no está disponible. Elige un nivel existente o cualquier card."
+      <> " ya no está disponible. Elige un nivel existente o cualquier tarjeta."
 
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"

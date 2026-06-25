@@ -416,7 +416,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
   assert_contains(html, "Bug")
   assert_contains(html, "Preview")
   assert_contains(html, "When a Bug task is completed")
-  assert_contains(html, "Create task from")
+  assert_contains(html, "Create work from")
   assert_contains(html, "data-testid=\"automation-template-search\"")
   assert_contains(html, "data-testid=\"automation-template-picker\"")
   assert_contains(html, "data-testid=\"automation-rule-create-template\"")
@@ -579,17 +579,17 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
   assert_contains(html, "Cuando")
   assert_contains(html, "Evento")
   assert_contains(html, "se activa")
-  assert_contains(html, "aria-label=\"Alcance de automatización de card\"")
-  assert_contains(html, ">Cualquier card<")
-  assert_contains(html, ">Cards de nivel: Initiative<")
-  assert_contains(html, ">Cards de nivel: Feature<")
-  assert_contains(html, "Crear task desde")
-  assert_contains(html, "aria-label=\"Plantilla de task de la regla\"")
+  assert_contains(html, "aria-label=\"Alcance de automatización de tarjeta\"")
+  assert_contains(html, ">Cualquier tarjeta<")
+  assert_contains(html, ">Tarjetas de nivel: Initiative<")
+  assert_contains(html, ">Tarjetas de nivel: Feature<")
+  assert_contains(html, "Crear trabajo desde")
+  assert_contains(html, "aria-label=\"Plantilla de tarea de la regla\"")
   assert_contains(html, "Elige una plantilla")
   assert_contains(html, "Vista previa")
   assert_contains(
     html,
-    "Cuando cualquier card se active, se creará trabajo en el Pool.",
+    "Cuando cualquier tarjeta se active, se creará trabajo en el Pool.",
   )
   assert_contains(
     html,
@@ -597,10 +597,10 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
   )
   assert_contains(
     html,
-    "Aviso: activar una card con muchas subcards puede crear mucho trabajo en el Pool.",
+    "Aviso: activar una tarjeta con muchas subtarjetas puede crear mucho trabajo en el Pool.",
   )
   assert_not_contains(html, "Card automation scope")
-  assert_not_contains(html, "Create task from")
+  assert_not_contains(html, "Create work from")
   assert_not_contains(html, "Choose a template")
   assert_not_contains(html, ">Preview<")
   assert_not_contains(html, "When any card is activated")

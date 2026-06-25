@@ -13,3 +13,20 @@ pub fn template_variable_help_uses_trigger_vocabulary_test() {
   let assert True = string.contains(es, "trigger de automatización")
   let assert False = string.contains(es, "eventos de " <> "task")
 }
+
+pub fn rule_builder_spanish_copy_uses_localized_domain_terms_test() {
+  let assert "Crear trabajo desde" =
+    i18n.t(locale.Es, text.RuleBuilderCreateTaskFrom)
+  let assert "Alcance de automatización de tarjeta" =
+    i18n.t(locale.Es, text.RuleBuilderCardScope)
+  let assert "Cualquier tarjeta" = i18n.t(locale.Es, text.RuleBuilderAnyCard)
+  let assert "Cualquier tipo de tarea" =
+    i18n.t(locale.Es, text.RuleBuilderAnyTaskType)
+  let assert "Plantilla de tarea de la regla" =
+    i18n.t(locale.Es, text.RuleBuilderTaskTemplate)
+
+  let noise_warning =
+    i18n.t(locale.Es, text.RulePreviewCardActivationNoiseWarning)
+  let assert False = string.contains(noise_warning, "card")
+  let assert False = string.contains(noise_warning, "task")
+}
