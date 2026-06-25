@@ -32,6 +32,23 @@ import scrumbringer_server/use_case/persisted_field
 // Types
 // =============================================================================
 
+pub type RuleExecutionOutcome {
+  AppliedRuleExecution
+  SuppressedRuleExecution(reason: Option(RuleSuppressionReason))
+  UnknownRuleExecutionOutcome(
+    raw: String,
+    suppression_reason: Option(RuleSuppressionReason),
+  )
+}
+
+pub type RuleSuppressionReason {
+  IdempotentSuppression
+  NotUserTriggeredSuppression
+  NotMatchingSuppression
+  InactiveSuppression
+  UnknownSuppressionReason(raw: String)
+}
+
 /// Aggregated metrics for a rule.
 pub type RuleMetricsSummary {
   RuleMetricsSummary(
@@ -65,8 +82,7 @@ pub type RuleExecution {
     id: Int,
     task_id: Option(Int),
     card_id: Option(Int),
-    outcome: String,
-    suppression_reason: String,
+    outcome: RuleExecutionOutcome,
     user_id: Int,
     user_email: String,
     template_id: Option(Int),
@@ -88,8 +104,7 @@ pub type ProjectRuleExecution {
     task_title: String,
     card_id: Option(Int),
     card_title: String,
-    outcome: String,
-    suppression_reason: String,
+    outcome: RuleExecutionOutcome,
     user_id: Int,
     user_email: String,
     template_id: Option(Int),
@@ -112,6 +127,62 @@ pub type WorkflowMetricsSummary {
     applied_count: Int,
     suppressed_count: Int,
   )
+}
+
+pub fn rule_execution_outcome_from_db(
+  outcome: String,
+  suppression_reason: String,
+) -> RuleExecutionOutcome {
+  let reason = suppression_reason_from_db(suppression_reason)
+
+  case outcome {
+    "applied" -> AppliedRuleExecution
+    "suppressed" -> SuppressedRuleExecution(reason)
+    other -> UnknownRuleExecutionOutcome(raw: other, suppression_reason: reason)
+  }
+}
+
+pub fn rule_execution_outcome_name(outcome: RuleExecutionOutcome) -> String {
+  case outcome {
+    AppliedRuleExecution -> "applied"
+    SuppressedRuleExecution(_) -> "suppressed"
+    UnknownRuleExecutionOutcome(raw:, ..) -> raw
+  }
+}
+
+pub fn rule_execution_suppression_reason_name(
+  outcome: RuleExecutionOutcome,
+) -> Option(String) {
+  case outcome {
+    SuppressedRuleExecution(Some(reason))
+    | UnknownRuleExecutionOutcome(suppression_reason: Some(reason), ..) ->
+      Some(suppression_reason_name(reason))
+
+    AppliedRuleExecution
+    | SuppressedRuleExecution(None)
+    | UnknownRuleExecutionOutcome(suppression_reason: None, ..) -> None
+  }
+}
+
+fn suppression_reason_from_db(raw: String) -> Option(RuleSuppressionReason) {
+  case raw {
+    "" -> None
+    "idempotent" -> Some(IdempotentSuppression)
+    "not_user_triggered" -> Some(NotUserTriggeredSuppression)
+    "not_matching" -> Some(NotMatchingSuppression)
+    "inactive" -> Some(InactiveSuppression)
+    other -> Some(UnknownSuppressionReason(other))
+  }
+}
+
+fn suppression_reason_name(reason: RuleSuppressionReason) -> String {
+  case reason {
+    IdempotentSuppression -> "idempotent"
+    NotUserTriggeredSuppression -> "not_user_triggered"
+    NotMatchingSuppression -> "not_matching"
+    InactiveSuppression -> "inactive"
+    UnknownSuppressionReason(raw) -> raw
+  }
 }
 
 fn rule_metrics_summary_from_row(
@@ -148,8 +219,7 @@ fn rule_execution_from_row(row: sql.RuleExecutionsListRow) -> RuleExecution {
     id: row.id,
     task_id: option_helpers.int_to_option(row.task_id),
     card_id: option_helpers.int_to_option(row.card_id),
-    outcome: row.outcome,
-    suppression_reason: row.suppression_reason,
+    outcome: rule_execution_outcome_from_db(row.outcome, row.suppression_reason),
     user_id: row.user_id,
     user_email: row.user_email,
     template_id: option_helpers.int_to_option(row.template_id),
@@ -172,8 +242,7 @@ fn project_rule_execution_from_row(
     task_title: row.task_title,
     card_id: option_helpers.int_to_option(row.card_id),
     card_title: row.card_title,
-    outcome: row.outcome,
-    suppression_reason: row.suppression_reason,
+    outcome: rule_execution_outcome_from_db(row.outcome, row.suppression_reason),
     user_id: row.user_id,
     user_email: row.user_email,
     template_id: option_helpers.int_to_option(row.template_id),

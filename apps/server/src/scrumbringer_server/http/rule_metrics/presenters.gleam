@@ -160,7 +160,10 @@ fn workflow_summary_json(
 fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
   let fields = [
     #("id", json.int(exec.id)),
-    #("outcome", json.string(exec.outcome)),
+    #(
+      "outcome",
+      json.string(rule_metrics_db.rule_execution_outcome_name(exec.outcome)),
+    ),
     #("created_at", json.string(exec.created_at)),
   ]
 
@@ -174,9 +177,11 @@ fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
     Some(id) -> [#("card_id", json.int(id)), ..fields]
   }
 
-  let fields = case exec.suppression_reason {
-    "" -> fields
-    reason -> [#("suppression_reason", json.string(reason)), ..fields]
+  let fields = case
+    rule_metrics_db.rule_execution_suppression_reason_name(exec.outcome)
+  {
+    None -> fields
+    Some(reason) -> [#("suppression_reason", json.string(reason)), ..fields]
   }
 
   let fields = case exec.user_id {
@@ -216,7 +221,10 @@ fn project_execution_json(
     #("workflow_name", json.string(exec.workflow_name)),
     #("rule_id", json.int(exec.rule_id)),
     #("rule_name", json.string(exec.rule_name)),
-    #("outcome", json.string(exec.outcome)),
+    #(
+      "outcome",
+      json.string(rule_metrics_db.rule_execution_outcome_name(exec.outcome)),
+    ),
     #("created_at", json.string(exec.created_at)),
   ]
 
@@ -240,9 +248,11 @@ fn project_execution_json(
     title -> [#("card_title", json.string(title)), ..fields]
   }
 
-  let fields = case exec.suppression_reason {
-    "" -> fields
-    reason -> [#("suppression_reason", json.string(reason)), ..fields]
+  let fields = case
+    rule_metrics_db.rule_execution_suppression_reason_name(exec.outcome)
+  {
+    None -> fields
+    Some(reason) -> [#("suppression_reason", json.string(reason)), ..fields]
   }
 
   let fields = case exec.user_id {
