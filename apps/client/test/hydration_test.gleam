@@ -1,6 +1,7 @@
 import gleam/option.{type Option, None, Some}
 
 import domain/org_role
+import scrumbringer_client/automation_deep_link
 import scrumbringer_client/hydration
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -256,6 +257,82 @@ pub fn admin_org_level_section_pm_redirects_test() {
   ])
 }
 
+pub fn automation_deep_link_non_manager_redirect_preserves_project_test() {
+  let snap =
+    hydration.Snapshot(
+      auth: hydration.Authed(org_role.Member),
+      projects: hydration.Loaded,
+      is_any_project_manager: False,
+      invite_links: hydration.Loaded,
+      capabilities: hydration.Loaded,
+      my_capability_ids: hydration.Loaded,
+      org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.Loaded,
+      integration_users: hydration.NotAsked,
+      api_tokens: hydration.NotAsked,
+      members: hydration.NotAsked,
+      members_project_id: None,
+      task_types: hydration.NotAsked,
+      task_types_project_id: None,
+      member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
+      work_sessions: hydration.Loaded,
+      me_metrics: hydration.Loaded,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
+    )
+
+  assert_equal(
+    hydration.plan(
+      router.ConfigAutomation(
+        permissions.Workflows,
+        Some(8),
+        automation_deep_link.SelectedRule(21, Some(3)),
+      ),
+      snap,
+    ),
+    [hydration.Redirect(to: member_route(Some(8)))],
+  )
+}
+
+pub fn task_show_deep_link_cold_start_hydrates_member_resources_test() {
+  let snap =
+    hydration.Snapshot(
+      auth: hydration.Authed(org_role.Member),
+      projects: hydration.NotAsked,
+      is_any_project_manager: False,
+      invite_links: hydration.NotAsked,
+      capabilities: hydration.NotAsked,
+      my_capability_ids: hydration.NotAsked,
+      org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
+      integration_users: hydration.NotAsked,
+      api_tokens: hydration.NotAsked,
+      members: hydration.NotAsked,
+      members_project_id: None,
+      task_types: hydration.NotAsked,
+      task_types_project_id: None,
+      member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
+    )
+
+  assert_equal(hydration.plan(task_show_route(Some(8), 55), snap), [
+    hydration.FetchProjects,
+    hydration.FetchCapabilities,
+    hydration.FetchMeCapabilityIds,
+    hydration.FetchWorkSessions,
+    hydration.FetchMeMetrics,
+    hydration.FetchOrgUsersCache,
+    hydration.RefreshMember,
+  ])
+}
+
 pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
   let snap =
     hydration.Snapshot(
@@ -327,4 +404,13 @@ fn member_route(project_id: Option(Int)) -> router.Route {
     None -> url_state.empty()
   }
   router.Member(state)
+}
+
+fn task_show_route(project_id: Option(Int), task_id: Int) -> router.Route {
+  let state = case project_id {
+    Some(id) -> url_state.with_project(url_state.empty(), id)
+    None -> url_state.empty()
+  }
+
+  router.Member(url_state.with_task_show(state, task_id))
 }
