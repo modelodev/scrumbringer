@@ -411,6 +411,8 @@ apps/server/src/scrumbringer_server/sql/
 
 -- name: list_tasks_for_project
 -- Get all available tasks for a project.
+-- Public API projection only: repository/domain code must keep canonical
+-- execution_state='closed' instead of treating 'completed' as internal state.
 SELECT
     t.id,
     t.title,
