@@ -420,11 +420,11 @@ fn update_without_card_refresh(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case admin_route.try_update(model, inner, close_card_dialog_focus_target) {
     opt.Some(result) -> result
-    opt.None -> update_without_task_templates(model, inner, member_refresh)
+    opt.None -> update_without_admin_route(model, inner, member_refresh)
   }
 }
 
-fn update_without_task_templates(
+fn update_without_admin_route(
   model: client_state.Model,
   inner: client_state.PoolMsg,
   member_refresh: fn(client_state.Model) ->
