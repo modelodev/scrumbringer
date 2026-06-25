@@ -75,10 +75,10 @@ pub fn full_lifecycle_create_claim_complete_test() {
     )
   expect.expect_status(complete_res, 200)
 
-  // Verify task is now completed
+  // Verify task is now closed in canonical storage
   let assert Ok(status3) =
     fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
-  status3 |> expect.equal("completed")
+  status3 |> expect.equal("closed")
 
   // Verify claimed_by is cleared on completion
   let assert Ok(claimed_by_cleared) =
@@ -188,5 +188,5 @@ pub fn full_lifecycle_create_claim_release_claim_test() {
 }
 
 fn task_status_query() -> String {
-  "SELECT case when execution_state = 'closed' then 'completed' else execution_state end FROM tasks WHERE id = $1"
+  "SELECT execution_state FROM tasks WHERE id = $1"
 }

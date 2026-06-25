@@ -392,6 +392,7 @@ obsolete_code_violations(Root) ->
         <<"end = $2">>
     ], [".gleam", ".sql"]) ++
     files_containing(Root, [
+        "apps/server/test",
         "apps/server/src/scrumbringer_server/sql",
         "apps/server/src/scrumbringer_server/sql.gleam"
     ], [

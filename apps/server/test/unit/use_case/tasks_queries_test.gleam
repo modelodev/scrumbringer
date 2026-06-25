@@ -359,5 +359,5 @@ pub fn complete_task_fails_for_non_claimer_test() {
 }
 
 fn task_status_query() -> String {
-  "SELECT case when execution_state = 'closed' then 'completed' else execution_state end FROM tasks WHERE id = $1"
+  "SELECT execution_state FROM tasks WHERE id = $1"
 }
