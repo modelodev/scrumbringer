@@ -115,7 +115,7 @@ fn try_engine_crud_update(
   inner: client_state.PoolMsg,
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case
-    automations_update.try_workflows_update(
+    automations_update.try_engines_update(
       model.admin.workflows,
       inner,
       engine_crud_feedback_context(model),
@@ -129,9 +129,9 @@ fn try_engine_crud_update(
 fn apply_engine_update(
   model: client_state.Model,
   inner: client_state.PoolMsg,
-  update: automations_update.WorkflowUpdate(client_state.Msg),
+  update: automations_update.EngineUpdate(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let automations_update.WorkflowUpdate(workflows, fx, auth_policy) = update
+  let automations_update.EngineUpdate(workflows, fx, auth_policy) = update
 
   route_support.apply_auth_check_before(
     model,
@@ -463,11 +463,11 @@ fn cards_auth_error(policy: cards_workflow.AuthPolicy) -> opt.Option(ApiError) {
 }
 
 fn engine_auth_error(
-  policy: automations_update.WorkflowAuthPolicy,
+  policy: automations_update.EngineAuthPolicy,
 ) -> opt.Option(ApiError) {
   case policy {
-    automations_update.NoWorkflowAuthCheck -> opt.None
-    automations_update.CheckWorkflowAuth(err) -> opt.Some(err)
+    automations_update.NoEngineAuthCheck -> opt.None
+    automations_update.CheckEngineAuth(err) -> opt.Some(err)
   }
 }
 

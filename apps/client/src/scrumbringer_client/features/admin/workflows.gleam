@@ -262,20 +262,20 @@ fn rule_expand_toggled(
   admin_rules.Model(..state, rules_expanded: expanded)
 }
 
-pub type WorkflowAuthPolicy {
-  NoWorkflowAuthCheck
-  CheckWorkflowAuth(ApiError)
+pub type EngineAuthPolicy {
+  NoEngineAuthCheck
+  CheckEngineAuth(ApiError)
 }
 
-pub type WorkflowUpdate(parent_msg) {
-  WorkflowUpdate(admin_workflows.Model, Effect(parent_msg), WorkflowAuthPolicy)
+pub type EngineUpdate(parent_msg) {
+  EngineUpdate(admin_workflows.Model, Effect(parent_msg), EngineAuthPolicy)
 }
 
-pub fn try_workflows_update(
+pub fn try_engines_update(
   state: admin_workflows.Model,
   inner: pool_messages.Msg,
   feedback: EngineFeedbackContext(parent_msg),
-) -> opt.Option(WorkflowUpdate(parent_msg)) {
+) -> opt.Option(EngineUpdate(parent_msg)) {
   case inner {
     pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
       engines_project_fetched_ok(state, workflows)
@@ -346,13 +346,13 @@ pub fn try_workflows_update(
 
 fn without_engine_auth_check(
   state: admin_workflows.Model,
-) -> opt.Option(WorkflowUpdate(parent_msg)) {
+) -> opt.Option(EngineUpdate(parent_msg)) {
   with_engine_effect(state, effect.none())
 }
 
 fn without_engine_tuple_auth_check(
   result: #(admin_workflows.Model, Effect(parent_msg)),
-) -> opt.Option(WorkflowUpdate(parent_msg)) {
+) -> opt.Option(EngineUpdate(parent_msg)) {
   let #(state, fx) = result
   with_engine_effect(state, fx)
 }
@@ -360,15 +360,15 @@ fn without_engine_tuple_auth_check(
 fn with_engine_auth_check(
   state: admin_workflows.Model,
   err: ApiError,
-) -> opt.Option(WorkflowUpdate(parent_msg)) {
-  opt.Some(WorkflowUpdate(state, effect.none(), CheckWorkflowAuth(err)))
+) -> opt.Option(EngineUpdate(parent_msg)) {
+  opt.Some(EngineUpdate(state, effect.none(), CheckEngineAuth(err)))
 }
 
 fn with_engine_effect(
   state: admin_workflows.Model,
   fx: Effect(parent_msg),
-) -> opt.Option(WorkflowUpdate(parent_msg)) {
-  opt.Some(WorkflowUpdate(state, fx, NoWorkflowAuthCheck))
+) -> opt.Option(EngineUpdate(parent_msg)) {
+  opt.Some(EngineUpdate(state, fx, NoEngineAuthCheck))
 }
 
 fn engines_project_fetched_ok(

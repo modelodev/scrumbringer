@@ -129,16 +129,16 @@ fn workflows_state(
   )
 }
 
-fn workflow_update(
+fn engine_update(
   state: admin_workflows.Model,
   msg: pool_messages.Msg,
 ) -> #(
   admin_workflows.Model,
   effect.Effect(client_state.Msg),
-  workflows_update.WorkflowAuthPolicy,
+  workflows_update.EngineAuthPolicy,
 ) {
-  let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
-    workflows_update.try_workflows_update(state, msg, engine_feedback_context())
+  let assert opt.Some(workflows_update.EngineUpdate(next, fx, auth_policy)) =
+    workflows_update.try_engines_update(state, msg, engine_feedback_context())
 
   #(next, fx, auth_policy)
 }
@@ -163,74 +163,74 @@ fn rules_update(
   #(next, fx, auth_policy)
 }
 
-pub fn local_workflow_crud_transitions_update_scopes_test() {
+pub fn local_engine_crud_transitions_update_scopes_test() {
   let existing = workflow(1, "Existing", opt.Some(7))
   let created = workflow(2, "Created", opt.Some(7))
   let updated = workflow(2, "Updated", opt.Some(7))
   let state = workflows_state(Loaded([]), Loaded([existing]))
 
   let #(after_create, fx, auth_policy) =
-    workflow_update(state, pool_messages.WorkflowSaved(Ok(created)))
+    engine_update(state, pool_messages.WorkflowSaved(Ok(created)))
   let assert True = after_create.engines_project == Loaded([created, existing])
   let assert opt.None = after_create.engine_dialog_mode
   let assert True = fx != effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let #(editing, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       after_create,
       pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(created)),
     )
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let #(after_update, fx, auth_policy) =
-    workflow_update(editing, pool_messages.WorkflowSaved(Ok(updated)))
+    engine_update(editing, pool_messages.WorkflowSaved(Ok(updated)))
   let assert True = after_update.engines_project == Loaded([updated, existing])
   let assert True = fx != effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let #(deleting, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       after_update,
       pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogDelete(
         updated,
       )),
     )
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let #(after_delete, fx, auth_policy) =
-    workflow_update(deleting, pool_messages.WorkflowDeleteFinished(2, Ok(Nil)))
+    engine_update(deleting, pool_messages.WorkflowDeleteFinished(2, Ok(Nil)))
   let assert True = after_delete.engines_project == Loaded([existing])
   let assert True = fx != effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn local_workflow_fetch_and_dialog_transitions_test() {
+pub fn local_engine_fetch_and_dialog_transitions_test() {
   let loaded = [workflow(1, "Loaded", opt.Some(7))]
   let state = workflows_state(Loaded([]), Loaded([]))
 
   let #(after_fetch, fx, auth_policy) =
-    workflow_update(state, pool_messages.WorkflowsProjectFetched(Ok(loaded)))
+    engine_update(state, pool_messages.WorkflowsProjectFetched(Ok(loaded)))
   let assert True = after_fetch.engines_project == Loaded(loaded)
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let err = ApiError(status: 500, code: "ERROR", message: "Backend failed")
   let #(after_error, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       after_fetch,
       pool_messages.WorkflowsProjectFetched(Error(err)),
     )
   let assert True = after_error.engines_project == Failed(err)
   let assert True = fx == effect.none()
-  let assert workflows_update.CheckWorkflowAuth(auth_err) = auth_policy
+  let assert workflows_update.CheckEngineAuth(auth_err) = auth_policy
   let assert True = auth_err == err
 
   let item = workflow(2, "Edit", opt.Some(7))
   let #(opened, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       after_error,
       pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
     )
@@ -238,36 +238,36 @@ pub fn local_workflow_fetch_and_dialog_transitions_test() {
     opened.engine_dialog_mode
     == opt.Some(admin_workflows.EngineDialogEdit(item))
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 
   let #(closed, fx, auth_policy) =
-    workflow_update(opened, pool_messages.CloseWorkflowDialog)
+    engine_update(opened, pool_messages.CloseWorkflowDialog)
   let assert opt.None = closed.engine_dialog_mode
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_fetch_error_requests_auth_check_test() {
+pub fn try_engines_update_fetch_error_requests_auth_check_test() {
   let err = ApiError(status: 500, code: "ERROR", message: "Backend failed")
 
-  let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
-    workflows_update.try_workflows_update(
+  let assert opt.Some(workflows_update.EngineUpdate(next, fx, auth_policy)) =
+    workflows_update.try_engines_update(
       admin_workflows.default_model(),
       pool_messages.WorkflowsProjectFetched(Error(err)),
       engine_feedback_context(),
     )
-  let assert workflows_update.CheckWorkflowAuth(auth_err) = auth_policy
+  let assert workflows_update.CheckEngineAuth(auth_err) = auth_policy
 
   let assert True = auth_err == err
   let assert True = next.engines_project == Failed(err)
   let assert True = fx == effect.none()
 }
 
-pub fn try_workflows_update_open_dialog_returns_local_update_test() {
+pub fn try_engines_update_open_dialog_returns_local_update_test() {
   let item = workflow(2, "Edit", opt.Some(7))
 
-  let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
-    workflows_update.try_workflows_update(
+  let assert opt.Some(workflows_update.EngineUpdate(next, fx, auth_policy)) =
+    workflows_update.try_engines_update(
       admin_workflows.default_model(),
       pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
       engine_feedback_context(),
@@ -276,16 +276,16 @@ pub fn try_workflows_update_open_dialog_returns_local_update_test() {
   let assert True =
     next.engine_dialog_mode == opt.Some(admin_workflows.EngineDialogEdit(item))
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
+pub fn try_engines_update_crud_created_returns_feedback_effect_test() {
   let existing = workflow(1, "Existing", opt.Some(7))
   let created = workflow(2, "Created", opt.Some(7))
   let state = workflows_state(Loaded([]), Loaded([existing]))
 
-  let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
-    workflows_update.try_workflows_update(
+  let assert opt.Some(workflows_update.EngineUpdate(next, fx, auth_policy)) =
+    workflows_update.try_engines_update(
       state,
       pool_messages.WorkflowSaved(Ok(created)),
       engine_feedback_context(),
@@ -294,36 +294,36 @@ pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
   let assert True = next.engines_project == Loaded([created, existing])
   let assert opt.None = next.engine_dialog_mode
   let assert True = fx != effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_search_change_is_local_test() {
+pub fn try_engines_update_search_change_is_local_test() {
   let #(next, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       admin_workflows.default_model(),
       pool_messages.WorkflowsSearchChanged("release"),
     )
 
   let assert "release" = next.engine_search
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_status_filter_change_is_local_test() {
+pub fn try_engines_update_status_filter_change_is_local_test() {
   let #(next, fx, auth_policy) =
-    workflow_update(
+    engine_update(
       admin_workflows.default_model(),
       pool_messages.WorkflowsStatusFilterChanged("paused"),
     )
 
   let assert "paused" = next.engine_status_filter
   let assert True = fx == effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_ignores_non_workflow_messages_test() {
+pub fn try_engines_update_ignores_non_workflow_messages_test() {
   let assert opt.None =
-    workflows_update.try_workflows_update(
+    workflows_update.try_engines_update(
       admin_workflows.default_model(),
       pool_messages.MemberPoolVisibilityChanged("all-open"),
       engine_feedback_context(),
@@ -660,7 +660,7 @@ pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
   let assert workflows_update.NoRulesAuthCheck = auth_policy
 }
 
-pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_test() {
+pub fn try_engines_update_created_updates_project_scope_and_emits_feedback_test() {
   let existing = workflow(1, "Existing", opt.Some(7))
   let created = workflow(2, "Created", opt.Some(7))
   let workflows =
@@ -678,13 +678,13 @@ pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_tes
     )
 
   let #(next, fx, auth_policy) =
-    workflow_update(workflows, pool_messages.WorkflowSaved(Ok(created)))
+    engine_update(workflows, pool_messages.WorkflowSaved(Ok(created)))
 
   let assert True = next.engines_project == Loaded([created, existing])
   let assert True = next.engines_org == Loaded([])
   let assert opt.None = next.engine_dialog_mode
   let assert True = fx != effect.none()
-  let assert workflows_update.NoWorkflowAuthCheck = auth_policy
+  let assert workflows_update.NoEngineAuthCheck = auth_policy
 }
 
 pub fn try_rules_update_updated_replaces_loaded_rule_and_emits_feedback_test() {
