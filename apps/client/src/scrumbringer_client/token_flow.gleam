@@ -115,7 +115,7 @@ pub fn update(
     Finished(Ok(result)) -> #(Model(..model, state: Done), Succeeded(result))
 
     Finished(Error(err)) ->
-      handle_completed_error(model, err, submit_error_state)
+      handle_finished_error(model, err, submit_error_state)
 
     ErrorDismissed -> #(Model(..model, submit_error: option.None), NoOp)
   }
@@ -145,7 +145,7 @@ fn handle_ready_submit(model: Model, email: String) -> #(Model, Action(result)) 
   }
 }
 
-fn handle_completed_error(
+fn handle_finished_error(
   model: Model,
   err: ApiError,
   submit_error_state: fn(String, ApiError) -> State,

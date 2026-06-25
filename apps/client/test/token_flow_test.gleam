@@ -107,7 +107,7 @@ pub fn submit_with_valid_password_triggers_submit_action_test() {
     action
 }
 
-pub fn completed_success_moves_to_done_and_emits_action_test() {
+pub fn finished_success_moves_to_done_and_emits_action_test() {
   let #(model, _) = token_flow.init("token")
 
   let #(next, action) =
@@ -117,7 +117,7 @@ pub fn completed_success_moves_to_done_and_emits_action_test() {
   let assert token_flow.Succeeded(7) = action
 }
 
-pub fn completed_error_uses_handler_and_sets_submit_error_test() {
+pub fn finished_error_uses_handler_and_sets_submit_error_test() {
   let #(model, _) = token_flow.init("token")
 
   let #(model, _) =
