@@ -109,9 +109,9 @@ fn apply_dependencies_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let dependency_workflow.Update(local, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    dependency_auth_error(auth_policy),
+    route_support.auth_check_before(dependency_auth_error(auth_policy)),
     fn() { #(set_dependencies_model(model, local), fx) },
   )
 }
@@ -143,9 +143,9 @@ fn apply_notes_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_notes_update.Update(notes, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    note_auth_error(auth_policy),
+    route_support.auth_check_before(note_auth_error(auth_policy)),
     fn() { #(set_member_notes(model, notes), fx) },
   )
 }
@@ -205,7 +205,11 @@ fn apply_task_create_policy(
       #(next, effect.batch([fx, refresh_fx, post_create_fx]))
     }
     task_create_update.CheckAuthBefore(err) ->
-      route_support.apply_auth_check_before(model, opt.Some(err), apply_update)
+      route_support.apply_auth_check(
+        model,
+        route_support.CheckAuthBefore(err),
+        apply_update,
+      )
   }
 }
 
@@ -237,7 +241,7 @@ fn apply_task_mutation_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_mutation_update.Update(pool, fx, policy) = update
 
-  apply_task_mutation_policy(policy, member_refresh, fn() {
+  apply_task_mutation_policy(model, policy, member_refresh, fn() {
     let next = root.set_member_pool(model, pool)
     #(close_deleted_task_show_if_open(next, inner), fx)
   })
@@ -268,6 +272,7 @@ fn close_deleted_task_show_if_open(
 }
 
 fn apply_task_mutation_policy(
+  model: client_state.Model,
   policy: task_mutation_update.Policy,
   member_refresh: fn(client_state.Model) ->
     #(client_state.Model, effect.Effect(client_state.Msg)),
@@ -287,7 +292,11 @@ fn apply_task_mutation_policy(
       #(next, effect.batch([fx, refresh_fx]))
     }
     task_mutation_update.CheckAuthAfter(err) ->
-      route_support.apply_auth_check_after(opt.Some(err), apply_update)
+      route_support.apply_auth_check(
+        model,
+        route_support.CheckAuthAfter(err),
+        apply_update,
+      )
   }
 }
 
@@ -331,9 +340,11 @@ fn apply_task_show_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let task_show_update.Update(local, fx, auth_policy) = update
 
-  route_support.apply_auth_check_after(task_show_auth_error(auth_policy), fn() {
-    #(set_task_show_model(model, local), fx)
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_after(task_show_auth_error(auth_policy)),
+    fn() { #(set_task_show_model(model, local), fx) },
+  )
 }
 
 fn task_show_auth_error(
