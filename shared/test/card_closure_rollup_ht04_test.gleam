@@ -75,7 +75,7 @@ pub fn closed_manually_does_not_count_as_done_close_test() {
   let assert False = closure.task_closed_with_done_reason(task)
 }
 
-pub fn closed_card_outcome_all_tasks_done_when_all_leaves_done_test() {
+pub fn closed_card_outcome_all_tasks_closed_when_all_leaves_done_test() {
   let card =
     closed_card_with_structure(
       1,
@@ -95,7 +95,7 @@ pub fn closed_card_outcome_all_tasks_done_when_all_leaves_done_test() {
     closure.closed_card_outcome(card, tree)
 }
 
-pub fn closed_card_outcome_without_all_tasks_done_when_any_leaf_uses_other_reason_test() {
+pub fn closed_card_outcome_without_all_tasks_closed_when_any_leaf_uses_other_reason_test() {
   let card =
     closed_card_with_structure(
       1,
