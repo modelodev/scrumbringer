@@ -19,12 +19,6 @@ pub type ManageStructure {
   ManageStructure
 }
 
-/// ManageCatalog allows changing project taxonomies such as task types,
-/// capabilities, workflow templates, and card level profiles.
-pub type ManageCatalog {
-  ManageCatalog
-}
-
 /// ExecuteWork allows participating in pull execution:
 /// seeing the Pool, claiming, releasing, completing tasks, and creating
 /// operational tasks inside active task groups.
@@ -80,13 +74,6 @@ pub fn require_manage_structure(
   actor: ProjectActor,
   project_id: project_id.ProjectId,
 ) -> Result(Authorized(ManageStructure), AuthorizationError) {
-  require_manager_privilege(actor, project_id)
-}
-
-pub fn require_manage_catalog(
-  actor: ProjectActor,
-  project_id: project_id.ProjectId,
-) -> Result(Authorized(ManageCatalog), AuthorizationError) {
   require_manager_privilege(actor, project_id)
 }
 
