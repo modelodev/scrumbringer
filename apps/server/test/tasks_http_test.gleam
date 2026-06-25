@@ -514,6 +514,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
+// Coverage marker: do_not_emit_audit_event_on_conflict, conflict_does_not_emit_audit.
 pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -600,6 +601,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 
   let claim_res = handler(claim_req)
   expect.expect_status(claim_res, 200)
+  count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let claim2_req =
     simulate.request(
@@ -615,6 +617,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   expect.expect_status(claim2_res, 409)
   string.contains(simulate.read_body(claim2_res), "CONFLICT_CLAIMED")
   |> expect.is_true
+  count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
@@ -633,6 +636,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   expect.expect_status(patch_res, 409)
   string.contains(simulate.read_body(patch_res), "CONFLICT_VERSION")
   |> expect.is_true
+  count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let release_bad_req =
     simulate.request(
@@ -648,6 +652,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   expect.expect_status(release_bad_res, 409)
   string.contains(simulate.read_body(release_bad_res), "CONFLICT_VERSION")
   |> expect.is_true
+  count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let release_ok_req =
     simulate.request(
@@ -661,6 +666,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 
   let release_ok_res = handler(release_ok_req)
   expect.expect_status(release_ok_res, 200)
+  count_audit_events_for_task(db, task_id) |> expect.equal(3)
 
   let complete_bad_req =
     simulate.request(
@@ -676,6 +682,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   expect.expect_status(complete_bad_res, 422)
   string.contains(simulate.read_body(complete_bad_res), "VALIDATION_ERROR")
   |> expect.is_true
+  count_audit_events_for_task(db, task_id) |> expect.equal(3)
 }
 
 pub fn audit_events_persist_for_lifecycle_actions_test() {
@@ -2962,6 +2969,12 @@ fn count_audit_events(
     "select count(*) from audit_events where task_id = $1 and event_type = $2",
     [pog.int(task_id), pog.text(event_type)],
   )
+}
+
+fn count_audit_events_for_task(db: pog.Connection, task_id: Int) -> Int {
+  single_int(db, "select count(*) from audit_events where task_id = $1", [
+    pog.int(task_id),
+  ])
 }
 
 fn count_audit_events_for_actor(
