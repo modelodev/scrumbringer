@@ -32,6 +32,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/seed_db
+import scrumbringer_server/seed_pools
 import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/rules_engine
 
@@ -155,32 +156,12 @@ pub fn visual_qa_config() -> SeedConfig {
 }
 
 // =============================================================================
-// Data Pools
+// Seed Coverage Pools
 // =============================================================================
 
-/// Pool of realistic task titles.
-pub fn task_title_pool() -> List(String) {
-  [
-    "Fix login button", "Dashboard slow", "Upload fails", "Session timeout",
-    "Email delayed", "Dark mode support", "Export to PDF", "Notifications",
-    "User profile bug", "Search not working", "API rate limiting",
-    "Mobile responsive", "Password reset", "Two-factor auth", "Audit logging",
-    "Performance tuning", "Cache invalidation", "Database indexing",
-    "Error handling", "Input validation",
-  ]
-}
-
-/// Pool of realistic card titles.
-pub fn card_title_pool() -> List(String) {
-  [
-    "Sprint Planning", "Architecture", "Retrospective", "Release Notes",
-    "Backend Refactor", "API Cleanup", "DB Migration", "Documentation",
-    "Security Audit", "Performance",
-  ]
-}
-
-/// Pool of valid card colors.
-pub fn card_color_pool() -> List(card.CardColor) {
+/// Card profile colors stay in the builder because HT-12 seed coverage gates
+/// verify card-profile coverage directly against this scenario source.
+fn card_color_pool() -> List(card.CardColor) {
   [
     card.Gray,
     card.Red,
@@ -190,33 +171,6 @@ pub fn card_color_pool() -> List(card.CardColor) {
     card.Blue,
     card.Purple,
     card.Pink,
-  ]
-}
-
-/// Pool of user emails for generated users.
-fn user_email_pool() -> List(String) {
-  [
-    "member@example.com", "pm@example.com", "beta@example.com",
-    "dev@example.com", "qa@example.com", "lead@example.com",
-    "intern@example.com", "contractor@example.com", "ops@example.com",
-    "design@example.com", "data@example.com",
-  ]
-}
-
-/// Pool of workflow names.
-fn workflow_name_pool() -> List(String) {
-  [
-    "Bug Resolution", "Feature Development", "Card Automation",
-    "Simple Bug Flow", "Code Review", "QA Process", "Release Pipeline",
-    "Hotfix Flow",
-  ]
-}
-
-/// Pool of capability names.
-fn capability_name_pool() -> List(String) {
-  [
-    "Engineering", "Product", "Operations", "Security", "Design", "QA",
-    "Platform", "Data",
   ]
 }
 
@@ -299,7 +253,7 @@ fn build_users(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let emails = list.take(user_email_pool(), config.user_count - 1)
+  let emails = list.take(seed_pools.user_emails(), config.user_count - 1)
   let active_count = config.user_count - 1 - config.inactive_user_count
 
   use user_ids <- result.try(
@@ -458,7 +412,7 @@ fn build_capabilities(
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
   let active_projects = active_project_ids(state)
-  let names = capability_name_pool()
+  let names = seed_pools.capability_names()
 
   use capability_ids <- result.try(
     list.index_map(active_projects, fn(project_id, proj_idx) {
@@ -566,7 +520,7 @@ fn build_cards(
   config: SeedConfig,
 ) -> Result(BuildState, String) {
   let active_projects = active_project_ids(state)
-  let titles = card_title_pool()
+  let titles = seed_pools.card_titles()
   let colors = card_color_pool()
 
   use card_ids_by_project <- result.try(
@@ -673,7 +627,7 @@ fn build_workflows(
   config: SeedConfig,
 ) -> Result(BuildState, String) {
   let active_projects = active_project_ids(state)
-  let wf_names = workflow_name_pool()
+  let wf_names = seed_pools.automation_engine_names()
 
   use workflow_ids_by_project <- result.try(
     list.index_map(active_projects, fn(project_id, proj_idx) {
@@ -901,7 +855,7 @@ fn build_tasks(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let titles = task_title_pool()
+  let titles = seed_pools.task_titles()
   let priorities = config.priority_distribution
   let execution_state_pool =
     execution_state_pool_from(config.status_distribution)
