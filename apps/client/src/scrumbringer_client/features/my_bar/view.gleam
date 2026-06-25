@@ -332,7 +332,7 @@ pub fn view_member_metrics_panel(
         window_days: window_days,
         claimed_count: claimed_count,
         released_count: released_count,
-        completed_count: completed_count,
+        completed_count: closed_count,
       ) = metrics
 
       div([attribute.class("panel")], [
@@ -349,7 +349,7 @@ pub fn view_member_metrics_panel(
               text(int.to_string(released_count))
             }),
             data_table.column(t(i18n_text.Closed), fn(_) {
-              text(int.to_string(completed_count))
+              text(int.to_string(closed_count))
             }),
           ])
           |> data_table.with_rows([metrics], fn(_) { "metrics" })

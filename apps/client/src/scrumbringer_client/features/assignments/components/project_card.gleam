@@ -217,7 +217,7 @@ fn project_metrics_view(
     available_count: available_count,
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
-    completed_count: completed_count,
+    completed_count: closed_count,
     release_rate_percent: release_rate_percent,
     ..,
   ) = metrics
@@ -235,7 +235,7 @@ fn project_metrics_view(
       text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.Closed) <> ": " <> int.to_string(completed_count)),
+      text(t(i18n_text.Closed) <> ": " <> int.to_string(closed_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
       text(

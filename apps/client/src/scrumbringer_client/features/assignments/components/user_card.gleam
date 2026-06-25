@@ -206,7 +206,7 @@ fn user_metrics_view(
   let OrgMetricsUserOverview(
     claimed_count: claimed_count,
     released_count: released_count,
-    completed_count: completed_count,
+    completed_count: closed_count,
     ongoing_count: ongoing_count,
     last_claim_at: last_claim_at,
     ..,
@@ -220,7 +220,7 @@ fn user_metrics_view(
       text(t(i18n_text.Released) <> ": " <> int.to_string(released_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.Closed) <> ": " <> int.to_string(completed_count)),
+      text(t(i18n_text.Closed) <> ": " <> int.to_string(closed_count)),
     ]),
     div([attribute.class("assignments-metrics-item")], [
       text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),
