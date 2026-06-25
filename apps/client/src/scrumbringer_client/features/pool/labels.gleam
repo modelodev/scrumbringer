@@ -18,10 +18,6 @@ pub fn drag(locale: Locale) -> String {
   i18n.t(locale, i18n_text.Drag)
 }
 
-pub fn complete(locale: Locale) -> String {
-  i18n.t(locale, i18n_text.Complete)
-}
-
 pub fn parent_card(locale: Locale) -> String {
   i18n.t(locale, i18n_text.ParentCardLabel)
 }

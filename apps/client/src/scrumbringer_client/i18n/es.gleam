@@ -499,7 +499,6 @@ pub fn translate(text: Text) -> String {
       "Nada activo. Empieza una tarea de Mis tareas cuando vayas a trabajar."
     text.NowWorkingErrorPrefix -> "Error En curso: "
     text.Pause -> "Pausar"
-    text.Complete -> "Completar"
     text.Release -> "Liberar"
     text.TaskNumber(task_id) -> "Tarea #" <> int.to_string(task_id)
 

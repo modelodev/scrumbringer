@@ -490,7 +490,6 @@ pub fn translate(text: Text) -> String {
       "Nothing active. Start a task from My Tasks when you are ready to work."
     text.NowWorkingErrorPrefix -> "Working now error: "
     text.Pause -> "Pause"
-    text.Complete -> "Complete"
     text.Release -> "Release"
     text.TaskNumber(task_id) -> "Task #" <> int.to_string(task_id)
 

@@ -5,7 +5,6 @@ pub fn pool_labels_translate_task_actions_without_root_model_test() {
   let assert "Claim" = labels.claim(locale.En)
   let assert "Release" = labels.release(locale.En)
   let assert "Drag" = labels.drag(locale.En)
-  let assert "Complete" = labels.complete(locale.En)
 }
 
 pub fn pool_labels_translate_hover_labels_without_root_model_test() {

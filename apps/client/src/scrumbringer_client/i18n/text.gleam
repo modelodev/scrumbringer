@@ -416,7 +416,6 @@ pub type Text {
   NowWorkingNone
   NowWorkingErrorPrefix
   Pause
-  Complete
   Release
   TaskNumber(task_id: Int)
 
