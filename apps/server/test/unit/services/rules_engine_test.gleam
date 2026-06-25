@@ -4,7 +4,6 @@
 //// Uses fixtures.gleam for test setup.
 
 import domain/automation
-import domain/task_status
 import fixtures
 import gleam/option.{None, Some}
 import gleeunit
@@ -40,7 +39,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       workflow_id,
       Some(type_id),
       "Bug Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -51,13 +50,13 @@ pub fn evaluate_rule_applies_matching_rule_test() {
 
   // When: Fire event that matches rule criteria
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -92,7 +91,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -107,13 +106,13 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -147,7 +146,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -157,13 +156,13 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -205,7 +204,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -220,13 +219,13 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
 
   // When: Fire event
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 

@@ -9,7 +9,6 @@ import domain/card as domain_card
 import domain/org_role
 import domain/project_role
 import domain/task/state as task_state
-import domain/task_status
 import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
@@ -70,6 +69,22 @@ pub type Entity {
 pub type RuleResourceType {
   TaskResource
   CardResource
+}
+
+pub fn task_available() -> task_state.TaskExecutionState {
+  task_state.Available
+}
+
+pub fn task_claimed() -> task_state.TaskExecutionState {
+  task_state.Claimed(0, "", task_state.Taken)
+}
+
+pub fn task_ongoing() -> task_state.TaskExecutionState {
+  task_state.Claimed(0, "", task_state.Ongoing)
+}
+
+pub fn task_done() -> task_state.TaskExecutionState {
+  task_state.Closed(task_state.Done, "", 0)
 }
 
 // =============================================================================
@@ -349,14 +364,14 @@ pub fn create_rule(
   workflow_id: Int,
   task_type_id: Option(Int),
   name: String,
-  to_state: task_status.TaskPhase,
+  to_state: task_state.TaskExecutionState,
   template_id: Int,
 ) -> Result(Int, String) {
   let payload =
     build_rule_payload(
       TaskResource,
       name,
-      task_status.task_status_to_string(to_state),
+      task_state_to_trigger_string(to_state),
       task_type_id,
       template_id,
     )
@@ -1132,16 +1147,16 @@ pub fn with_bearer(req: wisp.Request, token: String) -> wisp.Request {
 }
 
 /// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
-pub fn task_event_status(
+pub fn task_event_state(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskPhase),
-  to_state: task_status.TaskPhase,
+  from_state: Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
   task_type_id: Int,
 ) -> rules_engine.StateChange {
-  task_event_status_with_card(
+  task_event_state_with_card(
     task_id,
     project_id,
     org_id,
@@ -1154,17 +1169,17 @@ pub fn task_event_status(
 }
 
 /// Create a StateChange for a task resource with card_id.
-pub fn task_event_status_with_card(
+pub fn task_event_state_with_card(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskPhase),
-  to_state: task_status.TaskPhase,
+  from_state: Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
   task_type_id: Int,
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
-  task_event_status_full(
+  task_event_state_full(
     task_id,
     project_id,
     org_id,
@@ -1178,13 +1193,13 @@ pub fn task_event_status_with_card(
 }
 
 /// Create a StateChange for a task with full control (user_triggered, card_id).
-pub fn task_event_status_full(
+pub fn task_event_state_full(
   task_id: Int,
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(task_status.TaskPhase),
-  to_state: task_status.TaskPhase,
+  from_state: Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
   task_type_id: Int,
   user_triggered: Bool,
   card_id: Option(Int),
@@ -1200,31 +1215,32 @@ pub fn task_event_status_full(
 
   rules_engine.TaskChange(
     ctx: ctx,
-    from_state: option.map(from_state, task_phase_to_execution_state(_, user_id)),
-    to_state: task_phase_to_execution_state(to_state, user_id),
+    from_state: option.map(from_state, fill_task_state_metadata(_, user_id)),
+    to_state: fill_task_state_metadata(to_state, user_id),
     user_id: user_id,
     user_triggered: user_triggered,
   )
 }
 
-fn task_phase_to_execution_state(
-  phase: task_status.TaskPhase,
+fn fill_task_state_metadata(
+  state: task_state.TaskExecutionState,
   user_id: Int,
 ) -> task_state.TaskExecutionState {
-  case phase {
-    task_status.Available -> task_state.Available
-    task_status.Claimed(mode) ->
-      task_state.Claimed(user_id, "", task_claim_mode_to_execution_mode(mode))
-    task_status.Done -> task_state.Closed(task_state.Done, "", user_id)
+  case state {
+    task_state.Available -> task_state.Available
+    task_state.Claimed(_, claimed_at, mode) ->
+      task_state.Claimed(user_id, claimed_at, mode)
+    task_state.Closed(reason, closed_at, _) ->
+      task_state.Closed(reason, closed_at, user_id)
   }
 }
 
-fn task_claim_mode_to_execution_mode(
-  mode: task_status.ClaimedState,
-) -> task_state.TaskClaimMode {
-  case mode {
-    task_status.Taken -> task_state.Taken
-    task_status.Ongoing -> task_state.Ongoing
+fn task_state_to_trigger_string(state: task_state.TaskExecutionState) -> String {
+  case state {
+    task_state.Available -> "available"
+    task_state.Claimed(mode: task_state.Taken, ..) -> "claimed"
+    task_state.Claimed(mode: task_state.Ongoing, ..) -> "ongoing"
+    task_state.Closed(..) -> "completed"
   }
 }
 

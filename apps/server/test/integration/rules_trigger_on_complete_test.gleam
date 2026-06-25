@@ -7,7 +7,6 @@
 //// in handlers.gleam, so errors could be silently swallowed.
 
 import domain/card as domain_card
-import domain/task_status
 import fixtures
 import gleam/http
 import gleam/int
@@ -101,7 +100,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -212,7 +211,7 @@ pub fn task_created_rule_does_not_cascade_from_automation_created_task_test() {
       workflow_id,
       None,
       "On Task Created",
-      task_status.Available,
+      fixtures.task_available(),
       template_id,
     )
 
@@ -498,7 +497,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
       workflow_id,
       Some(feature_type_id),
       "Feature Done",
-      task_status.Done,
+      fixtures.task_done(),
       template1_id,
     )
   let assert Ok(Nil) =
@@ -615,7 +614,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -716,7 +715,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       workflow_id,
       Some(type_id),
       "Task Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -913,7 +912,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1023,7 +1022,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 

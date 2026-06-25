@@ -5,7 +5,6 @@
 
 import domain/automation
 import domain/card as domain_card
-import domain/task_status
 import fixtures
 import gleam/dynamic/decode
 import gleam/int
@@ -57,7 +56,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -77,13 +76,13 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
 
   // Fire the event
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       bug_type_id,
     )
 
@@ -129,7 +128,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -139,13 +138,13 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -180,7 +179,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -191,13 +190,13 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
 
   // Event with user_triggered = False
   let event =
-    fixtures.task_event_status_full(
+    fixtures.task_event_state_full(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
       False,
       None,
@@ -408,7 +407,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -418,13 +417,13 @@ pub fn variable_origin_task_resolves_to_link_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       bug_type_id,
     )
 
@@ -555,7 +554,7 @@ pub fn variable_trigger_resolves_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -565,13 +564,13 @@ pub fn variable_trigger_resolves_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -619,7 +618,7 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
       workflow_id,
       None,
       "On Create",
-      task_status.Available,
+      fixtures.task_available(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -630,13 +629,13 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
 
   // Task creation event (None -> available)
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
       None,
-      task_status.Available,
+      fixtures.task_available(),
       type_id,
     )
 
@@ -687,7 +686,7 @@ pub fn variable_project_resolves_to_name_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -697,13 +696,13 @@ pub fn variable_project_resolves_to_name_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -746,7 +745,7 @@ pub fn variable_user_resolves_to_email_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -756,13 +755,13 @@ pub fn variable_user_resolves_to_email_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -820,7 +819,7 @@ pub fn task_trigger_variables_combined_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -840,13 +839,13 @@ pub fn task_trigger_variables_combined_test() {
 
   // Fire the event
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       bug_type_id,
     )
 
@@ -885,7 +884,7 @@ pub fn task_trigger_variables_combined_test() {
   |> string.contains("[Task #" <> int.to_string(task_id))
   |> expect.is_true
   created_desc
-  |> string.contains(task_status.task_status_to_string(task_status.Done))
+  |> string.contains("completed")
   |> expect.is_true
 }
 
@@ -945,7 +944,7 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      task_status.Done,
+      fixtures.task_done(),
       template1_id,
     )
 
@@ -982,13 +981,13 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       bug_type_id,
     )
 
@@ -1041,7 +1040,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1053,13 +1052,13 @@ pub fn rule_without_task_type_matches_all_types_test() {
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
 
   let bug_event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       bug_task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       bug_type_id,
     )
 
@@ -1078,13 +1077,13 @@ pub fn rule_without_task_type_matches_all_types_test() {
     )
 
   let feature_event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       feature_task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       feature_type_id,
     )
 
@@ -1120,7 +1119,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1130,13 +1129,13 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -1168,7 +1167,7 @@ pub fn inactive_rule_does_not_fire_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1182,13 +1181,13 @@ pub fn inactive_rule_does_not_fire_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -1225,7 +1224,7 @@ pub fn wrong_task_type_does_not_match_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Only",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1243,13 +1242,13 @@ pub fn wrong_task_type_does_not_match_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       feature_type_id,
     )
 
@@ -1278,7 +1277,7 @@ pub fn wrong_to_state_does_not_match_test() {
       workflow_id,
       None,
       "On Complete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1290,13 +1289,13 @@ pub fn wrong_to_state_does_not_match_test() {
 
   // Event with 'claimed' state (not 'completed')
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Available),
-      task_status.Claimed(task_status.Taken),
+      Some(fixtures.task_available()),
+      fixtures.task_claimed(),
       type_id,
     )
 
@@ -1337,13 +1336,13 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
     )
 
   let created_event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
       None,
-      task_status.Available,
+      fixtures.task_available(),
       type_id,
     )
   let assert Ok([
@@ -1352,13 +1351,13 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
   created_matched |> expect.equal(created_rule_id)
 
   let released_event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Available,
+      Some(fixtures.task_claimed()),
+      fixtures.task_available(),
       type_id,
     )
   let assert Ok([
@@ -1400,7 +1399,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1418,13 +1417,13 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project2_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type2_id,
     )
 
@@ -1454,7 +1453,7 @@ pub fn task_rule_does_not_fire_for_card_event_test() {
       workflow_id,
       None,
       "Task Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -1562,7 +1561,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1575,13 +1574,13 @@ pub fn rule_execution_applied_is_persisted_test() {
     fixtures.query_int(db, "select count(*)::int from rule_executions", [])
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 
@@ -1637,7 +1636,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       workflow_id,
       None,
       "Any Done",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1647,13 +1646,13 @@ pub fn rule_execution_idempotency_enforced_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let event =
-    fixtures.task_event_status(
+    fixtures.task_event_state(
       task_id,
       project_id,
       org_id,
       user_id,
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(fixtures.task_claimed()),
+      fixtures.task_done(),
       type_id,
     )
 

@@ -3,7 +3,6 @@
 //// Tests workflow create/update/delete operations and active cascade behavior.
 //// Uses fixtures.gleam for test setup.
 
-import domain/task_status
 import fixtures
 import gleam/option.{None}
 import gleeunit
@@ -120,7 +119,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       workflow_id,
       None,
       "Test Rule",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -167,7 +166,7 @@ pub fn set_active_cascade_activates_children_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
@@ -248,7 +247,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       workflow_id,
       None,
       "Rule To Delete",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 

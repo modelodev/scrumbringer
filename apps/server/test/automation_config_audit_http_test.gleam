@@ -1,4 +1,3 @@
-import domain/task_status
 import fixtures
 import gleam/http
 import gleam/int
@@ -37,7 +36,7 @@ pub fn automation_config_mutations_record_actor_entity_and_change_test() {
       workflow_id,
       Some(type_id),
       "Audit Rule",
-      task_status.Done,
+      fixtures.task_done(),
       template_id,
     )
 
