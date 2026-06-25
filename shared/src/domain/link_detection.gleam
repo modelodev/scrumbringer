@@ -3,7 +3,7 @@
 //// ## Mission
 ////
 //// Detect URLs in text and categorize them, with special handling for GitHub URLs.
-//// Must be deterministic for SSR/hydration compatibility.
+//// Must be deterministic for SSR/hydration parity.
 ////
 //// ## AC Coverage
 ////
