@@ -83,7 +83,7 @@ pub fn mutation_state_start_release_sets_available_state_test() {
   let assert True = next.member_tasks_snapshot == Some([task])
 }
 
-pub fn mutation_state_start_complete_sets_closed_state_test() {
+pub fn mutation_state_start_close_sets_closed_state_test() {
   let task =
     sample_task(
       42,
@@ -94,7 +94,7 @@ pub fn mutation_state_start_complete_sets_closed_state_test() {
       ),
     )
 
-  let next = mutation_state.start_complete(pool_with_tasks([task]), 42, Some(7))
+  let next = mutation_state.start_close(pool_with_tasks([task]), 42, Some(7))
   let expected =
     remote.Loaded([sample_task(42, task_state.Closed(task_state.Done, "", 7))])
 

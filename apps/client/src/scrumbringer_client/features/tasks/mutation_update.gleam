@@ -97,7 +97,7 @@ pub fn try_update(
       |> without_policy
 
     pool_messages.MemberCompleteClicked(task_id, version) ->
-      handle_complete_clicked(model, task_id, version, context.mutation_context)
+      handle_close_clicked(model, task_id, version, context.mutation_context)
       |> without_policy
 
     pool_messages.MemberDeleteTaskClicked(task_id) ->
@@ -266,7 +266,7 @@ fn handle_release_clicked(
 
 /// Handles close button clicks with an optimistic update.
 /// Immediately marks task as closed locally, sends API request.
-fn handle_complete_clicked(
+fn handle_close_clicked(
   model: member_pool.Model,
   task_id: Int,
   version: Int,
@@ -275,7 +275,7 @@ fn handle_complete_clicked(
   case model.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> #(
-      mutation_state.start_complete(model, task_id, context.current_user_id),
+      mutation_state.start_close(model, task_id, context.current_user_id),
       task_operations_api.complete_task(
         task_id,
         version,

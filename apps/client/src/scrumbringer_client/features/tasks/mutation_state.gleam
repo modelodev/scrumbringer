@@ -44,7 +44,7 @@ pub fn start_release(
   start_with_state(model, task_id, task_state.Available)
 }
 
-pub fn start_complete(
+pub fn start_close(
   model: member_pool.Model,
   task_id: Int,
   current_user_id: opt.Option(Int),
