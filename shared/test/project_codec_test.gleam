@@ -4,17 +4,6 @@ import gleam/json
 import domain/project/project_codec
 import domain/project_role
 
-pub fn default_card_depth_names_include_three_operational_levels_test() {
-  let assert [first, second, third] = project_codec.default_card_depth_names()
-
-  let assert 1 = first.depth
-  let assert "Initiatives" = first.plural_name
-  let assert 2 = second.depth
-  let assert "Features" = second.plural_name
-  let assert 3 = third.depth
-  let assert "Task groups" = third.plural_name
-}
-
 pub fn project_decoder_uses_three_depth_fallback_levels_test() {
   let payload =
     json.object([

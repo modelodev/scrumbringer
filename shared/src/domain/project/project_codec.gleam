@@ -9,10 +9,6 @@ import domain/project.{
 import domain/project/settings
 import domain/project_role/project_role_codec
 
-pub fn default_card_depth_names() -> List(ProjectDepthName) {
-  settings.default_card_depth_names()
-}
-
 fn project_depth_name_decoder() -> decode.Decoder(ProjectDepthName) {
   use depth <- decode.field("depth", decode.int)
   use singular_name <- decode.field("singular_name", decode.string)
@@ -36,7 +32,7 @@ pub fn project_decoder() -> decode.Decoder(Project) {
   use members_count <- decode.field("members_count", decode.int)
   use card_depth_names <- decode.optional_field(
     "card_depth_names",
-    default_card_depth_names(),
+    settings.default_card_depth_names(),
     decode.list(project_depth_name_decoder()),
   )
   use healthy_pool_limit <- decode.optional_field(
@@ -80,7 +76,7 @@ pub fn user_project_decoder() -> decode.Decoder(Project) {
     my_role: my_role,
     created_at: "",
     members_count: 0,
-    card_depth_names: default_card_depth_names(),
+    card_depth_names: settings.default_card_depth_names(),
     healthy_pool_limit: settings.default_healthy_pool_limit(),
   ))
 }
