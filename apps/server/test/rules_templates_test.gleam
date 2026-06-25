@@ -6,7 +6,7 @@ pub fn substitute_uses_current_automation_variables_test() {
       "{{origin}} {{trigger}} {{project}} {{user}}",
       rules_templates.EventContext(
         origin: "[Task #42](/tasks/42)",
-        trigger: "completed",
+        trigger: "closed",
         project_name: "Core",
         user_name: "admin@example.com",
         task_title: "Fix bug",
@@ -16,7 +16,7 @@ pub fn substitute_uses_current_automation_variables_test() {
       ),
     )
 
-  let assert "[Task #42](/tasks/42) completed Core admin@example.com" = rendered
+  let assert "[Task #42](/tasks/42) closed Core admin@example.com" = rendered
 }
 
 pub fn substitute_leaves_unknown_variables_unresolved_test() {
@@ -25,7 +25,7 @@ pub fn substitute_leaves_unknown_variables_unresolved_test() {
       "{{unsupported}} {{previous_status}} {{next_status}}",
       rules_templates.EventContext(
         origin: "[Task #42](/tasks/42)",
-        trigger: "completed",
+        trigger: "closed",
         project_name: "Core",
         user_name: "admin@example.com",
         task_title: "Fix bug",

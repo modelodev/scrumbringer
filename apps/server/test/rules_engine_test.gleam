@@ -64,7 +64,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  // Create a task to complete
+  // Create a task to close
   let assert Ok(task_id) =
     fixtures.create_task(
       handler,
@@ -580,11 +580,11 @@ pub fn variable_trigger_resolves_test() {
   let assert Ok(created_title) =
     fixtures.query_string(
       db,
-      "select title from tasks where title = 'Trigger: completed'",
+      "select title from tasks where title = 'Trigger: closed'",
       [],
     )
 
-  created_title |> expect.equal("Trigger: completed")
+  created_title |> expect.equal("Trigger: closed")
 }
 
 pub fn variable_trigger_on_created_task_uses_available_test() {
@@ -827,7 +827,7 @@ pub fn task_trigger_variables_combined_test() {
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  // Create a task to complete
+  // Create a task to close
   let assert Ok(task_id) =
     fixtures.create_task(
       handler,
@@ -884,7 +884,7 @@ pub fn task_trigger_variables_combined_test() {
   |> string.contains("[Task #" <> int.to_string(task_id))
   |> expect.is_true
   created_desc
-  |> string.contains("completed")
+  |> string.contains("closed")
   |> expect.is_true
 }
 
@@ -1269,14 +1269,14 @@ pub fn wrong_to_state_does_not_match_test() {
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "State Filter WF")
 
-  // Rule only matches 'completed' state
+  // Rule only matches the closed state
   let assert Ok(_rule_id) =
     fixtures.create_rule(
       handler,
       session,
       workflow_id,
       None,
-      "On Complete",
+      "On Close",
       fixtures.task_closed_done(),
       template_id,
     )
@@ -1287,7 +1287,7 @@ pub fn wrong_to_state_does_not_match_test() {
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  // Event with 'claimed' state (not 'completed')
+  // Event with 'claimed' state (not closed)
   let event =
     fixtures.task_trigger_state(
       task_id,
