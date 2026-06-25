@@ -191,6 +191,8 @@ fn decode_card_payload_data(
       Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
     Error(card_payloads.InvalidColor) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
+    Error(card_payloads.InvalidDueDate) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid due date value"))
   }
 }
 

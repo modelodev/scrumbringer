@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/option
 
 import domain/card/card_codec
+import domain/due_date as due_date_domain
 import domain/task.{
   type AutomationOrigin, type OngoingBy, type Task, type TaskDependency,
   type TaskPosition, type WorkSession, type WorkSessionsPayload,
@@ -71,6 +72,19 @@ pub fn work_state_decoder() -> decode.Decoder(WorkState) {
   }
 }
 
+fn optional_due_date_decoder() -> decode.Decoder(option.Option(String)) {
+  use raw <- decode.then(decode.optional(decode.string))
+  case raw {
+    option.None | option.Some("") -> decode.success(option.None)
+    option.Some(value) ->
+      case due_date_domain.parse(value) {
+        Ok(parsed) ->
+          decode.success(option.Some(due_date_domain.to_string(parsed)))
+        Error(_) -> decode.failure(option.None, "DueDate")
+      }
+  }
+}
+
 // =============================================================================
 // Task Decoder
 // =============================================================================
@@ -132,7 +146,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use due_date <- decode.optional_field(
     "due_date",
     option.None,
-    decode.optional(decode.string),
+    optional_due_date_decoder(),
   )
   use version <- decode.field("version", decode.int)
   use parent_card_id <- decode.optional_field(

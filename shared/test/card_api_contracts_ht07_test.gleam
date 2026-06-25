@@ -77,6 +77,17 @@ pub fn card_endpoints_reject_invalid_requests_test() {
     contracts.decode_card_create(payload)
 }
 
+pub fn card_create_request_rejects_invalid_due_date_test() {
+  let assert Ok(payload) =
+    json.parse(
+      "{\"title\":\"Feature\",\"due_date\":\"2026-02-31\"}",
+      decode.dynamic,
+    )
+
+  let assert Error(contracts.InvalidDueDate) =
+    contracts.decode_card_create(payload)
+}
+
 pub fn card_create_request_codec_accepts_parent_card_test() {
   let assert Ok(payload) =
     json.parse(
@@ -92,6 +103,17 @@ pub fn card_create_request_codec_accepts_parent_card_test() {
     parent_card_id: option.Some(5),
     due_date: option.None,
   ) = request
+}
+
+pub fn card_create_request_accepts_date_only_due_date_test() {
+  let assert Ok(payload) =
+    json.parse(
+      "{\"title\":\"Feature\",\"due_date\":\"2026-06-20\"}",
+      decode.dynamic,
+    )
+
+  let assert Ok(request) = contracts.decode_card_create(payload)
+  let assert option.Some("2026-06-20") = request.due_date
 }
 
 fn int_field(name: String) -> decode.Decoder(Int) {

@@ -7,6 +7,7 @@ import domain/card.{
   type Card, type CardColor, type CardPhase, Card, Draft, parse_color,
   parse_state,
 }
+import domain/due_date as due_date_domain
 
 /// Decoder for CardPhase.
 pub fn card_state_decoder() -> decode.Decoder(CardPhase) {
@@ -26,6 +27,19 @@ pub fn optional_color_decoder() -> decode.Decoder(option.Option(CardColor)) {
       case parse_color(value) {
         Ok(color) -> decode.success(option.Some(color))
         Error(_) -> decode.failure(option.None, "CardColor")
+      }
+  }
+}
+
+fn optional_due_date_decoder() -> decode.Decoder(option.Option(String)) {
+  use raw <- decode.then(decode.optional(decode.string))
+  case raw {
+    option.None | option.Some("") -> decode.success(option.None)
+    option.Some(value) ->
+      case due_date_domain.parse(value) {
+        Ok(parsed) ->
+          decode.success(option.Some(due_date_domain.to_string(parsed)))
+        Error(_) -> decode.failure(option.None, "DueDate")
       }
   }
 }
@@ -50,7 +64,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
   use due_date <- decode.optional_field(
     "due_date",
     option.None,
-    decode.optional(decode.string),
+    optional_due_date_decoder(),
   )
   use has_new_notes <- decode.optional_field(
     "has_new_notes",

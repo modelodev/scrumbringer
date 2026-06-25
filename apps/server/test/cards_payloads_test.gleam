@@ -40,6 +40,16 @@ pub fn decode_card_payload_rejects_invalid_color_test() {
   let assert Error(payloads.InvalidColor) = payloads.decode_card(dynamic)
 }
 
+pub fn decode_card_payload_rejects_invalid_due_date_test() {
+  let assert Ok(dynamic) =
+    json.parse(
+      "{\"title\":\"Roadmap\",\"due_date\":\"2026-02-31\"}",
+      decode.dynamic,
+    )
+
+  let assert Error(payloads.InvalidDueDate) = payloads.decode_card(dynamic)
+}
+
 pub fn decode_card_payload_rejects_invalid_shape_test() {
   let assert Ok(dynamic) =
     json.parse("{\"description\":\"Plan\"}", decode.dynamic)

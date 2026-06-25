@@ -19,11 +19,13 @@ pub type CardPayload {
 pub type DecodeError {
   InvalidJson
   InvalidColor
+  InvalidDueDate
 }
 
 pub fn decode_card(data: Dynamic) -> Result(CardPayload, DecodeError) {
   case contracts.decode_card_create(data) {
     Error(contracts.InvalidColor) -> Error(InvalidColor)
+    Error(contracts.InvalidDueDate) -> Error(InvalidDueDate)
     Error(_) -> Error(InvalidJson)
     Ok(request) ->
       Ok(CardPayload(

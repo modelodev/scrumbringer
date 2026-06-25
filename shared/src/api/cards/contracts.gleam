@@ -7,6 +7,7 @@ import gleam/option.{type Option, None, Some}
 
 import domain/card
 import domain/card/state as card_state
+import domain/due_date as due_date_domain
 
 pub type DepthScope {
   DepthScope(Int)
@@ -56,6 +57,7 @@ pub type DecodeError {
   InvalidColor
   InvalidScope
   InvalidClosedReason
+  InvalidDueDate
 }
 
 pub fn depth_scope_codec() -> decode.Decoder(DepthScope) {
@@ -113,13 +115,17 @@ fn raw_to_create_request(
   let #(title, description, color, parent_card_id, due_date) = raw
   case parse_color(color) {
     Ok(parsed_color) ->
-      Ok(CardCreateRequest(
-        title: title,
-        description: optional_string(description),
-        color: parsed_color,
-        parent_card_id: parent_card_id,
-        due_date: optional_string(due_date),
-      ))
+      case parse_due_date(due_date) {
+        Ok(parsed_due_date) ->
+          Ok(CardCreateRequest(
+            title: title,
+            description: optional_string(description),
+            color: parsed_color,
+            parent_card_id: parent_card_id,
+            due_date: parsed_due_date,
+          ))
+        Error(error) -> Error(error)
+      }
     Error(error) -> Error(error)
   }
 }
@@ -234,5 +240,16 @@ fn optional_string(value: String) -> Option(String) {
   case value {
     "" -> None
     other -> Some(other)
+  }
+}
+
+fn parse_due_date(value: String) -> Result(Option(String), DecodeError) {
+  case value {
+    "" -> Ok(None)
+    raw ->
+      case due_date_domain.parse(raw) {
+        Ok(parsed) -> Ok(Some(due_date_domain.to_string(parsed)))
+        Error(_) -> Error(InvalidDueDate)
+      }
   }
 }

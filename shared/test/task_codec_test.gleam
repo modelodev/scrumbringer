@@ -18,6 +18,13 @@ pub fn task_due_date_roundtrip_test() {
   )) = json.parse(body, codec.task_decoder())
 }
 
+pub fn task_decoder_rejects_invalid_due_date_test() {
+  let body =
+    "{\"id\":42,\"project_id\":1,\"type_id\":2,\"task_type\":{\"id\":2,\"name\":\"Feature\",\"icon\":\"sparkles\"},\"ongoing_by\":null,\"title\":\"Ship deadline\",\"description\":null,\"priority\":3,\"status\":\"available\",\"created_by\":7,\"claimed_by\":null,\"claimed_at\":null,\"completed_at\":null,\"created_at\":\"2026-06-18T10:00:00Z\",\"version\":1,\"parent_card_id\":null,\"card_id\":null,\"card_title\":null,\"card_color\":null,\"due_date\":\"not-a-date\",\"has_new_notes\":false,\"blocked_count\":0,\"dependencies\":[]}"
+
+  let assert Error(_) = json.parse(body, codec.task_decoder())
+}
+
 pub fn task_dependency_decoder_accepts_known_status_test() {
   let assert Ok(TaskDependency(
     depends_on_task_id: 42,

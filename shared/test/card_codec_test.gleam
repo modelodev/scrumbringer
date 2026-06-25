@@ -46,6 +46,13 @@ pub fn card_due_date_roundtrip_test() {
   )) = json.parse(body, codec.card_decoder())
 }
 
+pub fn card_decoder_rejects_invalid_due_date_test() {
+  let body =
+    "{\"id\":1,\"project_id\":2,\"parent_card_id\":null,\"title\":\"Discovery\",\"description\":\"Scope\",\"color\":\"blue\",\"state\":\"en_curso\",\"task_count\":3,\"completed_count\":1,\"created_by\":42,\"created_at\":\"2026-01-28T12:00:00Z\",\"due_date\":\"2026-02-31\",\"has_new_notes\":true}"
+
+  let assert Error(_) = json.parse(body, codec.card_decoder())
+}
+
 pub fn card_decoder_treats_empty_color_as_absent_test() {
   let body =
     "{\"id\":1,\"project_id\":2,\"parent_card_id\":null,\"title\":\"Discovery\",\"description\":\"Scope\",\"color\":\"\",\"state\":\"pendiente\",\"task_count\":3,\"completed_count\":1,\"created_by\":42,\"created_at\":\"2026-01-28T12:00:00Z\"}"
