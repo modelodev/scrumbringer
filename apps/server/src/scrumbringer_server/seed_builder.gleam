@@ -36,6 +36,7 @@ import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
+import scrumbringer_server/seed_plan_scenarios
 import scrumbringer_server/seed_task_scenarios
 import scrumbringer_server/seed_workspace_scenarios
 
@@ -384,352 +385,46 @@ fn build_plan_qa_scenarios(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  case active_project_ids(state) {
-    [] -> Ok(state)
-    [project_id, ..] -> {
-      case task_types_for_project(state.task_type_ids, project_id) {
-        None -> Ok(state)
-        Some(#(bug_id, feature_id, task_id)) -> {
-          let member_id = claimed_member_id(state, project_id, state.admin_id)
-          use no_capability_type_id <- result.try(seed_db.insert_task_type(
-            db,
-            project_id,
-            "Plan QA - No capability",
-            "document-text",
-          ))
+  use plan_result <- result.try(seed_plan_scenarios.build(
+    db,
+    seed_plan_scenarios.Context(
+      admin_id: state.admin_id,
+      active_project_ids: active_project_ids(state),
+      task_type_ids: state.task_type_ids,
+      project_member_ids: state.project_member_ids,
+    ),
+  ))
 
-          use direct_id <- result.try(insert_seed_root_card(
-            db,
-            state,
-            project_id,
-            "Plan QA - Direct task card",
-            Some(
-              "Direct-task fixture for card-scope Kanban: no child cards, mixed statuses and a default-closed card scope.",
-            ),
-            card.Active,
-            4,
-            Some(days_ago_timestamp(3)),
-            None,
-          ))
-          use matrix_id <- result.try(insert_seed_root_card(
-            db,
-            state,
-            project_id,
-            "Plan QA - Multi-capability matrix",
-            Some(
-              "Capability-board fixture with child cards, empty matrix cells, no-capability tasks and an explicit blocked task.",
-            ),
-            card.Active,
-            5,
-            Some(days_ago_timestamp(4)),
-            None,
-          ))
-          use closed_id <- result.try(insert_seed_root_card(
-            db,
-            state,
-            project_id,
-            "Plan QA - Closed outcome",
-            Some(
-              "Closed Plan fixture with completed work for show-closed validation.",
-            ),
-            card.Closed,
-            18,
-            Some(days_ago_timestamp(16)),
-            Some(days_ago_timestamp(2)),
-          ))
-          use activation_impact_id <- result.try(insert_seed_root_card(
-            db,
-            state,
-            project_id,
-            "Plan QA - Draft activation impact",
-            Some(
-              "Draft fixture with four prepared tasks so Plan can show a meaningful +4 activation impact.",
-            ),
-            card.Draft,
-            8,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
+  let new_task_seeds =
+    plan_result.task_seeds
+    |> list.map(fn(seed) {
+      TaskSeedInfo(
+        task_id: seed.task_id,
+        project_id: seed.project_id,
+        execution_state: seed.execution_state,
+        created_at: seed.created_at,
+        created_by: seed.created_by,
+        claimed_by: seed.claimed_by,
+      )
+    })
+  let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
 
-          use api_id <- result.try(insert_plan_qa_child_card(
-            db,
-            state,
+  case plan_result.project_id {
+    None -> Ok(state)
+    Some(project_id) ->
+      Ok(
+        BuildState(
+          ..state,
+          card_ids: list.append(state.card_ids, plan_result.card_ids),
+          card_ids_by_project: append_cards_for_project(
+            state.card_ids_by_project,
             project_id,
-            matrix_id,
-            "Plan QA - API lane",
-            card.Blue,
-          ))
-          use ui_id <- result.try(insert_plan_qa_child_card(
-            db,
-            state,
-            project_id,
-            matrix_id,
-            "Plan QA - UI lane",
-            card.Green,
-          ))
-          use docs_id <- result.try(insert_plan_qa_child_card(
-            db,
-            state,
-            project_id,
-            matrix_id,
-            "Plan QA - Docs lane",
-            card.Purple,
-          ))
-
-          use direct_available <- result.try(insert_plan_qa_task_with_due(
-            db,
-            project_id,
-            direct_id,
-            bug_id,
-            "Plan QA - Direct available backend",
-            task_state.Available,
-            state.admin_id,
-            None,
-            4,
-            4,
-            Some("CURRENT_DATE"),
-          ))
-          use direct_claimed <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            direct_id,
-            feature_id,
-            "Plan QA - Direct claimed frontend",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(member_id),
-            5,
-            3,
-          ))
-          use direct_done <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            direct_id,
-            no_capability_type_id,
-            "Plan QA - Direct done no capability",
-            done_state_template(),
-            state.admin_id,
-            None,
-            2,
-            2,
-          ))
-          use api_available <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            api_id,
-            bug_id,
-            "Plan QA - API available",
-            task_state.Available,
-            state.admin_id,
-            None,
-            3,
-            3,
-          ))
-          use api_dependency <- result.try(insert_plan_qa_task_with_due(
-            db,
-            project_id,
-            api_id,
-            task_id,
-            "Plan QA - Missing contract dependency",
-            task_state.Available,
-            state.admin_id,
-            None,
-            5,
-            2,
-            Some("CURRENT_DATE + 3"),
-          ))
-          use api_blocked <- result.try(insert_plan_qa_task_with_due(
-            db,
-            project_id,
-            api_id,
-            feature_id,
-            "Plan QA - Blocked integration",
-            task_state.Available,
-            state.admin_id,
-            None,
-            5,
-            1,
-            Some("CURRENT_DATE - 4"),
-          ))
-          use _ <- result.try(seed_db.insert_task_dependency(
-            db,
-            api_blocked.task_id,
-            api_dependency.task_id,
-            state.admin_id,
-          ))
-          use ui_ongoing <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            ui_id,
-            feature_id,
-            "Plan QA - UI ongoing",
-            claimed_state_template(task_state.Ongoing),
-            state.admin_id,
-            Some(member_id),
-            4,
-            2,
-          ))
-          use docs_no_capability <- result.try(insert_plan_qa_task_with_due(
-            db,
-            project_id,
-            docs_id,
-            no_capability_type_id,
-            "Plan QA - Docs no capability",
-            task_state.Available,
-            state.admin_id,
-            None,
-            2,
-            1,
-            Some("CURRENT_DATE + 5"),
-          ))
-          use pool_ready_due_today <- result.try(insert_pool_qa_task_with_due(
-            db,
-            project_id,
-            bug_id,
-            "Pool QA - Ready due today",
-            task_state.Available,
-            state.admin_id,
-            None,
-            4,
-            1,
-            Some("CURRENT_DATE"),
-          ))
-          use pool_dependency <- result.try(insert_pool_qa_task_with_due(
-            db,
-            project_id,
-            task_id,
-            "Pool QA - Blocking dependency",
-            task_state.Available,
-            state.admin_id,
-            None,
-            3,
-            2,
-            Some("CURRENT_DATE + 2"),
-          ))
-          use pool_blocked_overdue <- result.try(insert_pool_qa_task_with_due(
-            db,
-            project_id,
-            feature_id,
-            "Pool QA - Blocked overdue",
-            task_state.Available,
-            state.admin_id,
-            None,
-            5,
-            1,
-            Some("CURRENT_DATE - 2"),
-          ))
-          use _ <- result.try(seed_db.insert_task_dependency(
-            db,
-            pool_blocked_overdue.task_id,
-            pool_dependency.task_id,
-            state.admin_id,
-          ))
-          use closed_done <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            closed_id,
-            task_id,
-            "Plan QA - Closed done task",
-            done_state_template(),
-            state.admin_id,
-            None,
-            1,
-            2,
-          ))
-          use impact_backend <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            activation_impact_id,
-            bug_id,
-            "Plan QA - Draft impact backend",
-            task_state.Available,
-            state.admin_id,
-            None,
-            4,
-            2,
-          ))
-          use impact_frontend <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            activation_impact_id,
-            feature_id,
-            "Plan QA - Draft impact frontend",
-            task_state.Available,
-            state.admin_id,
-            None,
-            4,
-            2,
-          ))
-          use impact_qa <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            activation_impact_id,
-            task_id,
-            "Plan QA - Draft impact QA",
-            task_state.Available,
-            state.admin_id,
-            None,
-            3,
-            2,
-          ))
-          use impact_docs <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            activation_impact_id,
-            no_capability_type_id,
-            "Plan QA - Draft impact docs",
-            task_state.Available,
-            state.admin_id,
-            None,
-            2,
-            2,
-          ))
-
-          let new_card_ids = [
-            direct_id,
-            matrix_id,
-            closed_id,
-            activation_impact_id,
-            api_id,
-            ui_id,
-            docs_id,
-          ]
-          let new_task_seeds = [
-            direct_available,
-            direct_claimed,
-            direct_done,
-            api_available,
-            api_dependency,
-            api_blocked,
-            ui_ongoing,
-            docs_no_capability,
-            pool_ready_due_today,
-            pool_dependency,
-            pool_blocked_overdue,
-            closed_done,
-            impact_backend,
-            impact_frontend,
-            impact_qa,
-            impact_docs,
-          ]
-          let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
-
-          Ok(
-            BuildState(
-              ..state,
-              card_ids: list.append(state.card_ids, new_card_ids),
-              card_ids_by_project: append_cards_for_project(
-                state.card_ids_by_project,
-                project_id,
-                new_card_ids,
-              ),
-              task_ids: list.append(state.task_ids, new_task_ids),
-              task_seeds: list.append(state.task_seeds, new_task_seeds),
-            ),
-          )
-        }
-      }
-    }
+            plan_result.card_ids,
+          ),
+          task_ids: list.append(state.task_ids, new_task_ids),
+          task_seeds: list.append(state.task_seeds, new_task_seeds),
+        ),
+      )
   }
 }
 
@@ -1022,33 +717,6 @@ fn build_people_qa_scenarios(
   }
 }
 
-fn insert_plan_qa_child_card(
-  db: pog.Connection,
-  state: BuildState,
-  project_id: Int,
-  parent_card_id: Int,
-  title: String,
-  color: card.CardColor,
-) -> Result(Int, String) {
-  use card_id <- result.try(seed_db.insert_card(
-    db,
-    seed_db.CardInsertOptions(
-      project_id: project_id,
-      title: title,
-      description: "Plan QA child card for matrix row coverage.",
-      color: Some(color),
-      created_by: state.admin_id,
-      created_at: Some(days_ago_timestamp(3)),
-    ),
-  ))
-  use _ <- result.try(seed_db.assign_card_to_parent_card(
-    db,
-    card_id,
-    parent_card_id,
-  ))
-  Ok(card_id)
-}
-
 fn insert_plan_qa_task(
   db: pog.Connection,
   project_id: Int,
@@ -1123,70 +791,6 @@ fn insert_plan_qa_task_with_due(
       execution_state: hydrated_execution_state,
       created_by: created_by,
       card_id: Some(card_id),
-      created_from_rule_id: None,
-      pool_lifetime_s: 3600 * created_days_ago,
-      due_date: due_date,
-      created_at: Some(created_at),
-      last_entered_pool_at: Some(created_at),
-    ),
-  ))
-
-  Ok(TaskSeedInfo(
-    task_id: task_id,
-    project_id: project_id,
-    execution_state: hydrated_execution_state,
-    created_at: created_at,
-    created_by: created_by,
-    claimed_by: claimed_by,
-  ))
-}
-
-fn insert_pool_qa_task_with_due(
-  db: pog.Connection,
-  project_id: Int,
-  type_id: Int,
-  title: String,
-  execution_state: task_state.TaskExecutionState,
-  created_by: Int,
-  claimed_by: Option(Int),
-  priority: Int,
-  created_days_ago: Int,
-  due_date: Option(String),
-) -> Result(TaskSeedInfo, String) {
-  let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case execution_state {
-    task_state.Claimed(..) -> #(
-      claimed_by,
-      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
-      None,
-    )
-    task_state.Closed(..) -> #(
-      None,
-      None,
-      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
-    )
-    task_state.Available -> #(None, None, None)
-  }
-  let hydrated_execution_state =
-    hydrate_seed_execution_state(
-      execution_state,
-      created_by,
-      claimed_by,
-      claimed_at,
-      completed_at,
-    )
-
-  use task_id <- result.try(seed_db.insert_task(
-    db,
-    seed_db.TaskInsertOptions(
-      project_id: project_id,
-      type_id: type_id,
-      title: title,
-      description: "Pool QA fixture task",
-      priority: priority,
-      execution_state: hydrated_execution_state,
-      created_by: created_by,
-      card_id: None,
       created_from_rule_id: None,
       pool_lifetime_s: 3600 * created_days_ago,
       due_date: due_date,
@@ -1955,16 +1559,6 @@ fn active_project_ids(state: BuildState) -> List(Int) {
   })
 }
 
-fn claimed_member_id(state: BuildState, project_id: Int, fallback: Int) -> Int {
-  let members = members_for_project(state.project_member_ids, project_id)
-  let non_admins =
-    list.filter(members, fn(user_id) { user_id != state.admin_id })
-  case non_admins {
-    [first, ..] -> first
-    [] -> fallback
-  }
-}
-
 fn task_types_for_active_projects(
   state: BuildState,
 ) -> List(#(Int, Int, Int, Int)) {
@@ -2002,10 +1596,6 @@ fn claimed_state_template(
   mode: task_state.TaskClaimMode,
 ) -> task_state.TaskExecutionState {
   task_state.Claimed(claimed_by: 0, claimed_at: "", mode: mode)
-}
-
-fn done_state_template() -> task_state.TaskExecutionState {
-  task_state.Closed(reason: task_state.Done, closed_at: "", closed_by: 0)
 }
 
 fn option_int(value: Option(Int), default: Int) -> Int {
