@@ -70,7 +70,7 @@ pub fn claimed_at(state: TaskExecutionState) -> Option(String) {
   }
 }
 
-pub fn completed_at(state: TaskExecutionState) -> Option(String) {
+pub fn closed_at(state: TaskExecutionState) -> Option(String) {
   case state {
     Closed(closed_at: at, ..) -> Some(at)
     _ -> None

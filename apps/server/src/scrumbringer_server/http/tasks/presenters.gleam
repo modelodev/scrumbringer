@@ -109,7 +109,7 @@ pub fn task_json(task: Task) -> json.Json {
 
   let claimed_by = task_state.claimed_by(state)
   let claimed_at = task_state.claimed_at(state)
-  let completed_at = task_state.completed_at(state)
+  let completed_at = task_state.closed_at(state)
   let status = task_state.to_status(state)
   let work_state = task_state.to_work_state(state)
 
@@ -200,7 +200,7 @@ pub fn dependency_json(dep: TaskDependency) -> json.Json {
   let status = task_state.to_status(state)
   let claimed_by_user_id = task_state.claimed_by(state)
   let claimed_at = task_state.claimed_at(state)
-  let completed_at = task_state.completed_at(state)
+  let completed_at = task_state.closed_at(state)
   let is_ongoing = case state {
     task_state.Claimed(mode: task_state.Ongoing, ..) -> True
     task_state.Available

@@ -178,6 +178,6 @@ pub fn claimed_at(task: Task) -> Option(String) {
   task_state.claimed_at(task.state)
 }
 
-pub fn completed_at(task: Task) -> Option(String) {
-  task_state.completed_at(task.state)
+pub fn closed_at(task: Task) -> Option(String) {
+  task_state.closed_at(task.state)
 }
