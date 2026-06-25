@@ -266,10 +266,10 @@ pub fn release_task_fails_for_non_claimer_test() {
 }
 
 // =============================================================================
-// AC6: Complete success test
+// AC6: Close success test
 // =============================================================================
 
-pub fn complete_task_succeeds_for_claimer_test() {
+pub fn close_task_succeeds_for_claimer_test() {
   // Given: Bootstrap, create and claim a task
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
@@ -292,8 +292,8 @@ pub fn complete_task_succeeds_for_claimer_test() {
     )
   expect.expect_status(claim_res, 200)
 
-  // When: Same user completes the task (version is now 2 after claim)
-  let complete_res =
+  // When: Same user closes the task (version is now 2 after claim)
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -303,15 +303,15 @@ pub fn complete_task_succeeds_for_claimer_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  // Then: Complete succeeds
-  expect.expect_status(complete_res, 200)
+  // Then: Close succeeds
+  expect.expect_status(close_res, 200)
 }
 
 // =============================================================================
-// AC7: Complete auth test (non-claimer fails)
+// AC7: Close auth test (non-claimer fails)
 // =============================================================================
 
-pub fn complete_task_fails_for_non_claimer_test() {
+pub fn close_task_fails_for_non_claimer_test() {
   // Given: Bootstrap, create and claim a task by user1
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -343,8 +343,8 @@ pub fn complete_task_fails_for_non_claimer_test() {
     )
   expect.expect_status(claim_res, 200)
 
-  // When: Second user (non-claimer) tries to complete
-  let complete_res =
+  // When: Second user (non-claimer) tries to close
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -354,8 +354,8 @@ pub fn complete_task_fails_for_non_claimer_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  // Then: Complete fails with 403 Forbidden
-  expect.expect_status(complete_res, 403)
+  // Then: Close fails with 403 Forbidden
+  expect.expect_status(close_res, 403)
 }
 
 fn task_status_query() -> String {
