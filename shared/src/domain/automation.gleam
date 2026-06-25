@@ -210,16 +210,6 @@ pub type AutomationSkipReason {
   CreatedByAutomation
 }
 
-pub type RuleExecutionOutcome {
-  CreatedTask(task_id: Int)
-  Failed(reason: RuleExecutionError)
-}
-
-pub type RuleExecutionError {
-  TaskTemplateInvalid
-  TaskCreateFailed
-}
-
 pub type TaskCreationSource {
   Manual(user_id: Int)
   Automation(execution_id: Int)
