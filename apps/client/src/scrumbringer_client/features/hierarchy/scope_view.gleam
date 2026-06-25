@@ -10,7 +10,9 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h3, h4, section, span, text}
 import lustre/event
 
+import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 
 pub type DepthName {
   DepthName(depth: Int, singular_name: String, plural_name: String)
@@ -57,7 +59,7 @@ fn view_header(config: Config(msg)) -> Element(msg) {
     div([], [
       h3([], [text(scope_title(config))]),
       span([attribute.class("card-tree-subtitle")], [
-        text("Track nested cards and task leaves by scope."),
+        text(i18n.t(config.locale, i18n_text.HierarchyScopeSubtitle)),
       ]),
     ]),
     button(
@@ -92,7 +94,11 @@ fn view_card_scope(config: Config(msg), card_id: Int) -> Element(msg) {
 
   div([attribute.class("card-tree-card-scope")], [
     view_card_grid(config, direct_cards),
-    view_tasks("Direct tasks", direct_tasks, config.on_task_opened),
+    view_tasks(
+      i18n.t(config.locale, i18n_text.HierarchyScopeDirectTasks),
+      direct_tasks,
+      config.on_task_opened,
+    ),
   ])
 }
 
@@ -117,7 +123,11 @@ fn view_card(config: Config(msg), card: Card) -> Element(msg) {
     [
       span([attribute.class("card-tree-card-title")], [text(card.title)]),
       span([attribute.class("card-tree-card-meta")], [
-        text(depth_label(config.depth_names, card_depth(card, config.cards))),
+        text(depth_label(
+          config.locale,
+          config.depth_names,
+          card_depth(card, config.cards),
+        )),
       ]),
     ],
   )
@@ -147,10 +157,14 @@ fn view_tasks(
 }
 
 fn view_empty_depth(config: Config(msg), depth: Int) -> Element(msg) {
-  let name = depth_label(config.depth_names, depth)
+  let name = depth_label(config.locale, config.depth_names, depth)
   div([attribute.class("card-tree-empty")], [
-    h4([], [text("No cards at this level")]),
-    span([], [text("Create a card at this level to start filling " <> name)]),
+    h4([], [
+      text(i18n.t(config.locale, i18n_text.HierarchyScopeEmptyDepthTitle)),
+    ]),
+    span([], [
+      text(i18n.t(config.locale, i18n_text.HierarchyScopeEmptyDepthBody(name))),
+    ]),
   ])
 }
 
@@ -172,17 +186,21 @@ fn card_depth(card: Card, cards: List(Card)) -> Int {
   }
 }
 
-fn depth_label(depth_names: List(DepthName), depth: Int) -> String {
+fn depth_label(
+  locale: Locale,
+  depth_names: List(DepthName),
+  depth: Int,
+) -> String {
   case list.find(depth_names, fn(name) { name.depth == depth }) {
     Ok(DepthName(plural_name: plural, ..)) -> plural
-    Error(_) -> "Depth " <> int.to_string(depth)
+    Error(_) -> i18n.t(locale, i18n_text.HierarchyScopeDepthFallback(depth))
   }
 }
 
 fn scope_title(config: Config(msg)) -> String {
   case config.scope {
-    DepthScope(depth) -> depth_label(config.depth_names, depth)
-    CardScope(_) -> "Card scope"
+    DepthScope(depth) -> depth_label(config.locale, config.depth_names, depth)
+    CardScope(_) -> i18n.t(config.locale, i18n_text.HierarchyScopeCardTitle)
   }
 }
 

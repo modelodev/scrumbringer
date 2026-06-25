@@ -432,6 +432,15 @@ pub fn translate(text: Text) -> String {
     text.HierarchyStructureSummary -> "Resumen estructural"
     text.HierarchyActions -> "Acciones"
     text.HierarchySearchPlaceholder -> "Buscar jerarquías"
+    text.HierarchyScopeSubtitle ->
+      "Revisa tarjetas anidadas y sus tareas dentro de este alcance."
+    text.HierarchyScopeDirectTasks -> "Tareas directas"
+    text.HierarchyScopeCardTitle -> "Alcance de tarjeta"
+    text.HierarchyScopeDepthFallback(depth) ->
+      "Profundidad " <> int.to_string(depth)
+    text.HierarchyScopeEmptyDepthTitle -> "No hay tarjetas en este nivel"
+    text.HierarchyScopeEmptyDepthBody(name) ->
+      "Crea una tarjeta en este nivel para empezar a organizar " <> name
     text.HierarchyLooseTasksNotice -> "Tareas sin tarjeta"
     text.HierarchyLooseTasksHint ->
       "Estas tareas todavía no están agrupadas dentro de una tarjeta"

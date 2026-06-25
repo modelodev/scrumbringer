@@ -103,6 +103,7 @@ pub fn depth_scope_hides_closed_cards_by_default_test() {
 
   assert_contains(html, "Stories")
   assert_contains(html, "Checkout Story")
+  assert_contains(html, "Review nested cards and their tasks in this scope.")
   assert_not_contains(html, "Closed Story")
   assert_not_contains(html, "Tracking")
   assert_not_contains(html, "Execution")
@@ -114,6 +115,7 @@ pub fn card_scope_shows_direct_subcards_or_tasks_test() {
     |> element.to_document_string
 
   assert_contains(html, "Nested Task Group")
+  assert_contains(html, "Direct tasks")
   assert_contains(html, "Wire direct task")
   assert_not_contains(html, "Platform Epic")
 }
@@ -139,6 +141,21 @@ pub fn depth_scope_empty_state_is_actionable_test() {
 
   assert_contains(html, "No cards at this level")
   assert_contains(html, "Create a card at this level")
+}
+
+pub fn scope_copy_uses_spanish_locale_test() {
+  let html =
+    scope_view.view(
+      scope_view.Config(..config(scope_view.CardScope(2)), locale: locale.Es),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Alcance de tarjeta")
+  assert_contains(html, "Tareas directas")
+  assert_contains(
+    html,
+    "Revisa tarjetas anidadas y sus tareas dentro de este alcance.",
+  )
 }
 
 pub fn many_cards_in_depth_remain_scannable_test() {

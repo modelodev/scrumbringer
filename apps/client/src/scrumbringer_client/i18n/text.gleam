@@ -366,6 +366,12 @@ pub type Text {
   HierarchyStructureSummary
   HierarchyActions
   HierarchySearchPlaceholder
+  HierarchyScopeSubtitle
+  HierarchyScopeDirectTasks
+  HierarchyScopeCardTitle
+  HierarchyScopeDepthFallback(depth: Int)
+  HierarchyScopeEmptyDepthTitle
+  HierarchyScopeEmptyDepthBody(name: String)
   HierarchyLooseTasksNotice
   HierarchyLooseTasksHint
   HierarchyCardTasksEmpty

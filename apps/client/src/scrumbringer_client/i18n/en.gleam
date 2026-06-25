@@ -425,6 +425,14 @@ pub fn translate(text: Text) -> String {
     text.HierarchyStructureSummary -> "Structure summary"
     text.HierarchyActions -> "Actions"
     text.HierarchySearchPlaceholder -> "Search hierarchies"
+    text.HierarchyScopeSubtitle ->
+      "Review nested cards and their tasks in this scope."
+    text.HierarchyScopeDirectTasks -> "Direct tasks"
+    text.HierarchyScopeCardTitle -> "Card scope"
+    text.HierarchyScopeDepthFallback(depth) -> "Depth " <> int.to_string(depth)
+    text.HierarchyScopeEmptyDepthTitle -> "No cards at this level"
+    text.HierarchyScopeEmptyDepthBody(name) ->
+      "Create a card at this level to start organizing " <> name
     text.HierarchyLooseTasksNotice -> "Tasks without card"
     text.HierarchyLooseTasksHint ->
       "These tasks are not grouped inside a card yet"
