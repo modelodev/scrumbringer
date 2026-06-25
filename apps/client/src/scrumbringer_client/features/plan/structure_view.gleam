@@ -30,6 +30,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
+import scrumbringer_client/ui/card_state as card_state_ui
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
@@ -388,10 +389,22 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
             event.on_change(config.on_status_filter_change),
           ],
           [
-            html_option([attribute.value("all")], "Todas"),
-            html_option([attribute.value("draft")], "Draft"),
-            html_option([attribute.value("active")], "Active"),
-            html_option([attribute.value("closed")], "Closed"),
+            html_option(
+              [attribute.value("all")],
+              i18n.t(config.locale, i18n_text.PlanStatusAll),
+            ),
+            html_option(
+              [attribute.value("draft")],
+              i18n.t(config.locale, i18n_text.CardPhaseDraft),
+            ),
+            html_option(
+              [attribute.value("active")],
+              i18n.t(config.locale, i18n_text.CardPhaseActive),
+            ),
+            html_option(
+              [attribute.value("closed")],
+              i18n.t(config.locale, i18n_text.CardPhaseClosed),
+            ),
           ],
         ),
       ]),
@@ -425,7 +438,7 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
       case filters.include_closed {
         True -> [
           span([attribute.class("plan-filter-search-chip")], [
-            text("Incluye closed"),
+            text(i18n.t(config.locale, i18n_text.PlanIncludesClosed)),
           ]),
         ]
         False -> []
@@ -471,7 +484,7 @@ fn view_table(
         ),
         tree_table.column(
           "Estado",
-          fn(row) { view_state_cell(row) },
+          fn(row) { view_state_cell(config.locale, row) },
           "plan-col-state",
           "plan-cell-state",
         ),
@@ -539,7 +552,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
         },
       ]),
       div([attribute.class("plan-tree-mobile-meta")], [
-        view_state_cell(row),
+        view_state_cell(config.locale, row),
         span([attribute.class("plan-task-count")], [
           text(
             int.to_string(rollup.completed_tasks)
@@ -652,9 +665,9 @@ fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
   }
 }
 
-fn view_state_cell(row: types.StructureRow) -> Element(msg) {
+fn view_state_cell(locale: Locale, row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, ..) = row
-  signal_chip.text(card_state_label(card), card_state_tone(card))
+  signal_chip.text(card_state_label(locale, card), card_state_tone(card))
   |> signal_chip.with_class("plan-state-chip")
   |> signal_chip.view
 }
@@ -970,7 +983,11 @@ fn view_detail(
       div([attribute.class("plan-detail-heading")], [
         h4([], [text(card.title)]),
         span([], [
-          text(card_state_label(card) <> " - " <> level_label(config, card)),
+          text(
+            card_state_label(config.locale, card)
+            <> " - "
+            <> level_label(config, card),
+          ),
         ]),
       ]),
       div([attribute.class("plan-detail-path")], [
@@ -1008,7 +1025,7 @@ fn view_detail_subcards(
           ],
           [text(card.title)],
         ),
-        span([], [text(card_state_label(card))]),
+        span([], [text(card_state_label(config.locale, card))]),
       ])
     }),
   )
@@ -1775,12 +1792,8 @@ fn level_label(config: Config(msg), card: Card) -> String {
   )
 }
 
-fn card_state_label(card: Card) -> String {
-  case card.state {
-    Draft -> "Draft"
-    Active -> "Active"
-    Closed -> "Closed"
-  }
+fn card_state_label(locale: Locale, card: Card) -> String {
+  card_state_ui.label(locale, card.state)
 }
 
 fn card_state_tone(card: Card) -> tone.Tone {

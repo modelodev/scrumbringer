@@ -214,6 +214,30 @@ pub fn closed_status_filter_still_respects_closed_toggle_test() {
   assert_not_contains(shown, "plan-tree-title\">Draft Checkout")
 }
 
+pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
+  let english =
+    render(structure_view.Config(..base_config(), show_closed: Some(True)))
+  let spanish =
+    render(
+      structure_view.Config(
+        ..base_config(),
+        locale: locale.Es,
+        show_closed: Some(True),
+      ),
+    )
+
+  assert_contains(english, ">All</option>")
+  assert_contains(english, ">Pending</option>")
+  assert_contains(english, ">In Progress</option>")
+  assert_contains(english, ">Closed</option>")
+  assert_contains(english, "Includes closed")
+  assert_not_contains(english, ">Todas</option>")
+  assert_not_contains(english, "Incluye closed")
+  assert_contains(spanish, ">Todas</option>")
+  assert_contains(spanish, ">Finalizada</option>")
+  assert_contains(spanish, "Incluye finalizadas")
+}
+
 pub fn incompatible_actions_are_disabled_with_reason_test() {
   let html =
     render(

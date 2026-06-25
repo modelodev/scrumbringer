@@ -238,6 +238,8 @@ pub fn translate(text: Text) -> String {
     text.PlanCapabilityList -> "List"
     text.PlanCapabilityMatrix -> "Matrix"
     text.PlanClosed -> "Closed"
+    text.PlanStatusAll -> "All"
+    text.PlanIncludesClosed -> "Includes closed"
     text.PoolPurpose -> "Active tasks available for the team to claim."
     text.PoolVisibilityLabel -> "Show"
     text.PoolVisibilityAllOpen -> "Open"

@@ -207,6 +207,8 @@ pub type Text {
   PlanCapabilityList
   PlanCapabilityMatrix
   PlanClosed
+  PlanStatusAll
+  PlanIncludesClosed
   PoolPurpose
   PoolVisibilityLabel
   PoolVisibilityAllOpen
