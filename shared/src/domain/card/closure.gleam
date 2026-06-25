@@ -33,8 +33,8 @@ pub type RollupError {
 }
 
 pub type ClosedCardOutcome {
-  AllTasksDone
-  ClosedWithoutAllTasksDone
+  AllTasksClosed
+  ClosedWithoutAllTasksClosed
 }
 
 pub fn close_card_manually(
@@ -99,11 +99,11 @@ pub fn closed_card_outcome(
     card_state.Closed(..) -> {
       let leaves = descendant_tasks(card.id, tree)
       case leaves {
-        [] -> Some(ClosedWithoutAllTasksDone)
+        [] -> Some(ClosedWithoutAllTasksClosed)
         _ ->
           case list.all(leaves, task_closed_with_done_reason) {
-            True -> Some(AllTasksDone)
-            False -> Some(ClosedWithoutAllTasksDone)
+            True -> Some(AllTasksClosed)
+            False -> Some(ClosedWithoutAllTasksClosed)
           }
       }
     }

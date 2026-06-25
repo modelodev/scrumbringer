@@ -91,7 +91,7 @@ pub fn closed_card_outcome_all_tasks_done_when_all_leaves_done_test() {
     card_task(2, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
   let tree = activation.WorkTree(cards: [card], tasks: [task_a, task_b])
 
-  let assert option.Some(closure.AllTasksDone) =
+  let assert option.Some(closure.AllTasksClosed) =
     closure.closed_card_outcome(card, tree)
 }
 
@@ -115,7 +115,7 @@ pub fn closed_card_outcome_without_all_tasks_done_when_any_leaf_uses_other_reaso
     )
   let tree = activation.WorkTree(cards: [card], tasks: [done, manual])
 
-  let assert option.Some(closure.ClosedWithoutAllTasksDone) =
+  let assert option.Some(closure.ClosedWithoutAllTasksClosed) =
     closure.closed_card_outcome(card, tree)
 }
 
