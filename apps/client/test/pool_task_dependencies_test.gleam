@@ -51,7 +51,7 @@ pub fn task_dependencies_renders_loaded_dependencies_test() {
   assert_contains(html, "Configure API")
   assert_contains(html, "Claimed by ana@example.com")
   assert_contains(html, "Write docs")
-  assert_contains(html, "Done")
+  assert_contains(html, "Closed")
 }
 
 pub fn task_dependencies_renders_empty_state_test() {
