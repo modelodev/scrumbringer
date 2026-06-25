@@ -155,7 +155,7 @@ fn start_session(
       api.error(409, "CONFLICT_CLAIMED", "Task is not claimed by you")
 
     Error(work_sessions_db.TaskDone) ->
-      api.error(409, "CONFLICT_INVALID_STATE", "Task is completed")
+      api.error(409, "CONFLICT_INVALID_STATE", "Task is closed")
 
     Error(error) -> work_session_internal_error_response(error)
   }

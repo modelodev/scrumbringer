@@ -1322,7 +1322,7 @@ pub fn task_dependencies_reject_completed_dependency_test() {
   let completed_res = handler(completed_req)
   expect.expect_status(completed_res, 422)
   simulate.read_body(completed_res)
-  |> string.contains("Dependency task is already completed")
+  |> string.contains("Dependency task is already closed")
   |> expect.is_true
 }
 

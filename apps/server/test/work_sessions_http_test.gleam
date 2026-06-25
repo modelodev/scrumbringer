@@ -101,8 +101,10 @@ pub fn start_rejects_completed_task_test() {
 
   let res = handler(start_session_request(task_id, session))
   expect.expect_status(res, 409)
-  string.contains(simulate.read_body(res), "CONFLICT_INVALID_STATE")
-  |> expect.is_true
+  let body = simulate.read_body(res)
+  string.contains(body, "CONFLICT_INVALID_STATE") |> expect.is_true
+  string.contains(body, "Task is closed") |> expect.is_true
+  string.contains(body, "Task is completed") |> expect.is_false
 }
 
 pub fn start_returns_conflict_for_missing_task_test() {

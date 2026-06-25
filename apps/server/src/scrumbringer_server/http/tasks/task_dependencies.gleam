@@ -281,7 +281,7 @@ fn require_dependency_not_completed(
       Error(api.error(
         422,
         "VALIDATION_ERROR",
-        "Dependency task is already completed",
+        "Dependency task is already closed",
       ))
     task_state.Available | task_state.Claimed(..) -> Ok(Nil)
   }

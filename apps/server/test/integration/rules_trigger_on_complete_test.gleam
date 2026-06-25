@@ -153,7 +153,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
 
-  // Then: Task is completed
+  // Then: Task is closed.
   expect.expect_status(complete_res, 200)
 
   // And: Rule was executed
