@@ -43,7 +43,7 @@ pub fn to_status(state: TaskExecutionState) -> status.TaskPhase {
     Available -> status.Available
     Claimed(mode: Taken, ..) -> status.Claimed(status.Taken)
     Claimed(mode: Ongoing, ..) -> status.Claimed(status.Ongoing)
-    Closed(..) -> status.Done
+    Closed(..) -> status.Closed
   }
 }
 
@@ -52,7 +52,7 @@ pub fn to_work_state(state: TaskExecutionState) -> status.WorkState {
     Available -> status.WorkAvailable
     Claimed(mode: Taken, ..) -> status.WorkClaimed
     Claimed(mode: Ongoing, ..) -> status.WorkOngoing
-    Closed(..) -> status.WorkDone
+    Closed(..) -> status.WorkClosed
   }
 }
 

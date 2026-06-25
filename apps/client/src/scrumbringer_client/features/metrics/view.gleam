@@ -30,7 +30,7 @@ import domain/remote.{type Remote}
 import domain/task.{Task}
 import domain/task/state as task_state
 import domain/task_status.{
-  type WorkState, WorkAvailable, WorkClaimed, WorkDone, WorkOngoing,
+  type WorkState, WorkAvailable, WorkClaimed, WorkClosed, WorkOngoing,
   task_status_to_string,
 }
 
@@ -519,7 +519,7 @@ fn work_state_label(config: Config(msg), state: WorkState) -> String {
     WorkAvailable -> i18n.t(config.locale, i18n_text.AvailableCount)
     WorkClaimed -> i18n.t(config.locale, i18n_text.Claimed)
     WorkOngoing -> i18n.t(config.locale, i18n_text.OngoingCount)
-    WorkDone -> i18n.t(config.locale, i18n_text.Closed)
+    WorkClosed -> i18n.t(config.locale, i18n_text.Closed)
   }
 }
 

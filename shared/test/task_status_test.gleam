@@ -1,10 +1,10 @@
-import domain/task_status.{WorkAvailable, WorkClaimed, WorkDone, WorkOngoing}
+import domain/task_status.{WorkAvailable, WorkClaimed, WorkClosed, WorkOngoing}
 
 pub fn parse_work_state_accepts_known_values_test() {
   let assert Ok(WorkAvailable) = task_status.parse_work_state("available")
   let assert Ok(WorkClaimed) = task_status.parse_work_state("claimed")
   let assert Ok(WorkOngoing) = task_status.parse_work_state("ongoing")
-  let assert Ok(WorkDone) = task_status.parse_work_state("completed")
+  let assert Ok(WorkClosed) = task_status.parse_work_state("completed")
 }
 
 pub fn parse_work_state_rejects_unknown_values_test() {
@@ -21,7 +21,7 @@ pub fn work_state_to_string_returns_wire_values_test() {
   let assert "available" = task_status.work_state_to_string(WorkAvailable)
   let assert "claimed" = task_status.work_state_to_string(WorkClaimed)
   let assert "ongoing" = task_status.work_state_to_string(WorkOngoing)
-  let assert "completed" = task_status.work_state_to_string(WorkDone)
+  let assert "completed" = task_status.work_state_to_string(WorkClosed)
 }
 
 pub fn parse_error_to_string_returns_stable_messages_test() {

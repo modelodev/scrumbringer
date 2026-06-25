@@ -2,7 +2,7 @@ import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_status.{
-  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+  type TaskPhase, Available, Claimed, Closed as TaskClosed, Ongoing, Taken,
 }
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{type Option, None, Some}
@@ -585,7 +585,7 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
         claimed_at: "2026-01-01T00:00:00Z",
         mode: claim_mode(mode),
       )
-    Done ->
+    TaskClosed ->
       task_state.Closed(task_state.ClosedByClaimant, "2026-01-02T00:00:00Z", 7)
   }
   Task(

@@ -1,5 +1,5 @@
 import domain/task_status.{
-  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+  type TaskPhase, Available, Claimed, Closed, Ongoing, Taken,
 }
 
 import scrumbringer_client/i18n/i18n
@@ -11,7 +11,7 @@ pub fn label(locale: Locale, status: TaskPhase) -> String {
     Available -> i18n.t(locale, i18n_text.TaskStateAvailable)
     Claimed(Taken) -> i18n.t(locale, i18n_text.TaskStateClaimed)
     Claimed(Ongoing) -> i18n.t(locale, i18n_text.TaskStateOngoing)
-    Done -> i18n.t(locale, i18n_text.TaskStateClosed)
+    Closed -> i18n.t(locale, i18n_text.TaskStateClosed)
   }
 }
 
@@ -20,7 +20,7 @@ pub fn hint(locale: Locale, status: TaskPhase) -> String {
     Available -> i18n.t(locale, i18n_text.TaskStateAvailableHint)
     Claimed(Taken) -> i18n.t(locale, i18n_text.TaskStateClaimedHint)
     Claimed(Ongoing) -> i18n.t(locale, i18n_text.TaskStateOngoingHint)
-    Done -> i18n.t(locale, i18n_text.TaskStateClosedHint)
+    Closed -> i18n.t(locale, i18n_text.TaskStateClosedHint)
   }
 }
 
@@ -29,7 +29,7 @@ pub fn next_action(locale: Locale, status: TaskPhase) -> String {
     Available -> i18n.t(locale, i18n_text.TaskNextActionClaim)
     Claimed(Taken) -> i18n.t(locale, i18n_text.TaskNextActionStart)
     Claimed(Ongoing) -> i18n.t(locale, i18n_text.TaskNextActionPause)
-    Done -> i18n.t(locale, i18n_text.TaskNextActionOpen)
+    Closed -> i18n.t(locale, i18n_text.TaskNextActionOpen)
   }
 }
 

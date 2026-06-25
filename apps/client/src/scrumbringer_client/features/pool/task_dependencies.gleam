@@ -139,7 +139,7 @@ fn dependency_row(
   let status_label = task_state.label(config.locale, status)
 
   let status_note = case status {
-    task_status.Done -> status_label
+    task_status.Closed -> status_label
     task_status.Claimed(_) ->
       case claimed_by {
         opt.Some(email) -> t(config, i18n_text.ClaimedBy) <> " " <> email
@@ -149,7 +149,7 @@ fn dependency_row(
   }
 
   let icon = case status {
-    task_status.Done -> icons.nav_icon(icons.CheckCircle, icons.Small)
+    task_status.Closed -> icons.nav_icon(icons.CheckCircle, icons.Small)
     _ -> icons.nav_icon(icons.Warning, icons.Small)
   }
 
