@@ -995,8 +995,8 @@ fn admin_rule_metrics_callbacks() -> execution_history_config.Callbacks(
         value,
       ))
     },
-    on_workflow_expanded: fn(workflow_id) {
-      client_state.pool_msg(pool_messages.AdminRuleMetricsWorkflowExpanded(
+    on_engine_expanded: fn(workflow_id) {
+      client_state.pool_msg(pool_messages.AdminRuleMetricsEngineExpanded(
         workflow_id,
       ))
     },

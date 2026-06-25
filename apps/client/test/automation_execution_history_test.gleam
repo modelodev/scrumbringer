@@ -177,7 +177,7 @@ fn config() -> execution_history.Config(String) {
     ],
     on_from_changed: fn(value) { "from-" <> value },
     on_to_changed: fn(value) { "to-" <> value },
-    on_workflow_expanded: fn(id) { "workflow-" <> int.to_string(id) },
+    on_engine_expanded: fn(id) { "engine-" <> int.to_string(id) },
     on_drilldown_clicked: fn(id) { "drilldown-" <> int.to_string(id) },
     on_drilldown_closed: "drilldown-closed",
     on_exec_page_changed: fn(offset) { "page-" <> int.to_string(offset) },
@@ -279,8 +279,8 @@ pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
         ..config(),
         model: admin_metrics.Model(
           ..config().model,
-          admin_rule_metrics_expanded_workflow: option.Some(11),
-          admin_rule_metrics_workflow_details: Loaded(workflow_metrics()),
+          admin_rule_metrics_expanded_engine: option.Some(11),
+          admin_rule_metrics_engine_details: Loaded(workflow_metrics()),
         ),
       ),
     )

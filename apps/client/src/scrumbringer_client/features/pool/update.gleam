@@ -835,8 +835,8 @@ fn update_without_view_mode(
     | pool_messages.AdminRuleMetricsToChangedAndRefresh(_)
     | pool_messages.AdminRuleMetricsRefreshClicked
     | pool_messages.AdminRuleMetricsQuickRangeClicked(_, _)
-    | pool_messages.AdminRuleMetricsWorkflowExpanded(_)
-    | pool_messages.AdminRuleMetricsWorkflowDetailsFetched(_)
+    | pool_messages.AdminRuleMetricsEngineExpanded(_)
+    | pool_messages.AdminRuleMetricsEngineDetailsFetched(_)
     | pool_messages.AdminRuleMetricsDrilldownClicked(_)
     | pool_messages.AdminRuleMetricsDrilldownClosed
     | pool_messages.AdminRuleMetricsRuleDetailsFetched(_)

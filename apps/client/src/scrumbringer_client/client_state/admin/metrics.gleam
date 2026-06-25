@@ -20,10 +20,8 @@ pub type Model {
     admin_rule_metrics: Remote(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
     admin_rule_metrics_from: String,
     admin_rule_metrics_to: String,
-    admin_rule_metrics_expanded_workflow: Option(Int),
-    admin_rule_metrics_workflow_details: Remote(
-      api_rule_metrics.WorkflowMetrics,
-    ),
+    admin_rule_metrics_expanded_engine: Option(Int),
+    admin_rule_metrics_engine_details: Remote(api_rule_metrics.WorkflowMetrics),
     admin_rule_metrics_drilldown_rule_id: Option(Int),
     admin_rule_metrics_rule_details: Remote(
       api_rule_metrics.RuleMetricsDetailed,
@@ -52,8 +50,8 @@ pub fn default_model() -> Model {
     admin_rule_metrics: NotAsked,
     admin_rule_metrics_from: from,
     admin_rule_metrics_to: to,
-    admin_rule_metrics_expanded_workflow: option.None,
-    admin_rule_metrics_workflow_details: NotAsked,
+    admin_rule_metrics_expanded_engine: option.None,
+    admin_rule_metrics_engine_details: NotAsked,
     admin_rule_metrics_drilldown_rule_id: option.None,
     admin_rule_metrics_rule_details: NotAsked,
     admin_rule_metrics_executions: NotAsked,

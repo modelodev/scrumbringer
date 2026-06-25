@@ -33,7 +33,7 @@ pub type Context(parent_msg) {
       ApiResult(List(api_rule_metrics.OrgWorkflowMetricsSummary)),
     ) ->
       parent_msg,
-    on_workflow_details_fetched: fn(ApiResult(api_rule_metrics.WorkflowMetrics)) ->
+    on_engine_details_fetched: fn(ApiResult(api_rule_metrics.WorkflowMetrics)) ->
       parent_msg,
     on_rule_details_fetched: fn(ApiResult(api_rule_metrics.RuleMetricsDetailed)) ->
       parent_msg,
@@ -100,16 +100,16 @@ pub fn try_update(
       handle_quick_range_clicked(model, from, to, selected_project_id, context)
       |> without_auth_check
 
-    pool_messages.AdminRuleMetricsWorkflowExpanded(workflow_id) ->
-      handle_workflow_expanded(model, workflow_id, context)
+    pool_messages.AdminRuleMetricsEngineExpanded(workflow_id) ->
+      handle_engine_expanded(model, workflow_id, context)
       |> without_auth_check
 
-    pool_messages.AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
-      handle_workflow_details_fetched_ok(model, details)
+    pool_messages.AdminRuleMetricsEngineDetailsFetched(Ok(details)) ->
+      handle_engine_details_fetched_ok(model, details)
       |> without_auth_check
 
-    pool_messages.AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
-      handle_workflow_details_fetched_error(model, err)
+    pool_messages.AdminRuleMetricsEngineDetailsFetched(Error(err)) ->
+      handle_engine_details_fetched_error(model, err)
       |> with_auth_check(err)
 
     pool_messages.AdminRuleMetricsDrilldownClicked(rule_id) ->
@@ -453,65 +453,62 @@ pub fn init_tab(
 // Drill-down Handlers
 // =============================================================================
 
-/// Handle workflow expansion toggle (to show per-rule metrics).
-fn handle_workflow_expanded(
+/// Handle engine expansion toggle (to show per-rule metrics).
+fn handle_engine_expanded(
   model: admin_metrics.Model,
   workflow_id: Int,
   context: Context(parent_msg),
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
-  case model.admin_rule_metrics_expanded_workflow == Some(workflow_id) {
+  case model.admin_rule_metrics_expanded_engine == Some(workflow_id) {
     // Collapse if already expanded
     True -> #(
       admin_metrics.Model(
         ..model,
-        admin_rule_metrics_expanded_workflow: None,
-        admin_rule_metrics_workflow_details: NotAsked,
+        admin_rule_metrics_expanded_engine: None,
+        admin_rule_metrics_engine_details: NotAsked,
       ),
       effect.none(),
     )
-    // Expand this workflow and fetch its details
+    // Expand this engine and fetch its details.
     False -> {
       let model =
         admin_metrics.Model(
           ..model,
-          admin_rule_metrics_expanded_workflow: Some(workflow_id),
-          admin_rule_metrics_workflow_details: Loading,
+          admin_rule_metrics_expanded_engine: Some(workflow_id),
+          admin_rule_metrics_engine_details: Loading,
         )
       #(
         model,
         api_rule_metrics.get_workflow_metrics(
           workflow_id,
-          context.on_workflow_details_fetched,
+          context.on_engine_details_fetched,
         ),
       )
     }
   }
 }
 
-/// Handle workflow details fetch success.
-fn handle_workflow_details_fetched_ok(
+/// Handle engine details fetch success.
+fn handle_engine_details_fetched_ok(
   model: admin_metrics.Model,
   details: api_rule_metrics.WorkflowMetrics,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
     admin_metrics.Model(
       ..model,
-      admin_rule_metrics_workflow_details: Loaded(details),
+      admin_rule_metrics_engine_details: Loaded(details),
     ),
     effect.none(),
   )
 }
 
-/// Handle workflow details fetch error.
-fn handle_workflow_details_fetched_error(
+/// Handle engine details fetch error.
+fn handle_engine_details_fetched_error(
   model: admin_metrics.Model,
   err: ApiError,
 ) -> #(admin_metrics.Model, Effect(parent_msg)) {
   #(
-    admin_metrics.Model(
-      ..model,
-      admin_rule_metrics_workflow_details: Failed(err),
-    ),
+    admin_metrics.Model(..model, admin_rule_metrics_engine_details: Failed(err)),
     effect.none(),
   )
 }

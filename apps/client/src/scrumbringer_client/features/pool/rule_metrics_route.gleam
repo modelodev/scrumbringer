@@ -44,10 +44,10 @@ fn context() -> rule_metrics_workflow.Context(client_state.Msg) {
     on_rule_metrics_fetched: fn(result) {
       client_state.pool_msg(pool_messages.AdminRuleMetricsFetched(result))
     },
-    on_workflow_details_fetched: fn(result) {
-      client_state.pool_msg(
-        pool_messages.AdminRuleMetricsWorkflowDetailsFetched(result),
-      )
+    on_engine_details_fetched: fn(result) {
+      client_state.pool_msg(pool_messages.AdminRuleMetricsEngineDetailsFetched(
+        result,
+      ))
     },
     on_rule_details_fetched: fn(result) {
       client_state.pool_msg(pool_messages.AdminRuleMetricsRuleDetailsFetched(

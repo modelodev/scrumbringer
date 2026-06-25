@@ -12,7 +12,7 @@ pub fn css() -> List(String) {
     ".table tbody tr:hover { background: var(--sb-elevated); }",
     ".table tbody tr.clickable { cursor: pointer; }",
     ".table tbody tr.clickable:hover { background: color-mix(in oklab, var(--sb-primary) 6%, var(--sb-elevated)); }",
-    ".workflow-row > td { vertical-align: middle; }",
+    ".automation-engine-metrics-row > td { vertical-align: middle; }",
     ".expand-col { width: 40px; text-align: center; padding-left: 8px; padding-right: 4px; }",
     ".nested-table { margin-top: 4px; }",
     // Expansion rows for subtables

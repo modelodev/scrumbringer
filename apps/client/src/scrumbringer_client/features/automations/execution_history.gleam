@@ -57,7 +57,7 @@ pub type Config(msg) {
     quick_ranges: List(QuickRange(msg)),
     on_from_changed: fn(String) -> msg,
     on_to_changed: fn(String) -> msg,
-    on_workflow_expanded: fn(Int) -> msg,
+    on_engine_expanded: fn(Int) -> msg,
     on_drilldown_clicked: fn(Int) -> msg,
     on_drilldown_closed: msg,
     on_exec_page_changed: fn(Int) -> msg,
@@ -333,7 +333,9 @@ fn view_execution_summary_table_loaded(
           ]),
           keyed.tbody(
             [],
-            list.flat_map(workflows, fn(w) { view_workflow_row(config, w) }),
+            list.flat_map(workflows, fn(w) {
+              view_engine_summary_row(config, w)
+            }),
           ),
         ]),
         // Drill-down modal
@@ -342,23 +344,23 @@ fn view_execution_summary_table_loaded(
   }
 }
 
-/// Render a workflow row with optional expansion for per-rule metrics.
-fn view_workflow_row(
+/// Render an automation engine row with optional expansion for per-rule metrics.
+fn view_engine_summary_row(
   config: Config(msg),
   w: api_rule_metrics.OrgWorkflowMetricsSummary,
 ) -> List(#(String, Element(msg))) {
   let is_expanded =
-    config.model.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
+    config.model.admin_rule_metrics_expanded_engine == opt.Some(w.workflow_id)
   let main_row = #(
     "wf-" <> int.to_string(w.workflow_id),
     tr(
       [
-        attribute.class("workflow-row clickable"),
+        attribute.class("automation-engine-metrics-row clickable"),
         attribute.attribute(
           "aria-expanded",
           attribute_value.boolean(is_expanded),
         ),
-        event.on_click(config.on_workflow_expanded(w.workflow_id)),
+        event.on_click(config.on_engine_expanded(w.workflow_id)),
       ],
       [
         td([attribute.class("expand-col")], [expand_toggle.view(is_expanded)]),
@@ -393,7 +395,7 @@ fn view_engine_rules_expansion(
   let content =
     view_engine_rules_expansion_content(
       config,
-      config.model.admin_rule_metrics_workflow_details,
+      config.model.admin_rule_metrics_engine_details,
     )
 
   #(
@@ -445,13 +447,13 @@ fn view_engine_rules_expansion_loaded(
         ]),
         keyed.tbody(
           [],
-          list.map(rules, fn(r) { view_workflow_rule_metrics_row(config, r) }),
+          list.map(rules, fn(r) { view_engine_rule_metrics_row(config, r) }),
         ),
       ])
   }
 }
 
-fn view_workflow_rule_metrics_row(
+fn view_engine_rule_metrics_row(
   config: Config(msg),
   rule_metrics: api_rule_metrics.RuleMetricsSummary,
 ) -> #(String, Element(msg)) {

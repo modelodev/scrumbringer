@@ -11,7 +11,7 @@ import scrumbringer_client/features/pool/msg as pool_messages
 fn context() -> rule_metrics.Context(String) {
   rule_metrics.Context(
     on_rule_metrics_fetched: fn(_) { "rule-metrics-fetched" },
-    on_workflow_details_fetched: fn(_) { "workflow-details-fetched" },
+    on_engine_details_fetched: fn(_) { "engine-details-fetched" },
     on_rule_details_fetched: fn(_) { "rule-details-fetched" },
     on_executions_fetched: fn(_) { "executions-fetched" },
     on_project_executions_fetched: fn(_) { "project-executions-fetched" },
@@ -39,7 +39,7 @@ fn workflow_summary(id: Int) -> api_rule_metrics.OrgWorkflowMetricsSummary {
   )
 }
 
-fn workflow_details(id: Int) -> api_rule_metrics.WorkflowMetrics {
+fn engine_details(id: Int) -> api_rule_metrics.WorkflowMetrics {
   api_rule_metrics.WorkflowMetrics(
     workflow_id: id,
     workflow_name: "Workflow",
@@ -202,31 +202,31 @@ pub fn fetched_error_sets_failed_metrics_test() {
   let assert True = fx == effect.none()
 }
 
-pub fn workflow_expanded_collapses_current_workflow_test() {
+pub fn engine_expanded_collapses_current_engine_test() {
   let model =
     admin_metrics.Model(
       ..admin_metrics.default_model(),
-      admin_rule_metrics_expanded_workflow: option.Some(7),
-      admin_rule_metrics_workflow_details: Loaded(workflow_details(7)),
+      admin_rule_metrics_expanded_engine: option.Some(7),
+      admin_rule_metrics_engine_details: Loaded(engine_details(7)),
     )
 
   let rule_metrics.Update(next, fx, _) =
-    update(model, pool_messages.AdminRuleMetricsWorkflowExpanded(7))
+    update(model, pool_messages.AdminRuleMetricsEngineExpanded(7))
 
-  let assert option.None = next.admin_rule_metrics_expanded_workflow
-  let assert NotAsked = next.admin_rule_metrics_workflow_details
+  let assert option.None = next.admin_rule_metrics_expanded_engine
+  let assert NotAsked = next.admin_rule_metrics_engine_details
   let assert True = fx == effect.none()
 }
 
-pub fn workflow_expanded_fetches_new_workflow_details_test() {
+pub fn engine_expanded_fetches_new_engine_details_test() {
   let rule_metrics.Update(next, fx, _) =
     update(
       admin_metrics.default_model(),
-      pool_messages.AdminRuleMetricsWorkflowExpanded(7),
+      pool_messages.AdminRuleMetricsEngineExpanded(7),
     )
 
-  let assert option.Some(7) = next.admin_rule_metrics_expanded_workflow
-  let assert Loading = next.admin_rule_metrics_workflow_details
+  let assert option.Some(7) = next.admin_rule_metrics_expanded_engine
+  let assert Loading = next.admin_rule_metrics_engine_details
   let assert False = fx == effect.none()
 }
 

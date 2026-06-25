@@ -171,8 +171,8 @@ pub type Msg {
   AdminRuleMetricsToChangedAndRefresh(String)
   AdminRuleMetricsRefreshClicked
   AdminRuleMetricsQuickRangeClicked(String, String)
-  AdminRuleMetricsWorkflowExpanded(Int)
-  AdminRuleMetricsWorkflowDetailsFetched(
+  AdminRuleMetricsEngineExpanded(Int)
+  AdminRuleMetricsEngineDetailsFetched(
     ApiResult(api_rule_metrics.WorkflowMetrics),
   )
   AdminRuleMetricsDrilldownClicked(Int)
