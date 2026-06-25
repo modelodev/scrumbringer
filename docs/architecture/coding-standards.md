@@ -239,7 +239,7 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 | `icons` | `ui/icons.gleam` | Sistema de iconos Heroicons |
 | `badge` | `ui/badge.gleam` | Badges de estado |
 | `tone` | `ui/tone.gleam` | Tonos semánticos compartidos para señales compactas |
-| `signal_chip` | `ui/signal_chip.gleam` | Chips compactos de texto o métrica, con clases de compatibilidad por vista |
+| `signal_chip` | `ui/signal_chip.gleam` | Chips compactos de texto o métrica, con modificadores por vista |
 | `empty_state` | `ui/empty_state.gleam` | Estados empty/loading/error/no-results con significado semántico, icono y copy |
 | `button` | `ui/button.gleam` | Botones con intención, alcance, forma, tamaño, disabled, tooltip y accesibilidad explícitos |
 | `filter_bar` | `ui/filter_bar.gleam` | Agrupación común de filtros con slot de acciones separado |
@@ -247,15 +247,16 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 
 Los estados de carga, error, sin resultados o sin configuración en vistas de
 producto deben usar `empty_state.Meaning`. Las clases locales como
-`people-state` o `hierarchies-error` pueden mantenerse como modificadores de
-compatibilidad, pero no deben ser la única fuente del significado visual.
+`people-state` o `hierarchies-error` pueden mantenerse como modificadores
+específicos de una superficie, pero no deben ser la única fuente del significado
+visual.
 
 Las acciones nuevas de producto deben usar `ui/button` salvo que ya exista un
 helper semántico más específico en `ui/action_buttons` o `ui/task_actions`.
 Estos helpers no deben construir clases visuales en paralelo: deben delegar en
-`ui/button` salvo cuando conserven un contrato legacy con eventos o clases
-totalmente custom. Los filtros nuevos deben usar `ui/filter_bar` cuando haya
-varios campos o acciones adyacentes.
+`ui/button` salvo cuando preserven un contrato explícito de eventos o clases
+totalmente custom de la superficie. Los filtros nuevos deben usar
+`ui/filter_bar` cuando haya varios campos o acciones adyacentes.
 
 #### Uso de section_header
 

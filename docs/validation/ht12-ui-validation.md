@@ -102,8 +102,9 @@ make ht12-static-check
 ```
 
 The plan check guards this document's scenario coverage. The static check guards
-the implementation against writing the legacy `tasks.status` column in lifecycle
-SQL; HT-12 uses `tasks.execution_state` as the canonical lifecycle state.
+the implementation against writing the retired `tasks.status` column in
+lifecycle SQL; HT-12 uses `tasks.execution_state` as the canonical lifecycle
+state.
 
 Latest LAN evidence on this host:
 
@@ -152,8 +153,8 @@ Latest LAN evidence on this host:
 - Expected: placing a task in a card that already contains child cards returns
   `CARD_HAS_CHILD_CARDS`.
 - Expected: ambiguous task placement that specifies both `card_id` and
-  `parent_card_id` returns `TASK_PARENT_CARD_CONFLICT`, not a legacy planning artifact
-  error code.
+  `parent_card_id` returns `TASK_PARENT_CARD_CONFLICT`, not a removed planning
+  artifact error code.
 
 ### 3. Task Creation Contexts
 
@@ -263,7 +264,7 @@ Latest LAN evidence on this host:
   `automation_origin`, including the rule, engine, execution, template, and
   template version.
 - Expected: the Automations console opens the Engines list, focused Rules view,
-  Templates mode, and Executions mode for the created project without legacy
+  Templates mode, and Executions mode for the created project without retired
   `/config/templates` or `/config/rule-metrics` surfaces.
 
 ### 8. Responsive And Usability Pass

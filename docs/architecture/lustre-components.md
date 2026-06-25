@@ -70,7 +70,7 @@ apps/client/src/scrumbringer_client/
 ├── components/
 │   ├── card_detail_modal.gleam         # DONE - Story 3.6
 │   ├── card_crud_dialog.gleam          # Planned - Priority 1
-│   ├── workflow_crud_dialog.gleam      # Planned - Priority 2
+│   ├── automation_crud_dialog.gleam    # Planned - Priority 2
 │   ├── task_template_crud_dialog.gleam # Planned - Priority 3
 │   └── rule_crud_dialog.gleam          # Planned - Priority 4
 ├── component.ffi.mjs                   # Shared FFI for custom events
@@ -480,7 +480,7 @@ This allows components to use theme colors defined in the parent document:
 - [ ] Write unit tests for types
 - [ ] Remove old fields from root Model
 - [ ] Remove old variants from root Msg
-- [ ] Delete obsolete view modules
+- [ ] Delete replaced view modules
 - [ ] Run full test suite
 - [ ] Manual QA verification
 

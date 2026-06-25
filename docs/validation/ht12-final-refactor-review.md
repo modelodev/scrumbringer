@@ -1,5 +1,8 @@
 # HT-12 Final Refactor Review
 
+This is a validation record for a completed cleanup pass, not current
+architecture guidance.
+
 Parent branch resolution followed the `gleam-refactor` skill order:
 
 - Upstream: none configured for `new_hierarchy`
@@ -10,28 +13,28 @@ Parent branch resolution followed the `gleam-refactor` skill order:
 
 - Domain/shared: uses the `CardHierarchy` structural wrapper, updated tests,
   and keeps card/task leaf invariants in shared domain modules.
-- Server: removed obsolete hierarchy metrics and generated SQL surfaces,
+- Server: removed retired hierarchy metrics and generated SQL surfaces,
   replaced remaining parent-card error naming, removed old API-token scopes,
   converted seed creation to root cards, and added a migration to remove the
   final migration-report artifact table.
 - Client: renamed the visible hierarchy feature module path, CSS classes, i18n
   keys, tests, and task placement helper names away from removed card-tree
   terminology.
-- Tests/gates: converted obsolete hierarchy endpoint metric tests to supported
+- Tests/gates: converted retired hierarchy endpoint metric tests to supported
   card/task metric coverage, made final cleanup gates self-excluding, and kept
-  rejected legacy-route coverage through constructed legacy strings.
+  rejected removed-route coverage through constructed removed-route strings.
 - Docs: updated API, skill, architecture, audit, and validation docs to use the
   final hierarchy/task-leaf terminology.
 
 ## Applied Improvements
 
-- High value / medium complexity / low risk: removed obsolete generated SQL and
+- High value / medium complexity / low risk: removed retired generated SQL and
   metrics code for deleted hierarchy endpoints.
 - High value / medium complexity / medium risk: renamed the client hierarchy
   surface consistently across modules, CSS classes, i18n, and tests.
-- High value / low complexity / low risk: removed obsolete API-token scopes and
+- High value / low complexity / low risk: removed retired API-token scopes and
   updated supported-scope tests.
-- Medium value / low complexity / low risk: made anti-legacy regression tests
+- Medium value / low complexity / low risk: made removed-route regression tests
   avoid direct self-matches while preserving rejection coverage.
 - Medium value / low complexity / low risk: updated docs and validation records
   to reflect the final model.
@@ -57,7 +60,7 @@ Parent branch resolution followed the `gleam-refactor` skill order:
 - `gleam test --target javascript` passed in `apps/client`: `1566 passed`.
 - Direct HT-12 cleanup gate invocation through `final_cleanup_ht12_ffi` returned
   no violations.
-- Anti-legacy scans returned no matches for removed hierarchy, legacy
+- Removed-surface scans returned no matches for removed hierarchy, retired
   delivery/state, or old task-event terms in active source, tests, docs, and
   schema outside `docs/card-tree-task-leaves-model.md`.
 - `agent-browser` validation passed on desktop, tablet, and mobile; screenshots
