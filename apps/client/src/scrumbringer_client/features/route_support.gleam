@@ -7,6 +7,25 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state
 import scrumbringer_client/features/auth/helpers as auth_helpers
 
+pub type AuthCheck {
+  NoAuthCheck
+  CheckAuthBefore(ApiError)
+  CheckAuthAfter(ApiError)
+}
+
+pub fn apply_auth_check(
+  model: client_state.Model,
+  auth_check: AuthCheck,
+  apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  case auth_check {
+    NoAuthCheck -> apply_update()
+    CheckAuthBefore(err) ->
+      apply_auth_check_before(model, opt.Some(err), apply_update)
+    CheckAuthAfter(err) -> apply_auth_check_after(opt.Some(err), apply_update)
+  }
+}
+
 pub fn apply_auth_check_before(
   model: client_state.Model,
   auth_error: opt.Option(ApiError),

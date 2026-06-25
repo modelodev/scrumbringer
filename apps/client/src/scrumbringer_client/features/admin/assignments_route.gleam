@@ -4,7 +4,6 @@ import gleam/option as opt
 
 import lustre/effect
 
-import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
@@ -77,26 +76,15 @@ fn apply_update(
     #(model, effect.batch([local_fx, root_fx]))
   }
 
-  case auth_timing(auth_policy) {
-    NoAuthCheck -> apply_update()
-    CheckAuthBefore(err) ->
-      route_support.apply_auth_check_before(model, opt.Some(err), apply_update)
-    CheckAuthAfter(err) ->
-      route_support.apply_auth_check_after(opt.Some(err), apply_update)
-  }
+  route_support.apply_auth_check(model, auth_check(auth_policy), apply_update)
 }
 
-type AuthTiming {
-  NoAuthCheck
-  CheckAuthBefore(ApiError)
-  CheckAuthAfter(ApiError)
-}
-
-fn auth_timing(policy: assignments_update.AuthPolicy) -> AuthTiming {
+fn auth_check(policy: assignments_update.AuthPolicy) -> route_support.AuthCheck {
   case policy {
-    assignments_update.NoAuthCheck -> NoAuthCheck
-    assignments_update.CheckAuth(err) -> CheckAuthBefore(err)
-    assignments_update.CheckAuthAfterUpdate(err) -> CheckAuthAfter(err)
+    assignments_update.NoAuthCheck -> route_support.NoAuthCheck
+    assignments_update.CheckAuth(err) -> route_support.CheckAuthBefore(err)
+    assignments_update.CheckAuthAfterUpdate(err) ->
+      route_support.CheckAuthAfter(err)
   }
 }
 

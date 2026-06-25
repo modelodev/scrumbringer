@@ -42,6 +42,36 @@ pub fn apply_auth_check_after_401_keeps_local_update_before_reset_test() {
   let assert True = checked
 }
 
+pub fn apply_auth_check_dispatches_before_policy_test() {
+  let model = authed_admin_model()
+  let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
+
+  let #(next, _) =
+    route_support.apply_auth_check(
+      model,
+      route_support.CheckAuthBefore(err),
+      fn() { #(mark_auth_checked(model), effect.none()) },
+    )
+
+  let assert client_state.Login = next.core.page
+  let assert False = next.core.auth_checked
+}
+
+pub fn apply_auth_check_dispatches_after_policy_test() {
+  let model = authed_admin_model()
+  let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
+
+  let #(next, _) =
+    route_support.apply_auth_check(
+      model,
+      route_support.CheckAuthAfter(err),
+      fn() { #(mark_auth_checked(model), effect.none()) },
+    )
+
+  let assert client_state.Login = next.core.page
+  let assert True = next.core.auth_checked
+}
+
 fn mark_auth_checked(model: client_state.Model) -> client_state.Model {
   client_state.update_core(model, fn(core) {
     client_state.CoreModel(..core, auth_checked: True)

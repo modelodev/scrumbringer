@@ -676,12 +676,22 @@ fn apply_now_working_auth_policy(
   auth_policy: now_working_workflow.AuthPolicy,
   apply_update: fn() -> #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case auth_policy {
-    now_working_workflow.NoAuthCheck -> apply_update()
+  route_support.apply_auth_check(
+    model,
+    now_working_auth_check(auth_policy),
+    apply_update,
+  )
+}
+
+fn now_working_auth_check(
+  policy: now_working_workflow.AuthPolicy,
+) -> route_support.AuthCheck {
+  case policy {
+    now_working_workflow.NoAuthCheck -> route_support.NoAuthCheck
     now_working_workflow.CheckAuthBefore(err) ->
-      route_support.apply_auth_check_before(model, opt.Some(err), apply_update)
+      route_support.CheckAuthBefore(err)
     now_working_workflow.CheckAuthAfter(err) ->
-      route_support.apply_auth_check_after(opt.Some(err), apply_update)
+      route_support.CheckAuthAfter(err)
   }
 }
 
