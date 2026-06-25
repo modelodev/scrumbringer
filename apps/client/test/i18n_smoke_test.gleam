@@ -14,12 +14,15 @@ fn assert_non_empty(value: String) {
 
 pub fn i18n_smoke_selected_texts_en_test() {
   assert_non_empty(i18n.t(locale.En, text.AppName))
-  assert_non_empty(i18n.t(locale.En, text.LoginTitle))
+  let assert "Sign in" = i18n.t(locale.En, text.LoginTitle)
   assert_non_empty(i18n.t(locale.En, text.AcceptInviteTitle))
   assert_non_empty(i18n.t(locale.En, text.ResetPasswordTitle))
   assert_non_empty(i18n.t(locale.En, text.NowWorking))
   assert_non_empty(i18n.t(locale.En, text.PopoverType))
   assert_non_empty(i18n.t(locale.En, text.CreatedAgoDays(1)))
+  let assert "Capabilities saved" = i18n.t(locale.En, text.SkillsSaved)
+  let assert "My capabilities" = i18n.t(locale.En, text.MySkills)
+  let assert "Could not close task" = i18n.t(locale.En, text.TaskCompleteFailed)
 }
 
 pub fn i18n_smoke_selected_texts_es_test() {
@@ -30,4 +33,9 @@ pub fn i18n_smoke_selected_texts_es_test() {
   assert_non_empty(i18n.t(locale.Es, text.NowWorking))
   assert_non_empty(i18n.t(locale.Es, text.PopoverType))
   assert_non_empty(i18n.t(locale.Es, text.CreatedAgoDays(2)))
+  let assert "Capacidades guardadas" = i18n.t(locale.Es, text.SkillsSaved)
+  let assert "Mis capacidades" = i18n.t(locale.Es, text.MySkills)
+  let assert "Tarea cerrada" = i18n.t(locale.Es, text.TaskDone)
+  let assert "No se pudo cerrar la tarea" =
+    i18n.t(locale.Es, text.TaskCompleteFailed)
 }

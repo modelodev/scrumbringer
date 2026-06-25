@@ -17,10 +17,10 @@ pub fn translate(text: Text) -> String {
     text.AppSectionTitle -> "App"
 
     // Auth
-    text.LoginTitle -> "Login"
-    text.LoginSubtitle -> "Login to access the admin UI."
+    text.LoginTitle -> "Sign in"
+    text.LoginSubtitle -> "Sign in to access ScrumBringer."
     text.NoEmailIntegrationNote ->
-      "No email integration in MVP. This generates a reset link you can copy/paste."
+      "Email delivery is not connected in this environment. This creates a reset link you can copy."
     text.EmailLabel -> "Email"
     text.EmailPlaceholderExample -> "user@company.com"
     text.PasswordLabel -> "Password"
@@ -64,13 +64,13 @@ pub fn translate(text: Text) -> String {
     text.TaskReleased -> "Task released"
     text.TaskDone -> "Task closed"
     text.TaskDeleted -> "Task deleted"
-    text.SkillsSaved -> "Skills saved"
+    text.SkillsSaved -> "Capabilities saved"
     text.NoteAdded -> "Note added"
 
     // Task mutation errors
     text.TaskClaimFailed -> "Could not claim task"
     text.TaskReleaseFailed -> "Could not release task"
-    text.TaskCompleteFailed -> "Could not complete task"
+    text.TaskCompleteFailed -> "Could not close task"
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
     text.TaskBlockedByDependencies -> "Task has incomplete dependencies"
@@ -165,7 +165,7 @@ pub fn translate(text: Text) -> String {
     // Member sections
     text.Pool -> "Pool"
     text.MyBar -> "My Bar"
-    text.MySkills -> "My Skills"
+    text.MySkills -> "My capabilities"
     text.MySkillsHelp ->
       "Select the capabilities you have. The Pool will highlight matching tasks."
     text.MyTasks -> "My tasks"

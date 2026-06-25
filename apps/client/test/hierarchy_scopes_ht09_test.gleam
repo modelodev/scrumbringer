@@ -131,7 +131,7 @@ pub fn include_closed_filter_reveals_closed_cards_test() {
     |> element.to_document_string
 
   assert_contains(html, "Closed Story")
-  assert_contains(html, "Incluir finalizadas")
+  assert_contains(html, "Incluir cerradas")
 }
 
 pub fn depth_scope_empty_state_is_actionable_test() {

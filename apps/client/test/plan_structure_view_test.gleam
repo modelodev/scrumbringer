@@ -269,8 +269,8 @@ pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
   assert_not_contains(english, ">Todas</option>")
   assert_not_contains(english, "Incluye closed")
   assert_contains(spanish, ">Todas</option>")
-  assert_contains(spanish, ">Finalizada</option>")
-  assert_contains(spanish, "Incluye finalizadas")
+  assert_contains(spanish, ">Cerrada</option>")
+  assert_contains(spanish, "Incluye cerradas")
 }
 
 pub fn unsupported_actions_are_disabled_with_reason_test() {

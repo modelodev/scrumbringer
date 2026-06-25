@@ -15,7 +15,7 @@ fn context() -> skills_update.Context(Nil) {
     user_id: option.Some(22),
     on_my_capability_ids_fetched: fn(_result: ApiResult(List(Int))) { Nil },
     on_my_capability_ids_saved: fn(_result: ApiResult(List(Int))) { Nil },
-    skills_saved: "Skills saved",
+    skills_saved: "Capabilities saved",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
     on_error_toast: fn(_message) { effect.none() },
   )

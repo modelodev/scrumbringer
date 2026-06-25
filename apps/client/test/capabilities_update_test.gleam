@@ -32,7 +32,7 @@ fn feedback_context() -> capability_types.FeedbackContext(Nil) {
     capability_created: "Capability created",
     capability_updated: "Capability updated",
     capability_deleted: "Capability deleted",
-    member_capabilities_saved: "Skills saved",
+    member_capabilities_saved: "Capabilities saved",
     capability_members_saved: "Members saved",
     on_success_toast: fn(_message) {
       effect.from(fn(dispatch) { dispatch(Nil) })

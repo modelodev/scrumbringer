@@ -18,7 +18,7 @@ pub fn plan_labels_es_test() {
   i18n.t(locale.Es, text.PlanMode) |> assert_equal("Modo")
   i18n.t(locale.Es, text.PlanModeStructure) |> assert_equal("Estructura")
   i18n.t(locale.Es, text.PlanModeKanban) |> assert_equal("Kanban")
-  i18n.t(locale.Es, text.PlanClosed) |> assert_equal("Finalizadas")
+  i18n.t(locale.Es, text.PlanClosed) |> assert_equal("Cerradas")
   i18n.t(locale.Es, text.PlanEmptyCardScopeBody)
   |> assert_equal(
     "Busca una tarjeta para ver su subárbol, capacidades, tareas y riesgo.",

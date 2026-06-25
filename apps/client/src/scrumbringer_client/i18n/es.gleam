@@ -18,10 +18,9 @@ pub fn translate(text: Text) -> String {
 
     // Auth
     text.LoginTitle -> "Acceso"
-    text.LoginSubtitle ->
-      "Inicia sesión para acceder al panel de administración."
+    text.LoginSubtitle -> "Inicia sesión para acceder a ScrumBringer."
     text.NoEmailIntegrationNote ->
-      "No hay integración de email en el MVP. Esto genera un link de reset que puedes copiar/pegar."
+      "El envío de email no está conectado en este entorno. Esto genera un enlace de restablecimiento que puedes copiar."
     text.EmailLabel -> "Email"
     text.EmailPlaceholderExample -> "user@company.com"
     text.PasswordLabel -> "Contraseña"
@@ -34,8 +33,8 @@ pub fn translate(text: Text) -> String {
     text.MissingInviteToken -> "Falta el token de invitación"
     text.ValidatingInvite -> "Validando invitación…"
     text.SignedIn -> "Sesión iniciada"
-    text.MissingResetToken -> "Falta el token de reset"
-    text.ValidatingResetToken -> "Validando token de reset…"
+    text.MissingResetToken -> "Falta el token de restablecimiento"
+    text.ValidatingResetToken -> "Validando token de restablecimiento…"
     text.PasswordUpdated -> "Contraseña actualizada"
     text.Welcome -> "Bienvenido"
     text.LoggedIn -> "Sesión iniciada"
@@ -64,15 +63,15 @@ pub fn translate(text: Text) -> String {
       "Tarea creada, pero no visible por filtros actuales"
     text.TaskClaimed -> "Tarea reclamada"
     text.TaskReleased -> "Tarea liberada"
-    text.TaskDone -> "Tarea finalizada"
+    text.TaskDone -> "Tarea cerrada"
     text.TaskDeleted -> "Tarea eliminada"
-    text.SkillsSaved -> "Skills guardadas"
+    text.SkillsSaved -> "Capacidades guardadas"
     text.NoteAdded -> "Nota añadida"
 
     // Task mutation errors
     text.TaskClaimFailed -> "No se pudo reclamar la tarea"
     text.TaskReleaseFailed -> "No se pudo liberar la tarea"
-    text.TaskCompleteFailed -> "No se pudo completar la tarea"
+    text.TaskCompleteFailed -> "No se pudo cerrar la tarea"
     text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
     text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
     text.TaskBlockedByDependencies -> "La tarea tiene dependencias incompletas"
@@ -103,9 +102,9 @@ pub fn translate(text: Text) -> String {
     text.TaskCreateActiveCardHint ->
       "Esta tarea entrará en el Pool al crearse y quedará disponible para alguien con la capacidad correspondiente. No se reclamará automáticamente."
     text.TaskCreateClosedCard ->
-      "Las tarjetas finalizadas no pueden recibir tareas nuevas."
+      "Las tarjetas cerradas no pueden recibir tareas nuevas."
     text.CardClosedCannotReceiveChildren ->
-      "Las tarjetas finalizadas no pueden recibir tarjetas hijas ni tareas nuevas."
+      "Las tarjetas cerradas no pueden recibir tarjetas hijas ni tareas nuevas."
     text.CardHasOperationalHistory ->
       "Esta tarjeta tiene historial operativo. Ciérrala en lugar de eliminarla."
     text.ActivateHierarchyManagerOnly ->
@@ -135,10 +134,10 @@ pub fn translate(text: Text) -> String {
     text.Register -> "Registrarse"
     text.Registering -> "Registrando…"
     text.Working -> "Trabajando…"
-    text.GenerateResetLink -> "Generar link de reset"
+    text.GenerateResetLink -> "Generar enlace de restablecimiento"
     text.ForgotPassword -> "¿Olvidaste la contraseña?"
-    text.ResetLink -> "Link de reset"
-    text.CreateInviteLink -> "Crear link de invitación"
+    text.ResetLink -> "Enlace de restablecimiento"
+    text.CreateInviteLink -> "Crear enlace de invitación"
     text.Add -> "Añadir"
     text.Adding -> "Añadiendo…"
     text.Removing -> "Quitando…"
@@ -168,7 +167,7 @@ pub fn translate(text: Text) -> String {
     // Member sections
     text.Pool -> "Pool"
     text.MyBar -> "Mi barra"
-    text.MySkills -> "Mis skills"
+    text.MySkills -> "Mis capacidades"
     text.MySkillsHelp ->
       "Selecciona las capacidades que tienes. El Pool destacará las tareas que coincidan."
     text.MyTasks -> "Mis tareas"
@@ -239,9 +238,9 @@ pub fn translate(text: Text) -> String {
     text.PlanCapabilityMode -> "Modo"
     text.PlanCapabilityList -> "Lista"
     text.PlanCapabilityMatrix -> "Matriz"
-    text.PlanClosed -> "Finalizadas"
+    text.PlanClosed -> "Cerradas"
     text.PlanStatusAll -> "Todas"
-    text.PlanIncludesClosed -> "Incluye finalizadas"
+    text.PlanIncludesClosed -> "Incluye cerradas"
     text.PoolPurpose ->
       "Tareas activas disponibles para que el equipo las reclame."
     text.PoolVisibilityLabel -> "Ver"
@@ -298,7 +297,7 @@ pub fn translate(text: Text) -> String {
       "Los bloqueos aparecerán aquí cuando una dependencia impida reclamar."
     text.ViewBlockedTasks -> "Ver bloqueadas"
     text.ViewOpenTasks -> "Ver abiertas"
-    text.HideDoneTasks -> "Ocultar tareas finalizadas"
+    text.HideDoneTasks -> "Ocultar tareas cerradas"
     text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
     text.MetaType -> "tipo: "
     text.MetaPriority -> "prioridad: "
@@ -375,15 +374,15 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstHierarchy -> "Crear primera jerarquía"
     text.HierarchyCreated -> "Jerarquía creada"
     text.HierarchyCreateFailed -> "No se pudo crear la jerarquía"
-    text.ShowDoneHierarchies -> "Ver finalizadas"
+    text.ShowDoneHierarchies -> "Ver cerradas"
     text.ShowEmptyHierarchies -> "Ver vacíos"
     text.HierarchiesActive -> "Activos"
-    text.HierarchiesDone -> "Finalizadas"
+    text.HierarchiesDone -> "Cerradas"
     text.HierarchyStateReady -> "Listo"
     text.HierarchyStateActive -> "Activo"
-    text.HierarchyStateDone -> "Finalizada"
+    text.HierarchyStateDone -> "Cerrada"
     text.HierarchyEmptyHint -> "Sin trabajo asignado"
-    text.HierarchyDone -> "Finalizada"
+    text.HierarchyDone -> "Cerrada"
     text.HierarchyActivationTitle -> "Activar jerarquía"
     text.HierarchyActivationBody(cards_count, tasks_count) ->
       "Esta acción es irreversible. Activará todo el contenido de la jerarquía ("
@@ -611,7 +610,7 @@ pub fn translate(text: Text) -> String {
     text.WindowDays(days) -> "Ventana: " <> int.to_string(days) <> " días"
     text.Claimed -> "Reclamadas"
     text.Released -> "Liberadas"
-    text.Closed -> "Finalizadas"
+    text.Closed -> "Cerradas"
     text.MetricsOverview -> "Resumen de métricas"
     text.LoadingOverview -> "Cargando resumen…"
     text.ReleasePercent -> "Liberación %"
@@ -671,25 +670,27 @@ pub fn translate(text: Text) -> String {
 
     // Invite links
     text.InvitesTitle -> "INVITACIONES"
-    text.LatestInviteLink -> "Último link de invitación"
-    text.InviteLinks -> "Links de invitación"
+    text.LatestInviteLink -> "Último enlace de invitación"
+    text.InviteLinks -> "Enlaces de invitación"
     text.InviteLinksHelp ->
-      "Crea links de invitación asociados a un email. Copia el link generado para dar de alta a un usuario."
-    text.FailedToLoadInviteLinksPrefix -> "Error cargando links: "
-    text.NoInviteLinksYet -> "Aún no hay links de invitación"
-    text.Link -> "Link"
+      "Crea enlaces de invitación asociados a un email. Copia el enlace generado para dar de alta a un usuario."
+    text.FailedToLoadInviteLinksPrefix -> "Error cargando enlaces: "
+    text.NoInviteLinksYet -> "Aún no hay enlaces de invitación"
+    text.Link -> "Enlace"
     text.State -> "Estado"
     text.CreatedAt -> "Creado"
     text.Regenerate -> "Regenerar"
     text.InvalidateInvite -> "Invalidar"
     text.InvalidateInviteConfirm(email) ->
-      "¿Invalidar el link para " <> email <> "? Este link dejará de funcionar."
+      "¿Invalidar el enlace para "
+      <> email
+      <> "? Este enlace dejará de funcionar."
     // Invite link states (Story 4.8)
     text.InviteStateActive -> "Por aceptar"
     text.InviteStateUsed -> "Usada"
     text.InviteStateExpired -> "Expirada"
-    text.CopyLink -> "Copiar link"
-    text.LinkCopied -> "¡Link copiado!"
+    text.CopyLink -> "Copiar enlace"
+    text.LinkCopied -> "¡Enlace copiado!"
 
     // Projects
     text.Projects -> "Proyectos"
@@ -928,7 +929,7 @@ pub fn translate(text: Text) -> String {
     text.CardPhase -> "Estado"
     text.CardPhaseDraft -> "Por iniciar"
     text.CardPhaseActive -> "En curso"
-    text.CardPhaseClosed -> "Finalizada"
+    text.CardPhaseClosed -> "Cerrada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
@@ -943,7 +944,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanEmptyColumn -> "Sin tarjetas aquí"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
-    text.KanbanEmptyClosed -> "Las tarjetas finalizadas aparecerán aquí"
+    text.KanbanEmptyClosed -> "Las tarjetas cerradas aparecerán aquí"
     text.KanbanSurfacePurpose ->
       "Flujo de tarjetas por estado, con fricción y próximo trabajo visibles."
     text.KanbanSummaryCards -> "Tarjetas"
@@ -1100,11 +1101,11 @@ pub fn translate(text: Text) -> String {
     text.TaskStateAvailable -> "Disponible"
     text.TaskStateClaimed -> "Reclamada"
     text.TaskStateOngoing -> "En curso"
-    text.TaskStateDone -> "Finalizada"
+    text.TaskStateDone -> "Cerrada"
     text.TaskStateAvailableHint -> "Lista para reclamar desde el Pool"
     text.TaskStateClaimedHint -> "En Mis tareas, lista para empezar"
     text.TaskStateOngoingHint -> "Sesión de trabajo activa"
-    text.TaskStateDoneHint -> "Finalizada y sin acciones pendientes"
+    text.TaskStateDoneHint -> "Cerrada y sin acciones pendientes"
     text.TaskNextActionLabel -> "Siguiente acción"
     text.TaskNextActionClaim -> "Reclamar a Mis tareas"
     text.TaskNextActionStart -> "Empezar a trabajar"
@@ -1236,7 +1237,7 @@ pub fn translate(text: Text) -> String {
     text.CardEmptyWorkBody ->
       "Elige si esta tarjeta contendrá tareas o subtarjetas."
     text.CardTasksEmpty -> "No hay tareas"
-    text.CardTasksDone -> "finalizadas"
+    text.CardTasksDone -> "cerradas"
     text.TaskType -> "Tipo de tarea"
     text.TaskTitlePlaceholder -> "Título de la tarea..."
 
@@ -1269,7 +1270,7 @@ pub fn translate(text: Text) -> String {
     text.Rules -> "Reglas"
     // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Mostrar vacías"
-    text.ShowDoneCards -> "Mostrar finalizadas"
+    text.ShowDoneCards -> "Mostrar cerradas"
     text.Organization -> "Organización"
     text.OrgUsers -> "Usuarios"
     text.Invites -> "Invitaciones"
@@ -1348,7 +1349,7 @@ pub fn translate(text: Text) -> String {
     text.NoDueDate -> "Sin vencimiento"
     text.TaskBlockingClear -> "Sin bloqueos activos"
     text.MetricsTasksTotal -> "Tareas totales"
-    text.MetricsTasksClosed -> "Tareas finalizadas"
+    text.MetricsTasksClosed -> "Tareas cerradas"
     text.MetricsProgress -> "Progreso"
     text.MetricsRebotesAvg -> "Rebotes promedio"
     text.MetricsPoolLifetimeAvg -> "Vida en pool promedio"
