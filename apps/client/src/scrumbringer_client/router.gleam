@@ -158,7 +158,12 @@ fn parse_config_route(pathname: String, search: String) -> ParseResult {
       }
     }
     Error(_) ->
-      config_parse_result(permissions.Members, result, None) |> as_redirect
+      case external_route_aliases.config_section(slug) {
+        Some(section) ->
+          config_parse_result(section, result, None) |> as_redirect
+        None ->
+          config_parse_result(permissions.Members, result, None) |> as_redirect
+      }
   }
 }
 
