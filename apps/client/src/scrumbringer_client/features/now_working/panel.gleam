@@ -136,7 +136,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
       task_actions.pause_and_complete(
         task_state_ui.pause_action(config.locale),
         config.on_pause,
-        task_state_ui.complete_action(config.locale),
+        task_state_ui.close_action(config.locale),
         config.on_complete(task_id, version),
         action_buttons.SizeXs,
         config.disable_actions,

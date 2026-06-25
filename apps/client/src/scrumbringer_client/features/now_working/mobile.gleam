@@ -232,7 +232,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
       opt.None,
     ),
     action_buttons.task_icon_button_with_class(
-      task_state_ui.complete_action(config.locale),
+      task_state_ui.close_action(config.locale),
       config.on_complete(task_id, version),
       icons.Check,
       icons.Small,

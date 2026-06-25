@@ -53,7 +53,7 @@ pub fn ongoing_hint(locale: Locale) -> String {
   i18n.t(locale, i18n_text.TaskStateOngoingHint)
 }
 
-pub fn complete_action(locale: Locale) -> String {
+pub fn close_action(locale: Locale) -> String {
   i18n.t(locale, i18n_text.TaskNextActionClose)
 }
 

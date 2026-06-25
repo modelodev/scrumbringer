@@ -440,14 +440,14 @@ pub fn view_member_bar_task_row(
       ..task_actions.release_and_complete(
         task_state_ui.release_action(config.locale),
         config.on_release(id, version),
-        task_state_ui.complete_action(config.locale),
+        task_state_ui.close_action(config.locale),
         config.on_complete(id, version),
         action_buttons.SizeXs,
         config.disable_actions,
         "",
         "",
         opt.Some(task_state_ui.release_action(config.locale)),
-        opt.Some(task_state_ui.complete_action(config.locale)),
+        opt.Some(task_state_ui.close_action(config.locale)),
         opt.None,
         opt.None,
       )

@@ -82,7 +82,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let top_left_action = top_left_action(config.locale, is_mine, config)
   let claim_action = claim_action(config.locale, config)
   let drag_handle = drag_handle(config.locale, config.on_drag_started)
-  let complete_action = complete_action(config.locale, is_mine, config)
+  let close_action = close_action(config.locale, is_mine, config)
 
   div(
     [
@@ -117,7 +117,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         ]),
         div([attribute.class("task-card-actions-right")], [
           drag_handle,
-          complete_action,
+          close_action,
         ]),
       ]),
       div([attribute.class("task-card-body")], [
@@ -383,7 +383,7 @@ fn drag_handle(
   )
 }
 
-fn complete_action(
+fn close_action(
   locale: Locale,
   is_mine: Bool,
   config: Config(msg),
@@ -391,7 +391,7 @@ fn complete_action(
   case config.task.state, is_mine {
     task_state.Claimed(..), True ->
       task_actions.complete_icon(
-        task_state_ui.complete_action(locale),
+        task_state_ui.close_action(locale),
         config.on_complete,
         action_buttons.SizeXs,
         config.disable_actions,
