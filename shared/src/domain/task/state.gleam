@@ -104,7 +104,7 @@ pub fn from_db(
         _, None -> Error(ClaimedMissingAt)
       }
 
-    "completed" | "closed" ->
+    "closed" ->
       case claimed_by, completed_at {
         Some(_), _ -> Error(ClosedWithClaim)
         // Older task-list payloads do not carry closed_by. Repository code that

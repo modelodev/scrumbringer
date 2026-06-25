@@ -274,7 +274,7 @@ pub fn task_state_decoder_from_fields(
   completed_at: option.Option(String),
 ) -> decode.Decoder(task_state.TaskExecutionState) {
   case
-    task_state.from_db(
+    state_from_public_fields(
       status_raw,
       is_ongoing,
       claimed_by,
@@ -315,7 +315,7 @@ pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
   )
 
   case
-    task_state.from_db(
+    state_from_public_fields(
       status_raw,
       is_ongoing,
       claimed_by_user_id,
@@ -341,6 +341,27 @@ pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
         "TaskDependency.state",
       )
   }
+}
+
+fn state_from_public_fields(
+  status_raw: String,
+  is_ongoing: Bool,
+  claimed_by: option.Option(Int),
+  claimed_at: option.Option(String),
+  completed_at: option.Option(String),
+) -> Result(task_state.TaskExecutionState, task_state.TaskExecutionStateError) {
+  let canonical_status = case status_raw {
+    "completed" -> "closed"
+    other -> other
+  }
+
+  task_state.from_db(
+    canonical_status,
+    is_ongoing,
+    claimed_by,
+    claimed_at,
+    completed_at,
+  )
 }
 
 // =============================================================================
