@@ -101,6 +101,23 @@ pub fn task_card_renders_due_soon_signal_without_long_date_text_test() {
   assert_not_contains(html, ">2026-06-24<")
 }
 
+pub fn task_card_ignores_invalid_due_date_signal_test() {
+  let html =
+    task_card.view(config(
+      Task(..sample_task(), due_date: Some("not-a-date")),
+      x: 100,
+      age_days: 1,
+      touch_preview: False,
+      highlight_class: "",
+    ))
+    |> element.to_document_string
+
+  assert_not_contains(html, "data-testid=\"task-card-signal-due\"")
+  assert_not_contains(html, "is-overdue")
+  assert_not_contains(html, "is-due-today")
+  assert_not_contains(html, "is-due-soon")
+}
+
 pub fn task_card_localizes_automation_signal_test() {
   let html =
     task_card.view(

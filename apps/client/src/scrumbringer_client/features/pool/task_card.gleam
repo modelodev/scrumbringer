@@ -4,6 +4,7 @@ import gleam/order
 import gleam/string
 
 import domain/card.{type CardColor}
+import domain/due_date as due_date_domain
 import domain/note/entity.{type Note}
 import domain/task as domain_task
 import domain/task/state as task_state
@@ -238,28 +239,38 @@ fn automation_origin_signal(
 }
 
 fn due_label(config: Config(msg)) -> Option(String) {
-  case config.task.due_date {
-    option.Some(due_date) ->
-      case string.compare(due_date, config.project_today) {
-        order.Lt ->
-          option.Some(pool_labels.task_overdue(config.locale, due_date))
-        order.Eq -> option.Some(pool_labels.task_due_today(config.locale))
-        order.Gt ->
-          option.Some(pool_labels.task_due_soon(config.locale, due_date))
-      }
+  case due_date_status(config) {
+    option.Some(#(due_date, order.Lt)) ->
+      option.Some(pool_labels.task_overdue(config.locale, due_date))
+    option.Some(#(_, order.Eq)) ->
+      option.Some(pool_labels.task_due_today(config.locale))
+    option.Some(#(due_date, order.Gt)) ->
+      option.Some(pool_labels.task_due_soon(config.locale, due_date))
     option.None -> option.None
   }
 }
 
 fn due_class(config: Config(msg)) -> String {
-  case config.task.due_date {
-    option.Some(due_date) ->
-      case string.compare(due_date, config.project_today) {
-        order.Lt -> "is-overdue"
-        order.Eq -> "is-due-today"
-        order.Gt -> "is-due-soon"
-      }
+  case due_date_status(config) {
+    option.Some(#(_, order.Lt)) -> "is-overdue"
+    option.Some(#(_, order.Eq)) -> "is-due-today"
+    option.Some(#(_, order.Gt)) -> "is-due-soon"
     option.None -> ""
+  }
+}
+
+fn due_date_status(config: Config(msg)) -> Option(#(String, order.Order)) {
+  case config.task.due_date, due_date_domain.parse(config.project_today) {
+    option.Some(due_date), Ok(project_today) ->
+      case due_date_domain.parse(due_date) {
+        Ok(parsed_due_date) ->
+          option.Some(#(
+            due_date_domain.to_string(parsed_due_date),
+            due_date_domain.compare(parsed_due_date, project_today),
+          ))
+        Error(_) -> option.None
+      }
+    _, _ -> option.None
   }
 }
 
