@@ -32,6 +32,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/card_state as card_state_ui
 import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
 
@@ -965,7 +966,7 @@ fn view_detail(
     types.TasksDetail(card, tasks, rollup) -> #(
       card,
       "Contenido: tasks",
-      view_detail_tasks(tasks, rollup),
+      view_detail_tasks(config.locale, tasks, rollup),
     )
     types.EmptyCardContent(card, rollup) -> #(
       card,
@@ -1032,6 +1033,7 @@ fn view_detail_subcards(
 }
 
 fn view_detail_tasks(
+  locale: Locale,
   tasks: List(domain_task.Task),
   _rollup: types.CardRollup,
 ) -> Element(msg) {
@@ -1040,7 +1042,12 @@ fn view_detail_tasks(
     list.map(tasks, fn(task) {
       li([], [
         span([attribute.class("plan-detail-task-title")], [text(task.title)]),
-        span([], [text(task_status_label(task))]),
+        span([], [
+          text(task_status_utils.label(
+            locale,
+            task_execution_state.to_status(task.state),
+          )),
+        ]),
       ])
     }),
   )
@@ -1834,17 +1841,6 @@ fn plan_sort_value(sort: member_pool.PlanSort) -> String {
     member_pool.PlanSortState -> "state"
     member_pool.PlanSortDueDate -> "due_date"
     member_pool.PlanSortPoolImpact -> "pool_impact"
-  }
-}
-
-fn task_status_label(task: domain_task.Task) -> String {
-  case task.state {
-    task_execution_state.Available -> "disponible"
-    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) ->
-      "reclamada"
-    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) ->
-      "en curso"
-    task_execution_state.Closed(..) -> "completada"
   }
 }
 
