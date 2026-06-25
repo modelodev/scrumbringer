@@ -59,17 +59,17 @@ fn template(id: Int) -> TaskTemplate {
 pub fn automation_engine_panel_focus_targets_return_to_opening_trigger_test() {
   let assert opt.Some(expected_create) =
     admin_route.engine_dialog_focus_target_for_test(opt.Some(
-      admin_workflows.WorkflowDialogCreate,
+      admin_workflows.EngineDialogCreate,
     ))
   let assert True = expected_create == automation_focus.create_engine_trigger_id
   let assert opt.Some(expected_edit) =
     admin_route.engine_dialog_focus_target_for_test(
-      opt.Some(admin_workflows.WorkflowDialogEdit(workflow(3))),
+      opt.Some(admin_workflows.EngineDialogEdit(workflow(3))),
     )
   let assert True = expected_edit == automation_focus.engine_edit_trigger_id(3)
   let assert opt.Some(expected_delete) =
     admin_route.engine_dialog_focus_target_for_test(
-      opt.Some(admin_workflows.WorkflowDialogDelete(workflow(3))),
+      opt.Some(admin_workflows.EngineDialogDelete(workflow(3))),
     )
   let assert True =
     expected_delete == automation_focus.engine_delete_trigger_id(3)

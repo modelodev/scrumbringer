@@ -68,8 +68,8 @@ pub type Config(msg) {
     selected_rule_id: opt.Option(Int),
     engine_name: String,
     rules: admin_rules.Model,
-    workflows_org: Remote(List(Workflow)),
-    workflows_project: Remote(List(Workflow)),
+    engines_org: Remote(List(Workflow)),
+    engines_project: Remote(List(Workflow)),
     task_types: Remote(List(TaskType)),
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
@@ -99,12 +99,12 @@ pub type Config(msg) {
 }
 
 pub fn engine_name_from_remotes(
-  workflows_org: Remote(List(Workflow)),
-  workflows_project: Remote(List(Workflow)),
+  engines_org: Remote(List(Workflow)),
+  engines_project: Remote(List(Workflow)),
   workflow_id: Int,
 ) -> String {
-  find_engine_name(workflows_org, workflow_id)
-  |> opt.lazy_or(fn() { find_engine_name(workflows_project, workflow_id) })
+  find_engine_name(engines_org, workflow_id)
+  |> opt.lazy_or(fn() { find_engine_name(engines_project, workflow_id) })
   |> engine_name_or_id(workflow_id)
 }
 

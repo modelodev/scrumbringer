@@ -545,7 +545,7 @@ fn view_automations_console(
     mode: mode,
     selected_entity: model.core.automation_selection,
     active_engines_count: loaded_count_where(
-      model.admin.workflows.workflows_project,
+      model.admin.workflows.engines_project,
       fn(workflow) { workflow.active },
     ),
     rules_count: loaded_count(model.admin.rules.rules),
@@ -557,7 +557,7 @@ fn view_automations_console(
       button.icon_text(
         i18n.t(model.ui.locale, i18n_text.CreateAutomationEngine),
         client_state.pool_msg(pool_messages.OpenWorkflowDialog(
-          admin_workflows.WorkflowDialogCreate,
+          admin_workflows.EngineDialogCreate,
         )),
         icons.Plus,
         button.Primary,
@@ -930,7 +930,7 @@ fn admin_workflow_callbacks(
 ) -> engine_list_config.Callbacks(client_state.Msg) {
   engine_list_config.Callbacks(
     on_create_clicked: client_state.pool_msg(pool_messages.OpenWorkflowDialog(
-      admin_workflows.WorkflowDialogCreate,
+      admin_workflows.EngineDialogCreate,
     )),
     on_search_changed: fn(value) {
       client_state.pool_msg(pool_messages.WorkflowsSearchChanged(value))
@@ -943,14 +943,14 @@ fn admin_workflow_callbacks(
     },
     on_edit_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
+        pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(
           workflow,
         )),
       )
     },
     on_delete_clicked: fn(workflow) {
       client_state.pool_msg(
-        pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
+        pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogDelete(
           workflow,
         )),
       )

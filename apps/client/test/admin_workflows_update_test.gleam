@@ -65,10 +65,10 @@ fn engine_feedback_context() -> workflows_update.EngineFeedbackContext(
     engine_updated: "Engine updated",
     engine_deleted: "Engine deleted",
     on_success_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
-    on_workflow_saved: fn(result) {
+    on_engine_saved: fn(result) {
       client_state.pool_msg(pool_messages.WorkflowSaved(result))
     },
-    on_workflow_deleted: fn(workflow_id, result) {
+    on_engine_deleted: fn(workflow_id, result) {
       client_state.pool_msg(pool_messages.WorkflowDeleteFinished(
         workflow_id,
         result,
@@ -116,16 +116,16 @@ fn workflows_state(
   project: Remote(List(Workflow)),
 ) -> admin_workflows.Model {
   admin_workflows.Model(
-    workflows_org: org,
-    workflows_project: project,
-    workflows_search: "",
-    workflows_status_filter: "all",
-    workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
-    workflow_form_name: "",
-    workflow_form_description: "",
-    workflow_form_active: True,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.None,
+    engines_org: org,
+    engines_project: project,
+    engine_search: "",
+    engine_status_filter: "all",
+    engine_dialog_mode: opt.Some(admin_workflows.EngineDialogCreate),
+    engine_form_name: "",
+    engine_form_description: "",
+    engine_form_active: True,
+    engine_form_submitting: False,
+    engine_form_error: opt.None,
   )
 }
 
@@ -171,33 +171,29 @@ pub fn local_workflow_crud_transitions_update_scopes_test() {
 
   let #(after_create, fx, auth_policy) =
     workflow_update(state, pool_messages.WorkflowSaved(Ok(created)))
-  let assert True =
-    after_create.workflows_project == Loaded([created, existing])
-  let assert opt.None = after_create.workflows_dialog_mode
+  let assert True = after_create.engines_project == Loaded([created, existing])
+  let assert opt.None = after_create.engine_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
   let #(editing, fx, auth_policy) =
     workflow_update(
       after_create,
-      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(
-        created,
-      )),
+      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(created)),
     )
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
   let #(after_update, fx, auth_policy) =
     workflow_update(editing, pool_messages.WorkflowSaved(Ok(updated)))
-  let assert True =
-    after_update.workflows_project == Loaded([updated, existing])
+  let assert True = after_update.engines_project == Loaded([updated, existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
   let #(deleting, fx, auth_policy) =
     workflow_update(
       after_update,
-      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogDelete(
+      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogDelete(
         updated,
       )),
     )
@@ -206,7 +202,7 @@ pub fn local_workflow_crud_transitions_update_scopes_test() {
 
   let #(after_delete, fx, auth_policy) =
     workflow_update(deleting, pool_messages.WorkflowDeleteFinished(2, Ok(Nil)))
-  let assert True = after_delete.workflows_project == Loaded([existing])
+  let assert True = after_delete.engines_project == Loaded([existing])
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -217,7 +213,7 @@ pub fn local_workflow_fetch_and_dialog_transitions_test() {
 
   let #(after_fetch, fx, auth_policy) =
     workflow_update(state, pool_messages.WorkflowsProjectFetched(Ok(loaded)))
-  let assert True = after_fetch.workflows_project == Loaded(loaded)
+  let assert True = after_fetch.engines_project == Loaded(loaded)
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
@@ -227,7 +223,7 @@ pub fn local_workflow_fetch_and_dialog_transitions_test() {
       after_fetch,
       pool_messages.WorkflowsProjectFetched(Error(err)),
     )
-  let assert True = after_error.workflows_project == Failed(err)
+  let assert True = after_error.engines_project == Failed(err)
   let assert True = fx == effect.none()
   let assert workflows_update.CheckWorkflowAuth(auth_err) = auth_policy
   let assert True = auth_err == err
@@ -236,17 +232,17 @@ pub fn local_workflow_fetch_and_dialog_transitions_test() {
   let #(opened, fx, auth_policy) =
     workflow_update(
       after_error,
-      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(item)),
+      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
     )
   let assert True =
-    opened.workflows_dialog_mode
-    == opt.Some(admin_workflows.WorkflowDialogEdit(item))
+    opened.engine_dialog_mode
+    == opt.Some(admin_workflows.EngineDialogEdit(item))
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 
   let #(closed, fx, auth_policy) =
     workflow_update(opened, pool_messages.CloseWorkflowDialog)
-  let assert opt.None = closed.workflows_dialog_mode
+  let assert opt.None = closed.engine_dialog_mode
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -263,7 +259,7 @@ pub fn try_workflows_update_fetch_error_requests_auth_check_test() {
   let assert workflows_update.CheckWorkflowAuth(auth_err) = auth_policy
 
   let assert True = auth_err == err
-  let assert True = next.workflows_project == Failed(err)
+  let assert True = next.engines_project == Failed(err)
   let assert True = fx == effect.none()
 }
 
@@ -273,13 +269,12 @@ pub fn try_workflows_update_open_dialog_returns_local_update_test() {
   let assert opt.Some(workflows_update.WorkflowUpdate(next, fx, auth_policy)) =
     workflows_update.try_workflows_update(
       admin_workflows.default_model(),
-      pool_messages.OpenWorkflowDialog(admin_workflows.WorkflowDialogEdit(item)),
+      pool_messages.OpenWorkflowDialog(admin_workflows.EngineDialogEdit(item)),
       engine_feedback_context(),
     )
 
   let assert True =
-    next.workflows_dialog_mode
-    == opt.Some(admin_workflows.WorkflowDialogEdit(item))
+    next.engine_dialog_mode == opt.Some(admin_workflows.EngineDialogEdit(item))
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -296,8 +291,8 @@ pub fn try_workflows_update_crud_created_returns_feedback_effect_test() {
       engine_feedback_context(),
     )
 
-  let assert True = next.workflows_project == Loaded([created, existing])
-  let assert opt.None = next.workflows_dialog_mode
+  let assert True = next.engines_project == Loaded([created, existing])
+  let assert opt.None = next.engine_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -309,7 +304,7 @@ pub fn try_workflows_update_search_change_is_local_test() {
       pool_messages.WorkflowsSearchChanged("release"),
     )
 
-  let assert "release" = next.workflows_search
+  let assert "release" = next.engine_search
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -321,7 +316,7 @@ pub fn try_workflows_update_status_filter_change_is_local_test() {
       pool_messages.WorkflowsStatusFilterChanged("paused"),
     )
 
-  let assert "paused" = next.workflows_status_filter
+  let assert "paused" = next.engine_status_filter
   let assert True = fx == effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }
@@ -670,24 +665,24 @@ pub fn try_workflows_update_created_updates_project_scope_and_emits_feedback_tes
   let created = workflow(2, "Created", opt.Some(7))
   let workflows =
     admin_workflows.Model(
-      workflows_org: Loaded([]),
-      workflows_project: Loaded([existing]),
-      workflows_search: "",
-      workflows_status_filter: "all",
-      workflows_dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
-      workflow_form_name: "",
-      workflow_form_description: "",
-      workflow_form_active: True,
-      workflow_form_submitting: False,
-      workflow_form_error: opt.None,
+      engines_org: Loaded([]),
+      engines_project: Loaded([existing]),
+      engine_search: "",
+      engine_status_filter: "all",
+      engine_dialog_mode: opt.Some(admin_workflows.EngineDialogCreate),
+      engine_form_name: "",
+      engine_form_description: "",
+      engine_form_active: True,
+      engine_form_submitting: False,
+      engine_form_error: opt.None,
     )
 
   let #(next, fx, auth_policy) =
     workflow_update(workflows, pool_messages.WorkflowSaved(Ok(created)))
 
-  let assert True = next.workflows_project == Loaded([created, existing])
-  let assert True = next.workflows_org == Loaded([])
-  let assert opt.None = next.workflows_dialog_mode
+  let assert True = next.engines_project == Loaded([created, existing])
+  let assert True = next.engines_org == Loaded([])
+  let assert opt.None = next.engine_dialog_mode
   let assert True = fx != effect.none()
   let assert workflows_update.NoWorkflowAuthCheck = auth_policy
 }

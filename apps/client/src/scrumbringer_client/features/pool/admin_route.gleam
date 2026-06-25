@@ -241,7 +241,7 @@ fn automation_panel_focus_target(
     pool_messages.CloseWorkflowDialog
     | pool_messages.WorkflowSaved(Ok(_))
     | pool_messages.WorkflowDeleteFinished(_, Ok(_)) ->
-      engine_dialog_focus_target(model.admin.workflows.workflows_dialog_mode)
+      engine_dialog_focus_target(model.admin.workflows.engine_dialog_mode)
 
     pool_messages.CloseRuleDialog
     | pool_messages.RuleSaved(Ok(_))
@@ -260,20 +260,20 @@ fn automation_panel_focus_target(
 }
 
 pub fn engine_dialog_focus_target_for_test(
-  mode: opt.Option(admin_workflows.WorkflowDialogMode),
+  mode: opt.Option(admin_workflows.EngineDialogMode),
 ) -> opt.Option(String) {
   engine_dialog_focus_target(mode)
 }
 
 fn engine_dialog_focus_target(
-  mode: opt.Option(admin_workflows.WorkflowDialogMode),
+  mode: opt.Option(admin_workflows.EngineDialogMode),
 ) -> opt.Option(String) {
   case mode {
-    opt.Some(admin_workflows.WorkflowDialogCreate) ->
+    opt.Some(admin_workflows.EngineDialogCreate) ->
       opt.Some(automation_focus.create_engine_trigger_id)
-    opt.Some(admin_workflows.WorkflowDialogEdit(workflow)) ->
+    opt.Some(admin_workflows.EngineDialogEdit(workflow)) ->
       opt.Some(automation_focus.engine_edit_trigger_id(workflow.id))
-    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) ->
+    opt.Some(admin_workflows.EngineDialogDelete(workflow)) ->
       opt.Some(automation_focus.engine_delete_trigger_id(workflow.id))
     opt.None -> opt.None
   }
@@ -397,10 +397,10 @@ fn engine_crud_feedback_context(
     engine_updated: i18n.t(model.ui.locale, i18n_text.AutomationEngineUpdated),
     engine_deleted: i18n.t(model.ui.locale, i18n_text.AutomationEngineDeleted),
     on_success_toast: app_effects.toast_success,
-    on_workflow_saved: fn(result) {
+    on_engine_saved: fn(result) {
       client_state.pool_msg(pool_messages.WorkflowSaved(result))
     },
-    on_workflow_deleted: fn(workflow_id, result) {
+    on_engine_deleted: fn(workflow_id, result) {
       client_state.pool_msg(pool_messages.WorkflowDeleteFinished(
         workflow_id,
         result,

@@ -42,7 +42,7 @@ pub type Config(msg) {
     selected_rule_id: opt.Option(Int),
     search_query: String,
     status_filter: String,
-    dialog_mode: opt.Option(admin_workflows.WorkflowDialogMode),
+    dialog_mode: opt.Option(admin_workflows.EngineDialogMode),
     form_name: String,
     form_description: String,
     form_active: Bool,
@@ -313,7 +313,7 @@ fn engine_matches_query(engine: Workflow, needle: String) -> Bool {
 fn view_engine_panel(config: Config(msg)) -> Element(msg) {
   case config.dialog_mode {
     opt.None -> element.none()
-    opt.Some(admin_workflows.WorkflowDialogDelete(engine)) ->
+    opt.Some(admin_workflows.EngineDialogDelete(engine)) ->
       view_delete_panel(config, engine)
     opt.Some(mode) -> view_form_panel(config, mode)
   }
@@ -321,22 +321,22 @@ fn view_engine_panel(config: Config(msg)) -> Element(msg) {
 
 fn view_form_panel(
   config: Config(msg),
-  mode: admin_workflows.WorkflowDialogMode,
+  mode: admin_workflows.EngineDialogMode,
 ) -> Element(msg) {
   let title_id = "automation-engine-panel-title"
   let title = case mode {
-    admin_workflows.WorkflowDialogCreate ->
+    admin_workflows.EngineDialogCreate ->
       t(config, i18n_text.CreateAutomationEngine)
-    admin_workflows.WorkflowDialogEdit(_) ->
+    admin_workflows.EngineDialogEdit(_) ->
       t(config, i18n_text.EditAutomationEngine)
-    admin_workflows.WorkflowDialogDelete(_) ->
+    admin_workflows.EngineDialogDelete(_) ->
       t(config, i18n_text.EditAutomationEngine)
   }
   let submit_label = case mode {
-    admin_workflows.WorkflowDialogCreate ->
+    admin_workflows.EngineDialogCreate ->
       t(config, i18n_text.CreateAutomationEngine)
-    admin_workflows.WorkflowDialogEdit(_) -> t(config, i18n_text.Save)
-    admin_workflows.WorkflowDialogDelete(_) -> t(config, i18n_text.Save)
+    admin_workflows.EngineDialogEdit(_) -> t(config, i18n_text.Save)
+    admin_workflows.EngineDialogDelete(_) -> t(config, i18n_text.Save)
   }
 
   div(

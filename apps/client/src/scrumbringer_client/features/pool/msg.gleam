@@ -206,7 +206,7 @@ pub type Msg {
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
   WorkflowsSearchChanged(String)
   WorkflowsStatusFilterChanged(String)
-  OpenWorkflowDialog(admin_workflows.WorkflowDialogMode)
+  OpenWorkflowDialog(admin_workflows.EngineDialogMode)
   CloseWorkflowDialog
   WorkflowNameChanged(String)
   WorkflowDescriptionChanged(String)

@@ -28,7 +28,7 @@ pub fn refresh_section_fetches_workflows_test() {
   let #(next, effects) = client_update.refresh_section_for_test(model)
 
   // Workflows are now project-scoped only
-  let assert Loading = next.admin.workflows.workflows_project
+  let assert Loading = next.admin.workflows.engines_project
 
   let assert False = effects == effect.none()
 }

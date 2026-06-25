@@ -1771,7 +1771,7 @@ fn fetch_workflows(
             ..admin,
             workflows: admin_workflows.Model(
               ..admin.workflows,
-              workflows_project: Loading,
+              engines_project: Loading,
             ),
           )
         })

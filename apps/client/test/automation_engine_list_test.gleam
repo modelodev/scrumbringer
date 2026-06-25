@@ -144,7 +144,7 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
     engine_list.view(
       engine_list.Config(
         ..config(),
-        dialog_mode: opt.Some(admin_workflows.WorkflowDialogCreate),
+        dialog_mode: opt.Some(admin_workflows.EngineDialogCreate),
         form_name: "Release automation",
         form_description: "Creates follow-up work",
       ),
@@ -184,7 +184,7 @@ pub fn automation_engine_list_localizes_panel_actions_test() {
         ..config(),
         locale: locale.Es,
         dialog_mode: opt.Some(
-          admin_workflows.WorkflowDialogEdit(workflow(
+          admin_workflows.EngineDialogEdit(workflow(
             3,
             "Release automation",
             True,
@@ -212,7 +212,7 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
       engine_list.Config(
         ..config(),
         dialog_mode: opt.Some(
-          admin_workflows.WorkflowDialogDelete(workflow(
+          admin_workflows.EngineDialogDelete(workflow(
             3,
             "Release automation",
             True,

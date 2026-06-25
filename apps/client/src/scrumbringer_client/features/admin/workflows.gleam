@@ -50,8 +50,8 @@ pub type EngineFeedbackContext(parent_msg) {
     engine_updated: String,
     engine_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
-    on_workflow_saved: fn(ApiResult(Workflow)) -> parent_msg,
-    on_workflow_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
+    on_engine_saved: fn(ApiResult(Workflow)) -> parent_msg,
+    on_engine_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
 
@@ -278,154 +278,154 @@ pub fn try_workflows_update(
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   case inner {
     pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
-      workflows_project_fetched_ok(state, workflows)
-      |> without_workflow_auth_check
+      engines_project_fetched_ok(state, workflows)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowsProjectFetched(Error(err)) ->
-      workflows_project_fetched_error(state, err)
-      |> with_workflow_auth_check(err)
+      engines_project_fetched_error(state, err)
+      |> with_engine_auth_check(err)
 
     pool_messages.WorkflowsSearchChanged(query) ->
-      admin_workflows.Model(..state, workflows_search: query)
-      |> without_workflow_auth_check
+      admin_workflows.Model(..state, engine_search: query)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowsStatusFilterChanged(status) ->
-      admin_workflows.Model(..state, workflows_status_filter: status)
-      |> without_workflow_auth_check
+      admin_workflows.Model(..state, engine_status_filter: status)
+      |> without_engine_auth_check
 
     pool_messages.OpenWorkflowDialog(mode) ->
-      open_workflow_dialog(state, mode)
-      |> without_workflow_auth_check
+      open_engine_dialog(state, mode)
+      |> without_engine_auth_check
 
     pool_messages.CloseWorkflowDialog ->
-      close_workflow_dialog(state)
-      |> without_workflow_auth_check
+      close_engine_dialog(state)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowNameChanged(value) ->
-      admin_workflows.Model(..state, workflow_form_name: value)
-      |> without_workflow_auth_check
+      admin_workflows.Model(..state, engine_form_name: value)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowDescriptionChanged(value) ->
-      admin_workflows.Model(..state, workflow_form_description: value)
-      |> without_workflow_auth_check
+      admin_workflows.Model(..state, engine_form_description: value)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowActiveChanged(value) ->
-      admin_workflows.Model(..state, workflow_form_active: value)
-      |> without_workflow_auth_check
+      admin_workflows.Model(..state, engine_form_active: value)
+      |> without_engine_auth_check
 
     pool_messages.WorkflowFormSubmitted(project_id) ->
-      submit_workflow_form(state, project_id, feedback)
-      |> without_workflow_tuple_auth_check
+      submit_engine_form(state, project_id, feedback)
+      |> without_engine_tuple_auth_check
 
     pool_messages.WorkflowSaved(Ok(workflow)) ->
-      workflow_saved(state, workflow)
-      |> with_workflow_effect(engine_success_effect(
+      engine_saved(state, workflow)
+      |> with_engine_effect(engine_success_effect(
         success_for_engine_saved(state),
         feedback,
       ))
 
     pool_messages.WorkflowSaved(Error(err)) ->
-      workflow_form_error(state, err.message)
-      |> with_workflow_auth_check(err)
+      engine_form_error(state, err.message)
+      |> with_engine_auth_check(err)
 
     pool_messages.WorkflowDeleteConfirmed ->
-      confirm_workflow_delete(state, feedback)
-      |> without_workflow_tuple_auth_check
+      confirm_engine_delete(state, feedback)
+      |> without_engine_tuple_auth_check
 
     pool_messages.WorkflowDeleteFinished(workflow_id, Ok(_)) ->
       engine_deleted(state, workflow_id)
-      |> with_workflow_effect(engine_success_effect(EngineDeleted, feedback))
+      |> with_engine_effect(engine_success_effect(EngineDeleted, feedback))
 
     pool_messages.WorkflowDeleteFinished(_workflow_id, Error(err)) ->
-      workflow_form_error(state, err.message)
-      |> with_workflow_auth_check(err)
+      engine_form_error(state, err.message)
+      |> with_engine_auth_check(err)
 
     _ -> opt.None
   }
 }
 
-fn without_workflow_auth_check(
+fn without_engine_auth_check(
   state: admin_workflows.Model,
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
-  with_workflow_effect(state, effect.none())
+  with_engine_effect(state, effect.none())
 }
 
-fn without_workflow_tuple_auth_check(
+fn without_engine_tuple_auth_check(
   result: #(admin_workflows.Model, Effect(parent_msg)),
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   let #(state, fx) = result
-  with_workflow_effect(state, fx)
+  with_engine_effect(state, fx)
 }
 
-fn with_workflow_auth_check(
+fn with_engine_auth_check(
   state: admin_workflows.Model,
   err: ApiError,
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   opt.Some(WorkflowUpdate(state, effect.none(), CheckWorkflowAuth(err)))
 }
 
-fn with_workflow_effect(
+fn with_engine_effect(
   state: admin_workflows.Model,
   fx: Effect(parent_msg),
 ) -> opt.Option(WorkflowUpdate(parent_msg)) {
   opt.Some(WorkflowUpdate(state, fx, NoWorkflowAuthCheck))
 }
 
-fn workflows_project_fetched_ok(
+fn engines_project_fetched_ok(
   state: admin_workflows.Model,
   workflows: List(Workflow),
 ) -> admin_workflows.Model {
-  admin_workflows.Model(..state, workflows_project: Loaded(workflows))
+  admin_workflows.Model(..state, engines_project: Loaded(workflows))
 }
 
-fn workflows_project_fetched_error(
+fn engines_project_fetched_error(
   state: admin_workflows.Model,
   err: ApiError,
 ) -> admin_workflows.Model {
-  admin_workflows.Model(..state, workflows_project: Failed(err))
+  admin_workflows.Model(..state, engines_project: Failed(err))
 }
 
-fn open_workflow_dialog(
+fn open_engine_dialog(
   state: admin_workflows.Model,
-  mode: admin_workflows.WorkflowDialogMode,
+  mode: admin_workflows.EngineDialogMode,
 ) -> admin_workflows.Model {
   case mode {
-    admin_workflows.WorkflowDialogCreate ->
+    admin_workflows.EngineDialogCreate ->
       admin_workflows.Model(
         ..state,
-        workflows_dialog_mode: opt.Some(mode),
-        workflow_form_name: "",
-        workflow_form_description: "",
-        workflow_form_active: True,
-        workflow_form_submitting: False,
-        workflow_form_error: opt.None,
+        engine_dialog_mode: opt.Some(mode),
+        engine_form_name: "",
+        engine_form_description: "",
+        engine_form_active: True,
+        engine_form_submitting: False,
+        engine_form_error: opt.None,
       )
-    admin_workflows.WorkflowDialogEdit(workflow) ->
+    admin_workflows.EngineDialogEdit(workflow) ->
       admin_workflows.Model(
         ..state,
-        workflows_dialog_mode: opt.Some(mode),
-        workflow_form_name: workflow.name,
-        workflow_form_description: optional_text(workflow.description),
-        workflow_form_active: workflow.active,
-        workflow_form_submitting: False,
-        workflow_form_error: opt.None,
+        engine_dialog_mode: opt.Some(mode),
+        engine_form_name: workflow.name,
+        engine_form_description: optional_text(workflow.description),
+        engine_form_active: workflow.active,
+        engine_form_submitting: False,
+        engine_form_error: opt.None,
       )
-    admin_workflows.WorkflowDialogDelete(_) ->
+    admin_workflows.EngineDialogDelete(_) ->
       admin_workflows.Model(
         ..state,
-        workflows_dialog_mode: opt.Some(mode),
-        workflow_form_submitting: False,
-        workflow_form_error: opt.None,
+        engine_dialog_mode: opt.Some(mode),
+        engine_form_submitting: False,
+        engine_form_error: opt.None,
       )
   }
 }
 
-fn close_workflow_dialog(state: admin_workflows.Model) -> admin_workflows.Model {
+fn close_engine_dialog(state: admin_workflows.Model) -> admin_workflows.Model {
   admin_workflows.Model(
     ..state,
-    workflows_dialog_mode: opt.None,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.None,
+    engine_dialog_mode: opt.None,
+    engine_form_submitting: False,
+    engine_form_error: opt.None,
   )
 }
 
@@ -436,135 +436,131 @@ fn optional_text(value: opt.Option(String)) -> String {
   }
 }
 
-fn submit_workflow_form(
+fn submit_engine_form(
   state: admin_workflows.Model,
   selected_project_id: opt.Option(Int),
   feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
-  case state.workflows_dialog_mode {
-    opt.Some(admin_workflows.WorkflowDialogCreate) ->
-      submit_workflow_create(state, selected_project_id, feedback)
-    opt.Some(admin_workflows.WorkflowDialogEdit(workflow)) ->
-      submit_workflow_update(state, workflow.id, feedback)
+  case state.engine_dialog_mode {
+    opt.Some(admin_workflows.EngineDialogCreate) ->
+      submit_engine_create(state, selected_project_id, feedback)
+    opt.Some(admin_workflows.EngineDialogEdit(workflow)) ->
+      submit_engine_update(state, workflow.id, feedback)
     _ -> #(state, effect.none())
   }
 }
 
-fn submit_workflow_create(
+fn submit_engine_create(
   state: admin_workflows.Model,
   selected_project_id: opt.Option(Int),
   feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
   case selected_project_id {
     opt.None -> #(
-      workflow_form_error(state, "Select a project first"),
+      engine_form_error(state, "Select a project first"),
       effect.none(),
     )
     opt.Some(project_id) ->
-      case parse_workflow_form(state) {
-        Error(message) -> #(workflow_form_error(state, message), effect.none())
+      case parse_engine_form(state) {
+        Error(message) -> #(engine_form_error(state, message), effect.none())
         Ok(form) -> #(
-          workflow_form_submitting(state),
+          engine_form_submitting(state),
           api_workflows.create_project_workflow(
             project_id,
             form.name,
             form.description,
             form.active,
-            feedback.on_workflow_saved,
+            feedback.on_engine_saved,
           ),
         )
       }
   }
 }
 
-fn submit_workflow_update(
+fn submit_engine_update(
   state: admin_workflows.Model,
   workflow_id: Int,
   feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
-  case parse_workflow_form(state) {
-    Error(message) -> #(workflow_form_error(state, message), effect.none())
+  case parse_engine_form(state) {
+    Error(message) -> #(engine_form_error(state, message), effect.none())
     Ok(form) -> #(
-      workflow_form_submitting(state),
+      engine_form_submitting(state),
       api_workflows.update_workflow(
         workflow_id,
         form.name,
         form.description,
         form.active,
-        feedback.on_workflow_saved,
+        feedback.on_engine_saved,
       ),
     )
   }
 }
 
-fn confirm_workflow_delete(
+fn confirm_engine_delete(
   state: admin_workflows.Model,
   feedback: EngineFeedbackContext(parent_msg),
 ) -> #(admin_workflows.Model, Effect(parent_msg)) {
-  case state.workflows_dialog_mode {
-    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) -> #(
-      workflow_form_submitting(state),
+  case state.engine_dialog_mode {
+    opt.Some(admin_workflows.EngineDialogDelete(workflow)) -> #(
+      engine_form_submitting(state),
       api_workflows.delete_workflow(workflow.id, fn(result) {
-        feedback.on_workflow_deleted(workflow.id, result)
+        feedback.on_engine_deleted(workflow.id, result)
       }),
     )
     _ -> #(state, effect.none())
   }
 }
 
-type WorkflowForm {
-  WorkflowForm(name: String, description: String, active: Bool)
+type EngineForm {
+  EngineForm(name: String, description: String, active: Bool)
 }
 
-fn parse_workflow_form(
-  state: admin_workflows.Model,
-) -> Result(WorkflowForm, String) {
-  let name = string.trim(state.workflow_form_name)
+fn parse_engine_form(state: admin_workflows.Model) -> Result(EngineForm, String) {
+  let name = string.trim(state.engine_form_name)
   case name {
     "" -> Error("Engine name is required")
     _ ->
-      Ok(WorkflowForm(
+      Ok(EngineForm(
         name: name,
-        description: state.workflow_form_description,
-        active: state.workflow_form_active,
+        description: state.engine_form_description,
+        active: state.engine_form_active,
       ))
   }
 }
 
-fn workflow_form_submitting(
-  state: admin_workflows.Model,
-) -> admin_workflows.Model {
+fn engine_form_submitting(state: admin_workflows.Model) -> admin_workflows.Model {
   admin_workflows.Model(
     ..state,
-    workflow_form_submitting: True,
-    workflow_form_error: opt.None,
+    engine_form_submitting: True,
+    engine_form_error: opt.None,
   )
 }
 
-fn workflow_form_error(
+fn engine_form_error(
   state: admin_workflows.Model,
   message: String,
 ) -> admin_workflows.Model {
   admin_workflows.Model(
     ..state,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.Some(message),
+    engine_form_submitting: False,
+    engine_form_error: opt.Some(message),
   )
 }
 
 fn success_for_engine_saved(state: admin_workflows.Model) -> EngineCrudSuccess {
-  case state.workflows_dialog_mode {
-    opt.Some(admin_workflows.WorkflowDialogEdit(_)) -> EngineUpdated
+  case state.engine_dialog_mode {
+    opt.Some(admin_workflows.EngineDialogEdit(_)) -> EngineUpdated
     _ -> EngineCreated
   }
 }
 
-fn workflow_saved(
+fn engine_saved(
   state: admin_workflows.Model,
   workflow: Workflow,
 ) -> admin_workflows.Model {
-  case state.workflows_dialog_mode {
-    opt.Some(admin_workflows.WorkflowDialogEdit(_)) ->
+  case state.engine_dialog_mode {
+    opt.Some(admin_workflows.EngineDialogEdit(_)) ->
       engine_updated(state, workflow)
     _ -> engine_created(state, workflow)
   }
@@ -576,22 +572,22 @@ fn engine_created(
 ) -> admin_workflows.Model {
   let #(org, project) =
     scoped_remote_list.prepend_for_scope(
-      state.workflows_org,
-      state.workflows_project,
+      state.engines_org,
+      state.engines_project,
       workflow.project_id,
       workflow,
     )
 
   admin_workflows.Model(
     ..state,
-    workflows_org: org,
-    workflows_project: project,
-    workflows_dialog_mode: opt.None,
-    workflow_form_name: "",
-    workflow_form_description: "",
-    workflow_form_active: True,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.None,
+    engines_org: org,
+    engines_project: project,
+    engine_dialog_mode: opt.None,
+    engine_form_name: "",
+    engine_form_description: "",
+    engine_form_active: True,
+    engine_form_submitting: False,
+    engine_form_error: opt.None,
   )
 }
 
@@ -601,24 +597,24 @@ fn engine_updated(
 ) -> admin_workflows.Model {
   let org =
     scoped_remote_list.replace_by_id(
-      state.workflows_org,
+      state.engines_org,
       updated_workflow,
       fn(workflow: Workflow) { workflow.id },
     )
   let project =
     scoped_remote_list.replace_by_id(
-      state.workflows_project,
+      state.engines_project,
       updated_workflow,
       fn(workflow: Workflow) { workflow.id },
     )
 
   admin_workflows.Model(
     ..state,
-    workflows_org: org,
-    workflows_project: project,
-    workflows_dialog_mode: opt.None,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.None,
+    engines_org: org,
+    engines_project: project,
+    engine_dialog_mode: opt.None,
+    engine_form_submitting: False,
+    engine_form_error: opt.None,
   )
 }
 
@@ -628,24 +624,24 @@ fn engine_deleted(
 ) -> admin_workflows.Model {
   let org =
     scoped_remote_list.remove_by_id(
-      state.workflows_org,
+      state.engines_org,
       workflow_id,
       fn(workflow: Workflow) { workflow.id },
     )
   let project =
     scoped_remote_list.remove_by_id(
-      state.workflows_project,
+      state.engines_project,
       workflow_id,
       fn(workflow: Workflow) { workflow.id },
     )
 
   admin_workflows.Model(
     ..state,
-    workflows_org: org,
-    workflows_project: project,
-    workflows_dialog_mode: opt.None,
-    workflow_form_submitting: False,
-    workflow_form_error: opt.None,
+    engines_org: org,
+    engines_project: project,
+    engine_dialog_mode: opt.None,
+    engine_form_submitting: False,
+    engine_form_error: opt.None,
   )
 }
 
