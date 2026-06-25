@@ -1,7 +1,7 @@
 //// Automation definition seed scenario.
 ////
-//// Creates workflows, rules, rule template selections, and warning rules used
-//// by automation product validation.
+//// Creates task templates, workflows, rules, rule template selections, and
+//// warning rules used by automation product validation.
 
 import domain/automation
 import gleam/int
@@ -21,12 +21,13 @@ pub type Context {
     inactive_workflow_count: Int,
     empty_workflow_count: Int,
     task_type_ids: List(#(Int, Int, Int, Int)),
-    template_ids_by_project: List(#(Int, List(Int))),
   )
 }
 
 pub type DefinitionResult {
   DefinitionResult(
+    template_ids: List(Int),
+    template_ids_by_project: List(#(Int, List(Int))),
     workflow_ids: List(Int),
     workflow_ids_by_project: List(#(Int, List(Int))),
     rule_ids: List(Int),
@@ -38,19 +39,52 @@ pub fn build(
   db: pog.Connection,
   context: Context,
 ) -> Result(DefinitionResult, String) {
+  use template_ids_by_project <- result.try(build_templates(db, context))
   use workflow_ids_by_project <- result.try(build_workflows(db, context))
   use rule_ids_by_project <- result.try(build_rules(
     db,
     context,
+    template_ids_by_project,
     workflow_ids_by_project,
   ))
 
   Ok(DefinitionResult(
+    template_ids: flatten_ids(template_ids_by_project),
+    template_ids_by_project: template_ids_by_project,
     workflow_ids: flatten_ids(workflow_ids_by_project),
     workflow_ids_by_project: workflow_ids_by_project,
     rule_ids: flatten_ids(rule_ids_by_project),
     rule_ids_by_project: rule_ids_by_project,
   ))
+}
+
+fn build_templates(
+  db: pog.Connection,
+  context: Context,
+) -> Result(List(#(Int, List(Int))), String) {
+  let template_names = ["Code Review", "QA Verification", "Deploy to Staging"]
+
+  list.try_map(context.task_type_ids, fn(types) {
+    let #(project_id, _bug_id, _feature_id, task_type_id) = types
+    use template_ids <- result.try(
+      list.try_map(template_names, fn(name) {
+        seed_db.insert_template(
+          db,
+          seed_db.TemplateInsertOptions(
+            org_id: context.org_id,
+            project_id: project_id,
+            type_id: task_type_id,
+            name: name,
+            description: "Auto-created " <> name,
+            priority: 3,
+            created_by: context.admin_id,
+            created_at: None,
+          ),
+        )
+      }),
+    )
+    Ok(#(project_id, template_ids))
+  })
 }
 
 fn build_workflows(
@@ -89,13 +123,13 @@ fn build_workflows(
 fn build_rules(
   db: pog.Connection,
   context: Context,
+  template_ids_by_project: List(#(Int, List(Int))),
   workflow_ids_by_project: List(#(Int, List(Int))),
 ) -> Result(List(#(Int, List(Int))), String) {
   list.index_map(workflow_ids_by_project, fn(pair, project_idx) {
     let #(project_id, workflow_ids) = pair
     let task_types = task_types_for_project(context.task_type_ids, project_id)
-    let templates =
-      templates_for_project(context.template_ids_by_project, project_id)
+    let templates = templates_for_project(template_ids_by_project, project_id)
     let workflow_ids = list.drop(workflow_ids, context.empty_workflow_count)
 
     case workflow_ids, task_types {

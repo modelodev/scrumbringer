@@ -219,7 +219,6 @@ pub fn build_seed(
   use state <- result.try(build_task_types(db, state, config))
   use state <- result.try(build_member_capabilities(db, state, config))
   use state <- result.try(build_cards(db, state, config))
-  use state <- result.try(build_templates(db, state, config))
   use state <- result.try(build_automation_definitions(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
   use state <- result.try(build_plan_qa_scenarios(db, state, config))
@@ -575,51 +574,6 @@ fn build_cards(
   )
 }
 
-fn build_templates(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  let template_names = ["Code Review", "QA Verification", "Deploy to Staging"]
-
-  use template_ids_by_project <- result.try(
-    list.try_map(state.task_type_ids, fn(types) {
-      let #(project_id, _bug_id, _feature_id, task_type_id) = types
-      use template_ids <- result.try(
-        list.try_map(template_names, fn(name) {
-          seed_db.insert_template(
-            db,
-            seed_db.TemplateInsertOptions(
-              org_id: state.org_id,
-              project_id: project_id,
-              type_id: task_type_id,
-              name: name,
-              description: "Auto-created " <> name,
-              priority: 3,
-              created_by: state.admin_id,
-              created_at: None,
-            ),
-          )
-        }),
-      )
-      Ok(#(project_id, template_ids))
-    }),
-  )
-
-  Ok(
-    BuildState(
-      ..state,
-      template_ids: template_ids_by_project
-        |> list.map(fn(pair) {
-          let #(_project_id, template_ids) = pair
-          template_ids
-        })
-        |> list.flatten,
-      template_ids_by_project: template_ids_by_project,
-    ),
-  )
-}
-
 fn build_automation_definitions(
   db: pog.Connection,
   state: BuildState,
@@ -635,12 +589,13 @@ fn build_automation_definitions(
       inactive_workflow_count: config.inactive_workflow_count,
       empty_workflow_count: config.empty_workflow_count,
       task_type_ids: state.task_type_ids,
-      template_ids_by_project: state.template_ids_by_project,
     ),
   ))
   Ok(
     BuildState(
       ..state,
+      template_ids: definitions.template_ids,
+      template_ids_by_project: definitions.template_ids_by_project,
       workflow_ids: definitions.workflow_ids,
       workflow_ids_by_project: definitions.workflow_ids_by_project,
       rule_ids: definitions.rule_ids,
