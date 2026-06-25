@@ -37,7 +37,7 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
       "select count(distinct r.id)::int
        from rules r
        join rule_templates rt on rt.rule_id = r.id
-       where r.name like 'On Task Done%'",
+       where r.name like 'On Task Closed%'",
       [],
     )
   let assert Ok(unused_template_count) =
