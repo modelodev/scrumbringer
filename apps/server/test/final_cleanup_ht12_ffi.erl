@@ -277,6 +277,7 @@ seed_limits_violations(Root) ->
 seed_source_files() ->
     [
         "apps/server/src/scrumbringer_server/seed_builder.gleam",
+        "apps/server/src/scrumbringer_server/seed_activity_scenarios.gleam",
         "apps/server/src/scrumbringer_server/seed_automation_diagnostics.gleam"
     ].
 
