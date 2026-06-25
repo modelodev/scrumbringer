@@ -120,13 +120,6 @@ pub fn validate_card_depth_names(
   }
 }
 
-pub fn valid_card_depth_names(card_depth_names: List(ProjectDepthName)) -> Bool {
-  case validate_card_depth_names(card_depth_names) {
-    Ok(_) -> True
-    Error(_) -> False
-  }
-}
-
 fn validate_card_depth_names_loop(
   card_depth_names: List(ProjectDepthName),
   expected_depth: Int,

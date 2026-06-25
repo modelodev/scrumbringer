@@ -79,14 +79,12 @@ pub fn card_depth_names_accepts_sequential_nonblank_names_test() {
     ProjectDepthName(2, "Feature", "Features"),
   ]
 
-  let assert Ok(depth_names) = settings.validate_card_depth_names(depth_names)
-  let assert True = settings.valid_card_depth_names(depth_names)
+  let assert Ok(_) = settings.validate_card_depth_names(depth_names)
 }
 
 pub fn card_depth_names_rejects_empty_list_test() {
   let assert Error(settings.EmptyCardDepthNames) =
     settings.validate_card_depth_names([])
-  let assert False = settings.valid_card_depth_names([])
 }
 
 pub fn card_depth_names_rejects_nonsequential_depths_test() {

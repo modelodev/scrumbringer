@@ -1311,10 +1311,11 @@ fn validate_depth_names(
 ) -> Result(#(Int, List(ProjectDepthName)), String) {
   let Context(depth_names_required:, ..) = context
   let normalized = project_settings.normalize_card_depth_names(card_depth_names)
-  case project_settings.valid_card_depth_names(normalized) {
-    False -> Error(depth_names_required)
-    True -> Ok(#(healthy_pool_limit, normalized))
-  }
+  use validated <- result.try(
+    project_settings.validate_card_depth_names(normalized)
+    |> result.map_error(fn(_) { depth_names_required }),
+  )
+  Ok(#(healthy_pool_limit, validated))
 }
 
 fn create_form(name: String) -> admin_projects.ProjectDialogForm {
