@@ -1250,7 +1250,7 @@ pub fn translate(text: Text) -> String {
     text.Invites -> "Invitaciones"
 
     // Secciones del panel derecho
-    text.InProgress -> "En Curso"
+    text.InProgress -> "en curso"
     text.Resume -> "Reanudar"
     text.MyCards -> "Contexto"
     text.NoTasksClaimed -> "Sin tareas reclamadas"

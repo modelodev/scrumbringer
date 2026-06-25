@@ -36,6 +36,7 @@ pub fn i18n_smoke_selected_texts_es_test() {
   let assert "Capacidades guardadas" = i18n.t(locale.Es, text.SkillsSaved)
   let assert "Mis capacidades" = i18n.t(locale.Es, text.MySkills)
   let assert "Tarea cerrada" = i18n.t(locale.Es, text.TaskDone)
+  let assert "en curso" = i18n.t(locale.Es, text.InProgress)
   let assert "No se pudo cerrar la tarea" =
     i18n.t(locale.Es, text.TaskCompleteFailed)
 }

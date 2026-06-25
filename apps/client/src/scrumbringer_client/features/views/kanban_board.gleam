@@ -1,7 +1,7 @@
 //// KanbanBoard - Cards displayed in kanban columns
 ////
 //// Mission: Display cards organized in three columns by state
-//// (Draft, En Curso, Closed) with progress indicators.
+//// (draft, active, closed) with progress indicators.
 ////
 //// Responsibilities:
 //// - Organize cards by state into columns
