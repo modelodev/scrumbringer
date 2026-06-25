@@ -120,7 +120,7 @@ fn card(id: Int, title: String, color) {
     color: color,
     state: Active,
     task_count: 0,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

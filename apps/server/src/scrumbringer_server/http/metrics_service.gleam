@@ -43,7 +43,7 @@ pub type ProjectMetricsRow {
     claimed_count: Int,
     ongoing_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
     wip_count: Int,
@@ -61,7 +61,7 @@ pub type MetricsOverview {
     claimed_count: Int,
     ongoing_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
     time_to_first_claim_p50_ms: Option(Int),
@@ -83,7 +83,7 @@ pub type UserMetricsRow {
     email: String,
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     ongoing_count: Int,
     last_claim_at: Option(String),
   )
@@ -105,13 +105,13 @@ pub type ProjectTask {
     created_by: Int,
     claimed_by: Option(Int),
     claimed_at: Option(String),
-    completed_at: Option(String),
+    closed_at: Option(String),
     created_at: String,
     due_date: Option(String),
     version: Int,
     claim_count: Int,
     release_count: Int,
-    complete_count: Int,
+    close_count: Int,
     first_claim_at: Option(String),
   )
 }
@@ -153,7 +153,7 @@ pub fn get_org_overview(
     -> {
       let claimed = totals_row.claimed_count
       let released = totals_row.released_count
-      let closed = totals_row.completed_count
+      let closed = totals_row.closed_count
       let available = totals_row.available_count
       let ongoing = totals_row.ongoing_count
       let wip_count = totals_row.wip_count
@@ -184,7 +184,7 @@ pub fn get_org_overview(
         claimed_count: claimed,
         ongoing_count: ongoing,
         released_count: released,
-        completed_count: closed,
+        closed_count: closed,
         release_rate_percent: release_rate_percent,
         pool_flow_ratio_percent: pool_flow_ratio_percent,
         time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
@@ -312,7 +312,7 @@ fn do_map_project_rows(
       let project_release_rate_percent =
         percent(row.released_count, row.claimed_count)
       let project_pool_flow_ratio_percent =
-        percent(row.completed_count, row.claimed_count)
+        percent(row.closed_count, row.claimed_count)
 
       do_map_project_rows(rest, [
         ProjectMetricsRow(
@@ -322,7 +322,7 @@ fn do_map_project_rows(
           claimed_count: row.claimed_count,
           ongoing_count: row.ongoing_count,
           released_count: row.released_count,
-          completed_count: row.completed_count,
+          closed_count: row.closed_count,
           release_rate_percent: project_release_rate_percent,
           pool_flow_ratio_percent: project_pool_flow_ratio_percent,
           wip_count: row.wip_count,
@@ -359,7 +359,7 @@ fn do_map_user_rows(
           email: row.email,
           claimed_count: row.claimed_count,
           released_count: row.released_count,
-          completed_count: row.completed_count,
+          closed_count: row.closed_count,
           ongoing_count: row.ongoing_count,
           last_claim_at: last_claim_at,
         ),
@@ -404,7 +404,7 @@ fn project_task_from_row(
   }
 
   let claimed_at = empty_string_to_option(row.claimed_at)
-  let completed_at = empty_string_to_option(row.completed_at)
+  let closed_at = empty_string_to_option(row.closed_at)
   let due_date = empty_string_to_option(row.due_date)
   let first_claim_at = empty_string_to_option(row.first_claim_at)
 
@@ -413,7 +413,7 @@ fn project_task_from_row(
     row.is_ongoing,
     claimed_by,
     claimed_at,
-    completed_at,
+    closed_at,
   ))
 
   Ok(ProjectTask(
@@ -430,13 +430,13 @@ fn project_task_from_row(
     created_by: row.created_by,
     claimed_by: claimed_by,
     claimed_at: claimed_at,
-    completed_at: completed_at,
+    closed_at: closed_at,
     created_at: row.created_at,
     due_date: due_date,
     version: row.version,
     claim_count: row.claim_count,
     release_count: row.release_count,
-    complete_count: row.complete_count,
+    close_count: row.close_count,
     first_claim_at: first_claim_at,
   ))
 }
@@ -479,8 +479,8 @@ pub fn execution_state_from(
   is_ongoing: Bool,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(task_state.TaskExecutionState, MetricsError) {
-  task_state.from_db(status, is_ongoing, claimed_by, claimed_at, completed_at)
+  task_state.from_db(status, is_ongoing, claimed_by, claimed_at, closed_at)
   |> result.map_error(fn(_) { InvalidTaskExecutionState(status) })
 }

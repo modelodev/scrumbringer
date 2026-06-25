@@ -17,7 +17,7 @@ pub fn card(card: domain_card.Card) -> json.Json {
     #("color", json.string(domain_card.optional_color_to_string(card.color))),
     #("state", json.string(domain_card.state_to_string(card.state))),
     #("task_count", json.int(card.task_count)),
-    #("completed_count", json.int(card.completed_count)),
+    #("closed_count", json.int(card.closed_count)),
     #("created_by", json.int(card.created_by)),
     #("created_at", json.string(card.created_at)),
     #("due_date", json_helpers.option_string_json(card.due_date)),

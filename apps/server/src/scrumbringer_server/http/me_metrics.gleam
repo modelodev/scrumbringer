@@ -53,7 +53,7 @@ fn me_metrics(
           window_days,
           row.claimed_count,
           row.released_count,
-          row.completed_count,
+          row.closed_count,
         )),
       )
 

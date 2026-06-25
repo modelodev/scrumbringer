@@ -117,7 +117,7 @@ fn make_card(
     color: Some(card.Blue),
     state: card.Active,
     task_count: 0,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 1,
     created_at: "2026-02-01T09:00:00Z",
     due_date: None,

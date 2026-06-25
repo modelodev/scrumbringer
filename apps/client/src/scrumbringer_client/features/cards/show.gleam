@@ -726,7 +726,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         ),
         card_health_chip(
           "card-health-done",
-          int.to_string(card.completed_count),
+          int.to_string(card.closed_count),
           t(model.locale, i18n_text.CardTasksClosed),
           "closed",
         ),
@@ -738,7 +738,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         ),
       ]),
       card_progress.view(
-        card.completed_count,
+        card.closed_count,
         card.task_count,
         card_progress.Default,
       ),
@@ -1143,7 +1143,7 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
       ),
       summary_item(
         t(model.locale, i18n_text.MetricsTasksClosed),
-        int.to_string(card.completed_count),
+        int.to_string(card.closed_count),
       ),
       summary_item(
         t(model.locale, i18n_text.MetricsProgress),
@@ -1229,7 +1229,7 @@ fn summary_item(label: String, value: String) -> Element(Msg) {
 fn progress_text(card: Card) -> String {
   case card.task_count <= 0 {
     True -> "0%"
-    False -> int.to_string(card.completed_count * 100 / card.task_count) <> "%"
+    False -> int.to_string(card.closed_count * 100 / card.task_count) <> "%"
   }
 }
 

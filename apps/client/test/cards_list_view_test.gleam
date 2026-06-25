@@ -24,7 +24,7 @@ fn sample_card() {
     color: opt.None,
     state: Draft,
     task_count: 4,
-    completed_count: 1,
+    closed_count: 1,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,

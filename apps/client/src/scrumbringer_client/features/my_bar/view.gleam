@@ -332,7 +332,7 @@ pub fn view_member_metrics_panel(
         window_days: window_days,
         claimed_count: claimed_count,
         released_count: released_count,
-        completed_count: closed_count,
+        closed_count: closed_count,
       ) = metrics
 
       div([attribute.class("panel")], [

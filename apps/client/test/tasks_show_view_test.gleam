@@ -94,7 +94,7 @@ fn parent_card() -> Card {
     color: None,
     state: Active,
     task_count: 1,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 7,
     created_at: "2026-03-20T10:00:00Z",
     due_date: None,

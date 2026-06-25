@@ -7,7 +7,7 @@
 //// ```gleam
 //// import shared/domain/metrics.{type MyMetrics, type OrgMetricsOverview}
 ////
-//// let metrics = MyMetrics(window_days: 30, claimed_count: 10, released_count: 2, completed_count: 8)
+//// let metrics = MyMetrics(window_days: 30, claimed_count: 10, released_count: 2, closed_count: 8)
 //// ```
 
 import domain/task.{type Task}
@@ -66,14 +66,14 @@ pub fn window_days_value(window: WindowDays) -> Int {
 /// ## Example
 ///
 /// ```gleam
-/// MyMetrics(window_days: 30, claimed_count: 15, released_count: 3, completed_count: 12)
+/// MyMetrics(window_days: 30, claimed_count: 15, released_count: 3, closed_count: 12)
 /// ```
 pub type MyMetrics {
   MyMetrics(
     window_days: WindowDays,
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
   )
 }
 
@@ -98,7 +98,7 @@ pub type OrgMetricsBucket {
 ///   project_name: "Sprint 1",
 ///   claimed_count: 50,
 ///   released_count: 10,
-///   completed_count: 40,
+///   closed_count: 40,
 ///   release_rate_percent: Some(20),
 ///   pool_flow_ratio_percent: Some(80),
 /// )
@@ -111,7 +111,7 @@ pub type OrgMetricsProjectOverview {
     claimed_count: Int,
     ongoing_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
     wip_count: Int,
@@ -130,7 +130,7 @@ pub type OrgMetricsProjectOverview {
 ///   window_days: 30,
 ///   claimed_count: 100,
 ///   released_count: 20,
-///   completed_count: 80,
+///   closed_count: 80,
 ///   release_rate_percent: Some(20),
 ///   pool_flow_ratio_percent: Some(80),
 ///   time_to_first_claim_p50_ms: Some(3600000),
@@ -147,7 +147,7 @@ pub type OrgMetricsOverview {
     claimed_count: Int,
     ongoing_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
     time_to_first_claim: SampledMetric,
@@ -170,7 +170,7 @@ pub type OrgMetricsOverview {
 ///   task: task,
 ///   claim_count: 3,
 ///   release_count: 1,
-///   complete_count: 1,
+///   close_count: 1,
 ///   first_claim_at: Some("2024-01-17T12:00:00Z"),
 /// )
 /// ```
@@ -179,7 +179,7 @@ pub type MetricsProjectTask {
     task: Task,
     claim_count: Int,
     release_count: Int,
-    complete_count: Int,
+    close_count: Int,
     first_claim_at: Option(String),
   )
 }
@@ -206,7 +206,7 @@ pub type OrgMetricsUserOverview {
     email: String,
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     ongoing_count: Int,
     last_claim_at: Option(String),
   )

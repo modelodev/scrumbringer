@@ -29,7 +29,7 @@ fn sample_card() {
     color: None,
     state: Draft,
     task_count: 1,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: None,
@@ -138,7 +138,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
       title: "API Cleanup",
       state: Active,
       task_count: 4,
-      completed_count: 1,
+      closed_count: 1,
       due_date: Some("2026-06-24"),
     )
   let ready = sample_task(1, Some(4))
@@ -183,7 +183,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
 
 pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
   let empty_card =
-    Card(..sample_card(), task_count: 0, completed_count: 0, state: Active)
+    Card(..sample_card(), task_count: 0, closed_count: 0, state: Active)
 
   let html =
     show_entry.view(config(Some(empty_card)))
@@ -202,7 +202,7 @@ pub fn card_show_summary_uses_separate_metric_nodes_and_description_label_test()
     Card(
       ..sample_card(),
       task_count: 0,
-      completed_count: 0,
+      closed_count: 0,
       state: Active,
       description: "Ready root card dominated by loose documentation.",
     )

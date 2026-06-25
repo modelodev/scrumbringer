@@ -127,8 +127,8 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     option.None,
     decode.optional(decode.string),
   )
-  use completed_at <- decode.optional_field(
-    "completed_at",
+  use closed_at <- decode.optional_field(
+    "closed_at",
     option.None,
     decode.optional(decode.string),
   )
@@ -139,7 +139,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     is_ongoing,
     claimed_by,
     claimed_at,
-    completed_at,
+    closed_at,
   ))
 
   use created_at <- decode.field("created_at", decode.string)
@@ -271,7 +271,7 @@ pub fn task_state_decoder_from_fields(
   is_ongoing: Bool,
   claimed_by: option.Option(Int),
   claimed_at: option.Option(String),
-  completed_at: option.Option(String),
+  closed_at: option.Option(String),
 ) -> decode.Decoder(task_state.TaskExecutionState) {
   case
     state_from_public_fields(
@@ -279,7 +279,7 @@ pub fn task_state_decoder_from_fields(
       is_ongoing,
       claimed_by,
       claimed_at,
-      completed_at,
+      closed_at,
     )
   {
     Ok(state) -> decode.success(state)
@@ -303,8 +303,8 @@ pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
     option.None,
     decode.optional(decode.string),
   )
-  use completed_at <- decode.optional_field(
-    "completed_at",
+  use closed_at <- decode.optional_field(
+    "closed_at",
     option.None,
     decode.optional(decode.string),
   )
@@ -320,7 +320,7 @@ pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
       is_ongoing,
       claimed_by_user_id,
       claimed_at,
-      completed_at,
+      closed_at,
     )
   {
     Ok(state) ->
@@ -348,15 +348,9 @@ fn state_from_public_fields(
   is_ongoing: Bool,
   claimed_by: option.Option(Int),
   claimed_at: option.Option(String),
-  completed_at: option.Option(String),
+  closed_at: option.Option(String),
 ) -> Result(task_state.TaskExecutionState, task_state.TaskExecutionStateError) {
-  task_state.from_db(
-    status_raw,
-    is_ongoing,
-    claimed_by,
-    claimed_at,
-    completed_at,
-  )
+  task_state.from_db(status_raw, is_ongoing, claimed_by, claimed_at, closed_at)
 }
 
 // =============================================================================

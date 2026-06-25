@@ -1055,7 +1055,7 @@ pub type CardsGetRow {
     created_at: String,
     due_date: String,
     task_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     available_count: Int,
     has_new_notes: Bool,
   )
@@ -1083,7 +1083,7 @@ pub fn cards_get(
     use created_at <- decode.field(8, decode.string)
     use due_date <- decode.field(9, decode.string)
     use task_count <- decode.field(10, decode.int)
-    use completed_count <- decode.field(11, decode.int)
+    use closed_count <- decode.field(11, decode.int)
     use available_count <- decode.field(12, decode.int)
     use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsGetRow(
@@ -1098,7 +1098,7 @@ pub fn cards_get(
       created_at:,
       due_date:,
       task_count:,
-      completed_count:,
+      closed_count:,
       available_count:,
       has_new_notes:,
     ))
@@ -1117,7 +1117,7 @@ SELECT
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS closed_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
@@ -1159,7 +1159,7 @@ pub type CardsListRow {
     created_at: String,
     due_date: String,
     task_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     available_count: Int,
     has_new_notes: Bool,
   )
@@ -1187,7 +1187,7 @@ pub fn cards_list(
     use created_at <- decode.field(8, decode.string)
     use due_date <- decode.field(9, decode.string)
     use task_count <- decode.field(10, decode.int)
-    use completed_count <- decode.field(11, decode.int)
+    use closed_count <- decode.field(11, decode.int)
     use available_count <- decode.field(12, decode.int)
     use has_new_notes <- decode.field(13, decode.bool)
     decode.success(CardsListRow(
@@ -1202,7 +1202,7 @@ pub fn cards_list(
       created_at:,
       due_date:,
       task_count:,
-      completed_count:,
+      closed_count:,
       available_count:,
       has_new_notes:,
     ))
@@ -1221,7 +1221,7 @@ SELECT
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(c.due_date, 'YYYY-MM-DD'), '') as due_date,
     COUNT(t.id)::int AS task_count,
-    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS completed_count,
+    COUNT(t.id) FILTER (WHERE t.execution_state = 'closed')::int AS closed_count,
     COUNT(t.id) FILTER (WHERE t.execution_state = 'available')::int AS available_count,
     case
       when max(n.created_at) is null then false
@@ -1449,7 +1449,7 @@ select email as display_name from users where id = $1 and deleted_at is null;
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type MetricsMyRow {
-  MetricsMyRow(claimed_count: Int, released_count: Int, completed_count: Int)
+  MetricsMyRow(claimed_count: Int, released_count: Int, closed_count: Int)
 }
 
 /// name: metrics_my
@@ -1465,19 +1465,15 @@ pub fn metrics_my(
   let decoder = {
     use claimed_count <- decode.field(0, decode.int)
     use released_count <- decode.field(1, decode.int)
-    use completed_count <- decode.field(2, decode.int)
-    decode.success(MetricsMyRow(
-      claimed_count:,
-      released_count:,
-      completed_count:,
-    ))
+    use closed_count <- decode.field(2, decode.int)
+    decode.success(MetricsMyRow(claimed_count:, released_count:, closed_count:))
   }
 
   "-- name: metrics_my
 select
   coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
   coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-  coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+  coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
 from audit_events
 where actor_user_id = $1
   and created_at >= now() - ($2 || ' days')::interval;
@@ -1499,7 +1495,7 @@ pub type MetricsOrgOverviewRow {
   MetricsOrgOverviewRow(
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     available_count: Int,
     ongoing_count: Int,
     wip_count: Int,
@@ -1522,7 +1518,7 @@ pub fn metrics_org_overview(
   let decoder = {
     use claimed_count <- decode.field(0, decode.int)
     use released_count <- decode.field(1, decode.int)
-    use completed_count <- decode.field(2, decode.int)
+    use closed_count <- decode.field(2, decode.int)
     use available_count <- decode.field(3, decode.int)
     use ongoing_count <- decode.field(4, decode.int)
     use wip_count <- decode.field(5, decode.int)
@@ -1532,7 +1528,7 @@ pub fn metrics_org_overview(
     decode.success(MetricsOrgOverviewRow(
       claimed_count:,
       released_count:,
-      completed_count:,
+      closed_count:,
       available_count:,
       ongoing_count:,
       wip_count:,
@@ -1547,7 +1543,7 @@ with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
   from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
@@ -1585,7 +1581,7 @@ with event_counts as (
 select
   event_counts.claimed_count,
   event_counts.released_count,
-  event_counts.completed_count,
+  event_counts.closed_count,
   task_counts.available_count,
   task_counts.ongoing_count,
   task_counts.wip_count,
@@ -1613,7 +1609,7 @@ pub type MetricsOrgOverviewByProjectRow {
     project_name: String,
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     available_count: Int,
     ongoing_count: Int,
     wip_count: Int,
@@ -1638,7 +1634,7 @@ pub fn metrics_org_overview_by_project(
     use project_name <- decode.field(1, decode.string)
     use claimed_count <- decode.field(2, decode.int)
     use released_count <- decode.field(3, decode.int)
-    use completed_count <- decode.field(4, decode.int)
+    use closed_count <- decode.field(4, decode.int)
     use available_count <- decode.field(5, decode.int)
     use ongoing_count <- decode.field(6, decode.int)
     use wip_count <- decode.field(7, decode.int)
@@ -1650,7 +1646,7 @@ pub fn metrics_org_overview_by_project(
       project_name:,
       claimed_count:,
       released_count:,
-      completed_count:,
+      closed_count:,
       available_count:,
       ongoing_count:,
       wip_count:,
@@ -1666,7 +1662,7 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
   from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
@@ -1707,7 +1703,7 @@ select
   p.name as project_name,
   coalesce(ec.claimed_count, 0) as claimed_count,
   coalesce(ec.released_count, 0) as released_count,
-  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(ec.closed_count, 0) as closed_count,
   coalesce(tc.available_count, 0) as available_count,
   coalesce(tc.ongoing_count, 0) as ongoing_count,
   coalesce(tc.wip_count, 0) as wip_count,
@@ -1750,13 +1746,13 @@ pub type MetricsProjectTasksRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
     claim_count: Int,
     release_count: Int,
-    complete_count: Int,
+    close_count: Int,
     first_claim_at: String,
   )
 }
@@ -1786,13 +1782,13 @@ pub fn metrics_project_tasks(
     use created_by <- decode.field(11, decode.int)
     use claimed_by <- decode.field(12, decode.int)
     use claimed_at <- decode.field(13, decode.string)
-    use completed_at <- decode.field(14, decode.string)
+    use closed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
     use claim_count <- decode.field(18, decode.int)
     use release_count <- decode.field(19, decode.int)
-    use complete_count <- decode.field(20, decode.int)
+    use close_count <- decode.field(20, decode.int)
     use first_claim_at <- decode.field(21, decode.string)
     decode.success(MetricsProjectTasksRow(
       id:,
@@ -1809,13 +1805,13 @@ pub fn metrics_project_tasks(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
       claim_count:,
       release_count:,
-      complete_count:,
+      close_count:,
       first_claim_at:,
     ))
   }
@@ -1851,7 +1847,7 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
@@ -1863,7 +1859,7 @@ with task_scope as (
     e.task_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as complete_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as close_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
   from audit_events e
   where e.project_id = $1
@@ -1885,13 +1881,13 @@ select
   ts.created_by,
   ts.claimed_by,
   ts.claimed_at,
-  ts.completed_at,
+  ts.closed_at,
   ts.created_at,
   ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,
-  coalesce(ec.complete_count, 0) as complete_count,
+  coalesce(ec.close_count, 0) as close_count,
   coalesce(to_char(ec.first_claim_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as first_claim_at
 from task_scope ts
 left join event_counts ec on ec.task_id = ts.id
@@ -2123,7 +2119,7 @@ pub type MetricsUsersOverviewRow {
     email: String,
     claimed_count: Int,
     released_count: Int,
-    completed_count: Int,
+    closed_count: Int,
     ongoing_count: Int,
     last_claim_at: String,
   )
@@ -2144,7 +2140,7 @@ pub fn metrics_users_overview(
     use email <- decode.field(1, decode.string)
     use claimed_count <- decode.field(2, decode.int)
     use released_count <- decode.field(3, decode.int)
-    use completed_count <- decode.field(4, decode.int)
+    use closed_count <- decode.field(4, decode.int)
     use ongoing_count <- decode.field(5, decode.int)
     use last_claim_at <- decode.field(6, decode.string)
     decode.success(MetricsUsersOverviewRow(
@@ -2152,7 +2148,7 @@ pub fn metrics_users_overview(
       email:,
       claimed_count:,
       released_count:,
-      completed_count:,
+      closed_count:,
       ongoing_count:,
       last_claim_at:,
     ))
@@ -2164,7 +2160,7 @@ with event_counts as (
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as closed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
   from audit_events e
   where e.org_id = $1
@@ -2186,7 +2182,7 @@ select
   u.email,
   coalesce(ec.claimed_count, 0) as claimed_count,
   coalesce(ec.released_count, 0) as released_count,
-  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(ec.closed_count, 0) as closed_count,
   coalesce(o.ongoing_count, 0) as ongoing_count,
   coalesce(to_char(ec.last_claim_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_claim_at
 from users u
@@ -5106,7 +5102,7 @@ pub type TaskDependenciesCreateRow {
     is_ongoing: Bool,
     claimed_by_user_id: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     claimed_by: String,
   )
 }
@@ -5129,7 +5125,7 @@ pub fn task_dependencies_create(
     use is_ongoing <- decode.field(3, decode.bool)
     use claimed_by_user_id <- decode.field(4, decode.int)
     use claimed_at <- decode.field(5, decode.string)
-    use completed_at <- decode.field(6, decode.string)
+    use closed_at <- decode.field(6, decode.string)
     use claimed_by <- decode.field(7, decode.string)
     decode.success(TaskDependenciesCreateRow(
       task_id:,
@@ -5138,7 +5134,7 @@ pub fn task_dependencies_create(
       is_ongoing:,
       claimed_by_user_id:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       claimed_by:,
     ))
   }
@@ -5163,7 +5159,7 @@ select
   ) as is_ongoing,
   coalesce(t.claimed_by, 0) as claimed_by_user_id,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id
@@ -5232,7 +5228,7 @@ pub type TaskDependenciesListRow {
     is_ongoing: Bool,
     claimed_by_user_id: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     claimed_by: String,
   )
 }
@@ -5253,7 +5249,7 @@ pub fn task_dependencies_list(
     use is_ongoing <- decode.field(3, decode.bool)
     use claimed_by_user_id <- decode.field(4, decode.int)
     use claimed_at <- decode.field(5, decode.string)
-    use completed_at <- decode.field(6, decode.string)
+    use closed_at <- decode.field(6, decode.string)
     use claimed_by <- decode.field(7, decode.string)
     decode.success(TaskDependenciesListRow(
       task_id:,
@@ -5262,7 +5258,7 @@ pub fn task_dependencies_list(
       is_ongoing:,
       claimed_by_user_id:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       claimed_by:,
     ))
   }
@@ -5282,7 +5278,7 @@ select
   ) as is_ongoing,
   coalesce(t.claimed_by, 0) as claimed_by_user_id,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
   coalesce(u.email, '') as claimed_by
 from task_dependencies td
 join tasks t on t.id = td.depends_on_task_id
@@ -6806,7 +6802,7 @@ pub type TasksClaimRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -6855,7 +6851,7 @@ pub fn tasks_claim(
     use created_by <- decode.field(7, decode.int)
     use claimed_by <- decode.field(8, decode.int)
     use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
+    use closed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
@@ -6890,7 +6886,7 @@ pub fn tasks_claim(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -6980,7 +6976,7 @@ with recursive claim_target as (
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -7038,7 +7034,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(
@@ -7086,7 +7082,7 @@ pub type TasksCloseRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -7135,7 +7131,7 @@ pub fn tasks_close(
     use created_by <- decode.field(7, decode.int)
     use claimed_by <- decode.field(8, decode.int)
     use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
+    use closed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
@@ -7170,7 +7166,7 @@ pub fn tasks_close(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -7228,7 +7224,7 @@ with updated as (
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -7286,7 +7282,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(
@@ -7334,7 +7330,7 @@ pub type TasksCreateRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -7391,7 +7387,7 @@ pub fn tasks_create(
     use created_by <- decode.field(7, decode.int)
     use claimed_by <- decode.field(8, decode.int)
     use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
+    use closed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
@@ -7426,7 +7422,7 @@ pub fn tasks_create(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -7516,7 +7512,7 @@ with type_ok as (
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -7663,7 +7659,7 @@ pub type TasksGetForUserRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -7711,7 +7707,7 @@ pub fn tasks_get_for_user(
     use created_by <- decode.field(11, decode.int)
     use claimed_by <- decode.field(12, decode.int)
     use claimed_at <- decode.field(13, decode.string)
-    use completed_at <- decode.field(14, decode.string)
+    use closed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
@@ -7746,7 +7742,7 @@ pub fn tasks_get_for_user(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -7798,7 +7794,7 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
@@ -7849,7 +7845,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(
@@ -7907,7 +7903,7 @@ pub type TasksListRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -7961,7 +7957,7 @@ pub fn tasks_list(
     use created_by <- decode.field(11, decode.int)
     use claimed_by <- decode.field(12, decode.int)
     use claimed_at <- decode.field(13, decode.string)
-    use completed_at <- decode.field(14, decode.string)
+    use closed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
@@ -7997,7 +7993,7 @@ pub fn tasks_list(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -8050,7 +8046,7 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
@@ -8118,7 +8114,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(
@@ -8210,7 +8206,7 @@ pub type TasksListByCardRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -8242,7 +8238,7 @@ pub fn tasks_list_by_card(
     use created_by <- decode.field(11, decode.int)
     use claimed_by <- decode.field(12, decode.int)
     use claimed_at <- decode.field(13, decode.string)
-    use completed_at <- decode.field(14, decode.string)
+    use closed_at <- decode.field(14, decode.string)
     use created_at <- decode.field(15, decode.string)
     use due_date <- decode.field(16, decode.string)
     use version <- decode.field(17, decode.int)
@@ -8262,7 +8258,7 @@ pub fn tasks_list_by_card(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -8299,7 +8295,7 @@ select
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
   t.version,
@@ -8333,7 +8329,7 @@ pub type TasksReleaseRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -8382,7 +8378,7 @@ pub fn tasks_release(
     use created_by <- decode.field(7, decode.int)
     use claimed_by <- decode.field(8, decode.int)
     use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
+    use closed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
@@ -8417,7 +8413,7 @@ pub fn tasks_release(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -8469,7 +8465,7 @@ with updated as (
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -8527,7 +8523,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(
@@ -8624,7 +8620,7 @@ pub type TasksUpdateRow {
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
-    completed_at: String,
+    closed_at: String,
     created_at: String,
     due_date: String,
     version: Int,
@@ -8680,7 +8676,7 @@ pub fn tasks_update(
     use created_by <- decode.field(7, decode.int)
     use claimed_by <- decode.field(8, decode.int)
     use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
+    use closed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use due_date <- decode.field(12, decode.string)
     use version <- decode.field(13, decode.int)
@@ -8715,7 +8711,7 @@ pub fn tasks_update(
       created_by:,
       claimed_by:,
       claimed_at:,
-      completed_at:,
+      closed_at:,
       created_at:,
       due_date:,
       version:,
@@ -8774,7 +8770,7 @@ where id = $1
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -8832,7 +8828,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(

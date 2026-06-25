@@ -13,7 +13,7 @@ fn member_metrics() -> MyMetrics {
     window_days: WindowDays(30),
     claimed_count: 3,
     released_count: 1,
-    completed_count: 2,
+    closed_count: 2,
   )
 }
 

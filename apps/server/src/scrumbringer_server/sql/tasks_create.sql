@@ -61,7 +61,7 @@ with type_ok as (
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,

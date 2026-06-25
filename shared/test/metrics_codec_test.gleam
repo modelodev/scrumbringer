@@ -16,7 +16,7 @@ pub fn metrics_project_task_accepts_date_only_due_date_test() {
     ),
     claim_count: 2,
     release_count: 1,
-    complete_count: 0,
+    close_count: 0,
     ..,
   )) =
     json.parse(
@@ -34,7 +34,7 @@ pub fn metrics_project_task_rejects_invalid_due_date_test() {
 }
 
 fn metrics_task_body(due_date: String) -> String {
-  "{\"id\":42,\"project_id\":1,\"type_id\":2,\"task_type\":{\"id\":2,\"name\":\"Feature\",\"icon\":\"sparkles\"},\"ongoing_by\":null,\"title\":\"Ship deadline\",\"description\":null,\"priority\":3,\"status\":\"available\",\"created_by\":7,\"claimed_by\":null,\"claimed_at\":null,\"completed_at\":null,\"created_at\":\"2026-06-18T10:00:00Z\",\"due_date\":"
+  "{\"id\":42,\"project_id\":1,\"type_id\":2,\"task_type\":{\"id\":2,\"name\":\"Feature\",\"icon\":\"sparkles\"},\"ongoing_by\":null,\"title\":\"Ship deadline\",\"description\":null,\"priority\":3,\"status\":\"available\",\"created_by\":7,\"claimed_by\":null,\"claimed_at\":null,\"closed_at\":null,\"created_at\":\"2026-06-18T10:00:00Z\",\"due_date\":"
   <> due_date
-  <> ",\"version\":1,\"claim_count\":2,\"release_count\":1,\"complete_count\":0,\"first_claim_at\":null}"
+  <> ",\"version\":1,\"claim_count\":2,\"release_count\":1,\"close_count\":0,\"first_claim_at\":null}"
 }

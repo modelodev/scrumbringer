@@ -58,7 +58,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
   use color <- decode.field("color", optional_color_decoder())
   use state <- decode.field("state", card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
+  use closed_count <- decode.field("closed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
   use due_date <- decode.optional_field(
@@ -80,7 +80,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
     color: color,
     state: state,
     task_count: task_count,
-    completed_count: completed_count,
+    closed_count: closed_count,
     created_by: created_by,
     created_at: created_at,
     due_date: due_date,

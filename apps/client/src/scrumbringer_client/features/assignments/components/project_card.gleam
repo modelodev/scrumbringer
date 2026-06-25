@@ -217,7 +217,7 @@ fn project_metrics_view(
     available_count: available_count,
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
-    completed_count: closed_count,
+    closed_count: closed_count,
     release_rate_percent: release_rate_percent,
     ..,
   ) = metrics

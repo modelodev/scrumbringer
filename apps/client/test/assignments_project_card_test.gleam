@@ -56,7 +56,7 @@ fn metrics() -> OrgMetricsOverview {
     claimed_count: 0,
     ongoing_count: 0,
     released_count: 0,
-    completed_count: 0,
+    closed_count: 0,
     release_rate_percent: opt.None,
     pool_flow_ratio_percent: opt.None,
     time_to_first_claim: NoSample,

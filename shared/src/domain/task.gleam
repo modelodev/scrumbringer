@@ -35,7 +35,7 @@ import gleam/option.{type Option}
 ///   created_by: 1,
 ///   claimed_by: None,
 ///   claimed_at: None,
-///   completed_at: None,
+///   closed_at: None,
 ///   created_at: "2024-01-17T12:00:00Z",
 ///   due_date: None,
 ///   version: 1,

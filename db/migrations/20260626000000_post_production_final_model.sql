@@ -1772,6 +1772,22 @@ EXECUTE FUNCTION public.prevent_task_dependency_cycle();
 -- API tokens cannot point across organization boundaries.
 --------------------------------------------------------------------------------
 
+ALTER TABLE public.api_token_scopes
+  DROP CONSTRAINT IF EXISTS api_token_scopes_scope_check;
+
+ALTER TABLE public.api_token_scopes
+  ADD CONSTRAINT api_token_scopes_scope_check CHECK (
+    scope IN (
+      'projects:read',
+      'tasks:read',
+      'tasks:write',
+      'cards:read',
+      'cards:write',
+      'notes:read',
+      'notes:write'
+    )
+  );
+
 CREATE OR REPLACE FUNCTION public.enforce_api_token_org_scope()
 RETURNS trigger
 LANGUAGE plpgsql

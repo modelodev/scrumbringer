@@ -82,7 +82,7 @@ pub fn from_db(
   is_ongoing: Bool,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(TaskExecutionState, TaskExecutionStateError) {
   case status {
     "available" ->
@@ -105,7 +105,7 @@ pub fn from_db(
       }
 
     "closed" ->
-      case claimed_by, completed_at {
+      case claimed_by, closed_at {
         Some(_), _ -> Error(ClosedWithClaim)
         // Older task-list payloads do not carry closed_by. Repository code that
         // has closed_by available should construct Closed directly.

@@ -17,7 +17,7 @@ pub fn member_metrics_success_loads_local_state_test() {
       window_days: WindowDays(30),
       claimed_count: 3,
       released_count: 1,
-      completed_count: 2,
+      closed_count: 2,
     )
 
   let assert option.Some(metrics_update.MemberUpdate(
@@ -41,7 +41,7 @@ pub fn try_update_handles_member_metrics_success_without_auth_test() {
       window_days: WindowDays(30),
       claimed_count: 3,
       released_count: 1,
-      completed_count: 2,
+      closed_count: 2,
     )
 
   let assert option.Some(metrics_update.MemberUpdate(
@@ -109,7 +109,7 @@ pub fn admin_users_error_sets_failed_local_state_test() {
       email: "user@example.test",
       claimed_count: 3,
       released_count: 1,
-      completed_count: 2,
+      closed_count: 2,
       ongoing_count: 0,
       last_claim_at: option.None,
     )

@@ -109,7 +109,7 @@ pub fn task_json(task: Task) -> json.Json {
 
   let claimed_by = task_state.claimed_by(state)
   let claimed_at = task_state.claimed_at(state)
-  let completed_at = task_state.closed_at(state)
+  let closed_at = task_state.closed_at(state)
   let status = task_state.to_status(state)
   let work_state = task_state.to_work_state(state)
 
@@ -134,7 +134,7 @@ pub fn task_json(task: Task) -> json.Json {
     #("created_by", json.int(created_by)),
     #("claimed_by", json_helpers.option_int_json(claimed_by)),
     #("claimed_at", json_helpers.option_string_json(claimed_at)),
-    #("completed_at", json_helpers.option_string_json(completed_at)),
+    #("closed_at", json_helpers.option_string_json(closed_at)),
     #("created_at", json.string(created_at)),
     #("due_date", json_helpers.option_string_json(due_date)),
     #("version", json.int(version)),
@@ -200,7 +200,7 @@ pub fn dependency_json(dep: TaskDependency) -> json.Json {
   let status = task_state.to_status(state)
   let claimed_by_user_id = task_state.claimed_by(state)
   let claimed_at = task_state.claimed_at(state)
-  let completed_at = task_state.closed_at(state)
+  let closed_at = task_state.closed_at(state)
   let is_ongoing = case state {
     task_state.Claimed(mode: task_state.Ongoing, ..) -> True
     task_state.Available
@@ -215,7 +215,7 @@ pub fn dependency_json(dep: TaskDependency) -> json.Json {
     #("is_ongoing", json.bool(is_ongoing)),
     #("claimed_by_user_id", json_helpers.option_int_json(claimed_by_user_id)),
     #("claimed_at", json_helpers.option_string_json(claimed_at)),
-    #("completed_at", json_helpers.option_string_json(completed_at)),
+    #("closed_at", json_helpers.option_string_json(closed_at)),
     #("claimed_by", json_helpers.option_string_json(claimed_by)),
   ])
 }

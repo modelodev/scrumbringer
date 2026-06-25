@@ -29,7 +29,7 @@ with task_scope as (
 
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as closed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     coalesce(to_char(t.due_date, 'YYYY-MM-DD'), '') as due_date,
     t.version
@@ -41,7 +41,7 @@ with task_scope as (
     e.task_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as complete_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as close_count,
     coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
   from audit_events e
   where e.project_id = $1
@@ -63,13 +63,13 @@ select
   ts.created_by,
   ts.claimed_by,
   ts.claimed_at,
-  ts.completed_at,
+  ts.closed_at,
   ts.created_at,
   ts.due_date,
   ts.version,
   coalesce(ec.claim_count, 0) as claim_count,
   coalesce(ec.release_count, 0) as release_count,
-  coalesce(ec.complete_count, 0) as complete_count,
+  coalesce(ec.close_count, 0) as close_count,
   coalesce(to_char(ec.first_claim_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as first_claim_at
 from task_scope ts
 left join event_counts ec on ec.task_id = ts.id

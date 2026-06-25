@@ -30,7 +30,7 @@ where id = $1
     created_by,
     coalesce(claimed_by, 0) as claimed_by,
     coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+    coalesce(to_char(closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as closed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     coalesce(to_char(due_date, 'YYYY-MM-DD'), '') as due_date,
     version,
@@ -88,7 +88,7 @@ left join lateral (
           'status', dt.execution_state,
           'claimed_by_user_id', dt.claimed_by,
           'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          'closed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
           'is_ongoing', (
             dt.execution_state = 'claimed'
             and exists(

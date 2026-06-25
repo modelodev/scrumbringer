@@ -317,7 +317,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
         }),
         data_table.column(t(config, i18n_text.CardTasks), fn(c: Card) {
           card_progress.view(
-            c.completed_count,
+            c.closed_count,
             c.task_count,
             card_progress.Compact,
           )
@@ -407,7 +407,7 @@ fn card_to_property_json(c: Card, mode: String) -> json.Json {
     #("color", color_field),
     #("state", json.string(card.state_to_string(c.state))),
     #("task_count", json.int(c.task_count)),
-    #("completed_count", json.int(c.completed_count)),
+    #("closed_count", json.int(c.closed_count)),
     #("created_by", json.int(c.created_by)),
     #("created_at", json.string(c.created_at)),
     #("_mode", json.string(mode)),

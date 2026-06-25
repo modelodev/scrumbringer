@@ -26,7 +26,7 @@ fn card(id: Int, parent_id: opt.Option(Int), state: CardPhase) -> Card {
     color: opt.None,
     state: state,
     task_count: 0,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     due_date: opt.None,

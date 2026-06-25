@@ -4,7 +4,7 @@ with event_counts as (
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count,
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as closed_count,
     max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
   from audit_events e
   where e.org_id = $1
@@ -26,7 +26,7 @@ select
   u.email,
   coalesce(ec.claimed_count, 0) as claimed_count,
   coalesce(ec.released_count, 0) as released_count,
-  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(ec.closed_count, 0) as closed_count,
   coalesce(o.ongoing_count, 0) as ongoing_count,
   coalesce(to_char(ec.last_claim_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_claim_at
 from users u

@@ -88,7 +88,7 @@ fn view_overview_loaded(
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
     released_count: released_count,
-    completed_count: closed_count,
+    closed_count: closed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
     time_to_first_claim: time_to_first_claim,
@@ -382,7 +382,7 @@ fn view_by_project_table(
           text(int.to_string(released))
         }),
         data_table.column(i18n.t(config.locale, i18n_text.Closed), fn(p) {
-          let OrgMetricsProjectOverview(completed_count: closed, ..) = p
+          let OrgMetricsProjectOverview(closed_count: closed, ..) = p
           text(int.to_string(closed))
         }),
         data_table.column(
@@ -483,7 +483,7 @@ fn view_project_tasks_table(
       text(int.to_string(release_count))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.Closures), fn(t) {
-      let MetricsProjectTask(complete_count: close_count, ..) = t
+      let MetricsProjectTask(close_count: close_count, ..) = t
       text(int.to_string(close_count))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.FirstClaim), fn(t) {

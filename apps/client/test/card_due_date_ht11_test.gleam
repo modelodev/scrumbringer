@@ -86,7 +86,7 @@ fn sample_card() {
     color: None,
     state: Active,
     task_count: 2,
-    completed_count: 0,
+    closed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
     due_date: None,

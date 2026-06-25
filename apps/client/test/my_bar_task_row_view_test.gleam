@@ -94,7 +94,7 @@ fn bar_config(tasks: List(Task)) -> my_bar_view.Config(String) {
       window_days: WindowDays(14),
       claimed_count: 5,
       released_count: 2,
-      completed_count: 3,
+      closed_count: 3,
     )),
     task_row_config: config(),
     on_create_task_in_card: fn(card_id) {

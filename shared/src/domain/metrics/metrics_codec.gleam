@@ -50,13 +50,13 @@ pub fn my_metrics_decoder() -> decode.Decoder(MyMetrics) {
   use window_days <- decode.field("window_days", window_days_decoder())
   use claimed_count <- decode.field("claimed_count", decode.int)
   use released_count <- decode.field("released_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
+  use closed_count <- decode.field("closed_count", decode.int)
 
   decode.success(MyMetrics(
     window_days: window_days,
     claimed_count: claimed_count,
     released_count: released_count,
-    completed_count: completed_count,
+    closed_count: closed_count,
   ))
 }
 
@@ -77,7 +77,7 @@ pub fn org_metrics_project_overview_decoder() -> decode.Decoder(
   use claimed_count <- decode.field("claimed_count", decode.int)
   use ongoing_count <- decode.field("ongoing_count", decode.int)
   use released_count <- decode.field("released_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
+  use closed_count <- decode.field("closed_count", decode.int)
   use release_rate_percent <- decode.optional_field(
     "release_rate_percent",
     option.None,
@@ -108,7 +108,7 @@ pub fn org_metrics_project_overview_decoder() -> decode.Decoder(
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
     released_count: released_count,
-    completed_count: completed_count,
+    closed_count: closed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
     wip_count: wip_count,
@@ -125,13 +125,13 @@ pub fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
     use claimed_count <- decode.field("claimed_count", decode.int)
     use ongoing_count <- decode.field("ongoing_count", decode.int)
     use released_count <- decode.field("released_count", decode.int)
-    use completed_count <- decode.field("completed_count", decode.int)
+    use closed_count <- decode.field("closed_count", decode.int)
     decode.success(#(
       available_count,
       claimed_count,
       ongoing_count,
       released_count,
-      completed_count,
+      closed_count,
     ))
   }
 
@@ -181,7 +181,7 @@ pub fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
     claimed_count,
     ongoing_count,
     released_count,
-    completed_count,
+    closed_count,
   ) = totals
 
   decode.success(OrgMetricsOverview(
@@ -190,7 +190,7 @@ pub fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
     claimed_count: claimed_count,
     ongoing_count: ongoing_count,
     released_count: released_count,
-    completed_count: completed_count,
+    closed_count: closed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
     time_to_first_claim: time_to_first_claim,
@@ -234,8 +234,8 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     decode.optional(decode.string),
   )
 
-  use completed_at <- decode.optional_field(
-    "completed_at",
+  use closed_at <- decode.optional_field(
+    "closed_at",
     option.None,
     decode.optional(decode.string),
   )
@@ -250,7 +250,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
 
   use claim_count <- decode.field("claim_count", decode.int)
   use release_count <- decode.field("release_count", decode.int)
-  use complete_count <- decode.field("complete_count", decode.int)
+  use close_count <- decode.field("close_count", decode.int)
   use first_claim_at <- decode.optional_field(
     "first_claim_at",
     option.None,
@@ -272,7 +272,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     is_ongoing,
     claimed_by,
     claimed_at,
-    completed_at,
+    closed_at,
   ))
   let task =
     Task(
@@ -305,7 +305,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     task: task,
     claim_count: claim_count,
     release_count: release_count,
-    complete_count: complete_count,
+    close_count: close_count,
     first_claim_at: first_claim_at,
   ))
 }
@@ -331,7 +331,7 @@ pub fn org_metrics_user_overview_decoder() -> decode.Decoder(
   use email <- decode.field("email", decode.string)
   use claimed_count <- decode.field("claimed_count", decode.int)
   use released_count <- decode.field("released_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
+  use closed_count <- decode.field("closed_count", decode.int)
   use ongoing_count <- decode.field("ongoing_count", decode.int)
   use last_claim_at <- decode.optional_field(
     "last_claim_at",
@@ -344,7 +344,7 @@ pub fn org_metrics_user_overview_decoder() -> decode.Decoder(
     email: email,
     claimed_count: claimed_count,
     released_count: released_count,
-    completed_count: completed_count,
+    closed_count: closed_count,
     ongoing_count: ongoing_count,
     last_claim_at: last_claim_at,
   ))

@@ -18,7 +18,7 @@ select
   ) as is_ongoing,
   coalesce(t.claimed_by, 0) as claimed_by_user_id,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
-  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as closed_at,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id

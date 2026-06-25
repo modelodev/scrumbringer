@@ -581,7 +581,7 @@ fn card_to_json(card: Card) -> json.Json {
         #("description", json.string(card.description)),
         #("state", json.string(state_str)),
         #("task_count", json.int(card.task_count)),
-        #("completed_count", json.int(card.completed_count)),
+        #("closed_count", json.int(card.closed_count)),
         #("created_by", json.int(card.created_by)),
         #("created_at", json.string(card.created_at)),
       ],

@@ -44,7 +44,7 @@ fn metrics() -> OrgMetricsUserOverview {
     email: "member@example.com",
     claimed_count: 2,
     released_count: 1,
-    completed_count: 3,
+    closed_count: 3,
     ongoing_count: 1,
     last_claim_at: opt.Some("2026-03-20T12:00:00Z"),
   )

@@ -86,7 +86,7 @@ fn dependency_from_list_row(
     row.is_ongoing,
     row.claimed_by_user_id,
     row.claimed_at,
-    row.completed_at,
+    row.closed_at,
     row.claimed_by,
   )
 }
@@ -101,7 +101,7 @@ fn dependency_from_create_row(
     row.is_ongoing,
     row.claimed_by_user_id,
     row.claimed_at,
-    row.completed_at,
+    row.closed_at,
     row.claimed_by,
   )
 }
@@ -113,7 +113,7 @@ fn dependency_from_fields(
   is_ongoing: Bool,
   claimed_by_user_id: Int,
   claimed_at: String,
-  completed_at: String,
+  closed_at: String,
   claimed_by: String,
 ) -> Result(TaskDependency, ServiceError) {
   use state <- result.try(parse_dependency_state(
@@ -121,7 +121,7 @@ fn dependency_from_fields(
     is_ongoing,
     option_helpers.int_to_option(claimed_by_user_id),
     option_helpers.string_to_option(claimed_at),
-    option_helpers.string_to_option(completed_at),
+    option_helpers.string_to_option(closed_at),
   ))
   Ok(TaskDependency(
     depends_on_task_id: task_id,
@@ -136,18 +136,12 @@ fn parse_dependency_state(
   is_ongoing: Bool,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(task_state.TaskExecutionState, ServiceError) {
   persisted_field.required(
     status,
     fn(value) {
-      task_state.from_db(
-        value,
-        is_ongoing,
-        claimed_by,
-        claimed_at,
-        completed_at,
-      )
+      task_state.from_db(value, is_ongoing, claimed_by, claimed_at, closed_at)
     },
     "Invalid persisted task dependency status",
   )

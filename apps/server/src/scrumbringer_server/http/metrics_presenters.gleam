@@ -31,7 +31,7 @@ pub fn me_metrics_json(
   window_days: Int,
   claimed_count: Int,
   released_count: Int,
-  completed_count: Int,
+  closed_count: Int,
 ) -> json.Json {
   json.object([
     #(
@@ -40,7 +40,7 @@ pub fn me_metrics_json(
         #("window_days", json.int(window_days)),
         #("claimed_count", json.int(claimed_count)),
         #("released_count", json.int(released_count)),
-        #("completed_count", json.int(completed_count)),
+        #("closed_count", json.int(closed_count)),
       ]),
     ),
   ])
@@ -64,7 +64,7 @@ pub fn overview_json(overview: MetricsOverview) -> json.Json {
             #("claimed_count", json.int(overview.claimed_count)),
             #("ongoing_count", json.int(overview.ongoing_count)),
             #("released_count", json.int(overview.released_count)),
-            #("completed_count", json.int(overview.completed_count)),
+            #("closed_count", json.int(overview.closed_count)),
           ]),
         ),
         #(
@@ -127,7 +127,7 @@ fn project_metrics_json(row: ProjectMetricsRow) -> json.Json {
     #("claimed_count", json.int(row.claimed_count)),
     #("ongoing_count", json.int(row.ongoing_count)),
     #("released_count", json.int(row.released_count)),
-    #("completed_count", json.int(row.completed_count)),
+    #("closed_count", json.int(row.closed_count)),
     #(
       "release_rate_percent",
       json_helpers.option_int_json(row.release_rate_percent),
@@ -202,13 +202,13 @@ fn project_task_json(task: ProjectTask) -> json.Json {
     #("created_by", json.int(task.created_by)),
     #("claimed_by", json_helpers.option_int_json(task.claimed_by)),
     #("claimed_at", json_helpers.option_string_json(task.claimed_at)),
-    #("completed_at", json_helpers.option_string_json(task.completed_at)),
+    #("closed_at", json_helpers.option_string_json(task.closed_at)),
     #("created_at", json.string(task.created_at)),
     #("due_date", json_helpers.option_string_json(task.due_date)),
     #("version", json.int(task.version)),
     #("claim_count", json.int(task.claim_count)),
     #("release_count", json.int(task.release_count)),
-    #("complete_count", json.int(task.complete_count)),
+    #("close_count", json.int(task.close_count)),
     #("first_claim_at", json_helpers.option_string_json(task.first_claim_at)),
   ])
 }
@@ -229,7 +229,7 @@ fn user_metrics_json(row: UserMetricsRow) -> json.Json {
     #("email", json.string(row.email)),
     #("claimed_count", json.int(row.claimed_count)),
     #("released_count", json.int(row.released_count)),
-    #("completed_count", json.int(row.completed_count)),
+    #("closed_count", json.int(row.closed_count)),
     #("ongoing_count", json.int(row.ongoing_count)),
     #("last_claim_at", json_helpers.option_string_json(row.last_claim_at)),
   ])

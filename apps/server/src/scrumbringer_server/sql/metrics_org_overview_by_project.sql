@@ -4,7 +4,7 @@ with event_counts as (
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when e.event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
   from audit_events e
   where e.org_id = $1
     and e.created_at >= now() - ($2 || ' days')::interval
@@ -45,7 +45,7 @@ select
   p.name as project_name,
   coalesce(ec.claimed_count, 0) as claimed_count,
   coalesce(ec.released_count, 0) as released_count,
-  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(ec.closed_count, 0) as closed_count,
   coalesce(tc.available_count, 0) as available_count,
   coalesce(tc.ongoing_count, 0) as ongoing_count,
   coalesce(tc.wip_count, 0) as wip_count,

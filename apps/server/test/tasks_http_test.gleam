@@ -1900,8 +1900,8 @@ pub fn me_metrics_returns_counts_test() {
   let metrics_decoder = {
     use claimed_count <- decode.field("claimed_count", decode.int)
     use released_count <- decode.field("released_count", decode.int)
-    use completed_count <- decode.field("completed_count", decode.int)
-    decode.success(#(claimed_count, released_count, completed_count))
+    use closed_count <- decode.field("closed_count", decode.int)
+    decode.success(#(claimed_count, released_count, closed_count))
   }
 
   let data_decoder = {
@@ -2005,7 +2005,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
     use claim_count <- decode.field("claim_count", decode.int)
     use release_count <- decode.field("release_count", decode.int)
-    use close_count <- decode.field("complete_count", decode.int)
+    use close_count <- decode.field("close_count", decode.int)
     use first_claim_at <- decode.field(
       "first_claim_at",
       decode.optional(decode.string),
@@ -2083,7 +2083,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
     use email <- decode.field("email", decode.string)
     use claimed_count <- decode.field("claimed_count", decode.int)
     use released_count <- decode.field("released_count", decode.int)
-    use completed_count <- decode.field("completed_count", decode.int)
+    use closed_count <- decode.field("closed_count", decode.int)
     use ongoing_count <- decode.field("ongoing_count", decode.int)
     use _last_claim_at <- decode.field(
       "last_claim_at",
@@ -2094,7 +2094,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
       email,
       claimed_count,
       released_count,
-      completed_count,
+      closed_count,
       ongoing_count,
     ))
   }

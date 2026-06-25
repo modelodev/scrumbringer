@@ -54,7 +54,7 @@ pub fn from_list_row(row: sql.TasksListRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -95,7 +95,7 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -136,7 +136,7 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -177,7 +177,7 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -218,7 +218,7 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -259,7 +259,7 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Result(Task, ServiceError) 
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -300,7 +300,7 @@ pub fn from_close_row(row: sql.TasksCloseRow) -> Result(Task, ServiceError) {
     created_by: row.created_by,
     claimed_by: row.claimed_by,
     claimed_at: row.claimed_at,
-    completed_at: row.completed_at,
+    closed_at: row.closed_at,
     created_at: row.created_at,
     due_date: row.due_date,
     version: row.version,
@@ -340,7 +340,7 @@ fn from_fields(
   created_by created_by: Int,
   claimed_by claimed_by: Int,
   claimed_at claimed_at: String,
-  completed_at completed_at: String,
+  closed_at closed_at: String,
   created_at created_at: String,
   due_date due_date: String,
   version version: Int,
@@ -355,7 +355,7 @@ fn from_fields(
 ) -> Result(Task, ServiceError) {
   let claimed_by_option = option_helpers.int_to_option(claimed_by)
   let claimed_at_option = option_helpers.string_to_option(claimed_at)
-  let completed_at_option = option_helpers.string_to_option(completed_at)
+  let closed_at_option = option_helpers.string_to_option(closed_at)
 
   use state <- result.try(
     task_state.from_db(
@@ -363,7 +363,7 @@ fn from_fields(
       is_ongoing,
       claimed_by_option,
       claimed_at_option,
-      completed_at_option,
+      closed_at_option,
     )
     |> result.map_error(fn(error) { invalid_task_state_error(status, error) }),
   )
@@ -480,8 +480,8 @@ fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
     None,
     decode.optional(decode.string),
   )
-  use completed_at <- decode.optional_field(
-    "completed_at",
+  use closed_at <- decode.optional_field(
+    "closed_at",
     None,
     decode.optional(decode.string),
   )
@@ -496,7 +496,7 @@ fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
       is_ongoing,
       claimed_by_user_id,
       claimed_at,
-      completed_at,
+      closed_at,
     )
   {
     Ok(state) ->

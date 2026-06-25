@@ -13,7 +13,7 @@ fn sample_card() -> Card {
     color: opt.None,
     state: Active,
     task_count: 4,
-    completed_count: 2,
+    closed_count: 2,
     created_by: 1,
     created_at: "2026-06-22T09:00:00Z",
     due_date: opt.None,

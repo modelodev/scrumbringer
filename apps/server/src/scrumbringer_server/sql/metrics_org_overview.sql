@@ -3,7 +3,7 @@ with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as completed_count
+    coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
   from audit_events
   where org_id = $1
     and created_at >= now() - ($2 || ' days')::interval
@@ -41,7 +41,7 @@ with event_counts as (
 select
   event_counts.claimed_count,
   event_counts.released_count,
-  event_counts.completed_count,
+  event_counts.closed_count,
   task_counts.available_count,
   task_counts.ongoing_count,
   task_counts.wip_count,

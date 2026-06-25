@@ -255,7 +255,7 @@ fn has_operational_history(
   direct_tasks: List(Task),
 ) -> Bool {
   card.task_count > 0
-  || card.completed_count > 0
+  || card.closed_count > 0
   || card.has_new_notes
   || !list.is_empty(direct_child_cards)
   || !list.is_empty(direct_tasks)
