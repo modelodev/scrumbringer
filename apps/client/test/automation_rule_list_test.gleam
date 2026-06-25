@@ -167,7 +167,7 @@ fn config() -> rule_list.Config(String) {
     theme: theme.Default,
     workflow_id: 3,
     selected_rule_id: opt.None,
-    workflow_name: "Release automation",
+    engine_name: "Release automation",
     rules: rules_state(),
     workflows_org: NotAsked,
     workflows_project: Loaded([workflow(3, "Release automation")]),

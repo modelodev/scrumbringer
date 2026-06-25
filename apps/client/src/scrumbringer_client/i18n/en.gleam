@@ -927,7 +927,7 @@ pub fn translate(text: Text) -> String {
     text.KanbanSummaryCards -> "Cards"
     text.KanbanSummaryOngoing -> "Ongoing"
 
-    // Workflows
+    // Automations
     text.AdminWorkflows -> "Automations"
     text.WorkflowsTitle -> "Automations"
     text.WorkflowsOrgTitle -> "Organization automations"
@@ -981,7 +981,7 @@ pub fn translate(text: Text) -> String {
       "Execution #" <> int.to_string(id) <> " selected"
 
     // Rules
-    text.RulesTitle(workflow_name) -> "Rules - " <> workflow_name
+    text.RulesTitle(engine_name) -> "Rules - " <> engine_name
     text.RuleName -> "Name"
     text.RuleGoal -> "Goal"
     text.RuleTaskType -> "Task Type"
@@ -1357,7 +1357,7 @@ pub fn translate(text: Text) -> String {
     // Error states
     text.ErrorLoadingTasks -> "Error loading tasks"
 
-    // Workflows / Rules
+    // Automations / Rules
     text.BackToWorkflows -> "← Back to Automations"
     text.ResourceTypeTask -> "task"
     text.RuleMetricsNoExecutions ->

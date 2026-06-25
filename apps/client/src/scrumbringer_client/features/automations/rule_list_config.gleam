@@ -56,7 +56,7 @@ pub fn from_state(
     theme: theme,
     workflow_id: workflow_id,
     selected_rule_id: selected_rule_id,
-    workflow_name: rule_list.engine_name_from_remotes(
+    engine_name: rule_list.engine_name_from_remotes(
       workflows.workflows_org,
       workflows.workflows_project,
       workflow_id,

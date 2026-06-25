@@ -761,7 +761,7 @@ pub type Text {
   KanbanSummaryCards
   KanbanSummaryOngoing
 
-  // Workflows
+  // Automations
   AdminWorkflows
   WorkflowsTitle
   WorkflowsOrgTitle
@@ -779,7 +779,7 @@ pub type Text {
   CreateWorkflow
   EditWorkflow
   DeleteWorkflow
-  WorkflowDeleteConfirm(workflow_name: String)
+  WorkflowDeleteConfirm(engine_name: String)
   NoWorkflowsYet
   WorkflowDeleted
   AutomationEnginesDescription
@@ -804,7 +804,7 @@ pub type Text {
   AutomationSelectedExecution(id: Int)
 
   // Rules
-  RulesTitle(workflow_name: String)
+  RulesTitle(engine_name: String)
   RuleName
   RuleGoal
   RuleTaskType
@@ -1135,7 +1135,7 @@ pub type Text {
   // Error states
   ErrorLoadingTasks
 
-  // Workflows / Rules
+  // Automations / Rules
   BackToWorkflows
   ResourceTypeTask
   RuleMetricsNoExecutions

@@ -66,7 +66,7 @@ pub type Config(msg) {
     theme: Theme,
     workflow_id: Int,
     selected_rule_id: opt.Option(Int),
-    workflow_name: String,
+    engine_name: String,
     rules: admin_rules.Model,
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
@@ -149,7 +149,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 fn view_rules_heading(config: Config(msg)) -> Element(msg) {
   div([attribute.class("automation-rules-heading")], [
     div([attribute.class("automation-rules-heading__copy")], [
-      h2([], [text(t(config, i18n_text.RulesTitle(config.workflow_name)))]),
+      h2([], [text(t(config, i18n_text.RulesTitle(config.engine_name)))]),
       p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
     ]),
     dialog.add_button_with_locale_and_id(
@@ -271,7 +271,7 @@ fn view_rule_row_expandable(
             div([attribute.class("rule-row__meta")], [
               rule_meta(
                 t(config, i18n_text.ProjectExecutionsEngineColumn),
-                config.workflow_name,
+                config.engine_name,
               ),
               rule_meta(
                 t(config, i18n_text.ProjectExecutionsTemplateColumn),
