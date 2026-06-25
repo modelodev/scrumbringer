@@ -247,14 +247,15 @@ required_schema_terms(Text) ->
         binary:match(Text, Term) =:= nomatch].
 
 seed_hierarchy_violations(Root) ->
-    require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
+    SeedSources = seed_source_files(),
+    require_content_any(Root, SeedSources, [
         <<"root pool">>, <<"parent_card_id">>, <<"card">>
-    ]) ++ files_containing(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
+    ]) ++ files_containing(Root, SeedSources, [
         legacy_bin(), legacy_id_bin()
     ], source_exts()).
 
 seed_profiles_violations(Root) ->
-    require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
+    require_content_any(Root, seed_source_files(), [
         <<"due_date">>, <<"closed">>, <<"Closed">>, <<"profile">>
     ]).
 
@@ -264,14 +265,20 @@ ui_validation_violations(Root) ->
     ]).
 
 seed_roles_violations(Root) ->
-    require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
+    require_content_any(Root, seed_source_files(), [
         <<"manager">>, <<"member">>, <<"capability">>
     ]).
 
 seed_limits_violations(Root) ->
-    require_content(Root, ["apps/server/src/scrumbringer_server/seed_builder.gleam"], [
+    require_content_any(Root, seed_source_files(), [
         <<"healthy">>, <<"saturated">>, <<"pool">>
     ]).
+
+seed_source_files() ->
+    [
+        "apps/server/src/scrumbringer_server/seed_builder.gleam",
+        "apps/server/src/scrumbringer_server/seed_automation_diagnostics.gleam"
+    ].
 
 smoke_flow_violations(Root) ->
     require_files(Root, [
@@ -399,6 +406,13 @@ require_content(Root, Paths, Terms) ->
                 [bin(["missing required file: ", Path])]
         end
      || Path <- Paths]).
+
+require_content_any(Root, Paths, Terms) ->
+    Text = join_file_texts(Root, Paths, source_exts()),
+    require_files(Root, Paths) ++
+        [bin(["missing ", Term, " in seed source files"])
+         || Term <- Terms,
+            nomatch =:= binary:match(Text, Term)].
 
 files_missing_any(Root, Paths, Terms, Exts) ->
     Text = join_file_texts(Root, Paths, Exts),
