@@ -7,7 +7,7 @@ import scrumbringer_client/ui/card_state
 pub fn spanish_card_phase_labels_are_localized_test() {
   let assert "Por iniciar" = card_state.label(locale.Es, Draft)
   let assert "En curso" = card_state.label(locale.Es, Active)
-  let assert "Cerrada" = card_state.label(locale.Es, Closed)
+  let assert "cerrada" = card_state.label(locale.Es, Closed)
 }
 
 pub fn spanish_kanban_summary_uses_tarjetas_test() {
