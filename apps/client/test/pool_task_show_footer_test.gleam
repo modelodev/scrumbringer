@@ -148,7 +148,7 @@ fn config(
     on_claim: fn(_, _) { "claim" },
     on_start_work: fn(_) { "start-work" },
     on_release: fn(_, _) { "release" },
-    on_complete: fn(_, _) { "complete" },
+    on_task_close: fn(_, _) { "task-close" },
     on_delete: fn(_) { "delete" },
   )
 }

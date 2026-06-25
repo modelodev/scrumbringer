@@ -151,7 +151,7 @@ fn task_card_config(task: Task) -> task_card.Config(String) {
     notes: [],
     on_claim: "claim",
     on_release: "release",
-    on_complete: "complete",
+    on_close: "close",
     on_open: "open",
     on_hover_opened: "hover-opened",
     on_hover_closed: "hover-closed",

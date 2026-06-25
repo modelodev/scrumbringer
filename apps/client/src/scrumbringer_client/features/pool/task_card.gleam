@@ -49,7 +49,7 @@ pub type Config(msg) {
     notes: List(Note),
     on_claim: msg,
     on_release: msg,
-    on_complete: msg,
+    on_close: msg,
     on_open: msg,
     on_hover_opened: msg,
     on_hover_closed: msg,
@@ -392,7 +392,7 @@ fn close_action(
     task_state.Claimed(..), True ->
       task_actions.complete_icon(
         task_state_ui.close_action(locale),
-        config.on_complete,
+        config.on_close,
         action_buttons.SizeXs,
         config.disable_actions,
         "secondary-action",

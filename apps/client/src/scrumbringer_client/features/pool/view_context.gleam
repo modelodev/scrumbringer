@@ -82,7 +82,7 @@ fn callbacks() -> pool_view.Callbacks(client_state.Msg) {
     on_release: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
     },
-    on_complete: fn(task_id, version) {
+    on_close: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
     },
     on_open: fn(task_id) {

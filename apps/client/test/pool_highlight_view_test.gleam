@@ -36,7 +36,7 @@ fn pool_callbacks() -> pool_view.Callbacks(String) {
     on_now_working_start: fn(_) { "start" },
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
-    on_complete: fn(_, _) { "complete" },
+    on_close: fn(_, _) { "close" },
     on_open: fn(_) { "open" },
     on_hover_opened: fn(_) { "hover-open" },
     on_hover_closed: "hover-close",

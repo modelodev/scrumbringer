@@ -328,9 +328,9 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
         version,
       ))
     },
-    on_complete: fn(complete_task_id, version) {
+    on_task_close: fn(close_task_id, version) {
       client_state.pool_msg(pool_messages.MemberCloseClicked(
-        complete_task_id,
+        close_task_id,
         version,
       ))
     },

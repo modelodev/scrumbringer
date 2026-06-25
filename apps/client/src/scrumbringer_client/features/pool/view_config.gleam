@@ -47,7 +47,7 @@ pub type Callbacks(msg) {
     on_now_working_start: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_close: fn(Int, Int) -> msg,
     on_open: fn(Int) -> msg,
     on_hover_opened: fn(Int) -> msg,
     on_hover_closed: msg,
@@ -175,7 +175,7 @@ fn now_working_config(context: Context(msg)) -> now_working_panel.Config(msg) {
     disable_actions: context.pool.member_task_mutation_in_flight
       || context.now_working.member_now_working_in_flight,
     on_pause: context.callbacks.on_now_working_pause,
-    on_close: context.callbacks.on_complete,
+    on_close: context.callbacks.on_close,
   )
 }
 
@@ -239,7 +239,7 @@ fn pool_task_card_config(
     notes: hover_notes_for_task(context, id),
     on_claim: context.callbacks.on_claim(id, version),
     on_release: context.callbacks.on_release(id, version),
-    on_complete: context.callbacks.on_complete(id, version),
+    on_close: context.callbacks.on_close(id, version),
     on_open: context.callbacks.on_open(id),
     on_hover_opened: context.callbacks.on_hover_opened(id),
     on_hover_closed: context.callbacks.on_hover_closed,
@@ -269,7 +269,7 @@ fn my_bar_task_row_config(
     on_start: context.callbacks.on_now_working_start,
     on_pause: context.callbacks.on_now_working_pause,
     on_release: context.callbacks.on_release,
-    on_complete: context.callbacks.on_complete,
+    on_complete: context.callbacks.on_close,
     on_task_open: context.callbacks.on_open,
   )
 }

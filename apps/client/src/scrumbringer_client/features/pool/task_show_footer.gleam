@@ -33,7 +33,7 @@ pub type Config(msg) {
     on_claim: fn(Int, Int) -> msg,
     on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_task_close: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
   )
 }
@@ -107,7 +107,7 @@ fn task_actions(config: Config(msg), task: Task) -> List(Element(msg)) {
         True -> [
           text_button(
             t(config, i18n_text.TaskNextActionClose),
-            config.on_complete(task.id, task.version),
+            config.on_task_close(task.id, task.version),
             button.Primary,
             config.disable_actions,
           )

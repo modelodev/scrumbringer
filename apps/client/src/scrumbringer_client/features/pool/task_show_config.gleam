@@ -47,7 +47,7 @@ pub type Callbacks(msg) {
     on_claim: fn(Int, Int) -> msg,
     on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_task_close: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
   )
 }
@@ -233,7 +233,7 @@ fn actions_config(
     on_claim: callbacks.on_claim,
     on_start_work: callbacks.on_start_work,
     on_release: callbacks.on_release,
-    on_complete: callbacks.on_complete,
+    on_task_close: callbacks.on_task_close,
     on_delete: callbacks.on_delete,
   )
 }

@@ -143,7 +143,7 @@ pub type TaskActionsConfig(msg) {
     on_claim: fn(Int, Int) -> msg,
     on_start_work: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
-    on_complete: fn(Int, Int) -> msg,
+    on_task_close: fn(Int, Int) -> msg,
     on_delete: fn(Int) -> msg,
   )
 }
@@ -425,7 +425,7 @@ fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
     on_claim: config.actions.on_claim,
     on_start_work: config.actions.on_start_work,
     on_release: config.actions.on_release,
-    on_complete: config.actions.on_complete,
+    on_task_close: config.actions.on_task_close,
     on_delete: config.actions.on_delete,
   ))
 }
