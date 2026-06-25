@@ -590,7 +590,7 @@ fn task_mutation_success_context(
   task_mutation_update.Context(
     task_claimed: i18n.t(model.ui.locale, i18n_text.TaskClaimed),
     task_released: i18n.t(model.ui.locale, i18n_text.TaskReleased),
-    task_closed: i18n.t(model.ui.locale, i18n_text.TaskDone),
+    task_closed: i18n.t(model.ui.locale, i18n_text.TaskClosed),
     task_deleted: i18n.t(model.ui.locale, i18n_text.TaskDeleted),
     on_success_toast: app_effects.toast_success,
     on_work_sessions_refetch: refetch_work_sessions_effect,

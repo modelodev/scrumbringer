@@ -727,7 +727,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         card_health_chip(
           "card-health-done",
           int.to_string(card.completed_count),
-          t(model.locale, i18n_text.CardTasksDone),
+          t(model.locale, i18n_text.CardTasksClosed),
           "closed",
         ),
         card_health_chip(

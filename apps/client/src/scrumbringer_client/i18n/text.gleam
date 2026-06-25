@@ -52,7 +52,7 @@ pub type Text {
   TaskCreatedNotVisibleByFilters
   TaskClaimed
   TaskReleased
-  TaskDone
+  TaskClosed
   TaskDeleted
   SkillsSaved
   NoteAdded
@@ -304,7 +304,7 @@ pub type Text {
   CapabilityBoardCardColumn
   CapabilityBoardLevelColumn
   CapabilityBoardTotal
-  CapabilityBoardComplete
+  CapabilityBoardClosed
   CapabilityBoardNoTasks
   CapabilityBoardEmptyCell
   CapabilityBoardOldest
@@ -320,15 +320,15 @@ pub type Text {
   CreateFirstHierarchy
   HierarchyCreated
   HierarchyCreateFailed
-  ShowDoneHierarchies
+  ShowClosedHierarchies
   ShowEmptyHierarchies
   HierarchiesActive
-  HierarchiesDone
+  HierarchiesClosed
   HierarchyStateReady
   HierarchyStateActive
-  HierarchyStateDone
+  HierarchyStateClosed
   HierarchyEmptyHint
-  HierarchyDone
+  HierarchyClosed
   HierarchyActivationTitle
   HierarchyActivationBody(cards_count: Int, tasks_count: Int)
   HierarchyActivationWarning
@@ -860,11 +860,11 @@ pub type Text {
   TaskStateAvailable
   TaskStateClaimed
   TaskStateOngoing
-  TaskStateDone
+  TaskStateClosed
   TaskStateAvailableHint
   TaskStateClaimedHint
   TaskStateOngoingHint
-  TaskStateDoneHint
+  TaskStateClosedHint
   TaskNextActionLabel
   TaskNextActionClaim
   TaskNextActionStart
@@ -983,7 +983,7 @@ pub type Text {
   CardEmptyWorkTitle
   CardEmptyWorkBody
   CardTasksEmpty
-  CardTasksDone
+  CardTasksClosed
   TaskType
   TaskTitlePlaceholder
 

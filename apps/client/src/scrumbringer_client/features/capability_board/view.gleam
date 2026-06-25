@@ -665,7 +665,7 @@ fn view_list_section(
             "total",
           ),
           view_summary_chip(
-            i18n.t(config.locale, i18n_text.CapabilityBoardComplete),
+            i18n.t(config.locale, i18n_text.CapabilityBoardClosed),
             health.closed,
             tone.Neutral,
             "closed",
@@ -912,7 +912,7 @@ fn view_matrix_health_cell(
           <> " "
           <> int.to_string(health.ongoing)
           <> " / "
-          <> i18n.t(config.locale, i18n_text.CapabilityBoardComplete)
+          <> i18n.t(config.locale, i18n_text.CapabilityBoardClosed)
           <> " "
           <> int.to_string(health.closed),
         ),

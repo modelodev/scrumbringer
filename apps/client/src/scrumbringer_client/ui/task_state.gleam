@@ -11,7 +11,7 @@ pub fn label(locale: Locale, status: TaskPhase) -> String {
     Available -> i18n.t(locale, i18n_text.TaskStateAvailable)
     Claimed(Taken) -> i18n.t(locale, i18n_text.TaskStateClaimed)
     Claimed(Ongoing) -> i18n.t(locale, i18n_text.TaskStateOngoing)
-    Done -> i18n.t(locale, i18n_text.TaskStateDone)
+    Done -> i18n.t(locale, i18n_text.TaskStateClosed)
   }
 }
 
@@ -20,7 +20,7 @@ pub fn hint(locale: Locale, status: TaskPhase) -> String {
     Available -> i18n.t(locale, i18n_text.TaskStateAvailableHint)
     Claimed(Taken) -> i18n.t(locale, i18n_text.TaskStateClaimedHint)
     Claimed(Ongoing) -> i18n.t(locale, i18n_text.TaskStateOngoingHint)
-    Done -> i18n.t(locale, i18n_text.TaskStateDoneHint)
+    Done -> i18n.t(locale, i18n_text.TaskStateClosedHint)
   }
 }
 
