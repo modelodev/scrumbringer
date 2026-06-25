@@ -31,7 +31,7 @@ pub fn decode_create_payload_defaults_optional_fields_test() {
 pub fn decode_update_payload_test() {
   let assert Ok(dynamic) =
     json.parse(
-      "{\"name\":\"Updated\",\"description\":null,\"active\":1}",
+      "{\"name\":\"Updated\",\"description\":null,\"active\":true}",
       decode.dynamic,
     )
 
@@ -43,7 +43,7 @@ pub fn decode_update_payload_test() {
 }
 
 pub fn decode_update_payload_decodes_inactive_flag_test() {
-  let assert Ok(dynamic) = json.parse("{\"active\":0}", decode.dynamic)
+  let assert Ok(dynamic) = json.parse("{\"active\":false}", decode.dynamic)
 
   let assert Ok(payloads.UpdatePayload(
     name: None,
@@ -53,13 +53,13 @@ pub fn decode_update_payload_decodes_inactive_flag_test() {
 }
 
 pub fn decode_update_payload_rejects_wrong_active_type_test() {
-  let assert Ok(dynamic) = json.parse("{\"active\":true}", decode.dynamic)
+  let assert Ok(dynamic) = json.parse("{\"active\":\"false\"}", decode.dynamic)
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
 }
 
-pub fn decode_update_payload_rejects_unknown_active_flag_test() {
-  let assert Ok(dynamic) = json.parse("{\"active\":2}", decode.dynamic)
+pub fn decode_update_payload_rejects_numeric_active_flag_test() {
+  let assert Ok(dynamic) = json.parse("{\"active\":0}", decode.dynamic)
 
   let assert Error(Nil) = payloads.decode_update(dynamic)
 }

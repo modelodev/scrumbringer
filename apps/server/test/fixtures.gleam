@@ -1312,10 +1312,6 @@ pub fn set_workflow_active_cascade(
   workflow_id: Int,
   active: Bool,
 ) -> Result(Nil, String) {
-  let active_int = case active {
-    True -> 1
-    False -> 0
-  }
   let res =
     handler(
       simulate.request(
@@ -1323,7 +1319,7 @@ pub fn set_workflow_active_cascade(
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
       |> with_auth(session)
-      |> simulate.json_body(json.object([#("active", json.int(active_int))])),
+      |> simulate.json_body(json.object([#("active", json.bool(active))])),
     )
 
   case res.status {

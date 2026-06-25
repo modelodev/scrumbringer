@@ -58,7 +58,7 @@ pub fn workflows_project_crud_and_active_cascade_test() {
       |> request.set_header("X-CSRF", csrf)
       |> simulate.json_body(
         json.object([
-          #("active", json.int(0)),
+          #("active", json.bool(False)),
         ]),
       ),
     )

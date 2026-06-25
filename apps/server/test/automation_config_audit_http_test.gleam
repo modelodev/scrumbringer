@@ -47,7 +47,7 @@ pub fn automation_config_mutations_record_actor_entity_and_change_test() {
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
       |> fixtures.with_auth(session)
-      |> simulate.json_body(json.object([#("active", json.int(0))])),
+      |> simulate.json_body(json.object([#("active", json.bool(False))])),
     )
   expect.expect_status(pause_workflow_res, 200)
 
