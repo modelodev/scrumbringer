@@ -967,3 +967,42 @@ DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_te
 apps/server: gleam format src test && gleam test
 564 passed, no failures
 ```
+
+### Fase 7 parcial: Plan split local
+
+Cambio ejecutado:
+
+- extraidos rollups a `features/plan/structure_rollups.gleam`;
+- extraidos filtros/sort a `features/plan/structure_filters.gleam`;
+- extraida policy de acciones a `features/plan/structure_policy.gleam`;
+- extraido estado de movimiento/drop targets a `features/plan/structure_move.gleam`;
+- `structure_view.gleam` conserva el contrato publico y el rendering.
+
+Resultado estructural:
+
+```txt
+structure_view.gleam: 1864 -> 1527 lineas
+modulos plan nuevos: 507 lineas
+fase no-doc: 5 files changed, 596 insertions(+), 426 deletions(-)
+```
+
+La fase reduce el monolito, pero aumenta `+170` lineas netas por coste de
+modularizacion. No se considera cierre cuantitativo de limpieza; debe
+compensarse con poda posterior en tests/seeds/API publica o con una segunda
+extraccion que elimine duplicacion real.
+
+Metrica no-doc acumulada tras esta fase:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+178 files changed, 3587 insertions(+), 11850 deletions(-)
+```
+
+Reduccion neta no-doc acumulada: `-8.263` lineas.
+
+Validacion ejecutada:
+
+```txt
+apps/client: gleam format src test && gleam test --target javascript
+1781 passed, no failures
+```

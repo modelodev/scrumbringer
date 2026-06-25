@@ -1,14 +1,12 @@
 //// Plan / Structure explorer.
 
 import domain/card.{type Card, Active, Closed, Draft}
-import domain/due_date as due_date_domain
 import domain/task as domain_task
 import domain/task/state as task_execution_state
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
@@ -25,6 +23,10 @@ import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/features/plan/scope_bar
+import scrumbringer_client/features/plan/structure_filters
+import scrumbringer_client/features/plan/structure_move
+import scrumbringer_client/features/plan/structure_policy
+import scrumbringer_client/features/plan/structure_rollups
 import scrumbringer_client/features/plan/tree_table
 import scrumbringer_client/features/plan/types
 import scrumbringer_client/i18n/i18n
@@ -83,23 +85,11 @@ pub type Config(msg) {
   )
 }
 
-type DropTargetState {
-  NotDropTarget
-  ValidDropTarget
-  InvalidDropTarget(card_policy.MoveBlockedReason)
-  ActiveDropTarget
-}
-
-type MoveRowState {
-  MovingSource(is_dragging: Bool)
-  MoveTarget(DropTargetState)
-  NotMoveCandidate
-}
-
 pub fn view(config: Config(msg)) -> Element(msg) {
   let include_closed = include_closed(config)
   let rows = structure_rows(config, include_closed)
-  let summary = summary_for_rows(rows, config)
+  let summary =
+    structure_rollups.summary_for_rows(rows, config.cards, config.tasks)
   let detail = structure_detail(config, include_closed)
   let content = case rows {
     [] -> view_empty_state(config)
@@ -167,7 +157,7 @@ fn view_surface_header(
 }
 
 fn move_header_actions(config: Config(msg)) -> List(Element(msg)) {
-  case moving_card(config) {
+  case structure_move.moving_card(config.cards, config.move_mode) {
     Some(card) -> [
       div(
         [
@@ -239,7 +229,13 @@ fn plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
 }
 
 fn view_move_destination_search(config: Config(msg)) -> Element(msg) {
-  let #(query, options) = move_search_state(config)
+  let #(query, options) =
+    structure_move.search_state(
+      config.cards,
+      config.tasks,
+      config.depth_names,
+      config.move_mode,
+    )
   let listbox_id = "plan-move-destination-options"
 
   div([attribute.class("plan-move-search")], [
@@ -334,7 +330,7 @@ fn view_move_destination_option(
 }
 
 fn view_move_root_option(config: Config(msg)) -> Element(msg) {
-  case moving_card(config) {
+  case structure_move.moving_card(config.cards, config.move_mode) {
     Some(card) ->
       case card_policy.move_to_root_blocked_reason(card) {
         None ->
@@ -386,7 +382,7 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
         select(
           [
             attribute.attribute("data-testid", "plan-filter-status"),
-            attribute.value(plan_status_value(filters.status)),
+            attribute.value(structure_filters.plan_status_value(filters.status)),
             event.on_input(config.on_status_filter_change),
             event.on_change(config.on_status_filter_change),
           ],
@@ -415,7 +411,7 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
         select(
           [
             attribute.attribute("data-testid", "plan-filter-sort"),
-            attribute.value(plan_sort_value(filters.sort)),
+            attribute.value(structure_filters.plan_sort_value(filters.sort)),
             event.on_input(config.on_sort_change),
             event.on_change(config.on_sort_change),
           ],
@@ -749,10 +745,18 @@ fn view_move_actions_cell(
   let types.CardRow(card:, ..) = row
 
   div([attribute.class("plan-row-actions plan-row-move-actions")], [
-    case move_destination_state(config, card) {
-      MovingSource(is_dragging) ->
+    case
+      structure_move.destination_state(
+        config.cards,
+        config.tasks,
+        config.move_mode,
+        config.move_drag_state,
+        card,
+      )
+    {
+      structure_move.MovingSource(is_dragging) ->
         view_move_source(config, card, render_context, is_dragging)
-      MoveTarget(ValidDropTarget) ->
+      structure_move.MoveTarget(structure_move.ValidDropTarget) ->
         button(
           [
             attribute.type_("button"),
@@ -767,7 +771,7 @@ fn view_move_actions_cell(
           ],
           [text("Mover dentro")],
         )
-      MoveTarget(ActiveDropTarget) ->
+      structure_move.MoveTarget(structure_move.ActiveDropTarget) ->
         div([attribute.class("plan-drop-target-actions")], [
           span(
             [
@@ -791,7 +795,7 @@ fn view_move_actions_cell(
             [text("Mover dentro")],
           ),
         ])
-      MoveTarget(InvalidDropTarget(reason)) ->
+      structure_move.MoveTarget(structure_move.InvalidDropTarget(reason)) ->
         div(
           [
             attribute.class("plan-move-invalid"),
@@ -806,8 +810,8 @@ fn view_move_actions_cell(
             ]),
           ],
         )
-      MoveTarget(NotDropTarget) -> element.none()
-      NotMoveCandidate -> element.none()
+      structure_move.MoveTarget(structure_move.NotDropTarget) -> element.none()
+      structure_move.NotMoveCandidate -> element.none()
     },
   ])
 }
@@ -1089,8 +1093,8 @@ fn view_detail_action(
   button(
     [
       attribute.type_("button"),
-      attribute.class(action_class(action)),
-      attribute.attribute("data-testid", action_testid(action)),
+      attribute.class(structure_policy.action_class(action)),
+      attribute.attribute("data-testid", structure_policy.action_testid(action)),
       attribute.attribute("title", title),
       attribute.disabled(disabled),
       event.on_click(msg),
@@ -1264,8 +1268,8 @@ fn row_for_card(
       config.depth_names,
       absolute_depth,
     ),
-    rollup: rollup_for_card(card, config.cards, config.tasks),
-    actions: list.map(card_actions(), fn(action) {
+    rollup: structure_rollups.for_card(card, config.cards, config.tasks),
+    actions: list.map(structure_policy.card_actions(), fn(action) {
       types.PlannedAction(
         action: action,
         availability: action_availability(config, card, action),
@@ -1295,7 +1299,7 @@ fn structure_detail(
 fn detail_for_card(config: Config(msg), card: Card) -> types.StructureDetail {
   let subcards = card_queries.direct_child_cards(card.id, config.cards)
   let tasks = card_queries.direct_child_tasks(card.id, config.tasks)
-  let rollup = rollup_for_card(card, config.cards, config.tasks)
+  let rollup = structure_rollups.for_card(card, config.cards, config.tasks)
 
   case subcards, tasks {
     [_, ..], _ -> types.SubcardsDetail(card, subcards, rollup)
@@ -1304,181 +1308,59 @@ fn detail_for_card(config: Config(msg), card: Card) -> types.StructureDetail {
   }
 }
 
-fn summary_for_rows(
-  rows: List(types.StructureRow),
-  config: Config(msg),
-) -> types.CardRollup {
-  let row_cards =
-    rows
-    |> list.map(fn(row) {
-      let types.CardRow(card:, ..) = row
-      card
-    })
-
-  let tasks =
-    config.tasks
-    |> list.filter(fn(task) {
-      list.any(row_cards, fn(card) {
-        card_queries.task_in_card_subtree(task, card.id, config.cards)
-      })
-    })
-
-  let rollup = rollup_for_tasks(tasks)
-  types.CardRollup(
-    ..rollup,
-    pool_impact: list.count(tasks, fn(task) {
-      is_available_task(task)
-      && list.any(row_cards, fn(card) {
-        card.state == Draft
-        && card_queries.task_in_card_subtree(task, card.id, config.cards)
-      })
-    }),
-  )
-}
-
-fn rollup_for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
-  types.CardRollup(
-    total_tasks: list.length(tasks),
-    closed_tasks: list.count(tasks, is_closed_task),
-    available_tasks: list.count(tasks, is_available_task),
-    claimed_tasks: list.count(tasks, is_taken_task),
-    ongoing_tasks: list.count(tasks, is_ongoing_task),
-    blocked_tasks: list.count(tasks, fn(task) { task.blocked_count > 0 }),
-    pool_impact: 0,
-  )
-}
-
-fn is_available_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Available -> True
-    _ -> False
-  }
-}
-
-fn is_taken_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_ongoing_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_closed_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Closed(..) -> True
-    _ -> False
-  }
-}
-
-fn rollup_pool_impact(card: Card, tasks: List(domain_task.Task)) -> Int {
-  case card.state {
-    Draft -> list.count(tasks, is_available_task)
-    Active | Closed -> 0
-  }
-}
-
-fn rollup_for_card(
-  card: Card,
-  cards: List(Card),
-  tasks: List(domain_task.Task),
-) -> types.CardRollup {
-  let card_tasks =
-    tasks
-    |> list.filter(fn(task) {
-      card_queries.task_in_card_subtree(task, card.id, cards)
-    })
-
-  let rollup = rollup_for_tasks(card_tasks)
-  types.CardRollup(..rollup, pool_impact: rollup_pool_impact(card, card_tasks))
-}
-
 fn include_closed(config: Config(msg)) -> Bool {
-  case config.show_closed {
-    Some(value) -> value
-    None ->
-      card_queries.closed_default_for_scope(
-        config.cards,
-        config.tasks,
-        config.scope_kind,
-        config.selected_card_id,
-      )
-  }
+  structure_filters.include_closed(
+    config.show_closed,
+    config.cards,
+    config.tasks,
+    config.scope_kind,
+    config.selected_card_id,
+  )
 }
 
 fn visible_cards(config: Config(msg), include_closed: Bool) -> List(Card) {
-  case include_closed {
-    True -> config.cards
-    False -> list.filter(config.cards, fn(card) { card.state != Closed })
-  }
+  structure_filters.visible_cards(config.cards, include_closed)
 }
 
 fn matches_search(config: Config(msg), card: Card) -> Bool {
-  let query = string.lowercase(string.trim(config.search_query))
-  case query {
-    "" -> True
-    _ -> {
-      let haystack =
-        string.lowercase(
-          card.title <> " " <> card_queries.card_path(card, config.cards),
-        )
-      string.contains(haystack, query)
-    }
-  }
+  structure_filters.matches_search(config.search_query, config.cards, card)
 }
 
 fn matches_status(config: Config(msg), card: Card) -> Bool {
-  case config.status_filter, card.state {
-    member_pool.PlanStatusAll, _ -> True
-    member_pool.PlanStatusDraft, Draft -> True
-    member_pool.PlanStatusActive, Active -> True
-    member_pool.PlanStatusClosed, Closed -> True
-    _, _ -> False
-  }
+  structure_filters.matches_status(config.status_filter, card)
 }
 
-fn compare_cards(
-  config: Config(msg),
-  cards: List(Card),
-  a: Card,
-  b: Card,
-) -> order.Order {
-  case config.sort_order {
-    member_pool.PlanSortPath ->
-      string.compare(
-        card_queries.card_path(a, cards),
-        card_queries.card_path(b, cards),
-      )
-    member_pool.PlanSortState ->
-      case int.compare(card_state_rank(a), card_state_rank(b)) {
-        order.Eq -> string.compare(a.title, b.title)
-        other -> other
-      }
-    member_pool.PlanSortDueDate ->
-      case string.compare(due_date_sort_value(a), due_date_sort_value(b)) {
-        order.Eq -> string.compare(a.title, b.title)
-        other -> other
-      }
-    member_pool.PlanSortPoolImpact ->
-      case
-        int.compare(
-          rollup_for_card(b, config.cards, config.tasks).pool_impact,
-          rollup_for_card(a, config.cards, config.tasks).pool_impact,
-        )
-      {
-        order.Eq -> string.compare(a.title, b.title)
-        other -> other
-      }
-  }
+fn compare_cards(config: Config(msg), cards: List(Card), a: Card, b: Card) {
+  structure_filters.compare_cards(config.sort_order, cards, config.tasks, a, b)
 }
 
 fn is_collapsed(config: Config(msg), card_id: Int) -> Bool {
-  list.contains(config.collapsed_card_ids, card_id)
+  structure_filters.is_collapsed(config.collapsed_card_ids, card_id)
+}
+
+fn action_availability(
+  config: Config(msg),
+  card: Card,
+  action: types.CardAction,
+) -> types.ActionAvailability {
+  structure_policy.action_availability(
+    config.is_pm_or_admin,
+    config.cards,
+    config.tasks,
+    card,
+    action,
+  )
+}
+
+fn move_row_class(config: Config(msg), row: types.StructureRow) -> String {
+  structure_move.row_state_for_row(
+    config.cards,
+    config.tasks,
+    config.move_mode,
+    config.move_drag_state,
+    row,
+  )
+  |> structure_move.row_class
 }
 
 fn first_column_label(config: Config(msg)) -> String {
@@ -1487,86 +1369,6 @@ fn first_column_label(config: Config(msg)) -> String {
       card_queries.depth_singular_label(config.depth_names, depth)
     _, _ -> "Tarjeta / Árbol"
   }
-}
-
-fn card_actions() -> List(types.CardAction) {
-  [
-    types.CreateSubcard,
-    types.CreateTask,
-    types.ActivateSubtree,
-    types.MoveCard,
-    types.CloseCard,
-    types.DeleteCard,
-  ]
-}
-
-fn action_availability(
-  config: Config(msg),
-  card: Card,
-  action: types.CardAction,
-) -> types.ActionAvailability {
-  let has_subcards =
-    card_queries.direct_child_cards(card.id, config.cards) != []
-  let has_direct_tasks =
-    card_queries.direct_child_tasks(card.id, config.tasks) != []
-  case action {
-    types.CreateSubcard ->
-      case config.is_pm_or_admin, has_direct_tasks {
-        False, _ -> types.Disabled("Solo managers pueden modificar estructura")
-        _, True -> types.Disabled("Esta tarjeta ya contiene tareas directas")
-        _, False -> types.Available
-      }
-    types.CreateTask ->
-      case has_subcards {
-        True -> types.Disabled("Esta tarjeta contiene subtarjetas")
-        False -> types.Available
-      }
-    types.ActivateSubtree ->
-      case config.is_pm_or_admin, card.state {
-        False, _ -> types.Disabled("Solo managers pueden activar subárboles")
-        _, Draft -> types.Available
-        _, Active -> types.Disabled("Ya activo")
-        _, Closed -> types.Disabled("La tarjeta está cerrada")
-      }
-    types.MoveCard ->
-      case
-        config.is_pm_or_admin,
-        card_policy.move_unavailable_reason(card, config.cards, config.tasks)
-      {
-        True, None -> types.Available
-        True, Some(reason) ->
-          types.Disabled(card_policy.move_blocked_reason_label(reason))
-        False, _ -> types.Disabled("Solo managers pueden mover tarjetas")
-      }
-    types.CloseCard ->
-      case
-        config.is_pm_or_admin,
-        has_claimed_or_ongoing_descendants(config, card)
-      {
-        False, _ -> types.Disabled("Solo managers pueden cerrar tarjetas")
-        _, True -> types.Disabled("Hay tareas reclamadas o en curso debajo")
-        _, False -> types.Available
-      }
-    types.DeleteCard ->
-      case has_subcards || has_direct_tasks || card.task_count > 0 {
-        True ->
-          types.Disabled("Tiene historial operativo; cierrala en su lugar")
-        False -> types.Available
-      }
-  }
-}
-
-fn has_claimed_or_ongoing_descendants(config: Config(msg), card: Card) -> Bool {
-  config.tasks
-  |> list.filter(fn(task) {
-    card_queries.task_in_card_subtree(task, card.id, config.cards)
-  })
-  |> list.any(fn(task) {
-    case task.state {
-      task_execution_state.Claimed(..) -> True
-      _ -> False
-    }
-  })
 }
 
 fn action_event(
@@ -1594,28 +1396,6 @@ fn availability_attrs(availability: types.ActionAvailability) -> #(Bool, String)
   }
 }
 
-fn action_class(action: types.CardAction) -> String {
-  case action {
-    types.CreateSubcard -> "plan-action-btn"
-    types.CreateTask -> "plan-action-btn"
-    types.ActivateSubtree -> "plan-action-btn"
-    types.MoveCard -> "plan-action-btn"
-    types.CloseCard -> "plan-action-btn"
-    types.DeleteCard -> "plan-action-btn plan-action-danger"
-  }
-}
-
-fn action_testid(action: types.CardAction) -> String {
-  case action {
-    types.CreateSubcard -> "plan-action-create-subcard"
-    types.CreateTask -> "plan-action-create-task"
-    types.ActivateSubtree -> "plan-action-activate-subtree"
-    types.MoveCard -> "plan-action-move-card"
-    types.CloseCard -> "plan-action-close-card"
-    types.DeleteCard -> "plan-action-delete-card"
-  }
-}
-
 fn source_chip_class(is_dragging: Bool) -> String {
   case is_dragging {
     True -> "plan-move-source-chip is-dragging"
@@ -1624,20 +1404,31 @@ fn source_chip_class(is_dragging: Bool) -> String {
 }
 
 fn move_drop_attributes(config: Config(msg), card: Card) {
-  case move_destination_state(config, card) {
-    MoveTarget(ValidDropTarget) | MoveTarget(ActiveDropTarget) -> [
+  case
+    structure_move.destination_state(
+      config.cards,
+      config.tasks,
+      config.move_mode,
+      config.move_drag_state,
+      card,
+    )
+  {
+    structure_move.MoveTarget(structure_move.ValidDropTarget)
+    | structure_move.MoveTarget(structure_move.ActiveDropTarget) -> [
       on_drag_enter(
         config.on_move_drag_entered(move_target.InsideCard(card.id)),
       ),
       on_drag_over(config.on_move_drag_entered(move_target.InsideCard(card.id))),
       on_drop(config.on_move_dropped(move_target.InsideCard(card.id))),
     ]
-    MoveTarget(InvalidDropTarget(_)) -> [
+    structure_move.MoveTarget(structure_move.InvalidDropTarget(_)) -> [
       on_drag_enter(
         config.on_move_drag_entered(move_target.InsideCard(card.id)),
       ),
     ]
-    MoveTarget(NotDropTarget) | MovingSource(_) | NotMoveCandidate -> []
+    structure_move.MoveTarget(structure_move.NotDropTarget)
+    | structure_move.MovingSource(_)
+    | structure_move.NotMoveCandidate -> []
   }
 }
 
@@ -1691,95 +1482,6 @@ fn on_drag_end(msg: msg) -> attribute.Attribute(msg) {
   })
 }
 
-fn moving_card(config: Config(msg)) -> Option(Card) {
-  case config.move_mode {
-    member_pool.PlanMovingCard(card_id, _) ->
-      case list.find(config.cards, fn(card) { card.id == card_id }) {
-        Ok(card) -> Some(card)
-        Error(_) -> None
-      }
-    member_pool.PlanNotMoving -> None
-  }
-}
-
-fn move_query(config: Config(msg)) -> String {
-  case config.move_mode {
-    member_pool.PlanMovingCard(_, query) -> query
-    member_pool.PlanNotMoving -> ""
-  }
-}
-
-fn move_search_state(
-  config: Config(msg),
-) -> #(String, List(card_picker.CardOption)) {
-  let query = move_query(config)
-  let options = case moving_card(config) {
-    Some(card) ->
-      card_policy.move_destination_entries(card, config.cards, config.tasks)
-      |> card_picker.move_destination_options(config.cards, config.depth_names)
-      |> card_picker.filter_options(query)
-    None -> []
-  }
-
-  #(query, options)
-}
-
-fn move_destination_state(config: Config(msg), card: Card) -> MoveRowState {
-  case moving_card(config) {
-    Some(source) if source.id == card.id ->
-      MovingSource(plan_dragging_source(config, source.id))
-    Some(source) -> MoveTarget(drop_target_state(config, source, card))
-    None -> NotMoveCandidate
-  }
-}
-
-fn plan_dragging_source(config: Config(msg), card_id: Int) -> Bool {
-  case config.move_drag_state {
-    member_pool.PlanMoveDraggingCard(dragging_id, _) -> dragging_id == card_id
-    member_pool.PlanMoveNotDragging -> False
-  }
-}
-
-fn drop_target_state(
-  config: Config(msg),
-  source: Card,
-  destination: Card,
-) -> DropTargetState {
-  case
-    card_policy.move_blocked_reason(
-      source,
-      destination,
-      config.cards,
-      config.tasks,
-    )
-  {
-    Some(reason) -> InvalidDropTarget(reason)
-    None ->
-      case config.move_drag_state {
-        member_pool.PlanMoveDraggingCard(
-          _,
-          Some(move_target.InsideCard(over_id)),
-        )
-          if over_id == destination.id
-        -> ActiveDropTarget
-        _ -> ValidDropTarget
-      }
-  }
-}
-
-fn move_row_class(config: Config(msg), row: types.StructureRow) -> String {
-  let types.CardRow(card:, ..) = row
-  case move_destination_state(config, card) {
-    MovingSource(True) -> "is-moving-source is-dragging-source"
-    MovingSource(False) -> "is-moving-source"
-    MoveTarget(ValidDropTarget) -> "is-move-valid"
-    MoveTarget(ActiveDropTarget) -> "is-move-valid is-drop-active"
-    MoveTarget(InvalidDropTarget(_)) -> "is-move-invalid"
-    MoveTarget(NotDropTarget) -> ""
-    NotMoveCandidate -> ""
-  }
-}
-
 fn detail_rollup(detail: types.StructureDetail) -> types.CardRollup {
   case detail {
     types.SubcardsDetail(rollup: rollup, ..) -> rollup
@@ -1809,45 +1511,6 @@ fn card_state_tone(card: Card) -> tone.Tone {
     Draft -> tone.Warning
     Active -> tone.Available
     Closed -> tone.Neutral
-  }
-}
-
-fn card_state_rank(card: Card) -> Int {
-  case card.state {
-    Active -> 0
-    Draft -> 1
-    Closed -> 2
-  }
-}
-
-fn due_date_sort_value(card: Card) -> String {
-  case card.due_date {
-    Some(value) ->
-      case due_date_domain.parse(value) {
-        Ok(parsed) -> due_date_domain.to_string(parsed)
-        Error(_) -> no_due_date_sort_value
-      }
-    None -> no_due_date_sort_value
-  }
-}
-
-const no_due_date_sort_value = "9999-12-31"
-
-fn plan_status_value(status: member_pool.PlanStatusFilter) -> String {
-  case status {
-    member_pool.PlanStatusAll -> "all"
-    member_pool.PlanStatusDraft -> "draft"
-    member_pool.PlanStatusActive -> "active"
-    member_pool.PlanStatusClosed -> "closed"
-  }
-}
-
-fn plan_sort_value(sort: member_pool.PlanSort) -> String {
-  case sort {
-    member_pool.PlanSortPath -> "path"
-    member_pool.PlanSortState -> "state"
-    member_pool.PlanSortDueDate -> "due_date"
-    member_pool.PlanSortPoolImpact -> "pool_impact"
   }
 }
 
