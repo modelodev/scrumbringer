@@ -713,13 +713,13 @@ fn bool_to_string(value: Bool) -> String {
 }
 
 fn is_business_execution(exec: api_rule_metrics.RuleExecution) -> Bool {
-  api_rule_metrics.execution_outcome_is_created(exec.outcome)
+  api_rule_metrics.execution_outcome_is_applied(exec.outcome)
 }
 
 fn is_project_business_execution(
   exec: api_rule_metrics.ProjectRuleExecution,
 ) -> Bool {
-  api_rule_metrics.execution_outcome_is_created(exec.outcome)
+  api_rule_metrics.execution_outcome_is_applied(exec.outcome)
 }
 
 fn execution_template_label(
@@ -754,9 +754,9 @@ fn execution_target_label(
 
 fn outcome_class_for(outcome: api_rule_metrics.RuleExecutionOutcome) -> String {
   case outcome {
-    api_rule_metrics.CreatedExecution -> "outcome-applied"
-    api_rule_metrics.IgnoredExecution(_) -> "outcome-suppressed"
-    api_rule_metrics.UnknownExecution(_) -> ""
+    api_rule_metrics.AppliedRuleExecution -> "outcome-applied"
+    api_rule_metrics.SuppressedRuleExecution(_) -> "outcome-suppressed"
+    api_rule_metrics.UnknownRuleExecution(_) -> ""
   }
 }
 
@@ -772,11 +772,11 @@ fn outcome_text_for_outcome(
   outcome: api_rule_metrics.RuleExecutionOutcome,
 ) -> String {
   case outcome {
-    api_rule_metrics.CreatedExecution -> t(config, i18n_text.OutcomeApplied)
-    api_rule_metrics.IgnoredExecution(reason) ->
+    api_rule_metrics.AppliedRuleExecution -> t(config, i18n_text.OutcomeApplied)
+    api_rule_metrics.SuppressedRuleExecution(reason) ->
       t(config, i18n_text.OutcomeSuppressed)
       <> suppression_reason_suffix(reason)
-    api_rule_metrics.UnknownExecution(raw) -> raw
+    api_rule_metrics.UnknownRuleExecution(raw) -> raw
   }
 }
 

@@ -234,9 +234,9 @@ pub fn get_rule_metrics_detailed(
 
 /// Decoded execution outcome from API JSON.
 pub type RuleExecutionOutcome {
-  CreatedExecution
-  IgnoredExecution(reason: String)
-  UnknownExecution(raw: String)
+  AppliedRuleExecution
+  SuppressedRuleExecution(reason: String)
+  UnknownRuleExecution(raw: String)
 }
 
 /// Single rule execution record.
@@ -255,10 +255,10 @@ pub type RuleExecution {
   )
 }
 
-pub fn execution_outcome_is_created(outcome: RuleExecutionOutcome) -> Bool {
+pub fn execution_outcome_is_applied(outcome: RuleExecutionOutcome) -> Bool {
   case outcome {
-    CreatedExecution -> True
-    IgnoredExecution(_) | UnknownExecution(_) -> False
+    AppliedRuleExecution -> True
+    SuppressedRuleExecution(_) | UnknownRuleExecution(_) -> False
   }
 }
 
@@ -364,9 +364,9 @@ fn parse_execution_outcome(
   suppression_reason: String,
 ) -> RuleExecutionOutcome {
   case outcome {
-    "applied" -> CreatedExecution
-    "suppressed" -> IgnoredExecution(suppression_reason)
-    other -> UnknownExecution(other)
+    "applied" -> AppliedRuleExecution
+    "suppressed" -> SuppressedRuleExecution(suppression_reason)
+    other -> UnknownRuleExecution(other)
   }
 }
 
