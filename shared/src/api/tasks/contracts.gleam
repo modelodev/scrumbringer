@@ -7,7 +7,7 @@ import gleam/json.{type Json}
 import domain/task/id as task_id
 import domain/task/state.{
   type TaskClosedReason, type TaskExecutionState, Available, Claimed, Closed,
-  ClosedByAncestor, Done, ManuallyClosed, Ongoing, Taken,
+  ClosedByAncestor, ClosedByClaimant, ManuallyClosed, Ongoing, Taken,
 }
 
 pub type CloseTaskRequest {
@@ -104,7 +104,7 @@ fn result_from_decode(result: Result(a, b)) -> Result(a, DecodeError) {
 
 fn parse_closed_reason(reason: String) -> Result(TaskClosedReason, DecodeError) {
   case reason {
-    "done" -> Ok(Done)
+    "done" -> Ok(ClosedByClaimant)
     "manually_closed" -> Ok(ManuallyClosed)
     "closed_by_ancestor" -> Ok(ClosedByAncestor)
     _ -> Error(InvalidClosedReason)
@@ -129,7 +129,7 @@ fn closed_reason_for_response(state: TaskExecutionState) -> Json {
 
 fn closed_reason_to_json(reason: TaskClosedReason) -> Json {
   case reason {
-    Done -> json.string("done")
+    ClosedByClaimant -> json.string("done")
     ManuallyClosed -> json.string("manually_closed")
     ClosedByAncestor -> json.string("closed_by_ancestor")
   }

@@ -158,7 +158,7 @@ pub fn available_tasks_never_includes_claimed_or_closed_test() {
       2,
       "Closed",
       1,
-      task_state.Closed(task_state.Done, "2026-01-02T00:00:00Z", 7),
+      task_state.Closed(task_state.ClosedByClaimant, "2026-01-02T00:00:00Z", 7),
     )
 
   let state =

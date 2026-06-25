@@ -275,7 +275,8 @@ pub fn local_close_clicked_applies_optimistic_close_test() {
     )
 
   let assert mutation_update.NoPolicy = policy
-  let expected = sample_task(42, task_state.Closed(task_state.Done, "", 7))
+  let expected =
+    sample_task(42, task_state.Closed(task_state.ClosedByClaimant, "", 7))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
   let assert True = fx != effect.none()

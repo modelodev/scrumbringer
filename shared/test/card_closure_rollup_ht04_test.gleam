@@ -64,7 +64,7 @@ pub fn rollup_closes_parent_when_all_direct_children_closed_test() {
 }
 
 pub fn closed_done_counts_as_done_close_test() {
-  let task = root_task(task_state.Closed(task_state.Done, now, 7))
+  let task = root_task(task_state.Closed(task_state.ClosedByClaimant, now, 7))
 
   let assert True = closure.task_closed_with_done_reason(task)
 }
@@ -86,9 +86,17 @@ pub fn closed_card_outcome_all_tasks_closed_when_all_leaves_done_test() {
       ]),
     )
   let task_a =
-    card_task(1, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 7),
+    )
   let task_b =
-    card_task(2, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
+    card_task(
+      2,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 7),
+    )
   let tree = activation.WorkTree(cards: [card], tasks: [task_a, task_b])
 
   let assert option.Some(closure.AllTasksClosed) =
@@ -106,7 +114,11 @@ pub fn closed_card_outcome_without_all_tasks_closed_when_any_leaf_uses_other_rea
       ]),
     )
   let done =
-    card_task(1, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 7),
+    )
   let manual =
     card_task(
       2,
@@ -123,12 +135,17 @@ pub fn manual_card_close_preserves_existing_closed_task_reasons_test() {
   let card =
     active_card(1, option.None, card_structure.TaskGroup([task_id.new(1)]))
   let task =
-    card_task(1, card_id.new(1), task_state.Closed(task_state.Done, now, 9))
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 9),
+    )
   let tree = activation.WorkTree(cards: [card], tasks: [task])
 
   let assert Ok(plan) =
     closure.close_card_manually(tree, card_id.new(1), manage_flow_actor(), now)
-  let expected_task_state = task_state.Closed(task_state.Done, now, 9)
+  let expected_task_state =
+    task_state.Closed(task_state.ClosedByClaimant, now, 9)
   let assert option.Some(actual_task_state) =
     task_state_for(plan.updated_tree, task_id.new(1))
   let assert True = actual_task_state == expected_task_state
@@ -149,7 +166,7 @@ pub fn closed_card_cannot_be_reopened_test() {
 }
 
 pub fn closed_task_cannot_be_claimed_or_closed_again_test() {
-  let task = root_task(task_state.Closed(task_state.Done, now, 7))
+  let task = root_task(task_state.Closed(task_state.ClosedByClaimant, now, 7))
 
   let assert Error(transitions.TaskAlreadyClosed) =
     transitions.claim_task(task, user_id.new(9), now, task_state.Taken)

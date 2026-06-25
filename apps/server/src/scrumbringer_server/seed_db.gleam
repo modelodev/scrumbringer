@@ -752,7 +752,7 @@ fn claim_mode_to_string(mode: task_state.TaskClaimMode) -> String {
 
 fn closed_reason_to_string(reason: task_state.TaskClosedReason) -> String {
   case reason {
-    task_state.Done -> "done"
+    task_state.ClosedByClaimant -> "done"
     task_state.ManuallyClosed -> "manually_closed"
     task_state.ClosedByAncestor -> "closed_by_ancestor"
   }

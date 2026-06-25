@@ -59,7 +59,7 @@ pub fn execution_state_from_closed_test() {
   )
   |> expect.equal(
     Ok(task_state.Closed(
-      reason: task_state.Done,
+      reason: task_state.ClosedByClaimant,
       closed_at: "2026-06-25T11:00:00Z",
       closed_by: 0,
     )),

@@ -421,7 +421,11 @@ fn claimed_state_template(
 }
 
 fn closed_outcome_state_template() -> task_state.TaskExecutionState {
-  task_state.Closed(reason: task_state.Done, closed_at: "", closed_by: 0)
+  task_state.Closed(
+    reason: task_state.ClosedByClaimant,
+    closed_at: "",
+    closed_by: 0,
+  )
 }
 
 fn option_int(value: Option(Int), default: Int) -> Int {

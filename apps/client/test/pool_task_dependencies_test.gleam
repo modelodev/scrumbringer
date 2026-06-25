@@ -36,7 +36,11 @@ pub fn task_dependencies_renders_loaded_dependencies_test() {
         TaskDependency(
           depends_on_task_id: 12,
           title: "Write docs",
-          state: task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7),
+          state: task_state.Closed(
+            task_state.ClosedByClaimant,
+            "2026-06-08T00:00:00Z",
+            7,
+          ),
           claimed_by: None,
         ),
       ]),
@@ -81,7 +85,11 @@ pub fn task_dependencies_dialog_filters_candidates_test() {
         sample_task(
           11,
           "Finished API",
-          task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7),
+          task_state.Closed(
+            task_state.ClosedByClaimant,
+            "2026-06-08T00:00:00Z",
+            7,
+          ),
         ),
         sample_task(12, "API client", task_state.Available),
         sample_task(13, "Other task", task_state.Available),

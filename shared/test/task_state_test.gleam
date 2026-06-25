@@ -50,7 +50,11 @@ pub fn from_db_rejects_completed_status_test() {
 }
 
 pub fn from_db_closed_test() {
-  let assert Ok(task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 0)) =
+  let assert Ok(task_state.Closed(
+    task_state.ClosedByClaimant,
+    "2026-01-01T00:00:00Z",
+    0,
+  )) =
     task_state.from_db(
       "closed",
       False,
@@ -69,7 +73,7 @@ pub fn to_db_closed_uses_canonical_closed_string_test() {
     option.Some("2026-01-01T00:00:00Z"),
   ) =
     task_state.to_db(task_state.Closed(
-      task_state.Done,
+      task_state.ClosedByClaimant,
       "2026-01-01T00:00:00Z",
       7,
     ))

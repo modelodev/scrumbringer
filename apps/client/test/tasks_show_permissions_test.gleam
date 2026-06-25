@@ -26,7 +26,11 @@ pub fn closed_task_is_read_only_for_claimant_test() {
   let assert False =
     show_permissions.can_edit(
       Some(7),
-      task(task_state.Closed(task_state.Done, "2026-06-14T12:00:00Z", 7)),
+      task(task_state.Closed(
+        task_state.ClosedByClaimant,
+        "2026-06-14T12:00:00Z",
+        7,
+      )),
     )
 }
 

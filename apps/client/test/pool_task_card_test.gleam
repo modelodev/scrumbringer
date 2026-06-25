@@ -33,7 +33,11 @@ pub fn task_card_renders_blocked_canvas_card_test() {
           TaskDependency(
             depends_on_task_id: 10,
             title: "Closed dependency",
-            state: task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7),
+            state: task_state.Closed(
+              task_state.ClosedByClaimant,
+              "2026-06-01T10:00:00Z",
+              7,
+            ),
             claimed_by: None,
           ),
         ],

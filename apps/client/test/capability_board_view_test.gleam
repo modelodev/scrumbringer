@@ -181,7 +181,8 @@ fn claimed_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
 }
 
 fn closed_done_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
-  let state = task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 7)
+  let state =
+    task_state.Closed(task_state.ClosedByClaimant, "2026-01-01T00:00:00Z", 7)
   task_with(id, title, type_id, state, card_id)
 }
 

@@ -264,7 +264,8 @@ pub fn task_transition_trigger(
     _, task_state.Claimed(_, _, _) -> Ok(TaskClaimed(task_type_id))
     Some(task_state.Claimed(_, _, _)), task_state.Available ->
       Ok(TaskReleased(task_type_id))
-    _, task_state.Closed(task_state.Done, _, _) -> Ok(TaskClosed(task_type_id))
+    _, task_state.Closed(task_state.ClosedByClaimant, _, _) ->
+      Ok(TaskClosed(task_type_id))
     _, _ -> Error(UnsupportedTransition)
   }
 }

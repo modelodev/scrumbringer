@@ -65,7 +65,7 @@ fn sample_dependency(
 }
 
 fn closed_done_state() -> task_state.TaskExecutionState {
-  task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
+  task_state.Closed(task_state.ClosedByClaimant, "2026-06-01T10:00:00Z", 7)
 }
 
 fn sample_task() -> Task {

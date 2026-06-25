@@ -31,7 +31,7 @@ pub fn task_transitions_map_to_supported_triggers_test() {
   let assert Ok(automation.TaskClosed(Some(7))) =
     automation.task_transition_trigger(
       Some(task_state.Claimed(1, "2026-01-15T10:00:00Z", task_state.Taken)),
-      task_state.Closed(task_state.Done, "2026-01-15T10:30:00Z", 1),
+      task_state.Closed(task_state.ClosedByClaimant, "2026-01-15T10:30:00Z", 1),
       Some(7),
     )
 }

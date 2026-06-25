@@ -104,7 +104,7 @@ pub fn show_editor_hides_edit_for_other_claimed_task_test() {
 
 pub fn show_editor_hides_edit_for_closed_task_test() {
   let closed_state =
-    task_state.Closed(task_state.Done, "2026-06-14T12:00:00Z", 7)
+    task_state.Closed(task_state.ClosedByClaimant, "2026-06-14T12:00:00Z", 7)
   let task = Task(..claimed_task(), state: closed_state)
   let html =
     show_editor.view_readonly_fields(config(Some(7)), task)

@@ -29,7 +29,7 @@ pub fn claimed_task_cannot_be_claimed_test() {
 pub fn closed_task_cannot_be_claimed_test() {
   let assert False =
     claimability.can_claim(sample_task(
-      task_state.Closed(task_state.Done, "2026-06-01T12:00:00Z", 7),
+      task_state.Closed(task_state.ClosedByClaimant, "2026-06-01T12:00:00Z", 7),
       0,
     ))
 }

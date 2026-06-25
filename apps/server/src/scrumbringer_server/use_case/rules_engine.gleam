@@ -838,7 +838,7 @@ fn task_state_event_string(state: task_state.TaskExecutionState) -> String {
     task_state.Available -> "available"
     task_state.Claimed(_, _, task_state.Ongoing) -> "ongoing"
     task_state.Claimed(_, _, task_state.Taken) -> "claimed"
-    task_state.Closed(task_state.Done, _, _) -> "closed"
+    task_state.Closed(task_state.ClosedByClaimant, _, _) -> "closed"
     task_state.Closed(_, _, _) -> "closed"
   }
 }

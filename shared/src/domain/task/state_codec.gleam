@@ -5,7 +5,8 @@ import gleam/json.{type Json}
 
 import domain/task/state.{
   type TaskClaimMode, type TaskClosedReason, type TaskExecutionState, Available,
-  Claimed, Closed, ClosedByAncestor, Done, ManuallyClosed, Ongoing, Taken,
+  Claimed, Closed, ClosedByAncestor, ClosedByClaimant, ManuallyClosed, Ongoing,
+  Taken,
 }
 
 pub fn decoder() -> decode.Decoder(TaskExecutionState) {
@@ -78,7 +79,7 @@ fn claim_mode_to_json(mode: TaskClaimMode) -> Json {
 fn closed_reason_decoder() -> decode.Decoder(TaskClosedReason) {
   use value <- decode.then(decode.string)
   case value {
-    "done" -> decode.success(Done)
+    "done" -> decode.success(ClosedByClaimant)
     "manually_closed" -> decode.success(ManuallyClosed)
     "closed_by_ancestor" -> decode.success(ClosedByAncestor)
     _ -> decode.failure(ManuallyClosed, "TaskClosedReason")
@@ -87,7 +88,7 @@ fn closed_reason_decoder() -> decode.Decoder(TaskClosedReason) {
 
 fn closed_reason_to_json(reason: TaskClosedReason) -> Json {
   case reason {
-    Done -> json.string("done")
+    ClosedByClaimant -> json.string("done")
     ManuallyClosed -> json.string("manually_closed")
     ClosedByAncestor -> json.string("closed_by_ancestor")
   }

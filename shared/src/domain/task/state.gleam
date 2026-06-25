@@ -18,7 +18,7 @@ pub type TaskClaimMode {
 }
 
 pub type TaskClosedReason {
-  Done
+  ClosedByClaimant
   ManuallyClosed
   ClosedByAncestor
 }
@@ -109,7 +109,8 @@ pub fn from_db(
         Some(_), _ -> Error(ClosedWithClaim)
         // Older task-list payloads do not carry closed_by. Repository code that
         // has closed_by available should construct Closed directly.
-        None, Some(at) -> Ok(Closed(reason: Done, closed_at: at, closed_by: 0))
+        None, Some(at) ->
+          Ok(Closed(reason: ClosedByClaimant, closed_at: at, closed_by: 0))
         None, None -> Error(ClosedMissingAt)
       }
 

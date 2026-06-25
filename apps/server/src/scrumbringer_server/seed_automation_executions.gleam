@@ -39,7 +39,11 @@ pub fn build(db: pog.Connection, context: Context) -> Result(Context, String) {
               ),
               context.admin_id,
               Some(task_state.Claimed(context.admin_id, "", task_state.Taken)),
-              task_state.Closed(task_state.Done, "", context.admin_id),
+              task_state.Closed(
+                task_state.ClosedByClaimant,
+                "",
+                context.admin_id,
+              ),
             )
           rules_engine.evaluate_rules(db, event)
           |> result.map_error(fn(_) { "Rule evaluation failed" })

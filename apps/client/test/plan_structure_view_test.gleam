@@ -585,7 +585,8 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
         claimed_at: "2026-01-01T00:00:00Z",
         mode: claim_mode(mode),
       )
-    Done -> task_state.Closed(task_state.Done, "2026-01-02T00:00:00Z", 7)
+    Done ->
+      task_state.Closed(task_state.ClosedByClaimant, "2026-01-02T00:00:00Z", 7)
   }
   Task(
     id: id,

@@ -54,7 +54,7 @@ pub fn start_close(
       start_with_state(
         model,
         task_id,
-        task_state.Closed(task_state.Done, "", user_id),
+        task_state.Closed(task_state.ClosedByClaimant, "", user_id),
       )
     opt.None ->
       member_pool.Model(

@@ -184,7 +184,8 @@ fn blocked_task() -> Task {
 }
 
 fn closed_done_task() -> Task {
-  let state = task_state.Closed(task_state.Done, "2026-01-03T00:00:00Z", 7)
+  let state =
+    task_state.Closed(task_state.ClosedByClaimant, "2026-01-03T00:00:00Z", 7)
 
   Task(..available_task(), id: 5, title: "Closed task", state: state)
 }

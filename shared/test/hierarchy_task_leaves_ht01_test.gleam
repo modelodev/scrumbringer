@@ -77,7 +77,7 @@ pub fn task_execution_state_roundtrip_test() {
   ))
 
   assert_task_state_roundtrip(task_state.Closed(
-    reason: task_state.Done,
+    reason: task_state.ClosedByClaimant,
     closed_at: "2026-06-19T10:00:00Z",
     closed_by: 7,
   ))

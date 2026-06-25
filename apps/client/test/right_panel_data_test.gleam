@@ -51,7 +51,14 @@ pub fn my_cards_returns_cards_with_user_claimed_tasks_and_progress_test() {
       card_id: Some(1),
     ),
     Task(
-      ..task(2, task_state.Closed(task_state.Done, "2026-06-02T10:00:00Z", 7)),
+      ..task(
+        2,
+        task_state.Closed(
+          task_state.ClosedByClaimant,
+          "2026-06-02T10:00:00Z",
+          7,
+        ),
+      ),
       card_id: Some(1),
     ),
     Task(

@@ -45,7 +45,7 @@ pub fn close_task(
       Ok(
         task_entity.Task(
           ..task,
-          execution_state: state.Closed(state.Done, now, actor_id),
+          execution_state: state.Closed(state.ClosedByClaimant, now, actor_id),
         ),
       )
     state.Claimed(..) -> Error(TaskClaimedByAnotherUser)

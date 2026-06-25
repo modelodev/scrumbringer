@@ -86,7 +86,7 @@ pub fn rollup_closed_card(
 
 pub fn task_closed_with_done_reason(task: task_entity.Task) -> Bool {
   case task.execution_state {
-    task_state.Closed(task_state.Done, _, _) -> True
+    task_state.Closed(task_state.ClosedByClaimant, _, _) -> True
     _ -> False
   }
 }

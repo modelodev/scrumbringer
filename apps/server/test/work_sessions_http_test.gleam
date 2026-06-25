@@ -85,7 +85,7 @@ pub fn start_rejects_closed_task_test() {
         description: "Done",
         priority: 3,
         execution_state: task_state.Closed(
-          reason: task_state.Done,
+          reason: task_state.ClosedByClaimant,
           closed_at: "NOW()",
           closed_by: user_id,
         ),
