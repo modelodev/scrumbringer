@@ -133,7 +133,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
 
   let actions = case task_info {
     opt.Some(Task(version: version, ..)) ->
-      task_actions.pause_and_complete(
+      task_actions.pause_and_close(
         task_state_ui.pause_action(config.locale),
         config.on_pause,
         task_state_ui.close_action(config.locale),

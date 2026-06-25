@@ -390,7 +390,7 @@ fn close_action(
 ) -> Element(msg) {
   case config.task.state, is_mine {
     task_state.Claimed(..), True ->
-      task_actions.complete_icon(
+      task_actions.close_icon(
         task_state_ui.close_action(locale),
         config.on_close,
         action_buttons.SizeXs,

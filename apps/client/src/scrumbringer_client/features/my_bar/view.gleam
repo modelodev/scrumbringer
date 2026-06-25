@@ -437,7 +437,7 @@ pub fn view_member_bar_task_row(
       if claimed_by == config.user_id
     -> [
       now_working_action,
-      ..task_actions.release_and_complete(
+      ..task_actions.release_and_close(
         task_state_ui.release_action(config.locale),
         config.on_release(id, version),
         task_state_ui.close_action(config.locale),

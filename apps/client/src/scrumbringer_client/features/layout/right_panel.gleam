@@ -207,7 +207,7 @@ fn view_active_task_card(
               Some("task-pause-btn"),
             )
         },
-        task_actions.complete_icon(
+        task_actions.close_icon(
           i18n.t(config.locale, i18n_text.TaskNextActionClose),
           config.on_task_close(active.task_id),
           action_buttons.SizeXs,

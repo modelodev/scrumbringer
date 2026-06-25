@@ -111,7 +111,7 @@ pub fn release_icon(
   )
 }
 
-pub fn complete_icon(
+pub fn close_icon(
   title: String,
   on_click: msg,
   size: action_buttons.ButtonSize,
@@ -165,19 +165,19 @@ pub fn claim_only(
   [claim_icon(title, on_click, size, disabled, extra_class, tooltip, testid)]
 }
 
-pub fn release_and_complete(
+pub fn release_and_close(
   release_title: String,
   release_click: msg,
-  complete_title: String,
-  complete_click: msg,
+  close_title: String,
+  close_click: msg,
   size: action_buttons.ButtonSize,
   disabled: Bool,
   release_class: String,
-  complete_class: String,
+  close_class: String,
   release_tooltip: Option(String),
-  complete_tooltip: Option(String),
+  close_tooltip: Option(String),
   release_testid: Option(String),
-  complete_testid: Option(String),
+  close_testid: Option(String),
 ) -> List(Element(msg)) {
   [
     release_icon(
@@ -189,31 +189,31 @@ pub fn release_and_complete(
       release_tooltip,
       release_testid,
     ),
-    complete_icon(
-      complete_title,
-      complete_click,
+    close_icon(
+      close_title,
+      close_click,
       size,
       disabled,
-      complete_class,
-      complete_tooltip,
-      complete_testid,
+      close_class,
+      close_tooltip,
+      close_testid,
     ),
   ]
 }
 
-pub fn pause_and_complete(
+pub fn pause_and_close(
   pause_title: String,
   pause_click: msg,
-  complete_title: String,
-  complete_click: msg,
+  close_title: String,
+  close_click: msg,
   size: action_buttons.ButtonSize,
   disabled: Bool,
   pause_class: String,
-  complete_class: String,
+  close_class: String,
   pause_tooltip: Option(String),
-  complete_tooltip: Option(String),
+  close_tooltip: Option(String),
   pause_testid: Option(String),
-  complete_testid: Option(String),
+  close_testid: Option(String),
 ) -> List(Element(msg)) {
   [
     pause_icon(
@@ -225,14 +225,14 @@ pub fn pause_and_complete(
       pause_tooltip,
       pause_testid,
     ),
-    complete_icon(
-      complete_title,
-      complete_click,
+    close_icon(
+      close_title,
+      close_click,
       size,
       disabled,
-      complete_class,
-      complete_tooltip,
-      complete_testid,
+      close_class,
+      close_tooltip,
+      close_testid,
     ),
   ]
 }
