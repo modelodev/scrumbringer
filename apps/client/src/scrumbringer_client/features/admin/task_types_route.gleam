@@ -48,17 +48,21 @@ fn apply_update(
     refresh_policy,
   ) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    let model =
-      client_state.update_admin(model, fn(admin) {
-        update_task_types(admin, fn(_) { task_types })
-      })
-    let #(model, refresh_fx) = case refresh_policy {
-      task_types_update.NoRefresh -> #(model, effect.none())
-      task_types_update.RefreshSection -> refresh_section(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          update_task_types(admin, fn(_) { task_types })
+        })
+      let #(model, refresh_fx) = case refresh_policy {
+        task_types_update.NoRefresh -> #(model, effect.none())
+        task_types_update.RefreshSection -> refresh_section(model)
+      }
+      #(model, effect.batch([local_fx, refresh_fx]))
+    },
+  )
 }
 
 fn auth_error(policy: task_types_update.AuthPolicy) -> opt.Option(ApiError) {

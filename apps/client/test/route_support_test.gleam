@@ -57,6 +57,14 @@ pub fn apply_auth_check_dispatches_before_policy_test() {
   let assert False = next.core.auth_checked
 }
 
+pub fn auth_check_before_maps_optional_errors_to_timing_policy_test() {
+  let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
+
+  let assert route_support.NoAuthCheck = route_support.auth_check_before(None)
+  let assert route_support.CheckAuthBefore(_) =
+    route_support.auth_check_before(Some(err))
+}
+
 pub fn apply_auth_check_dispatches_after_policy_test() {
   let model = authed_admin_model()
   let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
@@ -70,6 +78,14 @@ pub fn apply_auth_check_dispatches_after_policy_test() {
 
   let assert client_state.Login = next.core.page
   let assert True = next.core.auth_checked
+}
+
+pub fn auth_check_after_maps_optional_errors_to_timing_policy_test() {
+  let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
+
+  let assert route_support.NoAuthCheck = route_support.auth_check_after(None)
+  let assert route_support.CheckAuthAfter(_) =
+    route_support.auth_check_after(Some(err))
 }
 
 fn mark_auth_checked(model: client_state.Model) -> client_state.Model {

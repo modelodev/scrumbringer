@@ -40,9 +40,9 @@ fn apply_project_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let project_refresh.Update(pool, auth_policy) = update
 
-  route_support.apply_auth_check_before(
+  route_support.apply_auth_check(
     model,
-    project_refresh_auth_error(auth_policy),
+    route_support.auth_check_before(project_refresh_auth_error(auth_policy)),
     fn() {
       let model = update_member_pool(model, fn(_) { pool })
       #(position_layout.compact_loaded_pool_positions(model), effect.none())

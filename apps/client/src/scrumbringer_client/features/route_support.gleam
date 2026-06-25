@@ -13,6 +13,20 @@ pub type AuthCheck {
   CheckAuthAfter(ApiError)
 }
 
+pub fn auth_check_before(auth_error: opt.Option(ApiError)) -> AuthCheck {
+  case auth_error {
+    opt.None -> NoAuthCheck
+    opt.Some(err) -> CheckAuthBefore(err)
+  }
+}
+
+pub fn auth_check_after(auth_error: opt.Option(ApiError)) -> AuthCheck {
+  case auth_error {
+    opt.None -> NoAuthCheck
+    opt.Some(err) -> CheckAuthAfter(err)
+  }
+}
+
 pub fn apply_auth_check(
   model: client_state.Model,
   auth_check: AuthCheck,

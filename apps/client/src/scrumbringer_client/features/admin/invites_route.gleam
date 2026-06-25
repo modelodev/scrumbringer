@@ -39,14 +39,18 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let invites_update.Update(invites, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    #(
-      client_state.update_admin(model, fn(admin) {
-        update_invites(admin, fn(_) { invites })
-      }),
-      fx,
-    )
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      #(
+        client_state.update_admin(model, fn(admin) {
+          update_invites(admin, fn(_) { invites })
+        }),
+        fx,
+      )
+    },
+  )
 }
 
 fn auth_error(policy: invites_update.AuthPolicy) -> opt.Option(ApiError) {

@@ -33,9 +33,11 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let position_update.Update(positions, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    #(set_member_positions(model, positions), fx)
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() { #(set_member_positions(model, positions), fx) },
+  )
 }
 
 fn context(
