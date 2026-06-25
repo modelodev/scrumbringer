@@ -44,8 +44,9 @@ scrumbringer/
 │       │   └── scrumbringer_server/
 │       │       ├── web/
 │       │       ├── http/
-│       │       ├── services/
-│       │       └── persistence/
+│       │       ├── use_case/
+│       │       ├── repository/
+│       │       └── sql/
 │       └── test/
 │
 ├── shared/                      # Shared domain types/helpers (reused by client and server)
@@ -93,16 +94,18 @@ Gleam HTTP API (Gleam → Erlang/BEAM). Recommended responsibilities:
 - Authentication and authorization
 - Business rules (claim required to edit, no direct assignment)
 - Command validation and optimistic concurrency (`version`)
-- Data access layer via Squirrel + Postgres driver
+- Data access through repository modules and Squirrel-generated SQL
 
-Runtime persistence normally lives behind `services/*_db.gleam`. The
-`scrumbringer_server/persistence/auth/*` modules are an intentional exception:
-they are the SQL boundary for login and registration bootstrap, where user,
-organization, invite, and initial membership queries need to stay together.
+Runtime business behavior belongs in `scrumbringer_server/use_case/`.
+Persistence adapters and row mappers belong in `scrumbringer_server/repository/`.
+Squirrel query files live under `scrumbringer_server/sql/` and generate the
+`scrumbringer_server/sql.gleam` module. Authentication bootstrap keeps related
+login, registration, invite, organization, and initial membership queries under
+the `repository/auth/` boundary.
 
 `scrumbringer_server/seed.gleam`, `seed_builder.gleam`, and `seed_db.gleam` are
 dev/test support modules for local demo data and test fixtures. They should not
-be imported by runtime HTTP handlers or business services.
+be imported by runtime HTTP handlers or use cases.
 
 ### `shared/`
 
@@ -129,7 +132,7 @@ Database migrations managed by dbmate:
                     │
         ┌───────────┴───────────┐
         ▼                       ▼
-      shared         apps/server/persistence + services
+      shared         use_case + repository + sql
 ```
 
 **Rules (recommended):**
