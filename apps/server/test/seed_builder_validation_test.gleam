@@ -128,7 +128,7 @@ pub fn realistic_seed_includes_automation_traces_and_warnings_test() {
 
 pub fn realistic_seed_covers_cards_tasks_and_due_dates_test() {
   // Covers seed_card_scenarios, seed_task_scenarios, seed_plan_scenarios, and
-  // downstream root-card scenarios that attach tasks and due dates.
+  // seed_root_card_scenarios coverage for cards, tasks, and due dates.
   let assert Ok(#(db, _org_id, _admin_id)) = build_realistic_seed()
 
   let assert Ok(card_state_count) =
