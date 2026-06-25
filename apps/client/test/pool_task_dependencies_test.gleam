@@ -6,9 +6,6 @@ import lustre/element
 import domain/remote
 import domain/task.{type Task, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_status.{
-  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
-}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
@@ -80,10 +77,14 @@ pub fn task_dependencies_dialog_filters_candidates_test() {
       dialog_mode: dialog_mode.DialogCreate,
       search_query: "api",
       candidates: remote.Loaded([
-        sample_task(10, "Current task", Available),
-        sample_task(11, "Finished API", Done),
-        sample_task(12, "API client", Available),
-        sample_task(13, "Other task", Available),
+        sample_task(10, "Current task", task_state.Available),
+        sample_task(
+          11,
+          "Finished API",
+          task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7),
+        ),
+        sample_task(12, "API client", task_state.Available),
+        sample_task(13, "Other task", task_state.Available),
       ]),
       selected_task_id: Some(12),
     ))
@@ -107,7 +108,9 @@ pub fn task_dependencies_dialog_renders_loading_submit_state_test() {
           dependencies: remote.Loaded([]),
           dialog_mode: dialog_mode.DialogCreate,
           search_query: "api",
-          candidates: remote.Loaded([sample_task(12, "API client", Available)]),
+          candidates: remote.Loaded([
+            sample_task(12, "API client", task_state.Available),
+          ]),
           selected_task_id: Some(12),
         ),
         add_in_flight: True,
@@ -130,7 +133,7 @@ fn config(
   task_dependencies.Config(
     locale: locale.En,
     task_id: 10,
-    task: Some(sample_task(10, "Current task", Available)),
+    task: Some(sample_task(10, "Current task", task_state.Available)),
     dependencies: dependencies,
     dialog_mode: dialog_mode,
     search_query: search_query,
@@ -148,17 +151,11 @@ fn config(
   )
 }
 
-fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
-  let state = case status {
-    Available -> task_state.Available
-    Claimed(mode) ->
-      task_state.Claimed(
-        claimed_by: 1,
-        claimed_at: "2026-06-08T00:00:00Z",
-        mode: claim_mode(mode),
-      )
-    Done -> task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7)
-  }
+fn sample_task(
+  id: Int,
+  title: String,
+  state: task_state.TaskExecutionState,
+) -> Task {
   Task(
     id: id,
     project_id: 1,
@@ -182,11 +179,4 @@ fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
     dependencies: [],
     automation_origin: None,
   )
-}
-
-fn claim_mode(mode: task_status.ClaimedState) -> task_state.TaskClaimMode {
-  case mode {
-    Taken -> task_state.Taken
-    Ongoing -> task_state.Ongoing
-  }
 }

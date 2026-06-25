@@ -12,6 +12,7 @@ import lustre/event
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task as domain_task
+import domain/task/state as task_execution_state
 import domain/task_status
 
 import scrumbringer_client/client_state/dialog_mode
@@ -241,7 +242,10 @@ fn filtered_candidates(
       let candidates =
         list.filter(tasks, fn(task) {
           task.id != current_task_id
-          && domain_task.status(task) != task_status.Done
+          && case task.state {
+            task_execution_state.Closed(..) -> False
+            _ -> True
+          }
         })
 
       case string.is_empty(query) {
