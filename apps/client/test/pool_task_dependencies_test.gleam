@@ -29,13 +29,17 @@ pub fn task_dependencies_renders_loaded_dependencies_test() {
         TaskDependency(
           depends_on_task_id: 11,
           title: "Configure API",
-          status: Claimed(Taken),
+          state: task_state.Claimed(
+            claimed_by: 1,
+            claimed_at: "2026-06-08T00:00:00Z",
+            mode: task_state.Taken,
+          ),
           claimed_by: Some("ana@example.com"),
         ),
         TaskDependency(
           depends_on_task_id: 12,
           title: "Write docs",
-          status: Done,
+          state: task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7),
           claimed_by: None,
         ),
       ]),

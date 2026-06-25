@@ -5103,6 +5103,10 @@ pub type TaskDependenciesCreateRow {
     task_id: Int,
     title: String,
     status: String,
+    is_ongoing: Bool,
+    claimed_by_user_id: Int,
+    claimed_at: String,
+    completed_at: String,
     claimed_by: String,
   )
 }
@@ -5122,11 +5126,19 @@ pub fn task_dependencies_create(
     use task_id <- decode.field(0, decode.int)
     use title <- decode.field(1, decode.string)
     use status <- decode.field(2, decode.string)
-    use claimed_by <- decode.field(3, decode.string)
+    use is_ongoing <- decode.field(3, decode.bool)
+    use claimed_by_user_id <- decode.field(4, decode.int)
+    use claimed_at <- decode.field(5, decode.string)
+    use completed_at <- decode.field(6, decode.string)
+    use claimed_by <- decode.field(7, decode.string)
     decode.success(TaskDependenciesCreateRow(
       task_id:,
       title:,
       status:,
+      is_ongoing:,
+      claimed_by_user_id:,
+      claimed_at:,
+      completed_at:,
       claimed_by:,
     ))
   }
@@ -5144,6 +5156,17 @@ select
     when t.execution_state = 'closed' then 'completed'
     else t.execution_state
   end as status,
+  (
+    t.execution_state = 'claimed'
+    and exists(
+      select 1
+      from user_task_work_session ws
+      where ws.task_id = t.id and ws.ended_at is null
+    )
+  ) as is_ongoing,
+  coalesce(t.claimed_by, 0) as claimed_by_user_id,
+  coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   coalesce(u.email, '') as claimed_by
 from inserted i
 join tasks t on t.id = i.depends_on_task_id
@@ -5209,6 +5232,10 @@ pub type TaskDependenciesListRow {
     task_id: Int,
     title: String,
     status: String,
+    is_ongoing: Bool,
+    claimed_by_user_id: Int,
+    claimed_at: String,
+    completed_at: String,
     claimed_by: String,
   )
 }
@@ -5226,11 +5253,19 @@ pub fn task_dependencies_list(
     use task_id <- decode.field(0, decode.int)
     use title <- decode.field(1, decode.string)
     use status <- decode.field(2, decode.string)
-    use claimed_by <- decode.field(3, decode.string)
+    use is_ongoing <- decode.field(3, decode.bool)
+    use claimed_by_user_id <- decode.field(4, decode.int)
+    use claimed_at <- decode.field(5, decode.string)
+    use completed_at <- decode.field(6, decode.string)
+    use claimed_by <- decode.field(7, decode.string)
     decode.success(TaskDependenciesListRow(
       task_id:,
       title:,
       status:,
+      is_ongoing:,
+      claimed_by_user_id:,
+      claimed_at:,
+      completed_at:,
       claimed_by:,
     ))
   }
@@ -5243,6 +5278,17 @@ select
     when t.execution_state = 'closed' then 'completed'
     else t.execution_state
   end as status,
+  (
+    t.execution_state = 'claimed'
+    and exists(
+      select 1
+      from user_task_work_session ws
+      where ws.task_id = t.id and ws.ended_at is null
+    )
+  ) as is_ongoing,
+  coalesce(t.claimed_by, 0) as claimed_by_user_id,
+  coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(t.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   coalesce(u.email, '') as claimed_by
 from task_dependencies td
 join tasks t on t.id = td.depends_on_task_id
@@ -6999,6 +7045,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc
@@ -7239,6 +7296,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc
@@ -7797,6 +7865,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc
@@ -8061,6 +8140,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc
@@ -8468,6 +8558,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc
@@ -8768,6 +8869,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc

@@ -130,10 +130,11 @@ fn dependency_row(
   let domain_task.TaskDependency(
     depends_on_task_id: depends_on_task_id,
     title: title,
-    status: status,
+    state: _state,
     claimed_by: claimed_by,
   ) = dep
 
+  let status = domain_task.dependency_status(dep)
   let status_label = task_state.label(config.locale, status)
 
   let status_note = case status {

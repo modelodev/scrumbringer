@@ -16,7 +16,7 @@ fn sample_dependency() -> TaskDependency {
   TaskDependency(
     depends_on_task_id: 11,
     title: "Configure OAuth",
-    status: task_state.to_status(task_state.Available),
+    state: task_state.Available,
     claimed_by: None,
   )
 }

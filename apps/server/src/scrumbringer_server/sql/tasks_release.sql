@@ -82,6 +82,17 @@ left join lateral (
             when dt.execution_state = 'closed' then 'completed'
             else dt.execution_state
           end,
+          'claimed_by_user_id', dt.claimed_by,
+          'claimed_at', to_char(dt.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          'completed_at', to_char(dt.closed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          'is_ongoing', (
+            dt.execution_state = 'claimed'
+            and exists(
+              select 1
+              from user_task_work_session ws
+              where ws.task_id = dt.id and ws.ended_at is null
+            )
+          ),
           'claimed_by', u.email
         )
         order by dt.created_at desc

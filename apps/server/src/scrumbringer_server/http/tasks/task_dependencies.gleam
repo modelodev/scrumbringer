@@ -8,7 +8,7 @@ import gleam/result
 import pog
 
 import domain/task as domain_task
-import domain/task_status.{Done}
+import domain/task/state as task_state
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
@@ -276,14 +276,14 @@ fn require_same_project(
 fn require_dependency_not_completed(
   depends_on_task: domain_task.Task,
 ) -> Result(Nil, wisp.Response) {
-  case domain_task.status(depends_on_task) {
-    Done ->
+  case depends_on_task.state {
+    task_state.Closed(..) ->
       Error(api.error(
         422,
         "VALIDATION_ERROR",
         "Dependency task is already completed",
       ))
-    _ -> Ok(Nil)
+    task_state.Available | task_state.Claimed(..) -> Ok(Nil)
   }
 }
 

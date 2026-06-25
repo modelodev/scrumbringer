@@ -3,12 +3,13 @@
 ////
 
 import gleam/list
+import gleam/option.{type Option}
 import gleam/result
 import helpers/option as option_helpers
 import pog
 
 import domain/task.{type TaskDependency, TaskDependency}
-import domain/task_status
+import domain/task/state as task_state
 import scrumbringer_server/sql
 import scrumbringer_server/use_case/persisted_field
 import scrumbringer_server/use_case/service_error.{
@@ -78,36 +79,76 @@ pub fn delete_dependency(
 fn dependency_from_list_row(
   row: sql.TaskDependenciesListRow,
 ) -> Result(TaskDependency, ServiceError) {
-  dependency_from_fields(row.task_id, row.title, row.status, row.claimed_by)
+  dependency_from_fields(
+    row.task_id,
+    row.title,
+    row.status,
+    row.is_ongoing,
+    row.claimed_by_user_id,
+    row.claimed_at,
+    row.completed_at,
+    row.claimed_by,
+  )
 }
 
 fn dependency_from_create_row(
   row: sql.TaskDependenciesCreateRow,
 ) -> Result(TaskDependency, ServiceError) {
-  dependency_from_fields(row.task_id, row.title, row.status, row.claimed_by)
+  dependency_from_fields(
+    row.task_id,
+    row.title,
+    row.status,
+    row.is_ongoing,
+    row.claimed_by_user_id,
+    row.claimed_at,
+    row.completed_at,
+    row.claimed_by,
+  )
 }
 
 fn dependency_from_fields(
   task_id: Int,
   title: String,
   status_value: String,
+  is_ongoing: Bool,
+  claimed_by_user_id: Int,
+  claimed_at: String,
+  completed_at: String,
   claimed_by: String,
 ) -> Result(TaskDependency, ServiceError) {
-  use status <- result.try(parse_dependency_status(status_value))
+  use state <- result.try(parse_dependency_state(
+    status_value,
+    is_ongoing,
+    option_helpers.int_to_option(claimed_by_user_id),
+    option_helpers.string_to_option(claimed_at),
+    option_helpers.string_to_option(completed_at),
+  ))
   Ok(TaskDependency(
     depends_on_task_id: task_id,
     title: title,
-    status: status,
+    state: state,
     claimed_by: option_helpers.string_to_option(claimed_by),
   ))
 }
 
-fn parse_dependency_status(
-  value: String,
-) -> Result(task_status.TaskPhase, ServiceError) {
+fn parse_dependency_state(
+  status: String,
+  is_ongoing: Bool,
+  claimed_by: Option(Int),
+  claimed_at: Option(String),
+  completed_at: Option(String),
+) -> Result(task_state.TaskExecutionState, ServiceError) {
   persisted_field.required(
-    value,
-    task_status.parse_task_status,
+    status,
+    fn(value) {
+      task_state.from_db(
+        value,
+        is_ongoing,
+        claimed_by,
+        claimed_at,
+        completed_at,
+      )
+    },
     "Invalid persisted task dependency status",
   )
 }

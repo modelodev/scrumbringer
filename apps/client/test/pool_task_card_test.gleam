@@ -4,7 +4,6 @@ import lustre/element
 
 import domain/task.{type Task, AutomationOrigin, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_status.{Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/i18n/locale
@@ -28,13 +27,13 @@ pub fn task_card_renders_blocked_canvas_card_test() {
           TaskDependency(
             depends_on_task_id: 9,
             title: "API contract",
-            status: Available,
+            state: task_state.Available,
             claimed_by: None,
           ),
           TaskDependency(
             depends_on_task_id: 10,
             title: "Done dependency",
-            status: Done,
+            state: task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7),
             claimed_by: None,
           ),
         ],

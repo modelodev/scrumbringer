@@ -9,7 +9,9 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{span, text}
 
-import domain/task.{type Task, type TaskDependency}
+import domain/task.{
+  type Task, type TaskDependency, dependency_is_closed, dependency_status,
+}
 import domain/task_status
 
 import scrumbringer_client/i18n/i18n
@@ -42,7 +44,7 @@ pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
 
 pub fn tooltip_text(locale: Locale, task: Task) -> String {
   let blocking =
-    list.filter(task.dependencies, fn(dep) { dep.status != task_status.Done })
+    list.filter(task.dependencies, fn(dep) { !dependency_is_closed(dep) })
   let blocking_count = case blocking {
     [] -> task.blocked_count
     _ -> list.length(blocking)
@@ -50,7 +52,7 @@ pub fn tooltip_text(locale: Locale, task: Task) -> String {
   let header = i18n.t(locale, i18n_text.BlockedByTasks(blocking_count))
   let items =
     list.map(blocking, fn(dep) {
-      dep.title <> " (" <> dependency_status(locale, dep) <> ")"
+      dep.title <> " (" <> dependency_status_text(locale, dep) <> ")"
     })
   case items {
     [] -> header
@@ -58,9 +60,10 @@ pub fn tooltip_text(locale: Locale, task: Task) -> String {
   }
 }
 
-fn dependency_status(locale: Locale, dep: TaskDependency) -> String {
-  let status_label = task_status_utils.label(locale, dep.status)
-  case dep.status {
+fn dependency_status_text(locale: Locale, dep: TaskDependency) -> String {
+  let status = dependency_status(dep)
+  let status_label = task_status_utils.label(locale, status)
+  case status {
     task_status.Claimed(_) ->
       case dep.claimed_by {
         opt.Some(email) -> i18n.t(locale, i18n_text.ClaimedBy) <> " " <> email

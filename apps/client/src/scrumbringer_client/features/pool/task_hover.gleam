@@ -91,7 +91,9 @@ fn blocked_items(locale: Locale, task: domain_task.Task) -> List(String) {
   blocking.incomplete_dependencies(task)
   |> list.take(2)
   |> list.map(fn(dep) {
-    dep.title <> " · " <> task_status_utils.label(locale, dep.status)
+    dep.title
+    <> " · "
+    <> task_status_utils.label(locale, domain_task.dependency_status(dep))
   })
 }
 

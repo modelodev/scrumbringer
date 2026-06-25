@@ -193,14 +193,28 @@ pub fn dependency_json(dep: TaskDependency) -> json.Json {
   let TaskDependency(
     depends_on_task_id: depends_on_task_id,
     title: title,
-    status: status,
+    state: state,
     claimed_by: claimed_by,
   ) = dep
+  let status = task_state.to_status(state)
+  let claimed_by_user_id = task_state.claimed_by(state)
+  let claimed_at = task_state.claimed_at(state)
+  let completed_at = task_state.completed_at(state)
+  let is_ongoing = case state {
+    task_state.Claimed(mode: task_state.Ongoing, ..) -> True
+    task_state.Available
+    | task_state.Claimed(mode: task_state.Taken, ..)
+    | task_state.Closed(..) -> False
+  }
 
   json.object([
     #("task_id", json.int(depends_on_task_id)),
     #("title", json.string(title)),
     #("status", json.string(status_to_string(status))),
+    #("is_ongoing", json.bool(is_ongoing)),
+    #("claimed_by_user_id", json_helpers.option_int_json(claimed_by_user_id)),
+    #("claimed_at", json_helpers.option_string_json(claimed_at)),
+    #("completed_at", json_helpers.option_string_json(completed_at)),
     #("claimed_by", json_helpers.option_string_json(claimed_by)),
   ])
 }

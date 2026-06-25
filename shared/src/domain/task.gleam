@@ -98,7 +98,7 @@ pub type AutomationOrigin {
 /// TaskDependency(
 ///   depends_on_task_id: 12,
 ///   title: "Configure OAuth",
-///   status: Claimed(Taken),
+///   state: task_state.Claimed(7, "2026-06-18T10:00:00Z", task_state.Taken),
 ///   claimed_by: Some("alice@example.com"),
 /// )
 /// ```
@@ -106,7 +106,7 @@ pub type TaskDependency {
   TaskDependency(
     depends_on_task_id: Int,
     title: String,
-    status: TaskPhase,
+    state: task_state.TaskExecutionState,
     claimed_by: Option(String),
   )
 }
@@ -175,6 +175,21 @@ pub fn status(task: Task) -> TaskPhase {
 
 pub fn work_state(task: Task) -> WorkState {
   task_state.to_work_state(task.state)
+}
+
+pub fn dependency_status(dependency: TaskDependency) -> TaskPhase {
+  task_state.to_status(dependency.state)
+}
+
+pub fn dependency_work_state(dependency: TaskDependency) -> WorkState {
+  task_state.to_work_state(dependency.state)
+}
+
+pub fn dependency_is_closed(dependency: TaskDependency) -> Bool {
+  case dependency.state {
+    task_state.Closed(..) -> True
+    task_state.Available | task_state.Claimed(..) -> False
+  }
 }
 
 pub fn claimed_by(task: Task) -> Option(Int) {

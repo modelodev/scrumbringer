@@ -7,7 +7,6 @@ import domain/task.{
   type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
 }
 import domain/task/state as task_state
-import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_summary
 import scrumbringer_client/i18n/locale
@@ -45,8 +44,8 @@ pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
       locale: locale.En,
       task: Task(..task(), blocked_count: 0),
       dependencies: Loaded([
-        dependency(11, Available),
-        dependency(12, Done),
+        dependency(11, task_state.Available),
+        dependency(12, done_state()),
       ]),
       parent_card_title: None,
     ))
@@ -187,11 +186,15 @@ fn task() -> Task {
   )
 }
 
-fn dependency(id: Int, status: TaskPhase) -> TaskDependency {
+fn dependency(id: Int, state: task_state.TaskExecutionState) -> TaskDependency {
   TaskDependency(
     depends_on_task_id: id,
     title: "Dependency",
-    status: status,
+    state: state,
     claimed_by: None,
   )
+}
+
+fn done_state() -> task_state.TaskExecutionState {
+  task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
 }

@@ -4,8 +4,7 @@ import gleam/list
 import gleam/option as opt
 
 import domain/remote.{type Remote, Loaded}
-import domain/task.{type Task, type TaskDependency, Task}
-import domain/task_status.{Done}
+import domain/task.{type Task, type TaskDependency, Task, dependency_is_closed}
 
 pub fn add_to_remote(
   deps: Remote(List(TaskDependency)),
@@ -23,17 +22,17 @@ pub fn remove_from_remote(
 ) -> #(Remote(List(TaskDependency)), Int) {
   case deps {
     Loaded(items) -> {
-      let #(remaining, removed_status) =
+      let #(remaining, removed_closed) =
         list.fold(items, #([], opt.None), fn(acc, dep) {
-          let #(kept, status_opt) = acc
+          let #(kept, closed_opt) = acc
           case dep.depends_on_task_id == depends_on_task_id {
-            True -> #(kept, opt.Some(dep.status))
-            False -> #([dep, ..kept], status_opt)
+            True -> #(kept, opt.Some(dependency_is_closed(dep)))
+            False -> #([dep, ..kept], closed_opt)
           }
         })
-      let delta = case removed_status {
-        opt.Some(Done) | opt.None -> 0
-        opt.Some(_) -> 1
+      let delta = case removed_closed {
+        opt.Some(True) | opt.None -> 0
+        opt.Some(False) -> 1
       }
       #(Loaded(list.reverse(remaining)), delta)
     }
@@ -60,9 +59,9 @@ pub fn remove_from_task(task: Task, depends_on_task_id: Int, delta: Int) -> Task
 }
 
 pub fn blocked_delta(dep: TaskDependency) -> Int {
-  case dep.status {
-    Done -> 0
-    _ -> 1
+  case dependency_is_closed(dep) {
+    True -> 0
+    False -> 1
   }
 }
 

@@ -3,19 +3,18 @@ import gleam/option.{None, Some}
 import domain/remote.{Loaded, Loading}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/dependency_list
 
 pub fn add_to_remote_starts_loaded_list_when_not_loaded_test() {
-  let dep = sample_dependency(11, task_status.Available)
+  let dep = sample_dependency(11, task_state.Available)
 
   let assert True = dependency_list.add_to_remote(Loading, dep) == Loaded([dep])
 }
 
 pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
-  let first = sample_dependency(10, task_status.Available)
-  let second = sample_dependency(11, task_status.Done)
+  let first = sample_dependency(10, task_state.Available)
+  let second = sample_dependency(11, done_state())
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([first, second]), 10)
@@ -23,7 +22,7 @@ pub fn remove_from_remote_removes_dependency_and_reports_blocked_delta_test() {
 }
 
 pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
-  let completed = sample_dependency(10, task_status.Done)
+  let completed = sample_dependency(10, done_state())
 
   let assert True =
     dependency_list.remove_from_remote(Loaded([completed]), 10)
@@ -35,8 +34,8 @@ pub fn remove_from_remote_reports_zero_delta_for_completed_or_missing_test() {
 
 pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test() {
   let task = sample_task()
-  let blocker = sample_dependency(10, task_status.Available)
-  let completed = sample_dependency(11, task_status.Done)
+  let blocker = sample_dependency(10, task_state.Available)
+  let completed = sample_dependency(11, done_state())
 
   let assert True =
     dependency_list.add_to_task(task, blocker)
@@ -47,7 +46,7 @@ pub fn add_to_task_increments_blocked_count_only_for_incomplete_dependency_test(
 }
 
 pub fn remove_from_task_clamps_blocked_count_test() {
-  let blocker = sample_dependency(10, task_status.Available)
+  let blocker = sample_dependency(10, task_state.Available)
   let task = Task(..sample_task(), dependencies: [blocker], blocked_count: 0)
 
   let assert Task(blocked_count: 0, dependencies: [], ..) =
@@ -56,14 +55,18 @@ pub fn remove_from_task_clamps_blocked_count_test() {
 
 fn sample_dependency(
   depends_on_task_id: Int,
-  status: task_status.TaskPhase,
+  state: task_state.TaskExecutionState,
 ) -> TaskDependency {
   TaskDependency(
     depends_on_task_id: depends_on_task_id,
     title: "Dependency",
-    status: status,
+    state: state,
     claimed_by: None,
   )
+}
+
+fn done_state() -> task_state.TaskExecutionState {
+  task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7)
 }
 
 fn sample_task() -> Task {

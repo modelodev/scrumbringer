@@ -9,7 +9,7 @@
 ////
 //// - Convert SQL row types to Task records
 //// - Handle nullable field mapping (Int/String → Option)
-//// - Parse status strings into TaskPhase ADT
+//// - Parse task execution state into the canonical lifecycle ADT
 ////
 //// ## Non-responsibilities
 ////
@@ -20,7 +20,7 @@
 ////
 //// - **queries.gleam**: Uses these mappers after DB queries
 //// - **sql.gleam**: Provides row types from squirrel
-//// - **domain/task_status**: Provides TaskPhase ADT
+//// - **domain/task/state**: Provides canonical task execution state
 
 import domain/card
 import domain/task.{
@@ -472,29 +472,52 @@ fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
   use depends_on_task_id <- decode.field("task_id", decode.int)
   use title <- decode.field("title", decode.string)
   use status_str <- decode.field("status", decode.string)
+  use is_ongoing <- decode.optional_field("is_ongoing", False, decode.bool)
+  use claimed_by_user_id <- decode.optional_field(
+    "claimed_by_user_id",
+    None,
+    decode.optional(decode.int),
+  )
+  use claimed_at <- decode.optional_field(
+    "claimed_at",
+    None,
+    decode.optional(decode.string),
+  )
+  use completed_at <- decode.optional_field(
+    "completed_at",
+    None,
+    decode.optional(decode.string),
+  )
   use claimed_by <- decode.optional_field(
     "claimed_by",
     None,
     decode.optional(decode.string),
   )
-  case task_status.parse_task_status(status_str) {
-    Ok(status) ->
+  case
+    task_state.from_db(
+      status_str,
+      is_ongoing,
+      claimed_by_user_id,
+      claimed_at,
+      completed_at,
+    )
+  {
+    Ok(state) ->
       decode.success(TaskDependency(
         depends_on_task_id: depends_on_task_id,
         title: title,
-        status: status,
+        state: state,
         claimed_by: claimed_by,
       ))
-    Error(task_status.UnknownTaskPhase(value))
-    | Error(task_status.UnknownWorkState(value)) ->
+    Error(_) ->
       decode.failure(
         TaskDependency(
           depends_on_task_id: depends_on_task_id,
           title: title,
-          status: task_status.Available,
+          state: task_state.Available,
           claimed_by: claimed_by,
         ),
-        "TaskDependency.status: " <> value,
+        "TaskDependency.state: " <> status_str,
       )
   }
 }

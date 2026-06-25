@@ -2,8 +2,8 @@ import gleam/json
 import gleam/option.{None, Some}
 
 import domain/task.{Task, TaskDependency}
+import domain/task/state as task_state
 import domain/task/task_codec as codec
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 
 pub fn task_due_date_roundtrip_test() {
@@ -22,11 +22,11 @@ pub fn task_dependency_decoder_accepts_known_status_test() {
   let assert Ok(TaskDependency(
     depends_on_task_id: 42,
     title: "Design",
-    status: task_status.Claimed(task_status.Taken),
+    state: task_state.Claimed(7, "2026-06-18T10:00:00Z", task_state.Taken),
     claimed_by: None,
   )) =
     json.parse(
-      "{\"task_id\":42,\"title\":\"Design\",\"status\":\"claimed\"}",
+      "{\"task_id\":42,\"title\":\"Design\",\"status\":\"claimed\",\"claimed_by_user_id\":7,\"claimed_at\":\"2026-06-18T10:00:00Z\",\"is_ongoing\":false}",
       codec.task_dependency_decoder(),
     )
 }

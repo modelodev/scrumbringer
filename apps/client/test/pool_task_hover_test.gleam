@@ -10,7 +10,6 @@ import domain/project/id as project_id
 import domain/task.{Task, TaskDependency}
 import domain/task/id as task_id
 import domain/task/state as task_state
-import domain/task_status.{Available, Claimed, Done, Taken}
 import domain/task_type.{TaskTypeInline}
 import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_hover
@@ -117,19 +116,23 @@ fn sample_task() {
       TaskDependency(
         depends_on_task_id: 1,
         title: "OAuth setup",
-        status: Available,
+        state: task_state.Available,
         claimed_by: None,
       ),
       TaskDependency(
         depends_on_task_id: 2,
         title: "API review",
-        status: Claimed(Taken),
+        state: task_state.Claimed(
+          claimed_by: 7,
+          claimed_at: "2026-06-01T10:00:00Z",
+          mode: task_state.Taken,
+        ),
         claimed_by: None,
       ),
       TaskDependency(
         depends_on_task_id: 3,
         title: "Done blocker",
-        status: Done,
+        state: task_state.Closed(task_state.Done, "2026-06-01T10:00:00Z", 7),
         claimed_by: None,
       ),
     ],
