@@ -131,7 +131,7 @@ fn create_dependency_payload(
   ))
   use depends_on_task <- result.try(fetch_task(db, depends_on_task_id, user.id))
   use Nil <- result.try(require_same_project(task, depends_on_task))
-  use Nil <- result.try(require_dependency_not_completed(depends_on_task))
+  use Nil <- result.try(require_dependency_open(depends_on_task))
   use Nil <- result.try(require_dependency_absent(
     db,
     task.id,
@@ -273,7 +273,7 @@ fn require_same_project(
   }
 }
 
-fn require_dependency_not_completed(
+fn require_dependency_open(
   depends_on_task: domain_task.Task,
 ) -> Result(Nil, wisp.Response) {
   case depends_on_task.state {
