@@ -74,11 +74,15 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let api_tokens_update.Update(api_tokens, local_fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    let model =
-      client_state.update_admin(model, fn(admin) {
-        admin_state.AdminModel(..admin, api_tokens: api_tokens)
-      })
-    #(model, local_fx)
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          admin_state.AdminModel(..admin, api_tokens: api_tokens)
+        })
+      #(model, local_fx)
+    },
+  )
 }

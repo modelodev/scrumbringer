@@ -34,9 +34,11 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let rule_metrics_workflow.Update(metrics, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    #(set_admin_metrics(model, metrics), fx)
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() { #(set_admin_metrics(model, metrics), fx) },
+  )
 }
 
 fn context() -> rule_metrics_workflow.Context(client_state.Msg) {

@@ -34,15 +34,15 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case update {
     metrics_workflow.MemberUpdate(metrics, fx, auth_policy) ->
-      route_support.apply_auth_check_before(
+      route_support.apply_auth_check(
         model,
-        auth_error(auth_policy),
+        route_support.auth_check_before(auth_error(auth_policy)),
         fn() { #(set_member_metrics(model, metrics), fx) },
       )
     metrics_workflow.AdminUpdate(metrics, fx, auth_policy) ->
-      route_support.apply_auth_check_before(
+      route_support.apply_auth_check(
         model,
-        auth_error(auth_policy),
+        route_support.auth_check_before(auth_error(auth_policy)),
         fn() { #(set_admin_metrics(model, metrics), fx) },
       )
   }

@@ -30,9 +30,11 @@ fn apply_update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let skills_workflow.Update(skills, fx, auth_policy) = update
 
-  route_support.apply_auth_check_before(model, auth_error(auth_policy), fn() {
-    #(set_member_skills(model, skills), fx)
-  })
+  route_support.apply_auth_check(
+    model,
+    route_support.auth_check_before(auth_error(auth_policy)),
+    fn() { #(set_member_skills(model, skills), fx) },
+  )
 }
 
 fn context(
