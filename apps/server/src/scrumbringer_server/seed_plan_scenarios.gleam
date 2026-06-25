@@ -183,13 +183,13 @@ fn build_for_project(
     5,
     3,
   ))
-  use direct_done <- result.try(insert_plan_qa_task(
+  use direct_closed <- result.try(insert_plan_qa_task(
     db,
     project_id,
     direct_id,
     no_capability_type_id,
     "Plan QA - Direct done no capability",
-    done_state_template(),
+    closed_outcome_state_template(),
     context.admin_id,
     None,
     2,
@@ -306,13 +306,13 @@ fn build_for_project(
     pool_dependency.task_id,
     context.admin_id,
   ))
-  use closed_done <- result.try(insert_plan_qa_task(
+  use closed_outcome_task <- result.try(insert_plan_qa_task(
     db,
     project_id,
     closed_id,
     task_id,
     "Plan QA - Closed done task",
-    done_state_template(),
+    closed_outcome_state_template(),
     context.admin_id,
     None,
     1,
@@ -382,7 +382,7 @@ fn build_for_project(
       task_seeds: [
         direct_available,
         direct_claimed,
-        direct_done,
+        direct_closed,
         api_available,
         api_dependency,
         api_blocked,
@@ -391,7 +391,7 @@ fn build_for_project(
         pool_ready_due_today,
         pool_dependency,
         pool_blocked_overdue,
-        closed_done,
+        closed_outcome_task,
         impact_backend,
         impact_frontend,
         impact_qa,
@@ -469,7 +469,7 @@ fn insert_plan_qa_task_with_due(
   due_date: Option(String),
 ) -> Result(TaskSeed, String) {
   let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case execution_state {
+  let #(claimed_by, claimed_at, closed_at) = case execution_state {
     task_state.Claimed(..) -> #(
       claimed_by,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
@@ -488,7 +488,7 @@ fn insert_plan_qa_task_with_due(
       created_by,
       claimed_by,
       claimed_at,
-      completed_at,
+      closed_at,
     )
 
   use task_id <- result.try(seed_db.insert_task(
@@ -533,7 +533,7 @@ fn insert_pool_qa_task_with_due(
   due_date: Option(String),
 ) -> Result(TaskSeed, String) {
   let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case execution_state {
+  let #(claimed_by, claimed_at, closed_at) = case execution_state {
     task_state.Claimed(..) -> #(
       claimed_by,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
@@ -552,7 +552,7 @@ fn insert_pool_qa_task_with_due(
       created_by,
       claimed_by,
       claimed_at,
-      completed_at,
+      closed_at,
     )
 
   use task_id <- result.try(seed_db.insert_task(
@@ -593,7 +593,7 @@ fn insert_seed_root_card(
   root_card_state: card.CardPhase,
   created_days_ago: Int,
   activated_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> Result(Int, String) {
   seed_db.insert_root_card(
     db,
@@ -605,7 +605,7 @@ fn insert_seed_root_card(
       created_by: admin_id,
       created_at: Some(days_ago_timestamp(created_days_ago)),
       activated_at: activated_at,
-      completed_at: completed_at,
+      completed_at: closed_at,
     ),
   )
 }
@@ -660,7 +660,7 @@ fn hydrate_seed_execution_state(
   created_by: Int,
   claimed_by: Option(Int),
   claimed_at: Option(String),
-  completed_at: Option(String),
+  closed_at: Option(String),
 ) -> task_state.TaskExecutionState {
   case execution_state {
     task_state.Available -> task_state.Available
@@ -673,7 +673,7 @@ fn hydrate_seed_execution_state(
     task_state.Closed(reason: reason, ..) ->
       task_state.Closed(
         reason: reason,
-        closed_at: option_string(completed_at, "NOW()"),
+        closed_at: option_string(closed_at, "NOW()"),
         closed_by: created_by,
       )
   }
@@ -685,7 +685,7 @@ fn claimed_state_template(
   task_state.Claimed(claimed_by: 0, claimed_at: "", mode: mode)
 }
 
-fn done_state_template() -> task_state.TaskExecutionState {
+fn closed_outcome_state_template() -> task_state.TaskExecutionState {
   task_state.Closed(reason: task_state.Done, closed_at: "", closed_by: 0)
 }
 
