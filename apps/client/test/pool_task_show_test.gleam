@@ -5,7 +5,7 @@ import lustre/element
 import domain/card.{type Card, Active, Card}
 import domain/remote
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_show

@@ -27,7 +27,7 @@ import domain/task.{
   type AutomationOrigin, type Task, type TaskDependency, AutomationOrigin, Task,
   TaskDependency,
 }
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/dynamic/decode
@@ -442,7 +442,7 @@ fn parse_optional_card_color(
 
 fn invalid_task_state_error(
   status: String,
-  error: task_state.TaskStateError,
+  error: task_state.TaskExecutionStateError,
 ) -> ServiceError {
   let reason = case error {
     task_state.UnknownStatus(value) -> "unknown status " <> value

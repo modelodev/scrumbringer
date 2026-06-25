@@ -1,7 +1,9 @@
 import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status.{type TaskPhase, Available, Claimed, Done, Taken}
+import domain/task/state as task_state
+import domain/task_status.{
+  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+}
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -522,9 +524,9 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
       task_state.Claimed(
         claimed_by: 1,
         claimed_at: "2026-01-01T00:00:00Z",
-        mode: mode,
+        mode: claim_mode(mode),
       )
-    Done -> task_state.Done(completed_at: "2026-01-02T00:00:00Z")
+    Done -> task_state.Closed(task_state.Done, "2026-01-02T00:00:00Z", 7)
   }
   Task(
     id: id,
@@ -552,4 +554,11 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
     dependencies: [],
     automation_origin: None,
   )
+}
+
+fn claim_mode(mode: task_status.ClaimedState) -> task_state.TaskClaimMode {
+  case mode {
+    Taken -> task_state.Taken
+    Ongoing -> task_state.Ongoing
+  }
 }

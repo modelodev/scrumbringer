@@ -13,7 +13,7 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/project_role
 import domain/remote
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/client_state
@@ -44,7 +44,7 @@ fn make_task(
   id: Int,
   title: String,
   user_id: Int,
-  mode: task_status.ClaimedState,
+  mode: task_state.TaskClaimMode,
 ) -> Task {
   let state =
     task_state.Claimed(
@@ -91,7 +91,7 @@ fn blocked(task: Task) -> Task {
 }
 
 fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task {
-  let task = make_task(id, title, user_id, task_status.Taken)
+  let task = make_task(id, title, user_id, task_state.Taken)
   Task(..task, ongoing_by: Some(task_status.OngoingBy(user_id: user_id)))
 }
 
@@ -414,8 +414,8 @@ pub fn people_view_no_results_state_test() {
 
 pub fn people_view_availability_rules_test() {
   let tasks = [
-    make_task(1, "Active task", 10, task_status.Ongoing),
-    make_task(2, "Claimed task", 11, task_status.Taken),
+    make_task(1, "Active task", 10, task_state.Ongoing),
+    make_task(2, "Claimed task", 11, task_state.Taken),
   ]
 
   let model =
@@ -507,17 +507,17 @@ pub fn people_view_availability_prefers_ongoing_by_test() {
 
 pub fn people_view_surface_summary_and_collapsed_balance_test() {
   let tasks = [
-    make_task(1, "Build intake", 10, task_status.Ongoing)
+    make_task(1, "Build intake", 10, task_state.Ongoing)
       |> task_on_card(101, "Checkout", card.Blue),
-    make_task(2, "Draft copy", 10, task_status.Taken)
+    make_task(2, "Draft copy", 10, task_state.Taken)
       |> task_on_card(102, "Onboarding", card.Green),
-    make_task(3, "Review logs", 11, task_status.Taken)
+    make_task(3, "Review logs", 11, task_state.Taken)
       |> task_on_card(103, "Observability", card.Purple),
-    make_task(4, "Patch alert", 11, task_status.Taken)
+    make_task(4, "Patch alert", 11, task_state.Taken)
       |> task_on_card(103, "Observability", card.Purple),
-    make_task(5, "Check query", 11, task_status.Taken)
+    make_task(5, "Check query", 11, task_state.Taken)
       |> task_on_card(103, "Observability", card.Purple),
-    make_task(6, "Plan rollout", 11, task_status.Taken)
+    make_task(6, "Plan rollout", 11, task_state.Taken)
       |> task_on_card(103, "Observability", card.Purple),
   ]
 
@@ -591,11 +591,11 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
 
 pub fn people_view_expanded_keeps_card_context_without_card_groups_test() {
   let tasks = [
-    make_task(1, "Build intake", 10, task_status.Ongoing)
+    make_task(1, "Build intake", 10, task_state.Ongoing)
       |> task_on_card(101, "Checkout", card.Blue),
-    make_task(2, "Draft copy", 10, task_status.Taken)
+    make_task(2, "Draft copy", 10, task_state.Taken)
       |> task_on_card(102, "Onboarding", card.Green),
-    make_task(3, "Review copy", 10, task_status.Taken)
+    make_task(3, "Review copy", 10, task_state.Taken)
       |> task_on_card(103, "Billing", card.Purple),
   ]
 
@@ -689,7 +689,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
         created_at: "",
       ),
     ])
-    |> with_tasks([make_task(1, "Active task", 10, task_status.Ongoing)])
+    |> with_tasks([make_task(1, "Active task", 10, task_state.Ongoing)])
     |> with_people_expanded(10)
 
   let html =
@@ -759,9 +759,9 @@ pub fn people_view_toggle_is_keyboard_accessible_button_test() {
 
 pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
   let tasks = [
-    make_task(1, "Ongoing one", 10, task_status.Ongoing),
+    make_task(1, "Ongoing one", 10, task_state.Ongoing),
     make_taken_task_with_ongoing_by(2, "Ongoing via session", 10),
-    make_task(3, "Claimed parked", 10, task_status.Taken),
+    make_task(3, "Claimed parked", 10, task_state.Taken),
   ]
 
   let model =
@@ -824,13 +824,13 @@ pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
     make_card(4, Some(2), "Grand Story"),
   ]
   let tasks = [
-    make_task(1, "Root task", 10, task_status.Taken)
+    make_task(1, "Root task", 10, task_state.Taken)
       |> task_on_card(1, "Root Initiative", card.Blue),
-    make_task(2, "Child task", 10, task_status.Taken)
+    make_task(2, "Child task", 10, task_state.Taken)
       |> task_on_card(2, "Child Feature", card.Green),
-    make_task(3, "Other task", 10, task_status.Taken)
+    make_task(3, "Other task", 10, task_state.Taken)
       |> task_on_card(3, "Other Initiative", card.Purple),
-    make_task(4, "Grand task", 10, task_status.Taken)
+    make_task(4, "Grand task", 10, task_state.Taken)
       |> task_on_card(4, "Grand Story", card.Yellow),
   ]
   let base =
@@ -871,7 +871,7 @@ pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
 pub fn people_view_search_matches_person_task_card_and_capability_test() {
   let cards = [make_card(1, None, "Payments")]
   let task =
-    make_task(1, "Retry queue", 10, task_status.Taken)
+    make_task(1, "Retry queue", 10, task_state.Taken)
     |> task_on_card(1, "Payments", card.Blue)
     |> task_with_type(5, "Bug")
   let base =
@@ -913,8 +913,8 @@ pub fn people_view_search_matches_person_task_card_and_capability_test() {
 
 pub fn people_view_visibility_filters_work_attention_and_free_test() {
   let tasks = [
-    make_task(1, "Active task", 10, task_status.Ongoing),
-    make_task(2, "Blocked task", 11, task_status.Taken) |> blocked,
+    make_task(1, "Active task", 10, task_state.Ongoing),
+    make_task(2, "Blocked task", 11, task_state.Taken) |> blocked,
   ]
   let base =
     base_model()
@@ -960,9 +960,9 @@ pub fn people_view_visibility_filters_work_attention_and_free_test() {
 
 pub fn people_sort_orders_by_attention_name_and_claimed_test() {
   let tasks = [
-    make_task(1, "Blocked task", 20, task_status.Taken) |> blocked,
-    make_task(2, "Ongoing task", 30, task_status.Ongoing),
-    make_task(3, "Extra task", 30, task_status.Taken),
+    make_task(1, "Blocked task", 20, task_state.Taken) |> blocked,
+    make_task(2, "Ongoing task", 30, task_state.Ongoing),
+    make_task(3, "Extra task", 30, task_state.Taken),
   ]
   let assert [blocked_task, ongoing_task, extra_task] = tasks
   let people = [
@@ -999,8 +999,8 @@ pub fn people_view_does_not_render_command_actions_test() {
     |> with_people_roster(remote.Loaded([project_member(10, 2)]))
     |> with_org_users([org_user(10, "ana@example.com")])
     |> with_tasks([
-      make_task(1, "Ongoing task", 10, task_status.Ongoing),
-      make_task(2, "Claimed task", 10, task_status.Taken),
+      make_task(1, "Ongoing task", 10, task_state.Ongoing),
+      make_task(2, "Claimed task", 10, task_state.Taken),
     ])
     |> with_people_expanded(10)
 

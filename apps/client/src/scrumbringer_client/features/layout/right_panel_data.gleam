@@ -5,8 +5,8 @@ import gleam/option.{type Option, None, Some}
 import domain/card.{type Card, type CardColor}
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type WorkSession, WorkSession}
-import domain/task_state
-import domain/task_status.{Done, Taken}
+import domain/task/state as task_state
+import domain/task_status.{Done}
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/helpers/time as helpers_time
 
@@ -33,7 +33,7 @@ fn find_task(tasks: List(Task), task_id: Int) -> Option(Task) {
 pub fn claimed_tasks(tasks: List(Task), user_id: Int) -> List(Task) {
   list.filter(tasks, fn(task) {
     case task.state {
-      task_state.Claimed(claimed_by: claimed_by, mode: Taken, ..) ->
+      task_state.Claimed(claimed_by: claimed_by, mode: task_state.Taken, ..) ->
         claimed_by == user_id
       _ -> False
     }

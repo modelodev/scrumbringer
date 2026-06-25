@@ -14,8 +14,7 @@ import domain/project/id as project_id
 import domain/remote
 import domain/task
 import domain/task/id as task_id
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import domain/user.{User}
 import domain/user/id as user_id
@@ -106,7 +105,7 @@ fn sample_task() -> task.Task {
     task_state.Claimed(
       claimed_by: 7,
       claimed_at: "2026-03-20T15:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
 
   task.Task(

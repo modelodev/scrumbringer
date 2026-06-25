@@ -17,6 +17,8 @@ pub fn claim_task(
   now: String,
   mode: state.TaskClaimMode,
 ) -> Result(task_entity.Task, TaskTransitionError) {
+  let actor_id = user_id.to_int(actor_id)
+
   case task.execution_state {
     state.Available ->
       Ok(
@@ -35,6 +37,8 @@ pub fn complete_task(
   actor_id: user_id.UserId,
   now: String,
 ) -> Result(task_entity.Task, TaskTransitionError) {
+  let actor_id = user_id.to_int(actor_id)
+
   case task.execution_state {
     state.Available -> Error(TaskNotClaimed)
     state.Claimed(claimed_by, _, _) if claimed_by == actor_id ->

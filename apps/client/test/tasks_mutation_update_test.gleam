@@ -4,8 +4,7 @@ import lustre/effect
 import domain/api_error.{ApiError}
 import domain/remote
 import domain/task.{type Task, Task, with_state}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -49,7 +48,7 @@ fn dispatch_context() -> mutation_update.DispatchContext(Nil) {
   )
 }
 
-fn sample_task(id: Int, state: task_state.TaskState) -> Task {
+fn sample_task(id: Int, state: task_state.TaskExecutionState) -> Task {
   Task(
     id: id,
     project_id: 1,
@@ -239,7 +238,7 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
@@ -264,7 +263,7 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
@@ -276,7 +275,7 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
     )
 
   let assert mutation_update.NoPolicy = policy
-  let expected = sample_task(42, task_state.Done(completed_at: ""))
+  let expected = sample_task(42, task_state.Closed(task_state.Done, "", 7))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
   let assert True = fx != effect.none()
@@ -308,7 +307,7 @@ pub fn local_delete_clicked_claimed_task_does_not_submit_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
@@ -508,7 +507,7 @@ fn claimed_task(task: Task, user_id: Int) -> Task {
     task_state.Claimed(
       claimed_by: user_id,
       claimed_at: "",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     ),
   )
 }

@@ -25,6 +25,7 @@ import domain/automation
 import domain/card
 import domain/org_role
 import domain/project_role
+import domain/task/state as task_state
 import domain/task_status.{
   type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 }
@@ -2689,8 +2690,8 @@ fn trigger_rule_executions(
                 card_id: None,
               ),
               state.admin_id,
-              Some(Claimed(Taken)),
-              Done,
+              Some(task_state.Claimed(state.admin_id, "", task_state.Taken)),
+              task_state.Closed(task_state.Done, "", state.admin_id),
             )
           rules_engine.evaluate_rules(db, event)
           |> result.map_error(fn(_) { "Rule evaluation failed" })

@@ -7,7 +7,6 @@ import domain/task/state.{
   type TaskClaimMode, type TaskClosedReason, type TaskExecutionState, Available,
   Claimed, Closed, ClosedByAncestor, Done, ManuallyClosed, Ongoing, Taken,
 }
-import domain/user/id as user_id
 
 pub fn decoder() -> decode.Decoder(TaskExecutionState) {
   use kind <- decode.field("type", decode.string)
@@ -18,7 +17,7 @@ pub fn decoder() -> decode.Decoder(TaskExecutionState) {
       use claimed_at <- decode.field("claimed_at", decode.string)
       use mode <- decode.field("mode", claim_mode_decoder())
       decode.success(Claimed(
-        claimed_by: user_id.new(claimed_by),
+        claimed_by: claimed_by,
         claimed_at: claimed_at,
         mode: mode,
       ))
@@ -30,7 +29,7 @@ pub fn decoder() -> decode.Decoder(TaskExecutionState) {
       decode.success(Closed(
         reason: reason,
         closed_at: closed_at,
-        closed_by: user_id.new(closed_by),
+        closed_by: closed_by,
       ))
     }
     _ -> decode.failure(Available, "TaskExecutionState")
@@ -46,7 +45,7 @@ pub fn to_json(state: TaskExecutionState) -> Json {
     Claimed(claimed_by, claimed_at, mode) ->
       json.object([
         #("type", json.string("claimed")),
-        #("claimed_by", json.int(user_id.to_int(claimed_by))),
+        #("claimed_by", json.int(claimed_by)),
         #("claimed_at", json.string(claimed_at)),
         #("mode", claim_mode_to_json(mode)),
       ])
@@ -55,7 +54,7 @@ pub fn to_json(state: TaskExecutionState) -> Json {
         #("type", json.string("closed")),
         #("reason", closed_reason_to_json(reason)),
         #("closed_at", json.string(closed_at)),
-        #("closed_by", json.int(user_id.to_int(closed_by))),
+        #("closed_by", json.int(closed_by)),
       ])
   }
 }

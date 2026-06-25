@@ -4,7 +4,7 @@ import lustre/effect
 import domain/api_error.{type ApiError, ApiError}
 import domain/remote
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies

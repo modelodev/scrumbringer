@@ -11,8 +11,7 @@ import domain/project/id as project_id
 import domain/project_role
 import domain/task.{Task}
 import domain/task/id as task_id
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import domain/user/id as user_id
 import gleam/dynamic/decode
@@ -243,7 +242,7 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
       state: task_state.Claimed(
         claimed_by: 42,
         claimed_at: "2026-06-15T10:00:00Z",
-        mode: task_status.Ongoing,
+        mode: task_state.Ongoing,
       ),
       created_by: 7,
       created_at: "2026-06-15T09:00:00Z",

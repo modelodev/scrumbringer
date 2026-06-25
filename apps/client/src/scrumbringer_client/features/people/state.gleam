@@ -6,7 +6,7 @@ import gleam/order
 import gleam/string
 
 import domain/task as domain_task
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 import scrumbringer_client/ui/badge
 

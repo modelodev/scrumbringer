@@ -5,8 +5,7 @@ import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
@@ -132,7 +131,7 @@ fn task_with(
   id: Int,
   title: String,
   type_id: Int,
-  state: task_state.TaskState,
+  state: task_state.TaskExecutionState,
   card_id: Int,
 ) -> Task {
   let icon = case type_id {
@@ -175,14 +174,14 @@ fn claimed_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
     task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-01T00:00:00Z",
-      mode: task_status.Ongoing,
+      mode: task_state.Ongoing,
     )
 
   task_with(id, title, type_id, state, card_id)
 }
 
 fn completed_task(id: Int, title: String, type_id: Int, card_id: Int) -> Task {
-  let state = task_state.Done(completed_at: "2026-01-01T00:00:00Z")
+  let state = task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 7)
   task_with(id, title, type_id, state, card_id)
 }
 

@@ -5,8 +5,7 @@ import lustre/element
 import domain/card.{Active, Card, Draft}
 import domain/remote.{Loaded, Loading}
 import domain/task.{Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/components/card_show
 import scrumbringer_client/features/cards/show_entry
@@ -149,7 +148,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
       state: task_state.Claimed(
         claimed_by: 8,
         claimed_at: "2026-06-20T10:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
   let blocked = Task(..sample_task(3, Some(4)), blocked_count: 2)

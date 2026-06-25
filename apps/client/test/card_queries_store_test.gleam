@@ -4,7 +4,7 @@ import gleam/option
 import domain/card.{type Card, Card, Draft}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/state/normalized_store

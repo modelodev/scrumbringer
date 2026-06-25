@@ -18,7 +18,7 @@ import domain/card
 import domain/task.{
   type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
 }
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{
   type OngoingBy, type TaskPhase, type WorkState, OngoingBy,
 }

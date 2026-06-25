@@ -662,15 +662,19 @@ type HistoryWrite {
 
 fn write_browser_url(target: String, mode: HistoryWrite) -> Effect(msg) {
   effect.from(fn(_dispatch) {
-    case current_browser_url() == target {
-      True -> Nil
-      False ->
+    case browser_url_write_needed(current_browser_url(), target) {
+      False -> Nil
+      True ->
         case mode {
           PushHistory -> client_ffi.history_push_state(target)
           ReplaceHistory -> client_ffi.history_replace_state(target)
         }
     }
   })
+}
+
+pub fn browser_url_write_needed(current: String, target: String) -> Bool {
+  current != target
 }
 
 fn current_browser_url() -> String {

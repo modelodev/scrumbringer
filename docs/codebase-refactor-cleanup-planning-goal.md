@@ -243,7 +243,7 @@ Zonas iniciales a revisar:
 - `apps/server/src/scrumbringer_server/http/tasks/*`
 - `apps/server/src/scrumbringer_server/http/cards.gleam`
 - `shared/src/domain/task.gleam`
-- `shared/src/domain/task_state.gleam`
+- `shared/src/domain/task/state.gleam`
 - `shared/src/domain/task_status.gleam`
 - `shared/src/domain/card.gleam`
 - `shared/src/domain/card/*`

@@ -28,7 +28,7 @@ import domain/metrics.{
 import domain/project.{type Project, Project}
 import domain/remote.{type Remote}
 import domain/task.{Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{
   type WorkState, WorkAvailable, WorkClaimed, WorkDone, WorkOngoing,
   task_status_to_string,

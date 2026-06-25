@@ -6,6 +6,7 @@ import gleam/json.{type Json}
 import gleam/option.{type Option, None, Some}
 
 import domain/card
+import domain/card/state as card_state
 
 pub type DepthScope {
   DepthScope(Int)
@@ -32,7 +33,7 @@ pub type CardMoveRequest {
 }
 
 pub type CardCloseRequest {
-  CardCloseRequest(reason: String)
+  CardCloseRequest(reason: card_state.CardClosedReason)
 }
 
 pub type CardActionResponse {
@@ -54,6 +55,7 @@ pub type DecodeError {
   InvalidJson
   InvalidColor
   InvalidScope
+  InvalidClosedReason
 }
 
 pub fn depth_scope_codec() -> decode.Decoder(DepthScope) {
@@ -136,7 +138,14 @@ pub fn card_close_request_codec() -> decode.Decoder(CardCloseRequest) {
     "manually_closed",
     decode.string,
   )
-  decode.success(CardCloseRequest(reason: reason))
+  case parse_closed_reason(reason) {
+    Ok(parsed_reason) -> decode.success(CardCloseRequest(reason: parsed_reason))
+    Error(_) ->
+      decode.failure(
+        CardCloseRequest(reason: card_state.ManuallyClosed),
+        "CardClosedReason",
+      )
+  }
 }
 
 pub fn decode_card_create(
@@ -154,8 +163,14 @@ pub fn decode_card_move(data: Dynamic) -> Result(CardMoveRequest, DecodeError) {
 }
 
 pub fn decode_card_close(data: Dynamic) -> Result(CardCloseRequest, DecodeError) {
-  decode.run(data, card_close_request_codec())
-  |> result_from_decode
+  case decode.run(data, card_close_raw_codec()) {
+    Ok(reason) ->
+      case parse_closed_reason(reason) {
+        Ok(parsed_reason) -> Ok(CardCloseRequest(reason: parsed_reason))
+        Error(error) -> Error(error)
+      }
+    Error(_) -> Error(InvalidJson)
+  }
 }
 
 pub fn action_response_to_json(response: CardActionResponse) -> Json {
@@ -187,6 +202,24 @@ fn result_from_decode(result: Result(a, b)) -> Result(a, DecodeError) {
   case result {
     Ok(value) -> Ok(value)
     Error(_) -> Error(InvalidJson)
+  }
+}
+
+fn card_close_raw_codec() -> decode.Decoder(String) {
+  use reason <- decode.optional_field(
+    "reason",
+    "manually_closed",
+    decode.string,
+  )
+  decode.success(reason)
+}
+
+fn parse_closed_reason(
+  reason: String,
+) -> Result(card_state.CardClosedReason, DecodeError) {
+  case reason {
+    "manually_closed" -> Ok(card_state.ManuallyClosed)
+    _ -> Error(InvalidClosedReason)
   }
 }
 

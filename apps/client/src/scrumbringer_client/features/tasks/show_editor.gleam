@@ -14,7 +14,7 @@ import lustre/event
 import domain/card.{type Card}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/features/tasks/show_permissions
@@ -59,7 +59,7 @@ pub fn permission_hint(
 ) -> opt.Option(String) {
   case current_task.state, can_edit_task(config, current_task) {
     _, True -> opt.None
-    task_state.Done(_), False ->
+    task_state.Closed(task_state.Done, _, _), False ->
       opt.Some(i18n.t(config.locale, i18n_text.TaskEditDoneReadOnly))
     _, False -> opt.Some(i18n.t(config.locale, i18n_text.TaskEditRequiresClaim))
   }

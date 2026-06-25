@@ -3,8 +3,7 @@ import gleam/option.{None, Some}
 
 import domain/remote.{Loaded, Loading}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/task_list
 
@@ -35,12 +34,12 @@ pub fn set_state_updates_matching_task_test() {
     task_list.set_state(
       tasks,
       1,
-      task_state.Claimed(claimed_by: 7, claimed_at: "", mode: task_status.Taken),
+      task_state.Claimed(claimed_by: 7, claimed_at: "", mode: task_state.Taken),
     )
   let assert task_state.Claimed(
     claimed_by: 7,
     claimed_at: "",
-    mode: task_status.Taken,
+    mode: task_state.Taken,
   ) = updated.state
 }
 

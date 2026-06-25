@@ -11,8 +11,7 @@ import domain/card.{type Card}
 import domain/note/entity.{type Note}
 import domain/remote.{unwrap}
 import domain/task.{type Task, type WorkSession, Task}
-import domain/task_state
-import domain/task_status.{Taken}
+import domain/task/state as task_state
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
@@ -283,7 +282,7 @@ fn claimed_tasks(context: Context(msg), user: User) -> List(Task) {
   |> unwrap([])
   |> list.filter(fn(t) {
     case t.state {
-      task_state.Claimed(claimed_by: claimed_by, mode: Taken, ..) ->
+      task_state.Claimed(claimed_by: claimed_by, mode: task_state.Taken, ..) ->
         claimed_by == user.id
       _ -> False
     }

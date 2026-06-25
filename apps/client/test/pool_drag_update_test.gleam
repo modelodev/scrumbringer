@@ -10,7 +10,7 @@ import domain/remote.{Loaded}
 import domain/task.{
   type Task, type TaskDependency, type TaskPosition, Task, TaskDependency,
 }
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool

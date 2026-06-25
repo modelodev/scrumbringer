@@ -45,7 +45,7 @@ import domain/card
 import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task as domain_task
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{
   type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
 }

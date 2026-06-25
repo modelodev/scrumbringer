@@ -5,7 +5,7 @@ import lustre/element
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 
 import scrumbringer_client/client_state

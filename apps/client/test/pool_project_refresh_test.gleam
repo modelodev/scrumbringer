@@ -5,7 +5,7 @@ import gleam/option.{None, Some}
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages

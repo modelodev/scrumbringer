@@ -2,8 +2,7 @@ import domain/card.{Active, Card, Closed}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/list
 import gleam/option.{None, Some}
@@ -101,7 +100,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-01T00:00:00Z",
-      mode: task_status.Ongoing,
+      mode: task_state.Ongoing,
     )
 
   Task(
@@ -162,7 +161,7 @@ fn claimed_taken_task() -> Task {
     task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-02T00:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
 
   Task(
@@ -185,7 +184,7 @@ fn blocked_task() -> Task {
 }
 
 fn completed_task() -> Task {
-  let state = task_state.Done(completed_at: "2026-01-03T00:00:00Z")
+  let state = task_state.Closed(task_state.Done, "2026-01-03T00:00:00Z", 7)
 
   Task(..available_task(), id: 5, title: "Done task", state: state)
 }

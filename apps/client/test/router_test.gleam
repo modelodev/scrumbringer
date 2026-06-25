@@ -343,6 +343,22 @@ pub fn format_login_test() {
   assert_equal(router.format(router.Login), "/")
 }
 
+pub fn browser_url_write_is_skipped_when_target_is_current_url_test() {
+  let assert False =
+    router.browser_url_write_needed(
+      "/app/pool?project=2#task-7",
+      "/app/pool?project=2#task-7",
+    )
+}
+
+pub fn browser_url_write_runs_when_target_changes_test() {
+  let assert True =
+    router.browser_url_write_needed(
+      "/app/pool?project=2",
+      "/app/pool?project=2&view=cards",
+    )
+}
+
 // Story 4.5: Config routes format correctly
 pub fn format_config_with_project_test() {
   assert_equal(

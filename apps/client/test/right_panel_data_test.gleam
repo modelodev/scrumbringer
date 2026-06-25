@@ -3,8 +3,7 @@ import gleam/option.{None, Some}
 import domain/card.{Active, Blue, Card, Gray}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{Task, WorkSession}
-import domain/task_state
-import domain/task_status.{Taken}
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/right_panel_data
@@ -32,8 +31,8 @@ pub fn find_loaded_task_returns_task_only_when_loaded_and_present_test() {
 
 pub fn claimed_tasks_keeps_only_taken_tasks_for_user_test() {
   let tasks = [
-    task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", Taken)),
-    task(2, task_state.Claimed(8, "2026-06-01T10:00:00Z", Taken)),
+    task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", task_state.Taken)),
+    task(2, task_state.Claimed(8, "2026-06-01T10:00:00Z", task_state.Taken)),
     task(3, task_state.Available),
   ]
 
@@ -48,12 +47,15 @@ pub fn my_cards_returns_cards_with_user_claimed_tasks_and_progress_test() {
   ]
   let tasks = [
     Task(
-      ..task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", Taken)),
+      ..task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", task_state.Taken)),
       card_id: Some(1),
     ),
-    Task(..task(2, task_state.Done("2026-06-02T10:00:00Z")), card_id: Some(1)),
     Task(
-      ..task(3, task_state.Claimed(8, "2026-06-01T10:00:00Z", Taken)),
+      ..task(2, task_state.Closed(task_state.Done, "2026-06-02T10:00:00Z", 7)),
+      card_id: Some(1),
+    ),
+    Task(
+      ..task(3, task_state.Claimed(8, "2026-06-01T10:00:00Z", task_state.Taken)),
       card_id: Some(2),
     ),
   ]
@@ -119,7 +121,7 @@ fn card(id: Int, title: String, color) {
   )
 }
 
-fn task(id: Int, state: task_state.TaskState) {
+fn task(id: Int, state: task_state.TaskExecutionState) {
   Task(
     id: id,
     project_id: 1,

@@ -15,7 +15,7 @@
 //// ```
 
 import domain/task as domain_task
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{Available, Claimed, Done}
 import gleam/option.{type Option, Some}
 import pog

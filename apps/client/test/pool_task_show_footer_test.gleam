@@ -3,8 +3,7 @@ import gleam/string
 import lustre/element
 
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status.{Ongoing, Taken}
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_footer
 import scrumbringer_client/i18n/locale
@@ -185,7 +184,7 @@ fn claimed_task(claimed_by claimed_by: Int) -> Task {
     task_state.Claimed(
       claimed_by: claimed_by,
       claimed_at: "2026-06-01T11:00:00Z",
-      mode: Taken,
+      mode: task_state.Taken,
     )
 
   Task(..available_task(), state: state)
@@ -196,7 +195,7 @@ fn ongoing_task(claimed_by claimed_by: Int) -> Task {
     task_state.Claimed(
       claimed_by: claimed_by,
       claimed_at: "2026-06-01T11:00:00Z",
-      mode: Ongoing,
+      mode: task_state.Ongoing,
     )
 
   Task(..available_task(), state: state)

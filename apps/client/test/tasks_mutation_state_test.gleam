@@ -2,13 +2,12 @@ import gleam/option.{None, Some}
 
 import domain/remote
 import domain/task.{type Task, Task, with_state}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/tasks/mutation_state
 
-fn sample_task(id: Int, state: task_state.TaskState) -> Task {
+fn sample_task(id: Int, state: task_state.TaskExecutionState) -> Task {
   Task(
     id: id,
     project_id: 1,
@@ -72,7 +71,7 @@ pub fn mutation_state_start_release_sets_available_state_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
@@ -91,13 +90,13 @@ pub fn mutation_state_start_complete_sets_completed_state_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
-  let next = mutation_state.start_complete(pool_with_tasks([task]), 42)
+  let next = mutation_state.start_complete(pool_with_tasks([task]), 42, Some(7))
   let expected =
-    remote.Loaded([sample_task(42, task_state.Done(completed_at: ""))])
+    remote.Loaded([sample_task(42, task_state.Closed(task_state.Done, "", 7))])
 
   let assert True = next.member_tasks == expected
   let assert True = next.member_task_mutation_in_flight
@@ -142,7 +141,7 @@ fn claimed_task(task: Task, user_id: Int) -> Task {
     task_state.Claimed(
       claimed_by: user_id,
       claimed_at: "",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     ),
   )
 }

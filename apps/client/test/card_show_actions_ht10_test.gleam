@@ -6,7 +6,7 @@ import lustre/element
 import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/pool/create_dialog

@@ -2,8 +2,7 @@ import domain/card.{type Card, Active, Card}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/option.{None, Some}
@@ -67,7 +66,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-01T00:00:00Z",
-      mode: task_status.Ongoing,
+      mode: task_state.Ongoing,
     )
 
   Task(

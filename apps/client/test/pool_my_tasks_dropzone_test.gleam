@@ -5,8 +5,7 @@ import lustre/element
 
 import domain/card
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/pool/my_tasks_dropzone
@@ -84,7 +83,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 7,
       claimed_at: "2026-03-20T15:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
 
   Task(

@@ -5,7 +5,7 @@
 //// multi-template fan-out cannot accidentally become first-class triggers.
 
 import domain/card
-import domain/task_status
+import domain/task/state as task_state
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -248,16 +248,17 @@ pub type TriggerKindParseError {
 }
 
 pub fn task_transition_trigger(
-  from_state: Option(task_status.TaskPhase),
-  to_state: task_status.TaskPhase,
+  from_state: Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
   task_type_id: Option(Int),
 ) -> Result(AutomationTrigger, TriggerParseError) {
   case from_state, to_state {
-    None, task_status.Available -> Ok(TaskCreated(task_type_id))
-    _, task_status.Claimed(_) -> Ok(TaskClaimed(task_type_id))
-    Some(task_status.Claimed(_)), task_status.Available ->
+    None, task_state.Available -> Ok(TaskCreated(task_type_id))
+    _, task_state.Claimed(_, _, _) -> Ok(TaskClaimed(task_type_id))
+    Some(task_state.Claimed(_, _, _)), task_state.Available ->
       Ok(TaskReleased(task_type_id))
-    _, task_status.Done -> Ok(TaskCompleted(task_type_id))
+    _, task_state.Closed(task_state.Done, _, _) ->
+      Ok(TaskCompleted(task_type_id))
     _, _ -> Error(UnsupportedTransition)
   }
 }
@@ -338,7 +339,7 @@ pub fn trigger_to_state_string(trigger: AutomationTrigger) -> String {
   case trigger {
     TaskCreated(_) | TaskReleased(_) -> "available"
     TaskClaimed(_) -> "claimed"
-    TaskCompleted(_) -> task_status.task_status_to_string(task_status.Done)
+    TaskCompleted(_) -> "completed"
     CardActivated(_) -> "en_curso"
     CardClosed(_) -> "cerrada"
   }

@@ -3,11 +3,11 @@
 import gleam/option as opt
 
 import domain/task.{type Task}
-import domain/task_state
+import domain/task/state as task_state
 
 pub fn can_edit(current_user_id: opt.Option(Int), current_task: Task) -> Bool {
   case current_task.state {
-    task_state.Done(_) -> False
+    task_state.Closed(task_state.Done, _, _) -> False
     _ -> can_edit_open_task(current_user_id, current_task)
   }
 }

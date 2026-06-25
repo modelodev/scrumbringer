@@ -5,8 +5,10 @@ import lustre/element
 
 import domain/remote
 import domain/task.{type Task, Task, TaskDependency}
-import domain/task_state
-import domain/task_status.{type TaskPhase, Available, Claimed, Done, Taken}
+import domain/task/state as task_state
+import domain/task_status.{
+  type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
@@ -149,9 +151,9 @@ fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
       task_state.Claimed(
         claimed_by: 1,
         claimed_at: "2026-06-08T00:00:00Z",
-        mode: mode,
+        mode: claim_mode(mode),
       )
-    Done -> task_state.Done(completed_at: "2026-06-08T00:00:00Z")
+    Done -> task_state.Closed(task_state.Done, "2026-06-08T00:00:00Z", 7)
   }
   Task(
     id: id,
@@ -176,4 +178,11 @@ fn sample_task(id: Int, title: String, status: TaskPhase) -> Task {
     dependencies: [],
     automation_origin: None,
   )
+}
+
+fn claim_mode(mode: task_status.ClaimedState) -> task_state.TaskClaimMode {
+  case mode {
+    Taken -> task_state.Taken
+    Ongoing -> task_state.Ongoing
+  }
 }

@@ -5,7 +5,7 @@ import gleam/option as opt
 
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, with_state}
-import domain/task_state.{type TaskState}
+import domain/task/state.{type TaskExecutionState}
 
 pub fn snapshot(tasks: Remote(List(Task))) -> opt.Option(List(Task)) {
   case tasks {
@@ -51,7 +51,7 @@ pub fn remove(tasks: Remote(List(Task)), task_id: Int) -> Remote(List(Task)) {
 pub fn set_state(
   tasks: Remote(List(Task)),
   task_id: Int,
-  state: TaskState,
+  state: TaskExecutionState,
 ) -> Remote(List(Task)) {
   update(tasks, task_id, fn(task) { with_state(task, state) })
 }

@@ -158,11 +158,7 @@ pub fn activation_excludes_closed_blocked_and_unclaimable_tasks_test() {
     )
   let available = card_task(1, card_id.new(1), task_state.Available)
   let closed =
-    card_task(
-      2,
-      card_id.new(1),
-      task_state.Closed(task_state.Done, now, user_id.new(7)),
-    )
+    card_task(2, card_id.new(1), task_state.Closed(task_state.Done, now, 7))
   let blocked =
     task_entity.Task(
       ..card_task(3, card_id.new(1), task_state.Available),

@@ -10,6 +10,7 @@ import domain/task/entity as task_entity
 import domain/task/id as task_id
 import domain/task/placement
 import domain/task/state as task_state
+import domain/user/id as user_id
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -178,7 +179,7 @@ fn close_task_if_available(
         execution_state: task_state.Closed(
           reason: task_state.ClosedByAncestor,
           closed_at: now,
-          closed_by: permissions.user_id(actor),
+          closed_by: permissions.user_id(actor) |> user_id.to_int,
         ),
       )
     task_state.Claimed(..) | task_state.Closed(..) -> task

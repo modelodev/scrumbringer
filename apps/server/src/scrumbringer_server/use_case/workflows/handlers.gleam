@@ -26,8 +26,10 @@
 
 import domain/field_update
 import domain/task as domain_task
-import domain/task_state
-import domain/task_status.{type TaskPhase, Available, Claimed, Done}
+import domain/task/state as task_state
+import domain/task_status.{
+  type ClaimedState, type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
+}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -529,7 +531,7 @@ fn authorize_task_edit(
     task_state.Available -> Ok(Nil)
     task_state.Claimed(claimed_by: owner_id, ..) if owner_id == user_id ->
       Ok(Nil)
-    task_state.Claimed(..) | task_state.Done(..) -> Error(NotAuthorized)
+    task_state.Claimed(..) | task_state.Closed(..) -> Error(NotAuthorized)
   }
 }
 
@@ -1110,7 +1112,13 @@ fn evaluate_task_rules(
   from_state: TaskPhase,
   to_state: TaskPhase,
 ) -> Nil {
-  let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
+  let event =
+    rules_engine.task_event(
+      ctx,
+      user_id,
+      Some(task_phase_to_execution_state(from_state, user_id)),
+      task_phase_to_execution_state(to_state, user_id),
+    )
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -1122,10 +1130,31 @@ fn evaluate_task_rules_created(
   ctx: rules_engine.TaskContext,
   user_id: Int,
 ) -> Nil {
-  let event = rules_engine.task_event(ctx, user_id, None, Available)
+  let event = rules_engine.task_event(ctx, user_id, None, task_state.Available)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
+}
+
+fn task_phase_to_execution_state(
+  phase: TaskPhase,
+  user_id: Int,
+) -> task_state.TaskExecutionState {
+  case phase {
+    Available -> task_state.Available
+    Claimed(mode) ->
+      task_state.Claimed(user_id, "", claimed_mode_to_execution_mode(mode))
+    Done -> task_state.Closed(task_state.Done, "", user_id)
+  }
+}
+
+fn claimed_mode_to_execution_mode(
+  mode: ClaimedState,
+) -> task_state.TaskClaimMode {
+  case mode {
+    Taken -> task_state.Taken
+    Ongoing -> task_state.Ongoing
+  }
 }
 
 /// Evaluate card rules if task belongs to a card and its state might have changed.

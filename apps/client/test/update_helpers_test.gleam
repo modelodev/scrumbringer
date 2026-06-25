@@ -2,7 +2,7 @@ import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/option.{None, Some}
@@ -38,7 +38,7 @@ pub fn find_task_by_id_in_cache_falls_back_to_project_cache_test() {
   let assert 42 = found.id
 }
 
-fn task_with_state(id: Int, state: task_state.TaskState) -> Task {
+fn task_with_state(id: Int, state: task_state.TaskExecutionState) -> Task {
   Task(
     id: id,
     project_id: 1,

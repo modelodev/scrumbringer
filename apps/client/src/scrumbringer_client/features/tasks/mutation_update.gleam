@@ -7,7 +7,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/task.{type Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -276,7 +276,7 @@ fn handle_complete_clicked(
   case model.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> #(
-      mutation_state.start_complete(model, task_id),
+      mutation_state.start_complete(model, task_id, context.current_user_id),
       task_operations_api.complete_task(
         task_id,
         version,

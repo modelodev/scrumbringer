@@ -1,7 +1,6 @@
 import domain/card.{type Card, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
@@ -67,7 +66,7 @@ fn claimed_task(id: Int, title: String, type_id: Int, card_id) -> Task {
     task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-01T00:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
   Task(..task(id, title, type_id, card_id), state: state)
 }

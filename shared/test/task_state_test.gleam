@@ -1,5 +1,4 @@
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import gleam/option
 
 pub fn from_db_available_test() {
@@ -14,11 +13,7 @@ pub fn from_db_available_test() {
 }
 
 pub fn from_db_claimed_test() {
-  let assert Ok(task_state.Claimed(
-    42,
-    "2026-01-01T00:00:00Z",
-    task_status.Taken,
-  )) =
+  let assert Ok(task_state.Claimed(42, "2026-01-01T00:00:00Z", task_state.Taken)) =
     task_state.from_db(
       "claimed",
       False,
@@ -32,7 +27,7 @@ pub fn from_db_ongoing_test() {
   let assert Ok(task_state.Claimed(
     42,
     "2026-01-01T00:00:00Z",
-    task_status.Ongoing,
+    task_state.Ongoing,
   )) =
     task_state.from_db(
       "claimed",
@@ -44,7 +39,7 @@ pub fn from_db_ongoing_test() {
 }
 
 pub fn from_db_completed_test() {
-  let assert Ok(task_state.Done("2026-01-01T00:00:00Z")) =
+  let assert Ok(task_state.Closed(task_state.Done, "2026-01-01T00:00:00Z", 0)) =
     task_state.from_db(
       "completed",
       False,

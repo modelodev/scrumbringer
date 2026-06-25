@@ -3,7 +3,7 @@ import lustre/effect
 
 import domain/api_error.{ApiError}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/pool as member_pool

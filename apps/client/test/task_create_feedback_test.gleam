@@ -5,7 +5,7 @@ import lustre/element
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/available_tasks

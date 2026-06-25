@@ -1,7 +1,7 @@
 //// Shared task claimability rules for client UI and mutations.
 
 import domain/task.{type Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 
 pub fn can_claim(task: Task) -> Bool {

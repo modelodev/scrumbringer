@@ -1,8 +1,7 @@
 import gleam/option.{None, Some}
 
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show_permissions
 
@@ -27,19 +26,19 @@ pub fn completed_task_is_read_only_for_claimant_test() {
   let assert False =
     show_permissions.can_edit(
       Some(7),
-      task(task_state.Done("2026-06-14T12:00:00Z")),
+      task(task_state.Closed(task_state.Done, "2026-06-14T12:00:00Z", 7)),
     )
 }
 
-fn claimed_by(user_id: Int) -> task_state.TaskState {
+fn claimed_by(user_id: Int) -> task_state.TaskExecutionState {
   task_state.Claimed(
     claimed_by: user_id,
     claimed_at: "2026-03-20T15:00:00Z",
-    mode: task_status.Taken,
+    mode: task_state.Taken,
   )
 }
 
-fn task(state: task_state.TaskState) -> Task {
+fn task(state: task_state.TaskExecutionState) -> Task {
   Task(
     id: 42,
     project_id: 1,

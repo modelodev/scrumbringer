@@ -9,7 +9,7 @@ import domain/task.{
   type WorkSession, type WorkSessionsPayload, AutomationOrigin, Task,
   TaskDependency, TaskPosition, WorkSession, WorkSessionsPayload,
 }
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{
   type OngoingBy, type WorkState, Available, OngoingBy, WorkAvailable,
   parse_task_status, parse_work_state,
@@ -260,7 +260,7 @@ pub fn task_state_decoder_from_fields(
   claimed_by: option.Option(Int),
   claimed_at: option.Option(String),
   completed_at: option.Option(String),
-) -> decode.Decoder(task_state.TaskState) {
+) -> decode.Decoder(task_state.TaskExecutionState) {
   case
     task_state.from_db(
       status_raw,

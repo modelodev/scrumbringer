@@ -11,12 +11,11 @@ The main decision is fixed here:
 
 - `shared/src/domain/task/state.gleam` is the canonical task execution model.
 - `shared/src/domain/task_status.gleam` remains a presentation/filter model.
-- `shared/src/domain/task_state.gleam` is a migration target, not an acceptable
-  final bridge. It must be removed after repository, presenter, and client
-  callers move to the canonical execution model.
+- The former task-state compatibility module has been removed; repository,
+  presenter, client, and test callers use the canonical execution model.
 - `shared/src/domain/card/state.gleam` is the canonical card execution model.
-- `shared/src/api/cards/contracts.gleam` must use typed `CardClosedReason`, not
-  a raw close reason string.
+- `shared/src/api/cards/contracts.gleam` uses typed `CardClosedReason`, not a
+  raw close reason string.
 - Legacy compatibility is allowed only as an intermediate refactor step. The
   final state must eliminate it or isolate it at a strictly external boundary
   with tests, owner, and explicit product justification.
@@ -120,8 +119,8 @@ Global refactor inventory:
 
 | Layer | Representative files | Diagnosis |
 | --- | --- | --- |
-| Shared lifecycle/domain | `shared/src/domain/task/state.gleam`, `task_state.gleam`, `task_status.gleam`, `card/state.gleam`, `card/closure.gleam` | Card state is closer to target; task state still has split canonical/compat models. |
-| Shared API contracts | `shared/src/api/tasks/contracts.gleam`, `shared/src/api/cards/contracts.gleam` | Task close is typed; card close still accepts raw string reason. |
+| Shared lifecycle/domain | `shared/src/domain/task/state.gleam`, `task_status.gleam`, `card/state.gleam`, `card/closure.gleam` | Card and task execution states have canonical ADTs; task status remains for presentation/filter projection. |
+| Shared API contracts | `shared/src/api/tasks/contracts.gleam`, `shared/src/api/cards/contracts.gleam` | Task close and card close requests use typed close reasons. |
 | Persistence/migrations | `db/schema.sql`, `db/migrations/*`, server SQL query files | Lifecycle strings and transitional migration values need explicit ownership. |
 | Server repositories/use cases | `cards_db.gleam`, `projects_db.gleam`, `rules_engine.gleam`, `workflows/handlers.gleam`, task repository mappers | Product rules are concentrated in large orchestration modules. |
 | HTTP/API | `http/cards.gleam`, `http/tasks/*`, `http/rules.gleam`, `http/projects.gleam`, `http/task_templates.gleam`, `http/api_tokens.gleam` | Endpoint modules are mostly split, but contract naming and lifecycle terms diverge. |
@@ -194,10 +193,9 @@ Shared/domain:
   and presentation projections. It is prohibited as the domain execution model,
   persistence representation, repository truth, automation/rules-engine state,
   seed truth, or workflow transition model.
-- `shared/src/domain/task_state.gleam` is migration-only and must not remain as a
-  final bridge. Its deletion criteria: repository mappers, HTTP presenters,
-  client task selectors, Plan/People/Capability/Card Show, and tests no longer
-  need it.
+- The former task-state compatibility module has been deleted. Its deletion
+  criteria were repository mappers, HTTP presenters, client task selectors,
+  Plan/People/Capability/Card Show, and tests no longer needing it.
 - `shared/src/domain/card/state.gleam`, `card/state_codec.gleam`,
   `card/activation.gleam`, and `card/closure.gleam` are the target shape:
   ADTs in domain, codecs at boundaries.
@@ -215,14 +213,14 @@ Task state migration phases:
 | 4. Automation engine/workflows | `rules_engine.gleam`, `workflows/handlers.gleam`, `workflows/types.gleam`, task dependency use cases | Rules and workflow transitions use canonical execution state, not `task_status`. |
 | 5. Client API/selectors | `api/tasks/*`, shared client selectors, Pool/People/Capability/Plan/Kanban selectors | Client state stores canonical execution state and derives presentation labels. |
 | 6. Product surfaces | Pool, People, Card Show, Task Show, Plan, Kanban, Capability Board, now-working panels | Views consume selectors/presentation helpers only. |
-| 7. Deletion | `shared/src/domain/task_state.gleam` and obsolete tests/imports | File is removed and `rg task_state` shows no strategic callers. |
+| 7. Deletion | Old compatibility task-state module and obsolete tests/imports | Legacy file is removed and `rg task_state` shows no strategic callers outside intentional aliases. |
 
 Shared API contracts:
 
 - `shared/src/api/tasks/contracts.gleam` already points in the right direction
   by returning `execution_state = "closed"` plus `closed_reason`.
-- `shared/src/api/cards/contracts.gleam` must stop accepting
-  `CardCloseRequest(reason: String)` and use typed `CardClosedReason`.
+- `shared/src/api/cards/contracts.gleam` decodes card close requests into typed
+  `CardClosedReason`.
 - Contract modules should be the only shared place where external JSON strings
   are parsed.
 - Due-date contract modules must define whether incoming values are date-only or
@@ -330,7 +328,7 @@ UI cleanup principles:
 | Module | Diagnosis | Proposal | Valor | Complejidad | Riesgo |
 | --- | --- | --- | --- | --- | --- |
 | `shared/src/domain/task/state.gleam` | Canonical model exists but is not fully adopted. | Make it the source of truth for task execution. | Alto | Media | Alto |
-| `shared/src/domain/task_state.gleam` | Compatibility model with `Done/completed`. | Migrate callers, then delete. A final bridge is not acceptable. | Alto | Media | Alto |
+| Former task-state compatibility module | Compatibility model with `Done/completed`. | Deleted after callers migrated. A final bridge is not acceptable. | Alto | Media | Alto |
 | `shared/src/domain/task_status.gleam` | Useful flattened UI/filter model but still used outside presentation today. | Keep only for filters/presentation; remove from repositories, seeds, metrics truth, workflows, and rules engine. | Alto | Media | Alto |
 | `shared/src/domain/task.gleam` | Task entity exposes compatibility helpers. | Move helpers to canonical lifecycle or presentation selectors. | Alto | Media | Alto |
 | `shared/src/domain/card/state.gleam` | Good canonical card state. | Use through card close/activate/move contracts. | Alto | Baja | Medio |
@@ -374,8 +372,8 @@ UI cleanup principles:
 
 Already removed in the diff and should stay removed:
 
-- `features/milestones/*`, `api/milestones.gleam`, server milestone HTTP/service
-  modules, milestone shared domain/tests.
+- The deleted timeline-goal feature modules, API client, server HTTP/service
+  modules, shared domain modules, and tests.
 - `components/card_detail_modal.gleam`.
 - Old task detail footer/header/summary/tabs modules.
 
@@ -414,7 +412,7 @@ Active legacy or compatibility debt:
 | --- | --- | --- | --- | --- |
 | Canonical task execution state | `domain/task/state.gleam`, repository mappers, HTTP presenters, client selectors | Alto | Alta | Alto |
 | Presentation task status projection | `domain/task_status.gleam`, UI/filter helpers | Medio | Baja | Medio |
-| Retire compatibility task state | `domain/task_state.gleam` callers | Alto | Media | Alto |
+| Retire compatibility task state | Legacy task-state callers | Alto | Media | Alto |
 | Typed card close request reason | `shared/src/api/cards/contracts.gleam` using `domain/card/state.CardClosedReason` | Alto | Baja | Alto |
 | Due-date value object and codecs | Shared contracts, DB mappers, activity events, client selectors, visual urgency | Alto | Media | Alto |
 | Typed automation outcome | `rules_engine.gleam`, `workflows/handlers.gleam`, HTTP presenters, execution history | Alto | Media | Medio |
@@ -479,7 +477,7 @@ I18n/copy:
 | Key coverage tests | `i18n/text.gleam`, `en.gleam`, `es.gleam` | Alto | Baja | Bajo |
 | Terminology cleanup | closed/done/completed, workflow/automation, task template, pool/plan/show | Alto | Media | Bajo |
 | Error/capability/admin copy consistency | HTTP/client error surfaces and admin pages | Medio | Media | Bajo |
-| Remove obsolete keys | Deleted milestone/detail/admin surfaces | Medio | Baja | Bajo |
+| Remove obsolete keys | Deleted timeline-goal/detail/admin surfaces | Medio | Baja | Bajo |
 
 Styles:
 

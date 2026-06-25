@@ -12,7 +12,7 @@
 //// ```
 
 import domain/card
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{type OngoingBy, type TaskPhase, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
@@ -56,7 +56,7 @@ pub type Task {
     title: String,
     description: Option(String),
     priority: Int,
-    state: task_state.TaskState,
+    state: task_state.TaskExecutionState,
     created_by: Int,
     created_at: String,
     due_date: Option(String),
@@ -165,7 +165,7 @@ pub type TaskFilters {
 // Helpers
 // =============================================================================
 
-pub fn with_state(task: Task, state: task_state.TaskState) -> Task {
+pub fn with_state(task: Task, state: task_state.TaskExecutionState) -> Task {
   Task(..task, state: state)
 }
 

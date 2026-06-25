@@ -1,7 +1,7 @@
 import gleam/option.{None, Some}
 
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show_edit_form
 

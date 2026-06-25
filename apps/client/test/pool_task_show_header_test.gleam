@@ -4,8 +4,8 @@ import lustre/element
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
-import domain/task_state
-import domain/task_status.{type TaskPhase, Available, Done, Taken}
+import domain/task/state as task_state
+import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_header
 import scrumbringer_client/i18n/locale
@@ -137,7 +137,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 7,
       claimed_at: "2026-06-01T11:00:00Z",
-      mode: Taken,
+      mode: task_state.Taken,
     )
 
   Task(..available_task(), state: state)

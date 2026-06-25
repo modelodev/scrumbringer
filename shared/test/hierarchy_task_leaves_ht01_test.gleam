@@ -65,13 +65,13 @@ pub fn task_execution_state_roundtrip_test() {
   assert_task_state_roundtrip(task_state.Available)
 
   assert_task_state_roundtrip(task_state.Claimed(
-    claimed_by: user_id.new(7),
+    claimed_by: 7,
     claimed_at: "2026-06-19T10:00:00Z",
     mode: task_state.Taken,
   ))
 
   assert_task_state_roundtrip(task_state.Claimed(
-    claimed_by: user_id.new(7),
+    claimed_by: 7,
     claimed_at: "2026-06-19T10:00:00Z",
     mode: task_state.Ongoing,
   ))
@@ -79,19 +79,19 @@ pub fn task_execution_state_roundtrip_test() {
   assert_task_state_roundtrip(task_state.Closed(
     reason: task_state.Done,
     closed_at: "2026-06-19T10:00:00Z",
-    closed_by: user_id.new(7),
+    closed_by: 7,
   ))
 
   assert_task_state_roundtrip(task_state.Closed(
     reason: task_state.ManuallyClosed,
     closed_at: "2026-06-19T10:00:00Z",
-    closed_by: user_id.new(7),
+    closed_by: 7,
   ))
 
   assert_task_state_roundtrip(task_state.Closed(
     reason: task_state.ClosedByAncestor,
     closed_at: "2026-06-19T10:00:00Z",
-    closed_by: user_id.new(7),
+    closed_by: 7,
   ))
 }
 

@@ -4,8 +4,7 @@ import lustre/element
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/locale
@@ -23,7 +22,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 7,
       claimed_at: "2026-03-20T15:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
 
   Task(
@@ -104,7 +103,8 @@ pub fn show_editor_hides_edit_for_other_claimed_task_test() {
 }
 
 pub fn show_editor_hides_edit_for_completed_task_test() {
-  let completed_state = task_state.Done("2026-06-14T12:00:00Z")
+  let completed_state =
+    task_state.Closed(task_state.Done, "2026-06-14T12:00:00Z", 7)
   let task = Task(..claimed_task(), state: completed_state)
   let html =
     show_editor.view_readonly_fields(config(Some(7)), task)

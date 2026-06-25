@@ -3,8 +3,7 @@ import gleam/option.{None, Some}
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/features/pool/available_tasks
@@ -84,7 +83,7 @@ pub fn pool_available_tasks_keeps_only_available_tasks_test() {
       task_state.Claimed(
         claimed_by: 1,
         claimed_at: "2026-01-01T00:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
 
@@ -151,11 +150,16 @@ pub fn available_tasks_never_includes_claimed_or_closed_test() {
       task_state.Claimed(
         claimed_by: 1,
         claimed_at: "2026-01-01T00:00:00Z",
-        mode: task_status.Taken,
+        mode: task_state.Taken,
       ),
     )
   let done =
-    task(2, "Done", 1, task_state.Done(completed_at: "2026-01-02T00:00:00Z"))
+    task(
+      2,
+      "Done",
+      1,
+      task_state.Closed(task_state.Done, "2026-01-02T00:00:00Z", 7),
+    )
 
   let state =
     available_tasks.state(

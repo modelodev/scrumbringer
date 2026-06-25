@@ -1,5 +1,5 @@
 import domain/task.{Task, TaskPosition}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/int

@@ -2,7 +2,7 @@ import domain/card.{Active, Card, Closed, Draft}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string

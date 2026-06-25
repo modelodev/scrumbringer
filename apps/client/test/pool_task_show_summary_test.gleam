@@ -6,7 +6,7 @@ import domain/remote.{Loaded}
 import domain/task.{
   type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
 }
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{type TaskPhase, Available, Done}
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_summary

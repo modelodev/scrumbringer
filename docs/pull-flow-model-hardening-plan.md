@@ -36,13 +36,13 @@ whose status is not `completed`.
 
 ### Shared Types
 
-`shared/src/domain/task_state.gleam` already has the right lifecycle shape:
+`shared/src/domain/task/state.gleam` owns the lifecycle shape:
 
 ```gleam
-pub type TaskState {
+pub type TaskExecutionState {
   Available
-  Claimed(claimed_by: Int, claimed_at: String, mode: status.ClaimedState)
-  Done(completed_at: String)
+  Claimed(claimed_by: Int, claimed_at: String, mode: TaskClaimMode)
+  Closed(reason: TaskClosedReason, closed_at: String, closed_by: Int)
 }
 ```
 

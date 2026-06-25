@@ -136,7 +136,7 @@ Existen dos familias de tipos:
 
 ```text
 shared/src/domain/task.gleam
-shared/src/domain/task_state.gleam
+shared/src/domain/task/state.gleam
 shared/src/domain/task_status.gleam
 ```
 

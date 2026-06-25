@@ -11,7 +11,7 @@
 
 import domain/automation
 import domain/card as domain_card
-import domain/task_status
+import domain/task/state as task_state
 import envoy
 import gleam/dynamic/decode
 import gleam/int
@@ -89,8 +89,8 @@ pub type TaskContext {
 pub type StateChange {
   TaskChange(
     ctx: TaskContext,
-    from_state: option.Option(task_status.TaskPhase),
-    to_state: task_status.TaskPhase,
+    from_state: option.Option(task_state.TaskExecutionState),
+    to_state: task_state.TaskExecutionState,
     user_id: Int,
     user_triggered: Bool,
   )
@@ -132,8 +132,8 @@ type CardTemplateContext {
 pub fn task_event(
   ctx: TaskContext,
   user_id: Int,
-  from_state: option.Option(task_status.TaskPhase),
-  to_state: task_status.TaskPhase,
+  from_state: option.Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
 ) -> StateChange {
   TaskChange(
     ctx: ctx,
@@ -828,9 +828,18 @@ const no_task_parent_card_id = 0
 
 fn event_to_state_string(event: StateChange) -> String {
   case event {
-    TaskChange(to_state: to_state, ..) ->
-      task_status.task_status_to_string(to_state)
+    TaskChange(to_state: to_state, ..) -> task_state_event_string(to_state)
     CardChange(to_state: to_state, ..) -> domain_card.state_to_string(to_state)
+  }
+}
+
+fn task_state_event_string(state: task_state.TaskExecutionState) -> String {
+  case state {
+    task_state.Available -> "available"
+    task_state.Claimed(_, _, task_state.Ongoing) -> "ongoing"
+    task_state.Claimed(_, _, task_state.Taken) -> "claimed"
+    task_state.Closed(task_state.Done, _, _) -> "completed"
+    task_state.Closed(_, _, _) -> "closed"
   }
 }
 

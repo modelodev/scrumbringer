@@ -6,7 +6,6 @@ import gleam/json
 
 import domain/task/id as task_id
 import domain/task/state as task_state
-import domain/user/id as user_id
 
 const now = "2026-06-19T10:00:00Z"
 
@@ -35,7 +34,7 @@ pub fn close_task_response_uses_domain_execution_state_test() {
       execution_state: task_state.Closed(
         reason: task_state.ManuallyClosed,
         closed_at: now,
-        closed_by: user_id.new(7),
+        closed_by: 7,
       ),
     )
     |> contracts.close_task_response_to_json

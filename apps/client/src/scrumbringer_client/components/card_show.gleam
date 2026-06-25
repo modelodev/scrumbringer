@@ -33,7 +33,7 @@ import domain/card.{type Card, Closed, Draft}
 import domain/note/entity.{type Note}
 import domain/note/id as note_ids
 import domain/task.{type Task, claimed_by}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{Available, Done}
 import domain/user/id as user_ids
 

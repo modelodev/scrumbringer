@@ -6,7 +6,7 @@ import gleam/string
 import domain/card.{type CardColor}
 import domain/note/entity.{type Note}
 import domain/task as domain_task
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{Claimed}
 import lustre/attribute
 import lustre/element.{type Element}

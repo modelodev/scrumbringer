@@ -4,6 +4,7 @@ import gleam/json
 import gleam/option
 
 import domain/card
+import domain/card/state as card_state
 
 pub fn list_cards_by_depth_scope_test() {
   let assert Ok(contracts.DepthScope(2)) =
@@ -54,7 +55,14 @@ pub fn close_card_api_contract_roundtrip_test() {
   let assert Ok(payload) =
     json.parse("{\"reason\":\"manually_closed\"}", decode.dynamic)
 
-  let assert Ok(contracts.CardCloseRequest(reason: "manually_closed")) =
+  let assert Ok(contracts.CardCloseRequest(reason: card_state.ManuallyClosed)) =
+    contracts.decode_card_close(payload)
+}
+
+pub fn close_card_api_contract_rejects_unknown_reason_test() {
+  let assert Ok(payload) = json.parse("{\"reason\":\"rollup\"}", decode.dynamic)
+
+  let assert Error(contracts.InvalidClosedReason) =
     contracts.decode_card_close(payload)
 }
 

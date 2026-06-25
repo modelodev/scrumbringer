@@ -9,7 +9,7 @@ import domain/org_role
 import domain/project/id as project_id
 import domain/task.{Task, TaskDependency}
 import domain/task/id as task_id
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status.{Available, Claimed, Done, Taken}
 import domain/task_type.{TaskTypeInline}
 import domain/user/id as user_id

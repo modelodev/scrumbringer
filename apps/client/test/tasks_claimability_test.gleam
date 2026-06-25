@@ -1,8 +1,7 @@
 import gleam/option.{None}
 
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status.{Taken}
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/claimability
 
@@ -21,7 +20,7 @@ pub fn claimed_task_cannot_be_claimed_test() {
       task_state.Claimed(
         claimed_by: 7,
         claimed_at: "2026-06-01T11:00:00Z",
-        mode: Taken,
+        mode: task_state.Taken,
       ),
       0,
     ))
@@ -30,12 +29,12 @@ pub fn claimed_task_cannot_be_claimed_test() {
 pub fn completed_task_cannot_be_claimed_test() {
   let assert False =
     claimability.can_claim(sample_task(
-      task_state.Done(completed_at: "2026-06-01T12:00:00Z"),
+      task_state.Closed(task_state.Done, "2026-06-01T12:00:00Z", 7),
       0,
     ))
 }
 
-fn sample_task(state: task_state.TaskState, blocked_count: Int) -> Task {
+fn sample_task(state: task_state.TaskExecutionState, blocked_count: Int) -> Task {
   Task(
     id: 42,
     project_id: 1,

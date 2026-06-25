@@ -1,6 +1,6 @@
 import domain/automation
 import domain/card
-import domain/task_status
+import domain/task/state as task_state
 import gleam/option.{None, Some}
 
 pub fn card_depth_must_be_positive_test() {
@@ -12,26 +12,26 @@ pub fn card_depth_must_be_positive_test() {
 
 pub fn task_transitions_map_to_supported_triggers_test() {
   let assert Ok(automation.TaskCreated(Some(7))) =
-    automation.task_transition_trigger(None, task_status.Available, Some(7))
+    automation.task_transition_trigger(None, task_state.Available, Some(7))
 
   let assert Ok(automation.TaskClaimed(Some(7))) =
     automation.task_transition_trigger(
-      Some(task_status.Available),
-      task_status.Claimed(task_status.Taken),
+      Some(task_state.Available),
+      task_state.Claimed(1, "2026-01-15T10:00:00Z", task_state.Taken),
       Some(7),
     )
 
   let assert Ok(automation.TaskReleased(Some(7))) =
     automation.task_transition_trigger(
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Available,
+      Some(task_state.Claimed(1, "2026-01-15T10:00:00Z", task_state.Taken)),
+      task_state.Available,
       Some(7),
     )
 
   let assert Ok(automation.TaskCompleted(Some(7))) =
     automation.task_transition_trigger(
-      Some(task_status.Claimed(task_status.Taken)),
-      task_status.Done,
+      Some(task_state.Claimed(1, "2026-01-15T10:00:00Z", task_state.Taken)),
+      task_state.Closed(task_state.Done, "2026-01-15T10:30:00Z", 1),
       Some(7),
     )
 }

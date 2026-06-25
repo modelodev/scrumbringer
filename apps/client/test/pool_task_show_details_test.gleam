@@ -4,8 +4,7 @@ import lustre/element
 
 import domain/remote.{NotAsked}
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_show_details
 import scrumbringer_client/features/tasks/show_editor
@@ -120,7 +119,7 @@ fn claimed_task() -> Task {
     task_state.Claimed(
       claimed_by: 7,
       claimed_at: "2026-03-20T15:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     )
 
   Task(

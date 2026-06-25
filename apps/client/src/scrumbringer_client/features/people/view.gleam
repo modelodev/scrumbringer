@@ -19,7 +19,7 @@ import domain/org.{type OrgUser}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task as domain_task
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view

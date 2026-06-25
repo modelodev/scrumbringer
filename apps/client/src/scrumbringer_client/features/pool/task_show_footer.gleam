@@ -9,7 +9,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div}
 
 import domain/task.{type Task, claimed_by}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_status
 
 import scrumbringer_client/features/tasks/claimability

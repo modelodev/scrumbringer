@@ -1,8 +1,7 @@
 import domain/card
 import domain/org_role
 import domain/task.{type Task, Task}
-import domain/task_state
-import domain/task_status
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import domain/user.{User}
 import gleam/option.{None, Some}
@@ -51,7 +50,7 @@ fn base_config(
   )
 }
 
-fn sample_task(state: task_state.TaskState) -> Task {
+fn sample_task(state: task_state.TaskExecutionState) -> Task {
   Task(
     id: 1,
     project_id: 1,
@@ -104,7 +103,7 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
     sample_task(task_state.Claimed(
       claimed_by: 1,
       claimed_at: "2026-01-01T00:00:00Z",
-      mode: task_status.Taken,
+      mode: task_state.Taken,
     ))
 
   let html =

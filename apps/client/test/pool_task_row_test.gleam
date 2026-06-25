@@ -4,7 +4,7 @@ import lustre/element
 
 import domain/card
 import domain/task.{AutomationOrigin, Task}
-import domain/task_state
+import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/i18n/locale

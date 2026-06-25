@@ -8,6 +8,7 @@
 import domain/card as domain_card
 import domain/org_role
 import domain/project_role
+import domain/task/state as task_state
 import domain/task_status
 import gleam/dynamic/decode
 import gleam/erlang/charlist
@@ -1199,11 +1200,32 @@ pub fn task_event_status_full(
 
   rules_engine.TaskChange(
     ctx: ctx,
-    from_state: from_state,
-    to_state: to_state,
+    from_state: option.map(from_state, task_phase_to_execution_state(_, user_id)),
+    to_state: task_phase_to_execution_state(to_state, user_id),
     user_id: user_id,
     user_triggered: user_triggered,
   )
+}
+
+fn task_phase_to_execution_state(
+  phase: task_status.TaskPhase,
+  user_id: Int,
+) -> task_state.TaskExecutionState {
+  case phase {
+    task_status.Available -> task_state.Available
+    task_status.Claimed(mode) ->
+      task_state.Claimed(user_id, "", task_claim_mode_to_execution_mode(mode))
+    task_status.Done -> task_state.Closed(task_state.Done, "", user_id)
+  }
+}
+
+fn task_claim_mode_to_execution_mode(
+  mode: task_status.ClaimedState,
+) -> task_state.TaskClaimMode {
+  case mode {
+    task_status.Taken -> task_state.Taken
+    task_status.Ongoing -> task_state.Ongoing
+  }
 }
 
 /// Create a StateChange for a card resource (user_triggered defaults to True).
