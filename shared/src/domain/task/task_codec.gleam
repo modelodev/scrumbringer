@@ -5,14 +5,13 @@ import gleam/option
 
 import domain/card/card_codec
 import domain/task.{
-  type AutomationOrigin, type Task, type TaskDependency, type TaskPosition,
-  type WorkSession, type WorkSessionsPayload, AutomationOrigin, Task,
-  TaskDependency, TaskPosition, WorkSession, WorkSessionsPayload,
+  type AutomationOrigin, type OngoingBy, type Task, type TaskDependency,
+  type TaskPosition, type WorkSession, type WorkSessionsPayload,
+  AutomationOrigin, OngoingBy, Task, TaskDependency, TaskPosition, WorkSession,
+  WorkSessionsPayload,
 }
 import domain/task/state as task_state
-import domain/task_status.{
-  type OngoingBy, type WorkState, OngoingBy, WorkAvailable, parse_work_state,
-}
+import domain/task_status.{type WorkState, WorkAvailable, parse_work_state}
 import domain/task_type.{
   type TaskType, type TaskTypeInline, TaskType, TaskTypeInline,
 }

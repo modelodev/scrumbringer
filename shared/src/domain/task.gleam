@@ -6,14 +6,14 @@
 ////
 //// ```gleam
 //// import shared/domain/task.{type Task, type TaskFilters}
-//// import shared/domain/task_status.{type TaskPhase}
+//// import shared/domain/task/state as task_state
 ////
-//// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
+//// let filters = TaskFilters(status: None, type_id: None, capability_id: None, q: None)
 //// ```
 
 import domain/card
 import domain/task/state as task_state
-import domain/task_status.{type OngoingBy, type TaskPhase, type WorkState}
+import domain/task_status.{type TaskPhase, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
 
@@ -74,6 +74,20 @@ pub type Task {
     dependencies: List(TaskDependency),
     automation_origin: Option(AutomationOrigin),
   )
+}
+
+/// User currently working on a task.
+///
+/// ## Example
+///
+/// ```gleam
+/// case task.ongoing_by {
+///   Some(OngoingBy(user_id)) -> show_user_avatar(user_id)
+///   None -> Nil
+/// }
+/// ```
+pub type OngoingBy {
+  OngoingBy(user_id: Int)
 }
 
 /// Traceability for a task created by automation.

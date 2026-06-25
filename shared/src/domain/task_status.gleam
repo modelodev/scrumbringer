@@ -83,20 +83,6 @@ pub type WorkState {
   WorkDone
 }
 
-/// User currently working on a task.
-///
-/// ## Example
-///
-/// ```gleam
-/// case task.ongoing_by {
-///   Some(OngoingBy(user_id)) -> show_user_avatar(user_id)
-///   None -> Nil
-/// }
-/// ```
-pub type OngoingBy {
-  OngoingBy(user_id: Int)
-}
-
 /// Error returned when an external task status/work state cannot be parsed.
 pub type TaskPhaseParseError {
   UnknownTaskPhase(String)

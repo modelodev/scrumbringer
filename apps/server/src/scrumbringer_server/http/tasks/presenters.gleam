@@ -16,12 +16,11 @@
 
 import domain/card
 import domain/task.{
-  type Task, type TaskDependency, AutomationOrigin, Task, TaskDependency,
+  type OngoingBy, type Task, type TaskDependency, AutomationOrigin, OngoingBy,
+  Task, TaskDependency,
 }
 import domain/task/state as task_state
-import domain/task_status.{
-  type OngoingBy, type TaskPhase, type WorkState, OngoingBy,
-}
+import domain/task_status.{type TaskPhase, type WorkState}
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}

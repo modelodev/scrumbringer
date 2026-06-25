@@ -24,11 +24,10 @@
 
 import domain/card
 import domain/task.{
-  type AutomationOrigin, type Task, type TaskDependency, AutomationOrigin, Task,
-  TaskDependency,
+  type AutomationOrigin, type OngoingBy, type Task, type TaskDependency,
+  AutomationOrigin, OngoingBy, Task, TaskDependency,
 }
 import domain/task/state as task_state
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/dynamic/decode
 import gleam/json
@@ -424,9 +423,9 @@ fn automation_origin_from_fields(
   }
 }
 
-fn ongoing_by_from_user_id(user_id: Int) -> Option(task_status.OngoingBy) {
+fn ongoing_by_from_user_id(user_id: Int) -> Option(OngoingBy) {
   case option_helpers.int_to_option(user_id) {
-    Some(value) -> Some(task_status.OngoingBy(user_id: value))
+    Some(value) -> Some(OngoingBy(user_id: value))
     None -> None
   }
 }
