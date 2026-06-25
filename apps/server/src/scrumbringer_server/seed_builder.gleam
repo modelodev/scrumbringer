@@ -36,6 +36,7 @@ import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
+import scrumbringer_server/seed_people_scenarios
 import scrumbringer_server/seed_plan_scenarios
 import scrumbringer_server/seed_task_scenarios
 import scrumbringer_server/seed_workspace_scenarios
@@ -433,380 +434,47 @@ fn build_people_qa_scenarios(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  case active_project_ids(state) {
-    [] -> Ok(state)
-    [project_id, ..] -> {
-      case task_types_for_project(state.task_type_ids, project_id) {
-        None -> Ok(state)
-        Some(#(bug_id, feature_id, task_id)) -> {
-          let members =
-            members_for_project(state.project_member_ids, project_id)
-          let non_admins =
-            list.filter(members, fn(user_id) { user_id != state.admin_id })
-          let api_owner = list_at_int(non_admins, 0, state.admin_id)
-          let blocked_owner = list_at_int(non_admins, 1, state.admin_id)
-          let loaded_owner = list_at_int(non_admins, 2, state.admin_id)
-          let review_owner = list_at_int(non_admins, 3, state.admin_id)
-          let support_owner = list_at_int(non_admins, 4, state.admin_id)
-
-          use coordination_id <- result.try(insert_seed_root_card(
-            db,
-            state,
-            project_id,
-            "People QA - Coordination stream",
-            Some(
-              "Active people-coordination fixture with distributed claimed, ongoing, blocked and free-person states.",
-            ),
-            card.Active,
-            3,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
-          use api_id <- result.try(insert_seed_child_card(
-            db,
-            state,
-            project_id,
-            coordination_id,
-            "People QA - API handoff",
-            Some("Task leaf for API handoff coordination."),
-            card.Active,
-            2,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
-          use ui_id <- result.try(insert_seed_child_card(
-            db,
-            state,
-            project_id,
-            coordination_id,
-            "People QA - UI polish",
-            Some("Task leaf for UI polish coordination."),
-            card.Active,
-            2,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
-          use release_id <- result.try(insert_seed_child_card(
-            db,
-            state,
-            project_id,
-            coordination_id,
-            "People QA - Release readiness",
-            Some("Task leaf for release readiness coordination."),
-            card.Active,
-            2,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
-          use support_id <- result.try(insert_seed_child_card(
-            db,
-            state,
-            project_id,
-            coordination_id,
-            "People QA - Review support",
-            Some("Task leaf for review and support load distribution."),
-            card.Active,
-            2,
-            Some(days_ago_timestamp(2)),
-            None,
-          ))
-
-          use admin_ongoing <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            release_id,
-            task_id,
-            "People QA - Facilitate rollout sync",
-            claimed_state_template(task_state.Ongoing),
-            state.admin_id,
-            Some(state.admin_id),
-            4,
-            2,
-          ))
-          use api_ongoing <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            api_id,
-            bug_id,
-            "People QA - API handoff ongoing",
-            claimed_state_template(task_state.Ongoing),
-            state.admin_id,
-            Some(api_owner),
-            5,
-            2,
-          ))
-          use api_claimed <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            api_id,
-            task_id,
-            "People QA - API cleanup claimed",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(api_owner),
-            3,
-            1,
-          ))
-          use release_blocker <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            release_id,
-            task_id,
-            "People QA - Release checklist blocker",
-            task_state.Available,
-            state.admin_id,
-            None,
-            4,
-            1,
-          ))
-          use blocked_claim <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            release_id,
-            feature_id,
-            "People QA - Blocked deploy approval",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(blocked_owner),
-            5,
-            1,
-          ))
-          use _ <- result.try(seed_db.insert_task_dependency(
-            db,
-            blocked_claim.task_id,
-            release_blocker.task_id,
-            state.admin_id,
-          ))
-          use loaded_one <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            ui_id,
-            feature_id,
-            "People QA - Polish empty state copy",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(loaded_owner),
-            3,
-            2,
-          ))
-          use loaded_two <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            ui_id,
-            feature_id,
-            "People QA - Polish mobile wrapping",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(loaded_owner),
-            3,
-            2,
-          ))
-          use loaded_three <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            ui_id,
-            bug_id,
-            "People QA - Verify filter contrast",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(loaded_owner),
-            2,
-            1,
-          ))
-          use loaded_four <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            ui_id,
-            task_id,
-            "People QA - Review scope labels",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(loaded_owner),
-            2,
-            1,
-          ))
-          use review_ongoing <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            support_id,
-            feature_id,
-            "People QA - Review dependency notes",
-            claimed_state_template(task_state.Ongoing),
-            state.admin_id,
-            Some(review_owner),
-            4,
-            2,
-          ))
-          use review_claimed <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            support_id,
-            bug_id,
-            "People QA - Review blocked owner summary",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(review_owner),
-            3,
-            1,
-          ))
-          use support_claimed <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            support_id,
-            task_id,
-            "People QA - Support async handoff",
-            claimed_state_template(task_state.Taken),
-            state.admin_id,
-            Some(support_owner),
-            2,
-            1,
-          ))
-          use support_available <- result.try(insert_plan_qa_task(
-            db,
-            project_id,
-            support_id,
-            task_id,
-            "People QA - Support intake available",
-            task_state.Available,
-            state.admin_id,
-            None,
-            2,
-            1,
-          ))
-
-          let new_card_ids = [
-            coordination_id,
-            api_id,
-            ui_id,
-            release_id,
-            support_id,
-          ]
-          let new_task_seeds = [
-            admin_ongoing,
-            api_ongoing,
-            api_claimed,
-            release_blocker,
-            blocked_claim,
-            loaded_one,
-            loaded_two,
-            loaded_three,
-            loaded_four,
-            review_ongoing,
-            review_claimed,
-            support_claimed,
-            support_available,
-          ]
-          let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
-
-          Ok(
-            BuildState(
-              ..state,
-              card_ids: list.append(state.card_ids, new_card_ids),
-              card_ids_by_project: append_cards_for_project(
-                state.card_ids_by_project,
-                project_id,
-                new_card_ids,
-              ),
-              task_ids: list.append(state.task_ids, new_task_ids),
-              task_seeds: list.append(state.task_seeds, new_task_seeds),
-            ),
-          )
-        }
-      }
-    }
-  }
-}
-
-fn insert_plan_qa_task(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  type_id: Int,
-  title: String,
-  execution_state: task_state.TaskExecutionState,
-  created_by: Int,
-  claimed_by: Option(Int),
-  priority: Int,
-  created_days_ago: Int,
-) -> Result(TaskSeedInfo, String) {
-  insert_plan_qa_task_with_due(
+  use people_result <- result.try(seed_people_scenarios.build(
     db,
-    project_id,
-    card_id,
-    type_id,
-    title,
-    execution_state,
-    created_by,
-    claimed_by,
-    priority,
-    created_days_ago,
-    None,
-  )
-}
-
-fn insert_plan_qa_task_with_due(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  type_id: Int,
-  title: String,
-  execution_state: task_state.TaskExecutionState,
-  created_by: Int,
-  claimed_by: Option(Int),
-  priority: Int,
-  created_days_ago: Int,
-  due_date: Option(String),
-) -> Result(TaskSeedInfo, String) {
-  let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case execution_state {
-    task_state.Claimed(..) -> #(
-      claimed_by,
-      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
-      None,
-    )
-    task_state.Closed(..) -> #(
-      None,
-      None,
-      Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
-    )
-    task_state.Available -> #(None, None, None)
-  }
-  let hydrated_execution_state =
-    hydrate_seed_execution_state(
-      execution_state,
-      created_by,
-      claimed_by,
-      claimed_at,
-      completed_at,
-    )
-
-  use task_id <- result.try(seed_db.insert_task(
-    db,
-    seed_db.TaskInsertOptions(
-      project_id: project_id,
-      type_id: type_id,
-      title: title,
-      description: "Plan QA fixture task",
-      priority: priority,
-      execution_state: hydrated_execution_state,
-      created_by: created_by,
-      card_id: Some(card_id),
-      created_from_rule_id: None,
-      pool_lifetime_s: 3600 * created_days_ago,
-      due_date: due_date,
-      created_at: Some(created_at),
-      last_entered_pool_at: Some(created_at),
+    seed_people_scenarios.Context(
+      admin_id: state.admin_id,
+      active_project_ids: active_project_ids(state),
+      task_type_ids: state.task_type_ids,
+      project_member_ids: state.project_member_ids,
     ),
   ))
 
-  Ok(TaskSeedInfo(
-    task_id: task_id,
-    project_id: project_id,
-    execution_state: hydrated_execution_state,
-    created_at: created_at,
-    created_by: created_by,
-    claimed_by: claimed_by,
-  ))
+  let new_task_seeds =
+    people_result.task_seeds
+    |> list.map(fn(seed) {
+      TaskSeedInfo(
+        task_id: seed.task_id,
+        project_id: seed.project_id,
+        execution_state: seed.execution_state,
+        created_at: seed.created_at,
+        created_by: seed.created_by,
+        claimed_by: seed.claimed_by,
+      )
+    })
+  let new_task_ids = list.map(new_task_seeds, fn(seed) { seed.task_id })
+
+  case people_result.project_id {
+    None -> Ok(state)
+    Some(project_id) ->
+      Ok(
+        BuildState(
+          ..state,
+          card_ids: list.append(state.card_ids, people_result.card_ids),
+          card_ids_by_project: append_cards_for_project(
+            state.card_ids_by_project,
+            project_id,
+            people_result.card_ids,
+          ),
+          task_ids: list.append(state.task_ids, new_task_ids),
+          task_seeds: list.append(state.task_seeds, new_task_seeds),
+        ),
+      )
+  }
 }
 
 fn build_audit_events(
@@ -1483,21 +1151,6 @@ fn build_automation_diagnostics(
 // Helpers
 // =============================================================================
 
-fn members_for_project(
-  project_members: List(#(Int, List(Int))),
-  project_id: Int,
-) -> List(Int) {
-  case
-    list.find(project_members, fn(pair) {
-      let #(pid, _members) = pair
-      pid == project_id
-    })
-  {
-    Ok(#(_pid, members)) -> members
-    Error(_) -> []
-  }
-}
-
 fn append_cards_for_project(
   card_ids_by_project: List(#(Int, List(Int))),
   project_id: Int,
@@ -1521,36 +1174,8 @@ fn append_cards_for_project(
   }
 }
 
-fn task_types_for_project(
-  task_type_ids: List(#(Int, Int, Int, Int)),
-  project_id: Int,
-) -> Option(#(Int, Int, Int)) {
-  case
-    list.find(task_type_ids, fn(entry) {
-      let #(pid, _bug, _feature, _task) = entry
-      pid == project_id
-    })
-  {
-    Ok(#(_pid, bug_id, feature_id, task_id)) ->
-      Some(#(bug_id, feature_id, task_id))
-    Error(_) -> None
-  }
-}
-
 fn days_ago_timestamp(days: Int) -> String {
   "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
-}
-
-fn list_at_int(items: List(Int), idx: Int, default: Int) -> Int {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
-  case idx, items {
-    _, [] -> default
-    0, [first, ..] -> first
-    n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
-  }
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {
@@ -1566,48 +1191,4 @@ fn task_types_for_active_projects(
     let #(project_id, _, _, _) = entry
     !list.contains(state.empty_project_ids, project_id)
   })
-}
-
-fn hydrate_seed_execution_state(
-  execution_state: task_state.TaskExecutionState,
-  created_by: Int,
-  claimed_by: Option(Int),
-  claimed_at: Option(String),
-  completed_at: Option(String),
-) -> task_state.TaskExecutionState {
-  case execution_state {
-    task_state.Available -> task_state.Available
-    task_state.Claimed(mode: mode, ..) ->
-      task_state.Claimed(
-        claimed_by: option_int(claimed_by, created_by),
-        claimed_at: option_string(claimed_at, "NOW()"),
-        mode: mode,
-      )
-    task_state.Closed(reason: reason, ..) ->
-      task_state.Closed(
-        reason: reason,
-        closed_at: option_string(completed_at, "NOW()"),
-        closed_by: created_by,
-      )
-  }
-}
-
-fn claimed_state_template(
-  mode: task_state.TaskClaimMode,
-) -> task_state.TaskExecutionState {
-  task_state.Claimed(claimed_by: 0, claimed_at: "", mode: mode)
-}
-
-fn option_int(value: Option(Int), default: Int) -> Int {
-  case value {
-    Some(inner) -> inner
-    None -> default
-  }
-}
-
-fn option_string(value: Option(String), default: String) -> String {
-  case value {
-    Some(inner) -> inner
-    None -> default
-  }
 }
