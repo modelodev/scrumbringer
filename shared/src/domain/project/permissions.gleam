@@ -20,7 +20,7 @@ pub type ManageStructure {
 }
 
 /// ExecuteWork allows participating in pull execution:
-/// seeing the Pool, claiming, releasing, completing tasks, and creating
+/// seeing the Pool, claiming, releasing, closing tasks, and creating
 /// operational tasks inside active task groups.
 pub type ExecuteWork {
   ExecuteWork

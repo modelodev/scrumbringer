@@ -5,7 +5,7 @@
 ////
 //// Permission model:
 //// - Org Admin: Can access org-level settings, invites, projects, metrics
-//// - Project Manager: Can manage project settings, workflows, templates, capabilities, members
+//// - Project Manager: Can manage project settings, automations, templates, capabilities, members
 //// - Project Member: Can view project content, no admin access
 
 import gleam/list
