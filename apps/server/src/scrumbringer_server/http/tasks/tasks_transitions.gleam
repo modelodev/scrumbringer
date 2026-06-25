@@ -37,7 +37,7 @@ import wisp
 type Transition {
   Claim
   Release
-  Complete
+  Close
 }
 
 /// Claims a task for the current user.
@@ -73,7 +73,7 @@ pub fn handle_task_complete(
   ctx: auth.Ctx,
   task_id: String,
 ) -> wisp.Response {
-  handle_transition(req, ctx, task_id, Complete)
+  handle_transition(req, ctx, task_id, Close)
 }
 
 fn handle_transition(
@@ -151,8 +151,7 @@ fn transition_message(
     Claim -> workflow_types.ClaimTask(task_id, user.id, user.org_id, version)
     Release ->
       workflow_types.ReleaseTask(task_id, user.id, user.org_id, version)
-    Complete ->
-      workflow_types.CompleteTask(task_id, user.id, user.org_id, version)
+    Close -> workflow_types.CompleteTask(task_id, user.id, user.org_id, version)
   }
 }
 
@@ -180,8 +179,8 @@ fn transition_error_response(
 ) -> wisp.Response {
   case transition {
     Claim -> claim_error_response(error, db, task_id, user_id)
-    Release -> release_or_complete_error_response(error, db, task_id, user_id)
-    Complete -> release_or_complete_error_response(error, db, task_id, user_id)
+    Release -> release_or_close_error_response(error, db, task_id, user_id)
+    Close -> release_or_close_error_response(error, db, task_id, user_id)
   }
 }
 
@@ -212,7 +211,7 @@ fn claim_error_response(
   }
 }
 
-fn release_or_complete_error_response(
+fn release_or_close_error_response(
   error: workflow_types.Error,
   db: pog.Connection,
   task_id: Int,
