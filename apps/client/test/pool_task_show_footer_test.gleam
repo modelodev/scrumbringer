@@ -40,7 +40,7 @@ pub fn task_show_footer_disables_claim_for_blocked_task_test() {
   assert_contains(html, "Claim task")
   assert_contains(html, "data-testid=\"secondary-actions-menu\"")
   assert_contains(html, "data-testid=\"task-show-secondary-delete\"")
-  assert_contains(html, "data-tooltip=\"Task has incomplete dependencies\"")
+  assert_contains(html, "data-tooltip=\"Task has open dependencies\"")
   assert_contains(html, "aria-disabled=\"true\"")
   assert_contains(html, "data-testid=\"task-show-primary-claim\"")
   assert_not_contains(html, "Release")

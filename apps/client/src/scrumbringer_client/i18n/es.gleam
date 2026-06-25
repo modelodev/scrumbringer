@@ -74,7 +74,7 @@ pub fn translate(text: Text) -> String {
     text.TaskCompleteFailed -> "No se pudo cerrar la tarea"
     text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
     text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
-    text.TaskBlockedByDependencies -> "La tarea tiene dependencias incompletas"
+    text.TaskBlockedByDependencies -> "La tarea tiene dependencias abiertas"
     text.TaskHasOperationalHistory ->
       "Esta tarea tiene historial operativo. Ciérrala en lugar de eliminarla."
     text.TaskNotFound -> "Tarea no encontrada"

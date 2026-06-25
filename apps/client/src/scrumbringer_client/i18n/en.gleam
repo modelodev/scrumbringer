@@ -73,7 +73,7 @@ pub fn translate(text: Text) -> String {
     text.TaskCompleteFailed -> "Could not close task"
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
-    text.TaskBlockedByDependencies -> "Task has incomplete dependencies"
+    text.TaskBlockedByDependencies -> "Task has open dependencies"
     text.TaskHasOperationalHistory ->
       "This task has operational history. Close it instead of deleting it."
     text.TaskNotFound -> "Task not found"

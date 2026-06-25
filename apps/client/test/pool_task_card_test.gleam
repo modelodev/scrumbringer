@@ -62,7 +62,7 @@ pub fn task_card_renders_blocked_canvas_card_test() {
   assert_contains(html, "task-card-primary-action-blocked")
   assert_contains(html, "aria-disabled=\"true\"")
   assert_not_contains(html, "task-blocked-card")
-  assert_not_contains(html, "Task has incomplete dependencies")
+  assert_not_contains(html, "Task has open dependencies")
   assert_not_contains(html, "Closed dependency")
 }
 
