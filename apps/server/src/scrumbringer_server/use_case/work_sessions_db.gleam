@@ -48,7 +48,7 @@ pub type WorkSessionsState {
 pub type WorkSessionError {
   /// Task is not claimed by this user.
   NotClaimed
-  /// Task is completed (cannot start session).
+  /// Task is closed (cannot start session).
   TaskDone
   /// No active session found for heartbeat.
   SessionNotFound
@@ -82,7 +82,7 @@ pub fn get_active_sessions(
 
 /// Start a work session on a task.
 /// - Validates task is claimed by user
-/// - Validates task is not completed
+/// - Validates task is not closed
 /// - Creates new session or returns existing (idempotent)
 ///
 /// Example:
@@ -92,7 +92,7 @@ pub fn start_session(
   user_id: Int,
   task_id: Int,
 ) -> Result(WorkSessionsState, WorkSessionError) {
-  // First validate the task is claimed by this user and not completed
+  // First validate the task is claimed by this user and not closed.
   use task_validation <- result.try(validate_task_for_session(
     db,
     user_id,
@@ -101,7 +101,7 @@ pub fn start_session(
 
   case task_validation {
     TaskNotClaimed -> Error(NotClaimed)
-    TaskIsDone -> Error(TaskDone)
+    TaskIsClosed -> Error(TaskDone)
     TaskValidForSession -> {
       // Try to insert new session, handle conflict (already exists)
       case insert_session(db, user_id, task_id) {
@@ -166,7 +166,7 @@ pub fn heartbeat_session(
   }
 }
 
-/// Close session for a task (called by complete/release).
+/// Close session for a task during close or release lifecycle transitions.
 /// Returns the ended reason.
 ///
 /// Example:
@@ -298,7 +298,7 @@ pub type ContributorTime {
 type TaskValidation {
   TaskValidForSession
   TaskNotClaimed
-  TaskIsDone
+  TaskIsClosed
 }
 
 type TaskClaimState {
@@ -376,7 +376,7 @@ fn validate_task_for_session(
       ))
 
       case state {
-        Closed -> Ok(TaskIsDone)
+        Closed -> Ok(TaskIsClosed)
         ClaimedBy(id) if id == user_id -> Ok(TaskValidForSession)
         _ -> Ok(TaskNotClaimed)
       }

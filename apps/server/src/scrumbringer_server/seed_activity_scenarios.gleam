@@ -42,14 +42,14 @@ fn build_task_notes(db: pog.Connection, context: Context) -> Result(Nil, String)
     context.task_refs
     |> list.filter(fn(seed) { is_claimed_state(seed.execution_state) })
     |> list.take(2)
-  let completed_notes =
+  let closed_notes =
     context.task_refs
-    |> list.filter(fn(seed) { is_completed_state(seed.execution_state) })
+    |> list.filter(fn(seed) { is_closed_state(seed.execution_state) })
     |> list.take(1)
   let noted_tasks =
     available_notes
     |> list.append(claimed_notes)
-    |> list.append(completed_notes)
+    |> list.append(closed_notes)
 
   use _ <- result.try(
     list.index_map(noted_tasks, fn(seed, idx) {
@@ -133,11 +133,11 @@ fn build_work_sessions(
     context.task_refs
     |> list.filter(fn(seed) { is_claimed_state(seed.execution_state) })
     |> list.map(fn(seed) { seed.task_id })
-  let completed_tasks =
+  let closed_tasks =
     context.task_refs
-    |> list.filter(fn(seed) { is_completed_state(seed.execution_state) })
+    |> list.filter(fn(seed) { is_closed_state(seed.execution_state) })
     |> list.map(fn(seed) { seed.task_id })
-  let tasks = list.append(claimed_tasks, completed_tasks)
+  let tasks = list.append(claimed_tasks, closed_tasks)
   let tasks = list.take(tasks, 8)
   let users = context.user_ids
 
@@ -225,7 +225,7 @@ fn is_claimed_state(execution_state: task_state.TaskExecutionState) -> Bool {
   }
 }
 
-fn is_completed_state(execution_state: task_state.TaskExecutionState) -> Bool {
+fn is_closed_state(execution_state: task_state.TaskExecutionState) -> Bool {
   case execution_state {
     task_state.Closed(..) -> True
     task_state.Available | task_state.Claimed(..) -> False
