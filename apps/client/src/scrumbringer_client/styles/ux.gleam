@@ -256,7 +256,7 @@ pub fn css() -> List(String) {
     ".btn-action:hover { background: var(--sb-hover); }",
     ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
     ".btn-action.btn-start { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); border-color: var(--sb-success); color: var(--sb-success-text); }",
-    ".btn-action.btn-complete { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); border-color: var(--sb-success); color: var(--sb-success-text); }",
+    ".btn-action.btn-close { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); border-color: var(--sb-success); color: var(--sb-success-text); }",
     // Overlay
     ".member-panel-overlay { display: none; }",
     "@media (max-width: 768px), (max-height: 480px) and (max-width: 1024px) { .member-panel-overlay.visible { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 65; } }",

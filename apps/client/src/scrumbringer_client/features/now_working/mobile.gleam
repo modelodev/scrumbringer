@@ -237,7 +237,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
       icons.Check,
       icons.Small,
       config.disable_actions,
-      "btn-action btn-complete",
+      "btn-action btn-close",
       opt.None,
       opt.None,
     ),

@@ -1001,7 +1001,7 @@ pub fn people_view_does_not_render_command_actions_test() {
   let html = render_people(model)
 
   assert_not_contains(html, "btn-claim-mini")
-  assert_not_contains(html, "btn-complete")
+  assert_not_contains(html, "btn-close")
   assert_not_contains(html, "task-actions")
   assert_not_contains(html, "kanban-card-delete-action")
   assert_not_contains(html, "plan-move")
