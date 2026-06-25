@@ -151,5 +151,5 @@ pub fn handle_complete(
   task_id: String,
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
-  tasks_transitions.handle_task_complete(req, ctx, task_id)
+  tasks_transitions.handle_task_close(req, ctx, task_id)
 }

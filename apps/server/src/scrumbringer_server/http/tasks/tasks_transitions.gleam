@@ -67,8 +67,8 @@ pub fn handle_task_release(
 /// Closes a task for the current user.
 ///
 /// Example:
-///   handle_task_complete(req, ctx, "10")
-pub fn handle_task_complete(
+///   handle_task_close(req, ctx, "10")
+pub fn handle_task_close(
   req: wisp.Request,
   ctx: auth.Ctx,
   task_id: String,
