@@ -68,11 +68,9 @@ Apply componentization when ALL of the following are true:
 ```
 apps/client/src/scrumbringer_client/
 ├── components/
-│   ├── card_detail_modal.gleam         # DONE - Story 3.6
-│   ├── card_crud_dialog.gleam          # Planned - Priority 1
-│   ├── automation_crud_dialog.gleam    # Planned - Priority 2
-│   ├── task_template_crud_dialog.gleam # Planned - Priority 3
-│   └── rule_crud_dialog.gleam          # Planned - Priority 4
+│   ├── card_crud_dialog.gleam          # Registered component
+│   ├── task_type_crud_dialog.gleam     # Registered component
+│   └── crud_dialog_base.gleam          # Shared dialog helpers
 ├── component.ffi.mjs                   # Shared FFI for custom events
 ```
 
@@ -276,7 +274,7 @@ export function emit_custom_event(name, detail) {
   // Strategy 2: Fallback to querySelector for known component tags
   // This works for effects that run outside the render cycle
   if (!component || !component.dispatchEvent) {
-    const knownComponents = ['card-detail-modal']  // Add new components here
+    const knownComponents = ['card-crud-dialog', 'task-type-crud-dialog']
 
     for (const tag of knownComponents) {
       const el = document.querySelector(tag)
@@ -302,7 +300,7 @@ export function emit_custom_event(name, detail) {
 }
 ```
 
-> **Note**: The fallback strategy is necessary because `__LUSTRE_CURRENT_COMPONENT__` is only set during the render/update cycle, but effects execute asynchronously after. When adding new components, register them in the `knownComponents` array.
+> **Note**: The fallback strategy is necessary because `__LUSTRE_CURRENT_COMPONENT__` is only set during the render/update cycle, but effects execute asynchronously after. When adding new components, register the custom-element tag in `component.ffi.mjs`.
 
 ---
 
@@ -357,14 +355,14 @@ apps/client/test/{component_name}_test.gleam
 pub fn initial_model_has_correct_defaults_test() {
   let model = make_model()
 
-  model.entity_id |> should.equal(option.None)
-  model.in_flight |> should.equal(False)
-  model.error |> should.equal(option.None)
+  let assert option.None = model.entity_id
+  let assert False = model.in_flight
+  let assert option.None = model.error
 }
 
 pub fn entity_received_msg_carries_data_test() {
   let EntityReceived(entity) = EntityReceived(make_entity(42))
-  entity.id |> should.equal(42)
+  let assert 42 = entity.id
 }
 ```
 
@@ -384,12 +382,12 @@ Components must be registered once at app initialization:
 // In scrumbringer_client.gleam main()
 pub fn main() {
   // Register all components
-  case card_detail_modal.register() {
+  case card_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil  // Log error in production
   }
 
-  case card_crud_dialog.register() {
+  case task_type_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
@@ -406,12 +404,11 @@ Based on codebase analysis and UX review:
 
 | Candidate | Model Fields | Msg Variants | Complexity | Priority | Status |
 |-----------|-------------|--------------|------------|----------|--------|
-| Card Detail Modal | 11 | 12 | Low | - | **DONE** |
-| Admin Cards CRUD | 17 | 20 | Low | **1** | Planned |
-| Workflows CRUD | 15 | 18 | Low | **2** | Planned |
-| Task Templates CRUD | 17 | 20 | Medium | **3** | Planned |
-| Rules CRUD | 21 | 24 | **High** | **4** | Planned |
-| Task Types | 8 | 8 | Low | - | Deferred |
+| Admin Cards CRUD | 17 | 20 | Low | - | Registered |
+| Task Types CRUD | 8 | 8 | Low | - | Registered |
+| Workflows CRUD | 15 | 18 | Low | - | Keep feature-owned for now |
+| Task Templates CRUD | 17 | 20 | Medium | - | Keep feature-owned for now |
+| Rules CRUD | 21 | 24 | **High** | - | Keep feature-owned for now |
 | Capabilities | 6 | 5 | Low | - | Too small |
 
 ### UX Complexity Analysis
@@ -419,11 +416,17 @@ Based on codebase analysis and UX review:
 | Dialog | Size | Conditional Fields | Dynamic Options | Custom Controls |
 |--------|------|-------------------|-----------------|-----------------|
 | Cards | Md | No | No | color_picker |
+| Task Types | Md | No | No | icon picker |
 | Workflows | Md | No | No | checkbox |
 | Task Templates | Md | No | No | 2× select |
 | **Rules** | **Lg** | **Yes** (task_type) | **Yes** (states) | 3× select |
 
-**Priority Rationale**: Rules moved to last position due to:
+**Current rationale**: `card_crud_dialog.gleam` and
+`task_type_crud_dialog.gleam` are the only active Lustre custom elements. Other
+admin and automation surfaces remain feature-owned view/update modules until a
+component boundary would remove real state or message bloat without hiding
+product flow. Rules remain a poor component candidate until the automation
+builder is split, because they combine:
 - Conditional field visibility (task_type only when resource_type == "task")
 - Dynamic options (state values depend on resource_type)
 - Larger dialog size requiring different layout

@@ -53,9 +53,9 @@
 │                          Task                             │
 │───────────────────────────────────────────────────────────│
 │ id            │ title         │ description               │
-│ priority      │ status        │ type_id (FK)              │
+│ priority      │ exec_state    │ type_id (FK)              │
 │ project_id    │ created_by    │ claimed_by (FK)?          │
-│ claimed_at?   │ completed_at? │ created_at                │
+│ claimed_at?   │ closed_at?    │ created_at                │
 │ version       │               │                           │
 └───────────────────────────────────────────────────────────┘
        │                              │
@@ -200,19 +200,35 @@ CREATE TABLE tasks (
     title TEXT NOT NULL,
     description TEXT,
     priority INT NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
-    status TEXT NOT NULL DEFAULT 'available'
-        CHECK (status IN ('available', 'claimed', 'completed')),
     type_id BIGINT NOT NULL REFERENCES task_types(id),
     project_id BIGINT NOT NULL REFERENCES projects(id),
     created_by BIGINT NOT NULL REFERENCES users(id),
     claimed_by BIGINT REFERENCES users(id),
     claimed_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    version INT NOT NULL DEFAULT 1
+    version INT NOT NULL DEFAULT 1,
+    card_id BIGINT REFERENCES cards(id),
+    pool_lifetime_s BIGINT NOT NULL DEFAULT 0 CHECK (pool_lifetime_s >= 0),
+    last_entered_pool_at TIMESTAMPTZ,
+    created_from_rule_id BIGINT REFERENCES rules(id),
+    execution_state TEXT NOT NULL
+        CHECK (execution_state IN ('available', 'claimed', 'closed')),
+    claimed_mode TEXT
+        CHECK (claimed_mode IS NULL OR claimed_mode IN ('taken', 'ongoing')),
+    closed_at TIMESTAMPTZ,
+    closed_by BIGINT REFERENCES users(id),
+    closed_reason TEXT
+        CHECK (closed_reason IS NULL OR closed_reason IN (
+          'done',
+          'manually_closed',
+          'closed_by_ancestor'
+        )),
+    due_date DATE,
+    capability_id BIGINT REFERENCES capabilities(id)
 );
 
-CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_project_execution_state
+    ON tasks(project_id, execution_state);
 CREATE INDEX idx_tasks_project ON tasks(project_id);
 CREATE INDEX idx_tasks_claimed_by ON tasks(claimed_by);
 ```
@@ -340,10 +356,11 @@ Events represent state changes. Used for UI updates and audit.
 UPDATE tasks
 SET claimed_by = $1,
     claimed_at = NOW(),
-    status = 'claimed',
+    claimed_mode = 'taken',
+    execution_state = 'claimed',
     version = version + 1
 WHERE id = $2
-  AND status = 'available'
+  AND execution_state = 'available'
   AND version = $3
 RETURNING *;
 ```
@@ -362,12 +379,12 @@ RETURNING *;
 
 ---
 
-## Status State Machine
+## Execution State Machine
 
 ```
-┌───────────┐    Claim     ┌─────────┐   Complete   ┌───────────┐
-│ available │─────────────►│ claimed │─────────────►│ completed │
-└───────────┘              └─────────┘              └───────────┘
+┌───────────┐    Claim     ┌─────────┐   Complete/Close   ┌────────┐
+│ available │─────────────►│ claimed │────────────────────►│ closed │
+└───────────┘              └─────────┘                     └────────┘
        ▲                        │
        │       Release          │
        └────────────────────────┘
@@ -376,8 +393,10 @@ RETURNING *;
 **Transitions:**
 - `available` → `claimed`: ClaimTask (any user)
 - `claimed` → `available`: ReleaseTask (claimed user only)
-- `claimed` → `completed`: CompleteTask (claimed user only)
-- `completed` → (terminal state)
+- `claimed` → `closed`: CompleteTask (claimed user only, reason `done`)
+- `available` → `closed`: manual card closure or explicit close (reason
+  `closed_by_ancestor` or `manually_closed`)
+- `closed` → (terminal state)
 
 ---
 

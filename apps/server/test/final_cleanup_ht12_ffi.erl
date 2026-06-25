@@ -324,7 +324,14 @@ smoke_flow_violations(Root) ->
 docs_i18n_violations(Root) ->
     files_containing(Root, ["docs", "apps/client/src/scrumbringer_client/i18n"], [
         legacy_bin(), title_legacy_bin(), legacy_plural_bin(), legacy_id_bin()
-    ], [".md", ".yml", ".yaml", ".gleam"]).
+    ], [".md", ".yml", ".yaml", ".gleam"]) ++
+    files_containing(Root, ["docs/architecture"], [
+        <<"card_detail_modal">>,
+        <<"Card Detail Modal">>,
+        <<"status TEXT NOT NULL DEFAULT 'available'">>,
+        <<"idx_tasks_status">>,
+        <<"Status State Machine">>
+    ], [".md"]).
 
 audit_replaces_task_events_violations(Root) ->
     files_containing(Root, [
