@@ -52,7 +52,7 @@ fn config() -> engine_list.Config(String) {
     selected_project: opt.Some(selected_project()),
     selected_project_id: opt.Some(7),
     selected_rules_view: opt.None,
-    workflows: Loaded([workflow(3, "Release automation", True)]),
+    engines: Loaded([workflow(3, "Release automation", True)]),
     selected_engine_id: opt.None,
     selected_rule_id: opt.None,
     search_query: "",
@@ -67,8 +67,8 @@ fn config() -> engine_list.Config(String) {
     on_search_changed: fn(value) { "search-" <> value },
     on_status_filter_changed: fn(value) { "status-" <> value },
     on_rules_clicked: fn(id) { "rules-" <> int.to_string(id) },
-    on_edit_clicked: fn(workflow) { "edit-" <> workflow.name },
-    on_delete_clicked: fn(workflow) { "delete-" <> workflow.name },
+    on_edit_clicked: fn(engine) { "edit-" <> engine.name },
+    on_delete_clicked: fn(engine) { "delete-" <> engine.name },
     on_name_changed: fn(value) { "name-" <> value },
     on_description_changed: fn(value) { "description-" <> value },
     on_active_changed: fn(value) {
@@ -113,7 +113,7 @@ pub fn automation_engine_list_filters_by_status_test() {
     engine_list.view(
       engine_list.Config(
         ..config(),
-        workflows: Loaded([
+        engines: Loaded([
           workflow(3, "Release automation", True),
           workflow(4, "Paused intake", False),
         ]),

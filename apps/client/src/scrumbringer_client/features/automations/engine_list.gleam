@@ -37,7 +37,7 @@ pub type Config(msg) {
     selected_project: opt.Option(Project),
     selected_project_id: opt.Option(Int),
     selected_rules_view: opt.Option(Element(msg)),
-    workflows: Remote(List(Workflow)),
+    engines: Remote(List(Workflow)),
     selected_engine_id: opt.Option(Int),
     selected_rule_id: opt.Option(Int),
     search_query: String,
@@ -97,7 +97,7 @@ fn view_list(config: Config(msg)) -> Element(msg) {
             p([], [text(t(config, i18n_text.AutomationEnginesDescription))]),
           ]),
           view_filters(config),
-          view_content(config, config.workflows),
+          view_content(config, config.engines),
         ]),
         view_engine_panel(config),
       ])
@@ -155,15 +155,15 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
 
 fn view_content(
   config: Config(msg),
-  workflows: Remote(List(Workflow)),
+  engines: Remote(List(Workflow)),
 ) -> Element(msg) {
-  case workflows {
+  case engines {
     NotAsked -> skeleton.skeleton_list(3)
     Loading -> skeleton.skeleton_list(3)
     Failed(err) -> error_notice.view(err.message)
     Loaded(items) -> {
       let filtered =
-        filter_workflows(items, config.search_query, config.status_filter)
+        filter_engines(items, config.search_query, config.status_filter)
 
       case filtered {
         [] ->
@@ -175,8 +175,8 @@ fn view_content(
           keyed.element(
             "div",
             [attribute.class("automation-engine-list")],
-            list.map(filtered, fn(workflow) {
-              #(int.to_string(workflow.id), view_engine_row(config, workflow))
+            list.map(filtered, fn(engine) {
+              #(int.to_string(engine.id), view_engine_row(config, engine))
             }),
           )
       }
@@ -184,8 +184,8 @@ fn view_content(
   }
 }
 
-fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
-  let is_selected = config.selected_engine_id == opt.Some(workflow.id)
+fn view_engine_row(config: Config(msg), engine: Workflow) -> Element(msg) {
+  let is_selected = config.selected_engine_id == opt.Some(engine.id)
   div(
     [
       attribute.class(row_class("automation-engine-row", is_selected)),
@@ -196,11 +196,11 @@ fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
       div([attribute.class("automation-engine-row__main")], [
         div([attribute.class("automation-engine-row__title")], [
           span([attribute.class("automation-engine-row__name")], [
-            text(workflow.name),
+            text(engine.name),
           ]),
-          workflow_status_badge(config, workflow),
+          engine_status_badge(config, engine),
         ]),
-        case workflow.description {
+        case engine.description {
           opt.Some(description) ->
             p([attribute.class("automation-engine-row__description")], [
               text(description),
@@ -211,13 +211,13 @@ fn view_engine_row(config: Config(msg), workflow: Workflow) -> Element(msg) {
       div([attribute.class("automation-engine-row__meta")], [
         span([], [
           text(
-            int.to_string(workflow.rule_count)
+            int.to_string(engine.rule_count)
             <> " "
             <> t(config, i18n_text.AutomationEngineRules),
           ),
         ]),
       ]),
-      view_actions(config, workflow),
+      view_actions(config, engine),
     ],
   )
 }
@@ -229,11 +229,8 @@ fn row_class(base: String, is_selected: Bool) -> String {
   }
 }
 
-fn workflow_status_badge(
-  config: Config(msg),
-  workflow: Workflow,
-) -> Element(msg) {
-  case workflow.active {
+fn engine_status_badge(config: Config(msg), engine: Workflow) -> Element(msg) {
+  case engine.active {
     True ->
       badge.new_unchecked(
         t(config, i18n_text.AutomationEngineStatusActive),
@@ -249,68 +246,64 @@ fn workflow_status_badge(
   }
 }
 
-fn view_actions(config: Config(msg), workflow: Workflow) -> Element(msg) {
+fn view_actions(config: Config(msg), engine: Workflow) -> Element(msg) {
   div([attribute.class("btn-group")], [
     action_buttons.settings_button_with_testid(
       t(config, i18n_text.AutomationEngineRules),
-      config.on_rules_clicked(workflow.id),
+      config.on_rules_clicked(engine.id),
       "workflow-rules-btn",
     ),
     ui_button.icon(
       t(config, i18n_text.EditAutomationEngine),
-      config.on_edit_clicked(workflow),
+      config.on_edit_clicked(engine),
       icons.Pencil,
       ui_button.Neutral,
       ui_button.EntityAction,
     )
       |> ui_button.with_size(ui_button.ExtraSmall)
-      |> ui_button.with_id(automation_focus.engine_edit_trigger_id(workflow.id))
+      |> ui_button.with_id(automation_focus.engine_edit_trigger_id(engine.id))
       |> ui_button.view,
     ui_button.icon(
       t(config, i18n_text.DeleteAutomationEngine),
-      config.on_delete_clicked(workflow),
+      config.on_delete_clicked(engine),
       icons.Trash,
       ui_button.Danger,
       ui_button.EntityAction,
     )
       |> ui_button.with_size(ui_button.ExtraSmall)
-      |> ui_button.with_id(automation_focus.engine_delete_trigger_id(
-        workflow.id,
-      ))
+      |> ui_button.with_id(automation_focus.engine_delete_trigger_id(engine.id))
       |> ui_button.view,
   ])
 }
 
-fn filter_workflows(
-  workflows: List(Workflow),
+fn filter_engines(
+  engines: List(Workflow),
   query: String,
   status_filter: String,
 ) -> List(Workflow) {
   let needle = string.trim(query) |> string.lowercase
 
-  workflows
-  |> list.filter(fn(workflow) {
-    workflow_matches_status(workflow, status_filter)
-  })
-  |> list.filter(fn(workflow) {
+  engines
+  |> list.filter(fn(engine) { engine_matches_status(engine, status_filter) })
+  |> list.filter(fn(engine) {
     case needle {
       "" -> True
-      _ -> workflow_matches_query(workflow, needle)
+      _ -> engine_matches_query(engine, needle)
     }
   })
 }
 
-fn workflow_matches_status(workflow: Workflow, status_filter: String) -> Bool {
+fn engine_matches_status(engine: Workflow, status_filter: String) -> Bool {
   case status_filter {
-    "active" -> workflow.active
-    "paused" -> !workflow.active
+    "active" -> engine.active
+    "paused" -> !engine.active
     _ -> True
   }
 }
 
-fn workflow_matches_query(workflow: Workflow, needle: String) -> Bool {
-  string.contains(string.lowercase(workflow.name), needle)
-  || case workflow.description {
+fn engine_matches_query(engine: Workflow, needle: String) -> Bool {
+  string.contains(string.lowercase(engine.name), needle)
+  || case engine.description {
     opt.Some(description) ->
       string.contains(string.lowercase(description), needle)
     opt.None -> False
@@ -320,8 +313,8 @@ fn workflow_matches_query(workflow: Workflow, needle: String) -> Bool {
 fn view_engine_panel(config: Config(msg)) -> Element(msg) {
   case config.dialog_mode {
     opt.None -> element.none()
-    opt.Some(admin_workflows.WorkflowDialogDelete(workflow)) ->
-      view_delete_panel(config, workflow)
+    opt.Some(admin_workflows.WorkflowDialogDelete(engine)) ->
+      view_delete_panel(config, engine)
     opt.Some(mode) -> view_form_panel(config, mode)
   }
 }
@@ -422,7 +415,7 @@ fn view_form_panel(
   )
 }
 
-fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
+fn view_delete_panel(config: Config(msg), engine: Workflow) -> Element(msg) {
   let title_id = "automation-engine-panel-title"
   div(
     [
@@ -439,7 +432,7 @@ fn view_delete_panel(config: Config(msg), workflow: Workflow) -> Element(msg) {
       ),
       view_form_error(config),
       p([], [
-        text(t(config, i18n_text.AutomationEngineDeleteConfirm(workflow.name))),
+        text(t(config, i18n_text.AutomationEngineDeleteConfirm(engine.name))),
       ]),
       panel_actions(
         cancel: config.on_closed,

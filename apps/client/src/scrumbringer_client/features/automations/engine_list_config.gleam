@@ -72,7 +72,7 @@ pub fn from_state(
     selected_project: selected_project,
     selected_project_id: selected_project_id,
     selected_rules_view: selected_rules_view,
-    workflows: workflows.workflows_project,
+    engines: workflows.workflows_project,
     selected_engine_id: automation_deep_link.engine_id(selection),
     selected_rule_id: automation_deep_link.rule_id(selection),
     dialog_mode: workflows.workflows_dialog_mode,
