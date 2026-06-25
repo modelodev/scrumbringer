@@ -14,11 +14,11 @@ pub type Variant {
   Compact
 }
 
-pub fn view(completed: Int, total: Int, variant: Variant) -> Element(msg) {
-  let progress_text = int.to_string(completed) <> "/" <> int.to_string(total)
+pub fn view(closed: Int, total: Int, variant: Variant) -> Element(msg) {
+  let progress_text = int.to_string(closed) <> "/" <> int.to_string(total)
   let percent = case total {
     0 -> 0
-    _ -> completed * 100 / total
+    _ -> closed * 100 / total
   }
 
   case variant {

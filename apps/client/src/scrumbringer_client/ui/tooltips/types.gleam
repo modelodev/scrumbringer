@@ -17,7 +17,7 @@ pub type NotesPreviewData {
 /// AC18 - Progress breakdown for progress bar tooltip.
 pub type ProgressBreakdown {
   ProgressBreakdown(
-    completed: Int,
+    closed: Int,
     in_progress: Int,
     pending: Int,
     percentage: Int,

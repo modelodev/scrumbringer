@@ -14,14 +14,14 @@ pub fn shows_breakdown_test() {
   let config =
     progress_tooltip.Config(
       data: ProgressBreakdown(
-        completed: 3,
+        closed: 3,
         in_progress: 1,
         pending: 1,
         percentage: 60,
       ),
       labels: progress_tooltip.Labels(
         progress: "Progreso:",
-        completed: "completadas",
+        closed: "cerradas",
         in_progress: "en curso",
         pending: "pendientes",
       ),
@@ -30,7 +30,7 @@ pub fn shows_breakdown_test() {
   let html = progress_tooltip.view(config) |> element.to_document_string
 
   assert_contains(html, "3")
-  assert_contains(html, "completadas")
+  assert_contains(html, "cerradas")
   assert_contains(html, "1")
   assert_contains(html, "en curso")
   assert_contains(html, "pendientes")
@@ -40,14 +40,14 @@ pub fn calculates_percentage_display_test() {
   let config =
     progress_tooltip.Config(
       data: ProgressBreakdown(
-        completed: 3,
+        closed: 3,
         in_progress: 1,
         pending: 1,
         percentage: 60,
       ),
       labels: progress_tooltip.Labels(
         progress: "Progreso:",
-        completed: "completadas",
+        closed: "cerradas",
         in_progress: "en curso",
         pending: "pendientes",
       ),
@@ -63,14 +63,14 @@ pub fn handles_zero_tasks_test() {
   let config =
     progress_tooltip.Config(
       data: ProgressBreakdown(
-        completed: 0,
+        closed: 0,
         in_progress: 0,
         pending: 0,
         percentage: 0,
       ),
       labels: progress_tooltip.Labels(
         progress: "Progreso:",
-        completed: "completadas",
+        closed: "cerradas",
         in_progress: "en curso",
         pending: "pendientes",
       ),
@@ -79,5 +79,5 @@ pub fn handles_zero_tasks_test() {
   let html = progress_tooltip.view(config) |> element.to_document_string
 
   assert_contains(html, "0")
-  assert_contains(html, "completadas")
+  assert_contains(html, "cerradas")
 }
