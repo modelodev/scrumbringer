@@ -30,7 +30,7 @@ fn claim_task(
   )
 }
 
-fn complete_task(
+fn close_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: fixtures.Session,
   task_id: Int,
@@ -121,7 +121,7 @@ pub fn handle_claim_conflict_returns_claimed_conflict_test() {
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED") |> expect.is_true
 }
 
-pub fn handle_claim_conflict_returns_validation_for_completed_test() {
+pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
@@ -133,7 +133,7 @@ pub fn handle_claim_conflict_returns_validation_for_completed_test() {
     fixtures.create_task(handler, session, project_id, type_id, "Done")
 
   expect.expect_status(claim_task(handler, session, task_id, 1), 200)
-  expect.expect_status(complete_task(handler, session, task_id, 2), 200)
+  expect.expect_status(close_task(handler, session, task_id, 2), 200)
 
   let res = conflict_handlers.handle_claim_conflict(db, task_id, user_id)
   expect.expect_status(res, 422)
