@@ -350,7 +350,7 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardCardColumn -> "Card"
     text.CapabilityBoardLevelColumn -> "Level"
     text.CapabilityBoardTotal -> "Total"
-    text.CapabilityBoardComplete -> "complete"
+    text.CapabilityBoardComplete -> "closed"
     text.CapabilityBoardNoTasks -> "No active tasks"
     text.CapabilityBoardEmptyCell -> "No tasks"
     text.CapabilityBoardOldest -> "Oldest"

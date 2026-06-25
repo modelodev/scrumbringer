@@ -283,7 +283,8 @@ pub fn capability_board_show_closed_includes_closed_tasks_test() {
     |> element.to_document_string
 
   assert_contains(html, "Closed task")
-  assert_contains(html, "complete")
+  assert_contains(html, "closed")
+  assert_not_contains(html, "complete")
 }
 
 pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
