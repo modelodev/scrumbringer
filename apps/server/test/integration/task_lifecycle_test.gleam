@@ -1,6 +1,6 @@
 //// Integration tests for the full task lifecycle.
 ////
-//// Tests complete workflows: create -> claim -> complete
+//// Tests full workflows: create -> claim -> close
 //// and create -> claim -> release -> claim (by different user).
 
 import fixtures
@@ -18,10 +18,10 @@ pub fn main() {
 }
 
 // =============================================================================
-// AC8: Full lifecycle test (create -> claim -> complete)
+// AC8: Full lifecycle test (create -> claim -> close)
 // =============================================================================
 
-pub fn full_lifecycle_create_claim_complete_test() {
+pub fn full_lifecycle_create_claim_close_test() {
   // Given: Bootstrap and create a project with a task type
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -39,7 +39,7 @@ pub fn full_lifecycle_create_claim_complete_test() {
 
   // Step 1: Create a task
   let assert Ok(task_id) =
-    fixtures.create_task(handler, session, project_id, type_id, "Complete Me")
+    fixtures.create_task(handler, session, project_id, type_id, "Close Me")
 
   // Verify task is in available status
   let assert Ok(status1) =
@@ -63,8 +63,8 @@ pub fn full_lifecycle_create_claim_complete_test() {
     fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status2 |> expect.equal("claimed")
 
-  // Step 3: Complete the task (version is now 2 after claim)
-  let complete_res =
+  // Step 3: Close the task (version is now 2 after claim)
+  let close_res =
     handler(
       simulate.request(
         http.Post,
@@ -73,14 +73,14 @@ pub fn full_lifecycle_create_claim_complete_test() {
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(2))])),
     )
-  expect.expect_status(complete_res, 200)
+  expect.expect_status(close_res, 200)
 
   // Verify task is now closed in canonical storage
   let assert Ok(status3) =
     fixtures.query_string(db, task_status_query(), [pog.int(task_id)])
   status3 |> expect.equal("closed")
 
-  // Verify claimed_by is cleared on completion
+  // Verify claimed_by is cleared on close
   let assert Ok(claimed_by_cleared) =
     fixtures.query_int(
       db,

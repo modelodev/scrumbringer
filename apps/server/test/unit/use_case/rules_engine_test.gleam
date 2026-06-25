@@ -38,7 +38,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       session,
       workflow_id,
       Some(type_id),
-      "Bug Complete",
+      "Bug Closed",
       fixtures.task_closed_done(),
       template_id,
     )
