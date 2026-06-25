@@ -25,9 +25,6 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import pog
-import scrumbringer_server/seed_audit_events
-import scrumbringer_server/seed_automation_definitions
-import scrumbringer_server/seed_automation_executions
 import scrumbringer_server/seed_capability_scenarios
 import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_task_scenarios
@@ -107,16 +104,8 @@ type BuildState {
     task_type_ids: List(#(Int, Int, Int, Int)),
     card_ids: List(Int),
     card_ids_by_project: List(#(Int, List(Int))),
-    workflow_ids: List(Int),
-    workflow_ids_by_project: List(#(Int, List(Int))),
-    rule_ids: List(Int),
-    rule_ids_by_project: List(#(Int, List(Int))),
     task_ids: List(Int),
     task_seeds: List(TaskSeedInfo),
-    template_ids: List(Int),
-    template_ids_by_project: List(#(Int, List(Int))),
-    audit_events_count: Int,
-    rule_executions_count: Int,
   )
 }
 
@@ -175,38 +164,26 @@ pub fn build_seed(
       task_type_ids: [],
       card_ids: [],
       card_ids_by_project: [],
-      workflow_ids: [],
-      workflow_ids_by_project: [],
-      rule_ids: [],
-      rule_ids_by_project: [],
       task_ids: [],
       task_seeds: [],
-      template_ids: [],
-      template_ids_by_project: [],
-      audit_events_count: 0,
-      rule_executions_count: 0,
     )
 
-  // Build in dependency order: core records, automation definitions, tasks,
-  // audit events, then derived automation executions.
+  // Build in dependency order: core records, then tasks.
   use state <- result.try(build_workspace_scenarios(db, state, config))
   use state <- result.try(build_capability_scenarios(db, state, config))
   use state <- result.try(build_cards(db, state, config))
-  use state <- result.try(build_automation_definitions(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
-  use state <- result.try(build_audit_events(db, state, config))
-  use state <- result.try(build_automation_executions(db, state, config))
 
   Ok(SeedResult(
     projects: list.length(state.project_ids),
     users: list.length(state.user_ids),
     task_types: list.length(state.task_type_ids),
-    workflows: list.length(state.workflow_ids),
-    rules: list.length(state.rule_ids),
+    workflows: 0,
+    rules: 0,
     tasks: list.length(state.task_ids),
     cards: list.length(state.card_ids),
-    rule_executions: state.rule_executions_count,
-    audit_events: state.audit_events_count,
+    rule_executions: 0,
+    audit_events: 0,
   ))
 }
 
@@ -289,36 +266,6 @@ fn build_cards(
   )
 }
 
-fn build_automation_definitions(
-  db: pog.Connection,
-  state: BuildState,
-  config: SeedConfig,
-) -> Result(BuildState, String) {
-  use definitions <- result.try(seed_automation_definitions.build(
-    db,
-    seed_automation_definitions.Context(
-      org_id: state.org_id,
-      admin_id: state.admin_id,
-      active_project_ids: active_project_ids(state),
-      workflows_per_project: config.workflows_per_project,
-      inactive_workflow_count: config.inactive_workflow_count,
-      empty_workflow_count: config.empty_workflow_count,
-      task_type_ids: state.task_type_ids,
-    ),
-  ))
-  Ok(
-    BuildState(
-      ..state,
-      template_ids: definitions.template_ids,
-      template_ids_by_project: definitions.template_ids_by_project,
-      workflow_ids: definitions.workflow_ids,
-      workflow_ids_by_project: definitions.workflow_ids_by_project,
-      rule_ids: definitions.rule_ids,
-      rule_ids_by_project: definitions.rule_ids_by_project,
-    ),
-  )
-}
-
 fn build_tasks(
   db: pog.Connection,
   state: BuildState,
@@ -334,7 +281,7 @@ fn build_tasks(
       active_task_types: task_types_for_active_projects(state),
       card_ids_by_project: state.card_ids_by_project,
       project_member_ids: state.project_member_ids,
-      rule_ids_by_project: state.rule_ids_by_project,
+      rule_ids_by_project: [],
       tasks_per_project: config.tasks_per_project,
       priority_distribution: config.priority_distribution,
       status_distribution: seed_task_scenarios.StatusDistribution(
@@ -363,56 +310,6 @@ fn build_tasks(
   Ok(
     BuildState(..state, task_ids: task_result.task_ids, task_seeds: task_seeds),
   )
-}
-
-fn build_audit_events(
-  db: pog.Connection,
-  state: BuildState,
-  config: SeedConfig,
-) -> Result(BuildState, String) {
-  use audit_events_count <- result.try(seed_audit_events.build(
-    db,
-    seed_audit_events.Context(
-      org_id: state.org_id,
-      admin_id: state.admin_id,
-      user_ids: state.user_ids,
-      task_ids: state.task_ids,
-      task_refs: list.map(state.task_seeds, fn(seed) {
-        seed_audit_events.TaskRef(
-          task_id: seed.task_id,
-          project_id: seed.project_id,
-          execution_state: seed.execution_state,
-          created_at: seed.created_at,
-          created_by: seed.created_by,
-          claimed_by: seed.claimed_by,
-        )
-      }),
-      user_count: config.user_count,
-      inactive_user_count: config.inactive_user_count,
-      date_range_days: config.date_range_days,
-    ),
-  ))
-  Ok(BuildState(..state, audit_events_count: audit_events_count))
-}
-
-fn build_automation_executions(
-  db: pog.Connection,
-  state: BuildState,
-  _config: SeedConfig,
-) -> Result(BuildState, String) {
-  use context <- result.try(seed_automation_executions.build(
-    db,
-    seed_automation_executions.Context(
-      org_id: state.org_id,
-      admin_id: state.admin_id,
-      task_ids: state.task_ids,
-      active_project_ids: active_project_ids(state),
-      task_type_ids: state.task_type_ids,
-      rule_executions_count: state.rule_executions_count,
-    ),
-  ))
-
-  Ok(BuildState(..state, rule_executions_count: context.rule_executions_count))
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {

@@ -979,6 +979,50 @@ DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_te
 544 passed, no failures
 ```
 
+### Fase 10 continuacion: seed minimo sin automation/audit generados
+
+Cambio ejecutado:
+
+- eliminados seeds dev-only de audit y automatizaciones generadas:
+  - `seed_audit_events.gleam`;
+  - `seed_automation_definitions.gleam`;
+  - `seed_automation_executions.gleam`;
+- `seed_builder.gleam` queda como seed minimo de workspace, capabilities,
+  cards y tasks;
+- los contadores de workflows/rules/rule executions/audit events del resumen
+  quedan a cero en lugar de construir escenarios artificiales.
+
+Metrica de la fase:
+
+```txt
+4 files changed, 6 insertions(+), 731 deletions(-)
+```
+
+Seed source tras la segunda poda:
+
+```txt
+apps/server/src/scrumbringer_server/seed*.gleam
+3292 total lines
+```
+
+Metrica no-doc acumulada tras esta fase:
+
+```txt
+git diff b4f7fdbb31e996ddf2a6fa6476a2a9908c8c2ab1 --shortstat -- ':!docs/'
+187 files changed, 3595 insertions(+), 15113 deletions(-)
+```
+
+Reduccion neta no-doc acumulada: `-11.518` lineas.
+
+Validacion ejecutada:
+
+```txt
+apps/server: gleam test
+DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+SB_DB_WAIT_QUERY_TIMEOUT_MS=60000
+544 passed, no failures
+```
+
 ### Validacion DB/server ejecutada en PostgreSQL 5433
 
 Hallazgo:
