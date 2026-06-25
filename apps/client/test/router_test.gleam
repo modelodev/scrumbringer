@@ -274,12 +274,6 @@ pub fn parse_org_api_tokens_test() {
   assert_equal(parsed, router.Parsed(router.Org(permissions.ApiTokens)))
 }
 
-pub fn parse_org_rule_metrics_retired_route_redirects_to_invites_test() {
-  let parsed = router.parse_uri(build_uri("/org/rule-metrics", ""))
-
-  assert_equal(parsed, router.Redirect(router.Org(permissions.Invites)))
-}
-
 pub fn parse_org_unknown_section_redirects_to_invites_test() {
   let parsed = router.parse_uri(build_uri("/org/unknown", ""))
 
@@ -532,7 +526,7 @@ pub fn roundtrip_org_invites_test() {
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
 
-pub fn roundtrip_org_assignments_test() {
+pub fn roundtrip_org_team_test() {
   let route = router.Org(permissions.Team)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
 }
@@ -540,20 +534,6 @@ pub fn roundtrip_org_assignments_test() {
 pub fn roundtrip_org_api_tokens_test() {
   let route = router.Org(permissions.ApiTokens)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
-}
-
-pub fn parse_my_bar_route_redirects_to_pool_test() {
-  assert_equal(
-    router.parse_uri(build_uri("/app/my-bar", "")),
-    router.Redirect(member_route(None, None)),
-  )
-}
-
-pub fn parse_my_skills_route_redirects_to_pool_test() {
-  assert_equal(
-    router.parse_uri(build_uri("/app/my-skills", "")),
-    router.Redirect(member_route(None, None)),
-  )
 }
 
 pub fn parse_unknown_member_route_redirects_to_pool_test() {

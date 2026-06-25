@@ -55,6 +55,7 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/client_ffi
+import scrumbringer_client/external_route_aliases
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
@@ -199,13 +200,12 @@ fn parse_org_route(pathname: String, search: String) -> ParseResult {
 
 fn parse_org_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/org")
-  case slug {
-    "assignments" ->
-      parse_org_section_query(permissions.Team, search) |> as_redirect
-    _ ->
-      case org_section_from_slug(slug) {
-        Ok(section) -> parse_org_section_query(section, search)
-        Error(_) ->
+  case org_section_from_slug(slug) {
+    Ok(section) -> parse_org_section_query(section, search)
+    Error(_) ->
+      case external_route_aliases.org_section(slug) {
+        Some(section) -> parse_org_section_query(section, search) |> as_redirect
+        None ->
           parse_org_section_query(permissions.Invites, search) |> as_redirect
       }
   }
