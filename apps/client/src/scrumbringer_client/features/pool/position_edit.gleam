@@ -1,4 +1,4 @@
-//// Member task position edit workflow.
+//// Member task position edit flow.
 
 import gleam/dict
 import gleam/int

@@ -1,4 +1,4 @@
-//// Effectful position edit workflow for the member pool.
+//// Effectful position edit update flow for the member pool.
 
 import gleam/option as opt
 

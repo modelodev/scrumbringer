@@ -8,12 +8,12 @@
 ////
 //// - Parse route params and JSON payloads
 //// - Authorize current user
-//// - Map workflow results into HTTP responses
+//// - Map task operation results into HTTP responses
 ////
 //// ## Non-responsibilities
 ////
 //// - Task repository (see `repository/tasks/queries.gleam`)
-//// - Workflow orchestration (see `use_case/workflows/handlers.gleam`)
+//// - Task operation orchestration (see `use_case/workflows/handlers.gleam`)
 ////
 //// ## Relationships
 ////

@@ -1,4 +1,4 @@
-//// Task mutation workflow for claim/release/complete operations.
+//// Task mutation update flow for claim/release/complete operations.
 
 import gleam/option as opt
 import gleam/string

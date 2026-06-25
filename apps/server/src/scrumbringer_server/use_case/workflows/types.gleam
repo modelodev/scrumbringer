@@ -1,13 +1,13 @@
-//// Task workflow types for business logic orchestration.
+//// Task operation types for business logic orchestration.
 ////
 //// ## Mission
 ////
-//// Defines message, response, and error types for task workflow operations.
+//// Defines message, response, and error types for task operations.
 //// These types form the contract between HTTP handlers and business logic.
 ////
 //// ## Responsibilities
 ////
-//// - Define workflow message types
+//// - Define task operation message types
 //// - Define response types
 //// - Define domain error types
 ////
@@ -27,7 +27,7 @@ import scrumbringer_server/use_case/task_types_db
 // Message Types
 // =============================================================================
 
-/// Task workflow messages for business logic operations.
+/// Task operation messages for business logic operations.
 pub type Message {
   /// List task types for a project.
   ListTaskTypes(project_id: Int, user_id: Int)

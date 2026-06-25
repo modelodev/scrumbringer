@@ -1,4 +1,4 @@
-//// Task Show workflow for the member pool.
+//// Task Show update flow for the member pool.
 
 import gleam/list
 import gleam/option as opt

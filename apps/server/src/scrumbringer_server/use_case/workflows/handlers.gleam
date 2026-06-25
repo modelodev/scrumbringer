@@ -1,8 +1,8 @@
-//// Task workflow message handlers.
+//// Task operation message handlers.
 ////
 //// ## Mission
 ////
-//// Handles task workflow messages by coordinating validation, authorization,
+//// Handles task operation messages by coordinating validation, authorization,
 //// and database operations. This is the main entry point for task business logic.
 ////
 //// ## Responsibilities
@@ -55,7 +55,7 @@ import scrumbringer_server/use_case/workflows/validation
 // Main Handler
 // =============================================================================
 
-/// Handle a task workflow message and return a domain result.
+/// Handle a task operation message and return a domain result.
 pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
   case message {
     ListTaskTypes(project_id, user_id) ->

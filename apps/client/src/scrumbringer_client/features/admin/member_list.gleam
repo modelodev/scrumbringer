@@ -1,4 +1,4 @@
-//// Project member list update workflow.
+//// Project member list update flow.
 
 import gleam/list
 import gleam/option as opt

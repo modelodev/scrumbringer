@@ -8,7 +8,7 @@
 ////
 //// - Authenticate and authorize access
 //// - Parse task identifiers and update payloads
-//// - Delegate task operations to workflow handlers
+//// - Delegate task operations to task operation handlers
 ////
 //// ## Non-responsibilities
 ////

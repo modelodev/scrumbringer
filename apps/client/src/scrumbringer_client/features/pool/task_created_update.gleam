@@ -1,4 +1,4 @@
-//// Effectful post-create feedback workflow for pool tasks.
+//// Effectful post-create feedback update flow for pool tasks.
 
 import lustre/effect.{type Effect}
 

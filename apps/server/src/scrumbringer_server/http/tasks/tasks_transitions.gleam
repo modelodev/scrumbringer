@@ -8,7 +8,7 @@
 ////
 //// - Parse route params and JSON payloads
 //// - Authorize current user and CSRF
-//// - Map workflow results into HTTP responses
+//// - Map task operation results into HTTP responses
 ////
 //// ## Non-responsibilities
 ////
@@ -18,7 +18,7 @@
 //// ## Relationships
 ////
 //// - Uses `http/auth.gleam` for user identity
-//// - Uses workflow handlers for domain transitions
+//// - Uses task operation handlers for domain transitions
 
 import gleam/result
 import pog

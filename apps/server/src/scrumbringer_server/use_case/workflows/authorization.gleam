@@ -1,8 +1,8 @@
-//// Task workflow authorization helpers.
+//// Task operation authorization helpers.
 ////
 //// ## Mission
 ////
-//// Provides authorization checks for task workflow operations including
+//// Provides authorization checks for task operations including
 //// project membership and admin role verification.
 ////
 //// ## Responsibilities

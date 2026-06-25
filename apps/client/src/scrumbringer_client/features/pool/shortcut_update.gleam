@@ -1,4 +1,4 @@
-//// Keyboard shortcut workflow for the member pool.
+//// Keyboard shortcut update flow for the member pool.
 
 import gleam/option as opt
 

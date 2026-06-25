@@ -1,4 +1,4 @@
-//// Effectful task dependency workflow.
+//// Effectful task dependency update flow.
 
 import gleam/option as opt
 

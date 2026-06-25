@@ -1,4 +1,4 @@
-//// Effectful card show workflow for the member pool.
+//// Effectful card show update flow for the member pool.
 
 import lustre/effect.{type Effect}
 

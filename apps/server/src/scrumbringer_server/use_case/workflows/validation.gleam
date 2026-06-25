@@ -1,8 +1,8 @@
-//// Task workflow validation helpers.
+//// Task operation validation helpers.
 ////
 //// ## Mission
 ////
-//// Provides validation functions for task workflow operations including
+//// Provides validation functions for task operations including
 //// title validation, priority validation, and type validation.
 ////
 //// ## Responsibilities

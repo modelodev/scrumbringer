@@ -1,4 +1,4 @@
-//// Shared validation helpers for task workflows and HTTP handlers.
+//// Shared validation helpers for task operations and HTTP handlers.
 ////
 //// ## Mission
 ////
@@ -12,11 +12,11 @@
 //// ## Non-responsibilities
 ////
 //// - HTTP response building (see `http/tasks/validators.gleam`)
-//// - Workflow orchestration (see `use_case/workflows/handlers.gleam`)
+//// - Task operation orchestration (see `use_case/workflows/handlers.gleam`)
 ////
 //// ## Relationships
 ////
-//// - Used by workflow and HTTP validation layers
+//// - Used by task operation and HTTP validation layers
 
 import gleam/option.{type Option, None, Some}
 import gleam/string

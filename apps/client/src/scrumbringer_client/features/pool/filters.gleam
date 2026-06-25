@@ -1,4 +1,4 @@
-//// Member pool filter update workflow.
+//// Member pool filter update flow.
 
 import gleam/dict
 import gleam/option as opt

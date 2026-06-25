@@ -1,4 +1,4 @@
-//// Inline Plan / Structure card movement workflow.
+//// Inline Plan / Structure card movement update flow.
 
 import gleam/int
 import gleam/list

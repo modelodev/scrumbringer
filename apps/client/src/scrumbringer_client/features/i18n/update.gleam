@@ -1,4 +1,4 @@
-//// I18n workflow for Scrumbringer client.
+//// I18n update flow for Scrumbringer client.
 ////
 //// ## Mission
 ////

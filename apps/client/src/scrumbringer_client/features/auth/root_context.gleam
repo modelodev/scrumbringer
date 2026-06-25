@@ -1,4 +1,4 @@
-//// Root-aware auth workflow context.
+//// Root-aware auth update context.
 
 import scrumbringer_client/client_state
 import scrumbringer_client/features/auth/msg as auth_messages

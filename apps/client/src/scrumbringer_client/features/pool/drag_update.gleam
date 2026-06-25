@@ -1,4 +1,4 @@
-//// Effectful drag, touch, hover, and highlight workflow for the pool.
+//// Effectful drag, touch, hover, and highlight update flow for the pool.
 
 import gleam/dict
 import gleam/int
