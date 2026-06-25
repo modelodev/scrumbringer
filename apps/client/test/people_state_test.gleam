@@ -1,19 +1,13 @@
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None}
 
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/people/state as people_state
 
-fn make_task(
-  id: Int,
-  user_id: Int,
-  mode: task_state.TaskClaimMode,
-  ongoing_by: Option(task_status.OngoingBy),
-) -> Task {
+fn make_task(id: Int, user_id: Int, mode: task_state.TaskClaimMode) -> Task {
   let state =
     task_state.Claimed(
       claimed_by: user_id,
@@ -26,7 +20,7 @@ fn make_task(
     project_id: 1,
     type_id: 1,
     task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: ongoing_by,
+    ongoing_by: None,
     title: "Task #" <> int.to_string(id),
     description: None,
     priority: 3,
@@ -56,10 +50,8 @@ fn claimed_task_ids(person: people_state.PersonStatus) -> List(Int) {
   claimed |> list.map(fn(task) { task.id })
 }
 
-pub fn derive_status_excludes_active_from_claimed_when_ongoing_by_test() {
-  let tasks = [
-    make_task(1, 10, task_state.Taken, Some(task_status.OngoingBy(user_id: 10))),
-  ]
+pub fn derive_status_excludes_ongoing_task_from_claimed_test() {
+  let tasks = [make_task(1, 10, task_state.Ongoing)]
 
   let person = people_state.derive_status(10, "ana@example.com", tasks)
   let assert [1] = active_task_ids(person)
@@ -68,8 +60,8 @@ pub fn derive_status_excludes_active_from_claimed_when_ongoing_by_test() {
 
 pub fn derive_status_keeps_non_active_taken_tasks_in_claimed_test() {
   let tasks = [
-    make_task(1, 10, task_state.Taken, Some(task_status.OngoingBy(user_id: 10))),
-    make_task(2, 10, task_state.Taken, None),
+    make_task(1, 10, task_state.Ongoing),
+    make_task(2, 10, task_state.Taken),
   ]
 
   let person = people_state.derive_status(10, "ana@example.com", tasks)

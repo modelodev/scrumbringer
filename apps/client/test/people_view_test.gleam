@@ -14,7 +14,6 @@ import domain/project_role
 import domain/remote
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_status
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -88,11 +87,6 @@ fn task_with_type(task: Task, type_id: Int, type_name: String) -> Task {
 
 fn blocked(task: Task) -> Task {
   Task(..task, blocked_count: 1)
-}
-
-fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task {
-  let task = make_task(id, title, user_id, task_state.Taken)
-  Task(..task, ongoing_by: Some(task_status.OngoingBy(user_id: user_id)))
 }
 
 fn task_on_card(
@@ -472,8 +466,8 @@ pub fn people_view_availability_rules_test() {
   assert_contains(html, "Free")
 }
 
-pub fn people_view_availability_prefers_ongoing_by_test() {
-  let tasks = [make_taken_task_with_ongoing_by(1, "Active task", 10)]
+pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
+  let tasks = [make_task(1, "Active task", 10, task_state.Ongoing)]
 
   let model =
     base_model()
@@ -760,7 +754,7 @@ pub fn people_view_toggle_is_keyboard_accessible_button_test() {
 pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
   let tasks = [
     make_task(1, "Ongoing one", 10, task_state.Ongoing),
-    make_taken_task_with_ongoing_by(2, "Ongoing via session", 10),
+    make_task(2, "Ongoing via canonical state", 10, task_state.Ongoing),
     make_task(3, "Claimed parked", 10, task_state.Taken),
   ]
 
@@ -794,7 +788,7 @@ pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
   assert_contains(html, "Claimed")
 
   assert_equal(count_occurrences(html, "Ongoing one"), 1)
-  assert_equal(count_occurrences(html, "Ongoing via session"), 1)
+  assert_equal(count_occurrences(html, "Ongoing via canonical state"), 1)
   assert_equal(count_occurrences(html, "Claimed parked"), 1)
 }
 

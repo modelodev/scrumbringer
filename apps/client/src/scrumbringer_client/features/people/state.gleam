@@ -1,13 +1,11 @@
 //// People feature state and derivation helpers.
 
 import gleam/list
-import gleam/option.{Some}
 import gleam/order
 import gleam/string
 
 import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status
 import scrumbringer_client/ui/badge
 
 const load_warning_claimed_threshold = 4
@@ -71,10 +69,11 @@ pub fn derive_status(
 
   let claimed_tasks =
     list.filter(user_claimed, fn(t) {
-      case domain_task.status(t) {
-        task_status.Claimed(task_status.Taken) ->
-          !is_active_for_user(t, user_id)
-        _ -> False
+      case t.state {
+        task_state.Claimed(mode: task_state.Taken, ..) -> True
+        task_state.Available
+        | task_state.Claimed(mode: task_state.Ongoing, ..)
+        | task_state.Closed(..) -> False
       }
     })
 
@@ -226,14 +225,12 @@ fn int_desc(a: Int, b: Int) -> order.Order {
 }
 
 fn is_active_for_user(task: domain_task.Task, user_id: Int) -> Bool {
-  case domain_task.status(task) {
-    task_status.Claimed(task_status.Ongoing) -> True
-    _ ->
-      case task.ongoing_by {
-        Some(task_status.OngoingBy(user_id: ongoing_user_id)) ->
-          ongoing_user_id == user_id
-        _ -> False
-      }
+  case task.state {
+    task_state.Claimed(claimed_by: claimed_by, mode: task_state.Ongoing, ..) ->
+      claimed_by == user_id
+    task_state.Available
+    | task_state.Claimed(mode: task_state.Taken, ..)
+    | task_state.Closed(..) -> False
   }
 }
 
