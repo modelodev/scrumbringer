@@ -26,27 +26,26 @@ pub fn try_update_handles_view_mode_set_with_persistence_test() {
   let assert pool_prefs.List = pool.member_pool_view_mode
 }
 
-pub fn hide_completed_toggled_flips_list_preference_test() {
-  let visible_completed =
-    member_pool.Model(..default_pool(), member_list_hide_completed: False)
-  let hidden_completed =
-    preferences.handle_hide_completed_toggled(visible_completed)
+pub fn hide_closed_toggled_flips_list_preference_test() {
+  let visible_closed =
+    member_pool.Model(..default_pool(), member_list_hide_closed: False)
+  let hidden_closed = preferences.handle_hide_closed_toggled(visible_closed)
 
-  let assert False = visible_completed.member_list_hide_completed
-  let assert True = hidden_completed.member_list_hide_completed
+  let assert False = visible_closed.member_list_hide_closed
+  let assert True = hidden_closed.member_list_hide_closed
 }
 
-pub fn try_update_handles_hide_completed_without_persistence_test() {
-  let visible_completed =
-    member_pool.Model(..default_pool(), member_list_hide_completed: False)
+pub fn try_update_handles_hide_closed_without_persistence_test() {
+  let visible_closed =
+    member_pool.Model(..default_pool(), member_list_hide_closed: False)
 
   let assert Some(#(pool, preferences.NoPersistence)) =
     preferences.try_update(
-      visible_completed,
+      visible_closed,
       pool_messages.MemberListHideDoneToggled,
     )
 
-  let assert True = pool.member_list_hide_completed
+  let assert True = pool.member_list_hide_closed
 }
 
 pub fn list_card_toggled_collapses_missing_card_by_default_test() {

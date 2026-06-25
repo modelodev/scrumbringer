@@ -217,14 +217,14 @@ pub fn show_empty_toggled_flips_visibility_test() {
   let assert cards.NoFocusAfterUpdate = focus_policy
 }
 
-pub fn show_completed_toggled_flips_visibility_test() {
+pub fn show_closed_toggled_flips_visibility_test() {
   let model =
-    admin_cards.Model(..admin_cards.default_model(), cards_show_completed: True)
+    admin_cards.Model(..admin_cards.default_model(), cards_show_closed: True)
 
   let #(next, fx, auth_policy, focus_policy) =
     update(model, pool_messages.CardsShowDoneToggled)
 
-  let assert False = next.cards_show_completed
+  let assert False = next.cards_show_closed
   let assert True = fx == effect.none()
   let assert cards.NoAuthCheck = auth_policy
   let assert cards.NoFocusAfterUpdate = focus_policy

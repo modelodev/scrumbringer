@@ -43,7 +43,7 @@ pub type Config(msg) {
     on_search_changed: fn(String) -> msg,
     on_state_filter_changed: fn(String) -> msg,
     on_show_empty_toggled: msg,
-    on_show_completed_toggled: msg,
+    on_show_closed_toggled: msg,
     on_detail_opened: fn(Int) -> msg,
     on_task_create_opened: fn(Int) -> msg,
     on_edit_opened: fn(Int) -> msg,
@@ -217,9 +217,9 @@ fn view_filters(config: Config(msg)) -> Element(msg) {
         label([attribute.class("checkbox-label")], [
           input([
             attribute.type_("checkbox"),
-            attribute.checked(config.model.cards_show_completed),
+            attribute.checked(config.model.cards_show_closed),
             attribute.attribute("data-testid", "show-completed-cards"),
-            event.on_check(fn(_) { config.on_show_completed_toggled }),
+            event.on_check(fn(_) { config.on_show_closed_toggled }),
           ]),
           text(t(config, i18n_text.ShowDoneCards)),
         ]),
@@ -242,7 +242,7 @@ fn filter_cards(model: admin_cards.Model) -> Remote(List(Card)) {
             True -> True
             False -> c.task_count > 0
           }
-          let completed_match = case model.cards_show_completed {
+          let closed_match = case model.cards_show_closed {
             True -> True
             False -> c.state != card.Closed
           }
@@ -254,7 +254,7 @@ fn filter_cards(model: admin_cards.Model) -> Remote(List(Card)) {
                 string.lowercase(model.cards_search),
               )
           }
-          state_match && empty_match && completed_match && search_match
+          state_match && empty_match && closed_match && search_match
         })
       Loaded(filtered)
     }

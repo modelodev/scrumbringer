@@ -6,7 +6,7 @@
 //// Responsibilities:
 //// - Group tasks by card
 //// - Render collapsible card sections
-//// - Show progress per card (completed/total)
+//// - Show progress per card (closed/total)
 //// - Handle ungrouped tasks (tasks without a card)
 ////
 //// Non-responsibilities:
@@ -58,9 +58,9 @@ pub type GroupedListConfig(msg) {
     cards: List(Card),
     org_users: List(OrgUser),
     expanded_cards: Dict(Int, Bool),
-    hide_completed: Bool,
+    hide_closed: Bool,
     on_toggle_card: fn(Int) -> msg,
-    on_toggle_hide_completed: msg,
+    on_toggle_hide_closed: msg,
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
   )
@@ -71,7 +71,7 @@ type CardGroup {
   CardGroup(
     card: Option(Card),
     tasks: List(domain_task.Task),
-    completed: Int,
+    closed: Int,
     total: Int,
   )
 }
@@ -82,8 +82,8 @@ type CardGroup {
 
 /// Renders tasks grouped by card
 pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
-  // Filter out completed tasks if hide_completed is true
-  let filtered_tasks = case config.hide_completed {
+  // Filter out closed tasks if hide_closed is true
+  let filtered_tasks = case config.hide_closed {
     True ->
       list.filter(config.tasks, fn(task) {
         case task.state {
@@ -108,13 +108,13 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
           [attribute.class("grouped-list-content")],
           list.map(groups, fn(group) { view_card_group(config, group) }),
         ),
-        // Hide completed checkbox (AC35)
+        // Hide closed checkbox (AC35)
         div([attribute.class("grouped-list-footer")], [
           label([attribute.class("checkbox-label")], [
             input([
               attribute.type_("checkbox"),
-              attribute.checked(config.hide_completed),
-              event.on_click(config.on_toggle_hide_completed),
+              attribute.checked(config.hide_closed),
+              event.on_click(config.on_toggle_hide_closed),
             ]),
             text(i18n.t(config.locale, i18n_text.HideDoneTasks)),
           ]),
@@ -165,7 +165,7 @@ fn view_card_group(
       [expand_toggle.view(is_expanded)],
       list.append(title_elements, [
         // Progress bar (AC34)
-        card_progress.view(group.completed, group.total, card_progress.Default),
+        card_progress.view(group.closed, group.total, card_progress.Default),
       ]),
     )
 
@@ -358,7 +358,7 @@ fn group_tasks_by_card(
   |> list.map(fn(pair) {
     let #(card_id, card_tasks) = pair
     let card = dict.get(card_map, card_id) |> option.from_result
-    let completed =
+    let closed =
       list.count(card_tasks, fn(task) {
         case task.state {
           task_execution_state.Closed(..) -> True
@@ -369,7 +369,7 @@ fn group_tasks_by_card(
     CardGroup(
       card: card,
       tasks: list.reverse(card_tasks),
-      completed: completed,
+      closed: closed,
       total: total,
     )
   })

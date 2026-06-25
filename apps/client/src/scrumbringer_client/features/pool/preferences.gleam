@@ -20,7 +20,7 @@ pub fn try_update(
     pool_messages.MemberPoolViewModeSet(mode) ->
       opt.Some(#(handle_view_mode_set(model, mode), SaveViewMode(mode)))
     pool_messages.MemberListHideDoneToggled ->
-      opt.Some(#(handle_hide_completed_toggled(model), NoPersistence))
+      opt.Some(#(handle_hide_closed_toggled(model), NoPersistence))
     pool_messages.MemberListCardToggled(card_id) ->
       opt.Some(#(handle_list_card_toggled(model, card_id), NoPersistence))
     _ -> opt.None
@@ -34,12 +34,10 @@ pub fn handle_view_mode_set(
   member_pool.Model(..model, member_pool_view_mode: mode)
 }
 
-pub fn handle_hide_completed_toggled(
-  model: member_pool.Model,
-) -> member_pool.Model {
+pub fn handle_hide_closed_toggled(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,
-    member_list_hide_completed: !model.member_list_hide_completed,
+    member_list_hide_closed: !model.member_list_hide_closed,
   )
 }
 

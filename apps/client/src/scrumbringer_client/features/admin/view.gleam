@@ -372,7 +372,7 @@ fn cards_config(
       pool_msg(pool_messages.CardsStateFilterChanged(value))
     },
     on_show_empty_toggled: pool_msg(pool_messages.CardsShowEmptyToggled),
-    on_show_completed_toggled: pool_msg(pool_messages.CardsShowDoneToggled),
+    on_show_closed_toggled: pool_msg(pool_messages.CardsShowDoneToggled),
     on_detail_opened: fn(id) { pool_msg(pool_messages.OpenCardShow(id)) },
     on_task_create_opened: fn(id) {
       pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id))

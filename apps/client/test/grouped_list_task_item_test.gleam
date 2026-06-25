@@ -35,9 +35,9 @@ fn base_config(
       ),
     ],
     expanded_cards: dict.new(),
-    hide_completed: False,
+    hide_closed: False,
     on_toggle_card: fn(id) { id },
-    on_toggle_hide_completed: 0,
+    on_toggle_hide_closed: 0,
     on_task_click: fn(id) { id },
     on_task_claim: fn(a, b) { a + b },
   )

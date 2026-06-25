@@ -99,7 +99,7 @@ pub fn try_update(
       |> without_policies
 
     pool_messages.CardsShowDoneToggled ->
-      handle_show_completed_toggled(model)
+      handle_show_closed_toggled(model)
       |> without_policies
 
     pool_messages.CardsStateFilterChanged(state) ->
@@ -263,14 +263,11 @@ fn handle_show_empty_toggled(
   )
 }
 
-fn handle_show_completed_toggled(
+fn handle_show_closed_toggled(
   model: admin_cards.Model,
 ) -> #(admin_cards.Model, Effect(parent_msg)) {
   #(
-    admin_cards.Model(
-      ..model,
-      cards_show_completed: !model.cards_show_completed,
-    ),
+    admin_cards.Model(..model, cards_show_closed: !model.cards_show_closed),
     effect.none(),
   )
 }

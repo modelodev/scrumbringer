@@ -19,7 +19,7 @@ pub type Model {
     cards_project_id: Option(Int),
     cards_dialog_mode: Option(CardDialogMode),
     cards_show_empty: Bool,
-    cards_show_completed: Bool,
+    cards_show_closed: Bool,
     cards_state_filter: Option(CardPhase),
     cards_search: String,
   )
@@ -32,7 +32,7 @@ pub fn default_model() -> Model {
     cards_project_id: option.None,
     cards_dialog_mode: option.None,
     cards_show_empty: False,
-    cards_show_completed: False,
+    cards_show_closed: False,
     cards_state_filter: option.None,
     cards_search: "",
   )
