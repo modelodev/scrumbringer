@@ -22,6 +22,7 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/result
 import gleam/string
 
 import lustre/effect.{type Effect}
@@ -1226,15 +1227,19 @@ fn validate_project_settings(
   let Context(pool_soft_limit_positive:, ..) = context
   case int.parse(string.trim(healthy_pool_limit)) {
     Error(_) -> Error(pool_soft_limit_positive)
-    Ok(value) if value <= 0 -> Error(pool_soft_limit_positive)
-    Ok(value) ->
+    Ok(value) -> {
+      use limit <- result.try(
+        project_settings.healthy_pool_limit_from_int(value)
+        |> result.map_error(fn(_) { pool_soft_limit_positive }),
+      )
       validate_depth_settings(
         max_depth,
-        value,
+        project_settings.healthy_pool_limit_to_int(limit),
         card_depth_names,
         depth_reduction,
         context,
       )
+    }
   }
 }
 
