@@ -34,6 +34,7 @@ import scrumbringer_server/seed_activity_scenarios
 import scrumbringer_server/seed_audit_events
 import scrumbringer_server/seed_automation_definitions
 import scrumbringer_server/seed_automation_diagnostics
+import scrumbringer_server/seed_card_scenarios
 import scrumbringer_server/seed_db
 import scrumbringer_server/seed_pools
 import scrumbringer_server/use_case/rules_engine
@@ -155,25 +156,6 @@ pub fn realistic_config() -> SeedConfig {
 /// Visual QA configuration with explicit empty states.
 pub fn visual_qa_config() -> SeedConfig {
   realistic_config()
-}
-
-// =============================================================================
-// Seed Coverage Pools
-// =============================================================================
-
-/// Card profile colors stay in the builder because HT-12 seed coverage gates
-/// verify card-profile coverage directly against this scenario source.
-fn card_color_pool() -> List(card.CardColor) {
-  [
-    card.Gray,
-    card.Red,
-    card.Orange,
-    card.Yellow,
-    card.Green,
-    card.Blue,
-    card.Purple,
-    card.Pink,
-  ]
 }
 
 // =============================================================================
@@ -517,59 +499,21 @@ fn build_cards(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = active_project_ids(state)
-  let titles = seed_pools.card_titles()
-  let colors = card_color_pool()
-
-  use card_ids_by_project <- result.try(
-    list.try_map(active_projects, fn(project_id) {
-      let card_count = config.cards_per_project
-      use card_ids <- result.try(
-        list.range(0, card_count - 1)
-        |> list.try_map(fn(idx) {
-          let base_title =
-            list_at(titles, idx, "Card " <> int.to_string(idx + 1))
-          let title =
-            "P"
-            <> int.to_string(project_id)
-            <> " - "
-            <> base_title
-            <> " #"
-            <> int.to_string(idx + 1)
-          let color = Some(list_at_helper(colors, idx, card.Gray))
-          let creator_idx = idx % list.length(state.user_ids)
-          let creator_id =
-            list_at_int(state.user_ids, creator_idx, state.admin_id)
-
-          seed_db.insert_card(
-            db,
-            seed_db.CardInsertOptions(
-              project_id: project_id,
-              title: title,
-              description: "Seeded card",
-              color: color,
-              created_by: creator_id,
-              created_at: Some(days_ago_timestamp(config.date_range_days - idx)),
-            ),
-          )
-        }),
-      )
-      Ok(#(project_id, card_ids))
-    }),
-  )
-
-  let card_ids =
-    list.map(card_ids_by_project, fn(pair) {
-      let #(_project_id, ids) = pair
-      ids
-    })
-    |> list.flatten
-
+  use cards <- result.try(seed_card_scenarios.build(
+    db,
+    seed_card_scenarios.Context(
+      admin_id: state.admin_id,
+      user_ids: state.user_ids,
+      active_project_ids: active_project_ids(state),
+      cards_per_project: config.cards_per_project,
+      date_range_days: config.date_range_days,
+    ),
+  ))
   Ok(
     BuildState(
       ..state,
-      card_ids: card_ids,
-      card_ids_by_project: card_ids_by_project,
+      card_ids: cards.card_ids,
+      card_ids_by_project: cards.card_ids_by_project,
     ),
   )
 }
