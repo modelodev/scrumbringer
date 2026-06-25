@@ -26,9 +26,6 @@ import domain/card
 import domain/org_role
 import domain/project_role
 import domain/task/state as task_state
-import domain/task_status.{
-  type ClaimedState, type TaskPhase, Available, Claimed, Done, Ongoing, Taken,
-}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -92,7 +89,7 @@ pub type TaskSeedInfo {
   TaskSeedInfo(
     task_id: Int,
     project_id: Int,
-    status: TaskPhase,
+    execution_state: task_state.TaskExecutionState,
     created_at: String,
     created_by: Int,
     claimed_by: Option(Int),
@@ -906,7 +903,8 @@ fn build_tasks(
 ) -> Result(BuildState, String) {
   let titles = task_title_pool()
   let priorities = config.priority_distribution
-  let status_pool = status_pool_from(config.status_distribution)
+  let execution_state_pool =
+    execution_state_pool_from(config.status_distribution)
 
   let active_task_types = task_types_for_active_projects(state)
   use task_results_nested <- result.try(
@@ -943,28 +941,43 @@ fn build_tasks(
       let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
 
       let tasks = [
-        #(title_for(base_idx, "Task A"), bug_id, Done, Some(card_all_done)),
+        #(
+          title_for(base_idx, "Task A"),
+          bug_id,
+          done_state_template(),
+          Some(card_all_done),
+        ),
         #(
           title_for(base_idx + 1, "Task B"),
           feature_id,
-          Done,
+          done_state_template(),
           Some(card_all_done),
         ),
-        #(title_for(base_idx + 2, "Task C"), bug_id, Done, Some(card_mixed)),
+        #(
+          title_for(base_idx + 2, "Task C"),
+          bug_id,
+          done_state_template(),
+          Some(card_mixed),
+        ),
         #(
           title_for(base_idx + 3, "Task D"),
           feature_id,
-          Claimed(Taken),
+          claimed_state_template(task_state.Taken),
           Some(card_mixed),
         ),
         #(
           title_for(base_idx + 4, "Task E"),
           task_id,
-          Available,
+          task_state.Available,
           Some(card_single),
         ),
-        #(title_for(base_idx + 5, "Task F"), bug_id, Available, None),
-        #(title_for(base_idx + 6, "Task G"), feature_id, Available, None),
+        #(title_for(base_idx + 5, "Task F"), bug_id, task_state.Available, None),
+        #(
+          title_for(base_idx + 6, "Task G"),
+          feature_id,
+          task_state.Available,
+          None,
+        ),
       ]
 
       let extra_count =
@@ -982,43 +995,50 @@ fn build_tasks(
             1 -> feature_id
             _ -> task_id
           }
-          let status = status_from_pool(status_pool, idx)
+          let execution_state =
+            execution_state_from_pool(execution_state_pool, idx)
           let card_id = case extra_idx % 4 {
             0 -> Some(card_mixed)
             1 -> Some(card_single)
             _ -> None
           }
-          #(title_for(idx, "Task Extra"), type_id, status, card_id)
+          #(title_for(idx, "Task Extra"), type_id, execution_state, card_id)
         })
 
       let all_tasks = list.append(tasks, extra_tasks)
 
       list.index_map(all_tasks, fn(task_def, idx) {
-        let #(title, type_id, status, card_id) = task_def
+        let #(title, type_id, execution_state, card_id) = task_def
         let priority = list_at_int(priorities, idx % list.length(priorities), 3)
         let creator_for = list_at_int(state.user_ids, idx, state.admin_id)
         let claimed_user_for = member_for_index(members, idx, claimed_user_id)
         let created_from_rule_id =
           seeded_rule_for_task(project_rule_ids, idx, proj_idx)
-        let pool_lifetime_s = seeded_pool_lifetime_s(status, idx, proj_idx)
+        let pool_lifetime_s =
+          seeded_pool_lifetime_s(execution_state, idx, proj_idx)
         let last_entered_pool_at =
-          seeded_last_entered_pool_at(status, pool_lifetime_s, base_days, idx)
-        let #(claimed_by, claimed_at, completed_at) = case status {
-          Claimed(_) -> #(
+          seeded_last_entered_pool_at(
+            execution_state,
+            pool_lifetime_s,
+            base_days,
+            idx,
+          )
+        let #(claimed_by, claimed_at, completed_at) = case execution_state {
+          task_state.Claimed(..) -> #(
             Some(claimed_user_for),
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
             None,
           )
-          Done -> #(
+          task_state.Closed(..) -> #(
             None,
             None,
             Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
           )
-          Available -> #(None, None, None)
+          task_state.Available -> #(None, None, None)
         }
-        let execution_state =
-          seed_execution_state(
-            status,
+        let hydrated_execution_state =
+          hydrate_seed_execution_state(
+            execution_state,
             creator_for,
             claimed_by,
             claimed_at,
@@ -1036,7 +1056,7 @@ fn build_tasks(
             title: title,
             description: "Seeded task",
             priority: priority,
-            execution_state: execution_state,
+            execution_state: hydrated_execution_state,
             created_by: creator_for,
             card_id: card_id,
             created_from_rule_id: created_from_rule_id,
@@ -1050,7 +1070,7 @@ fn build_tasks(
           TaskSeedInfo(
             task_id: task_id,
             project_id: project_id,
-            status: status,
+            execution_state: hydrated_execution_state,
             created_at: created_at,
             created_by: creator_for,
             claimed_by: claimed_by,
@@ -1173,7 +1193,7 @@ fn build_plan_qa_scenarios(
             direct_id,
             bug_id,
             "Plan QA - Direct available backend",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             4,
@@ -1186,7 +1206,7 @@ fn build_plan_qa_scenarios(
             direct_id,
             feature_id,
             "Plan QA - Direct claimed frontend",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(member_id),
             5,
@@ -1198,7 +1218,7 @@ fn build_plan_qa_scenarios(
             direct_id,
             no_capability_type_id,
             "Plan QA - Direct done no capability",
-            Done,
+            done_state_template(),
             state.admin_id,
             None,
             2,
@@ -1210,7 +1230,7 @@ fn build_plan_qa_scenarios(
             api_id,
             bug_id,
             "Plan QA - API available",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             3,
@@ -1222,7 +1242,7 @@ fn build_plan_qa_scenarios(
             api_id,
             task_id,
             "Plan QA - Missing contract dependency",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             5,
@@ -1235,7 +1255,7 @@ fn build_plan_qa_scenarios(
             api_id,
             feature_id,
             "Plan QA - Blocked integration",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             5,
@@ -1254,7 +1274,7 @@ fn build_plan_qa_scenarios(
             ui_id,
             feature_id,
             "Plan QA - UI ongoing",
-            Claimed(Ongoing),
+            claimed_state_template(task_state.Ongoing),
             state.admin_id,
             Some(member_id),
             4,
@@ -1266,7 +1286,7 @@ fn build_plan_qa_scenarios(
             docs_id,
             no_capability_type_id,
             "Plan QA - Docs no capability",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             2,
@@ -1278,7 +1298,7 @@ fn build_plan_qa_scenarios(
             project_id,
             bug_id,
             "Pool QA - Ready due today",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             4,
@@ -1290,7 +1310,7 @@ fn build_plan_qa_scenarios(
             project_id,
             task_id,
             "Pool QA - Blocking dependency",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             3,
@@ -1302,7 +1322,7 @@ fn build_plan_qa_scenarios(
             project_id,
             feature_id,
             "Pool QA - Blocked overdue",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             5,
@@ -1321,7 +1341,7 @@ fn build_plan_qa_scenarios(
             closed_id,
             task_id,
             "Plan QA - Closed done task",
-            Done,
+            done_state_template(),
             state.admin_id,
             None,
             1,
@@ -1333,7 +1353,7 @@ fn build_plan_qa_scenarios(
             activation_impact_id,
             bug_id,
             "Plan QA - Draft impact backend",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             4,
@@ -1345,7 +1365,7 @@ fn build_plan_qa_scenarios(
             activation_impact_id,
             feature_id,
             "Plan QA - Draft impact frontend",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             4,
@@ -1357,7 +1377,7 @@ fn build_plan_qa_scenarios(
             activation_impact_id,
             task_id,
             "Plan QA - Draft impact QA",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             3,
@@ -1369,7 +1389,7 @@ fn build_plan_qa_scenarios(
             activation_impact_id,
             no_capability_type_id,
             "Plan QA - Draft impact docs",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             2,
@@ -1513,7 +1533,7 @@ fn build_people_qa_scenarios(
             release_id,
             task_id,
             "People QA - Facilitate rollout sync",
-            Claimed(Ongoing),
+            claimed_state_template(task_state.Ongoing),
             state.admin_id,
             Some(state.admin_id),
             4,
@@ -1525,7 +1545,7 @@ fn build_people_qa_scenarios(
             api_id,
             bug_id,
             "People QA - API handoff ongoing",
-            Claimed(Ongoing),
+            claimed_state_template(task_state.Ongoing),
             state.admin_id,
             Some(api_owner),
             5,
@@ -1537,7 +1557,7 @@ fn build_people_qa_scenarios(
             api_id,
             task_id,
             "People QA - API cleanup claimed",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(api_owner),
             3,
@@ -1549,7 +1569,7 @@ fn build_people_qa_scenarios(
             release_id,
             task_id,
             "People QA - Release checklist blocker",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             4,
@@ -1561,7 +1581,7 @@ fn build_people_qa_scenarios(
             release_id,
             feature_id,
             "People QA - Blocked deploy approval",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(blocked_owner),
             5,
@@ -1579,7 +1599,7 @@ fn build_people_qa_scenarios(
             ui_id,
             feature_id,
             "People QA - Polish empty state copy",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(loaded_owner),
             3,
@@ -1591,7 +1611,7 @@ fn build_people_qa_scenarios(
             ui_id,
             feature_id,
             "People QA - Polish mobile wrapping",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(loaded_owner),
             3,
@@ -1603,7 +1623,7 @@ fn build_people_qa_scenarios(
             ui_id,
             bug_id,
             "People QA - Verify filter contrast",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(loaded_owner),
             2,
@@ -1615,7 +1635,7 @@ fn build_people_qa_scenarios(
             ui_id,
             task_id,
             "People QA - Review scope labels",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(loaded_owner),
             2,
@@ -1627,7 +1647,7 @@ fn build_people_qa_scenarios(
             support_id,
             feature_id,
             "People QA - Review dependency notes",
-            Claimed(Ongoing),
+            claimed_state_template(task_state.Ongoing),
             state.admin_id,
             Some(review_owner),
             4,
@@ -1639,7 +1659,7 @@ fn build_people_qa_scenarios(
             support_id,
             bug_id,
             "People QA - Review blocked owner summary",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(review_owner),
             3,
@@ -1651,7 +1671,7 @@ fn build_people_qa_scenarios(
             support_id,
             task_id,
             "People QA - Support async handoff",
-            Claimed(Taken),
+            claimed_state_template(task_state.Taken),
             state.admin_id,
             Some(support_owner),
             2,
@@ -1663,7 +1683,7 @@ fn build_people_qa_scenarios(
             support_id,
             task_id,
             "People QA - Support intake available",
-            Available,
+            task_state.Available,
             state.admin_id,
             None,
             2,
@@ -1746,7 +1766,7 @@ fn insert_plan_qa_task(
   card_id: Int,
   type_id: Int,
   title: String,
-  status: TaskPhase,
+  execution_state: task_state.TaskExecutionState,
   created_by: Int,
   claimed_by: Option(Int),
   priority: Int,
@@ -1758,7 +1778,7 @@ fn insert_plan_qa_task(
     card_id,
     type_id,
     title,
-    status,
+    execution_state,
     created_by,
     claimed_by,
     priority,
@@ -1773,7 +1793,7 @@ fn insert_plan_qa_task_with_due(
   card_id: Int,
   type_id: Int,
   title: String,
-  status: TaskPhase,
+  execution_state: task_state.TaskExecutionState,
   created_by: Int,
   claimed_by: Option(Int),
   priority: Int,
@@ -1781,22 +1801,22 @@ fn insert_plan_qa_task_with_due(
   due_date: Option(String),
 ) -> Result(TaskSeedInfo, String) {
   let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case status {
-    Claimed(_) -> #(
+  let #(claimed_by, claimed_at, completed_at) = case execution_state {
+    task_state.Claimed(..) -> #(
       claimed_by,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
       None,
     )
-    Done -> #(
+    task_state.Closed(..) -> #(
       None,
       None,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
     )
-    Available -> #(None, None, None)
+    task_state.Available -> #(None, None, None)
   }
-  let execution_state =
-    seed_execution_state(
-      status,
+  let hydrated_execution_state =
+    hydrate_seed_execution_state(
+      execution_state,
       created_by,
       claimed_by,
       claimed_at,
@@ -1811,7 +1831,7 @@ fn insert_plan_qa_task_with_due(
       title: title,
       description: "Plan QA fixture task",
       priority: priority,
-      execution_state: execution_state,
+      execution_state: hydrated_execution_state,
       created_by: created_by,
       card_id: Some(card_id),
       created_from_rule_id: None,
@@ -1825,7 +1845,7 @@ fn insert_plan_qa_task_with_due(
   Ok(TaskSeedInfo(
     task_id: task_id,
     project_id: project_id,
-    status: status,
+    execution_state: hydrated_execution_state,
     created_at: created_at,
     created_by: created_by,
     claimed_by: claimed_by,
@@ -1837,7 +1857,7 @@ fn insert_pool_qa_task_with_due(
   project_id: Int,
   type_id: Int,
   title: String,
-  status: TaskPhase,
+  execution_state: task_state.TaskExecutionState,
   created_by: Int,
   claimed_by: Option(Int),
   priority: Int,
@@ -1845,22 +1865,22 @@ fn insert_pool_qa_task_with_due(
   due_date: Option(String),
 ) -> Result(TaskSeedInfo, String) {
   let created_at = days_ago_timestamp(created_days_ago)
-  let #(claimed_by, claimed_at, completed_at) = case status {
-    Claimed(_) -> #(
+  let #(claimed_by, claimed_at, completed_at) = case execution_state {
+    task_state.Claimed(..) -> #(
       claimed_by,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
       None,
     )
-    Done -> #(
+    task_state.Closed(..) -> #(
       None,
       None,
       Some(days_ago_timestamp(int.max(1, created_days_ago - 1))),
     )
-    Available -> #(None, None, None)
+    task_state.Available -> #(None, None, None)
   }
-  let execution_state =
-    seed_execution_state(
-      status,
+  let hydrated_execution_state =
+    hydrate_seed_execution_state(
+      execution_state,
       created_by,
       claimed_by,
       claimed_at,
@@ -1875,7 +1895,7 @@ fn insert_pool_qa_task_with_due(
       title: title,
       description: "Pool QA fixture task",
       priority: priority,
-      execution_state: execution_state,
+      execution_state: hydrated_execution_state,
       created_by: created_by,
       card_id: None,
       created_from_rule_id: None,
@@ -1889,7 +1909,7 @@ fn insert_pool_qa_task_with_due(
   Ok(TaskSeedInfo(
     task_id: task_id,
     project_id: project_id,
-    status: status,
+    execution_state: hydrated_execution_state,
     created_at: created_at,
     created_by: created_by,
     claimed_by: claimed_by,
@@ -1949,15 +1969,15 @@ fn build_task_notes(
 ) -> Result(BuildState, String) {
   let available_notes =
     state.task_seeds
-    |> list.filter(fn(seed) { seed.status == Available })
+    |> list.filter(fn(seed) { seed.execution_state == task_state.Available })
     |> list.take(2)
   let claimed_notes =
     state.task_seeds
-    |> list.filter(fn(seed) { is_claimed_status(seed.status) })
+    |> list.filter(fn(seed) { is_claimed_state(seed.execution_state) })
     |> list.take(2)
   let completed_notes =
     state.task_seeds
-    |> list.filter(fn(seed) { is_completed_status(seed.status) })
+    |> list.filter(fn(seed) { is_completed_state(seed.execution_state) })
     |> list.take(1)
   let noted_tasks =
     available_notes
@@ -1970,7 +1990,7 @@ fn build_task_notes(
         db,
         seed.task_id,
         note_author_for(state.user_ids, idx, state.admin_id),
-        seed_note_content(seed.status, idx),
+        seed_note_content(seed.execution_state, idx),
         Some(days_ago_timestamp(int.max(1, config.date_range_days - idx))),
         idx == 0,
       )
@@ -2578,7 +2598,7 @@ fn build_task_positions(
 ) -> Result(BuildState, String) {
   let tasks =
     state.task_seeds
-    |> list.filter(fn(seed) { seed.status == Available })
+    |> list.filter(fn(seed) { seed.execution_state == task_state.Available })
     |> list.map(fn(seed) { seed.task_id })
   let users = list.take(state.user_ids, 3)
 
@@ -2610,11 +2630,11 @@ fn build_work_sessions(
 ) -> Result(BuildState, String) {
   let claimed_tasks =
     state.task_seeds
-    |> list.filter(fn(seed) { is_claimed_status(seed.status) })
+    |> list.filter(fn(seed) { is_claimed_state(seed.execution_state) })
     |> list.map(fn(seed) { seed.task_id })
   let completed_tasks =
     state.task_seeds
-    |> list.filter(fn(seed) { is_completed_status(seed.status) })
+    |> list.filter(fn(seed) { is_completed_state(seed.execution_state) })
     |> list.map(fn(seed) { seed.task_id })
   let tasks = list.append(claimed_tasks, completed_tasks)
   let tasks = list.take(tasks, 8)
@@ -3006,25 +3026,30 @@ fn repeat_value(value: a, count: Int) -> List(a) {
   }
 }
 
-fn status_pool_from(distribution: StatusDistribution) -> List(TaskPhase) {
+fn execution_state_pool_from(
+  distribution: StatusDistribution,
+) -> List(task_state.TaskExecutionState) {
   let StatusDistribution(
     available: available,
     claimed: claimed,
     completed: completed,
   ) = distribution
   list.append(
-    repeat_value(Available, available),
+    repeat_value(task_state.Available, available),
     list.append(
-      repeat_value(Claimed(Taken), claimed),
-      repeat_value(Done, completed),
+      repeat_value(claimed_state_template(task_state.Taken), claimed),
+      repeat_value(done_state_template(), completed),
     ),
   )
 }
 
-fn status_from_pool(pool: List(TaskPhase), idx: Int) -> TaskPhase {
+fn execution_state_from_pool(
+  pool: List(task_state.TaskExecutionState),
+  idx: Int,
+) -> task_state.TaskExecutionState {
   case pool {
-    [] -> Available
-    _ -> list_at_helper(pool, idx % list.length(pool), Available)
+    [] -> task_state.Available
+    _ -> list_at_helper(pool, idx % list.length(pool), task_state.Available)
   }
 }
 
@@ -3075,8 +3100,8 @@ fn task_event_options_for_seed(
   let reclaim_time = timestamp_days_hours(days_ago, 10 + { idx % 6 })
   let complete_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
 
-  let claim_event = case seed.status {
-    Claimed(_) ->
+  let claim_event = case seed.execution_state {
+    task_state.Claimed(..) ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
@@ -3085,7 +3110,7 @@ fn task_event_options_for_seed(
         event_type: audit_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
-    Done ->
+    task_state.Closed(..) ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
@@ -3094,7 +3119,7 @@ fn task_event_options_for_seed(
         event_type: audit_events_db.TaskClaimed,
         created_at: Some(claim_time),
       ))
-    Available -> None
+    task_state.Available -> None
   }
 
   let release_event = case idx % 4 == 0 {
@@ -3123,8 +3148,8 @@ fn task_event_options_for_seed(
     False -> None
   }
 
-  let complete_event = case seed.status {
-    Done ->
+  let complete_event = case seed.execution_state {
+    task_state.Closed(..) ->
       Some(seed_db.TaskEventInsertOptions(
         org_id: state.org_id,
         project_id: seed.project_id,
@@ -3133,7 +3158,7 @@ fn task_event_options_for_seed(
         event_type: audit_events_db.TaskClosed,
         created_at: Some(complete_time),
       ))
-    Available | Claimed(_) -> None
+    task_state.Available | task_state.Claimed(..) -> None
   }
 
   compact_options([claim_event, release_event, reclaim_event, complete_event])
@@ -3160,7 +3185,7 @@ fn first_claim_events_for_users(
         TaskSeedInfo(
           task_id: list_at_int(state.task_ids, 0, 0),
           project_id: state.org_id,
-          status: Claimed(Taken),
+          execution_state: claimed_state_template(task_state.Taken),
           created_at: timestamp_days_hours(login_days, 0),
           created_by: state.admin_id,
           claimed_by: Some(user_id),
@@ -3238,7 +3263,7 @@ fn seeded_rule_for_task(
 }
 
 fn seeded_pool_lifetime_s(
-  status: TaskPhase,
+  execution_state: task_state.TaskExecutionState,
   task_idx: Int,
   project_idx: Int,
 ) -> Int {
@@ -3250,59 +3275,62 @@ fn seeded_pool_lifetime_s(
     _ -> 14_400
   }
 
-  case status {
-    Available -> base
-    Claimed(_) -> int.max(300, base)
-    Done -> int.max(900, base)
+  case execution_state {
+    task_state.Available -> base
+    task_state.Claimed(..) -> int.max(300, base)
+    task_state.Closed(..) -> int.max(900, base)
   }
 }
 
 fn seeded_last_entered_pool_at(
-  status: TaskPhase,
+  execution_state: task_state.TaskExecutionState,
   pool_lifetime_s: Int,
   base_days: Int,
   task_idx: Int,
 ) -> Option(String) {
-  case status {
-    Available ->
+  case execution_state {
+    task_state.Available ->
       case pool_lifetime_s > 0 {
         True ->
           Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
         False -> None
       }
-    Claimed(_) | Done -> None
+    task_state.Claimed(..) | task_state.Closed(..) -> None
   }
 }
 
-fn seed_execution_state(
-  status: TaskPhase,
+fn hydrate_seed_execution_state(
+  execution_state: task_state.TaskExecutionState,
   created_by: Int,
   claimed_by: Option(Int),
   claimed_at: Option(String),
   completed_at: Option(String),
 ) -> task_state.TaskExecutionState {
-  case status {
-    Available -> task_state.Available
-    Claimed(mode) ->
+  case execution_state {
+    task_state.Available -> task_state.Available
+    task_state.Claimed(mode: mode, ..) ->
       task_state.Claimed(
         claimed_by: option_int(claimed_by, created_by),
         claimed_at: option_string(claimed_at, "NOW()"),
-        mode: task_claim_mode(mode),
+        mode: mode,
       )
-    Done ->
+    task_state.Closed(reason: reason, ..) ->
       task_state.Closed(
-        reason: task_state.Done,
+        reason: reason,
         closed_at: option_string(completed_at, "NOW()"),
         closed_by: created_by,
       )
   }
 }
 
-fn task_claim_mode(mode: ClaimedState) -> task_state.TaskClaimMode {
-  case mode {
-    Taken -> task_state.Taken
-    Ongoing -> task_state.Ongoing
-  }
+fn claimed_state_template(
+  mode: task_state.TaskClaimMode,
+) -> task_state.TaskExecutionState {
+  task_state.Claimed(claimed_by: 0, claimed_at: "", mode: mode)
+}
+
+fn done_state_template() -> task_state.TaskExecutionState {
+  task_state.Closed(reason: task_state.Done, closed_at: "", closed_by: 0)
 }
 
 fn option_int(value: Option(Int), default: Int) -> Int {
@@ -3319,17 +3347,17 @@ fn option_string(value: Option(String), default: String) -> String {
   }
 }
 
-fn is_claimed_status(status: TaskPhase) -> Bool {
-  case status {
-    Claimed(_) -> True
-    Available | Done -> False
+fn is_claimed_state(execution_state: task_state.TaskExecutionState) -> Bool {
+  case execution_state {
+    task_state.Claimed(..) -> True
+    task_state.Available | task_state.Closed(..) -> False
   }
 }
 
-fn is_completed_status(status: TaskPhase) -> Bool {
-  case status {
-    Done -> True
-    Available | Claimed(_) -> False
+fn is_completed_state(execution_state: task_state.TaskExecutionState) -> Bool {
+  case execution_state {
+    task_state.Closed(..) -> True
+    task_state.Available | task_state.Claimed(..) -> False
   }
 }
 
@@ -3337,12 +3365,15 @@ fn note_author_for(user_ids: List(Int), idx: Int, default: Int) -> Int {
   list_at_int(user_ids, idx + 1, default)
 }
 
-fn seed_note_content(status: TaskPhase, idx: Int) -> String {
-  let status_label = case status {
-    Available -> "available"
-    Claimed(Taken) -> "claimed"
-    Claimed(Ongoing) -> "ongoing"
-    Done -> "closed"
+fn seed_note_content(
+  execution_state: task_state.TaskExecutionState,
+  idx: Int,
+) -> String {
+  let status_label = case execution_state {
+    task_state.Available -> "available"
+    task_state.Claimed(mode: task_state.Taken, ..) -> "claimed"
+    task_state.Claimed(mode: task_state.Ongoing, ..) -> "ongoing"
+    task_state.Closed(..) -> "closed"
   }
 
   "Seed note: " <> status_label <> " task context #" <> int.to_string(idx + 1)
