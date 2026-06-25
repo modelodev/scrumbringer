@@ -168,39 +168,35 @@ pub fn parse_invalid_automation_rule_selection_redirects_test() {
   )
 }
 
-pub fn parse_config_templates_external_slug_redirects_to_automation_mode_test() {
+pub fn parse_config_templates_external_slug_redirects_to_members_test() {
   let parsed = router.parse_uri(build_uri("/config/templates", "?project=2"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.Config(permissions.TaskTemplates, Some(2))),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
-pub fn parse_config_template_selection_on_external_slug_redirects_to_console_test() {
+pub fn parse_config_template_selection_on_external_slug_redirects_to_members_test() {
   let parsed =
     router.parse_uri(build_uri("/config/templates", "?project=2&template=12"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.ConfigAutomation(
-      permissions.TaskTemplates,
-      Some(2),
-      automation_deep_link.SelectedTemplate(12),
-    )),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
-pub fn parse_config_rule_metrics_external_slug_redirects_to_automation_mode_test() {
+pub fn parse_config_rule_metrics_external_slug_redirects_to_members_test() {
   let parsed = router.parse_uri(build_uri("/config/rule-metrics", "?project=2"))
 
   assert_equal(
     parsed,
-    router.Redirect(router.Config(permissions.RuleMetrics, Some(2))),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
-pub fn parse_config_execution_selection_on_external_slug_redirects_to_console_test() {
+pub fn parse_config_execution_selection_on_external_slug_redirects_to_members_test() {
   let parsed =
     router.parse_uri(build_uri(
       "/config/rule-metrics",
@@ -209,11 +205,7 @@ pub fn parse_config_execution_selection_on_external_slug_redirects_to_console_te
 
   assert_equal(
     parsed,
-    router.Redirect(router.ConfigAutomation(
-      permissions.RuleMetrics,
-      Some(2),
-      automation_deep_link.SelectedExecution(101),
-    )),
+    router.Redirect(router.Config(permissions.Members, Some(2))),
   )
 }
 
