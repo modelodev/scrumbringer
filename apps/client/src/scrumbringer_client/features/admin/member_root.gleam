@@ -7,7 +7,7 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/members as admin_members
-import scrumbringer_client/features/admin/route_support
+import scrumbringer_client/features/route_support
 
 pub fn set_members(
   model: client_state.Model,

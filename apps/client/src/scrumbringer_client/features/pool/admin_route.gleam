@@ -18,7 +18,7 @@ import scrumbringer_client/features/admin/workflows as workflows_workflow
 import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 

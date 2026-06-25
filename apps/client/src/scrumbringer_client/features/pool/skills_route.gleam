@@ -9,7 +9,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 import scrumbringer_client/features/skills/update as skills_workflow
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text

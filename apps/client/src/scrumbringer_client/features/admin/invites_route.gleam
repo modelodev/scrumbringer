@@ -10,8 +10,8 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/admin/route_support
 import scrumbringer_client/features/invites/update as invites_update
+import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 

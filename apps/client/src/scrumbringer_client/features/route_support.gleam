@@ -1,4 +1,4 @@
-//// Shared helpers for root pool route adapters.
+//// Shared helpers for root feature route adapters.
 
 import gleam/option as opt
 import lustre/effect

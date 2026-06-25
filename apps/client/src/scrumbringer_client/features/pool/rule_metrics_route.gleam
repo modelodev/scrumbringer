@@ -9,7 +9,7 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/admin/rule_metrics as rule_metrics_workflow
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 
 pub fn try_update(
   model: client_state.Model,

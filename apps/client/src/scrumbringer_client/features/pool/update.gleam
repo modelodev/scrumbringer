@@ -47,12 +47,12 @@ import scrumbringer_client/features/pool/plan_move_update
 import scrumbringer_client/features/pool/positions_route
 import scrumbringer_client/features/pool/preferences_effect
 import scrumbringer_client/features/pool/refresh_update
-import scrumbringer_client/features/pool/route_support
 import scrumbringer_client/features/pool/rule_metrics_route
 import scrumbringer_client/features/pool/shortcut_update
 import scrumbringer_client/features/pool/skills_route
 import scrumbringer_client/features/pool/task_route
 import scrumbringer_client/features/pool/view_mode_route
+import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/utils/card_queries

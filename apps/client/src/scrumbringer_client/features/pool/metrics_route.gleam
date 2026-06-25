@@ -10,7 +10,7 @@ import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/features/metrics/update as metrics_workflow
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 
 pub fn try_update(
   model: client_state.Model,

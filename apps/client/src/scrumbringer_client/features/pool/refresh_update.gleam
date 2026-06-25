@@ -11,7 +11,7 @@ import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/position_layout
 import scrumbringer_client/features/pool/project_refresh
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 
 pub fn try_project_update(
   model: client_state.Model,

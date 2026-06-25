@@ -11,7 +11,7 @@ import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/position_layout
 import scrumbringer_client/features/pool/position_update
-import scrumbringer_client/features/pool/route_support
+import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 

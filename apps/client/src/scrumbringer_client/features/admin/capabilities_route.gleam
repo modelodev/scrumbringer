@@ -10,9 +10,9 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/admin/route_support
 import scrumbringer_client/features/capabilities/types as capability_types
 import scrumbringer_client/features/capabilities/update as capabilities_update
+import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 

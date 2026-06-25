@@ -12,8 +12,8 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/admin/member_role_update
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/admin/route_support
 import scrumbringer_client/features/assignments/update as assignments_update
+import scrumbringer_client/features/route_support
 import scrumbringer_client/router
 
 pub fn try_update(
