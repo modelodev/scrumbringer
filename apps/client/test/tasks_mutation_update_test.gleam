@@ -16,7 +16,7 @@ fn mutation_context() -> mutation_update.MutationContext(Nil) {
     current_user_id: Some(7),
     on_task_claimed: fn(_result) { Nil },
     on_task_released: fn(_result) { Nil },
-    on_task_completed: fn(_result) { Nil },
+    on_task_closed: fn(_result) { Nil },
     on_task_deleted: fn(_task_id, _result) { Nil },
   )
 }
@@ -25,7 +25,7 @@ fn success_context() -> mutation_update.Context(Nil) {
   mutation_update.Context(
     task_claimed: "Claimed",
     task_released: "Released",
-    task_completed: "Done",
+    task_closed: "Closed",
     task_deleted: "Deleted",
     on_success_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
     on_work_sessions_refetch: fn() { effect.from(fn(_dispatch) { Nil }) },
@@ -140,7 +140,7 @@ pub fn try_update_error_checks_auth_after_rollback_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskDone(Error(err)),
+      pool_messages.MemberTaskClosed(Error(err)),
       dispatch_context(),
     )
   let assert mutation_update.CheckAuthAfter(auth_err) = policy
@@ -380,9 +380,9 @@ pub fn mutation_success_release_refetches_work_sessions_test() {
     mutation_update.should_refetch_work_sessions(mutation_update.Released)
 }
 
-pub fn mutation_success_complete_refetches_work_sessions_test() {
+pub fn mutation_success_close_refetches_work_sessions_test() {
   let assert True =
-    mutation_update.should_refetch_work_sessions(mutation_update.Done)
+    mutation_update.should_refetch_work_sessions(mutation_update.Closed)
 }
 
 pub fn mutation_error_404_uses_not_found_warning_test() {

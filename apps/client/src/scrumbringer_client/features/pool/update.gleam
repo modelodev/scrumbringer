@@ -747,7 +747,7 @@ fn update_without_view_mode(
     | pool_messages.MemberDeleteTaskClicked(_)
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)
-    | pool_messages.MemberTaskDone(_)
+    | pool_messages.MemberTaskClosed(_)
     | pool_messages.MemberTaskDeleted(_, _) -> #(model, effect.none())
 
     // Handled by now_working_workflow.try_update before this dispatch.

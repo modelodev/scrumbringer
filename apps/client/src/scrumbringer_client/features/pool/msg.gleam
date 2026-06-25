@@ -102,7 +102,7 @@ pub type Msg {
   MemberDeleteTaskClicked(Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))
-  MemberTaskDone(ApiResult(Task))
+  MemberTaskClosed(ApiResult(Task))
   MemberTaskDeleted(Int, ApiResult(Nil))
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked

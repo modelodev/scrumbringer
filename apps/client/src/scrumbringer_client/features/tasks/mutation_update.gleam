@@ -21,7 +21,7 @@ pub type MutationContext(parent_msg) {
     current_user_id: opt.Option(Int),
     on_task_claimed: fn(ApiResult(Task)) -> parent_msg,
     on_task_released: fn(ApiResult(Task)) -> parent_msg,
-    on_task_completed: fn(ApiResult(Task)) -> parent_msg,
+    on_task_closed: fn(ApiResult(Task)) -> parent_msg,
     on_task_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
@@ -48,7 +48,7 @@ pub type Update(parent_msg) {
 pub type Success {
   Claimed
   Released
-  Done
+  Closed
   Deleted
 }
 
@@ -67,7 +67,7 @@ pub type Context(parent_msg) {
   Context(
     task_claimed: String,
     task_released: String,
-    task_completed: String,
+    task_closed: String,
     task_deleted: String,
     on_success_toast: fn(String) -> Effect(parent_msg),
     on_work_sessions_refetch: fn() -> Effect(parent_msg),
@@ -120,8 +120,8 @@ pub fn try_update(
         context.success_context,
       )
 
-    pool_messages.MemberTaskDone(Ok(_)) ->
-      success(model, handle_task_completed_ok, Done, context.success_context)
+    pool_messages.MemberTaskClosed(Ok(_)) ->
+      success(model, handle_task_closed_ok, Closed, context.success_context)
 
     pool_messages.MemberTaskDeleted(task_id, Ok(_)) ->
       success(
@@ -133,7 +133,7 @@ pub fn try_update(
 
     pool_messages.MemberTaskClaimed(Error(err))
     | pool_messages.MemberTaskReleased(Error(err))
-    | pool_messages.MemberTaskDone(Error(err))
+    | pool_messages.MemberTaskClosed(Error(err))
     | pool_messages.MemberTaskDeleted(_, Error(err)) ->
       mutation_error(model, err, context.error_context)
 
@@ -165,7 +165,7 @@ fn success(
 fn success_policy(success: Success) -> Policy {
   case success {
     Claimed | Released -> RefreshMemberSilentlyAfterSuccess
-    Done | Deleted -> RefreshMemberAfterSuccess
+    Closed | Deleted -> RefreshMemberAfterSuccess
   }
 }
 
@@ -279,7 +279,7 @@ fn handle_complete_clicked(
       task_operations_api.complete_task(
         task_id,
         version,
-        context.on_task_completed,
+        context.on_task_closed,
       ),
     )
   }
@@ -349,7 +349,7 @@ fn handle_task_released_ok(
 
 /// Handle successful task close.
 /// Clears snapshot and refreshes from server for authoritative state.
-fn handle_task_completed_ok(
+fn handle_task_closed_ok(
   model: member_pool.Model,
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   #(clear_optimistic_state(model), effect.none())
@@ -391,7 +391,7 @@ fn success_effect(
 pub fn should_refetch_work_sessions(success: Success) -> Bool {
   case success {
     Claimed -> False
-    Released | Done | Deleted -> True
+    Released | Closed | Deleted -> True
   }
 }
 
@@ -399,7 +399,7 @@ fn success_message(success: Success, context: Context(parent_msg)) -> String {
   case success {
     Claimed -> context.task_claimed
     Released -> context.task_released
-    Done -> context.task_completed
+    Closed -> context.task_closed
     Deleted -> context.task_deleted
   }
 }
