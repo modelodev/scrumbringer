@@ -524,7 +524,7 @@ pub type Text {
   Status
   Claims
   Releases
-  Completes
+  Closures
   FirstClaim
   ProjectTasks(project_name: String)
 

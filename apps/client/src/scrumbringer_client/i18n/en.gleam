@@ -608,7 +608,7 @@ pub fn translate(text: Text) -> String {
     text.Status -> "Status"
     text.Claims -> "Claims"
     text.Releases -> "Releases"
-    text.Completes -> "Closures"
+    text.Closures -> "Closures"
     text.FirstClaim -> "First claim"
     text.ProjectTasks(project_name) -> "Project tasks: " <> project_name
 

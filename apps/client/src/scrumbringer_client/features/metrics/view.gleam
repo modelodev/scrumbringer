@@ -482,7 +482,7 @@ fn view_project_tasks_table(
       let MetricsProjectTask(release_count: release_count, ..) = t
       text(int.to_string(release_count))
     }),
-    data_table.column(i18n.t(config.locale, i18n_text.Completes), fn(t) {
+    data_table.column(i18n.t(config.locale, i18n_text.Closures), fn(t) {
       let MetricsProjectTask(complete_count: complete_count, ..) = t
       text(int.to_string(complete_count))
     }),

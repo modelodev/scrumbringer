@@ -22,13 +22,13 @@ fn assert_no_complete_word(copy: String) {
 pub fn english_metrics_copy_uses_close_vocabulary_test() {
   let labels = [
     i18n.t(locale.En, text.AvgClaimToComplete),
-    i18n.t(locale.En, text.Completes),
+    i18n.t(locale.En, text.Closures),
   ]
 
   list.each(labels, assert_no_complete_word)
   i18n.t(locale.En, text.AvgClaimToComplete)
   |> assert_equal("Avg claim → close")
-  i18n.t(locale.En, text.Completes) |> assert_equal("Closures")
+  i18n.t(locale.En, text.Closures) |> assert_equal("Closures")
 }
 
 pub fn spanish_metrics_copy_uses_localized_claim_vocabulary_test() {
@@ -46,7 +46,7 @@ pub fn spanish_metrics_copy_uses_localized_claim_vocabulary_test() {
 
   list.each(labels, assert_no_claim_word)
   i18n.t(locale.Es, text.Claims) |> assert_equal("Reclamaciones")
-  i18n.t(locale.Es, text.Completes) |> assert_equal("Cierres")
+  i18n.t(locale.Es, text.Closures) |> assert_equal("Cierres")
   i18n.t(locale.Es, text.WipCount) |> assert_equal("Trabajo en curso")
   i18n.t(locale.Es, text.Tracking) |> assert_equal("Seguimiento")
 }
