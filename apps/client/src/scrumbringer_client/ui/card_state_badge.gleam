@@ -24,7 +24,7 @@ fn table_class(state: CardPhase) -> String {
   case state {
     Draft -> "state-pending"
     Active -> "state-active"
-    Closed -> "state-completed"
+    Closed -> "state-closed"
   }
 }
 

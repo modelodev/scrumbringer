@@ -281,9 +281,6 @@ pub fn css() -> List(String) {
     ".card-task-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: var(--sb-font-base); }",
     ".card-task-item:hover { background: var(--sb-hover); }",
     ".card-task-status { width: 16px; height: 16px; flex-shrink: 0; }",
-    ".card-task-status.available { color: var(--sb-muted); }",
-    ".card-task-status.claimed { color: var(--sb-info-text); }",
-    ".card-task-status.completed { color: var(--sb-success-text); }",
     // =====================================================
     // UX IMPROVEMENTS - Animations (IF04)
     // =====================================================
@@ -417,7 +414,7 @@ pub fn css() -> List(String) {
     ".card-meta-chip, .card-health-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 999px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); padding: 3px 8px; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-tight); }",
     ".card-meta-chip.muted { color: var(--sb-muted); }",
     ".card-health-chip.blocked { border-color: color-mix(in oklab, var(--sb-error) 34%, var(--sb-border)); color: var(--sb-error); background: color-mix(in oklab, var(--sb-error) 6%, var(--sb-surface)); }",
-    ".card-health-chip.done { border-color: color-mix(in oklab, var(--sb-success) 30%, var(--sb-border)); color: var(--sb-success-text); }",
+    ".card-health-chip.closed { border-color: color-mix(in oklab, var(--sb-success) 30%, var(--sb-border)); color: var(--sb-success-text); }",
     ".card-health-value { font-weight: var(--sb-weight-semibold); font-variant-numeric: tabular-nums; }",
     ".card-health-label { font-size: var(--sb-font-xs); }",
     ".detail-summary { padding: 14px 16px; border: 1px solid color-mix(in oklab, var(--sb-border) 75%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",

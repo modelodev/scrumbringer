@@ -554,7 +554,6 @@ pub fn css() -> List(String) {
     ".kanban-task-item .task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }",
     ".kanban-task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sb-text); }",
     ".kanban-task-item .task-claimed-by { font-size: 10px; color: var(--sb-muted); flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
-    ".kanban-task-item.status-completed .task-title { text-decoration: line-through; color: var(--sb-muted); }",
     ".status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }",
     ".btn-claim-mini { background: transparent; border: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--sb-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; }",
     ".kanban-task-item:hover .btn-claim-mini { opacity: 1; }",

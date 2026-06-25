@@ -87,8 +87,8 @@ pub fn css() -> List(String) {
     ".state-pending::before { background: var(--sb-warning); }",
     ".state-active { background: color-mix(in oklab, var(--sb-info) 15%, transparent); color: var(--sb-info-text); }",
     ".state-active::before { background: var(--sb-info); }",
-    ".state-completed { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success-text); }",
-    ".state-completed::before { background: var(--sb-success); }",
+    ".state-closed { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success-text); }",
+    ".state-closed::before { background: var(--sb-success); }",
     // Mini progress bar for cards table
     ".card-progress-cell { display: flex; align-items: center; gap: 8px; }",
     ".progress-bar-mini { width: 60px; height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",

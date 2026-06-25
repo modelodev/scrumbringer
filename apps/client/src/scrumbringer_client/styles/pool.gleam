@@ -60,7 +60,6 @@ pub fn css() -> List(String) {
     ".task-preview-badge-available { border-color: color-mix(in oklab, var(--sb-primary) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }",
     ".task-preview-badge-claimed { border-color: color-mix(in oklab, var(--sb-info) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-info) 12%, var(--sb-elevated)); }",
     ".task-preview-badge-ongoing { border-color: color-mix(in oklab, var(--sb-warning) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 14%, var(--sb-elevated)); }",
-    ".task-preview-badge-completed { border-color: color-mix(in oklab, var(--sb-success) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-success) 12%, var(--sb-elevated)); }",
     ".task-card-preview::before { content: \"\"; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); border-width: 8px 8px 8px 0; border-style: solid; border-color: transparent var(--sb-elevated) transparent transparent; }",
     ".task-card-preview::after { content: \"\"; position: absolute; left: -9px; top: 50%; transform: translateY(-50%); border-width: 9px 9px 9px 0; border-style: solid; border-color: transparent var(--sb-border) transparent transparent; }",
     ".task-card.preview-left .task-card-preview::before { left: auto; right: -8px; border-width: 8px 0 8px 8px; border-color: transparent transparent transparent var(--sb-elevated); }",
