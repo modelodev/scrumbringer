@@ -333,6 +333,43 @@ pub fn task_show_deep_link_cold_start_hydrates_member_resources_test() {
   ])
 }
 
+pub fn card_show_deep_link_cold_start_hydrates_member_resources_test() {
+  let snap =
+    hydration.Snapshot(
+      auth: hydration.Authed(org_role.Member),
+      projects: hydration.NotAsked,
+      is_any_project_manager: False,
+      invite_links: hydration.NotAsked,
+      capabilities: hydration.NotAsked,
+      my_capability_ids: hydration.NotAsked,
+      org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
+      integration_users: hydration.NotAsked,
+      api_tokens: hydration.NotAsked,
+      members: hydration.NotAsked,
+      members_project_id: None,
+      task_types: hydration.NotAsked,
+      task_types_project_id: None,
+      member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
+    )
+
+  assert_equal(hydration.plan(card_show_route(Some(8), 42), snap), [
+    hydration.FetchProjects,
+    hydration.FetchCapabilities,
+    hydration.FetchMeCapabilityIds,
+    hydration.FetchWorkSessions,
+    hydration.FetchMeMetrics,
+    hydration.FetchOrgUsersCache,
+    hydration.RefreshMember,
+  ])
+}
+
 pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
   let snap =
     hydration.Snapshot(
@@ -413,4 +450,13 @@ fn task_show_route(project_id: Option(Int), task_id: Int) -> router.Route {
   }
 
   router.Member(url_state.with_task_show(state, task_id))
+}
+
+fn card_show_route(project_id: Option(Int), card_id: Int) -> router.Route {
+  let state = case project_id {
+    Some(id) -> url_state.with_project(url_state.empty(), id)
+    None -> url_state.empty()
+  }
+
+  router.Member(url_state.with_card_show(state, card_id))
 }

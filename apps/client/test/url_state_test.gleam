@@ -713,6 +713,20 @@ pub fn roundtrip_scope_and_card_show_test() {
   reparsed |> url_state.card_show |> assert_equal(Some(42))
 }
 
+pub fn roundtrip_task_show_test() {
+  let original =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_task_show(825)
+
+  let query = url_state.to_query_string(original)
+  let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
+
+  reparsed |> url_state.project |> assert_equal(Some(8))
+  reparsed |> url_state.task_show |> assert_equal(Some(825))
+  reparsed |> url_state.card_show |> assert_none
+}
+
 pub fn roundtrip_with_encoded_search_test() {
   let original =
     url_state.empty()

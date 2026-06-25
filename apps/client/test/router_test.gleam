@@ -462,6 +462,30 @@ pub fn format_member_people_card_work_scope_test() {
   )
 }
 
+pub fn format_member_card_show_deep_link_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_card_show(42)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&show=card&show_card=42",
+  )
+}
+
+pub fn format_member_task_show_deep_link_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_task_show(825)
+
+  assert_equal(
+    router.format(router.Member(state)),
+    "/app/pool?project=2&show=task&task=825",
+  )
+}
+
 pub fn format_member_capabilities_with_project_test() {
   assert_equal(
     router.format(member_route(Some(2), Some(view_mode.Capabilities))),
@@ -582,6 +606,38 @@ pub fn roundtrip_member_cards_kanban_test() {
     |> url_state.with_project(2)
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+
+  let route = router.Member(state)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_member_card_show_deep_link_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_card_show(42)
+
+  let route = router.Member(state)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_member_task_show_deep_link_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_task_show(825)
+
+  let route = router.Member(state)
+  assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
+}
+
+pub fn roundtrip_member_plan_card_scope_with_card_show_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+    |> url_state.with_card_work_scope(15)
+    |> url_state.with_card_show(42)
 
   let route = router.Member(state)
   assert_equal(router.format(route) |> parse_formatted, router.Parsed(route))
