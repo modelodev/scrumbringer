@@ -295,15 +295,15 @@ fn view_execution_summary_table(
 
     Failed(err) -> error_notice.view(err.message)
 
-    Loaded(workflows) -> view_execution_summary_table_loaded(config, workflows)
+    Loaded(engines) -> view_execution_summary_table_loaded(config, engines)
   }
 }
 
 fn view_execution_summary_table_loaded(
   config: Config(msg),
-  workflows: List(api_rule_metrics.OrgWorkflowMetricsSummary),
+  engines: List(api_rule_metrics.OrgWorkflowMetricsSummary),
 ) -> Element(msg) {
-  case workflows {
+  case engines {
     [] ->
       div([attribute.class("empty")], [
         text(t(config, i18n_text.RuleMetricsNoData)),
@@ -333,9 +333,7 @@ fn view_execution_summary_table_loaded(
           ]),
           keyed.tbody(
             [],
-            list.flat_map(workflows, fn(w) {
-              view_engine_summary_row(config, w)
-            }),
+            list.flat_map(engines, fn(w) { view_engine_summary_row(config, w) }),
           ),
         ]),
         // Drill-down modal
