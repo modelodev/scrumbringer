@@ -83,7 +83,7 @@ pub fn task_ongoing() -> task_state.TaskExecutionState {
   task_state.Claimed(0, "", task_state.Ongoing)
 }
 
-pub fn task_done() -> task_state.TaskExecutionState {
+pub fn task_closed_done() -> task_state.TaskExecutionState {
   task_state.Closed(task_state.Done, "", 0)
 }
 

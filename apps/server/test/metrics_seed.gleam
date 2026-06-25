@@ -191,7 +191,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Resolved",
-    fixtures.task_done(),
+    fixtures.task_closed_done(),
     alpha_qa_tmpl,
   ))
   io.println("  [+] Rule: On Bug Resolved -> QA template")
@@ -202,7 +202,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Closed",
-    fixtures.task_done(),
+    fixtures.task_closed_done(),
     alpha_deploy_tmpl,
   ))
   io.println("  [+] Rule: On Bug Closed -> Deploy template")
@@ -221,7 +221,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_feature_id,
     Some(alpha_feature_type),
     "On Feature Done",
-    fixtures.task_done(),
+    fixtures.task_closed_done(),
     alpha_review_tmpl,
   ))
   io.println("  [+] Rule: On Feature Done -> Review template")
@@ -285,7 +285,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_beta,
     Some(beta_bug_type),
     "On Beta Bug Resolved",
-    fixtures.task_done(),
+    fixtures.task_closed_done(),
     beta_qa_tmpl,
   ))
   io.println("[OK] Created workflow for Beta")
@@ -357,7 +357,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some(fixtures.task_ongoing()),
-          fixtures.task_done(),
+          fixtures.task_closed_done(),
           alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -381,8 +381,8 @@ pub fn seed() -> Result(SeedResult, String) {
           alpha_id,
           org_id,
           admin_user_id,
-          Some(fixtures.task_done()),
-          fixtures.task_done(),
+          Some(fixtures.task_closed_done()),
+          fixtures.task_closed_done(),
           alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -407,7 +407,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           dev_user_id,
           Some(fixtures.task_ongoing()),
-          fixtures.task_done(),
+          fixtures.task_closed_done(),
           alpha_feature_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -456,7 +456,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some(fixtures.task_ongoing()),
-          fixtures.task_done(),
+          fixtures.task_closed_done(),
           beta_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
@@ -477,7 +477,7 @@ pub fn seed() -> Result(SeedResult, String) {
       org_id,
       admin_user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       alpha_bug_type,
     )
   use _ <- result.try(

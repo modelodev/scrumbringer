@@ -36,7 +36,7 @@ pub fn automation_config_mutations_record_actor_entity_and_change_test() {
       workflow_id,
       Some(type_id),
       "Audit Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 

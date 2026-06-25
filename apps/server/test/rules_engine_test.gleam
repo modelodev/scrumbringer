@@ -56,7 +56,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -82,7 +82,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       bug_type_id,
     )
 
@@ -128,7 +128,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -144,7 +144,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -179,7 +179,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -196,7 +196,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
       False,
       None,
@@ -407,7 +407,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -423,7 +423,7 @@ pub fn variable_origin_task_resolves_to_link_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       bug_type_id,
     )
 
@@ -554,7 +554,7 @@ pub fn variable_trigger_resolves_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -570,7 +570,7 @@ pub fn variable_trigger_resolves_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -686,7 +686,7 @@ pub fn variable_project_resolves_to_name_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -702,7 +702,7 @@ pub fn variable_project_resolves_to_name_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -745,7 +745,7 @@ pub fn variable_user_resolves_to_email_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -761,7 +761,7 @@ pub fn variable_user_resolves_to_email_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -819,7 +819,7 @@ pub fn task_trigger_variables_combined_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -845,7 +845,7 @@ pub fn task_trigger_variables_combined_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       bug_type_id,
     )
 
@@ -944,7 +944,7 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template1_id,
     )
 
@@ -987,7 +987,7 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       bug_type_id,
     )
 
@@ -1040,7 +1040,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1058,7 +1058,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       bug_type_id,
     )
 
@@ -1083,7 +1083,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       feature_type_id,
     )
 
@@ -1119,7 +1119,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1135,7 +1135,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -1167,7 +1167,7 @@ pub fn inactive_rule_does_not_fire_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1187,7 +1187,7 @@ pub fn inactive_rule_does_not_fire_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -1224,7 +1224,7 @@ pub fn wrong_task_type_does_not_match_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Only",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1248,7 +1248,7 @@ pub fn wrong_task_type_does_not_match_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       feature_type_id,
     )
 
@@ -1277,7 +1277,7 @@ pub fn wrong_to_state_does_not_match_test() {
       workflow_id,
       None,
       "On Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1399,7 +1399,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1423,7 +1423,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type2_id,
     )
 
@@ -1453,7 +1453,7 @@ pub fn task_rule_does_not_fire_for_card_trigger_test() {
       workflow_id,
       None,
       "Task Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1561,7 +1561,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1580,7 +1580,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -1636,7 +1636,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -1652,7 +1652,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 

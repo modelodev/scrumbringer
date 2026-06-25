@@ -119,7 +119,7 @@ pub fn set_active_cascade_deactivates_children_test() {
       workflow_id,
       None,
       "Test Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -166,7 +166,7 @@ pub fn set_active_cascade_activates_children_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -247,7 +247,7 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       workflow_id,
       None,
       "Rule To Delete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 

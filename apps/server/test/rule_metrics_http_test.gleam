@@ -38,7 +38,7 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
       workflow_id,
       Some(type_id),
       "Test Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -80,7 +80,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
       workflow_id,
       Some(type_id),
       "Counts Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task1_id) =
@@ -165,7 +165,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       workflow_id,
       Some(type_id),
       "Breakdown Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task1_id) =
@@ -315,7 +315,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 1",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(rule2_id) =
@@ -325,7 +325,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       workflow_id,
       Some(type_id),
       "Rule 2",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task1_id) =
@@ -463,7 +463,7 @@ pub fn executions_list_returns_paginated_results_test() {
       workflow_id,
       Some(type_id),
       "Executions Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task1_id) =
@@ -568,7 +568,7 @@ pub fn project_executions_list_returns_project_business_executions_test() {
       workflow_id,
       Some(type_id),
       "Visible Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(other_rule_id) =
@@ -578,7 +578,7 @@ pub fn project_executions_list_returns_project_business_executions_test() {
       other_workflow_id,
       Some(other_type_id),
       "Other Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       other_template_id,
     )
   let assert Ok(task_id) =
@@ -671,7 +671,7 @@ pub fn executions_list_empty_returns_empty_array_test() {
       workflow_id,
       Some(type_id),
       "Empty Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -714,7 +714,7 @@ pub fn calendar_date_range_includes_full_to_day_test() {
       workflow_id,
       Some(type_id),
       "Inclusive Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(start_task_id) =
@@ -875,7 +875,7 @@ pub fn invalid_execution_limit_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Invalid Limit Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -918,7 +918,7 @@ pub fn duplicate_execution_offset_returns_validation_error_test() {
       workflow_id,
       Some(type_id),
       "Duplicate Offset Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 

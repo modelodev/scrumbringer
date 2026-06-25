@@ -39,7 +39,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       workflow_id,
       Some(type_id),
       "Bug Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -56,7 +56,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -91,7 +91,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       workflow_id,
       None,
       "Inactive Rule",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -112,7 +112,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -146,7 +146,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       workflow_id,
       Some(type_id),
       "Feature Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
   let assert Ok(task_id) =
@@ -162,7 +162,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 
@@ -204,7 +204,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       workflow_id,
       None,
       "Any Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -225,7 +225,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       org_id,
       user_id,
       Some(fixtures.task_claimed()),
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       type_id,
     )
 

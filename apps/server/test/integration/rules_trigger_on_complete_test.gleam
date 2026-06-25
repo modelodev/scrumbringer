@@ -100,7 +100,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -497,7 +497,7 @@ pub fn complete_task_uses_latest_selected_template_test() {
       workflow_id,
       Some(feature_type_id),
       "Feature Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template1_id,
     )
   let assert Ok(Nil) =
@@ -614,7 +614,7 @@ pub fn completing_same_task_twice_is_idempotent_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -715,7 +715,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
       workflow_id,
       Some(type_id),
       "Task Done",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -912,7 +912,7 @@ pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
@@ -1022,7 +1022,7 @@ pub fn complete_task_without_card_creates_child_tasks_without_card_test() {
       workflow_id,
       Some(bug_type_id),
       "Bug Complete",
-      fixtures.task_done(),
+      fixtures.task_closed_done(),
       template_id,
     )
 
