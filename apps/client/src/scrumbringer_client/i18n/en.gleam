@@ -1098,7 +1098,7 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateEditFutureTasksWarning ->
       "This template is used by active rules. Changes affect only future generated tasks; tasks already created keep their original content and origin."
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{origin}} (origin task/card), {{trigger}} (event), {{project}} (project name), {{user}} (user who triggered), {{task_title}} and {{task_type}} for task events, {{card_title}} and {{card_level}} for card events"
+      "Variables: {{origin}} (origin task/card), {{trigger}} (automation trigger), {{project}} (project name), {{user}} (user who triggered), {{task_title}} and {{task_type}} for task-triggered automations, {{card_title}} and {{card_level}} for card-triggered automations"
     text.TaskTemplateDescriptionHint ->
       "Use variables in the description: {{origin}}, {{trigger}}, {{project}}, {{user}}, {{task_title}}, {{task_type}}, {{card_title}}, {{card_level}}"
     text.AvailableVariables -> "Available variables"
