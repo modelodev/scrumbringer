@@ -496,6 +496,7 @@ apps/server/test/
 │   ├── test_helpers.gleam           # Factory functions for domain objects
 │   └── test_db.gleam                # Transaction isolation helpers
 ├── unit/                            # Unit tests (no HTTP, isolated)
+│   ├── use_case/                    # Business use-case and policy tests
 │   ├── persistence/                 # Repository and DB adapter tests
 │   └── http/                        # HTTP handler tests
 ├── integration/                     # Full integration tests
