@@ -127,7 +127,7 @@ fn verify_project_org(
   case metrics_service.verify_project_org(db, project_id, org_id) {
     Error(metrics_service.NotFound) -> Error(not_found_response())
     Error(metrics_service.DbError(_)) -> Error(database_error_response())
-    Error(metrics_service.InvalidTaskPhase(_)) ->
+    Error(metrics_service.InvalidTaskExecutionState(_)) ->
       Error(database_error_response())
     Ok(False) -> Error(not_found_response())
     Ok(True) -> Ok(Nil)

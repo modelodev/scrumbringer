@@ -17,7 +17,7 @@
 //// - JSON serialization (see `metrics_presenters.gleam`)
 //// - HTTP handling (see `org_metrics.gleam`)
 
-import domain/task_status
+import domain/task/state as task_state
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -101,8 +101,7 @@ pub type ProjectTask {
     title: String,
     description: String,
     priority: Int,
-    status: task_status.TaskPhase,
-    work_state: WorkState,
+    execution_state: task_state.TaskExecutionState,
     created_by: Int,
     claimed_by: Option(Int),
     claimed_at: Option(String),
@@ -117,14 +116,10 @@ pub type ProjectTask {
   )
 }
 
-/// Work state ADT for derived task status.
-pub type WorkState =
-  task_status.WorkState
-
 /// Error type for metrics operations.
 pub type MetricsError {
   DbError(pog.QueryError)
-  InvalidTaskPhase(String)
+  InvalidTaskExecutionState(String)
   NotFound
 }
 
@@ -413,11 +408,13 @@ fn project_task_from_row(
   let due_date = empty_string_to_option(row.due_date)
   let first_claim_at = empty_string_to_option(row.first_claim_at)
 
-  use status <- result.try(
-    task_status.parse_task_status(row.status)
-    |> result.map_error(fn(_) { InvalidTaskPhase(row.status) }),
-  )
-  let work_state = work_state_from_status(status, row.is_ongoing)
+  use execution_state <- result.try(execution_state_from(
+    row.status,
+    row.is_ongoing,
+    claimed_by,
+    claimed_at,
+    completed_at,
+  ))
 
   Ok(ProjectTask(
     id: row.id,
@@ -429,8 +426,7 @@ fn project_task_from_row(
     title: row.title,
     description: row.description,
     priority: row.priority,
-    status: status,
-    work_state: work_state,
+    execution_state: execution_state,
     created_by: row.created_by,
     claimed_by: claimed_by,
     claimed_at: claimed_at,
@@ -477,32 +473,14 @@ fn empty_string_to_option(value: String) -> Option(String) {
   }
 }
 
-/// Derive work state from status and ongoing flag.
-pub fn work_state_from(
+/// Derive canonical task execution state from metrics SQL row fields.
+pub fn execution_state_from(
   status: String,
   is_ongoing: Bool,
-) -> Result(WorkState, MetricsError) {
-  use parsed <- result.try(
-    task_status.parse_task_status(status)
-    |> result.map_error(fn(_) { InvalidTaskPhase(status) }),
-  )
-
-  Ok(work_state_from_status(parsed, is_ongoing))
-}
-
-fn work_state_from_status(
-  status: task_status.TaskPhase,
-  is_ongoing: Bool,
-) -> WorkState {
-  case status {
-    task_status.Available -> task_status.WorkAvailable
-    task_status.Done -> task_status.WorkDone
-    task_status.Claimed(task_status.Ongoing) -> task_status.WorkOngoing
-    task_status.Claimed(task_status.Taken) ->
-      // Justification: nested case disambiguates claimed vs ongoing states.
-      case is_ongoing {
-        True -> task_status.WorkOngoing
-        False -> task_status.WorkClaimed
-      }
-  }
+  claimed_by: Option(Int),
+  claimed_at: Option(String),
+  completed_at: Option(String),
+) -> Result(task_state.TaskExecutionState, MetricsError) {
+  task_state.from_db(status, is_ongoing, claimed_by, claimed_at, completed_at)
+  |> result.map_error(fn(_) { InvalidTaskExecutionState(status) })
 }

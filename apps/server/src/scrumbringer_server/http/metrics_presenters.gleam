@@ -17,6 +17,7 @@
 //// - Business logic/calculations (see `metrics_service.gleam`)
 //// - HTTP handling (see `org_metrics.gleam`)
 
+import domain/task/state as task_state
 import domain/task_status
 import gleam/json
 import gleam/option.{type Option, None, Some}
@@ -182,10 +183,21 @@ fn project_task_json(task: ProjectTask) -> json.Json {
     #("title", json.string(task.title)),
     #("description", json.string(task.description)),
     #("priority", json.int(task.priority)),
-    #("status", json.string(task_status.task_status_to_string(task.status))),
+    #(
+      "status",
+      json.string(
+        task_status.task_status_to_string(task_state.to_status(
+          task.execution_state,
+        )),
+      ),
+    ),
     #(
       "work_state",
-      json.string(task_status.work_state_to_string(task.work_state)),
+      json.string(
+        task_status.work_state_to_string(task_state.to_work_state(
+          task.execution_state,
+        )),
+      ),
     ),
     #("created_by", json.int(task.created_by)),
     #("claimed_by", json_helpers.option_int_json(task.claimed_by)),
