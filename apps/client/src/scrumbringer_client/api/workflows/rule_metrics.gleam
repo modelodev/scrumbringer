@@ -2,11 +2,12 @@
 
 import gleam/dynamic/decode
 import gleam/int
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, None}
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiResult}
+import domain/automation
 import scrumbringer_client/api/core
 
 /// Calendar date range used by HTML date inputs (`YYYY-MM-DD`).
@@ -233,23 +234,12 @@ pub fn get_rule_metrics_detailed(
 }
 
 /// Decoded execution outcome from API JSON.
-pub type RuleExecutionOutcome {
-  AppliedRuleExecution
-  SuppressedRuleExecution(reason: Option(RuleSuppressionReason))
-  UnknownRuleExecution(
-    raw: String,
-    suppression_reason: Option(RuleSuppressionReason),
-  )
-}
+pub type RuleExecutionOutcome =
+  automation.RuleExecutionOutcome
 
 /// Decoded suppression reason from API JSON.
-pub type RuleSuppressionReason {
-  IdempotentSuppression
-  NotUserTriggeredSuppression
-  NotMatchingSuppression
-  InactiveSuppression
-  UnknownSuppressionReason(raw: String)
-}
+pub type RuleSuppressionReason =
+  automation.RuleSuppressionReason
 
 /// Single rule execution record.
 pub type RuleExecution {
@@ -269,33 +259,20 @@ pub type RuleExecution {
 
 pub fn execution_outcome_is_applied(outcome: RuleExecutionOutcome) -> Bool {
   case outcome {
-    AppliedRuleExecution -> True
-    SuppressedRuleExecution(_) | UnknownRuleExecution(..) -> False
+    automation.AppliedRuleExecution -> True
+    automation.SuppressedRuleExecution(_) | automation.UnknownRuleExecution(..) ->
+      False
   }
 }
 
 pub fn execution_outcome_suppression_reason_name(
   outcome: RuleExecutionOutcome,
 ) -> Option(String) {
-  case outcome {
-    SuppressedRuleExecution(Some(reason))
-    | UnknownRuleExecution(suppression_reason: Some(reason), ..) ->
-      Some(rule_suppression_reason_name(reason))
-
-    AppliedRuleExecution
-    | SuppressedRuleExecution(None)
-    | UnknownRuleExecution(suppression_reason: None, ..) -> None
-  }
+  automation.rule_execution_suppression_reason_name(outcome)
 }
 
 pub fn rule_suppression_reason_name(reason: RuleSuppressionReason) -> String {
-  case reason {
-    IdempotentSuppression -> "idempotent"
-    NotUserTriggeredSuppression -> "not_user_triggered"
-    NotMatchingSuppression -> "not_matching"
-    InactiveSuppression -> "inactive"
-    UnknownSuppressionReason(raw) -> raw
-  }
+  automation.rule_suppression_reason_to_string(reason)
 }
 
 /// Pagination info.
@@ -399,24 +376,7 @@ fn parse_execution_outcome(
   outcome: String,
   suppression_reason: String,
 ) -> RuleExecutionOutcome {
-  let reason = parse_suppression_reason(suppression_reason)
-
-  case outcome {
-    "applied" -> AppliedRuleExecution
-    "suppressed" -> SuppressedRuleExecution(reason)
-    other -> UnknownRuleExecution(raw: other, suppression_reason: reason)
-  }
-}
-
-fn parse_suppression_reason(raw: String) -> Option(RuleSuppressionReason) {
-  case raw {
-    "" -> None
-    "idempotent" -> Some(IdempotentSuppression)
-    "not_user_triggered" -> Some(NotUserTriggeredSuppression)
-    "not_matching" -> Some(NotMatchingSuppression)
-    "inactive" -> Some(InactiveSuppression)
-    other -> Some(UnknownSuppressionReason(other))
-  }
+  automation.rule_execution_outcome_from_strings(outcome, suppression_reason)
 }
 
 fn pagination_decoder() -> decode.Decoder(Pagination) {

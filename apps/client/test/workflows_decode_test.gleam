@@ -334,12 +334,12 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let assert 1 = response.rule_id
   let assert [execution_a, execution_b] = response.executions
   let assert option.Some(100) = execution_a.task_id
-  let assert api_rule_metrics.AppliedRuleExecution = execution_a.outcome
+  let assert automation.AppliedRuleExecution = execution_a.outcome
   let assert option.Some(12) = execution_a.template_id
   let assert option.Some(3) = execution_a.template_version
   let assert option.Some(102) = execution_a.created_task_id
-  let assert api_rule_metrics.SuppressedRuleExecution(option.Some(
-    api_rule_metrics.IdempotentSuppression,
+  let assert automation.SuppressedRuleExecution(option.Some(
+    automation.IdempotentSuppression,
   )) = execution_b.outcome
   let assert option.Some("idempotent") =
     api_rule_metrics.execution_outcome_suppression_reason_name(
@@ -374,7 +374,7 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
   let assert [execution] = response.executions
   let assert option.None = execution.task_id
   let assert option.Some(50) = execution.card_id
-  let assert api_rule_metrics.AppliedRuleExecution = execution.outcome
+  let assert automation.AppliedRuleExecution = execution.outcome
   let assert 0 = execution.user_id
   let assert "" = execution.user_email
 }
@@ -389,8 +389,7 @@ pub fn rule_executions_response_decoder_decodes_suppressed_without_reason_test()
       using: api_rule_metrics.rule_executions_response_decoder(),
     )
   let assert [execution] = response.executions
-  let assert api_rule_metrics.SuppressedRuleExecution(option.None) =
-    execution.outcome
+  let assert automation.SuppressedRuleExecution(option.None) = execution.outcome
   let assert option.None =
     api_rule_metrics.execution_outcome_suppression_reason_name(
       execution.outcome,
@@ -407,9 +406,9 @@ pub fn rule_executions_response_decoder_preserves_unknown_outcome_reason_test() 
       using: api_rule_metrics.rule_executions_response_decoder(),
     )
   let assert [execution] = response.executions
-  let assert api_rule_metrics.UnknownRuleExecution(
+  let assert automation.UnknownRuleExecution(
     raw: "queued",
-    suppression_reason: option.Some(api_rule_metrics.UnknownSuppressionReason(
+    suppression_reason: option.Some(automation.UnknownSuppressionReason(
       "manual",
     )),
   ) = execution.outcome

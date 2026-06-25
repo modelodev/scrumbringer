@@ -210,6 +210,23 @@ pub type AutomationSkipReason {
   CreatedByAutomation
 }
 
+pub type RuleExecutionOutcome {
+  AppliedRuleExecution
+  SuppressedRuleExecution(reason: Option(RuleSuppressionReason))
+  UnknownRuleExecution(
+    raw: String,
+    suppression_reason: Option(RuleSuppressionReason),
+  )
+}
+
+pub type RuleSuppressionReason {
+  IdempotentSuppression
+  NotUserTriggeredSuppression
+  NotMatchingSuppression
+  InactiveSuppression
+  UnknownSuppressionReason(raw: String)
+}
+
 pub type TaskCreationSource {
   Manual(user_id: Int)
   Automation(execution_id: Int)
@@ -375,6 +392,66 @@ pub fn trigger_to_db_values(
     card_depth,
     trigger_to_state_string(trigger),
   )
+}
+
+pub fn rule_execution_outcome_from_strings(
+  outcome: String,
+  suppression_reason: String,
+) -> RuleExecutionOutcome {
+  let reason = rule_suppression_reason_from_string(suppression_reason)
+
+  case outcome {
+    "applied" -> AppliedRuleExecution
+    "suppressed" -> SuppressedRuleExecution(reason)
+    other -> UnknownRuleExecution(raw: other, suppression_reason: reason)
+  }
+}
+
+pub fn rule_execution_outcome_to_string(outcome: RuleExecutionOutcome) -> String {
+  case outcome {
+    AppliedRuleExecution -> "applied"
+    SuppressedRuleExecution(_) -> "suppressed"
+    UnknownRuleExecution(raw:, ..) -> raw
+  }
+}
+
+pub fn rule_execution_suppression_reason_name(
+  outcome: RuleExecutionOutcome,
+) -> Option(String) {
+  case outcome {
+    SuppressedRuleExecution(Some(reason))
+    | UnknownRuleExecution(suppression_reason: Some(reason), ..) ->
+      Some(rule_suppression_reason_to_string(reason))
+
+    AppliedRuleExecution
+    | SuppressedRuleExecution(None)
+    | UnknownRuleExecution(suppression_reason: None, ..) -> None
+  }
+}
+
+pub fn rule_suppression_reason_to_string(
+  reason: RuleSuppressionReason,
+) -> String {
+  case reason {
+    IdempotentSuppression -> "idempotent"
+    NotUserTriggeredSuppression -> "not_user_triggered"
+    NotMatchingSuppression -> "not_matching"
+    InactiveSuppression -> "inactive"
+    UnknownSuppressionReason(raw) -> raw
+  }
+}
+
+fn rule_suppression_reason_from_string(
+  raw: String,
+) -> Option(RuleSuppressionReason) {
+  case raw {
+    "" -> None
+    "idempotent" -> Some(IdempotentSuppression)
+    "not_user_triggered" -> Some(NotUserTriggeredSuppression)
+    "not_matching" -> Some(NotMatchingSuppression)
+    "inactive" -> Some(InactiveSuppression)
+    other -> Some(UnknownSuppressionReason(other))
+  }
 }
 
 pub fn available_template_variables(trigger: AutomationTrigger) -> List(String) {

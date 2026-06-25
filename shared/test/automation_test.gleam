@@ -67,6 +67,39 @@ pub fn event_keys_separate_different_facts_on_same_task_test() {
     automation.trigger_to_event_key(done, task_id)
 }
 
+pub fn rule_execution_outcome_parses_applied_without_reason_test() {
+  let outcome = automation.rule_execution_outcome_from_strings("applied", "")
+
+  let assert automation.AppliedRuleExecution = outcome
+  let assert "applied" = automation.rule_execution_outcome_to_string(outcome)
+  let assert None = automation.rule_execution_suppression_reason_name(outcome)
+}
+
+pub fn rule_execution_outcome_parses_suppressed_known_reason_test() {
+  let outcome =
+    automation.rule_execution_outcome_from_strings("suppressed", "idempotent")
+
+  let assert automation.SuppressedRuleExecution(Some(
+    automation.IdempotentSuppression,
+  )) = outcome
+  let assert "suppressed" = automation.rule_execution_outcome_to_string(outcome)
+  let assert Some("idempotent") =
+    automation.rule_execution_suppression_reason_name(outcome)
+}
+
+pub fn rule_execution_outcome_preserves_unknown_values_test() {
+  let outcome =
+    automation.rule_execution_outcome_from_strings("queued", "manual")
+
+  let assert automation.UnknownRuleExecution(
+    raw: "queued",
+    suppression_reason: Some(automation.UnknownSuppressionReason("manual")),
+  ) = outcome
+  let assert "queued" = automation.rule_execution_outcome_to_string(outcome)
+  let assert Some("manual") =
+    automation.rule_execution_suppression_reason_name(outcome)
+}
+
 pub fn trigger_kind_round_trips_to_supported_trigger_test() {
   let assert Ok(automation.TaskCreated(Some(7))) =
     automation.trigger_from_kind("task_created", Some(7), None)

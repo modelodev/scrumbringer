@@ -22,6 +22,7 @@ import lustre/element/html.{
 import lustre/element/keyed
 import lustre/event
 
+import domain/automation
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
@@ -754,9 +755,9 @@ fn execution_target_label(
 
 fn outcome_class_for(outcome: api_rule_metrics.RuleExecutionOutcome) -> String {
   case outcome {
-    api_rule_metrics.AppliedRuleExecution -> "outcome-applied"
-    api_rule_metrics.SuppressedRuleExecution(_) -> "outcome-suppressed"
-    api_rule_metrics.UnknownRuleExecution(..) -> ""
+    automation.AppliedRuleExecution -> "outcome-applied"
+    automation.SuppressedRuleExecution(_) -> "outcome-suppressed"
+    automation.UnknownRuleExecution(..) -> ""
   }
 }
 
@@ -772,11 +773,11 @@ fn outcome_text_for_outcome(
   outcome: api_rule_metrics.RuleExecutionOutcome,
 ) -> String {
   case outcome {
-    api_rule_metrics.AppliedRuleExecution -> t(config, i18n_text.OutcomeApplied)
-    api_rule_metrics.SuppressedRuleExecution(reason) ->
+    automation.AppliedRuleExecution -> t(config, i18n_text.OutcomeApplied)
+    automation.SuppressedRuleExecution(reason) ->
       t(config, i18n_text.OutcomeSuppressed)
       <> suppression_reason_suffix(reason)
-    api_rule_metrics.UnknownRuleExecution(raw:, ..) -> raw
+    automation.UnknownRuleExecution(raw:, ..) -> raw
   }
 }
 
@@ -823,12 +824,12 @@ fn view_project_executions_pagination(
 }
 
 fn suppression_reason_suffix(
-  reason: opt.Option(api_rule_metrics.RuleSuppressionReason),
+  reason: opt.Option(automation.RuleSuppressionReason),
 ) -> String {
   case reason {
     opt.None -> ""
     opt.Some(value) ->
-      " (" <> api_rule_metrics.rule_suppression_reason_name(value) <> ")"
+      " (" <> automation.rule_suppression_reason_to_string(value) <> ")"
   }
 }
 
