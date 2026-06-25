@@ -238,7 +238,7 @@ pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
   assert_contains(spanish, "Incluye finalizadas")
 }
 
-pub fn incompatible_actions_are_disabled_with_reason_test() {
+pub fn unsupported_actions_are_disabled_with_reason_test() {
   let html =
     render(
       structure_view.Config(

@@ -527,7 +527,7 @@ pub fn automation_rule_builder_offers_only_supported_card_events_test() {
   assert_not_contains(html, "card_type")
 }
 
-pub fn automation_rule_builder_disables_save_for_incompatible_template_variables_test() {
+pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test() {
   let html =
     rule_list.view(
       rule_list.Config(
