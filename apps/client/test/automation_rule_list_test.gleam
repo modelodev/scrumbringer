@@ -165,7 +165,7 @@ fn config() -> rule_list.Config(String) {
   rule_list.Config(
     locale: locale.En,
     theme: theme.Default,
-    workflow_id: 3,
+    engine_id: 3,
     selected_rule_id: opt.None,
     engine_name: "Release automation",
     rules: rules_state(),

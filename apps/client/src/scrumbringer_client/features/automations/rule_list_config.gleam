@@ -42,7 +42,7 @@ pub type Callbacks(msg) {
 pub fn from_state(
   locale: Locale,
   theme: Theme,
-  workflow_id: Int,
+  engine_id: Int,
   rules: rules_state.Model,
   engines_state: engine_state.Model,
   task_templates: task_templates_state.Model,
@@ -54,12 +54,12 @@ pub fn from_state(
   rule_list.Config(
     locale: locale,
     theme: theme,
-    workflow_id: workflow_id,
+    engine_id: engine_id,
     selected_rule_id: selected_rule_id,
     engine_name: rule_list.engine_name_from_remotes(
       engines_state.engines_org,
       engines_state.engines_project,
-      workflow_id,
+      engine_id,
     ),
     rules: rules,
     engines_org: engines_state.engines_org,

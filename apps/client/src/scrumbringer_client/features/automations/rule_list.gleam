@@ -64,7 +64,7 @@ pub type Config(msg) {
   Config(
     locale: Locale,
     theme: Theme,
-    workflow_id: Int,
+    engine_id: Int,
     selected_rule_id: opt.Option(Int),
     engine_name: String,
     rules: admin_rules.Model,
@@ -101,11 +101,11 @@ pub type Config(msg) {
 pub fn engine_name_from_remotes(
   engines_org: Remote(List(Workflow)),
   engines_project: Remote(List(Workflow)),
-  workflow_id: Int,
+  engine_id: Int,
 ) -> String {
-  find_engine_name(engines_org, workflow_id)
-  |> opt.lazy_or(fn() { find_engine_name(engines_project, workflow_id) })
-  |> engine_name_or_id(workflow_id)
+  find_engine_name(engines_org, engine_id)
+  |> opt.lazy_or(fn() { find_engine_name(engines_project, engine_id) })
+  |> engine_name_or_id(engine_id)
 }
 
 fn t(config: Config(msg), key: i18n_text.Text) -> String {
@@ -163,21 +163,21 @@ fn view_rules_heading(config: Config(msg)) -> Element(msg) {
 
 fn find_engine_name(
   engines: Remote(List(Workflow)),
-  workflow_id: Int,
+  engine_id: Int,
 ) -> opt.Option(String) {
   case engines {
     Loaded(list) ->
       list
-      |> list.find(fn(w) { w.id == workflow_id })
+      |> list.find(fn(w) { w.id == engine_id })
       |> result.map(fn(w) { w.name })
       |> opt.from_result
     _ -> opt.None
   }
 }
 
-fn engine_name_or_id(name: opt.Option(String), workflow_id: Int) -> String {
+fn engine_name_or_id(name: opt.Option(String), engine_id: Int) -> String {
   case name {
-    opt.None -> "Motor #" <> int.to_string(workflow_id)
+    opt.None -> "Motor #" <> int.to_string(engine_id)
     opt.Some(value) -> value
   }
 }

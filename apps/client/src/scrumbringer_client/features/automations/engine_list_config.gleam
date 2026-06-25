@@ -49,12 +49,12 @@ pub fn from_state(
   callbacks: Callbacks(msg),
 ) -> engine_list.Config(msg) {
   let selected_rules_view = case rules.rules_engine_id {
-    opt.Some(workflow_id) ->
+    opt.Some(engine_id) ->
       opt.Some(
         rule_list.view(rule_list_config.from_state(
           locale,
           theme,
-          workflow_id,
+          engine_id,
           rules,
           engines_state,
           task_templates,
