@@ -270,7 +270,7 @@ pub fn local_complete_clicked_applies_optimistic_complete_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberCompleteClicked(42, 3),
+      pool_messages.MemberCloseClicked(42, 3),
       dispatch_context(),
     )
 

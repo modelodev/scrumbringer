@@ -329,7 +329,7 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
       ))
     },
     on_complete: fn(complete_task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCompleteClicked(
+      client_state.pool_msg(pool_messages.MemberCloseClicked(
         complete_task_id,
         version,
       ))
@@ -1256,10 +1256,7 @@ fn now_working_mobile_config(
     ),
     on_pause: client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked),
     on_complete: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCompleteClicked(
-        task_id,
-        version,
-      ))
+      client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
     },
     on_start: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
@@ -1960,7 +1957,7 @@ fn build_right_panel(
         )
       {
         opt.Some(task) ->
-          client_state.pool_msg(pool_messages.MemberCompleteClicked(
+          client_state.pool_msg(pool_messages.MemberCloseClicked(
             task_id,
             task.version,
           ))

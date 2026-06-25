@@ -743,7 +743,7 @@ fn update_without_view_mode(
     // Handled by task_route.try_update before this dispatch.
     pool_messages.MemberClaimClicked(_, _)
     | pool_messages.MemberReleaseClicked(_, _)
-    | pool_messages.MemberCompleteClicked(_, _)
+    | pool_messages.MemberCloseClicked(_, _)
     | pool_messages.MemberDeleteTaskClicked(_)
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)

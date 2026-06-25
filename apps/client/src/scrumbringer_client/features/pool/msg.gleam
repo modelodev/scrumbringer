@@ -98,7 +98,7 @@ pub type Msg {
   MemberHighlightExpired(Int)
   MemberClaimClicked(Int, Int)
   MemberReleaseClicked(Int, Int)
-  MemberCompleteClicked(Int, Int)
+  MemberCloseClicked(Int, Int)
   MemberDeleteTaskClicked(Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))

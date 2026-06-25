@@ -96,7 +96,7 @@ pub fn try_update(
       handle_release_clicked(model, task_id, version, context.mutation_context)
       |> without_policy
 
-    pool_messages.MemberCompleteClicked(task_id, version) ->
+    pool_messages.MemberCloseClicked(task_id, version) ->
       handle_close_clicked(model, task_id, version, context.mutation_context)
       |> without_policy
 
