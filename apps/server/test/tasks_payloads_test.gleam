@@ -90,6 +90,49 @@ pub fn decode_update_task_payload_rejects_invalid_parent_card_test() {
   let assert Error(payloads.InvalidJson) = payloads.decode_update_task(dynamic)
 }
 
+pub fn decode_update_task_payload_sets_due_date_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"version\":3,\"due_date\":\"2026-06-20\"}", decode.dynamic)
+
+  let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
+    payloads.decode_update_task(dynamic)
+  let assert field_update.Set(Some("2026-06-20")) = updates.due_date
+}
+
+pub fn decode_update_task_payload_clears_due_date_with_null_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"version\":3,\"due_date\":null}", decode.dynamic)
+
+  let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
+    payloads.decode_update_task(dynamic)
+  let assert field_update.Set(None) = updates.due_date
+}
+
+pub fn decode_update_task_payload_clears_due_date_with_empty_string_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"version\":3,\"due_date\":\"\"}", decode.dynamic)
+
+  let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
+    payloads.decode_update_task(dynamic)
+  let assert field_update.Set(None) = updates.due_date
+}
+
+pub fn decode_update_task_payload_leaves_absent_due_date_unchanged_test() {
+  let assert Ok(dynamic) = json.parse("{\"version\":3}", decode.dynamic)
+
+  let assert Ok(payloads.UpdateTaskPayload(updates: updates, ..)) =
+    payloads.decode_update_task(dynamic)
+  let assert field_update.Unchanged = updates.due_date
+}
+
+pub fn decode_update_task_payload_rejects_invalid_due_date_test() {
+  let assert Ok(dynamic) =
+    json.parse("{\"version\":3,\"due_date\":\"2026-02-31\"}", decode.dynamic)
+
+  let assert Error(payloads.InvalidDueDate) =
+    payloads.decode_update_task(dynamic)
+}
+
 pub fn decode_version_payload_test() {
   let assert Ok(dynamic) = json.parse("{\"version\":9}", decode.dynamic)
 

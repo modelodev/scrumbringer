@@ -1,5 +1,6 @@
 //// JSON payload decoders for task HTTP endpoints.
 
+import domain/due_date as due_date_domain
 import domain/field_update
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
@@ -36,6 +37,7 @@ pub type TaskTypePayload {
 
 pub type DecodeError {
   InvalidJson
+  InvalidDueDate
 }
 
 pub fn decode_create_task(
@@ -185,9 +187,31 @@ fn decode_due_date_update(
   data: Dynamic,
 ) -> Result(field_update.FieldUpdate(Option(String)), DecodeError) {
   decode_optional_string_update(data, "due_date")
-  |> result.map(fn(update) {
-    field_update.map(update, normalize_optional_string)
-  })
+  |> result.try(normalize_due_date_update)
+}
+
+fn normalize_due_date_update(
+  update: field_update.FieldUpdate(Option(String)),
+) -> Result(field_update.FieldUpdate(Option(String)), DecodeError) {
+  case update {
+    field_update.Unchanged -> Ok(field_update.Unchanged)
+    field_update.Set(value) ->
+      value
+      |> parse_due_date
+      |> result.map(field_update.set)
+  }
+}
+
+fn parse_due_date(value: Option(String)) -> Result(Option(String), DecodeError) {
+  case value {
+    None -> Ok(None)
+    Some("") -> Ok(None)
+    Some(raw) ->
+      case due_date_domain.parse(raw) {
+        Ok(parsed) -> Ok(Some(due_date_domain.to_string(parsed)))
+        Error(_) -> Error(InvalidDueDate)
+      }
+  }
 }
 
 fn decode_optional_id_update(
@@ -228,13 +252,6 @@ fn normalize_parent_card_id(value: Option(Int)) -> Option(Int) {
 fn normalize_optional_id(value: Option(Int)) -> Option(Int) {
   case value {
     Some(id) if id <= 0 -> None
-    _ -> value
-  }
-}
-
-fn normalize_optional_string(value: Option(String)) -> Option(String) {
-  case value {
-    Some("") -> None
     _ -> value
   }
 }
