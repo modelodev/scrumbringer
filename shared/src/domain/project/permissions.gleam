@@ -104,29 +104,6 @@ pub fn require_read_history(
   require_member_privilege(actor, project_id)
 }
 
-pub fn can_manage_flow(actor: ProjectActor, project_id: project_id.ProjectId) {
-  is_ok(require_manage_flow(actor, project_id))
-}
-
-pub fn can_manage_structure(
-  actor: ProjectActor,
-  project_id: project_id.ProjectId,
-) {
-  is_ok(require_manage_structure(actor, project_id))
-}
-
-pub fn can_execute_work(actor: ProjectActor, project_id: project_id.ProjectId) {
-  is_ok(require_execute_work(actor, project_id))
-}
-
-pub fn authorization_error_code(result: Result(a, AuthorizationError)) -> String {
-  case result {
-    Ok(_) -> "ok"
-    Error(NotProjectMember) -> "not_project_member"
-    Error(InsufficientProjectPrivilege) -> "insufficient_project_privilege"
-  }
-}
-
 pub fn authorize_manage_flow_unchecked(
   user_id: user_id.UserId,
   project_id: project_id.ProjectId,
@@ -201,11 +178,4 @@ fn actor_allows_management(actor: ProjectActor) -> Bool {
 fn actor_authorized(actor: ProjectActor) -> Authorized(privilege) {
   let ProjectActor(user_id: user_id, project_id: project_id, ..) = actor
   Authorized(user_id: user_id, project_id: project_id)
-}
-
-fn is_ok(result: Result(a, b)) -> Bool {
-  case result {
-    Ok(_) -> True
-    Error(_) -> False
-  }
 }

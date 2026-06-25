@@ -111,29 +111,11 @@ pub fn user_outside_project_gets_no_project_privileges_test() {
     permissions.require_execute_work(actor, project_id.new(1))
 }
 
-pub fn ui_can_helpers_match_require_authorization_test() {
-  let manager = manager_actor()
-  let member = member_actor()
-
-  let assert True =
-    permissions.can_manage_flow(manager, project_id.new(1))
-    == result_is_ok(permissions.require_manage_flow(manager, project_id.new(1)))
-  let assert True =
-    permissions.can_manage_flow(member, project_id.new(1))
-    == result_is_ok(permissions.require_manage_flow(member, project_id.new(1)))
-  let assert True =
-    permissions.can_execute_work(member, project_id.new(1))
-    == result_is_ok(permissions.require_execute_work(member, project_id.new(1)))
-}
-
-pub fn authorization_errors_do_not_leak_cross_project_data_test() {
+pub fn cross_project_authorization_returns_not_project_member_test() {
   let actor = outside_actor()
 
-  let assert "not_project_member" =
-    permissions.authorization_error_code(permissions.require_manage_flow(
-      actor,
-      project_id.new(1),
-    ))
+  let assert Error(permissions.NotProjectMember) =
+    permissions.require_manage_flow(actor, project_id.new(1))
 }
 
 fn manager_actor() -> permissions.ProjectActor {
@@ -171,11 +153,4 @@ fn draft_card() -> card_entity.Card {
     structure: card_structure.Empty,
     execution_state: card_state.Draft,
   )
-}
-
-fn result_is_ok(result: Result(a, b)) -> Bool {
-  case result {
-    Ok(_) -> True
-    Error(_) -> False
-  }
 }
