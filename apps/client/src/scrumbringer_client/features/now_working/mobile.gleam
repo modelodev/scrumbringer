@@ -28,6 +28,7 @@ import lustre/event
 
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
+import domain/task/state as task_execution_state
 import domain/task_status.{Claimed, Ongoing, Taken}
 
 import scrumbringer_client/client_ffi
@@ -388,9 +389,14 @@ fn get_claimed_not_working(
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        domain_task.status(t) == Claimed(Taken)
-        && domain_task.claimed_by(t) == opt.Some(config.user_id)
-        && !list.contains(active_ids, t.id)
+        case t.state {
+          task_execution_state.Claimed(
+            claimed_by: claimed_by,
+            mode: task_execution_state.Taken,
+            ..,
+          ) -> claimed_by == config.user_id && !list.contains(active_ids, t.id)
+          _ -> False
+        }
       })
     _ -> []
   }
