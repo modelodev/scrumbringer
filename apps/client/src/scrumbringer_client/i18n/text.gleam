@@ -505,7 +505,7 @@ pub type Text {
   HealthAttention
   HealthAlert
   NoSample
-  AvgClaimToComplete
+  AvgClaimToClose
   AvgTimeInClaimed
   StaleClaims
   LastClaim

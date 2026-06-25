@@ -600,7 +600,7 @@ pub fn translate(text: Text) -> String {
     text.HealthAttention -> "Atención"
     text.HealthAlert -> "Alerta"
     text.NoSample -> "Sin muestra"
-    text.AvgClaimToComplete -> "Promedio de reclamación a cierre"
+    text.AvgClaimToClose -> "Promedio de reclamación a cierre"
     text.AvgTimeInClaimed -> "Promedio en estado reclamado"
     text.StaleClaims -> "Reclamaciones estancadas"
     text.LastClaim -> "Última reclamación"

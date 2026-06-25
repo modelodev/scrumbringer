@@ -272,7 +272,7 @@ fn view_overview_stats(
   div([attribute.class("metrics-overview-stats")], [
     view_stat(
       config,
-      i18n_text.AvgClaimToComplete,
+      i18n_text.AvgClaimToClose,
       option_ms_human_label(config, avg_claim_to_complete_ms),
     ),
     view_stat(
@@ -483,8 +483,8 @@ fn view_project_tasks_table(
       text(int.to_string(release_count))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.Closures), fn(t) {
-      let MetricsProjectTask(complete_count: complete_count, ..) = t
-      text(int.to_string(complete_count))
+      let MetricsProjectTask(complete_count: close_count, ..) = t
+      text(int.to_string(close_count))
     }),
     data_table.column(i18n.t(config.locale, i18n_text.FirstClaim), fn(t) {
       let MetricsProjectTask(first_claim_at: first_claim_at, ..) = t
