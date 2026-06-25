@@ -221,11 +221,11 @@ fn release_or_close_error_response(
     workflow_types.NotFound -> not_found_response()
     workflow_types.NotAuthorized -> forbidden_response()
     workflow_types.InvalidTransition -> invalid_transition_response()
+    workflow_types.TaskBlockedByDependencies(_) -> blocked_conflict_response()
     workflow_types.VersionConflict ->
       conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
     workflow_types.DbError(_) -> database_error_response()
-    workflow_types.TaskBlockedByDependencies(_)
-    | workflow_types.TaskNotClaimable
+    workflow_types.TaskNotClaimable
     | workflow_types.ValidationError(_)
     | workflow_types.TaskParentCardInheritedFromCard
     | workflow_types.CardHasChildCards

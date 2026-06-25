@@ -163,6 +163,10 @@ pub fn with_state(task: Task, state: task_state.TaskExecutionState) -> Task {
   Task(..task, state: state)
 }
 
+pub fn with_ongoing_by(task: Task, ongoing_by: Option(OngoingBy)) -> Task {
+  Task(..task, ongoing_by: ongoing_by)
+}
+
 pub fn dependency_is_closed(dependency: TaskDependency) -> Bool {
   case dependency.state {
     task_state.Closed(..) -> True

@@ -949,9 +949,12 @@ fn close_task_for_current(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  case current.state {
-    task_state.Available | task_state.Closed(..) -> Error(InvalidTransition)
-    task_state.Claimed(..) ->
+  case current.state, current.blocked_count {
+    task_state.Available, _ | task_state.Closed(..), _ ->
+      Error(InvalidTransition)
+    task_state.Claimed(..), count if count > 0 ->
+      Error(TaskBlockedByDependencies(count))
+    task_state.Claimed(..), _ ->
       close_task_for_claimed(db, task_id, user_id, org_id, version, current)
   }
 }

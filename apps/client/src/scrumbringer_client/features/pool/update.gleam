@@ -35,6 +35,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/pool/admin_route
@@ -54,6 +55,7 @@ import scrumbringer_client/features/pool/skills_route
 import scrumbringer_client/features/pool/task_route
 import scrumbringer_client/features/pool/view_mode_route
 import scrumbringer_client/features/route_support
+import scrumbringer_client/features/tasks/work_sessions_state
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/utils/card_queries
@@ -156,11 +158,17 @@ fn update_now_working_model(
 
 fn now_working_context() -> now_working_workflow.Context(client_state.Msg) {
   now_working_workflow.Context(
-    on_session_started: fn(result) {
-      client_state.pool_msg(pool_messages.MemberWorkSessionStarted(result))
+    on_session_started: fn(task_id, result) {
+      client_state.pool_msg(pool_messages.MemberWorkSessionStarted(
+        task_id,
+        result,
+      ))
     },
-    on_session_paused: fn(result) {
-      client_state.pool_msg(pool_messages.MemberWorkSessionPaused(result))
+    on_session_paused: fn(task_id, result) {
+      client_state.pool_msg(pool_messages.MemberWorkSessionPaused(
+        task_id,
+        result,
+      ))
     },
     on_session_heartbeated: fn(result) {
       client_state.pool_msg(pool_messages.MemberWorkSessionHeartbeated(result))
@@ -621,19 +629,68 @@ fn try_pool_now_working_update(
       now_working_context(),
     )
   {
-    opt.Some(update) -> opt.Some(apply_pool_now_working_update(model, update))
+    opt.Some(update) ->
+      opt.Some(apply_pool_now_working_update(model, inner, update))
     opt.None -> opt.None
   }
 }
 
 fn apply_pool_now_working_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: now_working_workflow.Update(client_state.Msg),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let now_working_workflow.Update(local, fx, auth_policy) = update
 
   apply_now_working_auth_policy(model, auth_policy, fn() {
-    #(update_now_working_model(model, local), fx)
+    #(
+      update_now_working_model(model, local)
+        |> reconcile_tasks_from_work_sessions(inner),
+      fx,
+    )
+  })
+}
+
+fn reconcile_tasks_from_work_sessions(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  let current_user_id = model.core.user |> opt.map(fn(user) { user.id })
+
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    let member_tasks = case inner {
+      pool_messages.MemberWorkSessionsFetched(Ok(payload))
+      | pool_messages.MemberWorkSessionHeartbeated(Ok(payload)) ->
+        work_sessions_state.apply_active_sessions(
+          pool.member_tasks,
+          current_user_id,
+          payload.active_sessions,
+        )
+
+      pool_messages.MemberWorkSessionStarted(task_id, Ok(payload)) ->
+        pool.member_tasks
+        |> work_sessions_state.mark_task_ongoing(task_id, current_user_id)
+        |> work_sessions_state.apply_active_sessions(
+          current_user_id,
+          payload.active_sessions,
+        )
+
+      pool_messages.MemberWorkSessionPaused(task_id, Ok(payload)) ->
+        pool.member_tasks
+        |> work_sessions_state.mark_task_taken(task_id, current_user_id)
+        |> work_sessions_state.apply_active_sessions(
+          current_user_id,
+          payload.active_sessions,
+        )
+
+      _ -> pool.member_tasks
+    }
+
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(..pool, member_tasks: member_tasks),
+    )
   })
 }
 
@@ -778,8 +835,8 @@ fn update_without_view_mode(
     pool_messages.MemberNowWorkingStartClicked(_)
     | pool_messages.MemberNowWorkingPauseClicked
     | pool_messages.MemberWorkSessionsFetched(_)
-    | pool_messages.MemberWorkSessionStarted(_)
-    | pool_messages.MemberWorkSessionPaused(_)
+    | pool_messages.MemberWorkSessionStarted(_, _)
+    | pool_messages.MemberWorkSessionPaused(_, _)
     | pool_messages.MemberWorkSessionHeartbeated(_)
     | pool_messages.NowWorkingTicked -> #(model, effect.none())
 

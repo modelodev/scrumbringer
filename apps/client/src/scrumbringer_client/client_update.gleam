@@ -2362,7 +2362,10 @@ fn pause_active_task_fx(model: client_state.Model) -> Effect(client_state.Msg) {
   case state_selectors.now_working_active_task_id(model) {
     opt.Some(task_id) ->
       active_api.pause_work_session(task_id, fn(result) {
-        client_state.pool_msg(pool_messages.MemberWorkSessionPaused(result))
+        client_state.pool_msg(pool_messages.MemberWorkSessionPaused(
+          task_id,
+          result,
+        ))
       })
     opt.None -> effect.none()
   }

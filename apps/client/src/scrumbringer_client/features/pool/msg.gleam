@@ -107,8 +107,8 @@ pub type Msg {
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
   MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
-  MemberWorkSessionStarted(ApiResult(WorkSessionsPayload))
-  MemberWorkSessionPaused(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionStarted(Int, ApiResult(WorkSessionsPayload))
+  MemberWorkSessionPaused(Int, ApiResult(WorkSessionsPayload))
   MemberWorkSessionHeartbeated(ApiResult(WorkSessionsPayload))
   MemberMetricsFetched(ApiResult(MyMetrics))
   NowWorkingTicked

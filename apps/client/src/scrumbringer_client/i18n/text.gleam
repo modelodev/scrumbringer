@@ -268,6 +268,7 @@ pub type Text {
   PeopleLoading
   PeopleLoadError
   PeoplePurpose
+  PeopleAttentionLabel
   PeopleFreeLabel
   PeopleBusyLabel
   PeopleWorkingLabel
@@ -283,6 +284,27 @@ pub type Text {
   PeopleAvailableCapacity
   PeopleNoClaimedTasks
   PeopleNoCardContext
+  PeopleColumnPerson
+  PeopleColumnState
+  PeopleColumnWork
+  PeopleColumnContext
+  PeopleColumnAction
+  PeopleSectionNeedsAttention
+  PeopleSectionWorkingNow
+  PeopleSectionClaimedWork
+  PeopleSectionAvailable
+  PeopleOngoingWorkBlocked
+  PeopleClaimedWorkBlocked
+  PeopleWorkingNowState
+  PeopleAvailableState
+  PeopleNeedsAttentionState
+  PeopleBlockedDetail
+  PeopleNoOwnedWork
+  PeopleNextWork(title: String)
+  PeopleBlockedBy(title: String)
+  PeopleOpenDependencies
+  PeopleCanPullFromPool
+  PeopleOpenTaskAction
   PeopleShowLabel
   PeopleFilterEveryone
   PeopleFilterWithWork
@@ -1079,6 +1101,7 @@ pub type Text {
   TaskAutomationRuleSignal(rule_id: Int)
   TaskAutomationTemplateLabel(template_id: Int)
   TaskAutomationTemplateFallback
+  TaskAutomationGoToAutomation
   TaskAutomationViewEngine
   TaskAutomationViewRule
   TaskAutomationViewTemplate

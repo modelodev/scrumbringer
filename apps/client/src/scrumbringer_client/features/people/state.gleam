@@ -1,6 +1,7 @@
 //// People feature state and derivation helpers.
 
 import gleam/list
+import gleam/option
 import gleam/order
 import gleam/string
 
@@ -33,6 +34,41 @@ pub type PersonWorkState {
 pub type PersonAttentionSignal {
   BlockedTask(task_id: Int)
   HighClaimedLoad(claimed_count: Int)
+}
+
+pub type RosterSection {
+  NeedsAttention
+  RosterWorkingNow
+  RosterClaimedWork
+  RosterAvailable
+}
+
+pub type AttentionReason {
+  OngoingWorkBlocked
+  ClaimedWorkBlocked
+}
+
+pub type SecondarySignal {
+  HighClaimedLoadSignal(claimed_count: Int)
+}
+
+pub type PersonRosterRow {
+  PersonRosterRow(
+    person: PersonStatus,
+    section: RosterSection,
+    primary_task: option.Option(domain_task.Task),
+    attention_reason: option.Option(AttentionReason),
+    secondary_signal: option.Option(SecondarySignal),
+  )
+}
+
+pub type RosterSummary {
+  RosterSummary(
+    attention_count: Int,
+    working_count: Int,
+    claimed_count: Int,
+    available_count: Int,
+  )
 }
 
 pub type RowExpansion {
@@ -107,7 +143,12 @@ pub fn has_work(person: PersonStatus) -> Bool {
 }
 
 pub fn has_attention(person: PersonStatus) -> Bool {
-  person.signals != []
+  list.any(person.signals, fn(signal) {
+    case signal {
+      BlockedTask(_) -> True
+      HighClaimedLoad(_) -> False
+    }
+  })
 }
 
 pub fn claimed_work_count(person: PersonStatus) -> Int {
@@ -181,6 +222,129 @@ pub fn sort_to_string(sort: PeopleSort) -> String {
     SortByAttention -> "attention"
     SortByName -> "name"
     SortByClaimedCount -> "claimed"
+  }
+}
+
+pub fn build_roster(people: List(PersonStatus)) -> List(PersonRosterRow) {
+  people
+  |> list.map(roster_row)
+}
+
+pub fn roster_summary(rows: List(PersonRosterRow)) -> RosterSummary {
+  list.fold(
+    rows,
+    RosterSummary(
+      attention_count: 0,
+      working_count: 0,
+      claimed_count: 0,
+      available_count: 0,
+    ),
+    fn(summary, row) {
+      case row.section {
+        NeedsAttention ->
+          RosterSummary(..summary, attention_count: summary.attention_count + 1)
+        RosterWorkingNow ->
+          RosterSummary(..summary, working_count: summary.working_count + 1)
+        RosterClaimedWork ->
+          RosterSummary(..summary, claimed_count: summary.claimed_count + 1)
+        RosterAvailable ->
+          RosterSummary(..summary, available_count: summary.available_count + 1)
+      }
+    },
+  )
+}
+
+pub fn rows_in_section(
+  rows: List(PersonRosterRow),
+  section: RosterSection,
+) -> List(PersonRosterRow) {
+  list.filter(rows, fn(row) { row.section == section })
+}
+
+pub fn section_rank(section: RosterSection) -> Int {
+  case section {
+    NeedsAttention -> 4
+    RosterWorkingNow -> 3
+    RosterClaimedWork -> 2
+    RosterAvailable -> 1
+  }
+}
+
+fn roster_row(person: PersonStatus) -> PersonRosterRow {
+  case first_blocked_task(person.active_tasks) {
+    option.Some(task) ->
+      PersonRosterRow(
+        person: person,
+        section: NeedsAttention,
+        primary_task: option.Some(task),
+        attention_reason: option.Some(OngoingWorkBlocked),
+        secondary_signal: secondary_signal(person),
+      )
+    option.None ->
+      case first_blocked_task(person.claimed_tasks) {
+        option.Some(task) ->
+          PersonRosterRow(
+            person: person,
+            section: NeedsAttention,
+            primary_task: option.Some(task),
+            attention_reason: option.Some(ClaimedWorkBlocked),
+            secondary_signal: secondary_signal(person),
+          )
+        option.None ->
+          case person.active_tasks {
+            [task, ..] ->
+              PersonRosterRow(
+                person: person,
+                section: RosterWorkingNow,
+                primary_task: option.Some(task),
+                attention_reason: option.None,
+                secondary_signal: secondary_signal(person),
+              )
+            [] ->
+              case person.claimed_tasks {
+                [task, ..] ->
+                  PersonRosterRow(
+                    person: person,
+                    section: RosterClaimedWork,
+                    primary_task: option.Some(task),
+                    attention_reason: option.None,
+                    secondary_signal: secondary_signal(person),
+                  )
+                [] ->
+                  PersonRosterRow(
+                    person: person,
+                    section: RosterAvailable,
+                    primary_task: option.None,
+                    attention_reason: option.None,
+                    secondary_signal: option.None,
+                  )
+              }
+          }
+      }
+  }
+}
+
+fn first_blocked_task(
+  tasks: List(domain_task.Task),
+) -> option.Option(domain_task.Task) {
+  list.find(tasks, fn(task) { task.blocked_count > 0 })
+  |> result_to_option
+}
+
+fn secondary_signal(person: PersonStatus) -> option.Option(SecondarySignal) {
+  list.find_map(person.signals, fn(signal) {
+    case signal {
+      HighClaimedLoad(count) -> Ok(HighClaimedLoadSignal(count))
+      BlockedTask(_) -> Error(Nil)
+    }
+  })
+  |> result_to_option
+}
+
+fn result_to_option(result: Result(a, b)) -> option.Option(a) {
+  case result {
+    Ok(value) -> option.Some(value)
+    Error(_) -> option.None
   }
 }
 

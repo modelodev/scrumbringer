@@ -1,7 +1,7 @@
 import gleam/dict
-import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import lustre/effect
 import lustre/element
 
 import domain/api_error.{ApiError}
@@ -12,9 +12,12 @@ import domain/org_role
 import domain/project.{type ProjectMember, ProjectMember}
 import domain/project_role
 import domain/remote
-import domain/task.{type Task, Task}
+import domain/task.{
+  type Task, type WorkSessionsPayload, Task, WorkSession, WorkSessionsPayload,
+}
 import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import domain/user.{User}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
@@ -25,6 +28,8 @@ import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/people/state as people_state
 import scrumbringer_client/features/people/view as people_view
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(text: String, fragment: String) {
@@ -33,10 +38,6 @@ fn assert_contains(text: String, fragment: String) {
 
 fn assert_not_contains(text: String, fragment: String) {
   let assert False = string.contains(text, fragment)
-}
-
-fn assert_equal(actual: Int, expected: Int) {
-  let assert True = actual == expected
 }
 
 fn make_task(
@@ -141,6 +142,24 @@ fn org_user(user_id: Int, email: String) -> OrgUser {
 fn base_model() -> client_state.Model {
   client_state.default_model()
   |> client_state.update_ui(fn(ui) { ui_state.UiModel(..ui, locale: locale.En) })
+}
+
+fn with_current_user(
+  model: client_state.Model,
+  user_id: Int,
+) -> client_state.Model {
+  client_state.update_core(model, fn(core) {
+    client_state.CoreModel(
+      ..core,
+      user: Some(User(
+        id: user_id,
+        email: "admin@example.com",
+        org_id: 1,
+        org_role: org_role.Admin,
+        created_at: "",
+      )),
+    )
+  })
 }
 
 fn people_config(model: client_state.Model) -> people_view.Config(Int) {
@@ -289,6 +308,23 @@ fn with_tasks(
   })
 }
 
+fn work_session_payload(task_id: Int) -> WorkSessionsPayload {
+  WorkSessionsPayload(
+    active_sessions: [
+      WorkSession(
+        task_id: task_id,
+        started_at: "2026-02-01T11:00:00Z",
+        accumulated_s: 0,
+      ),
+    ],
+    as_of: "2026-02-01T11:00:00Z",
+  )
+}
+
+fn no_refresh_context() -> pool_update.Context {
+  pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
+}
+
 fn with_work_catalog(
   model: client_state.Model,
   task_types: List(TaskType),
@@ -332,13 +368,6 @@ fn with_org_users(
       ),
     )
   })
-}
-
-fn count_occurrences(haystack: String, needle: String) -> Int {
-  case needle == "" {
-    True -> 0
-    False -> list.length(string.split(haystack, needle)) - 1
-  }
 }
 
 pub fn people_view_loading_state_test() {
@@ -461,9 +490,12 @@ pub fn people_view_availability_rules_test() {
   let html =
     people_view.view(people_config(model)) |> element.to_document_string
 
-  assert_contains(html, "Working")
-  assert_contains(html, "Busy")
-  assert_contains(html, "Free")
+  assert_contains(html, "Working now")
+  assert_contains(html, "With claimed work")
+  assert_contains(html, "Available")
+  assert_contains(html, "Person")
+  assert_contains(html, "State")
+  assert_not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
@@ -494,9 +526,9 @@ pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
   let html =
     people_view.view(people_config(model)) |> element.to_document_string
 
-  assert_contains(html, "Working")
-  assert_contains(html, "badge badge-primary people-status-chip")
-  assert_not_contains(html, "badge badge-warning people-status-chip")
+  assert_contains(html, "Working now")
+  assert_contains(html, "people-roster-row-working")
+  assert_not_contains(html, "people-roster-row-claimed")
 }
 
 pub fn people_view_surface_summary_and_collapsed_balance_test() {
@@ -564,23 +596,24 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
   let html =
     people_view.view(people_config(model)) |> element.to_document_string
 
-  assert_contains(html, "Team load by current work and claimed tasks.")
+  assert_contains(
+    html,
+    "Operational team state by owned work, blockers, and availability.",
+  )
   assert_contains(html, "work-surface-chip success")
-  assert_contains(html, ">1<")
-  assert_contains(html, ">Free<")
-  assert_contains(html, "work-surface-chip warning")
-  assert_contains(html, ">Busy<")
-  assert_contains(html, "work-surface-chip ongoing")
-  assert_contains(html, ">Working<")
+  assert_contains(html, ">Available<")
   assert_contains(html, "work-surface-chip claimed")
-  assert_contains(html, ">5<")
-  assert_contains(html, ">Claimed<")
-  assert_contains(html, "1 ongoing")
-  assert_contains(html, "4 claimed")
-  assert_contains(html, "2 cards")
+  assert_contains(html, ">With work<")
+  assert_contains(html, "work-surface-chip ongoing")
+  assert_contains(html, ">Working now<")
+  assert_contains(html, "work-surface-chip blocked")
+  assert_contains(html, ">Attention<")
+  assert_contains(html, "With claimed work · 1")
+  assert_contains(html, "Next: Review logs")
   assert_contains(html, "Checkout")
-  assert_contains(html, "Onboarding")
+  assert_contains(html, "Observability")
   assert_contains(html, "High load")
+  assert_not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_expanded_keeps_card_context_without_card_groups_test() {
@@ -658,8 +691,35 @@ pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
   let html =
     people_view.view(people_config(model)) |> element.to_document_string
 
-  assert_contains(html, "Available capacity")
-  assert_contains(html, "No claimed tasks")
+  assert_contains(html, "No work in progress")
+  assert_contains(html, "No claimed work")
+  assert_contains(html, "Can pull from Pool")
+}
+
+pub fn people_view_reflects_work_session_started_without_reload_test() {
+  let model =
+    base_model()
+    |> with_current_user(1)
+    |> with_people_roster(remote.Loaded([project_member(1, 1)]))
+    |> with_org_users([org_user(1, "admin@example.com")])
+    |> with_tasks([
+      make_task(89, "Facilitate rollout sync", 1, task_state.Taken),
+    ])
+    |> with_people_expanded(1)
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberWorkSessionStarted(89, Ok(work_session_payload(89))),
+      no_refresh_context(),
+    )
+
+  let html = render_people(next)
+
+  assert_contains(html, "Working now")
+  assert_contains(html, "Facilitate rollout sync")
+  assert_not_contains(html, "Available capacity")
+  assert_not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
@@ -784,12 +844,12 @@ pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
   let html =
     people_view.view(people_config(model)) |> element.to_document_string
 
-  assert_contains(html, "Active")
-  assert_contains(html, "Claimed")
+  assert_contains(html, "Working now")
+  assert_contains(html, "Claimed, not started")
 
-  assert_equal(count_occurrences(html, "Ongoing one"), 1)
-  assert_equal(count_occurrences(html, "Ongoing via canonical state"), 1)
-  assert_equal(count_occurrences(html, "Claimed parked"), 1)
+  assert_contains(html, "Ongoing one")
+  assert_contains(html, "Ongoing via canonical state")
+  assert_contains(html, "Claimed parked")
 }
 
 pub fn people_view_renders_header_scope_controls_and_body_test() {

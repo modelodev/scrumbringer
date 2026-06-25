@@ -52,8 +52,8 @@ pub type Update(parent_msg) {
 
 pub type Context(parent_msg) {
   Context(
-    on_session_started: fn(ApiResult(WorkSessionsPayload)) -> parent_msg,
-    on_session_paused: fn(ApiResult(WorkSessionsPayload)) -> parent_msg,
+    on_session_started: fn(Int, ApiResult(WorkSessionsPayload)) -> parent_msg,
+    on_session_paused: fn(Int, ApiResult(WorkSessionsPayload)) -> parent_msg,
     on_session_heartbeated: fn(ApiResult(WorkSessionsPayload)) -> parent_msg,
     on_tick: fn() -> parent_msg,
     on_error_toast: fn(String) -> Effect(parent_msg),
@@ -86,19 +86,19 @@ pub fn try_update(
       handle_sessions_fetched_error(model, err)
       |> with_auth_check_before(err)
 
-    pool_messages.MemberWorkSessionStarted(Ok(payload)) ->
+    pool_messages.MemberWorkSessionStarted(_, Ok(payload)) ->
       handle_session_started_ok(model, payload, context)
       |> without_auth_check
 
-    pool_messages.MemberWorkSessionStarted(Error(err)) ->
+    pool_messages.MemberWorkSessionStarted(_, Error(err)) ->
       handle_session_started_error(model, err, context)
       |> with_auth_check_after(err)
 
-    pool_messages.MemberWorkSessionPaused(Ok(payload)) ->
+    pool_messages.MemberWorkSessionPaused(_, Ok(payload)) ->
       handle_session_paused_ok(model, payload)
       |> without_auth_check
 
-    pool_messages.MemberWorkSessionPaused(Error(err)) ->
+    pool_messages.MemberWorkSessionPaused(_, Error(err)) ->
       handle_session_paused_error(model, err, context)
       |> with_auth_check_after(err)
 
@@ -153,7 +153,9 @@ fn handle_start_clicked(
       let model = begin_work_session_request(model)
       #(
         model,
-        active_api.start_work_session(task_id, context.on_session_started),
+        active_api.start_work_session(task_id, fn(result) {
+          context.on_session_started(task_id, result)
+        }),
       )
     }
   }
@@ -173,7 +175,9 @@ fn handle_pause_clicked(
           let model = begin_work_session_request(model)
           #(
             model,
-            active_api.pause_work_session(task_id, context.on_session_paused),
+            active_api.pause_work_session(task_id, fn(result) {
+              context.on_session_paused(task_id, result)
+            }),
           )
         }
       }

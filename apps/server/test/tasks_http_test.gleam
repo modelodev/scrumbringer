@@ -1614,6 +1614,38 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   expect.expect_status(still_blocked, 409)
 }
 
+pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
+  let #(db, handler, session, csrf, project_id, type_id) =
+    ht08_project("HT08 Claimed Blocked Close")
+  let blocked =
+    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+  let blocker =
+    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+
+  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  |> expect.equal(200)
+  create_dependency(handler, session, csrf, blocked, blocker)
+  |> expect.equal(200)
+
+  let close_blocked =
+    close_task_response(
+      handler,
+      session,
+      csrf,
+      blocked,
+      task_version(db, blocked),
+    )
+  expect.expect_status(close_blocked, 409)
+  simulate.read_body(close_blocked)
+  |> string.contains("CONFLICT_BLOCKED")
+  |> expect.is_true
+  task_claimed_by(db, blocked) |> expect.equal(1)
+
+  release_task(handler, session, csrf, blocked, task_version(db, blocked))
+  |> expect.equal(200)
+  task_claimed_by(db, blocked) |> expect.equal(0)
+}
+
 pub fn dependency_unblocks_when_dependency_closed_test() {
   let #(db, handler, session, csrf, project_id, type_id) =
     ht08_project("HT08 Closed Dependency")

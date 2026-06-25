@@ -20,8 +20,8 @@ fn model() -> now_working_update.Model {
 
 fn context() -> now_working_update.Context(Nil) {
   now_working_update.Context(
-    on_session_started: fn(_result) { Nil },
-    on_session_paused: fn(_result) { Nil },
+    on_session_started: fn(_task_id, _result) { Nil },
+    on_session_paused: fn(_task_id, _result) { Nil },
     on_session_heartbeated: fn(_result) { Nil },
     on_tick: fn() { Nil },
     on_error_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
@@ -136,7 +136,7 @@ pub fn session_start_error_clears_in_flight_and_records_error_test() {
   )) =
     now_working_update.try_update(
       initial,
-      pool_messages.MemberWorkSessionStarted(Error(err)),
+      pool_messages.MemberWorkSessionStarted(5, Error(err)),
       context(),
     )
 
@@ -165,7 +165,7 @@ pub fn session_pause_error_clears_in_flight_and_records_error_test() {
   )) =
     now_working_update.try_update(
       initial,
-      pool_messages.MemberWorkSessionPaused(Error(err)),
+      pool_messages.MemberWorkSessionPaused(5, Error(err)),
       context(),
     )
 
@@ -194,7 +194,7 @@ pub fn session_pause_success_with_no_sessions_stops_timer_test() {
   )) =
     now_working_update.try_update(
       initial,
-      pool_messages.MemberWorkSessionPaused(Ok(payload([]))),
+      pool_messages.MemberWorkSessionPaused(5, Ok(payload([]))),
       context(),
     )
 
@@ -242,7 +242,7 @@ pub fn try_update_session_start_error_checks_auth_after_local_update_test() {
   )) =
     now_working_update.try_update(
       initial,
-      pool_messages.MemberWorkSessionStarted(Error(err)),
+      pool_messages.MemberWorkSessionStarted(5, Error(err)),
       context(),
     )
 

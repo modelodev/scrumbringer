@@ -78,11 +78,14 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
 
   assert_contains(html, "Origin")
   assert_contains(html, "Created by automation")
+  assert_contains(html, "data-testid=\"automation-origin-status\"")
   assert_contains(
     html,
     "Release flow -&gt; Development closed -&gt; QA Verification v3",
   )
-  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
+  assert_contains(html, "data-testid=\"automation-origin-trace\"")
+  assert_contains(html, "data-testid=\"automation-origin-primary-link\"")
+  assert_contains(html, ">Go to automation<")
   assert_contains(
     html,
     "href=\"/config/workflows?project=1&amp;mode=executions&amp;execution=101\"",
@@ -102,6 +105,7 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
     html,
     "href=\"/config/workflows?project=1&amp;mode=templates&amp;template=12\"",
   )
+  assert_not_contains(html, "Created by automation -&gt;")
 }
 
 pub fn task_show_summary_localizes_automation_origin_test() {
@@ -128,9 +132,11 @@ pub fn task_show_summary_localizes_automation_origin_test() {
 
   assert_contains(html, "Origen")
   assert_contains(html, "Creada por automatización")
+  assert_contains(html, ">Ir a automatización<")
   assert_contains(html, ">Ver motor<")
   assert_contains(html, ">Ver regla<")
   assert_contains(html, ">Ver plantilla<")
+  assert_not_contains(html, "Creada por automatización -&gt;")
 }
 
 pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
@@ -156,6 +162,13 @@ pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
     |> element.to_document_string
 
   assert_contains(html, "Engine #3 -&gt; Rule #8 -&gt; Template #12 v3")
+  assert_contains(html, ">Go to automation<")
+  assert_contains(
+    html,
+    "href=\"/config/workflows?project=1&amp;engine=3&amp;rule=8\"",
+  )
+  assert_contains(html, "data-testid=\"automation-origin-primary-link\"")
+  assert_not_contains(html, "data-testid=\"automation-origin-rule-link\"")
   assert_not_contains(html, "Motor #3")
   assert_not_contains(html, "Plantilla #12")
 }

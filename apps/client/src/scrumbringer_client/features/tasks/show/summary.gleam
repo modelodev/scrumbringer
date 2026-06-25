@@ -112,16 +112,23 @@ fn automation_origin_item(
       text(t(config.locale, i18n_text.TaskAutomationOrigin)),
     ]),
     div([attribute.class("task-show-summary-value")], [
-      div([attribute.class("task-show-summary-origin-kind")], [
-        text(t(config.locale, i18n_text.TaskAutomationCreatedBy)),
-      ]),
-      a(
+      div(
         [
-          attribute.href(automation_execution_href(config, origin)),
-          attribute.attribute("data-testid", "automation-created-task-origin"),
+          attribute.class("task-show-summary-origin-kind"),
+          attribute.attribute("data-testid", "automation-origin-status"),
+        ],
+        [
+          text(t(config.locale, i18n_text.TaskAutomationCreatedBy)),
+        ],
+      ),
+      div(
+        [
+          attribute.class("task-show-summary-origin-trace"),
+          attribute.attribute("data-testid", "automation-origin-trace"),
         ],
         [text(automation_origin_label(config.locale, origin))],
       ),
+      automation_primary_link(config, origin),
       div(
         [attribute.class("task-show-summary-actions")],
         automation_origin_links(config, origin),
@@ -150,18 +157,17 @@ fn automation_origin_links(
     opt.None -> []
   }
 
-  let rule_link = [
-    automation_link(
-      config.locale,
-      automation_route(
-        config.task.project_id,
-        permissions.Workflows,
-        automation_deep_link.SelectedRule(origin.rule_id, origin.workflow_id),
+  let rule_link = case origin.execution_id {
+    opt.Some(_) -> [
+      automation_link(
+        config.locale,
+        automation_rule_href(config, origin),
+        i18n_text.TaskAutomationViewRule,
+        "automation-origin-rule-link",
       ),
-      i18n_text.TaskAutomationViewRule,
-      "automation-origin-rule-link",
-    ),
-  ]
+    ]
+    opt.None -> []
+  }
 
   let template_link = case origin.template_id {
     opt.Some(id) -> [
@@ -182,6 +188,22 @@ fn automation_origin_links(
   engine_link
   |> list.append(rule_link)
   |> list.append(template_link)
+}
+
+fn automation_primary_link(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> Element(msg) {
+  a(
+    [
+      attribute.href(automation_primary_href(config, origin)),
+      attribute.class(
+        "task-show-summary-action task-show-summary-action-primary",
+      ),
+      attribute.attribute("data-testid", "automation-origin-primary-link"),
+    ],
+    [text(t(config.locale, i18n_text.TaskAutomationGoToAutomation))],
+  )
 }
 
 fn automation_link(
@@ -217,6 +239,27 @@ fn automation_execution_href(
         opt.Some(config.task.project_id),
       ))
   }
+}
+
+fn automation_primary_href(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> String {
+  case origin.execution_id {
+    opt.Some(_) -> automation_execution_href(config, origin)
+    opt.None -> automation_rule_href(config, origin)
+  }
+}
+
+fn automation_rule_href(
+  config: Config,
+  origin: domain_task.AutomationOrigin,
+) -> String {
+  automation_route(
+    config.task.project_id,
+    permissions.Workflows,
+    automation_deep_link.SelectedRule(origin.rule_id, origin.workflow_id),
+  )
 }
 
 fn automation_route(
