@@ -46,7 +46,6 @@ import domain/metrics.{type MyMetrics, MyMetrics, window_days_value}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task as domain_task
 import domain/task/state as task_state
-import domain/task_status.{Available, Claimed, Ongoing, Taken}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -402,7 +401,7 @@ pub fn view_member_bar_task_row(
 
   let claim_action =
     task_actions.claim_only(
-      task_state_ui.next_action(config.locale, Available),
+      task_state_ui.claim_action(config.locale),
       config.on_claim(id, version),
       action_buttons.SizeXs,
       config.disable_actions,
@@ -416,7 +415,7 @@ pub fn view_member_bar_task_row(
       i18n.t(config.locale, i18n_text.Start),
       config.on_start(id),
       "btn-xs",
-      task_state_ui.next_action(config.locale, Claimed(Taken)),
+      task_state_ui.start_action(config.locale),
       config.disable_actions,
     )
 
@@ -425,7 +424,7 @@ pub fn view_member_bar_task_row(
       i18n.t(config.locale, i18n_text.Pause),
       config.on_pause,
       "btn-xs",
-      task_state_ui.next_action(config.locale, Claimed(Ongoing)),
+      task_state_ui.pause_action(config.locale),
       config.disable_actions,
     )
 

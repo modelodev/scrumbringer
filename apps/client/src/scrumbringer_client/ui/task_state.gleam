@@ -33,6 +33,26 @@ pub fn next_action(locale: Locale, status: TaskPhase) -> String {
   }
 }
 
+pub fn claim_action(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskNextActionClaim)
+}
+
+pub fn start_action(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskNextActionStart)
+}
+
+pub fn pause_action(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskNextActionPause)
+}
+
+pub fn claimed_hint(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskStateClaimedHint)
+}
+
+pub fn ongoing_hint(locale: Locale) -> String {
+  i18n.t(locale, i18n_text.TaskStateOngoingHint)
+}
+
 pub fn complete_action(locale: Locale) -> String {
   i18n.t(locale, i18n_text.TaskNextActionComplete)
 }

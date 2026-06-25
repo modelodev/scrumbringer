@@ -31,7 +31,6 @@ import lustre/element/html.{div, h3, text}
 
 import domain/remote.{type Remote}
 import domain/task.{type Task, type WorkSession, Task, WorkSession}
-import domain/task_status.{Claimed, Ongoing}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -135,7 +134,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
   let actions = case task_info {
     opt.Some(Task(version: version, ..)) ->
       task_actions.pause_and_complete(
-        task_state_ui.next_action(config.locale, Claimed(Ongoing)),
+        task_state_ui.pause_action(config.locale),
         config.on_pause,
         task_state_ui.complete_action(config.locale),
         config.on_complete(task_id, version),
@@ -168,7 +167,7 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
           attribute.class("now-working-timer"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, Claimed(Ongoing)),
+            task_state_ui.ongoing_hint(config.locale),
           ),
         ],
         [text(elapsed)],

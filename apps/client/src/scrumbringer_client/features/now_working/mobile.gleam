@@ -29,7 +29,6 @@ import lustre/event
 import domain/remote.{type Remote, Loaded}
 import domain/task as domain_task
 import domain/task/state as task_execution_state
-import domain/task_status.{Claimed, Ongoing, Taken}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/helpers/time as helpers_time
@@ -223,7 +222,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
 
   let actions = [
     action_buttons.task_icon_button_with_class(
-      task_state_ui.next_action(config.locale, Claimed(Ongoing)),
+      task_state_ui.pause_action(config.locale),
       config.on_pause,
       icons.Pause,
       icons.Small,
@@ -261,7 +260,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
           attribute.class("session-timer"),
           attribute.attribute(
             "title",
-            task_state_ui.hint(config.locale, Claimed(Ongoing)),
+            task_state_ui.ongoing_hint(config.locale),
           ),
         ],
         [text(elapsed)],
@@ -289,7 +288,7 @@ fn view_claimed_row(config: Config(msg), task: domain_task.Task) -> Element(msg)
 
   let actions = [
     action_buttons.task_icon_button_with_class(
-      task_state_ui.next_action(config.locale, Claimed(Taken)),
+      task_state_ui.start_action(config.locale),
       config.on_start(id),
       icons.Play,
       icons.Small,
@@ -323,7 +322,7 @@ fn view_claimed_row(config: Config(msg), task: domain_task.Task) -> Element(msg)
       title: title,
       title_class: opt.Some("claimed-title"),
       secondary: span([attribute.class("claimed-state-hint")], [
-        text(task_state_ui.hint(config.locale, Claimed(Taken))),
+        text(task_state_ui.claimed_hint(config.locale)),
       ]),
       actions: [div([attribute.class("claimed-actions")], actions)],
       reserve_actions_slot: False,
