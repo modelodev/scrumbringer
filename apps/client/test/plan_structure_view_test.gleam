@@ -45,6 +45,7 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_contains(html, "data-testid=\"plan-structure-view\"")
   assert_contains(html, "data-testid=\"plan-filter-status\"")
   assert_contains(html, "data-testid=\"plan-filter-sort\"")
+  assert_not_contains(html, "data-testid=\"work-filter-capability-scope\"")
   assert_contains(html, "Trabajo")
   assert_not_contains(html, "Al activar")
   assert_not_contains(html, "Vence")

@@ -1987,7 +1987,10 @@ fn task_filters_for_member_route(
   model: client_state.Model,
 ) -> task_operations_api.TaskFilters {
   member_refresh_filters.task_filters(
-    model.member.pool.view_mode,
+    member_refresh_filters.surface(
+      model.member.pool.view_mode,
+      model.member.pool.member_plan_mode,
+    ),
     model.member.pool.member_filters_type_id,
     model.member.pool.member_filters_capability_id,
     model.member.pool.member_filters_q,

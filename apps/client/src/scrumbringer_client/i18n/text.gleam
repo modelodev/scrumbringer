@@ -237,10 +237,7 @@ pub type Text {
   SelectType
   TypeLabel
   CapabilityLabel
-  MyCapabilitiesLabel
-  MyCapabilitiesHint
-  MyCapabilitiesOn
-  MyCapabilitiesOff
+  CapabilityScopeLabel
   ScopeAll
   ScopeMine
   SearchLabel

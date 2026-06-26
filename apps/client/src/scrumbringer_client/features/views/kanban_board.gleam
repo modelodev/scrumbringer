@@ -15,7 +15,7 @@
 
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/string
 import lustre/attribute
@@ -23,18 +23,22 @@ import lustre/element
 import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
 
+import domain/capability.{type Capability}
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/org.{type OrgUser}
 import domain/task as domain_task
 import domain/task/state as task_execution_state
 import domain/task_type.{type TaskType}
-import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/capability_scope.{
+  type CapabilityScope, to_string as capability_scope_to_string,
+}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/features/work_filters
+import scrumbringer_client/features/work_filters_bar
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -66,8 +70,9 @@ pub type KanbanConfig(msg) {
     cards: List(Card),
     tasks: List(domain_task.Task),
     task_types: List(TaskType),
-    type_filter: option.Option(Int),
-    capability_filter: option.Option(Int),
+    capabilities: List(Capability),
+    type_filter: Option(Int),
+    capability_filter: Option(Int),
     search_query: String,
     capability_scope: CapabilityScope,
     my_capability_ids: List(Int),
@@ -84,10 +89,10 @@ pub type KanbanConfig(msg) {
     on_create_task_in_card: fn(Int) -> msg,
     depth_names: List(scope_view.DepthName),
     scope_kind: member_pool.PlanScopeKind,
-    selected_depth: option.Option(Int),
-    selected_card_id: option.Option(Int),
+    selected_depth: Option(Int),
+    selected_card_id: Option(Int),
     card_query: String,
-    show_closed: option.Option(Bool),
+    show_closed: Option(Bool),
     plan_mode: member_pool.PlanMode,
     on_plan_mode_change: fn(String) -> msg,
     on_scope_kind_change: fn(String) -> msg,
@@ -95,6 +100,10 @@ pub type KanbanConfig(msg) {
     on_scope_card_change: fn(String) -> msg,
     on_scope_card_search_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
+    on_capability_scope_change: fn(String) -> msg,
+    on_type_filter_change: fn(String) -> msg,
+    on_capability_filter_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
   )
 }
 
@@ -296,7 +305,7 @@ fn view_scope_bar(
     show_closed: include_closed,
     id_prefix: "kanban-plan",
     mode_controls: [],
-    refinement_controls: [],
+    refinement_controls: work_filter_refinement_controls(config),
     show_closed_control: True,
     on_scope_kind_change: config.on_scope_kind_change,
     on_scope_depth_change: config.on_scope_depth_change,
@@ -304,6 +313,43 @@ fn view_scope_bar(
     on_scope_card_search_change: config.on_scope_card_search_change,
     on_closed_toggled: config.on_closed_toggled,
   ))
+}
+
+fn work_filter_refinement_controls(
+  config: KanbanConfig(msg),
+) -> List(element.Element(msg)) {
+  work_filters_bar.view_refinement_controls(work_filters_bar.Config(
+    locale: config.locale,
+    id_prefix: "kanban-work-filter",
+    task_types: config.task_types,
+    capabilities: config.capabilities,
+    capability_scope: config.capability_scope,
+    type_filter: config.type_filter,
+    capability_filter: config.capability_filter,
+    search_query: config.search_query,
+    show_search: True,
+    show_type: True,
+    show_capability: True,
+    show_capability_scope: True,
+    visibility_control: work_filters_bar.NoVisibilityControl,
+    on_capability_scope_change: fn(scope) {
+      config.on_capability_scope_change(capability_scope_to_string(scope))
+    },
+    on_type_filter_change: fn(value) {
+      config.on_type_filter_change(option_int_to_string(value))
+    },
+    on_capability_filter_change: fn(value) {
+      config.on_capability_filter_change(option_int_to_string(value))
+    },
+    on_search_change: config.on_search_change,
+  ))
+}
+
+fn option_int_to_string(value: Option(Int)) -> String {
+  case value {
+    Some(i) -> int.to_string(i)
+    None -> ""
+  }
 }
 
 fn pending_column_title(config: KanbanConfig(msg)) -> String {

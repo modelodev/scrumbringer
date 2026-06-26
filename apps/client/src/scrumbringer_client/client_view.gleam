@@ -36,6 +36,7 @@ import lustre/element.{type Element}
 
 import lustre/element/html.{a, div, h2, p, style, text}
 
+import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/org_role
@@ -1599,6 +1600,7 @@ fn build_center_panel(
         cards,
         data.tasks,
         data.task_types,
+        data.capabilities,
         data.org_users,
         data.my_capability_ids,
       ))
@@ -1632,6 +1634,7 @@ fn kanban_config(
   cards: List(Card),
   tasks: List(Task),
   task_types: List(TaskType),
+  capabilities: List(Capability),
   org_users: List(OrgUser),
   my_capability_ids: List(Int),
 ) -> kanban_board.KanbanConfig(client_state.Msg) {
@@ -1644,6 +1647,7 @@ fn kanban_config(
     cards: cards,
     tasks: tasks,
     task_types: task_types,
+    capabilities: capabilities,
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
     search_query: model.member.pool.member_filters_q,
@@ -1707,6 +1711,20 @@ fn kanban_config(
     },
     on_closed_toggled: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanClosedToggled(value))
+    },
+    on_capability_scope_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
+        value,
+      ))
+    },
+    on_type_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
+    },
+    on_capability_filter_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
     },
   )
 }

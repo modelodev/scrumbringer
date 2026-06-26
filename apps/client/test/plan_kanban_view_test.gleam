@@ -37,6 +37,7 @@ pub fn plan_kanban_has_kanban_title_and_hides_claimable_task_ui_test() {
   assert_not_contains(html, "kanban-task-item")
   assert_not_contains(html, "btn-claim-mini")
   assert_not_contains(html, "draggable=\"true\"")
+  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
 }
 
 pub fn plan_kanban_card_scope_without_selection_shows_card_target_options_test() {
@@ -151,6 +152,7 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
         tasks_count: 1,
       ),
     ],
+    capabilities: [],
     type_filter: None,
     capability_filter: None,
     search_query: "",
@@ -184,6 +186,10 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     on_scope_card_change: fn(_value) { 0 },
     on_scope_card_search_change: fn(_value) { 0 },
     on_closed_toggled: fn(_value) { 0 },
+    on_capability_scope_change: fn(_value) { 0 },
+    on_type_filter_change: fn(_value) { 0 },
+    on_capability_filter_change: fn(_value) { 0 },
+    on_search_change: fn(_value) { 0 },
   )
 }
 

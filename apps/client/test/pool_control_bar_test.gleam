@@ -20,7 +20,7 @@ pub fn pool_control_bar_renders_visibility_selector_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"pool-control-bar\"")
-  assert_contains(html, "data-testid=\"pool-filter-visibility\"")
+  assert_contains(html, "data-testid=\"work-filter-visibility\"")
   assert_contains(html, ">Ver<")
   assert_contains(html, ">Abiertas<")
   assert_contains(html, ">Reclamables<")
@@ -44,11 +44,11 @@ pub fn pool_control_bar_renders_pool_owned_work_filters_test() {
     control_bar.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"pool-filter-search\"")
-  assert_contains(html, "data-testid=\"pool-filter-type\"")
-  assert_contains(html, "data-testid=\"pool-filter-capability\"")
-  assert_contains(html, "data-testid=\"pool-filter-capability-scope\"")
-  assert_contains(html, "id=\"pool-filter-q\"")
+  assert_contains(html, "data-testid=\"work-filter-search\"")
+  assert_contains(html, "data-testid=\"work-filter-type\"")
+  assert_contains(html, "data-testid=\"work-filter-capability\"")
+  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
+  assert_contains(html, "id=\"pool-work-filter-q\"")
 }
 
 fn config() -> control_bar.Config(String) {

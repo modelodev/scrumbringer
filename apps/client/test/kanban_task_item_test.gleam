@@ -1,3 +1,4 @@
+import domain/capability.{Capability}
 import domain/card.{Active, Card, Closed}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
@@ -59,6 +60,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
         tasks_count: list.length(tasks),
       ),
     ],
+    capabilities: [Capability(id: 2, name: "Backend")],
     type_filter: None,
     capability_filter: None,
     search_query: "",
@@ -92,6 +94,10 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     on_scope_card_change: fn(_value) { 0 },
     on_scope_card_search_change: fn(_value) { 0 },
     on_closed_toggled: fn(_value) { 0 },
+    on_capability_scope_change: fn(_value) { 0 },
+    on_type_filter_change: fn(_value) { 0 },
+    on_capability_filter_change: fn(_value) { 0 },
+    on_search_change: fn(_value) { 0 },
   )
 }
 
@@ -256,6 +262,9 @@ pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
     |> element.to_document_string
 
   assert_not_contains(html, "Review copy")
+  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
+  assert_contains(html, "data-testid=\"work-filter-capability-scope-mine\"")
+  assert_contains(html, "aria-pressed=\"true\"")
 }
 
 pub fn kanban_surface_header_summarizes_operational_health_test() {
@@ -275,6 +284,7 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
   assert_contains(html, "data-testid=\"plan-scope-kind\"")
   assert_contains(html, "data-testid=\"plan-scope-depth\"")
   assert_contains(html, "data-testid=\"plan-closed-toggle\"")
+  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
   assert_not_contains(html, ">Lens<")
   assert_contains(html, "work-surface-chip")
   assert_contains(html, "Cards")

@@ -23,6 +23,7 @@ pub fn kanban_column_headers_show_icons_test() {
       cards: [],
       tasks: [],
       task_types: [],
+      capabilities: [],
       type_filter: None,
       capability_filter: None,
       search_query: "",
@@ -49,6 +50,10 @@ pub fn kanban_column_headers_show_icons_test() {
       on_scope_card_change: fn(_value) { 0 },
       on_scope_card_search_change: fn(_value) { 0 },
       on_closed_toggled: fn(_value) { 0 },
+      on_capability_scope_change: fn(_value) { 0 },
+      on_type_filter_change: fn(_value) { 0 },
+      on_capability_filter_change: fn(_value) { 0 },
+      on_search_change: fn(_value) { 0 },
     )
 
   let html = kanban_board.view(config) |> element.to_document_string
